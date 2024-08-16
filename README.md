@@ -20,32 +20,6 @@ The Nexa SDK is a comprehensive toolkit for supporting **ONNX** and **GGML** mod
 
 ## Installation
 
-### Install Pre-built Wheel
-
-#### For macOS with Metal
-
-```bash
-pip install https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa-sdk/macOS/nexaai-0.0.0.dev0-py3-none-any.whl --force-reinstall
-```
-
-#### For Windows with CPU only
-
-```bash
-pip install https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa-sdk/win/nexaai-0.0.0.dev0-py3-none-any.whl --force-reinstall
-```
-
-#### For Windows with GPU only
-
-```bash
-pip install https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa-sdk/win/nexaai_gpu-0.0.0.dev0-py3-none-any.whl --force-reinstall
-```
-
-#### For Linux with CPU only
-
-```bash
-pip install https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa-sdk/linux/nexaai-0.0.0.dev0-py3-none-any.whl --force-reinstall
-```
-
 ### Build from Scratch
 
 #### Clone the Repository
