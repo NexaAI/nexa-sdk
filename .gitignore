@@ -1,0 +1,90 @@
+# Files
+*.safetensors
+*.gguf
+*.png
+*.jpeg
+*.jpg
+*.bin
+*.mp3
+*.wav
+poetry.lock
+*.pdb
+*.ipynb
+nexa_server_output/
+transcriptions/
+generated/
+pyproject.toml
+build*.sh
+*.so
+*.dll
+*.dylib
+setup.py
+
+# Python
+__pycache__/
+CMakeFiles/
+*.py[cod]
+*$py.class
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+venv/
+.env
+
+# C++
+Makefile
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+*.o
+*.out
+*.exe
+*.a
+*.lib
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Build directories
+bin/
+obj/
+build_*/
+
+# Exclude build_scripts/ from being ignored
+!build_scripts/
+
+# Logs and databases
+*.log
+*.sqlite
+
+# Other
+.cache/
