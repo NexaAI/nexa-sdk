@@ -1,8 +1,3 @@
-# Build
-build
-wheel
-twine
-
 # For onnx
 librosa
 optimum[onnxruntime] >=1.7.3 # for cpu version

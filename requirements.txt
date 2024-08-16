@@ -3,11 +3,6 @@ build
 wheel
 twine
 
-# For ggml, using other dependencies
-llama-cpp-python
-stable-diffusion-cpp-python
-whisper-cpp-python
-
 # For ggml
 typing-extensions>=4.5.0
 numpy>=1.20.0
@@ -22,23 +17,8 @@ pydantic
 pillow
 prompt_toolkit
 
-# For onnx
-# librosa
-# optimum[onnxruntime] >=1.7.3 # for cpu version
-# diffusers # required for image generation
-# optuna
-# pydantic
-# PyYAML
-# Requests
-# setuptools
-# soundfile
-# streamlit_audiorec
-# transformers
-# ttstokenizer
-
 # Shared dependencies
 tqdm
 importlib-metadata>=1.4.0,<7.0
-prompt_toolkit
 tabulate
 streamlit
