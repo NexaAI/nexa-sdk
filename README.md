@@ -19,56 +19,16 @@ The Nexa SDK is a comprehensive toolkit for supporting **ONNX** and **GGML** mod
 - **Streamlit UI** for interactive model deployment and testing
 
 ## Installation
-
-### Build from Scratch
-
-#### Clone the Repository
-
 ```bash
 git clone --recursive https://github.com/NexaAI/nexa-sdk.git
 cd nexa-sdk
 pip install build cmake wheel
+python -m build
 ```
-
-#### Use Pre-built Libraries
-
-1. **Build Wheel:**
-
-```bash
-python build_wheel.py
-python build_wheel.py --gpu # for gpu version
-```
-
-2. **Install the Built Package:**
-
-```bash
-pip install dist/*.whl --force-reinstall
-```
-
-#### Build Libraries from Source
-
-1. **Build Wheel:**
-
-```bash
-python build_project_and_wheel.py
-python build_project_and_wheel.py --gpu
-python build_project_and_wheel.py --os linux # for linux version
-python build_project_and_wheel.py --os darwin # for macOS version
-python build_project_and_wheel.py --os win32 # for windows version
-```
-
-2. **Install the Built Package:**
-
-```bash
-pip install dist/*.whl --force-reinstall
-```
-
-> When building on Windows, one needs to ensure that all `.sh` scripts are using LF line endings, instead of CRLF.
 
 ## Publishing the Package
 
 ### Publish to Test PyPI
-
 1. Register at [Test PyPI](https://test.pypi.org/account/register/).
 2. Upload the package:
 
