@@ -13,7 +13,6 @@ poetry.lock
 nexa_server_output/
 transcriptions/
 generated/
-pyproject.toml
 build*.sh
 *.so
 *.dll

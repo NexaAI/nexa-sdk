@@ -50,6 +50,18 @@ if __name__ == "__main__":
     # Determine if GPU or CPU version is being used
     version_type = "GPU" if args.gpu else "CPU"
 
+    # Determine the correct pip executable
+    pip_executable = [sys.executable, "-m", "pip"]
+    
+    # List of packages to install
+    packages = ["cmake", "build"]
+    try:
+        subprocess.run(pip_executable + ["install"] + packages, check=True)
+        print("Packages installed successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"An error occurred while installing packages: {e}")
+        sys.exit(1)
+
     # Get the appropriate script and TOML file based on the OS and GPU flag
     script_to_copy = build_scripts[os_type][args.gpu]
     toml_to_copy = toml_files[os_type][args.gpu]
