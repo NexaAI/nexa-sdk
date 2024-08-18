@@ -57,7 +57,9 @@ project(llama_cpp)
 option(LLAMA_BUILD "Build llama.cpp shared library and install alongside python package" ON)
 option(LLAVA_BUILD "Build llava shared library and install alongside python package" ON)
 
-set(SKBUILD_PLATLIB_DIR "${CMAKE_CURRENT_BINARY_DIR}/lib")
+if(NOT DEFINED SKBUILD_PLATLIB_DIR)
+    set(SKBUILD_PLATLIB_DIR "${CMAKE_CURRENT_BINARY_DIR}/lib")
+endif()
 
 message(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
 message(STATUS "SKBUILD_PLATLIB_DIR: ${SKBUILD_PLATLIB_DIR}")
