@@ -6,7 +6,7 @@ import sys
 import time
 from pathlib import Path
 
-from stable_diffusion_cpp import stable_diffusion
+from nexa.gguf.sd.stable_diffusion import StableDiffusion
 from nexa.general import pull_model
 from nexa.constants import (
     DEFAULT_IMG_GEN_PARAMS,
@@ -84,7 +84,7 @@ class NexaImageInference:
     @SpinningCursorAnimation()
     def _load_model(self, model_path: str):
         with suppress_stdout_stderr():
-            self.model = stable_diffusion.StableDiffusion(
+            self.model = StableDiffusion(
                 model_path=self.downloaded_path,
                 lora_model_dir=self.params.get("lora_dir", ""),
                 n_threads=self.params.get("n_threads", multiprocessing.cpu_count()),

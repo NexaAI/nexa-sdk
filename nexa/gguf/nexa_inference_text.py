@@ -13,7 +13,7 @@ from nexa.constants import (
     NEXA_STOP_WORDS_MAP,
 )
 from nexa.general import pull_model
-from llama_cpp import Llama
+from nexa.gguf.llama.llama import Llama
 from nexa.utils import SpinningCursorAnimation, nexa_prompt, suppress_stdout_stderr
 
 logging.basicConfig(

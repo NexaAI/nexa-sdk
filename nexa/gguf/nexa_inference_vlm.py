@@ -18,7 +18,7 @@ from nexa.constants import (
     NEXA_RUN_PROJECTOR_MAP,
 )
 from nexa.general import pull_model
-from llama_cpp import llama
+from nexa.gguf.llama.llama import Llama
 from nexa.gguf.llama.llama_chat_format import (
     Llava15ChatHandler,
     Llava16ChatHandler,
@@ -148,7 +148,7 @@ class NexaVLMInference:
                 if self.projector_downloaded_path
                 else None
             )
-            self.model = llama.Llama(
+            self.model = Llama(
                 model_path=self.downloaded_path,
                 chat_handler=self.projector,
                 verbose=False,
