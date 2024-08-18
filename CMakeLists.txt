@@ -49,7 +49,7 @@ if (LLAMA_BUILD)
     # When building, don't use the install RPATH already
     # (but later on when installing)
     set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
- 
+
     # Add the automatically determined parts of the RPATH
     # which point to directories outside the build tree to the install RPATH
     set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
