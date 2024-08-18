@@ -1,9 +1,67 @@
 cmake_minimum_required(VERSION 3.21)
 
+
+project(stable_diffusion_cpp)
+
+option(STABLE_DIFFUSION_BUILD "Build stable-diffusion.cpp shared library and install alongside python package" ON)
+
+if (STABLE_DIFFUSION_BUILD)
+    set(BUILD_SHARED_LIBS "ON")
+    option(SD_BUILD_SHARED_LIBS "" "ON")
+
+    # Building llama
+    if (APPLE AND NOT CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
+        # Need to disable these llama.cpp flags on Apple x86_64,
+        # otherwise users may encounter invalid instruction errors
+        set(GGML_AVX "Off" CACHE BOOL "ggml: enable AVX" FORCE)
+        set(GGML_AVX2 "Off" CACHE BOOL "ggml: enable AVX2" FORCE)
+        set(GGML_FMA "Off" CACHE BOOL "ggml: enable FMA" FORCE)
+        set(GGML_F16C "Off" CACHE BOOL "ggml: enable F16C" FORCE)
+    endif()
+
+    add_subdirectory(dependency/stable-diffusion.cpp)
+    install(
+        TARGETS stable-diffusion
+        LIBRARY DESTINATION ${SKBUILD_PLATLIB_DIR}/stable_diffusion_cpp
+        RUNTIME DESTINATION ${SKBUILD_PLATLIB_DIR}/stable_diffusion_cpp
+        ARCHIVE DESTINATION ${SKBUILD_PLATLIB_DIR}/stable_diffusion_cpp
+        FRAMEWORK DESTINATION ${SKBUILD_PLATLIB_DIR}/stable_diffusion_cpp
+        RESOURCE DESTINATION ${SKBUILD_PLATLIB_DIR}/stable_diffusion_cpp
+    )
+
+    message(SKBUILD_PLATLIB_DIR: ${SKBUILD_PLATLIB_DIR})
+    # Temporary fix for https://github.com/scikit-build/scikit-build-core/issues/374
+    install(
+        TARGETS stable-diffusion
+        LIBRARY DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/stable_diffusion_cpp
+        RUNTIME DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/stable_diffusion_cpp
+        ARCHIVE DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/stable_diffusion_cpp
+        FRAMEWORK DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/stable_diffusion_cpp
+        RESOURCE DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/stable_diffusion_cpp
+    )
+    # Workaround for Windows + CUDA https://github.com/abetlen/llama-cpp-python/issues/563
+    install(
+        FILES $<TARGET_RUNTIME_DLLS:stable-diffusion>
+        DESTINATION ${SKBUILD_PLATLIB_DIR}/stable_diffusion_cpp
+    )
+    install(
+        FILES $<TARGET_RUNTIME_DLLS:stable-diffusion>
+        DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/stable_diffusion_cpp
+    )
+
+endif()
+
+
 project(llama_cpp)
 
 option(LLAMA_BUILD "Build llama.cpp shared library and install alongside python package" ON)
 option(LLAVA_BUILD "Build llava shared library and install alongside python package" ON)
+
+set(SKBUILD_PLATLIB_DIR "${CMAKE_CURRENT_BINARY_DIR}/lib")
+
+message(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
+message(STATUS "SKBUILD_PLATLIB_DIR: ${SKBUILD_PLATLIB_DIR}")
+
 
 function(llama_cpp_python_install_target target)
     install(
@@ -71,7 +129,7 @@ if (LLAMA_BUILD)
 
     add_subdirectory(dependency/llama.cpp)
     llama_cpp_python_install_target(llama)
-    llama_cpp_python_install_target(ggml)
+    # llama_cpp_python_install_target(ggml)
     
     # Workaround for Windows + CUDA https://github.com/abetlen/llama-cpp-python/issues/563
     if (WIN32)
@@ -123,53 +181,3 @@ if (LLAMA_BUILD)
         endif()
     endif()
 endif()
-
-# project(stable_diffusion_cpp)
-
-# option(STABLE_DIFFUSION_BUILD "Build stable-diffusion.cpp shared library and install alongside python package" ON)
-
-# if (STABLE_DIFFUSION_BUILD)
-#     set(BUILD_SHARED_LIBS "ON")
-#     option(SD_BUILD_SHARED_LIBS "" "ON")
-
-#     # Building llama
-#     if (APPLE AND NOT CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
-#         # Need to disable these llama.cpp flags on Apple x86_64,
-#         # otherwise users may encounter invalid instruction errors
-#         set(GGML_AVX "Off" CACHE BOOL "ggml: enable AVX" FORCE)
-#         set(GGML_AVX2 "Off" CACHE BOOL "ggml: enable AVX2" FORCE)
-#         set(GGML_FMA "Off" CACHE BOOL "ggml: enable FMA" FORCE)
-#         set(GGML_F16C "Off" CACHE BOOL "ggml: enable F16C" FORCE)
-#     endif()
-
-#     add_subdirectory(dependency/stable-diffusion.cpp)
-#     install(
-#         TARGETS stable-diffusion
-#         LIBRARY DESTINATION ${SKBUILD_PLATLIB_DIR}/stable_diffusion_cpp
-#         RUNTIME DESTINATION ${SKBUILD_PLATLIB_DIR}/stable_diffusion_cpp
-#         ARCHIVE DESTINATION ${SKBUILD_PLATLIB_DIR}/stable_diffusion_cpp
-#         FRAMEWORK DESTINATION ${SKBUILD_PLATLIB_DIR}/stable_diffusion_cpp
-#         RESOURCE DESTINATION ${SKBUILD_PLATLIB_DIR}/stable_diffusion_cpp
-#     )
-
-#     message(SKBUILD_PLATLIB_DIR: ${SKBUILD_PLATLIB_DIR})
-#     # Temporary fix for https://github.com/scikit-build/scikit-build-core/issues/374
-#     install(
-#         TARGETS stable-diffusion
-#         LIBRARY DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/stable_diffusion_cpp
-#         RUNTIME DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/stable_diffusion_cpp
-#         ARCHIVE DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/stable_diffusion_cpp
-#         FRAMEWORK DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/stable_diffusion_cpp
-#         RESOURCE DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/stable_diffusion_cpp
-#     )
-#     # Workaround for Windows + CUDA https://github.com/abetlen/llama-cpp-python/issues/563
-#     install(
-#         FILES $<TARGET_RUNTIME_DLLS:stable-diffusion>
-#         DESTINATION ${SKBUILD_PLATLIB_DIR}/stable_diffusion_cpp
-#     )
-#     install(
-#         FILES $<TARGET_RUNTIME_DLLS:stable-diffusion>
-#         DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/stable_diffusion_cpp
-#     )
-
-# endif()
