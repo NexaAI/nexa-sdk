@@ -1,6 +1,6 @@
 [submodule "dependency/llama.cpp"]
 	path = dependency/llama.cpp
-	url = https://github.com/ggerganov/llama.cpp
+	url = https://github.com/NexaAI/llama.cpp
 [submodule "dependency/stable-diffusion.cpp"]
 	path = dependency/stable-diffusion.cpp
-	url = git@github.com:xyyimian/stable-diffusion.cpp.git
+	url = https://github.com/NexaAI/stable-diffusion.cpp

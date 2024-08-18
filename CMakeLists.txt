@@ -1,5 +1,6 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.16)
 
+# Project: llama_cpp
 project(llama_cpp)
 
 option(LLAMA_BUILD "Build llama.cpp shared library and install alongside python package" ON)
@@ -8,19 +9,19 @@ option(LLAVA_BUILD "Build llava shared library and install alongside python pack
 function(llama_cpp_python_install_target target)
     install(
         TARGETS ${target}
-        LIBRARY DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/llama_cpp/lib
-        RUNTIME DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/llama_cpp/lib
-        ARCHIVE DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/llama_cpp/lib
-        FRAMEWORK DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/llama_cpp/lib
-        RESOURCE DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/llama_cpp/lib
+        LIBRARY DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
+        RUNTIME DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
+        ARCHIVE DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
+        FRAMEWORK DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
+        RESOURCE DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
     )
     install(
         TARGETS ${target}
-        LIBRARY DESTINATION ${SKBUILD_PLATLIB_DIR}/llama_cpp/lib
-        RUNTIME DESTINATION ${SKBUILD_PLATLIB_DIR}/llama_cpp/lib
-        ARCHIVE DESTINATION ${SKBUILD_PLATLIB_DIR}/llama_cpp/lib
-        FRAMEWORK DESTINATION ${SKBUILD_PLATLIB_DIR}/llama_cpp/lib
-        RESOURCE DESTINATION ${SKBUILD_PLATLIB_DIR}/llama_cpp/lib
+        LIBRARY DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
+        RUNTIME DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
+        ARCHIVE DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
+        FRAMEWORK DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
+        RESOURCE DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
     )
     set_target_properties(${target} PROPERTIES
         INSTALL_RPATH "$ORIGIN"
@@ -49,7 +50,7 @@ if (LLAMA_BUILD)
     # When building, don't use the install RPATH already
     # (but later on when installing)
     set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
- 
+
     # Add the automatically determined parts of the RPATH
     # which point to directories outside the build tree to the install RPATH
     set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
@@ -69,28 +70,27 @@ if (LLAMA_BUILD)
         set(GGML_METAL_EMBED_LIBRARY "On" CACHE BOOL "llama: embed metal library" FORCE)
     endif()
 
-    # add_subdirectory(dependency/llama.cpp, ${CMAKE_BINARY_DIR}/llama_cpp)
     add_subdirectory(dependency/llama.cpp)
     llama_cpp_python_install_target(llama)
     llama_cpp_python_install_target(ggml)
-    
+
     # Workaround for Windows + CUDA https://github.com/abetlen/llama-cpp-python/issues/563
     if (WIN32)
         install(
             FILES $<TARGET_RUNTIME_DLLS:llama>
-            DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/llama_cpp/lib
+            DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
         )
         install(
             FILES $<TARGET_RUNTIME_DLLS:llama>
-            DESTINATION ${SKBUILD_PLATLIB_DIR}/llama_cpp/lib
+            DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
         )
         install(
             FILES $<TARGET_RUNTIME_DLLS:ggml>
-            DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/llama_cpp/lib
+            DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
         )
         install(
             FILES $<TARGET_RUNTIME_DLLS:ggml>
-            DESTINATION ${SKBUILD_PLATLIB_DIR}/llama_cpp/lib
+            DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
         )
     endif()
 
@@ -104,10 +104,8 @@ if (LLAMA_BUILD)
             add_compile_definitions(GGML_USE_METAL)
         endif()
 
-        # Building llava
         add_subdirectory(dependency/llama.cpp/examples/llava)
         set_target_properties(llava_shared PROPERTIES OUTPUT_NAME "llava")
-        # Set CUDA_ARCHITECTURES to OFF on windows
         if (WIN32)
             set_target_properties(llava_shared PROPERTIES CUDA_ARCHITECTURES OFF)
         endif()
@@ -115,19 +113,18 @@ if (LLAMA_BUILD)
         if (WIN32)
             install(
                 FILES $<TARGET_RUNTIME_DLLS:llava_shared>
-                DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/llama_cpp/lib
+                DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
             )
             install(
                 FILES $<TARGET_RUNTIME_DLLS:llava_shared>
-                DESTINATION ${SKBUILD_PLATLIB_DIR}/llama_cpp/lib
+                DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
             )
         endif()
     endif()
 endif()
 
+# Project: stable_diffusion_cpp
 project(stable_diffusion_cpp)
-
-# set(SD_CPP_BUILD_DIR "${CMAKE_BINARY_DIR}/stable_diffusion_cpp")
 
 option(STABLE_DIFFUSION_BUILD "Build stable-diffusion.cpp shared library and install alongside python package" ON)
 
@@ -135,8 +132,8 @@ if (STABLE_DIFFUSION_BUILD)
     set(BUILD_SHARED_LIBS "ON")
     option(SD_BUILD_SHARED_LIBS "" "ON")
 
-    # Building llama
-    if (APPLE AND NOT CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
+        # Building llama
+        if (APPLE AND NOT CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
         # Need to disable these llama.cpp flags on Apple x86_64,
         # otherwise users may encounter invalid instruction errors
         set(GGML_AVX "Off" CACHE BOOL "ggml: enable AVX" FORCE)
@@ -145,35 +142,34 @@ if (STABLE_DIFFUSION_BUILD)
         set(GGML_F16C "Off" CACHE BOOL "ggml: enable F16C" FORCE)
     endif()
 
-    # add_subdirectory(dependency/stable-diffusion.cpp, ${CMAKE_BINARY_DIR}/stable_diffusion_cpp)
     add_subdirectory(dependency/stable-diffusion.cpp)
     install(
         TARGETS stable-diffusion
-        LIBRARY DESTINATION ${SKBUILD_PLATLIB_DIR}/stable_diffusion_cpp
-        RUNTIME DESTINATION ${SKBUILD_PLATLIB_DIR}/stable_diffusion_cpp
-        ARCHIVE DESTINATION ${SKBUILD_PLATLIB_DIR}/stable_diffusion_cpp
-        FRAMEWORK DESTINATION ${SKBUILD_PLATLIB_DIR}/stable_diffusion_cpp
-        RESOURCE DESTINATION ${SKBUILD_PLATLIB_DIR}/stable_diffusion_cpp
+        LIBRARY DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
+        RUNTIME DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
+        ARCHIVE DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
+        FRAMEWORK DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
+        RESOURCE DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
     )
 
     message(SKBUILD_PLATLIB_DIR: ${SKBUILD_PLATLIB_DIR})
     # Temporary fix for https://github.com/scikit-build/scikit-build-core/issues/374
     install(
         TARGETS stable-diffusion
-        LIBRARY DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/stable_diffusion_cpp
-        RUNTIME DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/stable_diffusion_cpp
-        ARCHIVE DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/stable_diffusion_cpp
-        FRAMEWORK DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/stable_diffusion_cpp
-        RESOURCE DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/stable_diffusion_cpp
+        LIBRARY DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
+        RUNTIME DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
+        ARCHIVE DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
+        FRAMEWORK DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
+        RESOURCE DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
     )
     # Workaround for Windows + CUDA https://github.com/abetlen/llama-cpp-python/issues/563
     install(
         FILES $<TARGET_RUNTIME_DLLS:stable-diffusion>
-        DESTINATION ${SKBUILD_PLATLIB_DIR}/stable_diffusion_cpp
+        DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
     )
     install(
         FILES $<TARGET_RUNTIME_DLLS:stable-diffusion>
-        DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/stable_diffusion_cpp
+        DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
     )
 
 endif()

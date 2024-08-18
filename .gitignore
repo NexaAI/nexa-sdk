@@ -21,6 +21,7 @@ setup.py
 
 # Python
 __pycache__/
+**/__pycache__/
 CMakeFiles/
 *.py[cod]
 *$py.class

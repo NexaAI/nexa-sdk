@@ -19,11 +19,16 @@ The Nexa SDK is a comprehensive toolkit for supporting **ONNX** and **GGML** mod
 - **Streamlit UI** for interactive model deployment and testing
 
 ## Installation
+### install from PyPI
+```bash
+pip install nexaai
+```
+
+### build from source
 ```bash
 git clone --recursive https://github.com/NexaAI/nexa-sdk.git
 cd nexa-sdk
-pip install build cmake wheel
-python -m build
+pip install -e .
 ```
 
 ## Publishing the Package

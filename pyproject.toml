@@ -32,7 +32,6 @@ dependencies = [
 requires-python = ">=3.7"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -65,9 +64,6 @@ packages = [
 [tool.scikit-build]
 wheel.packages = ["llama_cpp", "stable_diffusion_cpp"]
 cmake.verbose = true
-cmake.args = [
-    "-DLLAVA_BUILD=off"
-]
 cmake.minimum-version = "3.21"
 minimum-version = "0.5.1"
 sdist.include = [".git", "CMakeLists.txt", "dependency/llama.cpp/*", "dependency/stable_diffusion_cpp.cpp/*"]
