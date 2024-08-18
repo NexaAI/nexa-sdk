@@ -65,9 +65,13 @@ packages = [
 [tool.scikit-build]
 wheel.packages = ["llama_cpp"]
 cmake.verbose = true
+cmake.args = [
+    "-DLLAVA_BUILD=off"
+]
 cmake.minimum-version = "3.21"
 minimum-version = "0.5.1"
-sdist.include = [".git", "dependency/llama.cpp/*"]
+sdist.include = [".git", "CMakeLists.txt", "dependency/llama.cpp/*"]
+
 
 [tool.pytest.ini_options]
 testpaths = "tests"
