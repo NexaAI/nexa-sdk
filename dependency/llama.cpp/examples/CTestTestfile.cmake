@@ -1,0 +1,38 @@
+# CMake generated Testfile for 
+# Source directory: /home/ubuntu/nexa-sdk/vendor/llama.cpp/examples
+# Build directory: /home/ubuntu/nexa-sdk/vendor/llama.cpp/examples
+# 
+# This file includes the relevant testing commands required for 
+# testing this directory and lists subdirectories to be tested as well.
+subdirs("cvector-generator")
+subdirs("baby-llama")
+subdirs("batched-bench")
+subdirs("batched")
+subdirs("benchmark")
+subdirs("convert-llama2c-to-ggml")
+subdirs("embedding")
+subdirs("eval-callback")
+subdirs("export-lora")
+subdirs("gbnf-validator")
+subdirs("gguf-hash")
+subdirs("gguf-split")
+subdirs("gguf")
+subdirs("gritlm")
+subdirs("imatrix")
+subdirs("infill")
+subdirs("llama-bench")
+subdirs("llava")
+subdirs("lookahead")
+subdirs("lookup")
+subdirs("main")
+subdirs("parallel")
+subdirs("passkey")
+subdirs("perplexity")
+subdirs("quantize-stats")
+subdirs("quantize")
+subdirs("retrieval")
+subdirs("server")
+subdirs("save-load-state")
+subdirs("simple")
+subdirs("speculative")
+subdirs("tokenize")
