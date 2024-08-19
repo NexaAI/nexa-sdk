@@ -62,8 +62,8 @@ if (LLAMA_BUILD)
         # otherwise users may encounter invalid instruction errors
         set(GGML_AVX "Off" CACHE BOOL "ggml: enable AVX" FORCE)
         set(GGML_AVX2 "Off" CACHE BOOL "ggml: enable AVX2" FORCE)
-        set(GGML_FMA "Off" CACHE BOOL "gml: enable FMA" FORCE)
-        set(GGML_F16C "Off" CACHE BOOL "gml: enable F16C" FORCE)
+        set(GGML_FMA "Off" CACHE BOOL "ggml: enable FMA" FORCE)
+        set(GGML_F16C "Off" CACHE BOOL "ggml: enable F16C" FORCE)
     endif()
 
     if (APPLE)
@@ -152,7 +152,7 @@ if (STABLE_DIFFUSION_BUILD)
         RESOURCE DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
     )
 
-    message(SKBUILD_PLATLIB_DIR: ${SKBUILD_PLATLIB_DIR})
+    message(STATUS "SKBUILD_PLATLIB_DIR: ${SKBUILD_PLATLIB_DIR}")
     # Temporary fix for https://github.com/scikit-build/scikit-build-core/issues/374
     install(
         TARGETS stable-diffusion
@@ -162,14 +162,15 @@ if (STABLE_DIFFUSION_BUILD)
         FRAMEWORK DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
         RESOURCE DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
     )
-    # Workaround for Windows + CUDA https://github.com/abetlen/llama-cpp-python/issues/563
-    install(
-        FILES $<TARGET_RUNTIME_DLLS:stable-diffusion>
-        DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
-    )
-    install(
-        FILES $<TARGET_RUNTIME_DLLS:stable-diffusion>
-        DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
-    )
-
+    # Workaround for Windows + CUDA
+    if (WIN32)
+        install(
+            FILES $<TARGET_RUNTIME_DLLS:stable-diffusion>
+            DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
+        )
+        install(
+            FILES $<TARGET_RUNTIME_DLLS:stable-diffusion>
+            DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
+        )
+    endif()
 endif()
