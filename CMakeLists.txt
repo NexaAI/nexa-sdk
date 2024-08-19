@@ -72,7 +72,7 @@ if (LLAMA_BUILD)
 
     add_subdirectory(dependency/llama.cpp)
     llama_cpp_python_install_target(llama)
-    llama_cpp_python_install_target(ggml)
+    llama_cpp_python_install_target(ggml_llama)
 
     # Workaround for Windows + CUDA https://github.com/abetlen/llama-cpp-python/issues/563
     if (WIN32)
@@ -85,11 +85,11 @@ if (LLAMA_BUILD)
             DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
         )
         install(
-            FILES $<TARGET_RUNTIME_DLLS:ggml>
+            FILES $<TARGET_RUNTIME_DLLS:ggml_llama>
             DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
         )
         install(
-            FILES $<TARGET_RUNTIME_DLLS:ggml>
+            FILES $<TARGET_RUNTIME_DLLS:ggml_llama>
             DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
         )
     endif()
