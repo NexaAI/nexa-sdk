@@ -92,6 +92,7 @@ class NexaImageInference:
                     model_path, "default"
                 )),  # Weight type (options: default, f32, f16, q4_0, q4_1, q5_0, q5_1, q8_0)
                 control_net_path=self.params.get("control_net_path", ""),
+                verbose=False
             )
 
     def _save_images(self, images):

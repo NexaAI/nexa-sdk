@@ -3,7 +3,7 @@ requires = ["scikit-build-core[pyproject]>=0.9.2"]
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "nexaai"
+name = "nexai"
 version = "0.0.0.dev"
 description = "Nexa AI SDK"
 readme = "README.md"

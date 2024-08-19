@@ -21,7 +21,7 @@ The Nexa SDK is a comprehensive toolkit for supporting **ONNX** and **GGML** mod
 ## Installation
 ### install from PyPI
 ```bash
-pip install nexaai
+pip install nexai
 ```
 
 ### build from source
@@ -31,21 +31,12 @@ cd nexa-sdk
 pip install -e .
 ```
 
-## Publishing the Package
-
-### Publish to Test PyPI
-1. Register at [Test PyPI](https://test.pypi.org/account/register/).
-2. Upload the package:
-
+## Publishing to PYPI
+Firstly build the wheel
 ```bash
-pip install twine
-twine upload --repository testpypi dist/*
+python -m build
 ```
-
-### Publish to Official PyPI
-
-1. Upload the package:
-
+Then upload the wheel to PyPI
 ```bash
 pip install twine
 twine upload dist/*
