@@ -45,6 +45,8 @@ Issues = "https://github.com/NexaAI/nexa-sdk/issues"
 Documentation = "https://docs-test.nexa4ai.com/"
 
 [project.scripts]
+nexa = "nexa.cli.entry:main"
+nexaai = "nexa.cli.entry:main"
 nexa-cli = "nexa.cli.entry:main"
 
 [tool.setuptools]
@@ -64,6 +66,7 @@ packages = [
 [tool.scikit-build]
 wheel.packages = ["llama_cpp", "stable_diffusion_cpp"]
 cmake.verbose = true
+cmake.build-type = "Release"
 cmake.minimum-version = "3.21"
 minimum-version = "0.5.1"
 sdist.include = [".git", "CMakeLists.txt", "dependency/llama.cpp/*", "dependency/stable-diffusion.cpp/*"]
