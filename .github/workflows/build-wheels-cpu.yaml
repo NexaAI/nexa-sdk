@@ -41,7 +41,7 @@ jobs:
           CIBW_REPAIR_WHEEL_COMMAND: ""
           CIBW_SKIP: "*musllinux*"
           CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-*"
-          CMAKE_BUILD_PARALLEL_LEVEL: $(nproc)
+          CMAKE_BUILD_PARALLEL_LEVEL: 4
         with:
           package-dir: .
           output-dir: wheelhouse
@@ -82,7 +82,7 @@ jobs:
           CIBW_ENVIRONMENT: CMAKE_ARGS="-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64 "
           CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-*"
           MACOSX_DEPLOYMENT_TARGET: ${{ matrix.os }}
-          CMAKE_BUILD_PARALLEL_LEVEL: $(nproc)
+          CMAKE_BUILD_PARALLEL_LEVEL: ${{ runner.os }} == 'macos-12' && 4 || 8
         with:
           package-dir: .
           output-dir: wheelhouse
