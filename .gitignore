@@ -17,7 +17,7 @@ build*.sh
 *.so
 *.dll
 *.dylib
-setup.py
+*.a
 
 # Python
 __pycache__/

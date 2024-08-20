@@ -1,8 +1,9 @@
-# Build
+# Build tools
 build
 wheel
 twine
 
+# Faster Whisper
 faster_whisper
 
 # For ggml
@@ -19,10 +20,20 @@ pydantic
 pillow
 prompt_toolkit
 
+# For onnx
+optimum[onnxruntime]>=1.7.3  # for CPU version
+diffusers  # required for image generation
+optuna
+PyYAML
+requests
+setuptools
+soundfile
+streamlit_audiorec
+transformers
+ttstokenizer
+
 # Shared dependencies
 tqdm
 importlib-metadata>=1.4.0,<7.0
-prompt_toolkit
 tabulate
 streamlit
-faster-whisper
