@@ -18,12 +18,12 @@ jobs:
     steps:
       - name: Define Job Output
         id: set-matrix
-        # here 'Windows' is a large runner
+        # here 'nexa-sdk-windows-8-core' is a large runner
         run: |
           $matrix = @{
-              'os' = @('Windows')
-              'pyver' = @("3.9", "3.10", "3.11", "3.12")
-              'cuda' = @("12.1.1", "12.2.2", "12.3.2", "12.4.1")
+              'os' = @('nexa-sdk-windows-8-core')
+              'pyver' = @("3.10", "3.11", "3.12")
+              'cuda' = @("12.4.1")
               'releasetag' = @("basic")
           }
 
