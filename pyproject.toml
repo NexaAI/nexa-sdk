@@ -69,7 +69,6 @@ nexai = "nexa.cli.entry:main"
 wheel.packages = ["llama_cpp", "stable_diffusion_cpp"]
 cmake.verbose = true
 cmake.minimum-version = "3.16"
-minimum-version = "0.5.1"
 sdist.include = [".git", "dependency/llama.cpp/*", "dependency/stable-diffusion.cpp/*"]
 
 [tool.pytest.ini_options]
