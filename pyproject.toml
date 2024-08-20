@@ -10,6 +10,25 @@ readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Nexa AI", email = "octopus@nexa4ai.com" }]
 requires-python = ">=3.8"
+dependencies = [
+    "faster_whisper",
+    "typing-extensions>=4.5.0",  # For ggml
+    "numpy>=1.20.0",
+    "diskcache>=5.6.1",
+    "jinja2>=2.11.3",
+    "librosa>=0.8.0",
+    "boto3>=1.34.148",
+    "botocore>=1.34.148",
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "pillow",
+    "prompt_toolkit",
+    "tqdm",  # Shared dependencies
+    "importlib-metadata>=1.4.0,<7.0",
+    "tabulate",
+    "streamlit"
+]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
@@ -62,8 +81,9 @@ wheel.packages = [
 cmake.verbose = true
 cmake.build-type = "Release"
 cmake.minimum-version = "3.21"
-minimum-version = "0.5.1"
-sdist.include = [".git", "CMakeLists.txt", "dependency/llama.cpp/*", "dependency/stable-diffusion.cpp/*"]
 
 [tool.pytest.ini_options]
-testpaths = "tests"
+testpaths = ["tests"]
+
+[sdist]
+include = [".git", "CMakeLists.txt", "dependency/llama.cpp/*", "dependency/stable-diffusion.cpp/*"]

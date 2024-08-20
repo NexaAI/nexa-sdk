@@ -26,12 +26,12 @@ Detailed API documentation is available [here](docs/index.html).
 
 For CPU version
 ```
-pip install nexaai
+pip install nexaai --no-cache-dir
 ```
 
 For GPU version
 ```
-pip install nexaai-gpu
+pip install nexaai-gpu --no-cache-dir
 ```
 
 ## Nexa CLI commands
