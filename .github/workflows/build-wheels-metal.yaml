@@ -2,7 +2,7 @@ name: Build Wheels (Metal)
 
 on:
   workflow_dispatch:
-    
+
   pull_request:
     branches:
       - main
@@ -43,6 +43,7 @@ jobs:
           CIBW_ENVIRONMENT: CMAKE_ARGS="-DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_APPLE_SILICON_PROCESSOR=arm64 -DGGML_METAL=ON"
           CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-*"
           MACOSX_DEPLOYMENT_TARGET: ${{ matrix.os }}
+          CMAKE_BUILD_PARALLEL_LEVEL: $(nproc)
         with:
           package-dir: .
           output-dir: wheelhouse2

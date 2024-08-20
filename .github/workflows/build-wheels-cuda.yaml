@@ -2,7 +2,7 @@ name: Build Wheels (CUDA)
 
 on:
   workflow_dispatch:
-    
+
   pull_request:
     branches:
       - main
@@ -122,6 +122,8 @@ jobs:
           $env:CMAKE_ARGS = "-DGGML_CUDA_FORCE_MMQ=ON $env:CMAKE_ARGS"
 
           $env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_F16C=OFF'
+
+          $env:CMAKE_BUILD_PARALLEL_LEVEL = $(nproc)
 
           python -m build --wheel
           # write the build tag to the output

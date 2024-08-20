@@ -2,7 +2,7 @@ name: Build Wheels (CPU)
 
 on:
   workflow_dispatch:
-    
+
   pull_request:
     branches:
       - main
@@ -41,6 +41,7 @@ jobs:
           CIBW_REPAIR_WHEEL_COMMAND: ""
           CIBW_SKIP: "*musllinux*"
           CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-*"
+          CMAKE_BUILD_PARALLEL_LEVEL: $(nproc)
         with:
           package-dir: .
           output-dir: wheelhouse
@@ -81,6 +82,7 @@ jobs:
           CIBW_ENVIRONMENT: CMAKE_ARGS="-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64 "
           CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-*"
           MACOSX_DEPLOYMENT_TARGET: ${{ matrix.os }}
+          CMAKE_BUILD_PARALLEL_LEVEL: $(nproc)
         with:
           package-dir: .
           output-dir: wheelhouse
@@ -110,6 +112,7 @@ jobs:
           CIBW_REPAIR_WHEEL_COMMAND: ""
           CIBW_ARCHS: "aarch64"
           CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
+          CMAKE_BUILD_PARALLEL_LEVEL: $(nproc)
         with:
           output-dir: wheelhouse
 
