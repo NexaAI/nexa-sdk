@@ -7,7 +7,7 @@ import readline
 import sys
 import time
 from pathlib import Path
-from typing import Iterator
+from typing import Iterator, List, Union
 
 from streamlit.web import cli as stcli
 
@@ -159,6 +159,29 @@ class NexaVLMInference:
         load_time = time.time() - start_time
         if self.profiling:
             logging.info(f"Model loaded in {load_time:.2f} seconds")
+
+    def embed(
+        self,
+        input: Union[str, List[str]],
+        normalize: bool = False,
+        truncate: bool = True,
+        return_count: bool = False,
+    ):
+        """Embed a string.
+
+        Args:
+            input: The utf-8 encoded string or a list of string to embed.
+            normalize: whether to normalize embedding in embedding dimension.
+            trunca
+            truncate: whether to truncate tokens to window length before generating embedding.
+            return count: if true, return (embedding, count) tuple. else return embedding only.
+
+
+        Returns:
+            A list of embeddings
+        """
+        return self.model.embed(input, normalize, truncate, return_count)    
+
 
     def run(self):
         # I just use completion, no conversation history
