@@ -16,7 +16,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-20.04, windows-2019]
+        os: [ubuntu-20.04, Windows]
 
     steps:
       - uses: actions/checkout@v4
@@ -82,7 +82,7 @@ jobs:
           CIBW_ENVIRONMENT: CMAKE_ARGS="-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64 "
           CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-*"
           MACOSX_DEPLOYMENT_TARGET: ${{ matrix.os }}
-          CMAKE_BUILD_PARALLEL_LEVEL: ${{ runner.os }} == 'macos-12' && 4 || 8
+          CMAKE_BUILD_PARALLEL_LEVEL: 4
         with:
           package-dir: .
           output-dir: wheelhouse
