@@ -27,6 +27,10 @@ def _determine_lib_folder(lib_folder: Optional[str]) -> str:
         return "metal"
     return "cpu"
 
+
+def is_gpu_available():
+    return is_nexa_cuda_installed() or is_nexa_metal_installed()
+
 # Load the library
 def _load_shared_library(lib_base_name: str):
     # Construct the paths to the possible shared library names
