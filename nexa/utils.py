@@ -46,11 +46,11 @@ def try_add_cuda_lib_path():
     """Try to add the CUDA library paths to the system PATH."""
     required_submodules = ["cuda_runtime", "cublas"]
     cuda_versions = ["11", "12"]
-    
+
     module_spec = find_spec("nvidia")
     if not module_spec:
         return
-    
+
     nvidia_lib_root = Path(module_spec.submodule_search_locations[0])
 
     for submodule in required_submodules:
@@ -96,7 +96,7 @@ _prompt = partial(prompt, ">>> ", style=_style)
 
 def light_text(placeholder):
     """Apply light text style to the placeholder."""
-    return HTML(f'<style color="#777777">{placeholder}</style>')
+    return HTML(f'<style color="#777777">{placeholder} (type /exit to quit)</style>')
 
 
 def nexa_prompt(placeholder: str = "Send a message ...") -> str:
@@ -112,7 +112,7 @@ def nexa_prompt(placeholder: str = "Send a message ...") -> str:
             print("Exiting...")
             exit(0)
         return user_input
-    except (KeyboardInterrupt, EOFError):
+    except KeyboardInterrupt:
         print(EXIT_REMINDER)
         return
     except EOFError:
