@@ -49,8 +49,8 @@ nexa = "nexa.cli.entry:main"
 nexaai = "nexa.cli.entry:main"
 nexa-cli = "nexa.cli.entry:main"
 
-[tool.setuptools]
-packages = [
+[tool.scikit-build]
+wheel.packages = [
     "nexa",
     "nexa.cli",
     "nexa.gguf",
@@ -62,9 +62,6 @@ packages = [
     "nexa.onnx.streamlit",
     "nexa.onnx.server"
 ]
-
-[tool.scikit-build]
-wheel.packages = ["llama_cpp", "stable_diffusion_cpp"]
 cmake.verbose = true
 cmake.build-type = "Release"
 cmake.minimum-version = "3.21"
