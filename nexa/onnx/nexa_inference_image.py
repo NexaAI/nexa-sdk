@@ -98,7 +98,6 @@ class NexaImageInference:
         """
         Enter a dialogue mode where the user can input prompts and negative prompts repeatedly.
         """
-        print("Enter 'quit' to exit the program.")
         while True:
             try:
                 prompt = nexa_prompt("Enter your prompt: ")
