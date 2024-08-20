@@ -3,7 +3,7 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Iterator
+from typing import Iterator, Union, List
 
 from nexa.constants import (
     DEFAULT_TEXT_GEN_PARAMS,
@@ -15,6 +15,7 @@ from nexa.constants import (
 from nexa.general import pull_model
 from nexa.gguf.llama.llama import Llama
 from nexa.utils import SpinningCursorAnimation, nexa_prompt, suppress_stdout_stderr
+from nexa.gguf.llama import llama
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -82,6 +83,27 @@ class NexaTextInference:
                     "Failed to load model or tokenizer. Exiting.", exc_info=True
                 )
                 exit(1)
+    def embed(
+        self,
+        input: Union[str, List[str]],
+        normalize: bool = False,
+        truncate: bool = True,
+        return_count: bool = False,
+    ):
+        """Embed a string.
+
+        Args:
+            input: The utf-8 encoded string or a list of string to embed.
+            normalize: whether to normalize embedding in embedding dimension.
+            trunca
+            truncate: whether to truncate tokens to window length before generating embedding.
+            return count: if true, return (embedding, count) tuple. else return embedding only.
+
+
+        Returns:
+            A list of embeddings
+        """
+        return self.model.embed(input, normalize, truncate, return_count)    
 
     @SpinningCursorAnimation()
     def _load_model(self):
