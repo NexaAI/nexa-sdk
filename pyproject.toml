@@ -3,34 +3,13 @@ requires = ["scikit-build-core[pyproject]>=0.9.2"]
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "nexai"
+name = "nexaai"
 version = "0.0.0.dev"
 description = "Nexa AI SDK"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Nexa AI", email = "octopus@nexa4ai.com" }]
-dependencies = [
-    "typing-extensions>=4.5.0",
-    "numpy>=1.20.0",
-    "diskcache>=5.6.1",
-    "jinja2>=2.11.3",
-    "librosa>=0.8.0",
-    "boto3>=1.34.148",
-    "botocore>=1.34.148",
-    "fastapi",
-    "uvicorn",
-    "sse-starlette",
-    "pydantic-settings",
-    "diskcache",
-    "starlette_context",
-    "pillow",
-    "streamlit",
-    "tqdm",
-    "tabulate",
-    "faster_whisper",
-    "prompt_toolkit",
-]
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
@@ -40,15 +19,32 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 
+[project.optional-dependencies]
+onnx = [
+    "librosa",
+    "optimum[onnxruntime]>=1.7.3",  # for CPU version
+    "diffusers",  # required for image generation
+    "optuna",
+    "pydantic",
+    "PyYAML",
+    "requests",
+    "setuptools",
+    "soundfile",
+    "streamlit_audiorec",
+    "transformers",
+    "ttstokenizer"
+]
+
 [project.urls]
-Homepage = "https://github.com/NexaAI/nexa-sdk"
-Issues = "https://github.com/NexaAI/nexa-sdk/issues"
+Homepage = "https://github.com/NexaAI/nexaai-sdk-cpp"
+Issues = "https://github.com/NexaAI/nexaai-sdk-cpp/issues"
 Documentation = "https://docs-test.nexa4ai.com/"
 
 [project.scripts]
+nexa-cli = "nexa.cli.entry:main"
 nexa = "nexa.cli.entry:main"
 nexaai = "nexa.cli.entry:main"
-nexa-cli = "nexa.cli.entry:main"
+nexai = "nexa.cli.entry:main"
 
 [tool.scikit-build]
 wheel.packages = [
@@ -68,7 +64,6 @@ cmake.build-type = "Release"
 cmake.minimum-version = "3.21"
 minimum-version = "0.5.1"
 sdist.include = [".git", "CMakeLists.txt", "dependency/llama.cpp/*", "dependency/stable-diffusion.cpp/*"]
-
 
 [tool.pytest.ini_options]
 testpaths = "tests"

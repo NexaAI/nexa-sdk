@@ -21,7 +21,8 @@ The Nexa SDK is a comprehensive toolkit for supporting **ONNX** and **GGML** mod
 ## Installation
 ### install from PyPI
 ```bash
-pip install nexai
+pip install nexaai
+pip install nexaai[onnx] # if you need ONNX support
 ```
 
 ### build from source
@@ -29,6 +30,7 @@ pip install nexai
 git clone --recursive https://github.com/NexaAI/nexa-sdk.git
 cd nexa-sdk
 pip install -e .
+pip install -e .[onnx] # if you need ONNX support
 ```
 
 ## Publishing to PYPI
