@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "nexaai"
-version = "0.0.0.dev"
+version = "0.0.0.dev1"
 description = "Nexa AI SDK"
 readme = "README.md"
 license = { text = "MIT" }
@@ -66,24 +66,11 @@ nexaai = "nexa.cli.entry:main"
 nexai = "nexa.cli.entry:main"
 
 [tool.scikit-build]
-wheel.packages = [
-    "nexa",
-    "nexa.cli",
-    "nexa.gguf",
-    "nexa.gguf.llama",
-    "nexa.gguf.sd",
-    "nexa.gguf.streamlit",
-    "nexa.gguf.server",
-    "nexa.onnx",
-    "nexa.onnx.streamlit",
-    "nexa.onnx.server"
-]
+wheel.packages = ["llama_cpp", "stable_diffusion_cpp"]
 cmake.verbose = true
-cmake.build-type = "Release"
-cmake.minimum-version = "3.21"
+cmake.minimum-version = "3.16"
+minimum-version = "0.5.1"
+sdist.include = [".git", "dependency/llama.cpp/*", "dependency/stable-diffusion.cpp/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-
-[sdist]
-include = [".git", "CMakeLists.txt", "dependency/llama.cpp/*", "dependency/stable-diffusion.cpp/*"]
