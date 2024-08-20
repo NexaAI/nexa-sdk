@@ -27,10 +27,8 @@ from nexa.constants import (
 )
 from nexa.utils import suppress_stdout_stderr
 from nexa.general import pull_model
-# from nexa.gguf.llama import llama
-# from nexa.gguf.sd import stable_diffusion
-from llama_cpp import Llama
-from stable_diffusion_cpp import StableDiffusion
+from nexa.gguf.llama.llama import Llama
+from nexa.gguf.sd.stable_diffusion import StableDiffusion
 from faster_whisper import WhisperModel
 import argparse
 
