@@ -1,22 +1,17 @@
 name: Build Wheels (CPU)
 
-on:
-  workflow_dispatch:
-
-  pull_request:
-    branches:
-      - main
+on: workflow_dispatch
 
 permissions:
   contents: write
 
 jobs:
-  build_wheels:
+  build_wheels_linux:
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-20.04, Windows]
+        os: [ubuntu-20.04]
 
     steps:
       - uses: actions/checkout@v4
@@ -42,6 +37,46 @@ jobs:
           CIBW_SKIP: "*musllinux*"
           CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-*"
           CMAKE_BUILD_PARALLEL_LEVEL: 4
+        with:
+          package-dir: .
+          output-dir: wheelhouse
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}
+          path: ./wheelhouse/*.whl
+
+  build_wheels_win:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        # here 'Windows' is a large runner
+        os: [Windows]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+
+      # Used to host cibuildwheel
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.20.0
+        env:
+          # disable repair
+          CIBW_REPAIR_WHEEL_COMMAND: ""
+          CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-*"
+          CMAKE_BUILD_PARALLEL_LEVEL: 16
         with:
           package-dir: .
           output-dir: wheelhouse

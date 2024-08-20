@@ -1,11 +1,6 @@
 name: Build Wheels (CUDA) (Linux)
 
-on:
-  workflow_dispatch:
-
-  pull_request:
-    branches:
-      - main
+on: workflow_dispatch
 
 permissions:
   contents: write
@@ -118,7 +113,7 @@ jobs:
             $env:LD_LIBRARY_PATH = $env:CONDA_PREFIX + '/lib:' + $env:LD_LIBRARY_PATH
           }
           $env:VERBOSE = '1'
-          $env:CMAKE_ARGS = '-DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=all'
+          $env:CMAKE_ARGS = '-DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=all -DSD_CUBLAS=ON'
           $env:CMAKE_ARGS = "-DGGML_CUDA_FORCE_MMQ=ON $env:CMAKE_ARGS"
 
           $env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_F16C=OFF'
