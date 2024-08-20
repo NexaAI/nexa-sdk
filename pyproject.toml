@@ -76,24 +76,11 @@ wheel.packages = [
     "nexa.onnx.streamlit",
     "nexa.onnx.server"
 ]
+sdist.include = ["CMakeLists.txt", "dependency/llama.cpp/*", "dependency/stable-diffusion.cpp/*"]
+sdist.exclude = [".github", "build", "dist", "nexa.egg-info", "dependency/llama.cpp/build", "dependency/stable-diffusion.cpp/build"]
 build.verbose = true
 cmake.build-type = "Release"
-wheel.packages = [
-    "nexa",
-    "nexa.cli",
-    "nexa.gguf",
-    "nexa.gguf.llama",
-    "nexa.gguf.sd",
-    "nexa.gguf.streamlit",
-    "nexa.gguf.server",
-    "nexa.onnx",
-    "nexa.onnx.streamlit",
-    "nexa.onnx.server"
-]
-build.verbose = true
-cmake.build-type = "Release"
-cmake.minimum-version = "3.16"
-sdist.include = [".git", "CMakeLists.txt ", "dependency/llama.cpp/*", "dependency/stable-diffusion.cpp/*"]
+cmake.version = ">=3.16"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
