@@ -18,6 +18,7 @@ from nexa.constants import (
     NEXA_RUN_PROJECTOR_MAP,
 )
 from nexa.general import pull_model
+from nexa.gguf.lib_utils import is_gpu_available
 from nexa.gguf.llama.llama import Llama
 from nexa.gguf.llama.llama_chat_format import (
     Llava15ChatHandler,
@@ -154,7 +155,7 @@ class NexaVLMInference:
                 verbose=False,
                 chat_format=self.chat_format,
                 n_ctx=self.params.get("max_new_tokens", 2048),
-                n_gpu_layers=-1,  # offload all layers to GPU
+                n_gpu_layers=-1 if is_gpu_available() else 0,  # offload all layers to GPU
             )
         load_time = time.time() - start_time
         if self.profiling:
@@ -180,7 +181,7 @@ class NexaVLMInference:
         Returns:
             A list of embeddings
         """
-        return self.model.embed(input, normalize, truncate, return_count)    
+        return self.model.embed(input, normalize, truncate, return_count)
 
 
     def run(self):

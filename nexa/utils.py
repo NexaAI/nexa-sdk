@@ -1,13 +1,10 @@
 import itertools
-import logging
 import os
 import sys
 import threading
 import time
 from functools import partial, wraps
 from importlib.metadata import PackageNotFoundError, distribution
-from importlib.util import find_spec
-from pathlib import Path
 import platform
 from contextlib import redirect_stdout, redirect_stderr
 
@@ -17,7 +14,7 @@ from prompt_toolkit.styles import Style
 from nexa.constants import EXIT_COMMANDS, EXIT_REMINDER
 
 
-def is_backend_installed(package_name: str) -> bool:
+def is_package_installed(package_name: str) -> bool:
     """Check if a given backend package is installed."""
     try:
         _ = distribution(f"{package_name}")
@@ -25,14 +22,16 @@ def is_backend_installed(package_name: str) -> bool:
     except PackageNotFoundError:
         return False
 
-def is_nexa_cuda_installed() -> bool:
-    """Check if the Nexa CUDA package is installed."""
-    return is_backend_installed("nexaai-gpu")
+
+def is_nexa_gpu_installed() -> bool:
+    """Check if the Nexa GPU package is installed."""
+    return is_package_installed("nexaai-gpu")
 
 
-def is_nexa_metal_installed():
+def is_metal_available():
     arch = platform.machine().lower()
     return sys.platform == "darwin" and ('arm' in arch or 'aarch' in arch) # ARM architecture for Apple Silicon
+
 
 def is_x86() -> bool:
     """Check if the architecture is x86."""
@@ -41,30 +40,6 @@ def is_x86() -> bool:
 def is_arm64() -> bool:
     """Check if the architecture is ARM64."""
     return platform.machine().startswith("arm")
-
-def try_add_cuda_lib_path():
-    """Try to add the CUDA library paths to the system PATH."""
-    required_submodules = ["cuda_runtime", "cublas"]
-    cuda_versions = ["11", "12"]
-
-    module_spec = find_spec("nvidia")
-    if not module_spec:
-        return
-
-    nvidia_lib_root = Path(module_spec.submodule_search_locations[0])
-
-    for submodule in required_submodules:
-        for ver in cuda_versions:
-            try:
-                package_name = f"nvidia_{submodule}_cu{ver}"
-                _ = distribution(package_name)
-
-                lib_path = nvidia_lib_root / submodule / "bin"
-                os.add_dll_directory(str(lib_path))
-                os.environ["PATH"] = str(lib_path) + os.pathsep + os.environ["PATH"]
-                logging.debug(f"Added {lib_path} to PATH")
-            except PackageNotFoundError:
-                logging.debug(f"{package_name} not found")
 
 
 class suppress_stdout_stderr:
@@ -96,7 +71,7 @@ _prompt = partial(prompt, ">>> ", style=_style)
 
 def light_text(placeholder):
     """Apply light text style to the placeholder."""
-    return HTML(f'<style color="#777777">{placeholder} (type /exit to quit)</style>')
+    return HTML(f'<style color="#777777">{placeholder} (type "/exit" to quit)</style>')
 
 
 def nexa_prompt(placeholder: str = "Send a message ...") -> str:
