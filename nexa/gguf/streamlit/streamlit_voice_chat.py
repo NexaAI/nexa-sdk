@@ -16,7 +16,6 @@ default_model = sys.argv[1]
 @st.cache_resource
 def load_model(model_path):
     nexa_model = NexaVoiceInference(model_path)
-    nexa_model._load_model(nexa_model.downloaded_path)
     return nexa_model
 
 

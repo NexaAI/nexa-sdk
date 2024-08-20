@@ -4,19 +4,7 @@ import uvicorn
 def run_onnx_inference(args):
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")
-    if args.command == "server":
-        from nexa.onnx.server.nexa_service import run_nexa_ai_service as NexaServer
-        NexaServer(model_path, **kwargs)
-        return
-    if args.onnx_command == "pull":
-        from nexa.general import pull_model
-        pull_model(model_path)
-        return
-    elif args.onnx_command == "remove":
-        from nexa.general import remove_model
-        remove_model(model_path)
-        return
-    elif args.onnx_command == "gen-text":
+    if args.onnx_command == "gen-text":
         from nexa.onnx.nexa_inference_text import \
             NexaTextInference as NexaTextOnnxInference
         inference = NexaTextOnnxInference(model_path, **kwargs)
@@ -70,7 +58,7 @@ def run_ggml_inference(args):
     elif args.command == "vlm":
         from nexa.gguf.nexa_inference_vlm import NexaVLMInference
         inference = NexaVLMInference(model_path, stop_words=stop_words, **kwargs)
-    elif args.command == "voice":
+    elif args.command == "asr":
         from nexa.gguf.nexa_inference_voice import NexaVoiceInference
         inference = NexaVoiceInference(model_path, **kwargs)
     else:
@@ -135,8 +123,6 @@ def main():
     onnx_server_parser.add_argument("--port", type=int, default=8000, help="Port to bind the server to")
     onnx_server_parser.add_argument("--reload", action="store_true", help="Enable automatic reloading on code changes")
 
-    onnx_subparsers.add_parser("pull", help="Pull a model from official or hub.").add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
-
     # GGML Text Generation
     gen_text_parser = subparsers.add_parser("gen-text", help="Run a GGUF model locally for text generation.")
     gen_text_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
@@ -178,15 +164,15 @@ def main():
     vlm_parser.add_argument("-st", "--streamlit", action="store_true", help="Run the inference in Streamlit UI")
 
     # Voice Inference
-    voice_parser = subparsers.add_parser("voice", help="Run a GGUF model locally for voice inference.")
-    voice_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
-    voice_parser.add_argument("-o", "--output_dir", type=str, default="transcriptions", help="Output directory for transcriptions")
-    voice_parser.add_argument("-b", "--beam_size", type=int, default=5, help="Beam size to use for transcription")
-    voice_parser.add_argument("-l", "--language", type=str, default=None, help="The language spoken in the audio. It should be a language code such as 'en' or 'fr'.")
-    voice_parser.add_argument("--task", type=str, default="transcribe", help="Task to execute (transcribe or translate)")
-    voice_parser.add_argument("-t", "--temperature", type=float, default=0.0, help="Temperature for sampling")
-    voice_parser.add_argument("-c", "--compute_type", type=str, default="default", help="Type to use for computation (e.g., float16, int8, int8_float16)")
-    voice_parser.add_argument("-st", "--streamlit", action="store_true", help="Run the inference in Streamlit UI")
+    asr_parser = subparsers.add_parser("asr", help="Run a GGUF model locally for voice inference.")
+    asr_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
+    asr_parser.add_argument("-o", "--output_dir", type=str, default="transcriptions", help="Output directory for transcriptions")
+    asr_parser.add_argument("-b", "--beam_size", type=int, default=5, help="Beam size to use for transcription")
+    asr_parser.add_argument("-l", "--language", type=str, default=None, help="The language spoken in the audio. It should be a language code such as 'en' or 'fr'.")
+    asr_parser.add_argument("--task", type=str, default="transcribe", help="Task to execute (transcribe or translate)")
+    asr_parser.add_argument("-t", "--temperature", type=float, default=0.0, help="Temperature for sampling")
+    asr_parser.add_argument("-c", "--compute_type", type=str, default="default", help="Type to use for computation (e.g., float16, int8, int8_float16)")
+    asr_parser.add_argument("-st", "--streamlit", action="store_true", help="Run the inference in Streamlit UI")
 
     # GGML server parser
     server_parser = subparsers.add_parser("server", help="Run the Nexa AI Text Generation Service")
@@ -207,7 +193,7 @@ def main():
 
     if args.command == "onnx":
         run_onnx_inference(args)
-    elif args.command in ["gen-text", "gen-image", "vlm", "voice", "server"]:
+    elif args.command in ["gen-text", "gen-image", "vlm", "asr", "server"]:
         run_ggml_inference(args)
     elif args.command == "pull":
         from nexa.general import pull_model

@@ -36,7 +36,6 @@ class NexaImageInference:
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.
     num_inference_steps (int): Number of inference steps.
-    num_images_per_prompt (int): Number of images to generate per prompt.
     width (int): Width of the output image.
     height (int): Height of the output image.
     guidance_scale (float): Guidance scale for diffusion.
@@ -213,13 +212,6 @@ if __name__ == "__main__":
         type=int,
         default=20,
         help="Number of inference steps",
-    )
-    parser.add_argument(
-        "-np",
-        "--num_images_per_prompt",
-        type=int,
-        default=1,
-        help="Number of images to generate per prompt",
     )
     parser.add_argument(
         "-H", "--height", type=int, default=512, help="Height of the output image"

@@ -9,6 +9,7 @@ from nexa.constants import EXIT_REMINDER, NEXA_RUN_MODEL_MAP_VOICE, DEFAULT_VOIC
 from nexa.general import pull_model
 from nexa.utils import nexa_prompt
 from faster_whisper import WhisperModel
+from nexaai.utils import nexa_prompt, SpinningCursorAnimation, suppress_stdout_stderr
 
 logging.basicConfig(level=logging.INFO)
 
@@ -57,19 +58,27 @@ class NexaVoiceInference:
         self.params.update(kwargs)
         self.model = None
 
+        if not kwargs.get("streamlit", False):
+            self._load_model()
+            if self.model is None:
+                logging.error(
+                    "Failed to load model, Exiting.", exc_info=True
+                )
+                exit(1)
+
+
+    @SpinningCursorAnimation()
+    def _load_model(self):
+        logging.debug(f"Loading model from: {self.downloaded_path}")
+        with suppress_stdout_stderr():
+            self.model = WhisperModel(
+                self.downloaded_path,
+                device="auto", 
+                compute_type=self.params["compute_type"]
+            )
+        logging.debug("Model loaded successfully")
+
     def run(self):
-        self._load_model(self.downloaded_path)
-        self._dialogue_mode()
-
-    def _load_model(self, model_path):
-        logging.debug(f"Loading model from: {model_path}")
-        try:
-            self.model = WhisperModel(model_path, device="auto", compute_type=self.params["compute_type"])
-            logging.debug("Model loaded successfully")
-        except Exception as e:
-            logging.error(f"Error loading model: {e}")
-
-    def _dialogue_mode(self):
         while True:
             try:
                 audio_path = nexa_prompt("Enter the path to your audio file: ")

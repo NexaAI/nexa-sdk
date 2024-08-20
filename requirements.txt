@@ -22,3 +22,4 @@ tqdm
 importlib-metadata>=1.4.0,<7.0
 tabulate
 streamlit
+faster-whisper
