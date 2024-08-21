@@ -73,7 +73,7 @@ class NexaVoiceInference:
         with suppress_stdout_stderr():
             self.model = WhisperModel(
                 self.downloaded_path,
-                device="auto", 
+                device="cpu", 
                 compute_type=self.params["compute_type"]
             )
         logging.debug("Model loaded successfully")
