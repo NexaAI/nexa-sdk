@@ -10,13 +10,14 @@ from typing import List
 
 from importlib_metadata import distribution
 
-from nexa.utils import is_nexa_gpu_installed  # , is_metal_available
+from nexa.utils import (
+    is_nexa_cuda_installed,
+    is_nexa_metal_installed,
+)
 
 
 def is_gpu_available():
-    return (
-        is_nexa_gpu_installed()
-    )  # or is_metal_available() # commented out to avoid nexaai using metal
+    return is_nexa_cuda_installed() or is_nexa_metal_installed()
 
 # Load the library
 def load_library(lib_base_name: str):

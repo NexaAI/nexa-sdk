@@ -69,24 +69,47 @@ async def load_model():
         model_path = NEXA_RUN_MODEL_MAP_TEXT.get(model_path)
         downloaded_path = pull_model(model_path)
         with suppress_stdout_stderr():
-            model = Llama(
-                model_path=downloaded_path,
-                verbose=False,
-                chat_format=chat_format,
-                n_gpu_layers=-1,  # Uncomment to use GPU acceleration
-            )
+            try:
+                model = Llama(
+                    model_path=downloaded_path,
+                    verbose=False,
+                    chat_format=chat_format,
+                    n_gpu_layers=-1 if is_gpu_available() else 0,
+                )
+            except Exception as e:
+                logging.error(
+                    f"Failed to load model: {e}. Falling back to CPU.", exc_info=True
+                )
+                model = Llama(
+                    model_path=downloaded_path,
+                    verbose=False,
+                    chat_format=chat_format,
+                    n_gpu_layers=0,  # hardcode to use CPU
+                )
             logging.info(f"model loaded as {model}")
     elif model_path in NEXA_RUN_MODEL_MAP_FUNCTION_CALLING:
         chat_format = "chatml-function-calling"
         model_path = NEXA_RUN_MODEL_MAP_FUNCTION_CALLING.get(model_path)
         downloaded_path = pull_model(model_path)
         with suppress_stdout_stderr():
-            model = Llama(
-                model_path=downloaded_path,
-                verbose=False,
-                chat_format=chat_format,
-                n_gpu_layers=-1 if is_gpu_available() else 0,  # Uncomment to use GPU acceleration
-            )
+            try:
+                model = Llama(
+                    model_path=downloaded_path,
+                    verbose=False,
+                    chat_format=chat_format,
+                    n_gpu_layers=-1 if is_gpu_available() else 0,
+                )
+            except Exception as e:
+                logging.error(
+                    f"Failed to load model: {e}. Falling back to CPU.", exc_info=True
+                )
+                model = Llama(
+                    model_path=downloaded_path,
+                    verbose=False,
+                    chat_format=chat_format,
+                    n_gpu_layers=0,  # hardcode to use CPU
+                )
+
             logging.info(f"model loaded as {model}")
     elif model_path in NEXA_RUN_MODEL_MAP_IMAGE:
         downloaded_path = pull_model(model_path)
@@ -296,7 +319,6 @@ async def nexa_run_image_generation(
             seed=seed,
         )
     return generated_image
-
 
 
 def base64_encode_image(image_path):
