@@ -19,7 +19,6 @@ from nexa.constants import (
 )
 from nexa.general import pull_model
 from nexa.gguf.lib_utils import is_gpu_available
-from nexa.gguf.llama.llama import Llama
 from nexa.gguf.llama.llama_chat_format import (
     Llava15ChatHandler,
     Llava16ChatHandler,
@@ -79,7 +78,7 @@ class NexaVLMInference:
     top_k (int): Top-k sampling parameter.
     top_p (float): Top-p sampling parameter
     """
-    from nexa.gguf.llama.llama import Llama
+    
 
     def __init__(self, model_path, stop_words=None, **kwargs):
         self.params = DEFAULT_TEXT_GEN_PARAMS
@@ -151,6 +150,7 @@ class NexaVLMInference:
                 if self.projector_downloaded_path
                 else None
             )
+            from nexa.gguf.llama.llama import Llama
             self.model = Llama(
                 model_path=self.downloaded_path,
                 chat_handler=self.projector,

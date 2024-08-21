@@ -6,7 +6,6 @@ import sys
 import time
 from pathlib import Path
 
-from nexa.gguf.sd.stable_diffusion import StableDiffusion
 from nexa.general import pull_model
 from nexa.constants import (
     DEFAULT_IMG_GEN_PARAMS,
@@ -44,7 +43,7 @@ class NexaImageInference:
         streamlit (bool): Run the inference in Streamlit UI.
 
     """
-    from nexa.gguf.sd.stable_diffusion import StableDiffusion
+    
 
     def __init__(self, model_path, **kwargs):
         self.model_path = None
@@ -85,6 +84,7 @@ class NexaImageInference:
     @SpinningCursorAnimation()
     def _load_model(self, model_path: str):
         with suppress_stdout_stderr():
+            from nexa.gguf.sd.stable_diffusion import StableDiffusion
             self.model = StableDiffusion(
                 model_path=self.downloaded_path,
                 lora_model_dir=self.params.get("lora_dir", ""),

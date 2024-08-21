@@ -39,7 +39,7 @@ class NexaTextInference:
         top_k (int): Top-k sampling parameter.
         top_p (float): Top-p sampling parameter
     """
-    from nexa.gguf.llama.llama import Llama
+    
     def __init__(self, model_path, stop_words=None, **kwargs):
         self.params = DEFAULT_TEXT_GEN_PARAMS
         self.params.update(kwargs)
@@ -110,6 +110,7 @@ class NexaTextInference:
         logging.debug(f"Loading model from {self.downloaded_path}")
         start_time = time.time()
         with suppress_stdout_stderr():
+            from nexa.gguf.llama.llama import Llama
             self.model = Llama(
                 model_path=self.downloaded_path,
                 verbose=self.profiling,
