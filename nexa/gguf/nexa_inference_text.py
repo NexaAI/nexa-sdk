@@ -31,6 +31,7 @@ class NexaTextInference:
 
     Args:
         model_path (str): Path or identifier for the model in Nexa Model Hub.
+        embedding (bool): Enable embedding generation.
         stop_words (list): List of stop words for early stopping.
         profiling (bool): Enable timing measurements for the generation process.
         streamlit (bool): Run the inference in Streamlit UI.
@@ -83,27 +84,19 @@ class NexaTextInference:
                     "Failed to load model or tokenizer. Exiting.", exc_info=True
                 )
                 exit(1)
-    def embed(
+    def create_embedding(
         self,
         input: Union[str, List[str]],
-        normalize: bool = False,
-        truncate: bool = True,
-        return_count: bool = False,
     ):
         """Embed a string.
 
         Args:
             input: The utf-8 encoded string or a list of string to embed.
-            normalize: whether to normalize embedding in embedding dimension.
-            trunca
-            truncate: whether to truncate tokens to window length before generating embedding.
-            return count: if true, return (embedding, count) tuple. else return embedding only.
-
 
         Returns:
             A list of embeddings
         """
-        return self.model.embed(input, normalize, truncate, return_count)
+        return self.model.create_embedding(input)
 
     @SpinningCursorAnimation()
     def _load_model(self):
@@ -112,6 +105,7 @@ class NexaTextInference:
         with suppress_stdout_stderr():
             from nexa.gguf.llama.llama import Llama
             self.model = Llama(
+                embedding=self.params.get("embedding", False),
                 model_path=self.downloaded_path,
                 verbose=self.profiling,
                 chat_format=self.chat_format,

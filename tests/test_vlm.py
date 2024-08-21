@@ -1,27 +1,8 @@
-import base64
-import os
-
 from nexa.gguf import NexaVLMInference
-from tests.utils import download_model
-from nexa.gguf.lib_utils import is_gpu_available
 import tempfile
-
-def image_to_base64_data_uri(file_path):
-    """
-    file_path = 'file_path.png'
-    data_uri = image_to_base64_data_uri(file_path)
-    """
-    with open(file_path, "rb") as img_file:
-        base64_data = base64.b64encode(img_file.read()).decode("utf-8")
-        return f"data:image/png;base64,{base64_data}"
-
 
 def test_image_generation():
     with tempfile.TemporaryDirectory() as temp_dir:
-        temp_dir = os.path.dirname(os.path.abspath(__file__))
-        model_url = "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nanoLLaVA/model-fp16.gguf"
-        mmproj_url = "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nanoLLaVA/projector-fp16.gguf"
-
         model = NexaVLMInference(
             model_path="nanollava",
         )

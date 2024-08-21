@@ -28,8 +28,8 @@ class NexaImageInference:
     A class used for loading image models and running image generation.
 
     Methods:
-        run_txt2img: Run the text-to-image generation loop.
-        run_img2img: Run the image-to-image generation loop.
+        txt2img: (Used for SDK) Run the text-to-image generation loop.
+        img2img: (Used for SDK) Run the image-to-image generation loop.
         run_streamlit: Run the Streamlit UI.
 
     Args:
@@ -109,7 +109,16 @@ class NexaImageInference:
             image.save(file_path)
             logging.info(f"\nImage {i+1} saved to: {file_path}")
     
-    def txt2img(self, prompt, negative_prompt):
+    def txt2img(self, 
+                prompt, 
+                negative_prompt="",
+                cfg_scale=7.5,
+                width=512,
+                height=512,
+                sample_steps=20,
+                seed=0,
+                control_cond="",
+                control_strength=0.9):
         """
         Used for SDK. Generate images from text.
 
@@ -122,14 +131,14 @@ class NexaImageInference:
         """
         images = self.model.txt_to_img(
             prompt=prompt,
-            negative_prompt=negative_prompt if negative_prompt else "",
-            cfg_scale=self.params["guidance_scale"],
-            width=self.params["width"],
-            height=self.params["height"],
-            sample_steps=self.params["num_inference_steps"],
-            seed=self.params["random_seed"],
-            control_cond=self.params.get("control_image_path", ""),
-            control_strength=self.params.get("control_strength", 0.9),
+            negative_prompt=negative_prompt,
+            cfg_scale=cfg_scale,
+            width=width,
+            height=height,
+            sample_steps=sample_steps,
+            seed=seed,
+            control_cond=control_cond,
+            control_strength=control_strength,
         )
         return images
 
@@ -141,7 +150,17 @@ class NexaImageInference:
                     "Enter your negative prompt (press Enter to skip): "
                 )
                 try:
-                    images = self.txt2img(prompt, negative_prompt)
+                    images = self.txt2img(
+                        prompt, 
+                        negative_prompt,
+                        cfg_scale=self.params["guidance_scale"],
+                        width=self.params["width"],
+                        height=self.params["height"],
+                        sample_steps=self.params["num_inference_steps"],
+                        seed=self.params["random_seed"],
+                        control_cond=self.params.get("control_image_path", ""),
+                        control_strength=self.params.get("control_strength", 0.9),
+                    )
                     self._save_images(images)
                 except Exception as e:
                     logging.error(f"Error during text to image generation: {e}")
@@ -150,7 +169,17 @@ class NexaImageInference:
             except Exception as e:
                 logging.error(f"Error during generation: {e}", exc_info=True)
 
-    def img2img(self, image_path, prompt, negative_prompt):
+    def img2img(self, 
+                image_path, 
+                prompt, 
+                negative_prompt="",
+                cfg_scale=7.5,
+                width=512,
+                height=512,
+                sample_steps=20,
+                seed=0,
+                control_cond="",
+                control_strength=0.9):
         """
         Used for SDK. Generate images from an image.
 
@@ -165,14 +194,14 @@ class NexaImageInference:
         images = self.model.img_to_img(
             image=image_path,
             prompt=prompt,
-            negative_prompt=negative_prompt if negative_prompt else "",
-            cfg_scale=self.params["guidance_scale"],
-            width=self.params["width"],
-            height=self.params["height"],
-            sample_steps=self.params["num_inference_steps"],
-            seed=self.params["random_seed"],
-            control_cond=self.params.get("control_image_path", ""),
-            control_strength=self.params.get("control_strength", 0.9),
+            negative_prompt=negative_prompt,
+            cfg_scale=cfg_scale,
+            width=width,
+            height=height,
+            sample_steps=sample_steps,
+            seed=seed,
+            control_cond=control_cond,
+            control_strength=control_strength,
         )
         return images
 
@@ -184,7 +213,18 @@ class NexaImageInference:
                 negative_prompt = nexa_prompt(
                     "Enter your negative prompt (press Enter to skip): "
                 )
-                images = self.img2img(image_path, prompt, negative_prompt)
+                images = self.img2img(image_path, 
+                                      prompt, 
+                                      negative_prompt,
+                                      cfg_scale=self.params["guidance_scale"],
+                                      width=self.params["width"],
+                                      height=self.params["height"],
+                                      sample_steps=self.params["num_inference_steps"],
+                                      seed=self.params["random_seed"],
+                                      control_cond=self.params.get("control_image_path", ""),
+                                        control_strength=self.params.get("control_strength", 0.9),
+                                    )
+                
                 self._save_images(images)
             except KeyboardInterrupt:
                 print(EXIT_REMINDER)
