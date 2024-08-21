@@ -170,9 +170,11 @@ class NexaTextInference:
                         generated_text += delta
 
                 if self.chat_format:
-                    self.conversation_history.append(
-                        {"role": "assistant", "content": generated_text}
-                    )
+                    if len(self.conversation_history) >= 2:
+                        self.conversation_history = self.conversation_history[2:]
+                    
+                    self.conversation_history.append({"role": "user", "content": user_input})
+                    self.conversation_history.append({"role": "assistant", "content": generated_text})
             except KeyboardInterrupt:
                 pass
             except Exception as e:
@@ -180,9 +182,9 @@ class NexaTextInference:
             print("\n")
 
     def _chat(self, user_input: str) -> Iterator:
-        self.conversation_history.append({"role": "user", "content": user_input})
+        current_messages = self.conversation_history + [{"role": "user", "content": user_input}]
         return self.model.create_chat_completion(
-            messages=self.conversation_history,
+            messages=current_messages,
             temperature=self.params["temperature"],
             max_tokens=self.params["max_new_tokens"],
             top_k=self.params["top_k"],

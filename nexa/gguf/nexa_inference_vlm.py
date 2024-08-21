@@ -119,7 +119,7 @@ class NexaVLMInference:
                 )
                 exit(1)
         else:
-            logging.error("Using model from hub is not supported yet.")
+            logging.error("VLM user model from hub is not supported yet.")
             exit(1)
 
         if self.downloaded_path is None:
