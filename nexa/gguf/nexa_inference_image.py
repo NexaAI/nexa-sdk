@@ -81,7 +81,7 @@ class NexaImageInference:
                 logging.error("Failed to load the model or pipeline.")
                 exit(1)
 
-    @SpinningCursorAnimation()
+    #@SpinningCursorAnimation()
     def _load_model(self, model_path: str):
         with suppress_stdout_stderr():
             from nexa.gguf.sd.stable_diffusion import StableDiffusion
