@@ -3,12 +3,10 @@ import logging
 import os
 import pathlib
 import sys
-from importlib.metadata import PackageNotFoundError
+from importlib.metadata import PackageNotFoundError, distribution
 from importlib.util import find_spec
 from pathlib import Path
 from typing import List
-
-from importlib_metadata import distribution
 
 from nexa.utils import (
     is_nexa_cuda_installed,
