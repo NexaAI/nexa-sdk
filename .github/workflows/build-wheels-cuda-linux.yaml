@@ -113,12 +113,9 @@ jobs:
             $env:LD_LIBRARY_PATH = $env:CONDA_PREFIX + '/lib:' + $env:LD_LIBRARY_PATH
           }
           $env:VERBOSE = '1'
-          $env:CMAKE_ARGS = '-DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=all -DSD_CUBLAS=ON'
-          $env:CMAKE_ARGS = "-DGGML_CUDA_FORCE_MMQ=ON $env:CMAKE_ARGS"
-
-          $env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_F16C=OFF'
 
           $env:CMAKE_BUILD_PARALLEL_LEVEL = $(nproc)
+          cp tomls/pyproject_cuda.toml pyproject.toml
 
           python -m build --wheel
           # write the build tag to the output
