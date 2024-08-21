@@ -25,7 +25,7 @@ def is_package_installed(package_name: str) -> bool:
 
 
 def is_nexa_cuda_installed() -> bool:
-    """Check if the Nexa GPU package is installed."""
+    """Check if the Nexa CUDA package is installed."""
     if is_package_installed("nexaai-cuda"):
         print("Nexa CUDA package is installed.")
         return True
