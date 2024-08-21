@@ -219,7 +219,14 @@ class NexaVLMInference:
                 logging.error(f"Error during generation: {e}", exc_info=True)
             print("\n")
     
-    def create_chat_completion(self, messages, temperature, max_tokens, top_k, top_p, stream, stop):
+    def create_chat_completion(self, 
+                            messages, 
+                            max_tokens:int = 2048, 
+                            temperature: float = 0.2,
+                            top_p: float = 0.95,
+                            top_k: int = 40,
+                            stream=False, 
+                            stop=[]):
         """
         Generate text completion for a given chat prompt.
         
@@ -231,6 +238,34 @@ class NexaVLMInference:
             top_p (float): Top-p sampling parameter.
             stream (bool): Stream the output.
             stop (list): List of stop words for early stopping.
+        
+        Returns:
+            Iterator: An iterator of the generated text completion
+            return format:
+            {
+                "choices": [
+                    {
+                    "finish_reason": "stop",
+                    "index": 0,
+                    "message": {
+                        "content": "The 2020 World Series was played in Texas at Globe Life Field in Arlington.",
+                        "role": "assistant"
+                    },
+                    "logprobs": null
+                    }
+                ],
+                "created": 1677664795,
+                "id": "chatcmpl-7QyqpwdfhqwajicIEznoc6Q47XAyW",
+                "model": "gpt-4o-mini",
+                "object": "chat.completion",
+                "usage": {
+                    "completion_tokens": 17,
+                    "prompt_tokens": 57,
+                    "total_tokens": 74
+                }
+            }          
+            usage: message = completion.choices[0].message.content  
+            
         """
         return self.model.create_chat_completion(
             messages=messages,

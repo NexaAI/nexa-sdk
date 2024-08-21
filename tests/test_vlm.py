@@ -1,8 +1,7 @@
 import base64
 import os
 
-from nexa.gguf.llama import llama
-from nexa.gguf.llama.llama_chat_format import NanoLlavaChatHandler
+from nexa.gguf import NexaVLMInference
 from tests.utils import download_model
 from nexa.gguf.lib_utils import is_gpu_available
 import tempfile
@@ -23,18 +22,10 @@ def test_image_generation():
         model_url = "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nanoLLaVA/model-fp16.gguf"
         mmproj_url = "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nanoLLaVA/projector-fp16.gguf"
 
-        model_path = download_model(model_url, temp_dir)
-        mmproj_path = download_model(mmproj_url, temp_dir)
-        chat_handler = NanoLlavaChatHandler(clip_model_path=mmproj_path)
-
-        llm = llama.Llama(
-            model_path=model_path,
-            chat_handler=chat_handler,
-            n_ctx=2048,  # n_ctx should be increased to accommodate the image embedding
-            n_gpu_layers=-1 if is_gpu_available() else 0,  # Uncomment to use GPU acceleration
-            verbose=False,
+        model = NexaVLMInference(
+            model_path="nanollava",
         )
-        output = llm.create_chat_completion(
+        output = model.create_chat_completion(
             messages=[
                 {
                     "role": "system",
