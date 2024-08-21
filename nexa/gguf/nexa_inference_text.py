@@ -14,7 +14,6 @@ from nexa.constants import (
 )
 from nexa.general import pull_model
 from nexa.gguf.lib_utils import is_gpu_available
-from nexa.gguf.llama.llama import Llama
 from nexa.utils import SpinningCursorAnimation, nexa_prompt, suppress_stdout_stderr
 
 logging.basicConfig(
@@ -27,19 +26,20 @@ class NexaTextInference:
     A class used for load text models and run text generation.
 
     Methods:
-    run: Run the text generation loop.
-    run_streamlit: Run the Streamlit UI.
+        run: Run the text generation loop.
+        run_streamlit: Run the Streamlit UI.
 
     Args:
-    model_path (str): Path or identifier for the model in Nexa Model Hub.
-    stop_words (list): List of stop words for early stopping.
-    profiling (bool): Enable timing measurements for the generation process.
-    streamlit (bool): Run the inference in Streamlit UI.
-    temperature (float): Temperature for sampling.
-    max_new_tokens (int): Maximum number of new tokens to generate.
-    top_k (int): Top-k sampling parameter.
-    top_p (float): Top-p sampling parameter
+        model_path (str): Path or identifier for the model in Nexa Model Hub.
+        stop_words (list): List of stop words for early stopping.
+        profiling (bool): Enable timing measurements for the generation process.
+        streamlit (bool): Run the inference in Streamlit UI.
+        temperature (float): Temperature for sampling.
+        max_new_tokens (int): Maximum number of new tokens to generate.
+        top_k (int): Top-k sampling parameter.
+        top_p (float): Top-p sampling parameter
     """
+    from nexa.gguf.llama import Llama
     def __init__(self, model_path, stop_words=None, **kwargs):
         self.params = DEFAULT_TEXT_GEN_PARAMS
         self.params.update(kwargs)
@@ -132,6 +132,9 @@ class NexaTextInference:
         self.conversation_history = [] if self.chat_format else None
 
     def run(self):
+        """
+        CLI interactive session. Not for SDK. 
+        """
         while True:
             generated_text = ""
             try:
@@ -177,6 +180,44 @@ class NexaTextInference:
             except Exception as e:
                 logging.error(f"Error during generation: {e}", exc_info=True)
             print("\n")
+    
+    def create_chat_completion(self, messages, temperature=0.7, max_tokens=2048, top_k=50, top_p=1.0, stream=False, stop=None):
+        """
+        Used for SDK. Generate completion for a chat conversation.
+
+        Args:
+            messages (list): List of messages in the conversation.
+            temperature (float): Temperature for sampling.
+            max_tokens (int): Maximum number of new tokens to generate.
+            top_k (int): Top-k sampling parameter.
+            top_p (float): Top-p sampling parameter.
+            stream (bool): Stream the output.
+            stop (list): List of stop words for early stopping.
+
+        Returns:
+            Iterator: Iterator for the completion.
+        """
+        return self.model.create_chat_completion(messages=messages, temperature=temperature, max_tokens=max_tokens, top_k=top_k, top_p=top_p, stream=stream, stop=stop)
+    
+    def create_completion(self, prompt, temperature=0.7, max_tokens=2048, top_k=50, top_p=1.0, echo=False, stream=False, stop=None):
+        """
+        Used for SDK. Generate completion for a given prompt.
+
+        Args:
+            prompt (str): Prompt for the completion.
+            temperature (float): Temperature for sampling.
+            max_tokens (int): Maximum number of new tokens to generate.
+            top_k (int): Top-k sampling parameter.
+            top_p (float): Top-p sampling parameter.
+            echo (bool): Echo the prompt back in the output.
+            stream (bool): Stream the output.
+            stop (list): List of stop words for early stopping.
+
+        Returns:
+            Iterator: Iterator for the completion.
+        """
+        return self.model.create_completion(prompt=prompt, temperature=temperature, max_tokens=max_tokens, top_k=top_k, top_p=top_p, echo=echo, stream=stream, stop=stop)
+
 
     def _chat(self, user_input: str) -> Iterator:
         self.conversation_history.append({"role": "user", "content": user_input})
@@ -209,7 +250,7 @@ class NexaTextInference:
 
     def run_streamlit(self, model_path: str):
         """
-        Run the Streamlit UI.
+        Used for CLI. Run the Streamlit UI.
         """
         logging.info("Running Streamlit UI...")
 

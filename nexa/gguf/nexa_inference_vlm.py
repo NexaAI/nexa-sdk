@@ -79,6 +79,8 @@ class NexaVLMInference:
     top_k (int): Top-k sampling parameter.
     top_p (float): Top-p sampling parameter
     """
+    from nexa.gguf.llama.llama import Llama
+
     def __init__(self, model_path, stop_words=None, **kwargs):
         self.params = DEFAULT_TEXT_GEN_PARAMS
         self.params.update(kwargs)
@@ -216,6 +218,29 @@ class NexaVLMInference:
             except Exception as e:
                 logging.error(f"Error during generation: {e}", exc_info=True)
             print("\n")
+    
+    def create_chat_completion(self, messages, temperature, max_tokens, top_k, top_p, stream, stop):
+        """
+        Generate text completion for a given chat prompt.
+        
+        Args:
+            messages (list): List of messages in the chat prompt.
+            temperature (float): Temperature for sampling.
+            max_tokens (int): Maximum number of tokens to generate.
+            top_k (int): Top-k sampling parameter.
+            top_p (float): Top-p sampling parameter.
+            stream (bool): Stream the output.
+            stop (list): List of stop words for early stopping.
+        """
+        return self.model.create_chat_completion(
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            top_k=top_k,
+            top_p=top_p,
+            stream=stream,
+            stop=stop,
+        )
 
     def _chat(self, user_input: str, image_path: str = None) -> Iterator:
         data_uri = image_to_base64_data_uri(image_path) if image_path else None
