@@ -1,7 +1,7 @@
 import os
 from nexa.gguf.llama import llama
 from tests.utils import download_model
-
+from nexa.gguf.lib_utils import is_gpu_available
 # Constants
 TINY_LLAMA_URL = "https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_0.gguf"
 OUTPUT_DIR = os.getcwd()
@@ -12,7 +12,7 @@ def init_llama_model(verbose=False, n_gpu_layers=-1, chat_format=None, embedding
     return llama.Llama(
         model_path=MODEL_PATH,
         verbose=verbose,
-        n_gpu_layers=n_gpu_layers,
+        n_gpu_layers=n_gpu_layers if is_gpu_available() else 0,
         chat_format=chat_format,
         embedding=embedding,
     )

@@ -4,6 +4,7 @@ import os
 from nexa.gguf.llama import llama
 from nexa.gguf.llama.llama_chat_format import NanoLlavaChatHandler
 from tests.utils import download_model
+from nexa.gguf.lib_utils import is_gpu_available
 
 def image_to_base64_data_uri(file_path):
     """
@@ -31,7 +32,7 @@ def test_image_generation():
         model_path=model_path,
         chat_handler=chat_handler,
         n_ctx=2048,  # n_ctx should be increased to accommodate the image embedding
-        n_gpu_layers=-1,  # Uncomment to use GPU acceleration
+        n_gpu_layers=-1 if is_gpu_available() else 0,  # Uncomment to use GPU acceleration
         verbose=False,
     )
     output = llm.create_chat_completion(
