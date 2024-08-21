@@ -103,14 +103,25 @@ class NexaTextInference:
         logging.debug(f"Loading model from {self.downloaded_path}")
         start_time = time.time()
         with suppress_stdout_stderr():
-            from nexa.gguf.llama.llama import Llama
-            self.model = Llama(
-                embedding=self.params.get("embedding", False),
-                model_path=self.downloaded_path,
-                verbose=self.profiling,
-                chat_format=self.chat_format,
-                n_gpu_layers=-1 if is_gpu_available() else 0,  # Uncomment to use GPU acceleration
-            )
+            try:
+                from nexa.gguf.llama.llama import Llama
+                self.model = Llama(
+                    model_path=self.downloaded_path,
+                    verbose=self.profiling,
+                    chat_format=self.chat_format,
+                    n_ctx=2048,
+                    n_gpu_layers=-1 if is_gpu_available() else 0,
+                )
+            except Exception as e:
+                logging.error(f"Failed to load model: {e}. Falling back to CPU.", exc_info=True)
+                self.model = Llama(
+                    model_path=self.downloaded_path,
+                    verbose=self.profiling,
+                    chat_format=self.chat_format,
+                    n_ctx=2048,
+                    n_gpu_layers=0,  # hardcode to use CPU
+                )
+
         load_time = time.time() - start_time
         if self.profiling:
             logging.debug(f"Model loaded in {load_time:.2f} seconds")
@@ -167,9 +178,11 @@ class NexaTextInference:
                         generated_text += delta
 
                 if self.chat_format:
-                    self.conversation_history.append(
-                        {"role": "assistant", "content": generated_text}
-                    )
+                    if len(self.conversation_history) >= 2:
+                        self.conversation_history = self.conversation_history[2:]
+
+                    self.conversation_history.append({"role": "user", "content": user_input})
+                    self.conversation_history.append({"role": "assistant", "content": generated_text})
             except KeyboardInterrupt:
                 pass
             except Exception as e:
@@ -215,9 +228,9 @@ class NexaTextInference:
 
 
     def _chat(self, user_input: str) -> Iterator:
-        self.conversation_history.append({"role": "user", "content": user_input})
+        current_messages = self.conversation_history + [{"role": "user", "content": user_input}]
         return self.model.create_chat_completion(
-            messages=self.conversation_history,
+            messages=current_messages,
             temperature=self.params["temperature"],
             max_tokens=self.params["max_new_tokens"],
             top_k=self.params["top_k"],

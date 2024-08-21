@@ -3,7 +3,7 @@ requires = ["scikit-build-core"]
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "nexaai-gpu"
+name = "nexaai-metal"
 version = "0.0.1"
 description = "Nexa AI SDK"
 readme = "README.md"
@@ -24,7 +24,6 @@ dependencies = [
     "pillow",
     "prompt_toolkit",
     "tqdm",  # Shared dependencies
-    "importlib-metadata>=1.4.0,<7.0",
     "tabulate",
     "streamlit"
 ]

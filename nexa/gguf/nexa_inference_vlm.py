@@ -46,11 +46,19 @@ def image_to_base64_data_uri(file_path):
 # HACK: This is moved from nexa.constants to avoid circular imports
 NEXA_PROJECTOR_HANDLER_MAP: dict[str, Llava15ChatHandler] = {
     "nanollava": NanoLlavaChatHandler,
+    "nanoLLaVA:fp16": NanoLlavaChatHandler,
     "llava-phi3": Llava15ChatHandler,
-    # "llava1.5": Llava15ChatHandler,
+    "llava-phi-3-mini:q4_0": Llava15ChatHandler,
+    "llava-phi-3-mini:fp16": Llava15ChatHandler,
     "llava-llama3": Llava15ChatHandler,
+    "llava-llama-3-8b-v1.1:q4_0": Llava15ChatHandler,
+    "llava-llama-3-8b-v1.1:fp16": Llava15ChatHandler,
     "llava1.6-mistral": Llava16ChatHandler,
+    "llava-v1.6-mistral-7b:q4_0": Llava16ChatHandler,
+    "llava-v1.6-mistral-7b:fp16": Llava16ChatHandler,
     "llava1.6-vicuna": Llava16ChatHandler,
+    "llava-v1.6-vicuna-7b:q4_0": Llava16ChatHandler,
+    "llava-v1.6-vicuna-7b:fp16": Llava16ChatHandler,
 }
 
 assert (
@@ -112,7 +120,7 @@ class NexaVLMInference:
                 )
                 exit(1)
         else:
-            logging.error("Using model from hub is not supported yet.")
+            logging.error("VLM user model from hub is not supported yet.")
             exit(1)
 
         if self.downloaded_path is None:
@@ -150,15 +158,30 @@ class NexaVLMInference:
                 if self.projector_downloaded_path
                 else None
             )
-            from nexa.gguf.llama.llama import Llama
-            self.model = Llama(
-                model_path=self.downloaded_path,
-                chat_handler=self.projector,
-                verbose=False,
-                chat_format=self.chat_format,
-                n_ctx=self.params.get("max_new_tokens", 2048),
-                n_gpu_layers=-1 if is_gpu_available() else 0,  # offload all layers to GPU
-            )
+            try:
+                from nexa.gguf.llama.llama import Llama
+                self.model = Llama(
+                    model_path=self.downloaded_path,
+                    chat_handler=self.projector,
+                    verbose=False,
+                    chat_format=self.chat_format,
+                    n_ctx=self.params.get("max_new_tokens", 2048),
+                    n_gpu_layers=-1 if is_gpu_available() else 0,
+                )
+            except Exception as e:
+                logging.error(
+                    f"Failed to load model: {e}. Falling back to CPU.",
+                    exc_info=True,
+                )
+                self.model = Llama(
+                    model_path=self.downloaded_path,
+                    chat_handler=self.projector,
+                    verbose=False,
+                    chat_format=self.chat_format,
+                    n_ctx=self.params.get("max_new_tokens", 2048),
+                    n_gpu_layers=0,  # hardcode to use CPU
+                )
+
         load_time = time.time() - start_time
         if self.profiling:
             logging.info(f"Model loaded in {load_time:.2f} seconds")
@@ -184,7 +207,6 @@ class NexaVLMInference:
             A list of embeddings
         """
         return self.model.embed(input, normalize, truncate, return_count)
-
 
     def run(self):
         # I just use completion, no conversation history
