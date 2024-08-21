@@ -106,6 +106,7 @@ class NexaTextInference:
             try:
                 from nexa.gguf.llama.llama import Llama
                 self.model = Llama(
+                    embedding=self.params.get("embedding", False),
                     model_path=self.downloaded_path,
                     verbose=self.profiling,
                     chat_format=self.chat_format,
