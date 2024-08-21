@@ -124,8 +124,7 @@ class SpinningCursorAnimation:
 
     def _spin(self):
         while not self.stop_spinning.is_set():
-            sys.stdout.write(f"\r{next(self.spinner)} ")
-            sys.stdout.flush()
+            print(f"\r{next(self.spinner)} ", flush=True, end="")
             time.sleep(0.1)
             if self.stop_spinning.is_set():
                 break
@@ -138,8 +137,7 @@ class SpinningCursorAnimation:
     def __exit__(self, exc_type, exc_value, traceback):
         self.stop_spinning.set()
         self.thread.join()
-        sys.stdout.write("\r")
-        sys.stdout.flush()
+        print("\r", flush=True, end="")
 
     def __call__(self, func):
         @wraps(func)
