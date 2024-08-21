@@ -5,7 +5,11 @@ import sys
 import time
 from pathlib import Path
 
-from nexa.constants import EXIT_REMINDER, NEXA_RUN_MODEL_MAP_VOICE, DEFAULT_VOICE_GEN_PARAMS
+from nexa.constants import (
+    DEFAULT_VOICE_GEN_PARAMS,
+    EXIT_REMINDER,
+    NEXA_RUN_MODEL_MAP_VOICE,
+)
 from nexa.general import pull_model
 from nexa.utils import nexa_prompt
 from faster_whisper import WhisperModel
@@ -36,7 +40,7 @@ class NexaVoiceInference:
     def __init__(self, model_path, **kwargs):
         self.model_path = None
         self.downloaded_path = None
-        self.params = DEFAULT_VOICE_GEN_PARAMS        
+        self.params = DEFAULT_VOICE_GEN_PARAMS
         if model_path in NEXA_RUN_MODEL_MAP_VOICE:
             logging.debug(f"Found model {model_path} in public hub")
             self.model_path = NEXA_RUN_MODEL_MAP_VOICE.get(model_path)
@@ -54,7 +58,7 @@ class NexaVoiceInference:
                 exc_info=True,
             )
             exit(1)
-        
+
         self.params.update(kwargs)
         self.model = None
 
@@ -66,15 +70,16 @@ class NexaVoiceInference:
                 )
                 exit(1)
 
-
     @SpinningCursorAnimation()
     def _load_model(self):
+        from faster_whisper import WhisperModel
+
         logging.debug(f"Loading model from: {self.downloaded_path}")
         with suppress_stdout_stderr():
             self.model = WhisperModel(
                 self.downloaded_path,
-                device="cpu", 
-                compute_type=self.params["compute_type"]
+                device="cpu",
+                compute_type=self.params["compute_type"],
             )
         logging.debug("Model loaded successfully")
 
@@ -92,11 +97,11 @@ class NexaVoiceInference:
         logging.debug(f"Transcribing audio from: {audio_path}")
         try:
             segments, _ = self.model.transcribe(
-                audio_path, 
-                beam_size=self.params["beam_size"], 
-                language=self.params["language"], 
-                task=self.params["task"], 
-                temperature=self.params["temperature"], 
+                audio_path,
+                beam_size=self.params["beam_size"],
+                language=self.params["language"],
+                task=self.params["task"],
+                temperature=self.params["temperature"],
                 vad_filter=True,
             )
             transcription = "".join(segment.text for segment in segments)
@@ -104,7 +109,6 @@ class NexaVoiceInference:
             logging.info(f"Transcription: {transcription}")
         except Exception as e:
             logging.error(f"Error during transcription: {e}", exc_info=True)
-
 
     def _save_transcription(self, transcription):
         os.makedirs(self.params["output_dir"], exist_ok=True)

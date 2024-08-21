@@ -24,15 +24,60 @@ Detailed API documentation is available [here](docs/index.html).
 
 ## Installation
 
-For CPU version
-```
-pip install nexaai --no-cache-dir
-```
+**GPU version(optional)** 
 
-For GPU version
-```
-pip install nexaai-gpu --no-cache-dir
-```
+check if you have GPU acceleration (torch required)
+<details>
+  <summary>CUDA:</summary>
+
+  ```
+  import torch
+  torch.cuda.is_available()
+  ```
+
+  if True
+
+  ```
+  CMAKE_ARGS="-DGGML_CUDA=on -DSD_CUBLAS=ON" pip install nexaai-gpu
+  ```
+</details>
+<details>
+  <summary>Apple M Chip:</summary>
+  Apple icon -> about this mac -> Graphics
+  
+  if True:
+
+  ```
+  CMAKE_ARGS="-DGGML_METAL=on -DSD_METAL=ON" pip install nexaai-gpu
+  ```
+</details>
+
+<details>
+  <summary>AMD graphics card:</summary>
+
+
+  ```
+  CMAKE_ARGS="-DGGML_HIPBLAS=on" pip install nexaai-gpu
+  ```
+</details>
+
+**CPU version**
+
+<details>
+  <summary>Mac with Intel chips</summary>
+
+  ```
+  CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp" pip install nexaai
+  ```
+</details>
+
+<details>
+  <summary>Mac with M chips or other Operating systems:</summary>
+
+  ```
+  pip install nexaai
+  ```
+<details>
 
 ## Nexa CLI commands
 
