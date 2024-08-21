@@ -39,7 +39,7 @@ class NexaTextInference:
         top_k (int): Top-k sampling parameter.
         top_p (float): Top-p sampling parameter
     """
-    from nexa.gguf.llama import Llama
+    from nexa.gguf.llama.llama import Llama
     def __init__(self, model_path, stop_words=None, **kwargs):
         self.params = DEFAULT_TEXT_GEN_PARAMS
         self.params.update(kwargs)

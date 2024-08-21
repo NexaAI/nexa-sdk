@@ -23,14 +23,14 @@ class NexaTTSInference:
     A class used for loading text-to-speech models and running text-to-speech generation.
 
     Methods:
-    run: Run the text-to-speech generation loop.
-    run_streamlit: Run the Streamlit UI.
+        run: Run the text-to-speech generation loop.
+        run_streamlit: Run the Streamlit UI.
 
     Args:
-    model_path (str): Path or identifier for the model in Nexa Model Hub.
-    output_dir (str): Output directory for tts.
-    sampling_rate (int): Sampling rate for audio processing.
-    streamlit (bool): Run the inference in Streamlit UI.
+        model_path (str): Path or identifier for the model in Nexa Model Hub.
+        output_dir (str): Output directory for tts.
+        sampling_rate (int): Sampling rate for audio processing.
+        streamlit (bool): Run the inference in Streamlit UI.
     """
     
     def __init__(self, model_path, **kwargs):
@@ -71,19 +71,30 @@ class NexaTTSInference:
         while True:
             try:
                 user_input = nexa_prompt("Enter text to generate audio: ")
-                self._audio_generation(user_input)
+                outputs = self.audio_generation(user_input)
+                self._save_audio(
+                    outputs[0], self.params["sampling_rate"], self.params["output_path"]
+                )
+                logging.info(f"Audio saved to {self.params['output_path']}")                
             except KeyboardInterrupt:
                 print(EXIT_REMINDER)
             except Exception as e:
                 logging.error(f"Error during text generation: {e}", exc_info=True)
 
-    def _audio_generation(self, user_input):
+    def audio_generation(self, user_input):
+        """
+        Used for SDK. Generate audio from the user input.
+
+        Args:
+            user_input (str): User input for audio generation.
+
+        Returns:
+            np.array: Audio data.
+        """
         inputs = self.tokenizer(user_input)
         outputs = self.model.run(None, {"text": inputs})
-        self._save_audio(
-            outputs[0], self.params["sampling_rate"], self.params["output_path"]
-        )
-        logging.info(f"Audio saved to {self.params['output_path']}")
+        return outputs
+
 
     def _save_audio(self, audio_data, sampling_rate, output_path):
         os.makedirs(output_path, exist_ok=True)
