@@ -9,7 +9,7 @@ from nexa.constants import EXIT_REMINDER, NEXA_RUN_MODEL_MAP_VOICE, DEFAULT_VOIC
 from nexa.general import pull_model
 from nexa.utils import nexa_prompt
 from faster_whisper import WhisperModel
-from nexaai.utils import nexa_prompt, SpinningCursorAnimation, suppress_stdout_stderr
+from nexa.utils import nexa_prompt, SpinningCursorAnimation, suppress_stdout_stderr
 
 logging.basicConfig(level=logging.INFO)
 
