@@ -47,11 +47,19 @@ def image_to_base64_data_uri(file_path):
 # HACK: This is moved from nexa.constants to avoid circular imports
 NEXA_PROJECTOR_HANDLER_MAP: dict[str, Llava15ChatHandler] = {
     "nanollava": NanoLlavaChatHandler,
+    "nanoLLaVA:fp16": NanoLlavaChatHandler,
     "llava-phi3": Llava15ChatHandler,
-    # "llava1.5": Llava15ChatHandler,
+    "llava-phi-3-mini:q4_0": Llava15ChatHandler,
+    "llava-phi-3-mini:fp16": Llava15ChatHandler,
     "llava-llama3": Llava15ChatHandler,
+    "llava-llama-3-8b-v1.1:q4_0": Llava15ChatHandler,
+    "llava-llama-3-8b-v1.1:fp16": Llava15ChatHandler,
     "llava1.6-mistral": Llava16ChatHandler,
+    "llava-v1.6-mistral-7b:q4_0": Llava16ChatHandler,
+    "llava-v1.6-mistral-7b:fp16": Llava16ChatHandler,
     "llava1.6-vicuna": Llava16ChatHandler,
+    "llava-v1.6-vicuna-7b:q4_0": Llava16ChatHandler,
+    "llava-v1.6-vicuna-7b:fp16": Llava16ChatHandler,
 }
 
 assert (

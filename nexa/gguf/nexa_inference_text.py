@@ -114,6 +114,7 @@ class NexaTextInference:
                 model_path=self.downloaded_path,
                 verbose=self.profiling,
                 chat_format=self.chat_format,
+                n_ctx=2048,
                 n_gpu_layers=-1 if is_gpu_available() else 0,  # Uncomment to use GPU acceleration
             )
         load_time = time.time() - start_time
