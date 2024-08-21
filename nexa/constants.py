@@ -61,16 +61,25 @@ NEXA_RUN_MODEL_MAP_ONNX = {
     "phi3v": "Phi-3-vision-128k-instruct:onnx-cpu-int4",
     "sd1-5": "stable-diffusion-v1-5:onnx-cpu-fp32",
     "lcm-dreamshaper": "lcm-dreamshaper-v7:onnx-cpu-fp32",
-    "whisper": "whisper-tiny.en:onnx-cpu-fp32",
+    "whisper": "whisper-tiny:onnx-cpu-fp32",
     "ljspeech": "ljspeech-jets:onnx-cpu-fp32",
 }
 
 NEXA_RUN_MODEL_MAP_VLM = {
     "nanollava": "nanoLLaVA:model-fp16",
+    "nanoLLaVA:fp16": "nanoLLaVA:model-fp16",
     "llava-phi3": "llava-phi-3-mini:model-q4_0",
+    "llava-phi-3-mini:q4_0": "llava-phi-3-mini:model-q4_0",
+    "llava-phi-3-mini:fp16": "llava-phi-3-mini:model-fp16",
     "llava-llama3": "llava-llama-3-8b-v1.1:model-q4_0",
+    "llava-llama-3-8b-v1.1:q4_0": "llava-llama-3-8b-v1.1:model-q4_0",
+    "llava-llama-3-8b-v1.1:fp16": "llava-llama-3-8b-v1.1:model-fp16",
     "llava1.6-mistral": "llava-v1.6-mistral-7b:model-q4_0",
+    "llava-v1.6-mistral-7b:q4_0": "llava-v1.6-mistral-7b:model-q4_0",
+    "llava-v1.6-mistral-7b:fp16": "llava-v1.6-mistral-7b:model-fp16",
     "llava1.6-vicuna": "llava-v1.6-vicuna-7b:model-q4_0",
+    "llava-v1.6-vicuna-7b:q4_0": "llava-v1.6-vicuna-7b:model-q4_0",
+    "llava-v1.6-vicuna-7b:fp16": "llava-v1.6-vicuna-7b:model-fp16",
 }
 
 NEXA_RUN_MODEL_MAP_VOICE = {
@@ -91,10 +100,19 @@ NEXA_RUN_MODEL_MAP_FUNCTION_CALLING = {
 
 NEXA_RUN_PROJECTOR_MAP = {
     "nanollava": "nanoLLaVA:projector-fp16",
+    "nanoLLaVA:fp16": "nanoLLaVA:project-fp16",
     "llava-phi3": "llava-phi-3-mini:projector-q4_0",
+    "llava-phi-3-mini:q4_0": "llava-phi-3-mini:projector-q4_0",
+    "llava-phi-3-mini:fp16": "llava-phi-3-mini:projector-fp16",
     "llava-llama3": "llava-llama-3-8b-v1.1:projector-q4_0",
+    "llava-llama-3-8b-v1.1:q4_0": "llava-llama-3-8b-v1.1:projector-q4_0",
+    "llava-llama-3-8b-v1.1:fp16": "llava-llama-3-8b-v1.1:projector-fp16",
     "llava1.6-mistral": "llava-v1.6-mistral-7b:projector-q4_0",
+    "llava-v1.6-mistral-7b:q4_0": "llava-v1.6-mistral-7b:projector-q4_0",
+    "llava-v1.6-mistral-7b:fp16": "llava-v1.6-mistral-7b:projector-fp16",
     "llava1.6-vicuna": "llava-v1.6-vicuna-7b:projector-q4_0",
+    "llava-v1.6-vicuna-7b:q4_0": "llava-v1.6-vicuna-7b:projector-q4_0",
+    "llava-v1.6-vicuna-7b:fp16": "llava-v1.6-vicuna-7b:projector-fp16",
 }
 
 NEXA_RUN_MODEL_MAP_IMAGE = {
