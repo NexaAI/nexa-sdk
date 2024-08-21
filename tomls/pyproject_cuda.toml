@@ -3,7 +3,7 @@ requires = ["scikit-build-core"]
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "nexaai-gpu"
+name = "nexaai-cuda"
 version = "0.0.1"
 description = "Nexa AI SDK"
 readme = "README.md"
