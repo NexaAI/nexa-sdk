@@ -7,7 +7,7 @@ import readline
 import sys
 import time
 from pathlib import Path
-from typing import Iterator
+from typing import Iterator, List, Union
 
 from streamlit.web import cli as stcli
 
@@ -18,6 +18,7 @@ from nexa.constants import (
     NEXA_RUN_PROJECTOR_MAP,
 )
 from nexa.general import pull_model
+from nexa.gguf.lib_utils import is_gpu_available
 from nexa.gguf.llama.llama import Llama
 from nexa.gguf.llama.llama_chat_format import (
     Llava15ChatHandler,
@@ -154,11 +155,34 @@ class NexaVLMInference:
                 verbose=False,
                 chat_format=self.chat_format,
                 n_ctx=self.params.get("max_new_tokens", 2048),
-                n_gpu_layers=-1,  # offload all layers to GPU
+                n_gpu_layers=-1 if is_gpu_available() else 0,  # offload all layers to GPU
             )
         load_time = time.time() - start_time
         if self.profiling:
             logging.info(f"Model loaded in {load_time:.2f} seconds")
+
+    def embed(
+        self,
+        input: Union[str, List[str]],
+        normalize: bool = False,
+        truncate: bool = True,
+        return_count: bool = False,
+    ):
+        """Embed a string.
+
+        Args:
+            input: The utf-8 encoded string or a list of string to embed.
+            normalize: whether to normalize embedding in embedding dimension.
+            trunca
+            truncate: whether to truncate tokens to window length before generating embedding.
+            return count: if true, return (embedding, count) tuple. else return embedding only.
+
+
+        Returns:
+            A list of embeddings
+        """
+        return self.model.embed(input, normalize, truncate, return_count)
+
 
     def run(self):
         # I just use completion, no conversation history

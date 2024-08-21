@@ -3,7 +3,7 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Iterator
+from typing import Iterator, List, Union
 
 from nexa.constants import (
     DEFAULT_TEXT_GEN_PARAMS,
@@ -13,6 +13,7 @@ from nexa.constants import (
     NEXA_STOP_WORDS_MAP,
 )
 from nexa.general import pull_model
+from nexa.gguf.lib_utils import is_gpu_available
 from nexa.gguf.llama.llama import Llama
 from nexa.utils import SpinningCursorAnimation, nexa_prompt, suppress_stdout_stderr
 
@@ -82,6 +83,27 @@ class NexaTextInference:
                     "Failed to load model or tokenizer. Exiting.", exc_info=True
                 )
                 exit(1)
+    def embed(
+        self,
+        input: Union[str, List[str]],
+        normalize: bool = False,
+        truncate: bool = True,
+        return_count: bool = False,
+    ):
+        """Embed a string.
+
+        Args:
+            input: The utf-8 encoded string or a list of string to embed.
+            normalize: whether to normalize embedding in embedding dimension.
+            trunca
+            truncate: whether to truncate tokens to window length before generating embedding.
+            return count: if true, return (embedding, count) tuple. else return embedding only.
+
+
+        Returns:
+            A list of embeddings
+        """
+        return self.model.embed(input, normalize, truncate, return_count)
 
     @SpinningCursorAnimation()
     def _load_model(self):
@@ -93,7 +115,7 @@ class NexaTextInference:
                 verbose=self.profiling,
                 chat_format=self.chat_format,
                 n_ctx=2048,
-                n_gpu_layers=-1,  # Uncomment to use GPU acceleration
+                n_gpu_layers=-1 if is_gpu_available() else 0,  # Uncomment to use GPU acceleration
             )
         load_time = time.time() - start_time
         if self.profiling:
@@ -146,7 +168,6 @@ class NexaTextInference:
                         delta = chunk["choices"][0]["text"]
                         print(delta, end="", flush=True)
                         generated_text += delta
-
 
                 if self.chat_format:
                     self.conversation_history.append(
