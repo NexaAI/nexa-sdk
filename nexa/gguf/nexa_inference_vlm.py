@@ -157,14 +157,29 @@ class NexaVLMInference:
                 if self.projector_downloaded_path
                 else None
             )
-            self.model = Llama(
-                model_path=self.downloaded_path,
-                chat_handler=self.projector,
-                verbose=False,
-                chat_format=self.chat_format,
-                n_ctx=self.params.get("max_new_tokens", 2048),
-                n_gpu_layers=-1 if is_gpu_available() else 0,  # offload all layers to GPU
-            )
+            try:
+                self.model = Llama(
+                    model_path=self.downloaded_path,
+                    chat_handler=self.projector,
+                    verbose=False,
+                    chat_format=self.chat_format,
+                    n_ctx=self.params.get("max_new_tokens", 2048),
+                    n_gpu_layers=-1 if is_gpu_available() else 0,
+                )
+            except Exception as e:
+                logging.error(
+                    f"Failed to load model: {e}. Falling back to CPU.",
+                    exc_info=True,
+                )
+                self.model = Llama(
+                    model_path=self.downloaded_path,
+                    chat_handler=self.projector,
+                    verbose=False,
+                    chat_format=self.chat_format,
+                    n_ctx=self.params.get("max_new_tokens", 2048),
+                    n_gpu_layers=0,  # hardcode to use CPU
+                )
+
         load_time = time.time() - start_time
         if self.profiling:
             logging.info(f"Model loaded in {load_time:.2f} seconds")
@@ -190,7 +205,6 @@ class NexaVLMInference:
             A list of embeddings
         """
         return self.model.embed(input, normalize, truncate, return_count)
-
 
     def run(self):
         # I just use completion, no conversation history

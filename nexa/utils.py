@@ -24,9 +24,20 @@ def is_package_installed(package_name: str) -> bool:
         return False
 
 
-def is_nexa_gpu_installed() -> bool:
-    """Check if the Nexa GPU package is installed."""
-    return is_package_installed("nexaai-gpu")
+def is_nexa_cuda_installed() -> bool:
+    """Check if the Nexa CUDA package is installed."""
+    if is_package_installed("nexaai-cuda"):
+        print("Nexa CUDA package is installed.")
+        return True
+    return False
+
+
+def is_nexa_metal_installed() -> bool:
+    """Check if the Nexa Metal package is installed."""
+    if is_package_installed("nexaai-metal"):
+        print("Nexa Metal package is installed.")
+        return True
+    return False
 
 
 def is_metal_available():
