@@ -183,7 +183,6 @@ class NexaTextInference:
 
     def _chat(self, user_input: str) -> Iterator:
         current_messages = self.conversation_history + [{"role": "user", "content": user_input}]
-        print("current_messages", current_messages)
         return self.model.create_chat_completion(
             messages=current_messages,
             temperature=self.params["temperature"],
