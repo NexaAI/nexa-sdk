@@ -15,12 +15,12 @@ def load_model(model_path):
     return nexa_model
 
 
-def generate_images(nexa_model, prompt, negative_prompt):
+def generate_images(nexa_model: NexaImageInference, prompt: str, negative_prompt: str):
     output_dir = os.path.dirname(nexa_model.params["output_path"])
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    nexa_model._generate_images(prompt, negative_prompt)
+    nexa_model._txt2img(prompt, negative_prompt)
 
     images = []
     for file_name in os.listdir(output_dir):

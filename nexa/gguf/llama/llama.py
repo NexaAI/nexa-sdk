@@ -28,7 +28,6 @@ import numpy.typing as npt
 
 import nexa.gguf.llama.llama_chat_format as llama_chat_format
 import nexa.gguf.llama.llama_cpp as llama_cpp
-from nexa.gguf.lib_utils import is_gpu_available
 from nexa.gguf.llama._internals_transformers import _LlamaBatch  # type: ignore
 from nexa.gguf.llama._internals_transformers import _LlamaContext  # type: ignore
 from nexa.gguf.llama._internals_transformers import _LlamaModel  # type: ignore
@@ -212,7 +211,6 @@ class Llama:
         self.model_path = model_path
 
         # Model Params
-        n_gpu_layers = n_gpu_layers if is_gpu_available() else 0
         self.model_params = llama_cpp.llama_model_default_params()
         self.model_params.n_gpu_layers = (
             0x7FFFFFFF if n_gpu_layers == -1 else n_gpu_layers

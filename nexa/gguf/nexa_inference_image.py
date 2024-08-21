@@ -44,6 +44,7 @@ class NexaImageInference:
     streamlit (bool): Run the inference in Streamlit UI.
 
     """
+
     def __init__(self, model_path, **kwargs):
         self.model_path = None
         self.downloaded_path = None
@@ -87,11 +88,11 @@ class NexaImageInference:
                 model_path=self.downloaded_path,
                 lora_model_dir=self.params.get("lora_dir", ""),
                 n_threads=self.params.get("n_threads", multiprocessing.cpu_count()),
-                wtype=self.params.get("wtype", NEXA_RUN_MODEL_PRECISION_MAP.get(
-                    model_path, "default"
-                )),  # Weight type (options: default, f32, f16, q4_0, q4_1, q5_0, q5_1, q8_0)
+                wtype=self.params.get(
+                    "wtype", NEXA_RUN_MODEL_PRECISION_MAP.get(model_path, "default")
+                ),  # Weight type (options: default, f32, f16, q4_0, q4_1, q5_0, q5_1, q8_0)
                 control_net_path=self.params.get("control_net_path", ""),
-                verbose=False
+                verbose=False,
             )
 
     def _save_images(self, images):
@@ -107,26 +108,7 @@ class NexaImageInference:
             image.save(file_path)
             logging.info(f"\nImage {i+1} saved to: {file_path}")
 
-    def run_txt2img(self):
-        def _generate_images(prompt, negative_prompt):
-            """
-            Generate images based on the given prompt, negative prompt, and parameters.
-            """
-            try:
-                images = self.model.txt_to_img(
-                    prompt=prompt,
-                    negative_prompt=negative_prompt if negative_prompt else "",
-                    cfg_scale=self.params["guidance_scale"],
-                    width=self.params["width"],
-                    height=self.params["height"],
-                    sample_steps=self.params["num_inference_steps"],
-                    seed=self.params["random_seed"],
-                    control_cond=self.params.get("control_image_path", ""),
-                    control_strength=self.params.get("control_strength", 0.9),
-                )
-                self._save_images(images)
-            except Exception as e:
-                logging.error(f"Error during image generation: {e}")
+    def loop_txt2img(self):
 
         while True:
             try:
@@ -134,13 +116,33 @@ class NexaImageInference:
                 negative_prompt = nexa_prompt(
                     "Enter your negative prompt (press Enter to skip): "
                 )
-                _generate_images(prompt, negative_prompt)
+                self._txt2img(prompt, negative_prompt)
             except KeyboardInterrupt:
                 print(EXIT_REMINDER)
             except Exception as e:
                 logging.error(f"Error during generation: {e}", exc_info=True)
 
-    def run_img2img(self):
+    def _txt2img(self, prompt: str, negative_prompt: str):
+        """
+        Generate images based on the given prompt, negative prompt, and parameters.
+        """
+        try:
+            images = self.model.txt_to_img(
+                prompt=prompt,
+                negative_prompt=negative_prompt if negative_prompt else "",
+                cfg_scale=self.params["guidance_scale"],
+                width=self.params["width"],
+                height=self.params["height"],
+                sample_steps=self.params["num_inference_steps"],
+                seed=self.params["random_seed"],
+                control_cond=self.params.get("control_image_path", ""),
+                control_strength=self.params.get("control_strength", 0.9),
+            )
+            self._save_images(images)
+        except Exception as e:
+            logging.error(f"Error during image generation: {e}")
+
+    def loop_img2img(self):
         def _generate_images(image_path, prompt, negative_prompt):
             """
             Generate images based on the given prompt, negative prompt, and parameters.
@@ -255,6 +257,6 @@ if __name__ == "__main__":
         inference.run_streamlit(model_path)
     else:
         if args.img2img:
-            inference.run_img2img()
+            inference.loop_img2img()
         else:
-            inference.run_txt2img()
+            inference.loop_txt2img()

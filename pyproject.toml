@@ -30,7 +30,6 @@ dependencies = [
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -77,10 +76,11 @@ wheel.packages = [
     "nexa.onnx.streamlit",
     "nexa.onnx.server"
 ]
+sdist.include = ["CMakeLists.txt", "dependency/llama.cpp/*", "dependency/stable-diffusion.cpp/*"]
+sdist.exclude = [".github", "build", "dist", "nexa.egg-info", "dependency/llama.cpp/build", "dependency/stable-diffusion.cpp/build"]
 build.verbose = true
 cmake.build-type = "Release"
-cmake.minimum-version = "3.16"
-sdist.include = [".git", "CMakeLists.txt ", "dependency/llama.cpp/*", "dependency/stable-diffusion.cpp/*"]
+cmake.version = ">=3.16"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
