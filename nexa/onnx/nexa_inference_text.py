@@ -7,7 +7,7 @@ from typing import Any, Tuple
 
 from optimum.onnxruntime import ORTModelForCausalLM
 from transformers import AutoTokenizer, TextStreamer
-
+from nexa.general import pull_model
 from nexa.constants import NEXA_RUN_MODEL_MAP_ONNX
 from nexa.utils import nexa_prompt
 
@@ -34,7 +34,7 @@ class NexaTextInference:
     top_p (float): Top-p sampling parameter
     """
 
-    def __init__(self, model_path, local_path, **kwargs):
+    def __init__(self, model_path, local_path=None, **kwargs):
         self.model_path = NEXA_RUN_MODEL_MAP_ONNX.get(model_path, model_path)
         self.params = {
             "temperature": 0.5,
@@ -144,7 +144,16 @@ class NexaTextInference:
         if self.params.get("streamlit"):
             self.run_streamlit()
         else:
+            if self.downloaded_onnx_folder is None:
+                self.downloaded_onnx_folder, run_type = pull_model(self.model_path)
 
+            if self.downloaded_onnx_folder is None:
+                logging.error(
+                    f"Model ({model_path}) is not applicable. Please refer to our docs for proper usage.",
+                    exc_info=True,
+                )
+                exit(1)
+            
             self._load_model_and_tokenizer()
 
             if self.model is None or self.tokenizer is None or self.streamer is None:

@@ -14,6 +14,7 @@ from nexa.constants import (
 )
 from nexa.gguf.lib_utils import is_gpu_available
 from nexa.utils import SpinningCursorAnimation, nexa_prompt, suppress_stdout_stderr
+from nexa.general import pull_model
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -25,12 +26,13 @@ class NexaTextInference:
     A class used for load text models and run text generation.
 
     Methods:
-    run: Run the text generation loop.
-    run_streamlit: Run the Streamlit UI.
+        run: Run the text generation loop.
+        run_streamlit: Run the Streamlit UI.
 
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.
     local_path (str): Local path of the model.
+    embedding (bool): Enable embedding generation.
     stop_words (list): List of stop words for early stopping.
     profiling (bool): Enable timing measurements for the generation process.
     streamlit (bool): Run the inference in Streamlit UI.
@@ -39,13 +41,24 @@ class NexaTextInference:
     top_k (int): Top-k sampling parameter.
     top_p (float): Top-p sampling parameter
     """
-    def __init__(self, model_path, local_path, stop_words=None, **kwargs):
+    def __init__(self, model_path, local_path=None, stop_words=None, **kwargs):
         self.params = DEFAULT_TEXT_GEN_PARAMS
         self.params.update(kwargs)
         self.model = None
-        self.model_path = model_path
-        self.local_path = local_path
         
+        self.model_path = model_path
+        self.downloaded_path = local_path
+        
+        if self.downloaded_path is None:
+            self.downloaded_path, run_type = pull_model(self.model_path)
+
+        if self.downloaded_path is None:
+            logging.error(
+                f"Model ({model_path}) is not appicable. Please refer to our docs for proper usage.",
+                exc_info=True,
+            )
+            exit(1)
+
         self.stop_words = (
             stop_words if stop_words else NEXA_STOP_WORDS_MAP.get(model_path, [])
         )
@@ -79,14 +92,14 @@ class NexaTextInference:
 
     @SpinningCursorAnimation()
     def _load_model(self):
-        logging.debug(f"Loading model from {self.local_path}")
+        logging.debug(f"Loading model from {self.downloaded_path}")
         start_time = time.time()
         with suppress_stdout_stderr():
             try:
                 from nexa.gguf.llama.llama import Llama
                 self.model = Llama(
                     embedding=self.params.get("embedding", False),
-                    model_path=self.local_path,
+                    model_path=self.downloaded_path,
                     verbose=self.profiling,
                     chat_format=self.chat_format,
                     n_ctx=2048,
@@ -95,7 +108,7 @@ class NexaTextInference:
             except Exception as e:
                 logging.error(f"Failed to load model: {e}. Falling back to CPU.", exc_info=True)
                 self.model = Llama(
-                    model_path=self.local_path,
+                    model_path=self.downloaded_path,
                     verbose=self.profiling,
                     chat_format=self.chat_format,
                     n_ctx=2048,
@@ -306,6 +319,6 @@ if __name__ == "__main__":
     stop_words = kwargs.pop("stop_words", [])
     inference = NexaTextInference(model_path, stop_words=stop_words, **kwargs)
     if args.streamlit:
-        inference.run_streamlit()
+        inference.run_streamlit(model_path)
     else:
         inference.run()

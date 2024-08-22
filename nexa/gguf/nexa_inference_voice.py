@@ -12,7 +12,7 @@ from nexa.constants import (
 )
 from nexa.utils import nexa_prompt
 from nexa.utils import nexa_prompt, SpinningCursorAnimation, suppress_stdout_stderr
-
+from nexa.general import pull_model
 logging.basicConfig(level=logging.INFO)
 
 
@@ -21,8 +21,8 @@ class NexaVoiceInference:
     A class used for loading voice models and running voice transcription.
 
     Methods:
-    run: Run the voice transcription loop.
-    run_streamlit: Run the Streamlit UI.
+      run: Run the voice transcription loop.
+      run_streamlit: Run the Streamlit UI.
 
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.
@@ -36,12 +36,15 @@ class NexaVoiceInference:
     output_dir (str): Output directory for transcriptions.
 
     """
-    def __init__(self, model_path, local_path, **kwargs):
+    def __init__(self, model_path, local_path=None, **kwargs):
         self.model_path = model_path
-        self.local_path = local_path
+        self.downloaded_path = local_path
         self.params = DEFAULT_VOICE_GEN_PARAMS
 
-        if self.local_path is None:
+        if self.downloaded_path is None:
+            self.downloaded_path, run_type = pull_model(self.model_path)
+
+        if self.downloaded_path is None:
             logging.error(
                 f"Model ({model_path}) is not applicable. Please refer to our docs for proper usage.",
                 exc_info=True,
@@ -64,10 +67,10 @@ class NexaVoiceInference:
     def _load_model(self):
         from faster_whisper import WhisperModel
 
-        logging.debug(f"Loading model from: {self.local_path}")
+        logging.debug(f"Loading model from: {self.downloaded_path}")
         with suppress_stdout_stderr():
             self.model = WhisperModel(
-                self.local_path,
+                self.downloaded_path,
                 device="cpu",
                 compute_type=self.params["compute_type"],
             )

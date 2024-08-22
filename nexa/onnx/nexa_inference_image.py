@@ -12,7 +12,7 @@ from optimum.onnxruntime import (
     ORTStableDiffusionPipeline,
     ORTStableDiffusionXLPipeline,
 )
-
+from nexa.general import pull_model
 from nexa.constants import EXIT_REMINDER, NEXA_RUN_MODEL_MAP_ONNX
 from nexa.utils import nexa_prompt
 
@@ -45,7 +45,7 @@ class NexaImageInference:
     random_seed (int): Random seed for image generation.
     streamlit (bool): Run the inference in Streamlit UI.
     """
-    def __init__(self, model_path, local_path, **kwargs):
+    def __init__(self, model_path, local_path=None, **kwargs):
         self.model_path = NEXA_RUN_MODEL_MAP_ONNX.get(model_path, model_path)
         self.download_onnx_folder = local_path
         self.params = {
@@ -63,8 +63,14 @@ class NexaImageInference:
     def run(self):
 
         if self.download_onnx_folder is None:
-            logging.error("Failed to download the model. Exiting.")
-            return
+            self.download_onnx_folder, run_type = pull_model(self.model_path)
+
+        if self.download_onnx_folder is None:
+            logging.error(
+                f"Model ({model_path}) is not applicable. Please refer to our docs for proper usage.",
+                exc_info=True,
+            )
+            exit(1)
 
         self._load_model(self.download_onnx_folder)
         self._dialogue_mode()

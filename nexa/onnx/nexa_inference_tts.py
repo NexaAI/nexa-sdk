@@ -12,7 +12,7 @@ from ttstokenizer import TTSTokenizer
 
 from nexa.constants import EXIT_REMINDER, NEXA_RUN_MODEL_MAP_ONNX
 from nexa.utils import nexa_prompt
-
+from nexa.general import pull_model
 logging.basicConfig(level=logging.INFO)
 
 
@@ -33,7 +33,7 @@ class NexaTTSInference:
     streamlit (bool): Run the inference in Streamlit UI.
     """
     
-    def __init__(self, model_path, local_path, **kwargs):
+    def __init__(self, model_path, local_path=None, **kwargs):
         self.model_path = NEXA_RUN_MODEL_MAP_ONNX.get(model_path, model_path)
         self.yaml_file_name = None
         self.params = {
@@ -45,6 +45,17 @@ class NexaTTSInference:
         self.processor = None
         self.config = None
         self.downloaded_onnx_folder = local_path
+
+        if self.downloaded_onnx_folder is None:
+            self.downloaded_onnx_folder, run_type = pull_model(self.model_path)
+        
+        if self.downloaded_onnx_folder is None:
+            logging.error(
+                f"Model ({model_path}) is not applicable. Please refer to our docs for proper usage.",
+                exc_info=True,
+            )
+            exit(1)
+
         self.yaml_file_name = os.path.join(self.downloaded_onnx_folder, "config.yaml")
         with open(self.yaml_file_name, "r", encoding="utf-8") as f:
             self.config = yaml.safe_load(f)

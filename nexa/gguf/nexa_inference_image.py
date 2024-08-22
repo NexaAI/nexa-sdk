@@ -15,6 +15,7 @@ from nexa.constants import (
 )
 from nexa.utils import SpinningCursorAnimation, nexa_prompt, suppress_stdout_stderr
 from streamlit.web import cli as stcli
+from nexa.general import pull_model
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -44,34 +45,44 @@ class NexaImageInference:
     """
 
 
-    def __init__(self, model_path, local_path, **kwargs):
+    def __init__(self, model_path, local_path=None, **kwargs):
         self.model_path = model_path
-        self.local_path = local_path
+        self.downloaded_path = local_path
 
-        if self.model_path == "lcm-dreamshaper":
+        if self.downloaded_path is None:
+            self.downloaded_path, run_type = pull_model(self.model_path)
+
+        if self.downloaded_path is None:
+            logging.error(
+                f"Model ({model_path}) is not applicable. Please refer to our docs for proper usage.",
+                exc_info=True,
+            )
+            exit(1)
+
+        if "lcm-dreamshaper" in self.model_path:
             self.params = DEFAULT_IMG_GEN_PARAMS_LCM
-        elif self.model_path == "sdxl-turbo":
+        elif "sdxl-turbo" in self.model_path:
             self.params = DEFAULT_IMG_GEN_PARAMS_TURBO
         else:
             self.params = DEFAULT_IMG_GEN_PARAMS
 
         self.params.update(kwargs)
         if not kwargs.get("streamlit", False):
-            self._load_model()
+            self._load_model(model_path)
             if self.model is None:
                 logging.error("Failed to load the model or pipeline.")
                 exit(1)
 
     @SpinningCursorAnimation()
-    def _load_model(self):
+    def _load_model(self, model_path: str):
         with suppress_stdout_stderr():
             from nexa.gguf.sd.stable_diffusion import StableDiffusion
             self.model = StableDiffusion(
-                model_path=self.local_path,
+                model_path=self.downloaded_path,
                 lora_model_dir=self.params.get("lora_dir", ""),
                 n_threads=self.params.get("n_threads", multiprocessing.cpu_count()),
                 wtype=self.params.get(
-                    "wtype", NEXA_RUN_MODEL_PRECISION_MAP.get(self.model_path, "default")
+                    "wtype", NEXA_RUN_MODEL_PRECISION_MAP.get(model_path, "default")
                 ),  # Weight type (options: default, f32, f16, q4_0, q4_1, q5_0, q5_1, q8_0)
                 control_net_path=self.params.get("control_net_path", ""),
                 verbose=False,

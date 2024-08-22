@@ -4,6 +4,7 @@ from .utils import download_model
 
 sd = NexaImageInference(
     model_path="sd1-4",
+    local_path=None,
     wtype="q4_0",
 )
 
@@ -31,6 +32,6 @@ def test_img_to_img():
         )
 
 # Main execution
-# if __name__ == "__main__":
-    # test_txt_to_img()
-    # test_img_to_img()
+if __name__ == "__main__":
+    test_txt_to_img()
+    test_img_to_img()
