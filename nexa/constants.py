@@ -61,7 +61,12 @@ NEXA_RUN_MODEL_MAP_ONNX = {
     "phi3v": "Phi-3-vision-128k-instruct:onnx-cpu-int4",
     "sd1-5": "stable-diffusion-v1-5:onnx-cpu-fp32",
     "lcm-dreamshaper": "lcm-dreamshaper-v7:onnx-cpu-fp32",
-    "whisper": "whisper-tiny:onnx-cpu-fp32",
+    "whisper-tiny.en": "whisper-tiny.en:onnx-cpu-fp32",
+    "whisper-tiny": "whisper-tiny:onnx-cpu-fp32",
+    "whisper-small.en": "whisper-small.en:onnx-cpu-fp32",
+    "whisper-small": "whisper-small:onnx-cpu-fp32",
+    "whisper-base.en": "whisper-base.en:onnx-cpu-fp32",
+    "whisper-base": "whisper-base:onnx-cpu-fp32",
     "ljspeech": "ljspeech-jets:onnx-cpu-fp32",
 }
 
@@ -86,10 +91,14 @@ NEXA_RUN_MODEL_MAP_VOICE = {
     "whisper-large": "whisper-large:bin-large-v3",
     "whisper-tiny": "whisper-tiny:bin-tiny",
     "faster-whisper-tiny": "faster-whisper-tiny:bin-cpu-fp16",
+    "faster-whisper-tiny.en": "faster-whisper-tiny.en:bin-cpu-fp16",
     "faster-whisper-small": "faster-whisper-small:bin-cpu-fp16",
+    "faster-whisper-small.en": "faster-whisper-small.en:bin-cpu-fp16",
     "faster-whisper-medium": "faster-whisper-medium:bin-cpu-fp16",
+    "faster-whisper-medium.en": "faster-whisper-medium.en:bin-cpu-fp16",
     "faster-whisper-base": "faster-whisper-base:bin-cpu-fp16",
-    "faster-whisper-large": "faster-whisper-large:bin-cpu-fp16",
+    "faster-whisper-base.en": "faster-whisper-base.en:bin-cpu-fp16",
+    "faster-whisper-large": "faster-whisper-large-v3:bin-cpu-fp16",
 }
 
 NEXA_RUN_MODEL_MAP_FUNCTION_CALLING = {
