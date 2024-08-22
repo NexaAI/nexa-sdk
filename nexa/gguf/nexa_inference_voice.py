@@ -77,6 +77,7 @@ class NexaVoiceInference:
 
         logging.debug(f"Loading model from: {self.downloaded_path}")
         with suppress_stdout_stderr():
+            os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
             self.model = WhisperModel(
                 self.downloaded_path,
                 device="cpu",
