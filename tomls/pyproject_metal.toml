@@ -3,7 +3,7 @@ requires = ["scikit-build-core"]
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "nexaai-gpu"
+name = "nexaai-metal"
 version = "0.0.1"
 description = "Nexa AI SDK"
 readme = "README.md"
@@ -22,7 +22,6 @@ dependencies = [
     "pillow",
     "prompt_toolkit",
     "tqdm",  # Shared dependencies
-    "importlib-metadata>=1.4.0,<7.0",
     "tabulate",
     "streamlit"
 ]
@@ -80,8 +79,10 @@ build.verbose = true
 cmake.build-type = "Release"
 cmake.version = ">=3.16"
 cmake.args = [
-    "-DGGML_METAL=ON -DSD_METAL=ON",
-    "-DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_APPLE_SILICON_PROCESSOR=arm64",
+    "-DGGML_METAL=ON",
+    "-DSD_METAL=ON",
+    "-DCMAKE_OSX_ARCHITECTURES=arm64",
+    "-DCMAKE_APPLE_SILICON_PROCESSOR=arm64"
 ]
 
 [tool.pytest.ini_options]

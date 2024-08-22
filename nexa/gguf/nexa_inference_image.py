@@ -5,8 +5,6 @@ import os
 import sys
 import time
 from pathlib import Path
-
-from nexa.gguf.sd.stable_diffusion import StableDiffusion
 from nexa.constants import (
     DEFAULT_IMG_GEN_PARAMS,
     EXIT_REMINDER,
@@ -28,9 +26,9 @@ class NexaImageInference:
     A class used for loading image models and running image generation.
 
     Methods:
-    run_txt2img: Run the text-to-image generation loop.
-    run_img2img: Run the image-to-image generation loop.
-    run_streamlit: Run the Streamlit UI.
+        txt2img: (Used for SDK) Run the text-to-image generation loop.
+        img2img: (Used for SDK) Run the image-to-image generation loop.
+        run_streamlit: Run the Streamlit UI.
 
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.
@@ -44,6 +42,7 @@ class NexaImageInference:
     streamlit (bool): Run the inference in Streamlit UI.
 
     """
+    
 
     def __init__(self, model_path, local_path, **kwargs):
         self.model_path = model_path
@@ -66,6 +65,7 @@ class NexaImageInference:
     @SpinningCursorAnimation()
     def _load_model(self):
         with suppress_stdout_stderr():
+            from nexa.gguf.sd.stable_diffusion import StableDiffusion
             self.model = StableDiffusion(
                 model_path=self.local_path,
                 lora_model_dir=self.params.get("lora_dir", ""),
@@ -89,63 +89,104 @@ class NexaImageInference:
             file_path = os.path.join(output_dir, file_name)
             image.save(file_path)
             logging.info(f"\nImage {i+1} saved to: {file_path}")
+    
+    def txt2img(self, 
+                prompt, 
+                negative_prompt="",
+                cfg_scale=7.5,
+                width=512,
+                height=512,
+                sample_steps=20,
+                seed=0,
+                control_cond="",
+                control_strength=0.9):
+        """
+        Used for SDK. Generate images from text.
 
-    def loop_txt2img(self):
+        Args:
+            prompt (str): Prompt for the image generation.
+            negative_prompt (str): Negative prompt for the image generation.
 
+        Returns:
+            list: List of generated images.
+        """
+        images = self.model.txt_to_img(
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            cfg_scale=cfg_scale,
+            width=width,
+            height=height,
+            sample_steps=sample_steps,
+            seed=seed,
+            control_cond=control_cond,
+            control_strength=control_strength,
+        )
+        return images
+
+    def run_txt2img(self):
         while True:
             try:
                 prompt = nexa_prompt("Enter your prompt: ")
                 negative_prompt = nexa_prompt(
                     "Enter your negative prompt (press Enter to skip): "
                 )
-                self._txt2img(prompt, negative_prompt)
+                try:
+                    images = self.txt2img(
+                        prompt, 
+                        negative_prompt,
+                        cfg_scale=self.params["guidance_scale"],
+                        width=self.params["width"],
+                        height=self.params["height"],
+                        sample_steps=self.params["num_inference_steps"],
+                        seed=self.params["random_seed"],
+                        control_cond=self.params.get("control_image_path", ""),
+                        control_strength=self.params.get("control_strength", 0.9),
+                    )
+                    self._save_images(images)
+                except Exception as e:
+                    logging.error(f"Error during text to image generation: {e}")
             except KeyboardInterrupt:
                 print(EXIT_REMINDER)
             except Exception as e:
                 logging.error(f"Error during generation: {e}", exc_info=True)
 
-    def _txt2img(self, prompt: str, negative_prompt: str):
+    def img2img(self, 
+                image_path, 
+                prompt, 
+                negative_prompt="",
+                cfg_scale=7.5,
+                width=512,
+                height=512,
+                sample_steps=20,
+                seed=0,
+                control_cond="",
+                control_strength=0.9):
         """
-        Generate images based on the given prompt, negative prompt, and parameters.
+        Used for SDK. Generate images from an image.
+
+        Args:
+            image_path (str): Path to the input image.
+            prompt (str): Prompt for the image generation.
+            negative_prompt (str): Negative prompt for the image generation.
+
+        Returns:
+            list: List of generated images.
         """
-        try:
-            images = self.model.txt_to_img(
-                prompt=prompt,
-                negative_prompt=negative_prompt if negative_prompt else "",
-                cfg_scale=self.params["guidance_scale"],
-                width=self.params["width"],
-                height=self.params["height"],
-                sample_steps=self.params["num_inference_steps"],
-                seed=self.params["random_seed"],
-                control_cond=self.params.get("control_image_path", ""),
-                control_strength=self.params.get("control_strength", 0.9),
-            )
-            self._save_images(images)
-        except Exception as e:
-            logging.error(f"Error during image generation: {e}")
+        images = self.model.img_to_img(
+            image=image_path,
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            cfg_scale=cfg_scale,
+            width=width,
+            height=height,
+            sample_steps=sample_steps,
+            seed=seed,
+            control_cond=control_cond,
+            control_strength=control_strength,
+        )
+        return images
 
-    def loop_img2img(self):
-        def _generate_images(image_path, prompt, negative_prompt):
-            """
-            Generate images based on the given prompt, negative prompt, and parameters.
-            """
-            try:
-                images = self.model.img_to_img(
-                    image=image_path,
-                    prompt=prompt,
-                    negative_prompt=negative_prompt if negative_prompt else "",
-                    cfg_scale=self.params["guidance_scale"],
-                    width=self.params["width"],
-                    height=self.params["height"],
-                    sample_steps=self.params["num_inference_steps"],
-                    seed=self.params["random_seed"],
-                    control_cond=self.params.get("control_image_path", ""),
-                    control_strength=self.params.get("control_strength", 0.9),
-                )
-                self._save_images(images)
-            except Exception as e:
-                logging.error(f"Error during image generation: {e}")
-
+    def run_img2img(self):
         while True:
             try:
                 image_path = nexa_prompt("Enter the path to your image: ")
@@ -153,7 +194,19 @@ class NexaImageInference:
                 negative_prompt = nexa_prompt(
                     "Enter your negative prompt (press Enter to skip): "
                 )
-                _generate_images(image_path, prompt, negative_prompt)
+                images = self.img2img(image_path, 
+                                      prompt, 
+                                      negative_prompt,
+                                      cfg_scale=self.params["guidance_scale"],
+                                      width=self.params["width"],
+                                      height=self.params["height"],
+                                      sample_steps=self.params["num_inference_steps"],
+                                      seed=self.params["random_seed"],
+                                      control_cond=self.params.get("control_image_path", ""),
+                                        control_strength=self.params.get("control_strength", 0.9),
+                                    )
+                
+                self._save_images(images)
             except KeyboardInterrupt:
                 print(EXIT_REMINDER)
             except Exception as e:
@@ -239,6 +292,6 @@ if __name__ == "__main__":
         inference.run_streamlit(model_path)
     else:
         if args.img2img:
-            inference.loop_img2img()
+            inference.run_img2img()
         else:
-            inference.loop_txt2img()
+            inference.run_txt2img()

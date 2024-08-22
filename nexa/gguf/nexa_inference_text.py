@@ -13,7 +13,6 @@ from nexa.constants import (
     NEXA_STOP_WORDS_MAP,
 )
 from nexa.gguf.lib_utils import is_gpu_available
-from nexa.gguf.llama.llama import Llama
 from nexa.utils import SpinningCursorAnimation, nexa_prompt, suppress_stdout_stderr
 
 logging.basicConfig(
@@ -26,8 +25,8 @@ class NexaTextInference:
     A class used for load text models and run text generation.
 
     Methods:
-    run: Run the text generation loop.
-    run_streamlit: Run the Streamlit UI.
+        run: Run the text generation loop.
+        run_streamlit: Run the Streamlit UI.
 
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.
@@ -64,41 +63,45 @@ class NexaTextInference:
                     "Failed to load model or tokenizer. Exiting.", exc_info=True
                 )
                 exit(1)
-
-    def embed(
+    def create_embedding(
         self,
         input: Union[str, List[str]],
-        normalize: bool = False,
-        truncate: bool = True,
-        return_count: bool = False,
     ):
         """Embed a string.
 
         Args:
             input: The utf-8 encoded string or a list of string to embed.
-            normalize: whether to normalize embedding in embedding dimension.
-            trunca
-            truncate: whether to truncate tokens to window length before generating embedding.
-            return count: if true, return (embedding, count) tuple. else return embedding only.
-
 
         Returns:
             A list of embeddings
         """
-        return self.model.embed(input, normalize, truncate, return_count)
+        return self.model.create_embedding(input)
 
-    @SpinningCursorAnimation()
+    # @SpinningCursorAnimation()
     def _load_model(self):
         logging.debug(f"Loading model from {self.local_path}")
         start_time = time.time()
         with suppress_stdout_stderr():
-            self.model = Llama(
-                model_path=self.local_path,
-                verbose=self.profiling,
-                chat_format=self.chat_format,
-                n_ctx=2048,
-                n_gpu_layers=-1 if is_gpu_available() else 0,  # Uncomment to use GPU acceleration
-            )
+            try:
+                from nexa.gguf.llama.llama import Llama
+                self.model = Llama(
+                    embedding=self.params.get("embedding", False),
+                    model_path=self.local_path,
+                    verbose=self.profiling,
+                    chat_format=self.chat_format,
+                    n_ctx=2048,
+                    n_gpu_layers=-1 if is_gpu_available() else 0,
+                )
+            except Exception as e:
+                logging.error(f"Failed to load model: {e}. Falling back to CPU.", exc_info=True)
+                self.model = Llama(
+                    model_path=self.local_path,
+                    verbose=self.profiling,
+                    chat_format=self.chat_format,
+                    n_ctx=2048,
+                    n_gpu_layers=0,  # hardcode to use CPU
+                )
+
         load_time = time.time() - start_time
         if self.profiling:
             logging.debug(f"Model loaded in {load_time:.2f} seconds")
@@ -115,6 +118,9 @@ class NexaTextInference:
         self.conversation_history = [] if self.chat_format else None
 
     def run(self):
+        """
+        CLI interactive session. Not for SDK. 
+        """
         while True:
             generated_text = ""
             try:
@@ -154,7 +160,7 @@ class NexaTextInference:
                 if self.chat_format:
                     if len(self.conversation_history) >= 2:
                         self.conversation_history = self.conversation_history[2:]
-                    
+
                     self.conversation_history.append({"role": "user", "content": user_input})
                     self.conversation_history.append({"role": "assistant", "content": generated_text})
             except KeyboardInterrupt:
@@ -162,6 +168,44 @@ class NexaTextInference:
             except Exception as e:
                 logging.error(f"Error during generation: {e}", exc_info=True)
             print("\n")
+    
+    def create_chat_completion(self, messages, temperature=0.7, max_tokens=2048, top_k=50, top_p=1.0, stream=False, stop=None):
+        """
+        Used for SDK. Generate completion for a chat conversation.
+
+        Args:
+            messages (list): List of messages in the conversation.
+            temperature (float): Temperature for sampling.
+            max_tokens (int): Maximum number of new tokens to generate.
+            top_k (int): Top-k sampling parameter.
+            top_p (float): Top-p sampling parameter.
+            stream (bool): Stream the output.
+            stop (list): List of stop words for early stopping.
+
+        Returns:
+            Iterator: Iterator for the completion.
+        """
+        return self.model.create_chat_completion(messages=messages, temperature=temperature, max_tokens=max_tokens, top_k=top_k, top_p=top_p, stream=stream, stop=stop)
+    
+    def create_completion(self, prompt, temperature=0.7, max_tokens=2048, top_k=50, top_p=1.0, echo=False, stream=False, stop=None):
+        """
+        Used for SDK. Generate completion for a given prompt.
+
+        Args:
+            prompt (str): Prompt for the completion.
+            temperature (float): Temperature for sampling.
+            max_tokens (int): Maximum number of new tokens to generate.
+            top_k (int): Top-k sampling parameter.
+            top_p (float): Top-p sampling parameter.
+            echo (bool): Echo the prompt back in the output.
+            stream (bool): Stream the output.
+            stop (list): List of stop words for early stopping.
+
+        Returns:
+            Iterator: Iterator for the completion.
+        """
+        return self.model.create_completion(prompt=prompt, temperature=temperature, max_tokens=max_tokens, top_k=top_k, top_p=top_p, echo=echo, stream=stream, stop=stop)
+
 
     def _chat(self, user_input: str) -> Iterator:
         current_messages = self.conversation_history + [{"role": "user", "content": user_input}]
@@ -194,7 +238,7 @@ class NexaTextInference:
 
     def run_streamlit(self, model_path: str):
         """
-        Run the Streamlit UI.
+        Used for CLI. Run the Streamlit UI.
         """
         logging.info("Running Streamlit UI...")
 

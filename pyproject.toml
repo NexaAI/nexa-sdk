@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "nexaai"
-version = "0.0.1"
+version = "0.0.2.dev"
 description = "Nexa AI SDK"
 readme = "README.md"
 license = { text = "MIT" }
@@ -22,7 +22,6 @@ dependencies = [
     "pillow",
     "prompt_toolkit",
     "tqdm",  # Shared dependencies
-    "importlib-metadata>=1.4.0,<7.0",
     "tabulate",
     "streamlit"
 ]
