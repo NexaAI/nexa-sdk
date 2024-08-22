@@ -24,7 +24,7 @@ Detailed API documentation is available [here](docs/index.html).
 
 ## Installation
 
-**GPU version(optional)**
+### GPU version(optional)
 
 check if you have GPU acceleration (torch required)
 <details>
@@ -69,7 +69,7 @@ check if you have GPU acceleration (torch required)
   ```
 </details>
 
-**CPU version**
+### CPU version
 
 <details>
   <summary>Mac with Intel chips</summary>
@@ -90,6 +90,22 @@ check if you have GPU acceleration (torch required)
 Or you prefer to install the pre-built wheel:
 ```bash
 pip install nexaai --index-url https://nexaai.github.io/nexa-sdk/whl/cpu --extra-index-url https://pypi.org/simple
+```
+
+### Docker Usage
+Note: Docker doesn't support GPU acceleration
+
+`docker pull nexa4ai/sdk:latest`
+
+replace following placeholder with your path and command
+
+`docker run -v <your_model_dir>:/model -it nexa4ai/sdk:latest [nexa_command] [your_model_relative_path]`
+
+Example:
+
+`docker run -v /home/ubuntu/.cache/nexa/hub/official:/model -it nexa4ai/sdk:latest nexa gen-text /model/Phi-3-mini-128k-instruct/q4_0.gguf`
+
+will create an interactive session with text generation
 ```
 
 ## Nexa CLI commands
