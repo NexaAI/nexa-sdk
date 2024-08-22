@@ -137,7 +137,7 @@ class SpinningCursorAnimation:
             else:
                 try:
                     self.stream = open('/dev/tty', "w")
-                except FileNotFoundError:
+                except (FileNotFoundError, OSError):
                     self.stream = open('/dev/stdout', "w")
         self.thread = threading.Thread(target=self._spin)
         self.thread.start()
