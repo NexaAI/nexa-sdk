@@ -38,11 +38,11 @@ check if you have GPU acceleration (torch required)
   if True
 
   ```
-  CMAKE_ARGS="-DGGML_CUDA=on -DSD_CUBLAS=ON" pip install nexaai-gpu
+  CMAKE_ARGS="-DGGML_CUDA=on -DSD_CUBLAS=ON" pip install nexaai
   ```
   Or you prefer to install our pre-built wheel:
   ```bash
-  pip install nexaai-cuda --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple
+  pip install nexaai --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple
   ```
 </details>
 <details>
@@ -52,20 +52,11 @@ check if you have GPU acceleration (torch required)
   if True:
 
   ```
-  CMAKE_ARGS="-DGGML_METAL=on -DSD_METAL=ON" pip install nexaai-gpu
+  CMAKE_ARGS="-DGGML_METAL=on -DSD_METAL=ON" pip install nexaai
   ```
   Or you prefer to install our pre-built wheel:
   ```bash
-  pip install nexaai-metal --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple
-  ```
-</details>
-
-<details>
-  <summary>AMD graphics card:</summary>
-
-
-  ```
-  CMAKE_ARGS="-DGGML_HIPBLAS=on" pip install nexaai-gpu
+  pip install nexaai --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple
   ```
 </details>
 
