@@ -51,9 +51,9 @@ def run_ggml_inference(args):
         if hasattr(args, 'streamlit') and args.streamlit:
             inference.run_streamlit(model_path)
         elif args.img2img:
-            inference.loop_img2img()
+            inference.run_img2img()
         else:
-            inference.loop_txt2img()
+            inference.run_txt2img()
         return
     elif args.command == "vlm":
         from nexa.gguf.nexa_inference_vlm import NexaVLMInference
