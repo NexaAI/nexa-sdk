@@ -185,7 +185,7 @@ jobs:
 
   release:
     name: Release
-    needs: [build_wheels, build_wheels_macos, build_wheels_arm64, build_sdist]
+    needs: [build_wheels_linux, build_wheels_win, build_wheels_macos, build_wheels_arm64, build_sdist]
     runs-on: ubuntu-latest
 
     steps:

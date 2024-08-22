@@ -1,7 +1,7 @@
 #!/bin/bash
 
 package_name="nexaai"
-repo_name="nexaai-sdk-cpp"
+repo_name="nexa-sdk"
 
 # Get output directory or default to index/whl/cpu
 output_dir=${1:-"index/whl/cpu"}
