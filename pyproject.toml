@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "nexaai"
-version = "0.0.5"
+version = "0.0.5.1"
 description = "Nexa AI SDK"
 readme = "README.md"
 license = { text = "MIT" }
@@ -78,7 +78,8 @@ sdist.exclude = [".github", "build", "dist", "nexa.egg-info", "dependency/llama.
 build.verbose = true
 cmake.build-type = "Release"
 cmake.version = ">=3.16"
-# cmake.args = ["-DCMAKE_CXX_FLAGS=-fopenmp"]
+# cmake.args = ["-DCMAKE_CXX_FLAGS=-fopenmp"] # for macOS with Intel Silicon
+cmake.args = ["-DCMAKE_BUILD_PARALLEL_LEVEL=16"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

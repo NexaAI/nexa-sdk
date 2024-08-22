@@ -44,6 +44,10 @@ check if you have GPU acceleration (torch required)
   ```bash
   pip install nexaai --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple
   ```
+  Optionally, you can install onnx supported version:
+  ```bash
+  pip install nexaai[onnx] --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple
+  ```
 </details>
 <details>
   <summary>Apple M Chip:</summary>
@@ -58,43 +62,74 @@ check if you have GPU acceleration (torch required)
   ```bash
   pip install nexaai --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple
   ```
+  Optionally, you can install onnx supported version:
+  ```bash
+  pip install nexaai[onnx] --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple
+  ```
 </details>
 
 ### CPU version
 
 <details>
-  <summary>Mac with Intel chips</summary>
+  <summary>Mac with Intel Chips</summary>
 
-  ```
+  To install the `nexaai` package on a Mac with Intel chips, use the following command:
+
+  ```bash
   CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp" pip install nexaai
   ```
+
+  **Optional:** To install the version with ONNX support, use:
+
+  ```bash
+  CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp" pip install nexaai[onnx]
+  ```
+
 </details>
 
 <details>
-  <summary>Mac with M chips or other Operating systems:</summary>
+  <summary>Mac with M Chips or Other Operating Systems</summary>
 
-  ```
+  To install the `nexaai` package on a Mac with M chips or other operating systems, use the following command:
+
+  ```bash
   pip install nexaai
   ```
-</details>
 
-Or you prefer to install the pre-built wheel:
+  **Optional:** To install the version with ONNX support, use:
+
+  ```bash
+  pip install nexaai[onnx]
+  ```
+
+
+</details>
+If you prefer to install the pre-built wheel for CPU versions:
+
 ```bash
 pip install nexaai --index-url https://nexaai.github.io/nexa-sdk/whl/cpu --extra-index-url https://pypi.org/simple
 ```
 
+To include ONNX support:
+
+```bash
+pip install nexaai[onnx] --index-url https://nexaai.github.io/nexa-sdk/whl/cpu --extra-index-url https://pypi.org/simple
+```
+
 ### Docker Usage
 Note: Docker doesn't support GPU acceleration
-
-`docker pull nexa4ai/sdk:latest`
-
+```bash
+docker pull nexa4ai/sdk:latest
+```
 replace following placeholder with your path and command
-
-`docker run -v <your_model_dir>:/model -it nexa4ai/sdk:latest [nexa_command] [your_model_relative_path]`
+```bash
+docker run -v <your_model_dir>:/model -it nexa4ai/sdk:latest [nexa_command] [your_model_relative_path]
+```
 
 Example:
-
-`docker run -v /home/ubuntu/.cache/nexa/hub/official:/model -it nexa4ai/sdk:latest nexa gen-text /model/Phi-3-mini-128k-instruct/q4_0.gguf`
+```bash
+docker run -v /home/ubuntu/.cache/nexa/hub/official:/model -it nexa4ai/sdk:latest nexa gen-text /model/Phi-3-mini-128k-instruct/q4_0.gguf
+```
 
 will create an interactive session with text generation
 
