@@ -10,9 +10,11 @@ from nexa.constants import (
     EXIT_REMINDER,
     NEXA_RUN_MODEL_MAP_VOICE,
 )
-from nexa.utils import nexa_prompt
-from nexa.utils import nexa_prompt, SpinningCursorAnimation, suppress_stdout_stderr
 from nexa.general import pull_model
+from nexa.utils import nexa_prompt, SpinningCursorAnimation
+from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
+
+
 logging.basicConfig(level=logging.INFO)
 
 
@@ -69,6 +71,7 @@ class NexaVoiceInference:
 
         logging.debug(f"Loading model from: {self.downloaded_path}")
         with suppress_stdout_stderr():
+            os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
             self.model = WhisperModel(
                 self.downloaded_path,
                 device="cpu",

@@ -10,9 +10,6 @@ from prompt_toolkit import HTML, prompt
 from prompt_toolkit.styles import Style
 
 from nexa.constants import EXIT_COMMANDS, EXIT_REMINDER
-from nexa.gguf.llama._utils_transformers import (
-    suppress_stdout_stderr,
-)  # re-import, don't comment out
 
 
 def is_package_installed(package_name: str) -> bool:

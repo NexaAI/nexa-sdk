@@ -13,8 +13,10 @@ from nexa.constants import (
     NEXA_STOP_WORDS_MAP,
 )
 from nexa.gguf.lib_utils import is_gpu_available
-from nexa.utils import SpinningCursorAnimation, nexa_prompt, suppress_stdout_stderr
 from nexa.general import pull_model
+from nexa.utils import SpinningCursorAnimation, nexa_prompt
+from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
+
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"

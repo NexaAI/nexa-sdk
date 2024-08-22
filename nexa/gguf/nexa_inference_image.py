@@ -13,7 +13,9 @@ from nexa.constants import (
     DEFAULT_IMG_GEN_PARAMS_LCM,
     DEFAULT_IMG_GEN_PARAMS_TURBO,
 )
-from nexa.utils import SpinningCursorAnimation, nexa_prompt, suppress_stdout_stderr
+from nexa.utils import SpinningCursorAnimation, nexa_prompt
+from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
+
 from streamlit.web import cli as stcli
 from nexa.general import pull_model
 

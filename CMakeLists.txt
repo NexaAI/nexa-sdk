@@ -1,13 +1,19 @@
 cmake_minimum_required(VERSION 3.16)
 
 if (GGML_CUDA OR GGML_METAL)
-    set(EMPTY_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib/empty_file.txt")
+    set(SOURCE_EMPTY_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib/empty_file.txt")
     add_custom_command(
-        OUTPUT ${EMPTY_FILE_PATH}
-        COMMAND ${CMAKE_COMMAND} -E touch ${EMPTY_FILE_PATH}
-        COMMENT "Creating an empty file because MY_FEATURE is ON"
+        OUTPUT ${SOURCE_EMPTY_FILE_PATH}
+        COMMAND ${CMAKE_COMMAND} -E touch ${SOURCE_EMPTY_FILE_PATH}
+        COMMENT "Creating an empty file to source folder because gpu option is ON"
+    )
+    set(WHEEL_EMPTY_FILE_PATH "${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib/empty_file.txt")
+    add_custom_command(
+        OUTPUT ${WHEEL_EMPTY_FILE_PATH}
+        COMMAND ${CMAKE_COMMAND} -E touch ${WHEEL_EMPTY_FILE_PATH}
+        COMMENT "Creating an empty file to lib folder because gpu option is ON"
     )    
-    add_custom_target(create_empty_file ALL DEPENDS ${EMPTY_FILE_PATH})
+    add_custom_target(create_empty_file ALL DEPENDS ${SOURCE_EMPTY_FILE_PATH} ${WHEEL_EMPTY_FILE_PATH})
 endif()
 
 # Project: stable_diffusion_cpp

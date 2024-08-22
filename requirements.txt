@@ -16,7 +16,6 @@ fastapi
 uvicorn
 pydantic
 pillow
-prompt_toolkit
 
 # For onnx
 optimum[onnxruntime]  # for CPU version
@@ -31,6 +30,7 @@ transformers
 ttstokenizer
 
 # Shared dependencies
+prompt_toolkit
 tqdm
 tabulate
 streamlit

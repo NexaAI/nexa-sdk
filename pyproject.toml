@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "nexaai"
-version = "0.0.2.dev"
+version = "0.0.5"
 description = "Nexa AI SDK"
 readme = "README.md"
 license = { text = "MIT" }
@@ -36,7 +36,7 @@ classifiers = [
 [project.optional-dependencies]
 onnx = [
     "librosa",
-    "optimum[onnxruntime]>=1.7.3",  # for CPU version
+    "optimum[onnxruntime]",  # for CPU version
     "diffusers",  # required for image generation
     "optuna",
     "pydantic",
@@ -78,7 +78,7 @@ sdist.exclude = [".github", "build", "dist", "nexa.egg-info", "dependency/llama.
 build.verbose = true
 cmake.build-type = "Release"
 cmake.version = ">=3.16"
-cmake.args = ["-DCMAKE_CXX_FLAGS=-fopenmp"]
+# cmake.args = ["-DCMAKE_CXX_FLAGS=-fopenmp"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

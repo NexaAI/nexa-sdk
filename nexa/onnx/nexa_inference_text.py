@@ -9,7 +9,7 @@ from optimum.onnxruntime import ORTModelForCausalLM
 from transformers import AutoTokenizer, TextStreamer
 from nexa.general import pull_model
 from nexa.constants import NEXA_RUN_MODEL_MAP_ONNX
-from nexa.utils import nexa_prompt
+from nexa.utils import nexa_prompt, SpinningCursorAnimation
 
 logging.basicConfig(level=logging.INFO)
 
@@ -51,6 +51,7 @@ class NexaTextInference:
         self.timings = kwargs.get("timings", False)
         self.device = "cpu"
 
+    @SpinningCursorAnimation()
     def _load_model_and_tokenizer(self) -> Tuple[Any, Any, Any, bool]:
         logging.debug(f"Loading model from {self.downloaded_onnx_folder}")
         start_time = time.time()
