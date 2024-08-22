@@ -81,8 +81,8 @@ build.verbose = true
 cmake.build-type = "Release"
 cmake.version = ">=3.16"
 cmake.args = [
-    "-DGGML_CUDA=ON",
     "-DSD_CUBLAS=ON",
+    "-DGGML_CUDA=ON",
     "-DCMAKE_CUDA_ARCHITECTURES=all",
     "-DGGML_CUDA_FORCE_MMQ=ON",
     "-DGGML_AVX2=OFF",
