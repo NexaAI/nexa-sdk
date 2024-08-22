@@ -69,7 +69,7 @@ class NexaVoiceInference:
                 exit(1)
 
 
-    @SpinningCursorAnimation()
+    # @SpinningCursorAnimation()
     def _load_model(self):
         from faster_whisper import WhisperModel
 

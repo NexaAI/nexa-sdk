@@ -146,7 +146,7 @@ class NexaVLMInference:
                 )
                 exit(1)
 
-    @SpinningCursorAnimation()
+    # @SpinningCursorAnimation()
     def _load_model(self):
         logging.debug(f"Loading model from {self.downloaded_path}")
         start_time = time.time()
