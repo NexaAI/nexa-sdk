@@ -1,5 +1,15 @@
 cmake_minimum_required(VERSION 3.16)
 
+if (GGML_CUDA OR GGML_METAL)
+    set(EMPTY_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib/empty_file.txt")
+    add_custom_command(
+        OUTPUT ${EMPTY_FILE_PATH}
+        COMMAND ${CMAKE_COMMAND} -E touch ${EMPTY_FILE_PATH}
+        COMMENT "Creating an empty file because MY_FEATURE is ON"
+    )    
+    add_custom_target(create_empty_file ALL DEPENDS ${EMPTY_FILE_PATH})
+endif()
+
 # Project: llama_cpp
 project(llama_cpp)
 
