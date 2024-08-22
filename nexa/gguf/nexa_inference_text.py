@@ -40,7 +40,7 @@ class NexaTextInference:
         top_k (int): Top-k sampling parameter.
         top_p (float): Top-p sampling parameter
     """
-    
+
     def __init__(self, model_path, stop_words=None, **kwargs):
         self.params = DEFAULT_TEXT_GEN_PARAMS
         self.params.update(kwargs)
@@ -98,7 +98,7 @@ class NexaTextInference:
         """
         return self.model.create_embedding(input)
 
-    # @SpinningCursorAnimation()
+    @SpinningCursorAnimation()
     def _load_model(self):
         logging.debug(f"Loading model from {self.downloaded_path}")
         start_time = time.time()
@@ -140,7 +140,7 @@ class NexaTextInference:
 
     def run(self):
         """
-        CLI interactive session. Not for SDK. 
+        CLI interactive session. Not for SDK.
         """
         while True:
             generated_text = ""
@@ -189,7 +189,7 @@ class NexaTextInference:
             except Exception as e:
                 logging.error(f"Error during generation: {e}", exc_info=True)
             print("\n")
-    
+
     def create_chat_completion(self, messages, temperature=0.7, max_tokens=2048, top_k=50, top_p=1.0, stream=False, stop=None):
         """
         Used for SDK. Generate completion for a chat conversation.
@@ -207,7 +207,7 @@ class NexaTextInference:
             Iterator: Iterator for the completion.
         """
         return self.model.create_chat_completion(messages=messages, temperature=temperature, max_tokens=max_tokens, top_k=top_k, top_p=top_p, stream=stream, stop=stop)
-    
+
     def create_completion(self, prompt, temperature=0.7, max_tokens=2048, top_k=50, top_p=1.0, echo=False, stream=False, stop=None):
         """
         Used for SDK. Generate completion for a given prompt.

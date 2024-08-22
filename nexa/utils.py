@@ -132,7 +132,13 @@ class SpinningCursorAnimation:
 
     def __enter__(self):
         if self._use_alternate_stream:
-            self.stream = open("/dev/tty", "w")
+            if sys.platform == "win32":  # Windows
+                self.stream = open('CONOUT$', "w")
+            else:
+                try:
+                    self.stream = open('/dev/tty', "w")
+                except (FileNotFoundError, OSError):
+                    self.stream = open('/dev/stdout', "w")
         self.thread = threading.Thread(target=self._spin)
         self.thread.start()
         return self
