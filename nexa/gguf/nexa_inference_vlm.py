@@ -19,7 +19,6 @@ from nexa.constants import (
 )
 from nexa.general import pull_model
 from nexa.gguf.lib_utils import is_gpu_available
-from nexa.gguf.llama.llama import Llama
 from nexa.gguf.llama.llama_chat_format import (
     Llava15ChatHandler,
     Llava16ChatHandler,
@@ -87,6 +86,8 @@ class NexaVLMInference:
     top_k (int): Top-k sampling parameter.
     top_p (float): Top-p sampling parameter
     """
+
+
     def __init__(self, model_path, stop_words=None, **kwargs):
         self.params = DEFAULT_TEXT_GEN_PARAMS
         self.params.update(kwargs)
@@ -158,6 +159,7 @@ class NexaVLMInference:
                 else None
             )
             try:
+                from nexa.gguf.llama.llama import Llama
                 self.model = Llama(
                     model_path=self.downloaded_path,
                     chat_handler=self.projector,
@@ -238,6 +240,64 @@ class NexaVLMInference:
             except Exception as e:
                 logging.error(f"Error during generation: {e}", exc_info=True)
             print("\n")
+
+    def create_chat_completion(self,
+                            messages,
+                            max_tokens:int = 2048,
+                            temperature: float = 0.2,
+                            top_p: float = 0.95,
+                            top_k: int = 40,
+                            stream=False,
+                            stop=[]):
+        """
+        Generate text completion for a given chat prompt.
+
+        Args:
+            messages (list): List of messages in the chat prompt.
+            temperature (float): Temperature for sampling.
+            max_tokens (int): Maximum number of tokens to generate.
+            top_k (int): Top-k sampling parameter.
+            top_p (float): Top-p sampling parameter.
+            stream (bool): Stream the output.
+            stop (list): List of stop words for early stopping.
+
+        Returns:
+            Iterator: An iterator of the generated text completion
+            return format:
+            {
+                "choices": [
+                    {
+                    "finish_reason": "stop",
+                    "index": 0,
+                    "message": {
+                        "content": "The 2020 World Series was played in Texas at Globe Life Field in Arlington.",
+                        "role": "assistant"
+                    },
+                    "logprobs": null
+                    }
+                ],
+                "created": 1677664795,
+                "id": "chatcmpl-7QyqpwdfhqwajicIEznoc6Q47XAyW",
+                "model": "gpt-4o-mini",
+                "object": "chat.completion",
+                "usage": {
+                    "completion_tokens": 17,
+                    "prompt_tokens": 57,
+                    "total_tokens": 74
+                }
+            }
+            usage: message = completion.choices[0].message.content
+
+        """
+        return self.model.create_chat_completion(
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            top_k=top_k,
+            top_p=top_p,
+            stream=stream,
+            stop=stop,
+        )
 
     def _chat(self, user_input: str, image_path: str = None) -> Iterator:
         data_uri = image_to_base64_data_uri(image_path) if image_path else None

@@ -21,18 +21,18 @@ class NexaVoiceInference:
     A class used for loading voice models and running voice transcription.
 
     Methods:
-    run: Run the voice transcription loop.
-    run_streamlit: Run the Streamlit UI.
+        run: Run the voice transcription loop.
+        run_streamlit: Run the Streamlit UI.
 
     Args:
-    model_path (str): Path or identifier for the model in Nexa Model Hub.
-    output_dir (str): Output directory for transcriptions.
-    beam_size (int): Beam size to use for transcription.
-    language (str): The language spoken in the audio.
-    task (str): Task to execute (transcribe or translate).
-    temperature (float): Temperature for sampling.
-    compute_type (str): Type to use for computation (e.g., float16, int8, int8_float16).
-    output_dir (str): Output directory for transcriptions.
+        model_path (str): Path or identifier for the model in Nexa Model Hub.
+        output_dir (str): Output directory for transcriptions.
+        beam_size (int): Beam size to use for transcription.
+        language (str): The language spoken in the audio.
+        task (str): Task to execute (transcribe or translate).
+        temperature (float): Temperature for sampling.
+        compute_type (str): Type to use for computation (e.g., float16, int8, int8_float16).
+        output_dir (str): Output directory for transcriptions.
 
     """
     def __init__(self, model_path, **kwargs):
@@ -68,6 +68,7 @@ class NexaVoiceInference:
                 )
                 exit(1)
 
+
     @SpinningCursorAnimation()
     def _load_model(self):
         from faster_whisper import WhisperModel
@@ -90,6 +91,87 @@ class NexaVoiceInference:
                 print(EXIT_REMINDER)
             except Exception as e:
                 logging.error(f"Error during text generation: {e}", exc_info=True)
+
+    def transcribe(self, audio, **kwargs):
+        """
+        Transcribe the audio file.
+
+        Arguments:
+          audio: Path to the input file (or a file-like object), or the audio waveform.
+          language: The language spoken in the audio. It should be a language code such
+            as "en" or "fr". If not set, the language will be detected in the first 30 seconds
+            of audio.
+          task: Task to execute (transcribe or translate).
+          beam_size: Beam size to use for decoding.
+          best_of: Number of candidates when sampling with non-zero temperature.
+          patience: Beam search patience factor.
+          length_penalty: Exponential length penalty constant.
+          repetition_penalty: Penalty applied to the score of previously generated tokens
+            (set > 1 to penalize).
+          no_repeat_ngram_size: Prevent repetitions of ngrams with this size (set 0 to disable).
+          temperature: Temperature for sampling. It can be a tuple of temperatures,
+            which will be successively used upon failures according to either
+            `compression_ratio_threshold` or `log_prob_threshold`.
+          compression_ratio_threshold: If the gzip compression ratio is above this value,
+            treat as failed.
+          log_prob_threshold: If the average log probability over sampled tokens is
+            below this value, treat as failed.
+          no_speech_threshold: If the no_speech probability is higher than this value AND
+            the average log probability over sampled tokens is below `log_prob_threshold`,
+            consider the segment as silent.
+          condition_on_previous_text: If True, the previous output of the model is provided
+            as a prompt for the next window; disabling may make the text inconsistent across
+            windows, but the model becomes less prone to getting stuck in a failure loop,
+            such as repetition looping or timestamps going out of sync.
+          prompt_reset_on_temperature: Resets prompt if temperature is above this value.
+            Arg has effect only if condition_on_previous_text is True.
+          initial_prompt: Optional text string or iterable of token ids to provide as a
+            prompt for the first window.
+          prefix: Optional text to provide as a prefix for the first window.
+          suppress_blank: Suppress blank outputs at the beginning of the sampling.
+          suppress_tokens: List of token IDs to suppress. -1 will suppress a default set
+            of symbols as defined in the model config.json file.
+          without_timestamps: Only sample text tokens.
+          max_initial_timestamp: The initial timestamp cannot be later than this.
+          word_timestamps: Extract word-level timestamps using the cross-attention pattern
+            and dynamic time warping, and include the timestamps for each word in each segment.
+          prepend_punctuations: If word_timestamps is True, merge these punctuation symbols
+            with the next word
+          append_punctuations: If word_timestamps is True, merge these punctuation symbols
+            with the previous word
+          vad_filter: Enable the voice activity detection (VAD) to filter out parts of the audio
+            without speech. This step is using the Silero VAD model
+            https://github.com/snakers4/silero-vad.
+          vad_parameters: Dictionary of Silero VAD parameters or VadOptions class (see available
+            parameters and default values in the class `VadOptions`).
+          max_new_tokens: Maximum number of new tokens to generate per-chunk. If not set,
+            the maximum will be set by the default max_length.
+          chunk_length: The length of audio segments. If it is not None, it will overwrite the
+            default chunk_length of the FeatureExtractor.
+          clip_timestamps:
+            Comma-separated list start,end,start,end,... timestamps (in seconds) of clips to
+             process. The last end timestamp defaults to the end of the file.
+             vad_filter will be ignored if clip_timestamps is used.
+          hallucination_silence_threshold:
+            When word_timestamps is True, skip silent periods longer than this threshold
+             (in seconds) when a possible hallucination is detected
+          hotwords:
+            Hotwords/hint phrases to provide the model with. Has no effect if prefix is not None.
+          language_detection_threshold: If the maximum probability of the language tokens is higher
+           than this value, the language is detected.
+          language_detection_segments: Number of segments to consider for the language detection.
+
+        Returns:
+          A tuple with:
+
+            - a generator over transcribed segments
+            - an instance of TranscriptionInfo
+        """
+        return self.model.transcribe(
+            audio,
+            **kwargs,
+        )
+
 
     def _transcribe_audio(self, audio_path):
         logging.debug(f"Transcribing audio from: {audio_path}")

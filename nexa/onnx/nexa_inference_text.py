@@ -20,18 +20,18 @@ class NexaTextInference:
     A class used for load text models and run text generation.
 
     Methods:
-    run: Run the text generation loop.
-    run_streamlit: Run the Streamlit UI.
+        run: Run the text generation loop.
+        run_streamlit: Run the Streamlit UI.
 
     Args:
-    model_path (str): Path or identifier for the model in Nexa Model Hub.
-    profiling (bool): Enable timing measurements for the generation process.
-    streamlit (bool): Run the inference in Streamlit UI.
-    temperature (float): Temperature for sampling.
-    min_new_tokens (int): Minimum number of new tokens to generate.
-    max_new_tokens (int): Maximum number of new tokens to generate.
-    top_k (int): Top-k sampling parameter.
-    top_p (float): Top-p sampling parameter
+        model_path (str): Path or identifier for the model in Nexa Model Hub.
+        profiling (bool): Enable timing measurements for the generation process.
+        streamlit (bool): Run the inference in Streamlit UI.
+        temperature (float): Temperature for sampling.
+        min_new_tokens (int): Minimum number of new tokens to generate.
+        max_new_tokens (int): Maximum number of new tokens to generate.
+        top_k (int): Top-k sampling parameter.
+        top_p (float): Top-p sampling parameter
     """
 
     def __init__(self, model_path, **kwargs):
