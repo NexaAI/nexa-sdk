@@ -36,6 +36,7 @@ jobs:
         env:
           # disable repair
           CIBW_REPAIR_WHEEL_COMMAND: ""
+          CIBW_BUILD_FRONTEND: "build"
           CIBW_ENVIRONMENT: CMAKE_ARGS="-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64 "
           CIBW_BUILD: "cp310-* cp311-* cp312-*"
           MACOSX_DEPLOYMENT_TARGET: ${{ matrix.os }}
