@@ -4,14 +4,14 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "nexaai"
-version = "0.0.5"
+dynamic = ["version"]
 description = "Nexa AI SDK"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Nexa AI", email = "octopus@nexa4ai.com" }]
 dependencies = [
     "faster_whisper",
-    "typing-extensions>=4.5.0",  # For ggml
+    "typing-extensions>=4.5.0", # For ggml
     "numpy>=1.20.0",
     "diskcache>=5.6.1",
     "jinja2>=2.11.3",
@@ -21,9 +21,9 @@ dependencies = [
     "pydantic",
     "pillow",
     "prompt_toolkit",
-    "tqdm",  # Shared dependencies
+    "tqdm",                     # Shared dependencies
     "tabulate",
-    "streamlit"
+    "streamlit",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -36,8 +36,8 @@ classifiers = [
 [project.optional-dependencies]
 onnx = [
     "librosa",
-    "optimum[onnxruntime]",  # for CPU version
-    "diffusers",  # required for image generation
+    "optimum[onnxruntime]", # for CPU version
+    "diffusers",            # required for image generation
     "optuna",
     "pydantic",
     "PyYAML",
@@ -46,7 +46,7 @@ onnx = [
     "soundfile",
     "streamlit_audiorec",
     "transformers",
-    "ttstokenizer"
+    "ttstokenizer",
 ]
 
 [project.urls]
@@ -71,14 +71,30 @@ wheel.packages = [
     "nexa.gguf.server",
     "nexa.onnx",
     "nexa.onnx.streamlit",
-    "nexa.onnx.server"
+    "nexa.onnx.server",
 ]
-sdist.include = ["CMakeLists.txt", "dependency/llama.cpp/*", "dependency/stable-diffusion.cpp/*"]
-sdist.exclude = [".github", "build", "dist", "nexa.egg-info", "dependency/llama.cpp/build", "dependency/stable-diffusion.cpp/build"]
+sdist.include = [
+    "CMakeLists.txt",
+    "dependency/llama.cpp/*",
+    "dependency/stable-diffusion.cpp/*",
+]
+sdist.exclude = [
+    ".github",
+    "build",
+    "dist",
+    "nexa.egg-info",
+    "dependency/llama.cpp/build",
+    "dependency/stable-diffusion.cpp/build",
+]
 build.verbose = true
 cmake.build-type = "Release"
 cmake.version = ">=3.16"
-# cmake.args = ["-DCMAKE_CXX_FLAGS=-fopenmp"]
+# cmake.args = ["-DCMAKE_CXX_FLAGS=-fopenmp"] # for macOS with Intel Silicon
+cmake.args = ["-DCMAKE_BUILD_PARALLEL_LEVEL=16"]
+
+[tool.scikit-build.metadata.version]
+provider = "scikit_build_core.metadata.regex"
+input = "nexa/__init__.py"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

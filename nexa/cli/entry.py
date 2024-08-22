@@ -1,4 +1,5 @@
 import argparse
+from nexa import __version__
 
 def run_ggml_inference(args):
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
@@ -72,6 +73,15 @@ def main():
     parser = argparse.ArgumentParser(
         description="Nexa CLI tool for handling various model operations."
     )
+
+    parser.add_argument(
+        "-V",
+        "--version",
+        action="version",
+        version=__version__,
+        help="Show the version of the Nexa SDK.",
+    )
+
     subparsers = parser.add_subparsers(dest="command", help="sub-command help")
 
     # Run command
