@@ -6,12 +6,12 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y cmake g++
 # Copy the environment.yml file into the container at /app
-COPY pyproject.toml CMakeLists.txt README.md ./
+COPY pyproject.toml CMakeLists.txt requirements.txt README.md ./
 COPY dependency ./dependency
 
 # Install the conda environment
 RUN conda create -n nexa python=3.10 -y
-RUN /bin/bash -c "source activate nexa & pip install build && pip install -e ."
+RUN /bin/bash -c "source activate nexa && pip install -r requirements.txt && pip install -e ."
 
 # Activate the environment
 RUN echo "source activate nexa" > ~/.bashrc
