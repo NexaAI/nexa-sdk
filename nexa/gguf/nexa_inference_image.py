@@ -43,7 +43,7 @@ class NexaImageInference:
         streamlit (bool): Run the inference in Streamlit UI.
 
     """
-    
+
 
     def __init__(self, model_path, **kwargs):
         self.model_path = None
@@ -81,7 +81,7 @@ class NexaImageInference:
                 logging.error("Failed to load the model or pipeline.")
                 exit(1)
 
-    # @SpinningCursorAnimation()
+    @SpinningCursorAnimation()
     def _load_model(self, model_path: str):
         with suppress_stdout_stderr():
             from nexa.gguf.sd.stable_diffusion import StableDiffusion
@@ -108,9 +108,9 @@ class NexaImageInference:
             file_path = os.path.join(output_dir, file_name)
             image.save(file_path)
             logging.info(f"\nImage {i+1} saved to: {file_path}")
-    
-    def txt2img(self, 
-                prompt, 
+
+    def txt2img(self,
+                prompt,
                 negative_prompt="",
                 cfg_scale=7.5,
                 width=512,
@@ -151,7 +151,7 @@ class NexaImageInference:
                 )
                 try:
                     images = self.txt2img(
-                        prompt, 
+                        prompt,
                         negative_prompt,
                         cfg_scale=self.params["guidance_scale"],
                         width=self.params["width"],
@@ -169,9 +169,9 @@ class NexaImageInference:
             except Exception as e:
                 logging.error(f"Error during generation: {e}", exc_info=True)
 
-    def img2img(self, 
-                image_path, 
-                prompt, 
+    def img2img(self,
+                image_path,
+                prompt,
                 negative_prompt="",
                 cfg_scale=7.5,
                 width=512,
@@ -213,8 +213,8 @@ class NexaImageInference:
                 negative_prompt = nexa_prompt(
                     "Enter your negative prompt (press Enter to skip): "
                 )
-                images = self.img2img(image_path, 
-                                      prompt, 
+                images = self.img2img(image_path,
+                                      prompt,
                                       negative_prompt,
                                       cfg_scale=self.params["guidance_scale"],
                                       width=self.params["width"],
@@ -224,7 +224,7 @@ class NexaImageInference:
                                       control_cond=self.params.get("control_image_path", ""),
                                         control_strength=self.params.get("control_strength", 0.9),
                                     )
-                
+
                 self._save_images(images)
             except KeyboardInterrupt:
                 print(EXIT_REMINDER)
