@@ -25,13 +25,12 @@ from nexa.constants import (
     NEXA_RUN_MODEL_MAP_VOICE,
 )
 from nexa.gguf.lib_utils import is_gpu_available
-from nexa.utils import suppress_stdout_stderr
+from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
 from nexa.general import pull_model
 from nexa.gguf.llama.llama import Llama
 from nexa.gguf.sd.stable_diffusion import StableDiffusion
 from faster_whisper import WhisperModel
 import argparse
-
 logging.basicConfig(level=logging.INFO)
 
 app = FastAPI()
