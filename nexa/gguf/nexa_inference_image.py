@@ -144,7 +144,7 @@ class NexaImageInference:
         )
         return images
 
-    def loop_txt2img(self):
+    def run_txt2img(self):
         while True:
             try:
                 prompt = nexa_prompt("Enter your prompt: ")
@@ -315,4 +315,4 @@ if __name__ == "__main__":
         if args.img2img:
             inference.run_img2img()
         else:
-            inference.loop_txt2img()
+            inference.run_txt2img()
