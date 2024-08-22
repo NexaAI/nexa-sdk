@@ -15,7 +15,7 @@ from optimum.onnxruntime import (
 
 from nexa.constants import EXIT_REMINDER, NEXA_RUN_MODEL_MAP_ONNX
 from nexa.general import pull_model
-from nexa.utils import nexa_prompt
+from nexa.utils import nexa_prompt, SpinningCursorAnimation
 
 logging.basicConfig(level=logging.INFO)
 
@@ -73,6 +73,7 @@ class NexaImageInference:
         # Step 3: Enter dialogue mode
         self._dialogue_mode()
 
+    @SpinningCursorAnimation()
     def _load_model(self, model_path):
         """
         Load the model from the given model path using the appropriate pipeline.
@@ -147,7 +148,7 @@ class NexaImageInference:
         images = self.pipeline(**pipeline_kwargs).images
         return images
 
-            
+
 
     def _save_images(self, images):
         """

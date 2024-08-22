@@ -97,7 +97,7 @@ Example:
 `docker run -v /home/ubuntu/.cache/nexa/hub/official:/model -it nexa4ai/sdk:latest nexa gen-text /model/Phi-3-mini-128k-instruct/q4_0.gguf`
 
 will create an interactive session with text generation
-```
+
 
 ## Nexa CLI commands
 
