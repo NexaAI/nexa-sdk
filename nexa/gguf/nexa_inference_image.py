@@ -15,7 +15,9 @@ from nexa.constants import (
     DEFAULT_IMG_GEN_PARAMS_LCM,
     DEFAULT_IMG_GEN_PARAMS_TURBO,
 )
-from nexa.utils import SpinningCursorAnimation, nexa_prompt, suppress_stdout_stderr
+from nexa.utils import SpinningCursorAnimation, nexa_prompt
+from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
+
 from streamlit.web import cli as stcli
 
 logging.basicConfig(
@@ -142,7 +144,7 @@ class NexaImageInference:
         )
         return images
 
-    def run_txt2img(self):
+    def loop_txt2img(self):
         while True:
             try:
                 prompt = nexa_prompt("Enter your prompt: ")
@@ -313,4 +315,4 @@ if __name__ == "__main__":
         if args.img2img:
             inference.run_img2img()
         else:
-            inference.run_txt2img()
+            inference.loop_txt2img()
