@@ -1,11 +1,6 @@
 name: Build Wheels (CPU) (MacOS)
 
-on:
-  workflow_dispatch:
-
-  pull_request:
-    branches:
-      - main
+on: workflow_dispatch
 
 permissions:
   contents: write
