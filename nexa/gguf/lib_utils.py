@@ -8,11 +8,6 @@ from importlib.util import find_spec
 from pathlib import Path
 from typing import List
 
-from nexa.utils import (
-    is_nexa_cuda_installed,
-    is_nexa_metal_installed,
-)
-
 
 def is_gpu_available():
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -72,17 +67,19 @@ def load_library(lib_base_name: str):
 
 
 def _add_windows_dll_directories(base_path: Path) -> None:
-    try_add_cuda_lib_path()
     os.add_dll_directory(str(base_path))
     os.environ["PATH"] = str(base_path) + os.pathsep + os.environ["PATH"]
 
-    if sys.version_info >= (3, 8):
-        if "CUDA_PATH" in os.environ:
-            os.add_dll_directory(os.path.join(os.environ["CUDA_PATH"], "bin"))
-            os.add_dll_directory(os.path.join(os.environ["CUDA_PATH"], "lib"))
-        if "HIP_PATH" in os.environ:
-            os.add_dll_directory(os.path.join(os.environ["HIP_PATH"], "bin"))
-            os.add_dll_directory(os.path.join(os.environ["HIP_PATH"], "lib"))
+    if is_gpu_available():
+        try_add_cuda_lib_path()
+
+        if sys.version_info >= (3, 8):
+            if "CUDA_PATH" in os.environ:
+                os.add_dll_directory(os.path.join(os.environ["CUDA_PATH"], "bin"))
+                os.add_dll_directory(os.path.join(os.environ["CUDA_PATH"], "lib"))
+            if "HIP_PATH" in os.environ:
+                os.add_dll_directory(os.path.join(os.environ["HIP_PATH"], "bin"))
+                os.add_dll_directory(os.path.join(os.environ["HIP_PATH"], "lib"))
 
 
 def try_add_cuda_lib_path():
