@@ -25,15 +25,17 @@ logging.basicConfig(
 
 class NexaTextInference:
     """
-    A class used for load text models and run text generation.
+    A class used for loading text models and running text generation.
 
     Methods:
         run: Run the text generation loop.
         run_streamlit: Run the Streamlit UI.
-
+        create_embedding: Embed a string.
+        create_chat_completion: Generate completion for a chat conversation.
+        create_completion: Generate completion for a given prompt.
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.
-    local_path (str): Local path of the model.
+    local_path (str, optional): Local path of the model.
     embedding (bool): Enable embedding generation.
     stop_words (list): List of stop words for early stopping.
     profiling (bool): Enable timing measurements for the generation process.
