@@ -42,9 +42,10 @@ NEXA_RUN_MODEL_MAP_TEXT = {
     "codeqwen": "CodeQwen1.5-7B-Instruct:q4_0",
     "deepseek-coder": "deepseek-coder-1.3b-instruct:q4_0",
     "dolphin-mistral": "dolphin-2.8-mistral-7b:q4_0",
-    "nomic-embed-text": "nomic-embed-text-v1.5:fp16",
     "phi2": "Phi-2:q4_0",
     "phi3": "Phi-3-mini-128k-instruct:q4_0",
+    "llama2-uncensored": "Llama2-7b-chat-uncensored:q4_0",
+    "llama3-uncensored": "Llama3-8B-Lexi-Uncensored:q4_K_M",
 }
 
 NEXA_RUN_MODEL_MAP_ONNX = {
@@ -60,37 +61,58 @@ NEXA_RUN_MODEL_MAP_ONNX = {
     "phi3v": "Phi-3-vision-128k-instruct:onnx-cpu-int4",
     "sd1-5": "stable-diffusion-v1-5:onnx-cpu-fp32",
     "lcm-dreamshaper": "lcm-dreamshaper-v7:onnx-cpu-fp32",
-    "whisper": "whisper-tiny.en:onnx-cpu-fp32",
+    "whisper": "whisper-tiny:onnx-cpu-fp32",
     "ljspeech": "ljspeech-jets:onnx-cpu-fp32",
 }
 
 NEXA_RUN_MODEL_MAP_VLM = {
     "nanollava": "nanoLLaVA:model-fp16",
+    "nanoLLaVA:fp16": "nanoLLaVA:model-fp16",
     "llava-phi3": "llava-phi-3-mini:model-q4_0",
-    # "llava1.5": "/usr/share/ollama/.ollama/models/blobs/sha256-170370233dd5c5415250a2ecd5c71586352850729062ccef1496385647293868",
+    "llava-phi-3-mini:q4_0": "llava-phi-3-mini:model-q4_0",
+    "llava-phi-3-mini:fp16": "llava-phi-3-mini:model-fp16",
     "llava-llama3": "llava-llama-3-8b-v1.1:model-q4_0",
+    "llava-llama-3-8b-v1.1:q4_0": "llava-llama-3-8b-v1.1:model-q4_0",
+    "llava-llama-3-8b-v1.1:fp16": "llava-llama-3-8b-v1.1:model-fp16",
     "llava1.6-mistral": "llava-v1.6-mistral-7b:model-q4_0",
+    "llava-v1.6-mistral-7b:q4_0": "llava-v1.6-mistral-7b:model-q4_0",
+    "llava-v1.6-mistral-7b:fp16": "llava-v1.6-mistral-7b:model-fp16",
     "llava1.6-vicuna": "llava-v1.6-vicuna-7b:model-q4_0",
+    "llava-v1.6-vicuna-7b:q4_0": "llava-v1.6-vicuna-7b:model-q4_0",
+    "llava-v1.6-vicuna-7b:fp16": "llava-v1.6-vicuna-7b:model-fp16",
 }
 
 NEXA_RUN_MODEL_MAP_VOICE = {
     "whisper-large": "whisper-large:bin-large-v3",
     "whisper-tiny": "whisper-tiny:bin-tiny",
+    "faster-whisper-tiny": "faster-whisper-tiny:bin-cpu-fp16",
+    "faster-whisper-small": "faster-whisper-small:bin-cpu-fp16",
+    "faster-whisper-medium": "faster-whisper-medium:bin-cpu-fp16",
+    "faster-whisper-base": "faster-whisper-base:bin-cpu-fp16",
+    "faster-whisper-large": "faster-whisper-large:bin-cpu-fp16",
 }
 
 NEXA_RUN_MODEL_MAP_FUNCTION_CALLING = {
-  "llama2-function-calling": "Llama2-7b-function-calling:q3_K_M",
+  "llama2-function-calling": "Llama2-7b-function-calling:q4_K_M",
 }
 
 
 
 NEXA_RUN_PROJECTOR_MAP = {
     "nanollava": "nanoLLaVA:projector-fp16",
+    "nanoLLaVA:fp16": "nanoLLaVA:project-fp16",
     "llava-phi3": "llava-phi-3-mini:projector-q4_0",
-    # "llava1.5": "/usr/share/ollama/.ollama/models/blobs/sha256-72d6f08a42f656d36b356dbe0920675899a99ce21192fd66266fb7d82ed07539",
+    "llava-phi-3-mini:q4_0": "llava-phi-3-mini:projector-q4_0",
+    "llava-phi-3-mini:fp16": "llava-phi-3-mini:projector-fp16",
     "llava-llama3": "llava-llama-3-8b-v1.1:projector-q4_0",
+    "llava-llama-3-8b-v1.1:q4_0": "llava-llama-3-8b-v1.1:projector-q4_0",
+    "llava-llama-3-8b-v1.1:fp16": "llava-llama-3-8b-v1.1:projector-fp16",
     "llava1.6-mistral": "llava-v1.6-mistral-7b:projector-q4_0",
+    "llava-v1.6-mistral-7b:q4_0": "llava-v1.6-mistral-7b:projector-q4_0",
+    "llava-v1.6-mistral-7b:fp16": "llava-v1.6-mistral-7b:projector-fp16",
     "llava1.6-vicuna": "llava-v1.6-vicuna-7b:projector-q4_0",
+    "llava-v1.6-vicuna-7b:q4_0": "llava-v1.6-vicuna-7b:projector-q4_0",
+    "llava-v1.6-vicuna-7b:fp16": "llava-v1.6-vicuna-7b:projector-fp16",
 }
 
 NEXA_RUN_MODEL_MAP_IMAGE = {
@@ -99,6 +121,8 @@ NEXA_RUN_MODEL_MAP_IMAGE = {
     "sd2-1": "stable-diffusion-v2-1:fp16",
     "sdxl-turbo": "sdxl-turbo:q8_0",
     "lcm-dreamshaper": "lcm-dreamshaper-v7:fp16",
+    "anything-lcm": "anything-v30-LCM:fp16",
+    "hassaku-lcm": "hassaku-hentai-model-v13-LCM:fp16",
 }
 
 NEXA_RUN_MODEL_MAP = {
@@ -127,6 +151,9 @@ NEXA_RUN_MODEL_PRECISION_MAP = {
     "sd1-5": "q4_0",
     "sd2-1": "q4_0",
     "lcm-dreamshaper": "f16",
+    "sdxl-turbo": "q8_0",
+    "anything-lcm": "f16",
+    "hassaku-lcm": "f16",
 }
 
 EXIT_COMMANDS = ["/exit", "/quit", "/bye"]

@@ -98,22 +98,29 @@ class NexaImageInference:
         """
         Enter a dialogue mode where the user can input prompts and negative prompts repeatedly.
         """
-        print("Enter 'quit' to exit the program.")
         while True:
             try:
                 prompt = nexa_prompt("Enter your prompt: ")
                 negative_prompt = nexa_prompt(
                     "Enter your negative prompt (press Enter to skip): "
                 )
-                self._generate_images(prompt, negative_prompt)
+                images = self.generate_images(prompt, negative_prompt)
+                self._save_images(images)
             except KeyboardInterrupt:
                 print(EXIT_REMINDER)
             except Exception as e:
                 logging.error(f"Error during text generation: {e}", exc_info=True)
 
-    def _generate_images(self, prompt, negative_prompt):
+    def generate_images(self, prompt, negative_prompt):
         """
-        Generate images based on the given prompt, negative prompt, and parameters.
+        Used for SDK. Generate images based on the given prompt, negative prompt, and parameters.
+
+        Arg:
+            prompt (str): Prompt for the image generation.
+            negative_prompt (str): Negative prompt for the image generation.
+
+        Returns:
+            list: List of generated images.
         """
         if self.pipeline is None:
             logging.error("Model not loaded. Exiting.")
@@ -121,28 +128,26 @@ class NexaImageInference:
 
         generator = np.random.RandomState(self.params["random_seed"])
 
-        try:
-            is_lcm_pipeline = isinstance(
-                self.pipeline, ORTLatentConsistencyModelPipeline
-            )
+        is_lcm_pipeline = isinstance(
+            self.pipeline, ORTLatentConsistencyModelPipeline
+        )
 
-            pipeline_kwargs = {
-                "prompt": prompt,
-                "num_inference_steps": self.params["num_inference_steps"],
-                "num_images_per_prompt": self.params["num_images_per_prompt"],
-                "height": self.params["height"],
-                "width": self.params["width"],
-                "generator": generator,
-                "guidance_scale": self.params["guidance_scale"],
-            }
-            if not is_lcm_pipeline and negative_prompt:
-                pipeline_kwargs["negative_prompt"] = negative_prompt
+        pipeline_kwargs = {
+            "prompt": prompt,
+            "num_inference_steps": self.params["num_inference_steps"],
+            "num_images_per_prompt": self.params["num_images_per_prompt"],
+            "height": self.params["height"],
+            "width": self.params["width"],
+            "generator": generator,
+            "guidance_scale": self.params["guidance_scale"],
+        }
+        if not is_lcm_pipeline and negative_prompt:
+            pipeline_kwargs["negative_prompt"] = negative_prompt
 
-            images = self.pipeline(**pipeline_kwargs).images
+        images = self.pipeline(**pipeline_kwargs).images
+        return images
 
-            self._save_images(images)
-        except Exception as e:
-            logging.error(f"Error during image generation: {e}")
+            
 
     def _save_images(self, images):
         """

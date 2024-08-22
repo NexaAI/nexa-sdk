@@ -1,4 +1,3 @@
-import asyncio
 import json
 import logging
 import os
@@ -25,6 +24,7 @@ from nexa.constants import (
     NEXA_RUN_MODEL_MAP_FUNCTION_CALLING,
     NEXA_RUN_MODEL_MAP_VOICE,
 )
+from nexa.gguf.lib_utils import is_gpu_available
 from nexa.utils import suppress_stdout_stderr
 from nexa.general import pull_model
 from nexa.gguf.llama.llama import Llama
@@ -69,24 +69,47 @@ async def load_model():
         model_path = NEXA_RUN_MODEL_MAP_TEXT.get(model_path)
         downloaded_path = pull_model(model_path)
         with suppress_stdout_stderr():
-            model = Llama(
-                model_path=downloaded_path,
-                verbose=False,
-                chat_format=chat_format,
-                n_gpu_layers=-1,  # Uncomment to use GPU acceleration
-            )
+            try:
+                model = Llama(
+                    model_path=downloaded_path,
+                    verbose=False,
+                    chat_format=chat_format,
+                    n_gpu_layers=-1 if is_gpu_available() else 0,
+                )
+            except Exception as e:
+                logging.error(
+                    f"Failed to load model: {e}. Falling back to CPU.", exc_info=True
+                )
+                model = Llama(
+                    model_path=downloaded_path,
+                    verbose=False,
+                    chat_format=chat_format,
+                    n_gpu_layers=0,  # hardcode to use CPU
+                )
             logging.info(f"model loaded as {model}")
     elif model_path in NEXA_RUN_MODEL_MAP_FUNCTION_CALLING:
         chat_format = "chatml-function-calling"
         model_path = NEXA_RUN_MODEL_MAP_FUNCTION_CALLING.get(model_path)
         downloaded_path = pull_model(model_path)
         with suppress_stdout_stderr():
-            model = Llama(
-                model_path=downloaded_path,
-                verbose=False,
-                chat_format=chat_format,
-                n_gpu_layers=-1,  # Uncomment to use GPU acceleration
-            )
+            try:
+                model = Llama(
+                    model_path=downloaded_path,
+                    verbose=False,
+                    chat_format=chat_format,
+                    n_gpu_layers=-1 if is_gpu_available() else 0,
+                )
+            except Exception as e:
+                logging.error(
+                    f"Failed to load model: {e}. Falling back to CPU.", exc_info=True
+                )
+                model = Llama(
+                    model_path=downloaded_path,
+                    verbose=False,
+                    chat_format=chat_format,
+                    n_gpu_layers=0,  # hardcode to use CPU
+                )
+
             logging.info(f"model loaded as {model}")
     elif model_path in NEXA_RUN_MODEL_MAP_IMAGE:
         downloaded_path = pull_model(model_path)
@@ -104,8 +127,8 @@ async def load_model():
         downloaded_path = pull_model(model_path)
         with suppress_stdout_stderr():
             model = WhisperModel(
-                downloaded_path, 
-                device="auto", 
+                downloaded_path,
+                device="auto",
                 compute_type="default"
             )
         logging.info(f"model loaded as {model}")
@@ -257,19 +280,19 @@ class ImageGenerationRequest(BaseModel):
     negative_prompt: Optional[str] = ""
 
 async def nexa_run_image_generation(
-    prompt, 
-    image_path, 
-    cfg_scale, 
-    width, 
-    height, 
-    sample_steps, 
+    prompt,
+    image_path,
+    cfg_scale,
+    width,
+    height,
+    sample_steps,
     seed,
     negative_prompt = "",
 ):
     global model
     if model is None:
         raise ValueError("Model is not loaded. Please check the model path and try again.")
-    
+
     if image_path and image_path.strip():
         image_path = image_path.strip()
         if not os.path.exists(image_path):
@@ -298,7 +321,6 @@ async def nexa_run_image_generation(
     return generated_image
 
 
-
 def base64_encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
@@ -315,14 +337,14 @@ async def txt2img(request: ImageGenerationRequest):
         for image in generated_images:
             id = int(time.time())
             if not os.path.exists("nexa_server_output"):
-                os.makedirs("nexa_server_output")            
+                os.makedirs("nexa_server_output")
             image_path = os.path.join("nexa_server_output", f"txt2img_{id}.png")
             image.save(image_path)
             img = ImageResponse(base64=base64_encode_image(image_path), url=os.path.abspath(image_path))
-            resp["data"].append(img)        
+            resp["data"].append(img)
 
         return resp
-    
+
     except Exception as e:
         logging.error(f"Error in txt2img generation: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -342,9 +364,9 @@ async def img2img(request: ImageGenerationRequest):
             image_path = os.path.join("nexa_server_output", f"img2img_{id}.png")
             image.save(image_path)
             img = ImageResponse(base64=base64_encode_image(image_path), url=os.path.abspath(image_path))
-            resp["data"].append(img)        
+            resp["data"].append(img)
 
-        return resp  
+        return resp
 
 
     except Exception as e:
@@ -391,7 +413,7 @@ async def function_call(request: FunctionCallRequest):
             {"role": msg.role, "content": msg.content} for msg in request.messages
         ]
         tools = [tool.dict() for tool in request.tools]
-        
+
         response = model.create_chat_completion(
             messages=messages,
             tools=tools,
@@ -403,7 +425,7 @@ async def function_call(request: FunctionCallRequest):
     except Exception as e:
         logging.error(f"Error in function calling: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-    
+
 @app.post("/v1/audio/transcriptions")
 async def transcribe_audio(
     file: UploadFile = File(...),
@@ -412,11 +434,11 @@ async def transcribe_audio(
     temperature: Optional[float] = Query(0.0, description="Temperature for sampling"),
 ):
 
-    try: 
+    try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_audio:
             temp_audio.write(await file.read())
             temp_audio_path = temp_audio.name
-        
+
         transcribe_params = {
             "beam_size": beam_size,
             "language": language,
@@ -456,7 +478,7 @@ async def translate_audio(
         raise HTTPException(status_code=500, detail=f"Error during translation: {str(e)}")
     finally:
         os.unlink(temp_audio_path)
-    
+
 
 def run_nexa_ai_service(model_path_arg, **kwargs):
     global model_path

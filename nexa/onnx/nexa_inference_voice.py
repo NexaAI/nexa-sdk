@@ -58,7 +58,6 @@ class NexaVoiceInference:
             logging.error(f"Error loading model or processor: {e}")
 
     def _dialogue_mode(self):
-        print("Enter 'quit' to exit the program.")
         while True:
             try:
                 audio_path = nexa_prompt("Enter the path to your audio file: ")

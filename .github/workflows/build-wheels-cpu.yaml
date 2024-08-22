@@ -27,7 +27,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e .
+          # python -m pip install -e .
+          python -m pip install build wheel
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.20.0
@@ -35,7 +36,7 @@ jobs:
           # disable repair
           CIBW_REPAIR_WHEEL_COMMAND: ""
           CIBW_SKIP: "*musllinux*"
-          CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-*"
+          CIBW_BUILD: "cp310-* cp311-* cp312-*"
           CMAKE_BUILD_PARALLEL_LEVEL: 4
         with:
           package-dir: .
@@ -51,8 +52,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # here 'Windows' is a large runner
-        os: [Windows]
+        # here 'nexa-sdk-windows-8-core' is a large runner
+        os: [nexa-sdk-windows-8-core]
 
     steps:
       - uses: actions/checkout@v4
@@ -68,14 +69,15 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e .
+          # python -m pip install -e .
+          python -m pip install build wheel
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.20.0
         env:
           # disable repair
           CIBW_REPAIR_WHEEL_COMMAND: ""
-          CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-*"
+          CIBW_BUILD: "cp310-* cp311-* cp312-*"
           CMAKE_BUILD_PARALLEL_LEVEL: 16
         with:
           package-dir: .
@@ -107,7 +109,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e .
+          # python -m pip install -e .
+          python -m pip install build wheel
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.20.0
@@ -115,7 +118,7 @@ jobs:
           # disable repair
           CIBW_REPAIR_WHEEL_COMMAND: ""
           CIBW_ENVIRONMENT: CMAKE_ARGS="-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64 "
-          CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-*"
+          CIBW_BUILD: "cp310-* cp311-* cp312-*"
           MACOSX_DEPLOYMENT_TARGET: ${{ matrix.os }}
           CMAKE_BUILD_PARALLEL_LEVEL: 4
         with:
@@ -146,7 +149,7 @@ jobs:
           CIBW_SKIP: "*musllinux* pp*"
           CIBW_REPAIR_WHEEL_COMMAND: ""
           CIBW_ARCHS: "aarch64"
-          CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
+          CIBW_BUILD: "cp310-* cp311-* cp312-*"
           CMAKE_BUILD_PARALLEL_LEVEL: $(nproc)
         with:
           output-dir: wheelhouse

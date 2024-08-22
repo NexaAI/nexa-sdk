@@ -21,8 +21,8 @@ jobs:
         run: |
           $matrix = @{
               'os' = @('ubuntu-20.04')
-              'pyver' = @("3.9", "3.10", "3.11", "3.12")
-              'cuda' = @("12.1.1", "12.2.2", "12.3.2", "12.4.1")
+              'pyver' = @("3.10", "3.11", "3.12")
+              'cuda' = @("12.4.1")
               'releasetag' = @("basic")
           }
 
@@ -113,12 +113,9 @@ jobs:
             $env:LD_LIBRARY_PATH = $env:CONDA_PREFIX + '/lib:' + $env:LD_LIBRARY_PATH
           }
           $env:VERBOSE = '1'
-          $env:CMAKE_ARGS = '-DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=all -DSD_CUBLAS=ON'
-          $env:CMAKE_ARGS = "-DGGML_CUDA_FORCE_MMQ=ON $env:CMAKE_ARGS"
-
-          $env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_F16C=OFF'
 
           $env:CMAKE_BUILD_PARALLEL_LEVEL = $(nproc)
+          cp tomls/pyproject_cuda.toml pyproject.toml
 
           python -m build --wheel
           # write the build tag to the output
