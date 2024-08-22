@@ -30,10 +30,6 @@ jobs:
           # python -m pip install -e .
           python -m pip install build wheel
 
-      - name: Copy pyproject.toml
-        run: |
-          cp tomls/pyproject_metal.toml pyproject.toml
-
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.20.0
         env:
