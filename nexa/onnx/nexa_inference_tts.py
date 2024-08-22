@@ -11,7 +11,6 @@ import yaml
 from ttstokenizer import TTSTokenizer
 
 from nexa.constants import EXIT_REMINDER, NEXA_RUN_MODEL_MAP_ONNX
-from nexa.general import pull_model
 from nexa.utils import nexa_prompt
 
 logging.basicConfig(level=logging.INFO)
@@ -28,12 +27,13 @@ class NexaTTSInference:
 
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.
+    local_path (str): Local path of the model.
     output_dir (str): Output directory for tts.
     sampling_rate (int): Sampling rate for audio processing.
     streamlit (bool): Run the inference in Streamlit UI.
     """
     
-    def __init__(self, model_path, **kwargs):
+    def __init__(self, model_path, local_path, **kwargs):
         self.model_path = NEXA_RUN_MODEL_MAP_ONNX.get(model_path, model_path)
         self.yaml_file_name = None
         self.params = {
@@ -44,9 +44,7 @@ class NexaTTSInference:
         self.model = None
         self.processor = None
         self.config = None
-        self.downloaded_onnx_folder = None
-
-        self.downloaded_onnx_folder = pull_model(self.model_path)
+        self.downloaded_onnx_folder = local_path
         self.yaml_file_name = os.path.join(self.downloaded_onnx_folder, "config.yaml")
         with open(self.yaml_file_name, "r", encoding="utf-8") as f:
             self.config = yaml.safe_load(f)
@@ -83,7 +81,7 @@ class NexaTTSInference:
         self._save_audio(
             outputs[0], self.params["sampling_rate"], self.params["output_path"]
         )
-        logging.info(f"Audio saved to {self.params['output_path']}")
+        print(f"Audio saved to {self.params['output_path']}")
 
     def _save_audio(self, audio_data, sampling_rate, output_path):
         os.makedirs(output_path, exist_ok=True)

@@ -10,7 +10,6 @@ from optimum.onnxruntime.modeling_seq2seq import ORTModelForSpeechSeq2Seq
 from transformers import AutoProcessor
 
 from nexa.constants import EXIT_REMINDER, NEXA_RUN_MODEL_MAP_ONNX
-from nexa.general import pull_model
 from nexa.utils import nexa_prompt
 
 logging.basicConfig(level=logging.INFO)
@@ -26,26 +25,22 @@ class NexaVoiceInference:
 
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.
+    local_path (str): Local path of the model.
     output_dir (str): Output directory for transcriptions.
     sampling_rate (int): Sampling rate for audio processing.
     streamlit (bool): Run the inference in Streamlit UI.
     """
 
-    def __init__(self, model_path, **kwargs):
+    def __init__(self, model_path, local_path, **kwargs):
         self.model_path = NEXA_RUN_MODEL_MAP_ONNX.get(model_path, model_path)
+        self.downloaded_onnx_folder = local_path
         self.params = {"output_dir": "transcriptions", "sampling_rate": 16000}
         self.params.update(kwargs)
         self.model = None
         self.processor = None
 
     def run(self):
-        downloaded_onnx_folder = pull_model(self.model_path)
-
-        if downloaded_onnx_folder is None:
-            logging.error("Failed to download the model. Exiting.")
-            return
-
-        self._load_model(downloaded_onnx_folder)
+        self._load_model(self.downloaded_onnx_folder)
         self._dialogue_mode()
 
     def _load_model(self, model_path):
@@ -99,7 +94,7 @@ class NexaVoiceInference:
             )[0]
 
             self._save_transcription(transcription)
-            logging.info(f"Transcription: {transcription}")
+            print(f"Transcription: {transcription}")
 
         except Exception as e:
             logging.error(f"Error during audio transcription: {e}")

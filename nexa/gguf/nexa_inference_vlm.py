@@ -79,6 +79,7 @@ class NexaVLMInference:
 
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.
+    local_path (str): Local path of the model.
     stop_words (list): List of stop words for early stopping.
     profiling (bool): Enable timing measurements for the generation process.
     streamlit (bool): Run the inference in Streamlit UI.
@@ -87,31 +88,29 @@ class NexaVLMInference:
     top_k (int): Top-k sampling parameter.
     top_p (float): Top-p sampling parameter
     """
-    def __init__(self, model_path, stop_words=None, **kwargs):
+    def __init__(self, model_path, local_path, stop_words=None, **kwargs):
         self.params = DEFAULT_TEXT_GEN_PARAMS
         self.params.update(kwargs)
         self.model = None
         self.projector = None
 
         self.projector_path = NEXA_RUN_PROJECTOR_MAP.get(model_path, None)
-        self.downloaded_path = None
-        self.projector_downloaded_path = None
+        self.local_path = local_path
+        self.projector_local_path = None
 
         if model_path in NEXA_RUN_MODEL_MAP_VLM:
             logging.debug(f"Found model {model_path} in public hub")
-            self.model_path = NEXA_RUN_MODEL_MAP_VLM.get(model_path)
             self.projector_path = NEXA_RUN_PROJECTOR_MAP.get(model_path)
-            self.downloaded_path = pull_model(self.model_path)
-            self.projector_downloaded_path = pull_model(self.projector_path)
+            self.projector_local_path, run_type = pull_model(self.projector_path)
         elif (local_dir := Path(model_path).parent).exists():
             logging.debug(f"Using local model at {local_dir}")
             model_name = Path(model_path).name
             tag_and_ext = model_name.split(":")[-1]
-            self.downloaded_path = local_dir / f"model-{tag_and_ext}"
-            self.projector_downloaded_path = local_dir / f"projector-{tag_and_ext}"
+            self.local_path = local_dir / f"model-{tag_and_ext}"
+            self.projector_local_path = local_dir / f"projector-{tag_and_ext}"
             if not (
-                self.downloaded_path.exists()
-                and self.projector_downloaded_path.exists()
+                self.local_path.exists()
+                and self.projector_local_path.exists()
             ):
                 logging.error(
                     f"Model or projector not found in {local_dir}. "
@@ -122,7 +121,7 @@ class NexaVLMInference:
             logging.error("VLM user model from hub is not supported yet.")
             exit(1)
 
-        if self.downloaded_path is None:
+        if self.local_path is None:
             logging.error(
                 f"Model ({model_path}) is not appicable. Please refer to our docs for proper usage.",
                 exc_info=True,
@@ -147,18 +146,18 @@ class NexaVLMInference:
 
     @SpinningCursorAnimation()
     def _load_model(self):
-        logging.debug(f"Loading model from {self.downloaded_path}")
+        logging.debug(f"Loading model from {self.local_path}")
         start_time = time.time()
         with suppress_stdout_stderr():
             self.projector = (
                 self.projector_handler(
-                    clip_model_path=self.projector_downloaded_path, verbose=False
+                    clip_model_path=self.projector_local_path, verbose=False
                 )
-                if self.projector_downloaded_path
+                if self.projector_local_path
                 else None
             )
             self.model = Llama(
-                model_path=self.downloaded_path,
+                model_path=self.local_path,
                 chat_handler=self.projector,
                 verbose=False,
                 chat_format=self.chat_format,

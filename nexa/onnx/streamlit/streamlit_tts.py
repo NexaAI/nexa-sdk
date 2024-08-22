@@ -4,7 +4,7 @@ import time
 
 import soundfile as sf
 import streamlit as st
-
+from nexa.general import pull_model
 from nexa.onnx.nexa_inference_tts import NexaTTSInference
 
 default_model = sys.argv[1]
@@ -12,7 +12,8 @@ default_model = sys.argv[1]
 
 @st.cache_resource
 def load_model(model_path: str):
-    return NexaTTSInference(model_path)
+    local_path, run_type = pull_model(model_path)  
+    return NexaTTSInference(model_path, local_path)
 
 
 def generate_audio(nexa_model: NexaTTSInference, text):

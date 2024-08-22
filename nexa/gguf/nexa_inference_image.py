@@ -7,7 +7,6 @@ import time
 from pathlib import Path
 
 from nexa.gguf.sd.stable_diffusion import StableDiffusion
-from nexa.general import pull_model
 from nexa.constants import (
     DEFAULT_IMG_GEN_PARAMS,
     EXIT_REMINDER,
@@ -35,6 +34,7 @@ class NexaImageInference:
 
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.
+    local_path (str): Local path of the model.
     num_inference_steps (int): Number of inference steps.
     width (int): Width of the output image.
     height (int): Height of the output image.
@@ -45,51 +45,33 @@ class NexaImageInference:
 
     """
 
-    def __init__(self, model_path, **kwargs):
-        self.model_path = None
-        self.downloaded_path = None
-        if model_path in NEXA_RUN_MODEL_MAP:
-            logging.debug(f"Found model {model_path} in public hub")
-            self.model_path = NEXA_RUN_MODEL_MAP.get(model_path)
-            self.downloaded_path = pull_model(self.model_path)
-        elif os.path.exists(model_path):
-            logging.debug(f"Using local model at {model_path}")
-            self.downloaded_path = model_path
-        else:
-            logging.debug(f"Trying to use model from hub at {model_path}")
-            self.downloaded_path = pull_model(model_path)
+    def __init__(self, model_path, local_path, **kwargs):
+        self.model_path = model_path
+        self.local_path = local_path
 
-        if self.downloaded_path is None:
-            logging.error(
-                f"Model ({model_path}) is not applicable. Please refer to our docs for proper usage.",
-                exc_info=True,
-            )
-            exit(1)
-
-        if self.model_path == "lcm-dreamshaper-v7:fp16":
+        if self.model_path == "lcm-dreamshaper":
             self.params = DEFAULT_IMG_GEN_PARAMS_LCM
-        elif self.model_path == "sdxl-turbo:q8_0":
+        elif self.model_path == "sdxl-turbo":
             self.params = DEFAULT_IMG_GEN_PARAMS_TURBO
         else:
             self.params = DEFAULT_IMG_GEN_PARAMS
 
         self.params.update(kwargs)
-
         if not kwargs.get("streamlit", False):
-            self._load_model(model_path)
+            self._load_model()
             if self.model is None:
                 logging.error("Failed to load the model or pipeline.")
                 exit(1)
 
     @SpinningCursorAnimation()
-    def _load_model(self, model_path: str):
+    def _load_model(self):
         with suppress_stdout_stderr():
             self.model = StableDiffusion(
-                model_path=self.downloaded_path,
+                model_path=self.local_path,
                 lora_model_dir=self.params.get("lora_dir", ""),
                 n_threads=self.params.get("n_threads", multiprocessing.cpu_count()),
                 wtype=self.params.get(
-                    "wtype", NEXA_RUN_MODEL_PRECISION_MAP.get(model_path, "default")
+                    "wtype", NEXA_RUN_MODEL_PRECISION_MAP.get(self.model_path, "default")
                 ),  # Weight type (options: default, f32, f16, q4_0, q4_1, q5_0, q5_1, q8_0)
                 control_net_path=self.params.get("control_net_path", ""),
                 verbose=False,

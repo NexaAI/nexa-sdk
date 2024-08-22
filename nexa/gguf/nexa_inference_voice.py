@@ -10,9 +10,7 @@ from nexa.constants import (
     EXIT_REMINDER,
     NEXA_RUN_MODEL_MAP_VOICE,
 )
-from nexa.general import pull_model
 from nexa.utils import nexa_prompt
-from faster_whisper import WhisperModel
 from nexa.utils import nexa_prompt, SpinningCursorAnimation, suppress_stdout_stderr
 
 logging.basicConfig(level=logging.INFO)
@@ -28,6 +26,7 @@ class NexaVoiceInference:
 
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.
+    local_path (str): Local path of the model.
     output_dir (str): Output directory for transcriptions.
     beam_size (int): Beam size to use for transcription.
     language (str): The language spoken in the audio.
@@ -37,22 +36,12 @@ class NexaVoiceInference:
     output_dir (str): Output directory for transcriptions.
 
     """
-    def __init__(self, model_path, **kwargs):
-        self.model_path = None
-        self.downloaded_path = None
+    def __init__(self, model_path, local_path, **kwargs):
+        self.model_path = model_path
+        self.local_path = local_path
         self.params = DEFAULT_VOICE_GEN_PARAMS
-        if model_path in NEXA_RUN_MODEL_MAP_VOICE:
-            logging.debug(f"Found model {model_path} in public hub")
-            self.model_path = NEXA_RUN_MODEL_MAP_VOICE.get(model_path)
-            self.downloaded_path = pull_model(self.model_path)
-        elif os.path.exists(model_path):
-            logging.debug(f"Using local model at {model_path}")
-            self.downloaded_path = model_path
-        else:
-            logging.error("Using voice model from hub is not supported yet.")
-            exit(1)
 
-        if self.downloaded_path is None:
+        if self.local_path is None:
             logging.error(
                 f"Model ({model_path}) is not applicable. Please refer to our docs for proper usage.",
                 exc_info=True,
@@ -74,10 +63,10 @@ class NexaVoiceInference:
     def _load_model(self):
         from faster_whisper import WhisperModel
 
-        logging.debug(f"Loading model from: {self.downloaded_path}")
+        logging.debug(f"Loading model from: {self.local_path}")
         with suppress_stdout_stderr():
             self.model = WhisperModel(
-                self.downloaded_path,
+                self.local_path,
                 device="cpu",
                 compute_type=self.params["compute_type"],
             )
@@ -106,7 +95,7 @@ class NexaVoiceInference:
             )
             transcription = "".join(segment.text for segment in segments)
             self._save_transcription(transcription)
-            logging.info(f"Transcription: {transcription}")
+            print(f"Transcription: {transcription}")
         except Exception as e:
             logging.error(f"Error during transcription: {e}", exc_info=True)
 

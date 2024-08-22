@@ -4,7 +4,7 @@ from typing import Iterator
 
 import streamlit as st
 from PIL import Image
-
+from nexa.general import pull_model
 from nexa.gguf.nexa_inference_vlm import NexaVLMInference
 
 default_model = sys.argv[1]
@@ -12,7 +12,8 @@ default_model = sys.argv[1]
 
 @st.cache_resource
 def load_model(model_path):
-    nexa_model = NexaVLMInference(model_path)
+    local_path, run_type = pull_model(model_path)
+    nexa_model = NexaVLMInference(model_path, local_path)
     return nexa_model
 
 

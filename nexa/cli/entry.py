@@ -1,56 +1,70 @@
 import argparse
-from nexa.general import pull_model
-import uvicorn
 
-def run_inference(args):
-    local_path, run_type = pull_model(args.model_path)
+def run_ggml_inference(args):
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
+    model_path = kwargs.pop("model_path")
 
-    if run_type == "gen-text":
+    if args.command == "server":
+        from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
+        NexaServer(model_path, **kwargs)
+        return
+    
+    from nexa.general import pull_model
+    local_path, run_type = pull_model(model_path)
+    
+    stop_words = kwargs.pop("stop_words", [])
+
+    if run_type == "NLP":
         from nexa.gguf.nexa_inference_text import NexaTextInference
-        inference = NexaTextInference(local_path, **kwargs)
-    elif run_type == "gen-image":
+        inference = NexaTextInference(model_path=model_path, local_path=local_path, stop_words=stop_words, **kwargs)
+    elif run_type == "Computer Vision":
         from nexa.gguf.nexa_inference_image import NexaImageInference
-        inference = NexaImageInference(local_path, **kwargs)
-    elif run_type == "vlm":
+        inference = NexaImageInference(model_path, local_path, **kwargs)
+        if hasattr(args, 'streamlit') and args.streamlit:
+            inference.run_streamlit(model_path)
+        elif args.img2img:
+            inference.loop_img2img()
+        else:
+            inference.loop_txt2img()
+        return
+    elif run_type == "Multimodal":
         from nexa.gguf.nexa_inference_vlm import NexaVLMInference
-        inference = NexaVLMInference(local_path, **kwargs)
-    elif run_type == "asr":
+        inference = NexaVLMInference(model_path, local_path, stop_words=stop_words, **kwargs)
+    elif run_type == "Audio":
         from nexa.gguf.nexa_inference_voice import NexaVoiceInference
-        inference = NexaVoiceInference(local_path, **kwargs)
+        inference = NexaVoiceInference(model_path, local_path, **kwargs)
     else:
         raise ValueError(f"Unknown task: {run_type}")
 
-    if args.streamlit:
-        inference.run_streamlit(local_path)
+    if hasattr(args, 'streamlit') and args.streamlit:
+        inference.run_streamlit(model_path)
     else:
         inference.run()
 
 def run_onnx_inference(args):
-    local_path, run_type = pull_model(args.model_path)
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
+    model_path = kwargs.pop("model_path")
 
-    if run_type == "gen-text":
-        from nexa.onnx.nexa_inference_text import \
-            NexaTextInference as NexaTextOnnxInference
-        inference = NexaTextOnnxInference(local_path, **kwargs)
-    elif run_type == "gen-image":
-        from nexa.onnx.nexa_inference_image import \
-            NexaImageInference as NexaImageOnnxInference
-        inference = NexaImageOnnxInference(local_path, **kwargs)
-    elif run_type == "asr":
-        from nexa.onnx.nexa_inference_voice import \
-            NexaVoiceInference as NexaVoiceOnnxInference
-        inference = NexaVoiceOnnxInference(local_path, **kwargs)
-    elif run_type == "tts":
-        from nexa.onnx.nexa_inference_tts import \
-            NexaTTSInference as NexaTTSOnnxInference
-        inference = NexaTTSOnnxInference(local_path, **kwargs)
+    from nexa.general import pull_model
+    local_path, run_type = pull_model(model_path)
+
+    if run_type == "NLP":
+        from nexa.onnx.nexa_inference_text import NexaTextInference as NexaTextOnnxInference
+        inference = NexaTextOnnxInference(model_path, local_path, **kwargs)
+    elif run_type == "Computer Vision":
+        from nexa.onnx.nexa_inference_image import NexaImageInference as NexaImageOnnxInference
+        inference = NexaImageOnnxInference(model_path, local_path, **kwargs)
+    elif run_type == "Audio":
+        from nexa.onnx.nexa_inference_voice import NexaVoiceInference as NexaVoiceOnnxInference
+        inference = NexaVoiceOnnxInference(model_path, local_path, **kwargs)
+    elif run_type == "TTS":
+        from nexa.onnx.nexa_inference_tts import NexaTTSInference as NexaTTSOnnxInference
+        inference = NexaTTSOnnxInference(model_path, local_path, **kwargs)
     else:
-        raise ValueError(f"Unknown ONNX command: {args.onnx_command}")
+        raise ValueError(f"Unknown task: {run_type}")
 
     if hasattr(args, 'streamlit') and args.streamlit:
-        inference.run_streamlit(local_path)
+        inference.run_streamlit(model_path)
     else:
         inference.run()
 
@@ -61,13 +75,10 @@ def main():
     subparsers = parser.add_subparsers(dest="command", help="sub-command help")
 
     # Run command
-    run_parser = subparsers.add_parser("run", help="Run inference for various tasks.")
+    run_parser = subparsers.add_parser("run", help="Run inference for various tasks using GGUF models.")
     run_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
-    
-    # Common arguments
-    common_group = run_parser.add_argument_group('Common options')
-    common_group.add_argument("-st", "--streamlit", action="store_true", help="Run the inference in Streamlit UI")
-    common_group.add_argument("-pf", "--profiling", action="store_true", help="Enable profiling logs for the inference process")
+    run_parser.add_argument("-st", "--streamlit", action="store_true", help="Run the inference in Streamlit UI")
+    run_parser.add_argument("-pf", "--profiling", action="store_true", help="Enable profiling logs for the inference process")
 
     # Text generation/vlm arguments
     text_group = run_parser.add_argument_group('Text generation/VLM options')
@@ -100,13 +111,34 @@ def main():
     asr_group.add_argument("--task", type=str, help="Task to execute (transcribe or translate)")
     asr_group.add_argument("-c", "--compute_type", type=str, help="Type to use for computation")
 
-    # Other commands (unchanged)
-    subparsers.add_parser("pull", help="Pull a model from official or hub.").add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
-    subparsers.add_parser("remove", help="Remove a model from local machine.").add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
-    subparsers.add_parser("list", help="List all models in the local machine.")
-    subparsers.add_parser("login", help="Login to Nexa API.")
-    subparsers.add_parser("whoami", help="Show current user information.")
-    subparsers.add_parser("logout", help="Logout from Nexa API.")
+    # ONNX command
+    onnx_parser = subparsers.add_parser("onnx", help="Run inference for various tasks using ONNX models.")
+    onnx_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
+    onnx_parser.add_argument("-st", "--streamlit", action="store_true", help="Run the inference in Streamlit UI")
+
+    # ONNX Text generation arguments
+    onnx_text_group = onnx_parser.add_argument_group('Text generation options')
+    onnx_text_group.add_argument("-t", "--temperature", type=float, help="Temperature for sampling")
+    onnx_text_group.add_argument("-m", "--max_new_tokens", type=int, help="Maximum number of new tokens to generate")
+    onnx_text_group.add_argument("-k", "--top_k", type=int, help="Top-k sampling parameter")
+    onnx_text_group.add_argument("-p", "--top_p", type=float, help="Top-p sampling parameter")
+    onnx_text_group.add_argument("-sw", "--stop_words", nargs="*", help="List of stop words for early stopping")
+    onnx_text_group.add_argument("-pf", "--profiling", action="store_true", help="Enable profiling logs for the inference process")
+
+    # ONNX Image generation arguments
+    onnx_image_group = onnx_parser.add_argument_group('Image generation options')
+    onnx_image_group.add_argument("-ns", "--num_inference_steps", type=int, help="Number of inference steps")
+    onnx_image_group.add_argument("-np", "--num_images_per_prompt", type=int, help="Number of images to generate per prompt")
+    onnx_image_group.add_argument("-H", "--height", type=int, help="Height of the output image")
+    onnx_image_group.add_argument("-W", "--width", type=int, help="Width of the output image")
+    onnx_image_group.add_argument("-g", "--guidance_scale", type=float, help="Guidance scale for diffusion")
+    onnx_image_group.add_argument("-O", "--output", type=str, help="Output path for the generated image")
+    onnx_image_group.add_argument("-s", "--random_seed", type=int, help="Random seed for image generation")
+
+    # ONNX Voice arguments
+    onnx_voice_group = onnx_parser.add_argument_group('Voice generation options')
+    onnx_voice_group.add_argument("-o", "--output_dir", type=str, default="voice_output", help="Output directory for audio processing")
+    onnx_voice_group.add_argument("-r", "--sampling_rate", type=int, default=16000, help="Sampling rate for audio processing")
 
     # GGML server parser
     server_parser = subparsers.add_parser("server", help="Run the Nexa AI Text Generation Service")
@@ -115,23 +147,31 @@ def main():
     server_parser.add_argument("--port", type=int, default=8000, help="Port to bind the server to")
     server_parser.add_argument("--reload", action="store_true", help="Enable automatic reloading on code changes")
 
+    # Other commands
+    subparsers.add_parser("pull", help="Pull a model from official or hub.").add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
+    subparsers.add_parser("remove", help="Remove a model from local machine.").add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
+    subparsers.add_parser("clean", help="Clean up all model files.")
+    subparsers.add_parser("list", help="List all models in the local machine.")
+    subparsers.add_parser("login", help="Login to Nexa API.")
+    subparsers.add_parser("whoami", help="Show current user information.")
+    subparsers.add_parser("logout", help="Logout from Nexa API.")
+
+
     args = parser.parse_args()
 
-    if args.command == "run":
-        run_inference(args)
+    if args.command in ["run", "server"]:
+        run_ggml_inference(args)
     elif args.command == "onnx":
         run_onnx_inference(args)
-    elif args.command == "serve":
-        from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
-        kwargs = {k: v for k, v in vars(args).items() if v is not None}
-        NexaServer(args.model_path, **kwargs)
-        return
     elif args.command == "pull":
         from nexa.general import pull_model
         pull_model(args.model_path)
     elif args.command == "remove":
         from nexa.general import remove_model
         remove_model(args.model_path)
+    elif args.command == "clean":
+        from nexa.general import clean
+        clean()
     elif args.command == "list":
         from nexa.general import list_models
         list_models()

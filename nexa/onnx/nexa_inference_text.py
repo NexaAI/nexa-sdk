@@ -9,7 +9,6 @@ from optimum.onnxruntime import ORTModelForCausalLM
 from transformers import AutoTokenizer, TextStreamer
 
 from nexa.constants import NEXA_RUN_MODEL_MAP_ONNX
-from nexa.general import pull_model
 from nexa.utils import nexa_prompt
 
 logging.basicConfig(level=logging.INFO)
@@ -25,6 +24,7 @@ class NexaTextInference:
 
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.
+    local_path (str): Local path of the model.
     profiling (bool): Enable timing measurements for the generation process.
     streamlit (bool): Run the inference in Streamlit UI.
     temperature (float): Temperature for sampling.
@@ -34,7 +34,7 @@ class NexaTextInference:
     top_p (float): Top-p sampling parameter
     """
 
-    def __init__(self, model_path, **kwargs):
+    def __init__(self, model_path, local_path, **kwargs):
         self.model_path = NEXA_RUN_MODEL_MAP_ONNX.get(model_path, model_path)
         self.params = {
             "temperature": 0.5,
@@ -47,7 +47,7 @@ class NexaTextInference:
         self.model = None
         self.tokenizer = None
         self.streamer = None
-        self.downloaded_onnx_folder = None
+        self.downloaded_onnx_folder = local_path
         self.timings = kwargs.get("timings", False)
         self.device = "cpu"
 
@@ -144,12 +144,6 @@ class NexaTextInference:
         if self.params.get("streamlit"):
             self.run_streamlit()
         else:
-            self.downloaded_onnx_folder = pull_model(
-                self.model_path
-            )  # David TODO : move download logic to __init__(), otherwise for streamlit you will duplicate such logic again
-            if self.downloaded_onnx_folder is None:
-                logging.error("Failed to download the model. Exiting.", exc_info=True)
-                return
 
             self._load_model_and_tokenizer()
 

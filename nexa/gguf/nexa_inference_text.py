@@ -12,7 +12,6 @@ from nexa.constants import (
     NEXA_RUN_MODEL_MAP,
     NEXA_STOP_WORDS_MAP,
 )
-from nexa.general import pull_model
 from nexa.gguf.lib_utils import is_gpu_available
 from nexa.gguf.llama.llama import Llama
 from nexa.utils import SpinningCursorAnimation, nexa_prompt, suppress_stdout_stderr
@@ -32,6 +31,7 @@ class NexaTextInference:
 
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.
+    local_path (str): Local path of the model.
     stop_words (list): List of stop words for early stopping.
     profiling (bool): Enable timing measurements for the generation process.
     streamlit (bool): Run the inference in Streamlit UI.
@@ -40,35 +40,16 @@ class NexaTextInference:
     top_k (int): Top-k sampling parameter.
     top_p (float): Top-p sampling parameter
     """
-    def __init__(self, model_path, stop_words=None, **kwargs):
+    def __init__(self, model_path, local_path, stop_words=None, **kwargs):
         self.params = DEFAULT_TEXT_GEN_PARAMS
         self.params.update(kwargs)
         self.model = None
-
-        self.model_path = None
-        self.downloaded_path = None
-        if model_path in NEXA_RUN_MODEL_MAP:
-            logging.debug(f"Found model {model_path} in public hub")
-            self.model_path = NEXA_RUN_MODEL_MAP.get(model_path)
-            self.downloaded_path = pull_model(self.model_path)
-        elif os.path.exists(model_path):
-            logging.debug(f"Using local model at {model_path}")
-            self.downloaded_path = model_path
-        else:
-            logging.debug(f"Trying to use model from hub at {model_path}")
-            self.downloaded_path = pull_model(model_path)
-
-        if self.downloaded_path is None:
-            logging.error(
-                f"Model ({model_path}) is not appicable. Please refer to our docs for proper usage.",
-                exc_info=True,
-            )
-            exit(1)
-
+        self.model_path = model_path
+        self.local_path = local_path
+        
         self.stop_words = (
             stop_words if stop_words else NEXA_STOP_WORDS_MAP.get(model_path, [])
         )
-
         self.profiling = kwargs.get("profiling", False)
 
         self.chat_format = NEXA_RUN_CHAT_TEMPLATE_MAP.get(model_path, None)
@@ -83,6 +64,7 @@ class NexaTextInference:
                     "Failed to load model or tokenizer. Exiting.", exc_info=True
                 )
                 exit(1)
+
     def embed(
         self,
         input: Union[str, List[str]],
@@ -107,11 +89,11 @@ class NexaTextInference:
 
     @SpinningCursorAnimation()
     def _load_model(self):
-        logging.debug(f"Loading model from {self.downloaded_path}")
+        logging.debug(f"Loading model from {self.local_path}")
         start_time = time.time()
         with suppress_stdout_stderr():
             self.model = Llama(
-                model_path=self.downloaded_path,
+                model_path=self.local_path,
                 verbose=self.profiling,
                 chat_format=self.chat_format,
                 n_ctx=2048,
@@ -280,6 +262,6 @@ if __name__ == "__main__":
     stop_words = kwargs.pop("stop_words", [])
     inference = NexaTextInference(model_path, stop_words=stop_words, **kwargs)
     if args.streamlit:
-        inference.run_streamlit(model_path)
+        inference.run_streamlit()
     else:
         inference.run()

@@ -60,7 +60,7 @@ async def nexa_run_text_generation_preperation(model_path):
     global model, tokenizer, streamer, chat_template, is_chat_mode
     # Step 1: Check if the model_path is a key in NEXA_RUN_MODEL_MAP_ONNX, if so, get the full path
     full_model_path = NEXA_RUN_MODEL_MAP_ONNX.get(model_path, model_path)
-    downloaded_onnx_folder = pull_model(full_model_path)
+    downloaded_onnx_folder, run_type = pull_model(full_model_path)
     logging.info(f"Downloaded ONNX folder: {downloaded_onnx_folder}")
 
     # Step 2: Load the model and tokenizer
