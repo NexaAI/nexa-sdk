@@ -60,7 +60,7 @@ class NexaVoiceInference:
                 exit(1)
 
 
-    # @SpinningCursorAnimation()
+    @SpinningCursorAnimation()
     def _load_model(self):
         from faster_whisper import WhisperModel
 
@@ -82,7 +82,7 @@ class NexaVoiceInference:
                 print(EXIT_REMINDER)
             except Exception as e:
                 logging.error(f"Error during text generation: {e}", exc_info=True)
-    
+
     def transcribe(self, audio, **kwargs):
         """
         Transcribe the audio file.
@@ -162,7 +162,7 @@ class NexaVoiceInference:
             audio,
             **kwargs,
         )
-        
+
 
     def _transcribe_audio(self, audio_path):
         logging.debug(f"Transcribing audio from: {audio_path}")

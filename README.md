@@ -24,7 +24,7 @@ Detailed API documentation is available [here](docs/index.html).
 
 ## Installation
 
-**GPU version(optional)** 
+**GPU version(optional)**
 
 check if you have GPU acceleration (torch required)
 <details>
@@ -40,15 +40,23 @@ check if you have GPU acceleration (torch required)
   ```
   CMAKE_ARGS="-DGGML_CUDA=on -DSD_CUBLAS=ON" pip install nexaai-gpu
   ```
+  Or you prefer to install our pre-built wheel:
+  ```bash
+  pip install nexaai-cuda --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple
+  ```
 </details>
 <details>
   <summary>Apple M Chip:</summary>
   Apple icon -> about this mac -> Graphics
-  
+
   if True:
 
   ```
   CMAKE_ARGS="-DGGML_METAL=on -DSD_METAL=ON" pip install nexaai-gpu
+  ```
+  Or you prefer to install our pre-built wheel:
+  ```bash
+  pip install nexaai-metal --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple
   ```
 </details>
 
@@ -77,7 +85,12 @@ check if you have GPU acceleration (torch required)
   ```
   pip install nexaai
   ```
-<details>
+</details>
+
+Or you prefer to install the pre-built wheel:
+```bash
+pip install nexaai --index-url https://nexaai.github.io/nexa-sdk/whl/cpu --extra-index-url https://pypi.org/simple
+```
 
 ## Nexa CLI commands
 

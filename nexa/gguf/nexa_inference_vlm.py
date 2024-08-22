@@ -143,7 +143,7 @@ class NexaVLMInference:
                 )
                 exit(1)
 
-    # @SpinningCursorAnimation()
+    @SpinningCursorAnimation()
     def _load_model(self):
         logging.debug(f"Loading model from {self.local_path}")
         start_time = time.time()
@@ -237,18 +237,18 @@ class NexaVLMInference:
             except Exception as e:
                 logging.error(f"Error during generation: {e}", exc_info=True)
             print("\n")
-    
-    def create_chat_completion(self, 
-                            messages, 
-                            max_tokens:int = 2048, 
+
+    def create_chat_completion(self,
+                            messages,
+                            max_tokens:int = 2048,
                             temperature: float = 0.2,
                             top_p: float = 0.95,
                             top_k: int = 40,
-                            stream=False, 
+                            stream=False,
                             stop=[]):
         """
         Generate text completion for a given chat prompt.
-        
+
         Args:
             messages (list): List of messages in the chat prompt.
             temperature (float): Temperature for sampling.
@@ -257,7 +257,7 @@ class NexaVLMInference:
             top_p (float): Top-p sampling parameter.
             stream (bool): Stream the output.
             stop (list): List of stop words for early stopping.
-        
+
         Returns:
             Iterator: An iterator of the generated text completion
             return format:
@@ -282,9 +282,9 @@ class NexaVLMInference:
                     "prompt_tokens": 57,
                     "total_tokens": 74
                 }
-            }          
-            usage: message = completion.choices[0].message.content  
-            
+            }
+            usage: message = completion.choices[0].message.content
+
         """
         return self.model.create_chat_completion(
             messages=messages,

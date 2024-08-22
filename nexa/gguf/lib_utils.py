@@ -15,7 +15,9 @@ from nexa.utils import (
 
 
 def is_gpu_available():
-    return is_nexa_cuda_installed() or is_nexa_metal_installed()
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    sentinel_file_exists = os.path.exists(os.path.join(current_dir, "lib", "empty_file.txt"))
+    return sentinel_file_exists
 
 # Load the library
 def load_library(lib_base_name: str):
