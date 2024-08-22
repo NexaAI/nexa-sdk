@@ -81,8 +81,8 @@ build.verbose = true
 cmake.build-type = "Release"
 cmake.version = ">=3.16"
 cmake.args = [
-    "-DGGML_METAL=ON",
     "-DSD_METAL=ON",
+    "-DGGML_METAL=ON",
     "-DCMAKE_OSX_ARCHITECTURES=arm64",
     "-DCMAKE_APPLE_SILICON_PROCESSOR=arm64"
 ]
