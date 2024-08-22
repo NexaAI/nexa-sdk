@@ -30,8 +30,8 @@ class NexaImageInference:
     A class used for loading image models and running image generation.
 
     Methods:
-    run: Run the image generation loop.
-    run_streamlit: Run the Streamlit UI.
+        run: Run the image generation loop.
+        run_streamlit: Run the Streamlit UI.
 
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.

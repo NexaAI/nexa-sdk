@@ -24,7 +24,7 @@ Detailed API documentation is available [here](docs/index.html).
 
 ## Installation
 
-**GPU version(optional)**
+### GPU version(optional)
 
 check if you have GPU acceleration (torch required)
 <details>
@@ -38,11 +38,11 @@ check if you have GPU acceleration (torch required)
   if True
 
   ```
-  CMAKE_ARGS="-DGGML_CUDA=on -DSD_CUBLAS=ON" pip install nexaai-gpu
+  CMAKE_ARGS="-DGGML_CUDA=on -DSD_CUBLAS=ON" pip install nexaai
   ```
   Or you prefer to install our pre-built wheel:
   ```bash
-  pip install nexaai-cuda --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple
+  pip install nexaai --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple
   ```
 </details>
 <details>
@@ -52,24 +52,15 @@ check if you have GPU acceleration (torch required)
   if True:
 
   ```
-  CMAKE_ARGS="-DGGML_METAL=on -DSD_METAL=ON" pip install nexaai-gpu
+  CMAKE_ARGS="-DGGML_METAL=on -DSD_METAL=ON" pip install nexaai
   ```
   Or you prefer to install our pre-built wheel:
   ```bash
-  pip install nexaai-metal --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple
+  pip install nexaai --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple
   ```
 </details>
 
-<details>
-  <summary>AMD graphics card:</summary>
-
-
-  ```
-  CMAKE_ARGS="-DGGML_HIPBLAS=on" pip install nexaai-gpu
-  ```
-</details>
-
-**CPU version**
+### CPU version
 
 <details>
   <summary>Mac with Intel chips</summary>
@@ -90,6 +81,22 @@ check if you have GPU acceleration (torch required)
 Or you prefer to install the pre-built wheel:
 ```bash
 pip install nexaai --index-url https://nexaai.github.io/nexa-sdk/whl/cpu --extra-index-url https://pypi.org/simple
+```
+
+### Docker Usage
+Note: Docker doesn't support GPU acceleration
+
+`docker pull nexa4ai/sdk:latest`
+
+replace following placeholder with your path and command
+
+`docker run -v <your_model_dir>:/model -it nexa4ai/sdk:latest [nexa_command] [your_model_relative_path]`
+
+Example:
+
+`docker run -v /home/ubuntu/.cache/nexa/hub/official:/model -it nexa4ai/sdk:latest nexa gen-text /model/Phi-3-mini-128k-instruct/q4_0.gguf`
+
+will create an interactive session with text generation
 ```
 
 ## Nexa CLI commands
