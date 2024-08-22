@@ -26,9 +26,9 @@ class NexaImageInference:
     A class used for loading image models and running image generation.
 
     Methods:
-        txt2img: (Used for SDK) Run the text-to-image generation loop.
-        img2img: (Used for SDK) Run the image-to-image generation loop.
-        run_streamlit: Run the Streamlit UI.
+    txt2img: (Used for SDK) Run the text-to-image generation loop.
+    img2img: (Used for SDK) Run the image-to-image generation loop.
+    run_streamlit: Run the Streamlit UI.
 
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.
