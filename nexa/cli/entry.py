@@ -19,20 +19,20 @@ def run_ggml_inference(args):
         inference = NexaTextInference(model_path=model_path, local_path=local_path, stop_words=stop_words, **kwargs)
     elif run_type == "Computer Vision":
         from nexa.gguf.nexa_inference_image import NexaImageInference
-        inference = NexaImageInference(model_path, local_path, **kwargs)
+        inference = NexaImageInference(model_path=model_path, local_path=local_path, **kwargs)
         if hasattr(args, 'streamlit') and args.streamlit:
             inference.run_streamlit(model_path)
         elif args.img2img:
-            inference.loop_img2img()
+            inference.run_img2img()
         else:
-            inference.loop_txt2img()
+            inference.run_txt2img()
         return
     elif run_type == "Multimodal":
         from nexa.gguf.nexa_inference_vlm import NexaVLMInference
-        inference = NexaVLMInference(model_path, local_path, stop_words=stop_words, **kwargs)
+        inference = NexaVLMInference(model_path=model_path, local_path=local_path, stop_words=stop_words, **kwargs)
     elif run_type == "Audio":
         from nexa.gguf.nexa_inference_voice import NexaVoiceInference
-        inference = NexaVoiceInference(model_path, local_path, **kwargs)
+        inference = NexaVoiceInference(model_path=model_path, local_path=local_path, **kwargs)
     else:
         raise ValueError(f"Unknown task: {run_type}")
 
@@ -50,16 +50,16 @@ def run_onnx_inference(args):
 
     if run_type == "NLP":
         from nexa.onnx.nexa_inference_text import NexaTextInference as NexaTextOnnxInference
-        inference = NexaTextOnnxInference(model_path, local_path, **kwargs)
+        inference = NexaTextOnnxInference(model_path=model_path, local_path=local_path, **kwargs)
     elif run_type == "Computer Vision":
         from nexa.onnx.nexa_inference_image import NexaImageInference as NexaImageOnnxInference
-        inference = NexaImageOnnxInference(model_path, local_path, **kwargs)
+        inference = NexaImageOnnxInference(model_path=model_path, local_path=local_path, **kwargs)
     elif run_type == "Audio":
         from nexa.onnx.nexa_inference_voice import NexaVoiceInference as NexaVoiceOnnxInference
-        inference = NexaVoiceOnnxInference(model_path, local_path, **kwargs)
+        inference = NexaVoiceOnnxInference(model_path=model_path, local_path=local_path, **kwargs)
     elif run_type == "TTS":
         from nexa.onnx.nexa_inference_tts import NexaTTSInference as NexaTTSOnnxInference
-        inference = NexaTTSOnnxInference(model_path, local_path, **kwargs)
+        inference = NexaTTSOnnxInference(model_path=model_path, local_path=local_path, **kwargs)
     else:
         raise ValueError(f"Unknown task: {run_type}")
 

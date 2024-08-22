@@ -13,7 +13,7 @@ default_model = sys.argv[1]
 @st.cache_resource
 def load_model(model_path: str):
     local_path, run_type = pull_model(model_path)  
-    return NexaTTSInference(model_path, local_path)
+    return NexaTTSInference(model_path=model_path, local_path=local_path)
 
 
 def generate_audio(nexa_model: NexaTTSInference, text):

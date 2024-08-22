@@ -12,7 +12,7 @@ default_model = sys.argv[1]
 def load_model(model_path):
     st.session_state.messages = []
     local_path, run_type = pull_model(model_path)
-    nexa_model = NexaTextInference(model_path, local_path)
+    nexa_model = NexaTextInference(model_path=model_path, local_path=local_path)
     return nexa_model
 
 
