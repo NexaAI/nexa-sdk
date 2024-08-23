@@ -2,7 +2,7 @@
 
 <h1>Nexa SDK</h1>
 
-  <img src="assets/banner.png" alt="icon"/>
+  <img src="./assets/banner.png" alt="icon"/>
 
 [![MacOS][MacOS-image]][release-url] [![Linux][Linux-image]][release-url] [![Windows][Windows-image]][release-url]
 

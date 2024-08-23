@@ -25,7 +25,7 @@ jobs:
         fetch-depth: 0  # This fetches all history so you can access any version of the submodules
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 

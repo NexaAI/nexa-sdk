@@ -66,7 +66,7 @@ async def load_model():
         chat_format = NEXA_RUN_CHAT_TEMPLATE_MAP.get(model_path, None)
         completion_template = NEXA_RUN_COMPLETION_TEMPLATE_MAP.get(model_path, None)
         model_path = NEXA_RUN_MODEL_MAP_TEXT.get(model_path)
-        downloaded_path = pull_model(model_path)
+        downloaded_path, run_type = pull_model(model_path)
         with suppress_stdout_stderr():
             try:
                 model = Llama(
@@ -89,7 +89,7 @@ async def load_model():
     elif model_path in NEXA_RUN_MODEL_MAP_FUNCTION_CALLING:
         chat_format = "chatml-function-calling"
         model_path = NEXA_RUN_MODEL_MAP_FUNCTION_CALLING.get(model_path)
-        downloaded_path = pull_model(model_path)
+        downloaded_path, run_type = pull_model(model_path)
         with suppress_stdout_stderr():
             try:
                 model = Llama(
@@ -111,7 +111,7 @@ async def load_model():
 
             logging.info(f"model loaded as {model}")
     elif model_path in NEXA_RUN_MODEL_MAP_IMAGE:
-        downloaded_path = pull_model(model_path)
+        downloaded_path, run_type = pull_model(model_path)
         with suppress_stdout_stderr():
             model = StableDiffusion(
                 model_path=downloaded_path,
@@ -123,7 +123,7 @@ async def load_model():
         logging.info(f"model loaded as {model}")
     elif model_path in NEXA_RUN_MODEL_MAP_VOICE:
         model_path = NEXA_RUN_MODEL_MAP_VOICE.get(model_path)
-        downloaded_path = pull_model(model_path)
+        downloaded_path, run_type = pull_model(model_path)
         with suppress_stdout_stderr():
             model = WhisperModel(
                 downloaded_path,

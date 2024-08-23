@@ -3,6 +3,7 @@ from nexa.gguf.lib_utils import is_gpu_available
 
 model = NexaTextInference(
     model_path="gemma",
+    local_path=None,
     verbose=False,
     n_gpu_layers=-1 if is_gpu_available() else 0,
     chat_format="llama-2",
@@ -63,12 +64,12 @@ def test_create_embedding():
     print("Embeddings:\n", embeddings)
 
 # Main execution
-# if __name__ == "__main__":
-#     print("=== Testing 1 ===")
-#     test1()
-#     print("=== Testing 2 ===")
-#     test2()
-#     print("=== Testing 3 ===")
-#     test3()
-#     print("=== Testing 4 ===")
-#     test4()
+if __name__ == "__main__":
+    print("=== Testing 1 ===")
+    test_text_generation()
+    print("=== Testing 2 ===")
+    test_streaming()
+    print("=== Testing 3 ===")
+    test_create_chat_completion()
+    print("=== Testing 4 ===")
+    test_create_embedding()
