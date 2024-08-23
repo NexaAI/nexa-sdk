@@ -1,8 +1,5 @@
-# Nexa SDK
+<div align="center">
 
-<<<<<<< Updated upstream
-The Nexa SDK is a comprehensive toolkit for supporting **ONNX** and **GGML** models. It supports text generation, image generation, vision-language models (VLM), and text-to-speech (TTS) capabilities. Additionally, it offers an OpenAI-compatible API server with JSON schema mode for function calling and streaming support, and a user-friendly Streamlit UI.
-=======
 <h1>Nexa SDK</h1>
 
   <img src="assets/banner.png" alt="icon"/>
@@ -25,7 +22,6 @@ The Nexa SDK is a comprehensive toolkit for supporting **ONNX** and **GGML** mod
 </div>
 
 Nexa SDK is a comprehensive toolkit for supporting **ONNX** and **GGML** models. It supports text generation, image generation, vision-language models (VLM), and text-to-speech (TTS) capabilities. Additionally, it offers an OpenAI-compatible API server with JSON schema mode for function calling and streaming support, and a user-friendly Streamlit UI.
->>>>>>> Stashed changes
 
 ## Features
 
@@ -39,7 +35,7 @@ Nexa SDK is a comprehensive toolkit for supporting **ONNX** and **GGML** models.
     - **Vision-Language Models (VLM)**
     - **Text-to-Speech (TTS)**
 
-Detailed API documentation is available [here](docs/index.html).
+Detailed API documentation is available [here](https://docs.nexaai.com/).
 
 - **Server:**
   - OpenAI-compatible API
@@ -49,115 +45,105 @@ Detailed API documentation is available [here](docs/index.html).
 
 ## Installation
 
-### GPU version(optional)
+### Pre-built Wheels (Recommended)
 
-check if you have GPU acceleration (torch required)
-<details>
-  <summary>CUDA:</summary>
+We have released pre-built wheels for various Python versions, platforms, and backends for convenient installation on our [index page](https://nexaai.github.io/nexa-sdk/whl/).
 
-  ```
-  import torch
-  torch.cuda.is_available()
-  ```
-
-  if True
-
-  ```
-  CMAKE_ARGS="-DGGML_CUDA=on -DSD_CUBLAS=ON" pip install nexaai
-  ```
-  Or you prefer to install our pre-built wheel:
-  ```bash
-  pip install nexaai --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple
-  ```
-  Optionally, you can install onnx supported version:
-  ```bash
-  pip install nexaai[onnx] --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple
-  ```
-</details>
-<details>
-  <summary>Apple M Chip:</summary>
-  Apple icon -> about this mac -> Graphics
-
-  if True:
-
-  ```
-  CMAKE_ARGS="-DGGML_METAL=on -DSD_METAL=ON" pip install nexaai
-  ```
-  Or you prefer to install our pre-built wheel:
-  ```bash
-  pip install nexaai --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple
-  ```
-  Optionally, you can install onnx supported version:
-  ```bash
-  pip install nexaai[onnx] --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple
-  ```
-</details>
-
-### CPU version
-
-<details>
-  <summary>Mac with Intel Chips</summary>
-
-  To install the `nexaai` package on a Mac with Intel chips, use the following command:
-
-  ```bash
-  CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp" pip install nexaai
-  ```
-
-  **Optional:** To install the version with ONNX support, use:
-
-  ```bash
-  CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp" pip install nexaai[onnx]
-  ```
-
-</details>
-
-<details>
-  <summary>Mac with M Chips or Other Operating Systems</summary>
-
-  To install the `nexaai` package on a Mac with M chips or other operating systems, use the following command:
-
-  ```bash
-  pip install nexaai
-  ```
-
-  **Optional:** To install the version with ONNX support, use:
-
-  ```bash
-  pip install nexaai[onnx]
-  ```
-
-
-</details>
-If you prefer to install the pre-built wheel for CPU versions:
+#### CPU
 
 ```bash
 pip install nexaai --index-url https://nexaai.github.io/nexa-sdk/whl/cpu --extra-index-url https://pypi.org/simple
 ```
 
-To include ONNX support:
+#### GPU (Metal)
+
+For the GPU version supporting **Metal (macOS)**:
 
 ```bash
-pip install nexaai[onnx] --index-url https://nexaai.github.io/nexa-sdk/whl/cpu --extra-index-url https://pypi.org/simple
+pip install nexaai --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple
 ```
 
+#### GPU (CUDA)
+
+For the GPU version supporting **CUDA (Linux/Windows)**:
+
+```bash
+pip install nexaai --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple
+```
+
+> [!NOTE]
+> The CUDA wheels are built with CUDA 12.4, but should be compatible with all CUDA 12.X
+
+### Install from source code distribution
+
+If pre-built wheels cannot meet your requirements, you can install Nexa SDK from the source code via cmake.
+
+#### CPU
+
+```bash
+pip install nexaai
+```
+
+> [!IMPORTANT]
+> If you are using a Mac with Intel chips, run the following command:
+>
+> ```bash
+> CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp" pip install nexaai
+> ```
+
+#### GPU (Metal)
+
+For the GPU version supporting Metal (macOS):
+
+```bash
+CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai
+```
+
+#### GPU (CUDA)
+
+For the GPU version supporting CUDA (Linux/Windows), run the following command:
+
+```bash
+CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai
+```
+
+> [!TIP]
+> You can accelerate the building process via parallel cmake by appending the following to the commands above:
+>
+> ```bash
+> CMAKE_BUILD_PARALLEL_LEVEL=$(nproc)
+> ```
+>
+> For example:
+>
+> ```bash
+> CMAKE_BUILD_PARALLEL_LEVEL=$(nproc) CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL
+> ```
+
+> [!TIP]
+> For Windows users, we recommend running the installation command in Git Bash to avoid unexpected behavior.
+
 ### Docker Usage
+
 Note: Docker doesn't support GPU acceleration
+
 ```bash
 docker pull nexa4ai/sdk:latest
 ```
+
 replace following placeholder with your path and command
+
 ```bash
 docker run -v <your_model_dir>:/model -it nexa4ai/sdk:latest [nexa_command] [your_model_relative_path]
 ```
 
 Example:
+
 ```bash
 docker run -v /home/ubuntu/.cache/nexa/hub/official:/model -it nexa4ai/sdk:latest nexa gen-text /model/Phi-3-mini-128k-instruct/q4_0.gguf
 ```
 
 will create an interactive session with text generation
-
 
 ## Nexa CLI commands
 
@@ -165,8 +151,8 @@ will create an interactive session with text generation
 
 ### NLP Models
 
-| Model            | Type | Format    | Command                              |
-| ---------------- | ---- | --------- | ------------------------------------ |
+| Model            | Type | Format    | Command                          |
+| ---------------- | ---- | --------- | -------------------------------- |
 | octopus-v2       | NLP  | GGUF      | `nexa gen-text octopus-v2`       |
 | octopus-v4       | NLP  | GGUF      | `nexa gen-text octopus-v4`       |
 | tinyllama        | NLP  | GGUF      | `nexa gen-text tinyllama`        |
@@ -189,8 +175,8 @@ will create an interactive session with text generation
 
 ### Multimodal Models
 
-| Model            | Type       | Format | Command                         |
-| ---------------- | ---------- | ------ | ------------------------------- |
+| Model            | Type       | Format | Command                     |
+| ---------------- | ---------- | ------ | --------------------------- |
 | nanollava        | Multimodal | GGUF   | `nexa vlm nanollava`        |
 | llava-phi3       | Multimodal | GGUF   | `nexa vlm llava-phi3`       |
 | llava-llama3     | Multimodal | GGUF   | `nexa vlm llava-llama3`     |
@@ -199,8 +185,8 @@ will create an interactive session with text generation
 
 ### Computer Vision Models
 
-| Model                 | Type            | Format    | Command                              |
-| --------------------- | --------------- | --------- | ------------------------------------ |
+| Model                 | Type            | Format    | Command                          |
+| --------------------- | --------------- | --------- | -------------------------------- |
 | stable-diffusion-v1-4 | Computer Vision | GGUF      | `nexa gen-image sd1-4`           |
 | stable-diffusion-v1-5 | Computer Vision | GGUF/ONNX | `nexa gen-image sd1-5`           |
 | lcm-dreamshaper       | Computer Vision | GGUF/ONNX | `nexa gen-image lcm-dreamshaper` |
