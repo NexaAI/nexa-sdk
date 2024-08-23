@@ -16,6 +16,7 @@ fastapi
 uvicorn
 pydantic
 pillow
+python-multipart
 
 # For onnx
 optimum[onnxruntime]  # for CPU version
