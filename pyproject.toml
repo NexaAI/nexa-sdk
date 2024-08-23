@@ -24,6 +24,7 @@ dependencies = [
     "tqdm",                     # Shared dependencies
     "tabulate",
     "streamlit",
+    "python-multipart",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
