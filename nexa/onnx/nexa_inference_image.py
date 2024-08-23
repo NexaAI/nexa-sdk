@@ -12,9 +12,8 @@ from optimum.onnxruntime import (
     ORTStableDiffusionPipeline,
     ORTStableDiffusionXLPipeline,
 )
-
-from nexa.constants import EXIT_REMINDER, NEXA_RUN_MODEL_MAP_ONNX
 from nexa.general import pull_model
+from nexa.constants import EXIT_REMINDER, NEXA_RUN_MODEL_MAP_ONNX
 from nexa.utils import nexa_prompt, SpinningCursorAnimation
 
 logging.basicConfig(level=logging.INFO)
@@ -36,6 +35,7 @@ class NexaImageInference:
 
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.
+    local_path (str): Local path of the model.
     num_inference_steps (int): Number of inference steps.
     num_images_per_prompt (int): Number of images to generate per prompt.
     width (int): Width of the output image.
@@ -45,8 +45,9 @@ class NexaImageInference:
     random_seed (int): Random seed for image generation.
     streamlit (bool): Run the inference in Streamlit UI.
     """
-    def __init__(self, model_path, **kwargs):
+    def __init__(self, model_path, local_path=None, **kwargs):
         self.model_path = NEXA_RUN_MODEL_MAP_ONNX.get(model_path, model_path)
+        self.download_onnx_folder = local_path
         self.params = {
             "num_inference_steps": 20,
             "num_images_per_prompt": 1,
@@ -60,17 +61,18 @@ class NexaImageInference:
         self.pipeline = None
 
     def run(self):
-        # Step 1: Download the ONNX folder from S3
-        downloaded_onnx_folder = pull_model(self.model_path)
 
-        if downloaded_onnx_folder is None:
-            logging.error("Failed to download the model. Exiting.")
-            return
+        if self.download_onnx_folder is None:
+            self.download_onnx_folder, run_type = pull_model(self.model_path)
 
-        # Step 2: Load the model
-        self._load_model(downloaded_onnx_folder)
+        if self.download_onnx_folder is None:
+            logging.error(
+                f"Model ({model_path}) is not applicable. Please refer to our docs for proper usage.",
+                exc_info=True,
+            )
+            exit(1)
 
-        # Step 3: Enter dialogue mode
+        self._load_model(self.download_onnx_folder)
         self._dialogue_mode()
 
     @SpinningCursorAnimation()

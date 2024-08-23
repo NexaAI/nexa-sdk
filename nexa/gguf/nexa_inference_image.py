@@ -5,8 +5,6 @@ import os
 import sys
 import time
 from pathlib import Path
-
-from nexa.general import pull_model
 from nexa.constants import (
     DEFAULT_IMG_GEN_PARAMS,
     EXIT_REMINDER,
@@ -19,6 +17,7 @@ from nexa.utils import SpinningCursorAnimation, nexa_prompt
 from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
 
 from streamlit.web import cli as stcli
+from nexa.general import pull_model
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -30,36 +29,30 @@ class NexaImageInference:
     A class used for loading image models and running image generation.
 
     Methods:
-        txt2img: (Used for SDK) Run the text-to-image generation loop.
-        img2img: (Used for SDK) Run the image-to-image generation loop.
-        run_streamlit: Run the Streamlit UI.
+    txt2img: (Used for SDK) Run the text-to-image generation loop.
+    img2img: (Used for SDK) Run the image-to-image generation loop.
+    run_streamlit: Run the Streamlit UI.
 
     Args:
-        model_path (str): Path or identifier for the model in Nexa Model Hub.
-        num_inference_steps (int): Number of inference steps.
-        width (int): Width of the output image.
-        height (int): Height of the output image.
-        guidance_scale (float): Guidance scale for diffusion.
-        output_path (str): Output path for the generated image.
-        random_seed (int): Random seed for image generation.
-        streamlit (bool): Run the inference in Streamlit UI.
+    model_path (str): Path or identifier for the model in Nexa Model Hub.
+    local_path (str): Local path of the model.
+    num_inference_steps (int): Number of inference steps.
+    width (int): Width of the output image.
+    height (int): Height of the output image.
+    guidance_scale (float): Guidance scale for diffusion.
+    output_path (str): Output path for the generated image.
+    random_seed (int): Random seed for image generation.
+    streamlit (bool): Run the inference in Streamlit UI.
 
     """
 
 
-    def __init__(self, model_path, **kwargs):
-        self.model_path = None
-        self.downloaded_path = None
-        if model_path in NEXA_RUN_MODEL_MAP:
-            logging.debug(f"Found model {model_path} in public hub")
-            self.model_path = NEXA_RUN_MODEL_MAP.get(model_path)
-            self.downloaded_path = pull_model(self.model_path)
-        elif os.path.exists(model_path):
-            logging.debug(f"Using local model at {model_path}")
-            self.downloaded_path = model_path
-        else:
-            logging.debug(f"Trying to use model from hub at {model_path}")
-            self.downloaded_path = pull_model(model_path)
+    def __init__(self, model_path, local_path=None, **kwargs):
+        self.model_path = model_path
+        self.downloaded_path = local_path
+
+        if self.downloaded_path is None:
+            self.downloaded_path, run_type = pull_model(self.model_path)
 
         if self.downloaded_path is None:
             logging.error(
@@ -68,15 +61,14 @@ class NexaImageInference:
             )
             exit(1)
 
-        if self.model_path == "lcm-dreamshaper-v7:fp16":
+        if "lcm-dreamshaper" in self.model_path:
             self.params = DEFAULT_IMG_GEN_PARAMS_LCM
-        elif self.model_path == "sdxl-turbo:q8_0":
+        elif "sdxl-turbo" in self.model_path:
             self.params = DEFAULT_IMG_GEN_PARAMS_TURBO
         else:
             self.params = DEFAULT_IMG_GEN_PARAMS
 
         self.params.update(kwargs)
-
         if not kwargs.get("streamlit", False):
             self._load_model(model_path)
             if self.model is None:

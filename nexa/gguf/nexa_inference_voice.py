@@ -23,34 +23,28 @@ class NexaVoiceInference:
     A class used for loading voice models and running voice transcription.
 
     Methods:
-        run: Run the voice transcription loop.
-        run_streamlit: Run the Streamlit UI.
+      run: Run the voice transcription loop.
+      run_streamlit: Run the Streamlit UI.
 
     Args:
-        model_path (str): Path or identifier for the model in Nexa Model Hub.
-        output_dir (str): Output directory for transcriptions.
-        beam_size (int): Beam size to use for transcription.
-        language (str): The language spoken in the audio.
-        task (str): Task to execute (transcribe or translate).
-        temperature (float): Temperature for sampling.
-        compute_type (str): Type to use for computation (e.g., float16, int8, int8_float16).
-        output_dir (str): Output directory for transcriptions.
+    model_path (str): Path or identifier for the model in Nexa Model Hub.
+    local_path (str): Local path of the model.
+    output_dir (str): Output directory for transcriptions.
+    beam_size (int): Beam size to use for transcription.
+    language (str): The language spoken in the audio.
+    task (str): Task to execute (transcribe or translate).
+    temperature (float): Temperature for sampling.
+    compute_type (str): Type to use for computation (e.g., float16, int8, int8_float16).
+    output_dir (str): Output directory for transcriptions.
 
     """
-    def __init__(self, model_path, **kwargs):
-        self.model_path = None
-        self.downloaded_path = None
+    def __init__(self, model_path, local_path=None, **kwargs):
+        self.model_path = model_path
+        self.downloaded_path = local_path
         self.params = DEFAULT_VOICE_GEN_PARAMS
-        if model_path in NEXA_RUN_MODEL_MAP_VOICE:
-            logging.debug(f"Found model {model_path} in public hub")
-            self.model_path = NEXA_RUN_MODEL_MAP_VOICE.get(model_path)
-            self.downloaded_path = pull_model(self.model_path)
-        elif os.path.exists(model_path):
-            logging.debug(f"Using local model at {model_path}")
-            self.downloaded_path = model_path
-        else:
-            logging.error("Using voice model from hub is not supported yet.")
-            exit(1)
+
+        if self.downloaded_path is None:
+            self.downloaded_path, run_type = pull_model(self.model_path)
 
         if self.downloaded_path is None:
             logging.error(
@@ -189,7 +183,7 @@ class NexaVoiceInference:
             )
             transcription = "".join(segment.text for segment in segments)
             self._save_transcription(transcription)
-            logging.info(f"Transcription: {transcription}")
+            print(f"Transcription: {transcription}")
         except Exception as e:
             logging.error(f"Error during transcription: {e}", exc_info=True)
 

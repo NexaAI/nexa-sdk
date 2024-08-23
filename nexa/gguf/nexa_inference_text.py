@@ -12,8 +12,8 @@ from nexa.constants import (
     NEXA_RUN_MODEL_MAP,
     NEXA_STOP_WORDS_MAP,
 )
-from nexa.general import pull_model
 from nexa.gguf.lib_utils import is_gpu_available
+from nexa.general import pull_model
 from nexa.utils import SpinningCursorAnimation, nexa_prompt
 from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
 
@@ -25,41 +25,36 @@ logging.basicConfig(
 
 class NexaTextInference:
     """
-    A class used for load text models and run text generation.
+    A class used for loading text models and running text generation.
 
     Methods:
         run: Run the text generation loop.
         run_streamlit: Run the Streamlit UI.
-
+        create_embedding: Embed a string.
+        create_chat_completion: Generate completion for a chat conversation.
+        create_completion: Generate completion for a given prompt.
     Args:
-        model_path (str): Path or identifier for the model in Nexa Model Hub.
-        embedding (bool): Enable embedding generation.
-        stop_words (list): List of stop words for early stopping.
-        profiling (bool): Enable timing measurements for the generation process.
-        streamlit (bool): Run the inference in Streamlit UI.
-        temperature (float): Temperature for sampling.
-        max_new_tokens (int): Maximum number of new tokens to generate.
-        top_k (int): Top-k sampling parameter.
-        top_p (float): Top-p sampling parameter
+    model_path (str): Path or identifier for the model in Nexa Model Hub.
+    local_path (str, optional): Local path of the model.
+    embedding (bool): Enable embedding generation.
+    stop_words (list): List of stop words for early stopping.
+    profiling (bool): Enable timing measurements for the generation process.
+    streamlit (bool): Run the inference in Streamlit UI.
+    temperature (float): Temperature for sampling.
+    max_new_tokens (int): Maximum number of new tokens to generate.
+    top_k (int): Top-k sampling parameter.
+    top_p (float): Top-p sampling parameter
     """
-
-    def __init__(self, model_path, stop_words=None, **kwargs):
+    def __init__(self, model_path, local_path=None, stop_words=None, **kwargs):
         self.params = DEFAULT_TEXT_GEN_PARAMS
         self.params.update(kwargs)
         self.model = None
-
-        self.model_path = None
-        self.downloaded_path = None
-        if model_path in NEXA_RUN_MODEL_MAP:
-            logging.debug(f"Found model {model_path} in public hub")
-            self.model_path = NEXA_RUN_MODEL_MAP.get(model_path)
-            self.downloaded_path = pull_model(self.model_path)
-        elif os.path.exists(model_path):
-            logging.debug(f"Using local model at {model_path}")
-            self.downloaded_path = model_path
-        else:
-            logging.debug(f"Trying to use model from hub at {model_path}")
-            self.downloaded_path = pull_model(model_path)
+        
+        self.model_path = model_path
+        self.downloaded_path = local_path
+        
+        if self.downloaded_path is None:
+            self.downloaded_path, run_type = pull_model(self.model_path)
 
         if self.downloaded_path is None:
             logging.error(
@@ -71,7 +66,6 @@ class NexaTextInference:
         self.stop_words = (
             stop_words if stop_words else NEXA_STOP_WORDS_MAP.get(model_path, [])
         )
-
         self.profiling = kwargs.get("profiling", False)
 
         self.chat_format = NEXA_RUN_CHAT_TEMPLATE_MAP.get(model_path, None)

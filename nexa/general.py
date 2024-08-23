@@ -1,7 +1,7 @@
 import json
 import logging
 from pathlib import Path
-
+import shutil
 import requests
 
 from nexa.constants import (
@@ -13,6 +13,7 @@ from nexa.constants import (
     NEXA_OFFICIAL_BUCKET,
     NEXA_RUN_MODEL_MAP,
     NEXA_TOKEN_PATH,
+    NEXA_OFFICIAL_MODELS_TYPE,
 )
 
 
@@ -103,25 +104,25 @@ def pull_model(model_path):
 
     try:
         if is_model_exists(model_path):
-            location = get_model_location(model_path)
+            location, run_type = get_model_info(model_path)
             logging.debug(f"Model {model_path} already exists at {location}")
-            return location
+            return location, run_type
 
         if "/" in model_path:
-            success, location, model_type = pull_model_from_hub(model_path)
+            result = pull_model_from_hub(model_path)
         else:
-            success, location, model_type = pull_model_from_official(model_path)
+            result = pull_model_from_official(model_path)
 
-        if success:
-            add_model_to_list(model_path, location, model_type)
-            logging.debug(f"Successfully pulled model {model_path} to {location}")
-            return location
+        if result["success"]:
+            add_model_to_list(model_path, result["local_path"], result["model_type"], result["run_type"])
+            logging.debug(f"Successfully pulled model {model_path} to {result['local_path']}, run_type: {result['run_type']}")
+            return result["local_path"], result["run_type"]
         else:
             logging.debug(f"Failed to pull model {model_path}")
-            return None
+            return None, "UNKNOWN"
     except Exception as e:
         logging.error(f"An error occurred while pulling the model: {e}")
-        return None
+        return None, "UNKNOWN"
 
 
 def pull_model_from_hub(model_path):
@@ -133,13 +134,20 @@ def pull_model_from_hub(model_path):
             token = file.read().strip()
 
     try:
-        presigned_links = get_model_presigned_link(model_path, token)
+        result = get_model_presigned_link(model_path, token)
+        run_type = result['type']
+        presigned_links = result['presigned_urls']
     except Exception as e:
         print(f"Failed to get download models: {e}")
-        return False, None
+        return {
+            "success": False,
+            "local_path": None,
+            "model_type": None,
+            "run_type": None
+        }
 
     success = True
-    model_location = None
+    local_path = None
     model_type = "undefined"
 
     # Determine model_type
@@ -159,19 +167,24 @@ def pull_model_from_hub(model_path):
             download_path = NEXA_MODELS_HUB_DIR / file_path
             download_file_with_progress(presigned_link, download_path)
 
-            if model_location is None:
+            if local_path is None:
                 if model_type == "onnx" or model_type == "bin":
-                    model_location = str(download_path.parent)
+                    local_path = str(download_path.parent)
                 elif model_type == "gguf":
-                    model_location = str(download_path)
+                    local_path = str(download_path)
                 else:  # undefined
-                    model_location = str(download_path.parent)
+                    local_path = str(download_path.parent)
 
         except Exception as e:
             print(f"Failed to download {file_path}: {e}")
             success = False
 
-    return success, model_location, model_type
+    return {
+        "success": success,
+        "local_path": local_path,
+        "model_type": model_type,
+        "run_type": run_type
+    }
 
 
 def pull_model_from_official(model_path):
@@ -183,8 +196,21 @@ def pull_model_from_official(model_path):
         model_type = "bin"
     else:
         model_type = "gguf"
+
+    run_type = get_run_type_from_model_path(model_path)
     success, location = download_model_from_official(model_path, model_type)
-    return success, location, model_type
+    
+    return {
+        "success": success,
+        "local_path": location,
+        "model_type": model_type,
+        "run_type": run_type
+    }
+
+
+def get_run_type_from_model_path(model_path):
+    model_name, model_version = model_path.split(":")
+    return NEXA_OFFICIAL_MODELS_TYPE.get(model_name, "UNKNOWN")
 
 
 def get_model_presigned_link(full_path, token):
@@ -192,11 +218,11 @@ def get_model_presigned_link(full_path, token):
     Get the presigned links for downloading the contents of a model folder.
 
     Args:
-    full_path (str): The full path of the folder to download (e.g., "gpt2-onnx/").
-    token (str): The authentication token. Can be empty.
+    full_path (str): The full path of the folder to download (e.g., "openai/gpt2:gguf-q2_K").
+    token (str, optional): The authentication token. Defaults to None.
 
     Returns:
-    dict: A dictionary containing the contents of the folder, where keys are file paths and values are presigned links.
+    dict: A dictionary containing the model type and presigned URLs.
     """
 
     url = f"{NEXA_API_URL}/model/download-tag-folder"
@@ -205,13 +231,20 @@ def get_model_presigned_link(full_path, token):
     if token:
         headers["Authorization"] = f"Bearer {token}"
 
-    body = {"full_path": full_path}
+    body = {"full_path": full_path, "need_type": True}
 
     try:
         response = requests.post(url, headers=headers, json=body)
         response.raise_for_status()
-        folder_contents = response.json()
-        return folder_contents
+        result = response.json()
+
+        run_type = result.get("type", [])[0] if result.get("type") else None
+        presigned_urls = result.get("presigned_urls", {})
+        
+        return {
+            "run_type": run_type,
+            "presigned_urls": presigned_urls
+        }
 
     except requests.exceptions.RequestException as e:
         print(f"API request failed: {e}")
@@ -286,7 +319,7 @@ def is_model_exists(model_name):
     return model_name in model_list
 
 
-def add_model_to_list(model_name, model_location, model_type):
+def add_model_to_list(model_name, model_location, model_type, run_type):
     NEXA_MODEL_LIST_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     if NEXA_MODEL_LIST_PATH.exists():
@@ -295,20 +328,28 @@ def add_model_to_list(model_name, model_location, model_type):
     else:
         model_list = {}
 
-    model_list[model_name] = {"type": model_type, "location": model_location}
+    model_list[model_name] = {
+        "type": model_type,
+        "location": model_location,
+        "run_type": run_type
+    }
 
     with open(NEXA_MODEL_LIST_PATH, "w") as f:
         json.dump(model_list, f, indent=2)
 
 
-def get_model_location(model_name):
+def get_model_info(model_name):
     if not NEXA_MODEL_LIST_PATH.exists():
-        return None
+        return None, None
 
     with open(NEXA_MODEL_LIST_PATH, "r") as f:
         model_list = json.load(f)
 
-    return model_list.get(model_name).get("location")
+    model_data = model_list.get(model_name, {})
+    location = model_data.get("location")
+    run_type = model_data.get("run_type")
+
+    return location, run_type
 
 
 def list_models():
@@ -320,15 +361,15 @@ def list_models():
             model_list = json.load(f)
 
         table = [
-            (model_name, model_info["type"], model_info["location"])
+            (model_name, model_info["type"], model_info["run_type"], model_info["location"])
             for model_name, model_info in model_list.items()
         ]
-        headers = ["Model Name", "Type", "Location"]
+        headers = ["Model Name", "Type", "Run Type", "Location"]
         from tabulate import tabulate
 
         print(
             tabulate(
-                table, headers, tablefmt="pretty", colalign=("left", "left", "left")
+                table, headers, tablefmt="pretty", colalign=("left", "left", "left", "left")
             )
         )
     except Exception as e:
@@ -359,8 +400,6 @@ def remove_model(model_path):
             model_path.unlink()
             print(f"Deleted model file: {model_path}")
         elif model_path.is_dir():
-            import shutil
-
             shutil.rmtree(model_path)
             print(f"Deleted model directory: {model_path}")
         else:
@@ -375,6 +414,32 @@ def remove_model(model_path):
     except Exception as e:
         print(f"An error occurred while removing the model: {e}")
         return None
+    
+def clean():
+    if not NEXA_MODELS_HUB_DIR.exists():
+        print(f"Nothing to clean.")
+        return
+    
+    # Ask for user confirmation
+    confirmation = input(f"This will remove all downloaded models and the model list. Are you sure? (y/N): ").lower().strip()
+    
+    if confirmation != 'y':
+        print("Operation cancelled.")
+        return
+
+    try:
+        # Remove all contents of the directory
+        for item in NEXA_MODELS_HUB_DIR.iterdir():
+            if item.is_file():
+                item.unlink()
+            elif item.is_dir():
+                shutil.rmtree(item)
+        
+        print(f"Successfully removed all contents from {NEXA_MODELS_HUB_DIR}")
+    
+    except Exception as e:
+        print(f"An error occurred while cleaning the directory: {e}")
+
 
 
 if __name__ == "__main__":
