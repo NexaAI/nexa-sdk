@@ -25,6 +25,7 @@ dependencies = [
     "tabulate",
     "streamlit",
     "python-multipart",
+    "streamlit-audiorec",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -45,7 +46,6 @@ onnx = [
     "requests",
     "setuptools",
     "soundfile",
-    "streamlit_audiorec",
     "transformers",
     "ttstokenizer",
 ]
