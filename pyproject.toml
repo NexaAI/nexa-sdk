@@ -26,6 +26,7 @@ dependencies = [
     "streamlit",
     "python-multipart",
     "streamlit-audiorec",
+    "cmake",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
