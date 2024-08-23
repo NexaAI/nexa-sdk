@@ -25,6 +25,7 @@ class NexaVoiceInference:
     Methods:
       run: Run the voice transcription loop.
       run_streamlit: Run the Streamlit UI.
+      transcribe: Transcribe the audio file.
 
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.

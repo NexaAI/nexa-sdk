@@ -74,8 +74,9 @@ class NexaVLMInference:
     A class used for loading VLM models and running text generation.
 
     Methods:
-    run: Run the text generation loop.
-    run_streamlit: Run the Streamlit UI.
+        run: Run the text generation loop.
+        run_streamlit: Run the Streamlit UI.
+        create_chat_completion: Generate text completion for a given chat prompt.
 
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.

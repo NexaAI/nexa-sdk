@@ -32,6 +32,7 @@ class NexaImageInference:
     Methods:
         run: Run the image generation loop.
         run_streamlit: Run the Streamlit UI.
+        generate_images: Generate images based on the given prompt, negative prompt, and parameters.
 
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.
