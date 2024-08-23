@@ -1,9 +1,6 @@
 # Files
 *.safetensors
 *.gguf
-*.png
-*.jpeg
-*.jpg
 *.bin
 *.mp3
 *.wav
