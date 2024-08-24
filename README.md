@@ -84,16 +84,20 @@ If pre-built wheels cannot meet your requirements, you can install Nexa SDK from
 pip install nexaai
 ```
 
-####FAQ
+<details>
+<summary><strong>FAQ: Building Issues for llava</strong></summary>
 
-If you met following issue while building
+If you encounter the following issue while building:
+
 ![](docs/.media/error.jpeg)
 
-try following command
+try the following command:
 
 ```bash
 CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp" pip install nexaai
 ```
+
+</details>
 
 #### GPU (Metal)
 

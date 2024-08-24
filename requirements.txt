@@ -2,6 +2,7 @@
 build
 wheel
 twine
+cmake # For building C++ extensions
 
 # Faster Whisper
 faster_whisper
