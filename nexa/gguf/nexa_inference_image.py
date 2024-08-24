@@ -218,7 +218,7 @@ class NexaImageInference:
                                       sample_steps=self.params["num_inference_steps"],
                                       seed=self.params["random_seed"],
                                       control_cond=self.params.get("control_image_path", ""),
-                                        control_strength=self.params.get("control_strength", 0.9),
+                                      control_strength=self.params.get("control_strength", 0.9),
                                     )
 
                 self._save_images(images)
