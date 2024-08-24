@@ -102,7 +102,7 @@ def main():
     image_group = run_parser.add_argument_group('Image generation options')
     image_group.add_argument("-i2i", "--img2img", action="store_true", help="Whether to run image-to-image generation")
     image_group.add_argument("-ns", "--num_inference_steps", type=int, help="Number of inference steps")
-    image_group.add_argument("-np", "--num_images_per_prompt", type=int, deafult=1, help="Number of images to generate per prompt")
+    image_group.add_argument("-np", "--num_images_per_prompt", type=int, default=1, help="Number of images to generate per prompt")
     image_group.add_argument("-H", "--height", type=int, help="Height of the output image")
     image_group.add_argument("-W", "--width", type=int, help="Width of the output image")
     image_group.add_argument("-g", "--guidance_scale", type=float, help="Guidance scale for diffusion")
