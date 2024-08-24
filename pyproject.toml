@@ -90,7 +90,6 @@ sdist.exclude = [
 build.verbose = true
 cmake.build-type = "Release"
 cmake.version = ">=3.16"
-# cmake.args = ["-DCMAKE_CXX_FLAGS=-fopenmp"] # for macOS with Intel Silicon
 cmake.args = ["-DCMAKE_BUILD_PARALLEL_LEVEL=16"]
 
 [tool.scikit-build.metadata.version]

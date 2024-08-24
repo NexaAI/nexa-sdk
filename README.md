@@ -84,12 +84,16 @@ If pre-built wheels cannot meet your requirements, you can install Nexa SDK from
 pip install nexaai
 ```
 
-> [!IMPORTANT]
-> If you are using a Mac with Intel chips, run the following command:
->
-> ```bash
-> CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp" pip install nexaai
-> ```
+####FAQ
+
+If you met following issue while building
+![](docs/.media/error.jpeg)
+
+try following command
+
+```bash
+CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp" pip install nexaai
+```
 
 #### GPU (Metal)
 
