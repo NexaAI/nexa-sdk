@@ -181,7 +181,6 @@ DEFAULT_TEXT_GEN_PARAMS = {
 
 DEFAULT_IMG_GEN_PARAMS = {
     "num_inference_steps": 20,
-    "num_images_per_prompt": 1,
     "height": 512,
     "width": 512,
     "guidance_scale": 7.5,
@@ -191,7 +190,6 @@ DEFAULT_IMG_GEN_PARAMS = {
 
 DEFAULT_IMG_GEN_PARAMS_LCM = {
     "num_inference_steps": 4,
-    "num_images_per_prompt": 1,
     "height": 512,
     "width": 512,
     "guidance_scale": 1.0,
@@ -201,7 +199,6 @@ DEFAULT_IMG_GEN_PARAMS_LCM = {
 
 DEFAULT_IMG_GEN_PARAMS_TURBO = {
     "num_inference_steps": 5,
-    "num_images_per_prompt": 1,
     "height": 512,
     "width": 512,
     "guidance_scale": 5.0,

@@ -84,7 +84,7 @@ If pre-built wheels cannot meet your requirements, you can install Nexa SDK from
 pip install nexaai
 ```
 
-####FAQ
+#### FAQ
 
 If you met following issue while building
 ![](docs/.media/error.jpeg)
