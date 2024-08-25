@@ -2,6 +2,7 @@
 build
 wheel
 twine
+cmake # For building C++ extensions
 
 # Faster Whisper
 faster_whisper
@@ -26,7 +27,7 @@ PyYAML
 requests
 setuptools
 soundfile
-streamlit_audiorec
+streamlit-audiorec
 transformers
 ttstokenizer
 

@@ -86,7 +86,7 @@ class NexaImageInference:
                 lora_model_dir=self.params.get("lora_dir", ""),
                 n_threads=self.params.get("n_threads", multiprocessing.cpu_count()),
                 wtype=self.params.get(
-                    "wtype", NEXA_RUN_MODEL_PRECISION_MAP.get(model_path, "default")
+                    "wtype", NEXA_RUN_MODEL_PRECISION_MAP.get(model_path, "f32")
                 ),  # Weight type (options: default, f32, f16, q4_0, q4_1, q5_0, q5_1, q8_0)
                 control_net_path=self.params.get("control_net_path", ""),
                 verbose=False,
@@ -103,7 +103,7 @@ class NexaImageInference:
             file_name = f"image_{i+1}_{int(time.time())}.png"
             file_path = os.path.join(output_dir, file_name)
             image.save(file_path)
-            logging.info(f"\nImage {i+1} saved to: {file_path}")
+            print(f"\nImage {i+1} saved to: {os.path.abspath(file_path)}")
 
     def txt2img(self,
                 prompt,
@@ -218,7 +218,7 @@ class NexaImageInference:
                                       sample_steps=self.params["num_inference_steps"],
                                       seed=self.params["random_seed"],
                                       control_cond=self.params.get("control_image_path", ""),
-                                        control_strength=self.params.get("control_strength", 0.9),
+                                      control_strength=self.params.get("control_strength", 0.9),
                                     )
 
                 self._save_images(images)

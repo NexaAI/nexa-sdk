@@ -165,7 +165,7 @@ class NexaVLMInference:
                     chat_handler=self.projector,
                     verbose=False,
                     chat_format=self.chat_format,
-                    n_ctx=self.params.get("max_new_tokens", 2048),
+                    n_ctx=2048,
                     n_gpu_layers=-1 if is_gpu_available() else 0,
                 )
             except Exception as e:
@@ -178,7 +178,7 @@ class NexaVLMInference:
                     chat_handler=self.projector,
                     verbose=False,
                     chat_format=self.chat_format,
-                    n_ctx=self.params.get("max_new_tokens", 2048),
+                    n_ctx=2048,
                     n_gpu_layers=0,  # hardcode to use CPU
                 )
 

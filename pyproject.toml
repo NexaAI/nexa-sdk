@@ -10,6 +10,7 @@ readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Nexa AI", email = "octopus@nexa4ai.com" }]
 dependencies = [
+    "cmake", # For building C++ extensions
     "faster_whisper",
     "typing-extensions>=4.5.0", # For ggml
     "numpy>=1.20.0",
@@ -24,6 +25,7 @@ dependencies = [
     "tqdm",                     # Shared dependencies
     "tabulate",
     "streamlit",
+    "streamlit-audiorec",
     "python-multipart",
     "streamlit-audiorec",
     "cmake",
@@ -91,7 +93,6 @@ sdist.exclude = [
 build.verbose = true
 cmake.build-type = "Release"
 cmake.version = ">=3.16"
-# cmake.args = ["-DCMAKE_CXX_FLAGS=-fopenmp"] # for macOS with Intel Silicon
 cmake.args = ["-DCMAKE_BUILD_PARALLEL_LEVEL=16"]
 
 [tool.scikit-build.metadata.version]
