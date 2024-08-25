@@ -10,6 +10,7 @@ readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Nexa AI", email = "octopus@nexa4ai.com" }]
 dependencies = [
+    "cmake", # For building C++ extensions
     "faster_whisper",
     "typing-extensions>=4.5.0", # For ggml
     "numpy>=1.20.0",
