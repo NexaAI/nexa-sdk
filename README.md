@@ -43,6 +43,21 @@ Detailed API documentation is available [here](https://docs.nexaai.com/).
   - Streaming support
 - **Streamlit UI** for interactive model deployment and testing
 
+Below is our differentiation from other similar tools:
+
+| **Feature**                | **[Nexa SDK](https://github.com/NexaAI/nexa-sdk)** | **[ollama](https://github.com/ollama/ollama)** | **[Optimum](https://github.com/huggingface/optimum)** | **[LM Studio](https://github.com/lmstudio-ai)** |
+|----------------------------|:-------------------------------------------------:|:----------------------------------------------:|:-----------------------------------------------:|:-----------------------------------------------:|
+| **GGML Support**            | ✅                                                | ✅                                               | ❌                                               | ✅                                               |
+| **ONNX Support**            | ✅                                                | ❌                                               | ✅                                               | ❌                                               |
+| **Text Generation**         | ✅                                                | ✅                                               | ✅                                               | ✅                                               |
+| **Image Generation**        | ✅                                                | ❌                                               | ❌                                               | ❌                                               |
+| **Vision-Language Models**  | ✅                                                | ✅                                               | ✅                                               | ✅                                               |
+| **Text-to-Speech**          | ✅                                                | ❌                                               | ✅                                               | ❌                                               |
+| **Server Capability**       | ✅                                                | ✅                                               | ✅                                               | ✅                                               |
+| **User Interface**          | ✅                                                | ❌                                               | ❌                                               | ✅                                               |
+
+
+
 ## Installation
 
 ### Pre-built Wheels (Recommended)
@@ -773,3 +788,9 @@ Translates audio files to text in English.
 ```
 
 </details>
+
+## Acknowledgements
+We would like to thank the following projects:
+- [llama.cpp](https://github.com/ggerganov/llama.cpp)
+- [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)
+- [optimum](https://github.com/huggingface/optimum)
