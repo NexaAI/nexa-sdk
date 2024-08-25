@@ -1,6 +1,5 @@
 import os
 import sys
-
 from PIL import Image
 from nexa.general import pull_model
 import streamlit as st
@@ -72,12 +71,6 @@ num_inference_steps = st.sidebar.slider(
     100,
     st.session_state.nexa_model.params["num_inference_steps"],
 )
-num_images_per_prompt = st.sidebar.slider(
-    "Number of Images per Prompt",
-    1,
-    10,
-    st.session_state.nexa_model.params["num_images_per_prompt"],
-)
 height = st.sidebar.slider(
     "Height", 64, 1024, st.session_state.nexa_model.params["height"]
 )
@@ -94,7 +87,6 @@ random_seed = st.sidebar.slider(
 st.session_state.nexa_model.params.update(
     {
         "num_inference_steps": num_inference_steps,
-        "num_images_per_prompt": num_images_per_prompt,
         "height": height,
         "width": width,
         "guidance_scale": guidance_scale,

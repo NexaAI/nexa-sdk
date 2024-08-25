@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 import abc
-from typing import Any, List, Optional
+from typing import (
+    List,
+    Optional,
+    Any,
+)
 
-from nexa.gguf.llama import llama_cpp
+import nexa.gguf.llama.llama_cpp as llama_cpp
+from nexa.gguf.llama.llama_types import List
 
 
 class BaseLlamaTokenizer(abc.ABC):

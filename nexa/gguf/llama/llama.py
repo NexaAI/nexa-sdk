@@ -1,27 +1,33 @@
 from __future__ import annotations
 
-import contextlib
-import ctypes
-import multiprocessing
 import os
 import sys
-import time
-import typing
 import uuid
+import time
+import json
+import ctypes
+import typing
+import fnmatch
 import warnings
-from collections import deque
+import contextlib
+import multiprocessing
+
 from typing import (
     Any,
-    Callable,
-    Deque,
-    Dict,
-    Generator,
-    Iterator,
     List,
+    Literal,
     Optional,
-    Sequence,
     Union,
+    Generator,
+    Sequence,
+    Iterator,
+    Deque,
+    Callable,
+    Dict,
 )
+from collections import deque
+from pathlib import Path
+
 
 import numpy as np
 import numpy.typing as npt
@@ -37,10 +43,9 @@ from nexa.gguf.llama._internals_transformers import _LlamaTokenDataArray  # type
 from nexa.gguf.llama._internals_transformers import _normalize_embedding  # type: ignore
 from nexa.gguf.llama._logger_transformers import set_verbose
 from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
-
-# from nexa.gguf.llama.llama_cache import LlamaCache  # type: ignore
-# from nexa.gguf.llama.llama_cache import LlamaDiskCache  # type: ignore
-# from nexa.gguf.llama.llama_cache import LlamaRAMCache  # type: ignore
+from nexa.gguf.llama.llama_cache import LlamaCache  # type: ignore
+from nexa.gguf.llama.llama_cache import LlamaDiskCache  # type: ignore
+from nexa.gguf.llama.llama_cache import LlamaRAMCache  # type: ignore
 from nexa.gguf.llama.llama_cache import BaseLlamaCache
 from nexa.gguf.llama.llama_grammar import LlamaGrammar
 from nexa.gguf.llama.llama_speculative import LlamaDraftModel
@@ -187,6 +192,7 @@ class Llama:
             A Llama instance.
         """
         self.verbose = verbose
+        self._stack = contextlib.ExitStack()
 
         set_verbose(verbose)
 
@@ -251,28 +257,28 @@ class Llama:
             for i, (k, v) in enumerate(kv_overrides.items()):
                 self._kv_overrides_array[i].key = k.encode("utf-8")
                 if isinstance(v, bool):
-                    self._kv_overrides_array[
-                        i
-                    ].tag = llama_cpp.LLAMA_KV_OVERRIDE_TYPE_BOOL
+                    self._kv_overrides_array[i].tag = (
+                        llama_cpp.LLAMA_KV_OVERRIDE_TYPE_BOOL
+                    )
                     self._kv_overrides_array[i].value.val_bool = v
                 elif isinstance(v, int):
-                    self._kv_overrides_array[
-                        i
-                    ].tag = llama_cpp.LLAMA_KV_OVERRIDE_TYPE_INT
+                    self._kv_overrides_array[i].tag = (
+                        llama_cpp.LLAMA_KV_OVERRIDE_TYPE_INT
+                    )
                     self._kv_overrides_array[i].value.val_i64 = v
                 elif isinstance(v, float):
-                    self._kv_overrides_array[
-                        i
-                    ].tag = llama_cpp.LLAMA_KV_OVERRIDE_TYPE_FLOAT
+                    self._kv_overrides_array[i].tag = (
+                        llama_cpp.LLAMA_KV_OVERRIDE_TYPE_FLOAT
+                    )
                     self._kv_overrides_array[i].value.val_f64 = v
                 elif isinstance(v, str):  # type: ignore
                     v_bytes = v.encode("utf-8")
                     if len(v_bytes) > 128:  # TODO: Make this a constant
                         raise ValueError(f"Value for {k} is too long: {v}")
                     v_bytes = v_bytes.ljust(128, b"\0")
-                    self._kv_overrides_array[
-                        i
-                    ].tag = llama_cpp.LLAMA_KV_OVERRIDE_TYPE_STR
+                    self._kv_overrides_array[i].tag = (
+                        llama_cpp.LLAMA_KV_OVERRIDE_TYPE_STR
+                    )
                     # copy min(v_bytes, 128) to str_value
                     address = typing.cast(
                         int,
@@ -288,9 +294,9 @@ class Llama:
                 else:
                     raise ValueError(f"Unknown value type for {k}: {v}")
 
-            self._kv_overrides_array[
-                -1
-            ].key = b"\0"  # ensure sentinel element is zeroed
+            self._kv_overrides_array[-1].key = (
+                b"\0"  # ensure sentinel element is zeroed
+            )
             self.model_params.kv_overrides = self._kv_overrides_array
 
         self.n_batch = min(n_ctx, n_batch)  # ???
@@ -354,8 +360,6 @@ class Llama:
         if not os.path.exists(model_path):
             raise ValueError(f"Model path does not exist: {model_path}")
 
-        self._stack = contextlib.ExitStack()
-
         self._model = self._stack.enter_context(
             contextlib.closing(
                 _LlamaModel(
@@ -409,6 +413,15 @@ class Llama:
                 raise RuntimeError(
                     f"Failed to initialize LoRA adapter from lora path: {self.lora_path}"
                 )
+
+            def free_lora_adapter():
+                if self._lora_adapter is None:
+                    return
+                llama_cpp.llama_lora_adapter_free(self._lora_adapter)
+                self._lora_adapter = None
+
+            self._stack.callback(free_lora_adapter)
+
             assert self._ctx.ctx is not None
             if llama_cpp.llama_lora_adapter_set(
                 self._ctx.ctx, self._lora_adapter, self.lora_scale
@@ -422,9 +435,9 @@ class Llama:
 
         self.chat_format = chat_format
         self.chat_handler = chat_handler
-        self._chat_handlers: Dict[
-            str, llama_chat_format.LlamaChatCompletionHandler
-        ] = {}
+        self._chat_handlers: Dict[str, llama_chat_format.LlamaChatCompletionHandler] = (
+            {}
+        )
 
         self.draft_model = draft_model
 
@@ -766,11 +779,12 @@ class Llama:
                 else:
                     break
             if longest_prefix > 0:
-                if self.verbose:
-                    print("Llama.generate: prefix-match hit", file=sys.stderr)
                 reset = False
                 tokens = tokens[longest_prefix:]
                 self.n_tokens = longest_prefix
+                if self.verbose:
+                    print(f"Llama.generate: {longest_prefix} prefix-match hit, "
+                          f"remaining {len(tokens)} prompt tokens to eval", file=sys.stderr)                    
 
         # Reset the model state
         if reset:
@@ -1046,13 +1060,13 @@ class Llama:
 
         if (
             (isinstance(prompt, list) and suffix is None)
-            or self._model.add_bos_token() == 0
+            or not self._model.add_bos_token()
             or bos_tokens[:1] == [-1]
         ):
             bos_tokens = []
 
         if (isinstance(prompt, list) and suffix is None) or (
-            self._model.add_eos_token() != 1 and sep_token_id == -1
+            not self._model.add_eos_token() and sep_token_id == -1
         ):
             eos_tokens = []
 
@@ -1511,7 +1525,8 @@ class Llama:
                 if self.verbose:
                     print("Llama._create_completion: cache save", file=sys.stderr)
                 self.cache[prompt_tokens + completion_tokens] = self.save_state()
-                print("Llama._create_completion: cache saved", file=sys.stderr)
+                if self.verbose:
+                    print("Llama._create_completion: cache saved", file=sys.stderr)
             return
 
         if self.cache:
@@ -1930,10 +1945,7 @@ class Llama:
             stream = kwargs.get("stream", False)  # type: ignore
             assert isinstance(stream, bool)
             if stream:
-                return (
-                    ChatCompletionChunk(**chunk)
-                    for chunk in self.create_chat_completion(*args, **kwargs)
-                )  # type: ignore
+                return (ChatCompletionChunk(**chunk) for chunk in self.create_chat_completion(*args, **kwargs))  # type: ignore
             else:
                 return ChatCompletion(**self.create_chat_completion(*args, **kwargs))  # type: ignore
         except ImportError:
@@ -2078,8 +2090,6 @@ class Llama:
         self._stack.close()
 
     def __del__(self) -> None:
-        if self._lora_adapter is not None:
-            llama_cpp.llama_lora_adapter_free(self._lora_adapter)
         self.close()
 
     @staticmethod

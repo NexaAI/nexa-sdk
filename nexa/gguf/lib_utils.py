@@ -18,7 +18,6 @@ def is_gpu_available():
 def load_library(lib_base_name: str):
     # Construct the paths to the possible shared library names
     _base_path = pathlib.Path(os.path.abspath(os.path.dirname(__file__))) / "lib"
-    logging.debug(f"Base path for libraries: {_base_path}")
     # Searching for the library in the current directory under the name "libllama" (default name
     # for llamacpp) and "llama" (default name for this repo)
     _lib_paths: List[pathlib.Path] = []
@@ -29,18 +28,16 @@ def load_library(lib_base_name: str):
         ]
     elif sys.platform == "darwin":
         _lib_paths += [
-            _base_path / f"lib{lib_base_name}.dylib",
             _base_path / f"lib{lib_base_name}.so",
+            _base_path / f"lib{lib_base_name}.dylib",
         ]
     elif sys.platform == "win32":
         _lib_paths += [
             _base_path / f"{lib_base_name}.dll",
             _base_path / f"lib{lib_base_name}.dll",
         ]
-        _add_windows_dll_directories(_base_path)
     else:
         raise RuntimeError("Unsupported platform")
-    logging.debug(f"Possible shared library paths: {_lib_paths}")
 
     if "LLAMA_CPP_LIB" in os.environ:
         lib_base_name = os.environ["LLAMA_CPP_LIB"]
@@ -50,19 +47,31 @@ def load_library(lib_base_name: str):
 
     cdll_args = dict()  # type: ignore
 
+    # Add the library directory to the DLL search path on Windows (if needed)
+    if sys.platform == "win32":
+        os.add_dll_directory(str(_base_path))
+        os.environ["PATH"] = str(_base_path) + os.pathsep + os.environ["PATH"]
+
+    if sys.platform == "win32" and sys.version_info >= (3, 8):
+        os.add_dll_directory(str(_base_path))
+        if "CUDA_PATH" in os.environ:
+            os.add_dll_directory(os.path.join(os.environ["CUDA_PATH"], "bin"))
+            os.add_dll_directory(os.path.join(os.environ["CUDA_PATH"], "lib"))
+        if "HIP_PATH" in os.environ:
+            os.add_dll_directory(os.path.join(os.environ["HIP_PATH"], "bin"))
+            os.add_dll_directory(os.path.join(os.environ["HIP_PATH"], "lib"))
+        cdll_args["winmode"] = ctypes.RTLD_GLOBAL
+
     # Try to load the shared library, handling potential errors
     for _lib_path in _lib_paths:
-        logging.debug(f"Trying to load shared library from: {_lib_path}")
         if _lib_path.exists():
             try:
-                loaded_lib = ctypes.CDLL(str(_lib_path), **cdll_args)  # type: ignore
-                logging.debug(f"Successfully loaded shared library: {_lib_path}")
-                return loaded_lib
+                return ctypes.CDLL(str(_lib_path), **cdll_args)  # type: ignore
             except Exception as e:
                 raise RuntimeError(f"Failed to load shared library '{_lib_path}': {e}")
 
     raise FileNotFoundError(
-        f"Shared library with base name '{lib_base_name}' not found in paths: {_lib_paths}"
+        f"Shared library with base name '{lib_base_name}' not found"
     )
 
 
