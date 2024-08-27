@@ -44,6 +44,14 @@ pip install twine
 twine upload dist/*
 ```
 
+### add a tag
+```
+git tag
+git tag -d <version>
+git tag <version>
+git push origin <version>
+```
+
 ## Testing
 
 ### Test Inference with GGUF Files
