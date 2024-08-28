@@ -88,6 +88,38 @@ CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --index-url https:
 > The CUDA wheels are built with CUDA 12.4, but should be compatible with all CUDA 12.X
 
 
+#### GPU (Metal)
+
+For the GPU version supporting Metal (macOS):
+
+```bash
+CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai
+```
+
+#### GPU (CUDA)
+
+For the GPU version supporting CUDA (Linux/Windows), run the following command:
+
+```bash
+CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai
+```
+
+> [!TIP]
+> You can accelerate the building process via parallel cmake by appending the following to the commands above:
+>
+> ```bash
+> CMAKE_BUILD_PARALLEL_LEVEL=$(nproc)
+> ```
+>
+> For example:
+>
+> ```bash
+> CMAKE_BUILD_PARALLEL_LEVEL=$(nproc) CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL
+> ```
+
+> [!TIP]
+> For Windows users, we recommend running the installation command in Git Bash to avoid unexpected behavior.
+
 
 <details>
 <summary><strong>FAQ: Building Issues for llava</strong></summary>
@@ -170,583 +202,27 @@ will create an interactive session with text generation
 
 ## CLI Reference
 
-```
-usage: nexa [-h] [-V] {run,onnx,server,pull,remove,clean,list,login,whoami,logout} ...
+Here's a brief overview of the main CLI commands:
+
+- `nexa run`: Run inference for various tasks using GGUF models.
+- `nexa onnx`: Run inference for various tasks using ONNX models.
+- `nexa server`: Run the Nexa AI Text Generation Service.
+- `nexa pull`: Pull a model from official or hub.
+- `nexa remove`: Remove a model from local machine.
+- `nexa clean`: Clean up all model files.
+- `nexa list`: List all models in the local machine.
+- `nexa login`: Login to Nexa API.
+- `nexa whoami`: Show current user information.
+- `nexa logout`: Logout from Nexa API.
+
+For detailed information on CLI commands and usage, please refer to the [CLI Reference](CLI.md) document.
 
-Nexa CLI tool for handling various model operations.
-
-positional arguments:
-  {run,onnx,server,pull,remove,clean,list,login,whoami,logout}
-                        sub-command help
-    run                 Run inference for various tasks using GGUF models.
-    onnx                Run inference for various tasks using ONNX models.
-    server              Run the Nexa AI Text Generation Service
-    pull                Pull a model from official or hub.
-    remove              Remove a model from local machine.
-    clean               Clean up all model files.
-    list                List all models in the local machine.
-    login               Login to Nexa API.
-    whoami              Show current user information.
-    logout              Logout from Nexa API.
-
-options:
-  -h, --help            show this help message and exit
-  -V, --version         Show the version of the Nexa SDK.
-```
-
-### List Local Models
-
-List all models on your local computer.
-
-```
-nexa list
-```
-
-### Download a Model
-
-Download a model file to your local computer from Nexa Model Hub.
-
-```
-nexa pull MODEL_PATH
-usage: nexa pull [-h] model_path
-
-positional arguments:
-  model_path  Path or identifier for the model in Nexa Model Hub
-
-options:
-  -h, --help  show this help message and exit
-```
-
-#### Example
-
-```
-nexa pull llama2
-```
-
-### Remove a Model
-
-Remove a model from your local computer.
-
-```
-nexa remove MODEL_PATH
-usage: nexa remove [-h] model_path
-
-positional arguments:
-  model_path  Path or identifier for the model in Nexa Model Hub
-
-options:
-  -h, --help  show this help message and exit
-```
-
-#### Example
-
-```
-nexa remove llama2
-```
-
-### Remove All Downloaded Models
-
-Remove all downloaded models on your local computer.
-
-```
-nexa clean
-```
-
-### Run a Model
-
-Run a model on your local computer. If the model file is not yet downloaded, it will be automatically fetched first.
-
-By default, `nexa` will run gguf models. To run onnx models, use `nexa onnx MODEL_PATH`
-
-#### Run Text-Generation Model
-
-```
-nexa run MODEL_PATH
-usage: nexa run [-h] [-t TEMPERATURE] [-m MAX_NEW_TOKENS] [-k TOP_K] [-p TOP_P] [-sw [STOP_WORDS ...]] [-pf] [-st] model_path
-
-positional arguments:
-  model_path            Path or identifier for the model in Nexa Model Hub
-
-options:
-  -h, --help            show this help message and exit
-  -pf, --profiling      Enable profiling logs for the inference process
-  -st, --streamlit      Run the inference in Streamlit UI
-
-Text generation options:
-  -t, --temperature TEMPERATURE
-                        Temperature for sampling
-  -m, --max_new_tokens MAX_NEW_TOKENS
-                        Maximum number of new tokens to generate
-  -k, --top_k TOP_K     Top-k sampling parameter
-  -p, --top_p TOP_P     Top-p sampling parameter
-  -sw, --stop_words [STOP_WORDS ...]
-                        List of stop words for early stopping
-```
-
-##### Example
-
-```
-nexa run llama2
-```
-
-#### Run Image-Generation Model
-
-```
-nexa run MODEL_PATH
-usage: nexa run [-h] [-i2i] [-ns NUM_INFERENCE_STEPS] [-np NUM_IMAGES_PER_PROMPT] [-H HEIGHT] [-W WIDTH] [-g GUIDANCE_SCALE] [-o OUTPUT] [-s RANDOM_SEED] [-st] model_path
-
-positional arguments:
-  model_path            Path or identifier for the model in Nexa Model Hub
-
-options:
-  -h, --help            show this help message and exit
-  -st, --streamlit      Run the inference in Streamlit UI
-
-Image generation options:
-  -i2i, --img2img       Whether to run image-to-image generation
-  -ns, --num_inference_steps NUM_INFERENCE_STEPS
-                        Number of inference steps
-  -np, --num_images_per_prompt NUM_IMAGES_PER_PROMPT
-                        Number of images to generate per prompt
-  -H, --height HEIGHT   Height of the output image
-  -W, --width WIDTH     Width of the output image
-  -g, --guidance_scale GUIDANCE_SCALE
-                        Guidance scale for diffusion
-  -o, --output OUTPUT   Output path for the generated image
-  -s, --random_seed RANDOM_SEED
-                        Random seed for image generation
-  --lora_dir LORA_DIR   Path to directory containing LoRA files
-  --wtype WTYPE         Weight type (f32, f16, q4_0, q4_1, q5_0, q5_1, q8_0)
-  --control_net_path CONTROL_NET_PATH
-                        Path to control net model
-  --control_image_path CONTROL_IMAGE_PATH
-                        Path to image condition for Control Net
-  --control_strength CONTROL_STRENGTH
-                        Strength to apply Control Net
-```
-
-##### Example
-
-```
-nexa run sd1-4
-```
-
-#### Run Vision-Language Model
-
-```
-nexa run MODEL_PATH
-usage: nexa run [-h] [-t TEMPERATURE] [-m MAX_NEW_TOKENS] [-k TOP_K] [-p TOP_P] [-sw [STOP_WORDS ...]] [-pf] [-st] model_path
-
-positional arguments:
-  model_path            Path or identifier for the model in Nexa Model Hub
-
-options:
-  -h, --help            show this help message and exit
-  -pf, --profiling      Enable profiling logs for the inference process
-  -st, --streamlit      Run the inference in Streamlit UI
-
-VLM generation options:
-  -t, --temperature TEMPERATURE
-                        Temperature for sampling
-  -m, --max_new_tokens MAX_NEW_TOKENS
-                        Maximum number of new tokens to generate
-  -k, --top_k TOP_K     Top-k sampling parameter
-  -p, --top_p TOP_P     Top-p sampling parameter
-  -sw, --stop_words [STOP_WORDS ...]
-                        List of stop words for early stopping
-```
-
-##### Example
-
-```
-nexa run nanollava
-```
-
-#### Run Audio Model
-
-```
-nexa run MODEL_PATH
-usage: nexa run [-h] [-o OUTPUT_DIR] [-b BEAM_SIZE] [-l LANGUAGE] [--task TASK] [-t TEMPERATURE] [-c COMPUTE_TYPE] [-st] model_path
-
-positional arguments:
-  model_path            Path or identifier for the model in Nexa Model Hub
-
-options:
-  -h, --help            show this help message and exit
-  -st, --streamlit      Run the inference in Streamlit UI
-
-Automatic Speech Recognition options:
-  -b, --beam_size BEAM_SIZE
-                        Beam size to use for transcription
-  -l, --language LANGUAGE
-                        The language spoken in the audio. It should be a language code such as 'en' or 'fr'.
-  --task TASK           Task to execute (transcribe or translate)
-  -c, --compute_type COMPUTE_TYPE
-                        Type to use for computation (e.g., float16, int8, int8_float16)
-```
-
-##### Example
-
-```
-nexa run faster-whisper-tiny
-```
-
-### Start Local Server
-
-Start a local server using models on your local computer.
-
-```
-nexa server MODEL_PATH
-usage: nexa server [-h] [--host HOST] [--port PORT] [--reload] model_path
-
-positional arguments:
-  model_path   Path or identifier for the model in S3
-
-options:
-  -h, --help   show this help message and exit
-  --host HOST  Host to bind the server to
-  --port PORT  Port to bind the server to
-  --reload     Enable automatic reloading on code changes
-```
-
-#### Example
-
-```
-nexa server llama2
-```
-
-### Model Path Format
-
-For `model_path` in nexa commands, it's better to follow the standard format to ensure correct model loading and execution. The standard format for `model_path` is:
-
-- `[user_name]/[repo_name]:[tag_name]` (user's model)
-- `[repo_name]:[tag_name]` (official model)
-
-#### Examples:
-
-- `gemma-2b:q4_0`
-- `Meta-Llama-3-8B-Instruct:onnx-cpu-int8`
-- `alanzhuly/Qwen2-1B-Instruct:q4_0`
 
 ## Start Local Server
 
-You can start a local server using models on your local computer with the `nexa server` command. Here's the usage syntax:
+To start a local server using models on your local computer, you can use the `nexa server` command. 
+For detailed information on server setup, API endpoints, and usage examples, please refer to the [Server Reference](SERVER.md) document.
 
-```
-usage: nexa server [-h] [--host HOST] [--port PORT] [--reload] model_path
-```
-
-### Options:
-
-- `--host`: Host to bind the server to
-- `--port`: Port to bind the server to
-- `--reload`: Enable automatic reloading on code changes
-
-### Example Commands:
-
-```
-nexa server gemma
-nexa server llama2-function-calling
-nexa server sd1-5
-nexa server faster-whipser-large
-```
-
-By default, `nexa server` will run gguf models. To run onnx models, simply add `onnx` after `nexa server`.
-
-## API Endpoints
-
-<details>
-<summary><strong>1. Text Generation: <code>/v1/completions</code></strong></summary>
-Generates text based on a single prompt.
-
-#### Request body:
-
-```json
-{
-  "prompt": "Tell me a story",
-  "temperature": 1,
-  "max_new_tokens": 128,
-  "top_k": 50,
-  "top_p": 1,
-  "stop_words": ["string"]
-}
-```
-
-#### Example Response:
-
-```json
-{
-  "result": "Once upon a time, in a small village nestled among rolling hills..."
-}
-```
-
-</details>
-
-<details><summary><strong>2. Chat Completions: <code>/v1/chat/completions</code></strong></summary>
-
-Handles chat completions with support for conversation history.
-
-#### Request body:
-
-```json
-{
-  "messages": [
-    {
-      "role": "user",
-      "content": "Tell me a story"
-    }
-  ],
-  "max_tokens": 128,
-  "temperature": 0.1,
-  "stream": false,
-  "stop_words": []
-}
-```
-
-#### Example Response:
-
-```json
-{
-  "id": "f83502df-7f5a-4825-a922-f5cece4081de",
-  "object": "chat.completion",
-  "created": 1723441724.914671,
-  "choices": [
-    {
-      "message": {
-        "role": "assistant",
-        "content": "In the heart of a mystical forest..."
-      }
-    }
-  ]
-}
-```
-
-</details>
-<details><summary><strong>3. Function Calling: <code>/v1/function-calling</code></strong></summary>
-
-Call the most appropriate function based on user's prompt.
-
-#### Request body:
-
-```json
-{
-  "messages": [
-    {
-      "role": "user",
-      "content": "Extract Jason is 25 years old"
-    }
-  ],
-  "tools": [
-    {
-      "type": "function",
-      "function": {
-        "name": "UserDetail",
-        "parameters": {
-          "properties": {
-            "name": {
-              "description": "The user's name",
-              "type": "string"
-            },
-            "age": {
-              "description": "The user's age",
-              "type": "integer"
-            }
-          },
-          "required": ["name", "age"],
-          "type": "object"
-        }
-      }
-    }
-  ],
-  "tool_choice": "auto"
-}
-```
-
-#### Function format:
-
-```json
-{
-  "type": "function",
-  "function": {
-    "name": "function_name",
-    "description": "function_description",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "property_name": {
-          "type": "string | number | boolean | object | array",
-          "description": "string"
-        }
-      },
-      "required": ["array_of_required_property_names"]
-    }
-  }
-}
-```
-
-#### Example Response:
-
-```json
-{
-  "id": "chatcmpl-7a9b0dfb-878f-4f75-8dc7-24177081c1d0",
-  "object": "chat.completion",
-  "created": 1724186442,
-  "model": "/home/ubuntu/.cache/nexa/hub/official/Llama2-7b-function-calling/q3_K_M.gguf",
-  "choices": [
-    {
-      "finish_reason": "tool_calls",
-      "index": 0,
-      "logprobs": null,
-      "message": {
-        "role": "assistant",
-        "content": null,
-        "tool_calls": [
-          {
-            "id": "call__0_UserDetail_cmpl-8d5cf645-7f35-4af2-a554-2ccea1a67bdd",
-            "type": "function",
-            "function": {
-              "name": "UserDetail",
-              "arguments": "{ \"name\": \"Jason\", \"age\": 25 }"
-            }
-          }
-        ],
-        "function_call": {
-          "name": "",
-          "arguments": "{ \"name\": \"Jason\", \"age\": 25 }"
-        }
-      }
-    }
-  ],
-  "usage": {
-    "completion_tokens": 15,
-    "prompt_tokens": 316,
-    "total_tokens": 331
-  }
-}
-```
-
-</details>
-<details><summary><strong>4. Text-to-Image: <code>/v1/txt2img</code></strong></summary>
-
-Generates images based on a single prompt.
-
-#### Request body:
-
-```json
-{
-  "prompt": "A girl, standing in a field of flowers, vivid",
-  "image_path": "",
-  "cfg_scale": 7,
-  "width": 256,
-  "height": 256,
-  "sample_steps": 20,
-  "seed": 0,
-  "negative_prompt": ""
-}
-```
-
-#### Example Response:
-
-```json
-{
-  "created": 1724186615.5426757,
-  "data": [
-    {
-      "base64": "base64_of_generated_image",
-      "url": "path/to/generated_image"
-    }
-  ]
-}
-```
-
-</details>
-<details><summary><strong>5. Image-to-Image: <code>/v1/img2img</code></strong></summary>
-
-Modifies existing images based on a single prompt.
-
-#### Request body:
-
-```json
-{
-  "prompt": "A girl, standing in a field of flowers, vivid",
-  "image_path": "path/to/image",
-  "cfg_scale": 7,
-  "width": 256,
-  "height": 256,
-  "sample_steps": 20,
-  "seed": 0,
-  "negative_prompt": ""
-}
-```
-
-#### Example Response:
-
-```json
-{
-  "created": 1724186615.5426757,
-  "data": [
-    {
-      "base64": "base64_of_generated_image",
-      "url": "path/to/generated_image"
-    }
-  ]
-}
-```
-
-</details>
-<details><summary><strong>6. Audio Transcriptions: <code>/v1/audio/transcriptions</code></strong></summary>
-
-Transcribes audio files to text.
-
-#### Parameters:
-
-- `beam_size` (integer): Beam size for transcription (default: 5)
-- `language` (string): Language code (e.g., 'en', 'fr')
-- `temperature` (number): Temperature for sampling (default: 0)
-
-#### Request body:
-
-```
-{
-  "file" (form-data): The audio file to transcribe (required)
-}
-```
-
-#### Example Response:
-
-```json
-{
-  "text": " And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country."
-}
-```
-
-</details>
-<details><summary><strong>7. Audio Translations: <code>/v1/audio/translations</code></strong></summary>
-
-Translates audio files to text in English.
-
-#### Parameters:
-
-- `beam_size` (integer): Beam size for transcription (default: 5)
-- `temperature` (number): Temperature for sampling (default: 0)
-
-#### Request body:
-
-```
-{
-  "file" (form-data): The audio file to transcribe (required)
-}
-```
-
-#### Example Response:
-
-```json
-{
-  "text": " Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday"
-}
-```
-
-</details>
 
 ## Acknowledgements
 We would like to thank the following projects:
