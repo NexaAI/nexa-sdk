@@ -164,7 +164,7 @@ class NexaImageInference:
             file_name = f"image_{i+1}_{int(time.time())}.png"
             file_path = os.path.join(output_dir, file_name)
             image.save(file_path)
-            logging.info(f"Image {i+1} saved to: {file_path}")
+            print(f"Image {i+1} saved to: {file_path}")
 
     def run_streamlit(self, model_path: str):
         """
