@@ -18,11 +18,9 @@ jobs:
     steps:
       - name: Define Job Output
         id: set-matrix
-        # here 'nexa-sdk-windows-8-core' is a large runner
         run: |
           $matrix = @{
-              'os' = @('nexa-sdk-windows-8-core')
-              'pyver' = @("3.10", "3.11", "3.12")
+              'pyver' = @("3.7", "3.8", "3.9", "3.10", "3.11", "3.12")
               'cuda' = @("12.4.1")
               'releasetag' = @("basic")
           }
@@ -31,9 +29,9 @@ jobs:
           Write-Output ('matrix=' + $matrixOut) >> $env:GITHUB_OUTPUT
 
   build_wheels:
-    name: Build Wheel ${{ matrix.os }} ${{ matrix.pyver }} ${{ matrix.cuda }} ${{ matrix.releasetag == 'wheels' && 'AVX2' || matrix.releasetag }}
+    name: Build Wheel ${{ matrix.pyver }} ${{ matrix.cuda }} ${{ matrix.releasetag == 'wheels' && 'AVX2' || matrix.releasetag }}
     needs: define_matrix
-    runs-on: ${{ matrix.os }}
+    runs-on: sdk-windows-8-core
     strategy:
       matrix: ${{ fromJSON(needs.define_matrix.outputs.matrix) }}
     defaults:
