@@ -31,7 +31,7 @@ jobs:
   build_wheels:
     name: Build Wheel ${{ matrix.pyver }} ${{ matrix.cuda }} ${{ matrix.releasetag == 'wheels' && 'AVX2' || matrix.releasetag }}
     needs: define_matrix
-    runs-on: nexa-sdk-windows-8-core
+    runs-on: sdk-windows-8-core
     strategy:
       matrix: ${{ fromJSON(needs.define_matrix.outputs.matrix) }}
     defaults:
