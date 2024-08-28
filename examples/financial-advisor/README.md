@@ -12,7 +12,6 @@
 - File structure:
 
   - `app.py`: main Streamlit application
-  - `utils/pdf_processor.py`: processes PDF files and creates embeddings
   - `utils/text_generator.py`: handles similarity search and text generation
   - `assets/fake_bank_statements`: fake bank statement for testing purpose
 
@@ -27,7 +26,7 @@ pip install -r requirements.txt
 2. Usage:
 
 - Run the Streamlit app: `streamlit run app.py`
-- Upload PDF financial docs (bank statements, SEC filings, etc.) and process them.
+- Upload PDF financial docs (bank statements, SEC filings, etc.) and process them
 - Use the chat interface to query your financial data
 
 ### Resources:

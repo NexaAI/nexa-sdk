@@ -1,9 +1,6 @@
 import sys
 import os
 import streamlit as st
-from typing import Iterator
-import subprocess
-import json
 import shutil
 import pdfplumber
 from sentence_transformers import SentenceTransformer
@@ -12,8 +9,7 @@ import numpy as np
 import re
 import traceback
 import logging
-from nexa.gguf import NexaTextInference
-import utils.text_generator as tg
+from utils.financial_analyzer import FinancialAnalyzer
 
 # set up logging:
 logging.basicConfig(level=logging.INFO)
@@ -26,12 +22,10 @@ if len(sys.argv) > 1:
 
 @st.cache_resource
 def load_model(model_path):
-    st.session_state.messages = []
-    nexa_model = NexaTextInference(model_path)
-    return nexa_model
+    return FinancialAnalyzer(model_path)
 
 def generate_response(query: str) -> str:
-    result = tg.financial_analysis(query)
+    result = st.session_state.nexa_model.financial_analysis(query)
     if isinstance(result, dict) and "error" in result:
         return f"An error occurred: {result['error']}"
     return result
@@ -59,7 +53,7 @@ def chunk_text(text, model, max_tokens=256, overlap=20):
         current_tokens = 0
 
         for sentence in sentences:
-            sentence_tokens = len(model.tokenizer.tokenize(sentence))
+            sentence_tokens = len(model.tokenize(sentence))
             if current_tokens + sentence_tokens > max_tokens:
                 if current_chunk:
                     chunks.append(' '.join(current_chunk))
@@ -165,11 +159,11 @@ def process_pdfs(uploaded_files):
 
         # verify files were saved & reload the FAISS index:
         if os.path.exists(os.path.join(output_dir, 'pdf_index.faiss')) and \
-           os.path.exists(os.path.join(output_dir, 'pdf_chunks.npy')):
-            # Reload the FAISS index
-            tg.embeddings, tg.index, tg.stored_docs = tg.load_faiss_index()
-            st.success("PDFs processed and FAISS index reloaded successfully!")
-            return True
+            os.path.exists(os.path.join(output_dir, 'pdf_chunks.npy')):
+                # Reload the FAISS index
+                st.session_state.nexa_model.load_faiss_index()
+                st.success("PDFs processed and FAISS index reloaded successfully!")
+                return True
         else:
             st.error("Error: Processed files not found after saving.")
             return False
@@ -181,9 +175,11 @@ def process_pdfs(uploaded_files):
         return False
 
 def check_faiss_index():
-    if tg.embeddings is None or tg.index is None or tg.stored_docs is None:
-        tg.embeddings, tg.index, tg.stored_docs = tg.load_faiss_index()
-    return tg.embeddings is not None and tg.index is not None and tg.stored_docs is not None
+    if "nexa_model" not in st.session_state:
+        return False
+    return (st.session_state.nexa_model.embeddings_model is not None and 
+            st.session_state.nexa_model.index is not None and 
+            st.session_state.nexa_model.stored_docs is not None)
 
 # Streamlit app:
 def main():
@@ -192,6 +188,9 @@ def main():
 
     # add an empty line:
     st.markdown("<br>", unsafe_allow_html=True)
+
+    if "nexa_model" not in st.session_state:
+        st.session_state.nexa_model = load_model(default_model)
 
     # check if FAISS index exists:
     if not check_faiss_index():
@@ -220,24 +219,25 @@ def main():
         st.warning("Please enter a valid path or identifier for the model in Nexa Model Hub to proceed.")
         st.stop()
 
-    if "current_model_path" not in st.session_state or st.session_state.current_model_path != model_path:
+    if "nexa_model" not in st.session_state or "current_model_path" not in st.session_state or st.session_state.current_model_path != model_path:
         st.session_state.current_model_path = model_path
         st.session_state.nexa_model = load_model(model_path)
         if st.session_state.nexa_model is None:
             st.stop()
 
     st.sidebar.header("Generation Parameters")
-    temperature = st.sidebar.slider("Temperature", 0.0, 1.0, st.session_state.nexa_model.params["temperature"])
-    max_new_tokens = st.sidebar.slider("Max New Tokens", 1, 500, st.session_state.nexa_model.params["max_new_tokens"])
-    top_k = st.sidebar.slider("Top K", 1, 100, st.session_state.nexa_model.params["top_k"])
-    top_p = st.sidebar.slider("Top P", 0.0, 1.0, st.session_state.nexa_model.params["top_p"])
+    params = st.session_state.nexa_model.get_params()
+    temperature = st.sidebar.slider("Temperature", 0.0, 1.0, params["temperature"])
+    max_new_tokens = st.sidebar.slider("Max New Tokens", 1, 500, params["max_new_tokens"])
+    top_k = st.sidebar.slider("Top K", 1, 100, params["top_k"])
+    top_p = st.sidebar.slider("Top P", 0.0, 1.0, params["top_p"])
 
-    st.session_state.nexa_model.params.update({
-        "temperature": temperature,
-        "max_new_tokens": max_new_tokens,
-        "top_k": top_k,
-        "top_p": top_p,
-    })
+    st.session_state.nexa_model.set_params(
+        temperature=temperature,
+        max_new_tokens=max_new_tokens,
+        top_k=top_k,
+        top_p=top_p
+    )
 
     # step 3 - interactive financial analysis chat:
     st.header("Let's discuss your finances🧑‍💼")
