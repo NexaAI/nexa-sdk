@@ -51,7 +51,7 @@ st.sidebar.header("Model Configuration")
 model_path = st.sidebar.text_input("Model path", default_model)
 
 if not model_path:
-    st.warning("Please enter a valid S3 model filename to proceed.")
+    st.warning("Please enter a valid path or identifier for the model in Nexa Model Hub to proceed.")
     st.stop()
 
 # Initialize or update the model when the path changes

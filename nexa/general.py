@@ -105,7 +105,7 @@ def pull_model(model_path):
     try:
         if is_model_exists(model_path):
             location, run_type = get_model_info(model_path)
-            logging.debug(f"Model {model_path} already exists at {location}")
+            print(f"Model {model_path} already exists at {location}")
             return location, run_type
 
         if "/" in model_path:
@@ -115,10 +115,10 @@ def pull_model(model_path):
 
         if result["success"]:
             add_model_to_list(model_path, result["local_path"], result["model_type"], result["run_type"])
-            logging.debug(f"Successfully pulled model {model_path} to {result['local_path']}, run_type: {result['run_type']}")
+            print(f"Successfully pulled model {model_path} to {result['local_path']}, run_type: {result['run_type']}")
             return result["local_path"], result["run_type"]
         else:
-            logging.debug(f"Failed to pull model {model_path}")
+            print(f"Failed to pull model {model_path}")
             return None, "UNKNOWN"
     except Exception as e:
         logging.error(f"An error occurred while pulling the model: {e}")

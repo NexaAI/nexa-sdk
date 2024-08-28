@@ -194,8 +194,13 @@ class NexaVoiceInference:
         # Generate a filename with timestamp
         filename = f"transcription_{int(time.time())}.txt"
         output_path = os.path.join(self.params["output_dir"], filename)
-        with open(output_path, "w") as f:
-            f.write(transcription)
+        try:
+            with open(output_path, "w", encoding="utf-8") as f:
+                f.write(transcription)
+        except UnicodeEncodeError:
+            # Fallback to writing with 'ignore' error handler
+            with open(output_path, "w", encoding="utf-8", errors="ignore") as f:
+                f.write(transcription)
 
         logging.info(f"Transcription saved to: {output_path}")
         return output_path
