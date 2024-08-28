@@ -60,8 +60,6 @@ Below is our differentiation from other similar tools:
 
 ## Installation
 
-### Pre-built Wheels (Recommended)
-
 We have released pre-built wheels for various Python versions, platforms, and backends for convenient installation on our [index page](https://nexaai.github.io/nexa-sdk/whl/).
 
 #### CPU
@@ -75,7 +73,7 @@ pip install nexaai --index-url https://nexaai.github.io/nexa-sdk/whl/cpu --extra
 For the GPU version supporting **Metal (macOS)**:
 
 ```bash
-pip install nexaai --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple
+CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple
 ```
 
 #### GPU (CUDA)
@@ -83,21 +81,12 @@ pip install nexaai --index-url https://nexaai.github.io/nexa-sdk/whl/metal --ext
 For the GPU version supporting **CUDA (Linux/Windows)**:
 
 ```bash
-pip install nexaai --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple
+CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple
 ```
 
 > [!NOTE]
 > The CUDA wheels are built with CUDA 12.4, but should be compatible with all CUDA 12.X
 
-### Install from source code distribution
-
-If pre-built wheels cannot meet your requirements, you can install Nexa SDK from the source code via cmake.
-
-#### CPU
-
-```bash
-pip install nexaai
-```
 
 #### GPU (Metal)
 
