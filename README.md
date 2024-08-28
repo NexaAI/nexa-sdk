@@ -77,15 +77,18 @@ CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --
 ```
 
 <details>
-<summary><strong>FAQ: cannot using Metal/GPU on m1</strong></summary>
-try the following command:
-```
+<summary><strong>FAQ: cannot use Metal/GPU on M1</strong></summary>
+
+Try the following command:
+
+```bash
 wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-arm64.sh
 bash Miniforge3-MacOSX-arm64.sh
-conda create -n llama python=3.10
-conda activate llama
+conda create -n nexasdk python=3.10
+conda activate nexasdk
 CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
+
 </details>
 
 #### GPU (CUDA)
