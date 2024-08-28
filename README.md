@@ -65,7 +65,7 @@ We have released pre-built wheels for various Python versions, platforms, and ba
 #### CPU
 
 ```bash
-pip install nexaai --index-url https://nexaai.github.io/nexa-sdk/whl/cpu --extra-index-url https://pypi.org/simple
+pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cpu --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 #### GPU (Metal)
@@ -73,52 +73,31 @@ pip install nexaai --index-url https://nexaai.github.io/nexa-sdk/whl/cpu --extra
 For the GPU version supporting **Metal (macOS)**:
 
 ```bash
-CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple
+CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
+
+<details>
+<summary><strong>FAQ: cannot using Metal/GPU on m1</strong></summary>
+try the following command:
+```
+wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-arm64.sh
+bash Miniforge3-MacOSX-arm64.sh
+conda create -n llama python=3.10
+conda activate llama
+CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple --no-cache-dir
+```
+</details>
 
 #### GPU (CUDA)
 
 For the GPU version supporting **CUDA (Linux/Windows)**:
 
 ```bash
-CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple
+CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 > [!NOTE]
 > The CUDA wheels are built with CUDA 12.4, but should be compatible with all CUDA 12.X
-
-
-#### GPU (Metal)
-
-For the GPU version supporting Metal (macOS):
-
-```bash
-CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai
-```
-
-#### GPU (CUDA)
-
-For the GPU version supporting CUDA (Linux/Windows), run the following command:
-
-```bash
-CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai
-```
-
-> [!TIP]
-> You can accelerate the building process via parallel cmake by appending the following to the commands above:
->
-> ```bash
-> CMAKE_BUILD_PARALLEL_LEVEL=$(nproc)
-> ```
->
-> For example:
->
-> ```bash
-> CMAKE_BUILD_PARALLEL_LEVEL=$(nproc) CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL
-> ```
-
-> [!TIP]
-> For Windows users, we recommend running the installation command in Git Bash to avoid unexpected behavior.
 
 
 <details>

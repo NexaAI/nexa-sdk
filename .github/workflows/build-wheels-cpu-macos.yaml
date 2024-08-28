@@ -8,7 +8,7 @@ permissions:
 jobs:
 
   build_wheels_macos:
-    name: Build wheels on  macos-${{ matrix.os }}
+    name: Build wheels on macos-${{ matrix.os }}
     runs-on: macos-${{ matrix.os }}
     strategy:
       matrix:
@@ -28,7 +28,6 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # python -m pip install -e .
           python -m pip install build wheel
 
       - name: Build wheels
@@ -37,8 +36,8 @@ jobs:
           # disable repair
           CIBW_REPAIR_WHEEL_COMMAND: ""
           CIBW_BUILD_FRONTEND: "build"
-          CIBW_ENVIRONMENT: CMAKE_ARGS="-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64 "
-          CIBW_BUILD: "cp310-* cp311-* cp312-*"
+          CIBW_ENVIRONMENT: CMAKE_ARGS="-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64"
+          CIBW_BUILD: "cp37-* cp38-* cp39-* cp310-* cp311-* cp312-*"
           MACOSX_DEPLOYMENT_TARGET: ${{ matrix.os }}
           CMAKE_BUILD_PARALLEL_LEVEL: 4
         with:

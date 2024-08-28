@@ -15,6 +15,7 @@ build*.sh
 *.dll
 *.dylib
 *.a
+generated_images/
 
 # Python
 __pycache__/
