@@ -56,12 +56,12 @@ def test_streaming_output():
     assert len(story) > 100, "The generated story should be of substantial length"
 
 # Main execution
-if __name__ == "__main__":
-    print("=== Testing Text-Only Generation ===")
-    test_text_only_generation()
+# if __name__ == "__main__":
+#     print("=== Testing Text-Only Generation ===")
+#     test_text_only_generation()
     
-    print("\n=== Testing Image Generation ===")
-    test_image_description()
+#     print("\n=== Testing Image Generation ===")
+#     test_image_description()
     
-    print("\n=== Testing Streaming Output ===")
-    test_streaming_output()
+#     print("\n=== Testing Streaming Output ===")
+#     test_streaming_output()
