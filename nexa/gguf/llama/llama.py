@@ -784,7 +784,7 @@ class Llama:
                 self.n_tokens = longest_prefix
                 if self.verbose:
                     print(f"Llama.generate: {longest_prefix} prefix-match hit, "
-                          f"remaining {len(tokens)} prompt tokens to eval", file=sys.stderr)                    
+                          f"remaining {len(tokens)} prompt tokens to eval", file=sys.stderr)
 
         # Reset the model state
         if reset:
@@ -1034,6 +1034,7 @@ class Llama:
         model: Optional[str] = None,
         stopping_criteria: Optional[StoppingCriteriaList] = None,
         logits_processor: Optional[LogitsProcessorList] = None,
+        output_logits_logprobs: bool = True,
         grammar: Optional[LlamaGrammar] = None,
         logit_bias: Optional[Dict[str, float]] = None,
     ) -> Union[
@@ -1207,6 +1208,10 @@ class Llama:
 
         finish_reason = "length"
         multibyte_fix = 0
+
+        logits_sequence = []
+        logprobs_sequence = []
+
         for token in self.generate(
             prompt_tokens,
             top_k=top_k,
@@ -1232,6 +1237,12 @@ class Llama:
                 break
 
             completion_tokens.append(token)
+
+            if output_logits_logprobs:
+                logits = self._scores[-1, :]  # get logits for the last generated token
+                logits_sequence.append(logits.tolist())
+                logprobs = self.logits_to_logprobs(logits)
+                logprobs_sequence.append(logprobs.tolist())
 
             all_text = self.detokenize(completion_tokens, prev_tokens=prompt_tokens)
 
@@ -1627,6 +1638,8 @@ class Llama:
                 "completion_tokens": len(completion_tokens),
                 "total_tokens": len(prompt_tokens) + len(completion_tokens),
             },
+            "logits_sequence": logits_sequence if output_logits_logprobs else None,
+            "logprobs_sequence": logprobs_sequence if output_logits_logprobs else None,
         }
 
     def create_completion(
@@ -1654,6 +1667,7 @@ class Llama:
         model: Optional[str] = None,
         stopping_criteria: Optional[StoppingCriteriaList] = None,
         logits_processor: Optional[LogitsProcessorList] = None,
+        output_logits_logprobs: bool = True,
         grammar: Optional[LlamaGrammar] = None,
         logit_bias: Optional[Dict[str, float]] = None,
     ) -> Union[CreateCompletionResponse, Iterator[CreateCompletionStreamResponse]]:
@@ -1717,6 +1731,7 @@ class Llama:
             model=model,
             stopping_criteria=stopping_criteria,
             logits_processor=logits_processor,
+            output_logits_logprobs=output_logits_logprobs,
             grammar=grammar,
             logit_bias=logit_bias,
         )
