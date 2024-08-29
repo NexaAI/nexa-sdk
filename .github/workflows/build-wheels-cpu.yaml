@@ -53,8 +53,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # here 'nexa-sdk-windows-8-core' is a large runner
-        os: [nexa-sdk-windows-8-core]
+        # here 'sdk-windows-8-core' is a large runner
+        os: [sdk-windows-8-core]
 
     steps:
       - uses: actions/checkout@v4
