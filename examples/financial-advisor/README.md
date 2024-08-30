@@ -15,6 +15,12 @@
   - `utils/text_generator.py`: handles similarity search and text generation
   - `assets/fake_bank_statements`: fake bank statement for testing purpose
 
+### Technical Architecture
+
+<p align="center">
+  <img src="https://public-storage.nexa4ai.com/financial_advisor.JPG" alt="Technical Architecture" width="70%">
+</p>
+
 ### Setup:
 
 1. Install required packages:

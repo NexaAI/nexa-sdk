@@ -103,6 +103,17 @@ NEXA_RUN_MODEL_MAP_VOICE = {
 
 NEXA_RUN_MODEL_MAP_FUNCTION_CALLING = {
   "llama2-function-calling": "Llama2-7b-function-calling:q4_K_M",
+  "Llama2-7b-function-calling:fp16": "Llama2-7b-function-calling:fp16",
+  "Llama2-7b-function-calling:q2_K": "Llama2-7b-function-calling:q2_K",
+  "Llama2-7b-function-calling:q3_K_L": "Llama2-7b-function-calling:q3_K_L",
+  "Llama2-7b-function-calling:q3_K_M": "Llama2-7b-function-calling:q3_K_M",
+  "Llama2-7b-function-calling:q3_K_S": "Llama2-7b-function-calling:q3_K_S",
+  "Llama2-7b-function-calling:q4_K_M": "Llama2-7b-function-calling:q4_K_M",
+  "Llama2-7b-function-calling:q4_K_S": "Llama2-7b-function-calling:q4_K_S",
+  "Llama2-7b-function-calling:q5_K_M": "Llama2-7b-function-calling:q5_K_M",
+  "Llama2-7b-function-calling:q5_K_S": "Llama2-7b-function-calling:q5_K_S",
+  "Llama2-7b-function-calling:q6_K": "Llama2-7b-function-calling:q6_K",
+  "Llama2-7b-function-calling:q8_0": "Llama2-7b-function-calling:q8_0",
 }
 
 
