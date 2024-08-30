@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import socket
 import time
@@ -30,12 +31,7 @@ from nexa.gguf.llama.llama import Llama
 from nexa.gguf.sd.stable_diffusion import StableDiffusion
 from faster_whisper import WhisperModel
 import argparse
-import logging
-logging.basicConfig(level=logging.INFO, format='%(message)s')
-logger = logging.getLogger()
-logger.addHandler(logging.StreamHandler(sys.stdout))
-import sys
-sys.stdout.reconfigure(line_buffering=True)
+logging.basicConfig(level=logging.INFO)
 
 app = FastAPI()
 app.add_middleware(
@@ -152,8 +148,8 @@ async def nexa_run_text_generation(
     if model is None:
         raise ValueError("Model is not loaded. Please check the model path and try again.")
 
-    # logging.info(f"output_logits_logprobs: {output_logits_logprobs}")
-    print("👀👀👀")
+    logging.info(f"✅output_logits_logprobs: {output_logits_logprobs}")
+    print("👀👀👀", end="", flush=True)
     print(f"output_logits_logprobs: {output_logits_logprobs}")
 
     generated_text = ""
