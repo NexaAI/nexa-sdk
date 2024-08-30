@@ -43,7 +43,8 @@ releases=$(curl -s https://api.github.com/repos/NexaAI/${repo_name}/releases | j
 # pattern example 2 : 0.1.0
 # pattern example 3 : 0.1.0-cu121
 # pattern example 4 : v0.0.0.1
-pattern=${2:-"^[v]?[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$"}
+# pattern example 5 : v0.0.8.1
+pattern=${2:-"^[v]?[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?(-[a-zA-Z0-9]+)?$"}
 
 # Filter releases by pattern
 releases=$(echo $releases | tr ' ' '\n' | grep -E $pattern)
