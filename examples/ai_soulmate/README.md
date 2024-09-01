@@ -26,7 +26,7 @@ This project is an AI chatbot that interacts with users via text and voice. The 
 ### Technical Architecture
 
 <p align="center">
-  <img src="tech_architecture.png" alt="Technical Architecture" width="50%">
+  <img src="https://public-storage.nexa4ai.com/ai_soulmate.png" alt="Technical Architecture" width="50%">
 </p>
 
 ### Setup:
