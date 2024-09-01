@@ -278,6 +278,24 @@ ChatCompletionToolChoiceOption = Union[
     Literal["none", "auto", "required"], ChatCompletionNamedToolChoice
 ]
 
+class CompletionStreamResponseDelta(TypedDict):
+    content: Optional[str]
+
+
+class CompletionStreamResponseChoice(TypedDict):
+    index: int
+    delta: CompletionStreamResponseDelta
+    finish_reason: Optional[Literal["stop", "length"]]
+    logprobs: NotRequired[Optional[CompletionLogprobs]]
+
+
+class CreateCompletionStreamResponse(TypedDict):
+    id: str
+    model: str
+    object: Literal["text_completion.chunk"]
+    created: int
+    choices: List[CompletionStreamResponseChoice]
+
 
 # NOTE: The following type names are not part of the OpenAI OpenAPI specification
 # and will be removed in a future major release.
@@ -285,7 +303,6 @@ ChatCompletionToolChoiceOption = Union[
 EmbeddingData = Embedding
 CompletionChunk = CreateCompletionResponse
 Completion = CreateCompletionResponse
-CreateCompletionStreamResponse = CreateCompletionResponse
 ChatCompletionMessage = ChatCompletionResponseMessage
 ChatCompletionChoice = ChatCompletionResponseChoice
 ChatCompletion = CreateChatCompletionResponse
