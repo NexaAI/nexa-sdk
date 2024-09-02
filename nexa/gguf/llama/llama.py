@@ -1392,6 +1392,7 @@ class Llama:
                             "choices": [
                                 {
                                     "index": 0,
+                                    "logprobs": None,
                                     "delta": {
                                         "content": ts,
                                     },
