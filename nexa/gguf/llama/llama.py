@@ -89,7 +89,7 @@ class Llama:
         yarn_beta_fast: float = 32.0,
         yarn_beta_slow: float = 1.0,
         yarn_orig_ctx: int = 0,
-        logits_all: bool = False,
+        logits_all: bool = True,
         embedding: bool = False,
         offload_kqv: bool = True,
         flash_attn: bool = False,
@@ -438,6 +438,14 @@ class Llama:
         self._chat_handlers: Dict[str, llama_chat_format.LlamaChatCompletionHandler] = (
             {}
         )
+
+        self.context_params.logits_all = logits_all
+        if not logits_all and draft_model is not None:
+            warnings.warn(
+                "Setting logits_all to False while using a draft model may break speculative decoding "
+                "and prevent returning logprobs for all tokens. Consider setting logits_all to True.",
+                RuntimeWarning
+            )
 
         self.draft_model = draft_model
 
@@ -1034,7 +1042,6 @@ class Llama:
         model: Optional[str] = None,
         stopping_criteria: Optional[StoppingCriteriaList] = None,
         logits_processor: Optional[LogitsProcessorList] = None,
-        output_logits_logprobs: bool = True,
         grammar: Optional[LlamaGrammar] = None,
         logit_bias: Optional[Dict[str, float]] = None,
     ) -> Union[
@@ -1208,10 +1215,6 @@ class Llama:
 
         finish_reason = "length"
         multibyte_fix = 0
-
-        logits_sequence = []
-        logprobs_sequence = []
-
         for token in self.generate(
             prompt_tokens,
             top_k=top_k,
@@ -1237,12 +1240,6 @@ class Llama:
                 break
 
             completion_tokens.append(token)
-
-            if output_logits_logprobs:
-                logits = self._scores[-1, :]  # get logits for the last generated token
-                logits_sequence.append(logits.tolist())
-                logprobs = self.logits_to_logprobs(logits)
-                logprobs_sequence.append(logprobs.tolist())
 
             all_text = self.detokenize(completion_tokens, prev_tokens=prompt_tokens)
 
@@ -1638,8 +1635,6 @@ class Llama:
                 "completion_tokens": len(completion_tokens),
                 "total_tokens": len(prompt_tokens) + len(completion_tokens),
             },
-            "logits_sequence": logits_sequence if output_logits_logprobs else None,
-            "logprobs_sequence": logprobs_sequence if output_logits_logprobs else None,
         }
 
     def create_completion(
@@ -1667,7 +1662,6 @@ class Llama:
         model: Optional[str] = None,
         stopping_criteria: Optional[StoppingCriteriaList] = None,
         logits_processor: Optional[LogitsProcessorList] = None,
-        output_logits_logprobs: bool = True,
         grammar: Optional[LlamaGrammar] = None,
         logit_bias: Optional[Dict[str, float]] = None,
     ) -> Union[CreateCompletionResponse, Iterator[CreateCompletionStreamResponse]]:
@@ -1731,7 +1725,6 @@ class Llama:
             model=model,
             stopping_criteria=stopping_criteria,
             logits_processor=logits_processor,
-            output_logits_logprobs=output_logits_logprobs,
             grammar=grammar,
             logit_bias=logit_bias,
         )

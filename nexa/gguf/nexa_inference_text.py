@@ -49,10 +49,10 @@ class NexaTextInference:
         self.params = DEFAULT_TEXT_GEN_PARAMS
         self.params.update(kwargs)
         self.model = None
-        
+
         self.model_path = model_path
         self.downloaded_path = local_path
-        
+
         if self.downloaded_path is None:
             self.downloaded_path, run_type = pull_model(self.model_path)
 
