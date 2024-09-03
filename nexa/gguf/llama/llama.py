@@ -1847,7 +1847,7 @@ class Llama:
         logits_processor: Optional[LogitsProcessorList] = None,
         grammar: Optional[LlamaGrammar] = None,
         logit_bias: Optional[Dict[str, float]] = None,
-        logprobs: Optional[bool] = None,
+        logprobs: Optional[int] = None,
         top_logprobs: Optional[int] = None,
     ) -> Union[
         CreateChatCompletionResponse, Iterator[CreateChatCompletionStreamResponse]

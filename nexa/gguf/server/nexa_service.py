@@ -158,6 +158,24 @@ async def nexa_run_text_generation(
 
     if chat_format:
         conversation_history.append({"role": "user", "content": prompt})
+
+        # prepare the parameters dictionary:
+        params = {
+            'messages': conversation_history,
+            'temperature': temperature,
+            'max_tokens': max_new_tokens,
+            'top_k': top_k,
+            'top_p': top_p,
+            'stream': True,
+            'stop': stop_words,
+            'logprobs': logprobs,
+        }
+
+        # convert to JSON and print:
+        params_json = json.dumps(params, default=str, indent=2)
+        print(f"👀 DEBUG: Full parameters for create_chat_completion:")
+        print(params_json)
+
         streamer = model.create_chat_completion(
             messages=conversation_history,
             temperature=temperature,
@@ -168,11 +186,16 @@ async def nexa_run_text_generation(
             stop=stop_words,
             logprobs=logprobs,
         )
+        print(f"👀 DEBUG: Streamer created with type: {type(streamer)}")
         print(f"👀 DEBUG: Chat format streamer created with logprobs={logprobs}")
         for chunk in streamer:
+            print(f"👀 DEBUG: Raw chunk content: {chunk}")
             delta = chunk["choices"][0]["delta"]
             if "content" in delta:
                 generated_text += delta["content"]
+
+            print(f"👀 DEBUG: Processed chunk: content={delta}, logprobs={chunk['choices'][0].get('logprobs')}")
+
             if logprobs and "logprobs" in chunk["choices"][0]:
                 print(f"👀 DEBUG: Received logprobs in chunk: {chunk['choices'][0]['logprobs']}")
                 if logprobs_or_none is None:
@@ -194,6 +217,7 @@ async def nexa_run_text_generation(
         )
         print(f"👀 DEBUG: Completion format streamer created with logprobs={logprobs}")
         for chunk in streamer:
+            print(f"👀 DEBUG: Raw chunk content: {chunk}")
             delta = chunk["choices"][0]["text"]
             generated_text += delta
             if logprobs and "logprobs" in chunk["choices"][0]:
@@ -210,6 +234,7 @@ async def nexa_run_text_generation(
         "result": generated_text,
         "logprobs": logprobs_or_none
     }
+    print(f"👀 DEBUG: Final result: {result}")
     return result
 
 
