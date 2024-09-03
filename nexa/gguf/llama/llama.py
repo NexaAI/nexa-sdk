@@ -89,7 +89,7 @@ class Llama:
         yarn_beta_fast: float = 32.0,
         yarn_beta_slow: float = 1.0,
         yarn_orig_ctx: int = 0,
-        logits_all: bool = True,
+        logits_all: bool = True,  # switch
         embedding: bool = False,
         offload_kqv: bool = True,
         flash_attn: bool = False,
@@ -1019,7 +1019,7 @@ class Llama:
         top_p: float = 0.95,
         min_p: float = 0.05,
         typical_p: float = 1.0,
-        logprobs: Optional[int] = 3, # default param
+        logprobs: Optional[int] = None,
         echo: bool = False,
         stop: Optional[Union[str, List[str]]] = [],
         frequency_penalty: float = 0.0,

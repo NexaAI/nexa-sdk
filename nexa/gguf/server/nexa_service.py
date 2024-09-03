@@ -31,6 +31,11 @@ from nexa.gguf.llama.llama import Llama
 from nexa.gguf.sd.stable_diffusion import StableDiffusion
 from faster_whisper import WhisperModel
 import argparse
+import pprint  # (DEBUG only)
+
+# (DEBUG only) create a PrettyPrinter object:
+pp = pprint.PrettyPrinter(indent=2, width=100, depth=None, compact=False)
+
 logging.basicConfig(level=logging.INFO)
 
 app = FastAPI()
@@ -101,7 +106,7 @@ async def load_model():
                         verbose=False,
                         chat_format=chat_format,
                         n_gpu_layers=-1 if is_gpu_available() else 0,
-                        logits_all=True
+                        logits_all=True  # switch on
                     )
                 except Exception as e:
                     logging.error(
@@ -152,14 +157,15 @@ async def nexa_run_text_generation(
         raise ValueError("Model is not loaded. Please check the model path and try again.")
 
     generated_text = ""
-    logprobs_or_none = None
+    logprobs_or_none = None  # init to store the logprobs if requested
 
-    print(f"👀 DEBUG: Initial logprobs value: {logprobs}")
+    print(f"0️⃣ DEBUG: Initial logprobs value: {logprobs}")
 
     if chat_format:
+        print(f"❓{chat_format}")
         conversation_history.append({"role": "user", "content": prompt})
 
-        # prepare the parameters dictionary:
+        # (DEBUG only) the params dictionary:
         params = {
             'messages': conversation_history,
             'temperature': temperature,
@@ -171,9 +177,9 @@ async def nexa_run_text_generation(
             'logprobs': logprobs,
         }
 
-        # convert to JSON and print:
+        # (DEBUG only) convert to JSON to print:
         params_json = json.dumps(params, default=str, indent=2)
-        print(f"👀 DEBUG: Full parameters for create_chat_completion:")
+        print(f"📚 DEBUG: Full parameters for create_chat_completion:")
         print(params_json)
 
         streamer = model.create_chat_completion(
@@ -186,24 +192,29 @@ async def nexa_run_text_generation(
             stop=stop_words,
             logprobs=logprobs,
         )
-        print(f"👀 DEBUG: Streamer created with type: {type(streamer)}")
-        print(f"👀 DEBUG: Chat format streamer created with logprobs={logprobs}")
+
+        print(f"💬1️⃣ DEBUG: Chat-format streamer created with logprobs={logprobs}")
+
         for chunk in streamer:
-            print(f"👀 DEBUG: Raw chunk content: {chunk}")
+            # print(f"💬2️⃣ DEBUG: Raw chunk: {chunk}")
+            print("💬2️⃣ DEBUG: Raw chunk:")
+            pp.pprint(chunk)
             delta = chunk["choices"][0]["delta"]
+            print(f"💬3️⃣ DEBUG: content={delta}, logprobs={chunk['choices'][0].get('logprobs')}")
             if "content" in delta:
                 generated_text += delta["content"]
 
-            print(f"👀 DEBUG: Processed chunk: content={delta}, logprobs={chunk['choices'][0].get('logprobs')}")
-
             if logprobs and "logprobs" in chunk["choices"][0]:
-                print(f"👀 DEBUG: Received logprobs in chunk: {chunk['choices'][0]['logprobs']}")
+                print(f"💬4️⃣ DEBUG: Received logprobs in chunk: {chunk['choices'][0]['logprobs']}")
                 if logprobs_or_none is None:
                     logprobs_or_none = chunk["choices"][0]["logprobs"]
                 else:
-                    for key in logprobs_or_none:
-                        logprobs_or_none[key].extend(chunk["choices"][0]["logprobs"][key])
+                    for key in logprobs_or_none:  # tokens, token_logprobs, top_logprobs, text_offset
+                        if key in chunk["choices"][0]["logprobs"]:
+                            logprobs_or_none[key].extend(chunk["choices"][0]["logprobs"][key])  # accumulate data from each chunk
+                print(f"💬5️⃣ DEBUG: Updated logprobs_or_none: {logprobs_or_none}")
     else:
+        print(f"❓❓{chat_format}")
         prompt = completion_template.format(prompt) if completion_template else prompt
         streamer = model.create_completion(
             prompt=prompt,
@@ -215,18 +226,28 @@ async def nexa_run_text_generation(
             stop=stop_words,
             logprobs=logprobs,
         )
-        print(f"👀 DEBUG: Completion format streamer created with logprobs={logprobs}")
+        print(f"🤖1️⃣ DEBUG: Completion-format streamer created with logprobs={logprobs}")
+
         for chunk in streamer:
-            print(f"👀 DEBUG: Raw chunk content: {chunk}")
+            # print(f"🤖2️⃣ DEBUG: Raw chunk: {chunk}")
+            print("🤖2️⃣ DEBUG: Raw chunk:")
+            pp.pprint(chunk)
             delta = chunk["choices"][0]["text"]
+            print(f"🤖3️⃣ DEBUG: content={delta}, logprobs={chunk['choices'][0].get('logprobs')}")
             generated_text += delta
+
             if logprobs and "logprobs" in chunk["choices"][0]:
-                print(f"👀 DEBUG: Received logprobs in chunk: {chunk['choices'][0]['logprobs']}")
+                print(f"🤖4️⃣DEBUG: Received logprobs in chunk: {chunk['choices'][0]['logprobs']}")
                 if logprobs_or_none is None:
                     logprobs_or_none = chunk["choices"][0]["logprobs"]
                 else:
-                    for key in logprobs_or_none:
-                        logprobs_or_none[key].extend(chunk["choices"][0]["logprobs"][key])
+                    for key in logprobs_or_none:  # tokens, token_logprobs, top_logprobs, text_offset
+                        if key in chunk["choices"][0]["logprobs"]:
+                            logprobs_or_none[key].extend(chunk["choices"][0]["logprobs"][key])  # accumulate data from each chunk
+                print(f"🤖5️⃣ DEBUG: Updated logprobs_or_none: {logprobs_or_none}")
+
+    if is_chat_mode:
+        conversation_history.append({"role": "assistant", "content": generated_text})
 
     print(f"👀 DEBUG: Final logprobs_or_none: {logprobs_or_none}")
 
@@ -234,7 +255,7 @@ async def nexa_run_text_generation(
         "result": generated_text,
         "logprobs": logprobs_or_none
     }
-    print(f"👀 DEBUG: Final result: {result}")
+    print(f"✅ DEBUG: Final result: {result}")
     return result
 
 
@@ -274,7 +295,7 @@ class ChatCompletionRequest(BaseModel):
     # messages: List[Message] = [
     #     {"role": "user", "content": "Tell me a story"}]
     messages: List[Message] = [
-        {"role": "user", "content": "Hello"}]
+        {"role": "user", "content": "Hi"}]
     max_tokens: Optional[int] = 128
     temperature: Optional[float] = 0.1
     stream: Optional[bool] = False
