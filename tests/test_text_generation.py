@@ -32,7 +32,7 @@ def test_streaming():
     )
     for chunk in output:
         if "choices" in chunk:
-            print(chunk["choices"][0]["text"], end="", flush=True)
+            print(chunk["choices"][0]["delta"]["content"], end="", flush=True)
     # TODO: add assertions here
 
 # Test conversation mode with chat format
