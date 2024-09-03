@@ -31,12 +31,7 @@ from nexa.gguf.llama.llama import Llama
 from nexa.gguf.sd.stable_diffusion import StableDiffusion
 from faster_whisper import WhisperModel
 import argparse
-# logging.basicConfig(level=logging.INFO)
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 app = FastAPI()
 app.add_middleware(
@@ -57,13 +52,14 @@ function_call_system_prompt = [{"role": "system", "content": "A chat between a c
 model_path = None
 
 class GenerationRequest(BaseModel):
-    prompt: str = "Tell me a story"
+    # prompt: str = "Tell me a story"
+    prompt: str = "Hello"
     temperature: float = 1.0
     max_new_tokens: int = 128
     top_k: int = 50
     top_p: float = 1.0
     stop_words: Optional[List[str]] = None
-    logprobs: Optional[int] = None
+    logprobs: Optional[int] = 3 # change the value that's passed in from the API request
 
 
 async def load_model():
@@ -80,6 +76,7 @@ async def load_model():
                         verbose=False,
                         chat_format=chat_format,
                         n_gpu_layers=-1 if is_gpu_available() else 0,
+                        logits_all=True
                     )
                 except Exception as e:
                     logging.error(
@@ -89,7 +86,8 @@ async def load_model():
                         model_path=downloaded_path,
                         verbose=False,
                         chat_format=chat_format,
-                        n_gpu_layers=0,  # hardcode to use CPU
+                        n_gpu_layers=0,  # hardcode to use CPU,
+                        logits_all=True
                     )
 
                 logging.info(f"model loaded as {model}")
@@ -103,6 +101,7 @@ async def load_model():
                         verbose=False,
                         chat_format=chat_format,
                         n_gpu_layers=-1 if is_gpu_available() else 0,
+                        logits_all=True
                     )
                 except Exception as e:
                     logging.error(
@@ -113,6 +112,7 @@ async def load_model():
                         verbose=False,
                         chat_format=chat_format,
                         n_gpu_layers=0,  # hardcode to use CPU
+                        logits_all=True
                     )
                 logging.info(f"model loaded as {model}")
     elif run_type == "Computer Vision":
@@ -151,75 +151,66 @@ async def nexa_run_text_generation(
     if model is None:
         raise ValueError("Model is not loaded. Please check the model path and try again.")
 
-    logger.debug(f"nexa_run_text_generation input: prompt={prompt}, temperature={temperature}, stop_words={stop_words}, max_new_tokens={max_new_tokens}, top_k={top_k}, top_p={top_p}, logprobs={logprobs}")
-
     generated_text = ""
-    logprobs_data = {
-        "tokens": [],
-        "token_logprobs": [],
-        "top_logprobs": [],
-        "text_offset": []
-    } if logprobs is not None else None
+    logprobs_or_none = None
 
-    try:
-        if chat_format:
-            conversation_history.append({"role": "user", "content": prompt})
-            streamer = model.create_chat_completion(
-                messages=conversation_history,
-                temperature=temperature,
-                max_tokens=max_new_tokens,
-                top_k=top_k,
-                top_p=top_p,
-                stream=True,
-                stop=stop_words,
-                logprobs=logprobs,
-            )
-            text_offset = 0
-            for chunk in streamer:
-                delta = chunk["choices"][0]["delta"]
-                if "content" in delta:
-                    generated_text += delta["content"]
-                if logprobs_data is not None and "logprobs" in chunk["choices"][0]:
-                    chunk_logprobs = chunk["choices"][0]["logprobs"]
-                    if chunk_logprobs and "tokens" in chunk_logprobs and chunk_logprobs["tokens"]:
-                        logprobs_data["tokens"].append(chunk_logprobs["tokens"][0])
-                        logprobs_data["token_logprobs"].append(chunk_logprobs["token_logprobs"][0])
-                        logprobs_data["top_logprobs"].append(chunk_logprobs["top_logprobs"][0])
-                        logprobs_data["text_offset"].append(text_offset)
-                        text_offset += len(delta.get("content", ""))
-        else:
-            prompt = completion_template.format(prompt) if completion_template else prompt
-            streamer = model.create_completion(
-                prompt=prompt,
-                temperature=temperature,
-                max_tokens=max_new_tokens,
-                top_k=top_k,
-                top_p=top_p,
-                stream=True,
-                stop=stop_words,
-                logprobs=logprobs,
-            )
-            text_offset = 0
-            for chunk in streamer:
-                delta = chunk["choices"][0]["text"]
-                generated_text += delta
-                if logprobs_data is not None and "logprobs" in chunk["choices"][0]:
-                    chunk_logprobs = chunk["choices"][0]["logprobs"]
-                    if chunk_logprobs and "tokens" in chunk_logprobs and chunk_logprobs["tokens"]:
-                        logprobs_data["tokens"].append(chunk_logprobs["tokens"][0])
-                        logprobs_data["token_logprobs"].append(chunk_logprobs["token_logprobs"][0])
-                        logprobs_data["top_logprobs"].append(chunk_logprobs["top_logprobs"][0])
-                        logprobs_data["text_offset"].append(text_offset)
-                        text_offset += len(delta)
+    print(f"👀 DEBUG: Initial logprobs value: {logprobs}")
 
-        if chat_format:
-            conversation_history.append({"role": "assistant", "content": generated_text})
+    if chat_format:
+        conversation_history.append({"role": "user", "content": prompt})
+        streamer = model.create_chat_completion(
+            messages=conversation_history,
+            temperature=temperature,
+            max_tokens=max_new_tokens,
+            top_k=top_k,
+            top_p=top_p,
+            stream=True,
+            stop=stop_words,
+            logprobs=logprobs,
+        )
+        print(f"👀 DEBUG: Chat format streamer created with logprobs={logprobs}")
+        for chunk in streamer:
+            delta = chunk["choices"][0]["delta"]
+            if "content" in delta:
+                generated_text += delta["content"]
+            if logprobs and "logprobs" in chunk["choices"][0]:
+                print(f"👀 DEBUG: Received logprobs in chunk: {chunk['choices'][0]['logprobs']}")
+                if logprobs_or_none is None:
+                    logprobs_or_none = chunk["choices"][0]["logprobs"]
+                else:
+                    for key in logprobs_or_none:
+                        logprobs_or_none[key].extend(chunk["choices"][0]["logprobs"][key])
+    else:
+        prompt = completion_template.format(prompt) if completion_template else prompt
+        streamer = model.create_completion(
+            prompt=prompt,
+            temperature=temperature,
+            max_tokens=max_new_tokens,
+            top_k=top_k,
+            top_p=top_p,
+            stream=True,
+            stop=stop_words,
+            logprobs=logprobs,
+        )
+        print(f"👀 DEBUG: Completion format streamer created with logprobs={logprobs}")
+        for chunk in streamer:
+            delta = chunk["choices"][0]["text"]
+            generated_text += delta
+            if logprobs and "logprobs" in chunk["choices"][0]:
+                print(f"👀 DEBUG: Received logprobs in chunk: {chunk['choices'][0]['logprobs']}")
+                if logprobs_or_none is None:
+                    logprobs_or_none = chunk["choices"][0]["logprobs"]
+                else:
+                    for key in logprobs_or_none:
+                        logprobs_or_none[key].extend(chunk["choices"][0]["logprobs"][key])
 
-        logger.debug(f"nexa_run_text_generation output: {generated_text}")
-        return {"text": generated_text, "logprobs": logprobs_data}
-    except Exception as e:
-        logger.exception(f"Error in nexa_run_text_generation: {e}")
-        return {"text": "", "logprobs": None, "error": str(e)}
+    print(f"👀 DEBUG: Final logprobs_or_none: {logprobs_or_none}")
+
+    result = {
+        "result": generated_text,
+        "logprobs": logprobs_or_none
+    }
+    return result
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -231,34 +222,18 @@ async def read_root(request: Request):
 
 @app.post("/v1/completions")
 async def generate_text(request: GenerationRequest):
+    logging.info(f"[/v1/completions] Request logprobs: {request.logprobs}")
     try:
-        logger.debug(f"Received generation request: {request}")
         result = await nexa_run_text_generation(**request.dict())
-        logger.debug(f"Generation result: {result}")
-
-        if "error" in result:
-            raise ValueError(result["error"])
-
-        response = {
-            "id": str(uuid.uuid4()),
-            "object": "text_completion",
-            "created": int(time.time()),
-            "model": model_path,
+        # return JSONResponse(content={"result": result})
+        return JSONResponse(content={
             "choices": [{
-                "text": result["text"],
-                "index": 0,
-                "logprobs": result["logprobs"],
-                "finish_reason": "length"
-            }],
-            "usage": {
-                "prompt_tokens": len(request.prompt.split()),
-                "completion_tokens": len(result["text"].split()),
-                "total_tokens": len(request.prompt.split()) + len(result["text"].split())
-            }
-        }
-        return JSONResponse(content=response)
+                "text": result["result"],
+                "logprobs": result["logprobs"]
+            }]
+        })
     except Exception as e:
-        logger.exception(f"Error in text generation: {e}")
+        logging.error(f"Error in text generation: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -271,14 +246,15 @@ class ImageResponse(BaseModel):
     url: str
 
 class ChatCompletionRequest(BaseModel):
+    # messages: List[Message] = [
+    #     {"role": "user", "content": "Tell me a story"}]
     messages: List[Message] = [
-        {"role": "user", "content": "Tell me a story"}]
+        {"role": "user", "content": "Hello"}]
     max_tokens: Optional[int] = 128
     temperature: Optional[float] = 0.1
     stream: Optional[bool] = False
     stop_words: Optional[List[str]] = []
-    logprobs: Optional[bool] = None
-    top_logprobs: Optional[int] = None
+    logprobs: Optional[int] = 3
 
 class FunctionDefinitionRequestClass(BaseModel):
     type: str = "function"
@@ -436,59 +412,37 @@ async def img2img(request: ImageGenerationRequest):
 
 @app.post("/v1/chat/completions")
 async def chat_completions(request: ChatCompletionRequest):
+    logging.info(f"[/v1/chat/completions] Request logprobs: {request.logprobs}")
     try:
-        logger.debug(f"Received chat completion request: {request}")
-
         generation_kwargs = GenerationRequest(
             prompt="" if len(request.messages) == 0 else request.messages[-1].content,
             temperature=request.temperature,
             max_new_tokens=request.max_tokens,
             stop_words=request.stop_words,
-            logprobs=request.top_logprobs if request.logprobs else None,
+            logprobs=request.logprobs,
         ).dict()
-        logger.debug(f"Generation kwargs: {generation_kwargs}")
 
         if request.stream:
+            # run the generation and stream the response:
             async def stream_generator():
                 streamer = await nexa_run_text_generation(**generation_kwargs)
-                logger.debug(f"Streamer object: {streamer}")
                 async for chunk in _resp_async_generator(streamer):
-                    logger.debug(f"Streaming chunk: {chunk}")
                     yield chunk
 
             return StreamingResponse(stream_generator(), media_type="application/x-ndjson")
 
         else:
-            logger.debug("Non-streaming mode detected")
+            # generate text synchronously and return the response:
             result = await nexa_run_text_generation(**generation_kwargs)
-            logger.debug(f"Generation result: {result}")
-
-            if "error" in result:
-                raise ValueError(result["error"])
-
-            response = {
+            return {
                 "id": str(uuid.uuid4()),
                 "object": "chat.completion",
-                "created": int(time.time()),
-                "model": model_path,
+                "created": time.time(),
                 "choices": [{
-                    "index": 0,
-                    "message": {
-                        "role": "assistant",
-                        "content": result["text"]
-                    },
-                    "logprobs": result["logprobs"] if request.logprobs else None,
-                    "finish_reason": "length"
+                    "message": Message(role="assistant", content=result["result"]),
+                    "logprobs": result["logprobs"] if "logprobs" in result else None,
                 }],
-                "usage": {
-                    "prompt_tokens": sum(len(msg.content.split()) for msg in request.messages),
-                    "completion_tokens": len(result["text"].split()),
-                    "total_tokens": sum(len(msg.content.split()) for msg in request.messages) + len(result["text"].split())
-                }
             }
-            logger.debug(f"Final response: {response}")
-            return JSONResponse(content=response)
-
     except Exception as e:
         logging.error(f"Error in chat completions: {e}")
         raise HTTPException(status_code=500, detail=str(e))

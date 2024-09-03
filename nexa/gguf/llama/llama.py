@@ -335,9 +335,10 @@ class Llama:
             yarn_beta_slow if yarn_beta_slow != 0.0 else 0
         )
         self.context_params.yarn_orig_ctx = yarn_orig_ctx if yarn_orig_ctx != 0 else 0
-        self.context_params.logits_all = (
-            logits_all if draft_model is None else True
-        )  # Must be set to True for speculative decoding
+        # self.context_params.logits_all = (
+        #     logits_all if draft_model is None else True
+        # )  # Must be set to True for speculative decoding
+        self.context_params.logits_all = True
         self.context_params.embeddings = embedding  # TODO: Rename to embeddings
         self.context_params.offload_kqv = offload_kqv
         self.context_params.flash_attn = flash_attn
@@ -438,14 +439,6 @@ class Llama:
         self._chat_handlers: Dict[str, llama_chat_format.LlamaChatCompletionHandler] = (
             {}
         )
-
-        self.context_params.logits_all = logits_all
-        if not logits_all and draft_model is not None:
-            warnings.warn(
-                "Setting logits_all to False while using a draft model may break speculative decoding "
-                "and prevent returning logprobs for all tokens. Consider setting logits_all to True.",
-                RuntimeWarning
-            )
 
         self.draft_model = draft_model
 
@@ -1026,7 +1019,7 @@ class Llama:
         top_p: float = 0.95,
         min_p: float = 0.05,
         typical_p: float = 1.0,
-        logprobs: Optional[int] = None,
+        logprobs: Optional[int] = 3, # default param
         echo: bool = False,
         stop: Optional[Union[str, List[str]]] = [],
         frequency_penalty: float = 0.0,
@@ -1439,7 +1432,7 @@ class Llama:
                     )
                 )
 
-                logprobs_or_none: Optional[CompletionLogprobs] = None
+                # logprobs_or_none: Optional[CompletionLogprobs] = None
                 if logprobs is not None:
                     if token == bos_token_id:
                         continue
@@ -1550,7 +1543,7 @@ class Llama:
         if suffix_token_id < 0 and suffix is not None:
             text_str = text_str + suffix
 
-        logprobs_or_none: Optional[CompletionLogprobs] = None
+        # logprobs_or_none: Optional[CompletionLogprobs] = None
         if logprobs is not None:
             text_offset = 0 if echo else len(prompt)
             token_offset = 0 if echo else len(prompt_tokens[1:])
