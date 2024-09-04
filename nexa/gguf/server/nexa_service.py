@@ -193,28 +193,28 @@ async def nexa_run_text_generation(
             logprobs=logprobs,
         )
 
-        print(f"💬1️⃣ DEBUG: Chat-format streamer created with logprobs={logprobs}")
+        print(f"1️⃣ DEBUG: Chat-format streamer created with logprobs={logprobs}")
 
         for chunk in streamer:
-            # print(f"💬2️⃣ DEBUG: Raw chunk: {chunk}")
-            print("💬2️⃣ DEBUG: Raw chunk:")
+            # print(f"2️⃣ DEBUG: Raw chunk: {chunk}")
+            print("2️⃣ DEBUG: Raw chunk:")
             pp.pprint(chunk)
             delta = chunk["choices"][0]["delta"]
-            print(f"💬3️⃣ DEBUG: content={delta}, logprobs={chunk['choices'][0].get('logprobs')}")
+            print(f"3️⃣ DEBUG: content={delta}, logprobs={chunk['choices'][0].get('logprobs')}")
             if "content" in delta:
                 generated_text += delta["content"]
 
             if logprobs and "logprobs" in chunk["choices"][0]:
-                print(f"💬4️⃣ DEBUG: Received logprobs in chunk: {chunk['choices'][0]['logprobs']}")
+                print(f"4️⃣ DEBUG: Received logprobs in chunk: {chunk['choices'][0]['logprobs']}")
                 if logprobs_or_none is None:
                     logprobs_or_none = chunk["choices"][0]["logprobs"]
                 else:
                     for key in logprobs_or_none:  # tokens, token_logprobs, top_logprobs, text_offset
                         if key in chunk["choices"][0]["logprobs"]:
                             logprobs_or_none[key].extend(chunk["choices"][0]["logprobs"][key])  # accumulate data from each chunk
-                print(f"💬5️⃣ DEBUG: Updated logprobs_or_none: {logprobs_or_none}")
+                print(f"5️⃣ DEBUG: Updated logprobs_or_none: {logprobs_or_none}")
     else:
-        print(f"❓❓{chat_format}")
+        print(f"🤖❓{chat_format}")
         prompt = completion_template.format(prompt) if completion_template else prompt
         streamer = model.create_completion(
             prompt=prompt,
