@@ -1600,8 +1600,10 @@ class Llama:
                 "model": model_name,
                 "choices": [
                     {
-                        "text": "",
                         "index": 0,
+                        "delta": {
+                            "content": "",
+                        },
                         "logprobs": logprobs_or_none,
                         "finish_reason": finish_reason,
                     }
