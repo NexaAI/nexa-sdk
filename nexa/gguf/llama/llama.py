@@ -1272,6 +1272,7 @@ class Llama:
 
         finish_reason = "length"
         multibyte_fix = 0
+        logprobs_or_none = None
 
         print(f"👉6️⃣ DEBUG: _create_completion called with logprobs={logprobs}")
 
@@ -1601,7 +1602,7 @@ class Llama:
                     {
                         "text": "",
                         "index": 0,
-                        "logprobs": None,
+                        "logprobs": logprobs_or_none,
                         "finish_reason": finish_reason,
                     }
                 ],
