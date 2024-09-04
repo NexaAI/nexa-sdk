@@ -670,6 +670,7 @@ class Llama:
         mirostat_tau: float = 5.0,
         penalize_nl: bool = True,
         logits_processor: Optional[LogitsProcessorList] = None,
+        logprobs: Optional[int] = None,
         grammar: Optional[LlamaGrammar] = None,
         idx: Optional[int] = None,
     ):
@@ -684,6 +685,9 @@ class Llama:
         Returns:
             The sampled token.
         """
+
+        print(f"👉1️⃣ DEBUG: Sample method received logprobs={logprobs}")
+
         assert self._ctx is not None
         assert self.n_tokens > 0
 
@@ -726,7 +730,29 @@ class Llama:
             id=id,
             apply_grammar=grammar is not None,
         )
-        return id
+
+        # if logprobs is requested, calculate and return:
+        if logprobs is not None:
+            sampled_logprobs = self.logits_to_logprobs(logits)
+
+            # sort indices by logprobs in descending order:
+            sorted_indices = sampled_logprobs.argsort()[::-1]
+
+            # get the top logprobs:
+            top_indices = sorted_indices[:logprobs]
+
+            top_logprobs = {
+                self.detokenize([i]).decode("utf-8", errors="ignore"): float(sampled_logprobs[i])
+                for i in top_indices
+            }
+
+            return {
+                "token": id,
+                "token_logprob": float(sampled_logprobs[id]),
+                "top_logprobs": top_logprobs
+            }
+        else:
+            return id
 
     def generate(
         self,
@@ -746,6 +772,7 @@ class Llama:
         mirostat_eta: float = 0.1,
         penalize_nl: bool = True,
         logits_processor: Optional[LogitsProcessorList] = None,
+        logprobs: Optional[int] = None,
         stopping_criteria: Optional[StoppingCriteriaList] = None,
         grammar: Optional[LlamaGrammar] = None,
     ) -> Generator[int, Optional[Sequence[int]], None]:
@@ -768,6 +795,9 @@ class Llama:
         Yields:
             The generated tokens.
         """
+
+        print(f"👉2️⃣ DEBUG: Generate method called with logprobs={logprobs}")
+
         # Reset mirostat sampling
         self._mirostat_mu = ctypes.c_float(2.0 * mirostat_tau)
 
@@ -802,7 +832,8 @@ class Llama:
         while True:
             self.eval(tokens)
             while sample_idx < self.n_tokens:
-                token = self.sample(
+                print(f"👉3️⃣ DEBUG: Calling sample method with logprobs={logprobs}")
+                result = self.sample(
                     top_k=top_k,
                     top_p=top_p,
                     min_p=min_p,
@@ -816,17 +847,50 @@ class Llama:
                     mirostat_tau=mirostat_tau,
                     mirostat_eta=mirostat_eta,
                     logits_processor=logits_processor,
+                    logprobs=logprobs,
                     grammar=grammar,
                     penalize_nl=penalize_nl,
                     idx=sample_idx,
                 )
+
+                print(f"🔍 DEBUG: Sample method returned: {result}")
+
+                if isinstance(result, dict):
+                    token = result["token"]
+                    logprobs_info = result
+                else:
+                    token = result
+                    logprobs_info = None
+
+                print(f"👉4️⃣ DEBUG: Processed sample result: token: {token}, logprobs_info: {logprobs_info}")
+
+            #     token = self.sample(
+            #         top_k=top_k,
+            #         top_p=top_p,
+            #         min_p=min_p,
+            #         typical_p=typical_p,
+            #         temp=temp,
+            #         repeat_penalty=repeat_penalty,
+            #         frequency_penalty=frequency_penalty,
+            #         presence_penalty=presence_penalty,
+            #         tfs_z=tfs_z,
+            #         mirostat_mode=mirostat_mode,
+            #         mirostat_tau=mirostat_tau,
+            #         mirostat_eta=mirostat_eta,
+            #         logits_processor=logits_processor,
+            #         logprobs=logprobs,
+            #         grammar=grammar,
+            #         penalize_nl=penalize_nl,
+            #         idx=sample_idx,
+            #     )
 
                 sample_idx += 1
                 if stopping_criteria is not None and stopping_criteria(
                     self._input_ids, self._scores[-1, :]
                 ):
                     return
-                tokens_or_none = yield token
+                tokens_or_none = yield token, logprobs_info
+                print(f"👉5️⃣ DEBUG: Yielded token: {token}, logprobs_info: {logprobs_info}")
                 tokens.clear()
                 tokens.append(token)
                 if tokens_or_none is not None:
@@ -1208,7 +1272,10 @@ class Llama:
 
         finish_reason = "length"
         multibyte_fix = 0
-        for token in self.generate(
+
+        print(f"👉6️⃣ DEBUG: _create_completion called with logprobs={logprobs}")
+
+        for token, logprobs_info in self.generate(
             prompt_tokens,
             top_k=top_k,
             top_p=top_p,
@@ -1224,8 +1291,11 @@ class Llama:
             repeat_penalty=repeat_penalty,
             stopping_criteria=stopping_criteria,
             logits_processor=logits_processor,
+            logprobs=logprobs,
             grammar=grammar,
         ):
+            print(f"👉7️⃣ DEBUG: Received from generate: token={token}, logprobs_info={logprobs_info}")
+
             assert self._model.model is not None
             if llama_cpp.llama_token_is_eog(self._model.model, token):
                 text = self.detokenize(completion_tokens, prev_tokens=prompt_tokens)
@@ -1233,6 +1303,20 @@ class Llama:
                 break
 
             completion_tokens.append(token)
+
+            if logprobs_info and logprobs_or_none is None:
+                logprobs_or_none = {
+                    "tokens": [],
+                    "text_offset": [],
+                    "token_logprobs": [],
+                    "top_logprobs": []
+                }
+
+            if logprobs_info:
+                logprobs_or_none["tokens"].append(self.detokenize([token]).decode("utf-8", errors="ignore"))
+                logprobs_or_none["text_offset"].append(len(self.detokenize(completion_tokens[:-1])))
+                logprobs_or_none["token_logprobs"].append(logprobs_info["token_logprob"])
+                logprobs_or_none["top_logprobs"].append(logprobs_info["top_logprobs"])
 
             all_text = self.detokenize(completion_tokens, prev_tokens=prompt_tokens)
 
