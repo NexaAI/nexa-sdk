@@ -1423,22 +1423,25 @@ class Llama:
                         returned_tokens += 1
                         yield {
                             "id": completion_id,
-                            "object": "text_completion",
-                            "created": created,
                             "model": model_name,
+                            "object": "text_completion.chunk",
+                            "created": created,
                             "choices": [
                                 {
-                                    "text": self.detokenize(
-                                        [token],
-                                        prev_tokens=prompt_tokens
-                                        + completion_tokens[:returned_tokens],
-                                    ).decode("utf-8", errors="ignore"),
                                     "index": 0,
-                                    "logprobs": logprobs_or_none,
+                                    "delta": {
+                                        "content": self.detokenize(
+                                            [token],
+                                            prev_tokens=prompt_tokens
+                                            + completion_tokens[:returned_tokens],
+                                        ).decode("utf-8", errors="ignore")
+                                    },
                                     "finish_reason": None,
+                                    "logprobs": logprobs_or_none,
                                 }
                             ],
                         }
+
                 else:
                     while len(remaining_tokens) > 0:
                         decode_success = False
@@ -1469,18 +1472,21 @@ class Llama:
 
                         yield {
                             "id": completion_id,
-                            "object": "text_completion",
-                            "created": created,
                             "model": model_name,
+                            "object": "text_completion.chunk",
+                            "created": created,
                             "choices": [
                                 {
-                                    "text": ts,
                                     "index": 0,
                                     "logprobs": None,
+                                    "delta": {
+                                        "content": ts,
+                                    },
                                     "finish_reason": None,
                                 }
                             ],
                         }
+
 
             if len(completion_tokens) >= max_tokens:
                 text = self.detokenize(completion_tokens, prev_tokens=prompt_tokens)
@@ -1561,43 +1567,47 @@ class Llama:
                     returned_tokens += 1
                     yield {
                         "id": completion_id,
-                        "object": "text_completion",
-                        "created": created,
                         "model": model_name,
+                        "object": "text_completion.chunk",
+                        "created": created,
                         "choices": [
                             {
-                                "text": last_text[
-                                    : len(last_text) - (token_end_position - end)
-                                ].decode("utf-8", errors="ignore"),
                                 "index": 0,
+                                "delta": {
+                                    "content": last_text[: len(last_text) - (token_end_position - end)].decode(
+                                        "utf-8", errors="ignore"
+                                    )
+                                },
                                 "logprobs": logprobs_or_none,
                                 "finish_reason": None,
                             }
                         ],
                     }
+
                     break
                 returned_tokens += 1
                 yield {
                     "id": completion_id,
-                    "object": "text_completion",
-                    "created": created,
                     "model": model_name,
+                    "object": "text_completion.chunk",
+                    "created": created,
                     "choices": [
                         {
-                            "text": self.detokenize([token]).decode(
-                                "utf-8", errors="ignore"
-                            ),
                             "index": 0,
+                            "delta": {
+                                "content": self.detokenize([token]).decode("utf-8", errors="ignore")
+                            },
                             "logprobs": logprobs_or_none,
                             "finish_reason": None,
                         }
                     ],
                 }
+
             yield {
                 "id": completion_id,
-                "object": "text_completion",
-                "created": created,
                 "model": model_name,
+                "object": "text_completion.chunk",
+                "created": created,
                 "choices": [
                     {
                         "index": 0,
@@ -1609,6 +1619,7 @@ class Llama:
                     }
                 ],
             }
+
             if self.cache:
                 if self.verbose:
                     print("Llama._create_completion: cache save", file=sys.stderr)
