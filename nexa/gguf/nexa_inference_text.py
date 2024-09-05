@@ -331,13 +331,13 @@ if __name__ == "__main__":
         action="store_true",
         help="Run the inference in Streamlit UI",
     )
-    parser.add_argument(
-        "-tlps",
-        "--top_logprobs",
-        type=int,
-        default=None,  # -tlps 5
-        help="Number of most likely tokens to return at each token position",
-    )
+    # parser.add_argument(
+    #     "-tlps",
+    #     "--top_logprobs",
+    #     type=int,
+    #     default=None,  # -tlps 5
+    #     help="Number of most likely tokens to return at each token position",
+    # )
     args = parser.parse_args()
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")
