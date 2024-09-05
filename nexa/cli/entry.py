@@ -15,27 +15,32 @@ def run_ggml_inference(args):
     
     stop_words = kwargs.pop("stop_words", [])
 
-    if run_type == "NLP":
-        from nexa.gguf.nexa_inference_text import NexaTextInference
-        inference = NexaTextInference(model_path=model_path, local_path=local_path, stop_words=stop_words, **kwargs)
-    elif run_type == "Computer Vision":
-        from nexa.gguf.nexa_inference_image import NexaImageInference
-        inference = NexaImageInference(model_path=model_path, local_path=local_path, **kwargs)
-        if hasattr(args, 'streamlit') and args.streamlit:
-            inference.run_streamlit(model_path)
-        elif args.img2img:
-            inference.run_img2img()
+    try:
+        if run_type == "NLP":
+            from nexa.gguf.nexa_inference_text import NexaTextInference
+            inference = NexaTextInference(model_path=model_path, local_path=local_path, stop_words=stop_words, **kwargs)
+        elif run_type == "Computer Vision":
+            from nexa.gguf.nexa_inference_image import NexaImageInference
+            inference = NexaImageInference(model_path=model_path, local_path=local_path, **kwargs)
+            if hasattr(args, 'streamlit') and args.streamlit:
+                inference.run_streamlit(model_path)
+            elif args.img2img:
+                inference.run_img2img()
+            else:
+                inference.run_txt2img()
+            return
+        elif run_type == "Multimodal":
+            from nexa.gguf.nexa_inference_vlm import NexaVLMInference
+            inference = NexaVLMInference(model_path=model_path, local_path=local_path, stop_words=stop_words, **kwargs)
+        elif run_type == "Audio":
+            from nexa.gguf.nexa_inference_voice import NexaVoiceInference
+            inference = NexaVoiceInference(model_path=model_path, local_path=local_path, **kwargs)
         else:
-            inference.run_txt2img()
+            print(f"Unknown task: {run_type}. Skipping inference.")
+            return
+    except Exception as e:
+        print(f"Error loading GGUF models, please refer to our docs to install nexaai package: https://docs.nexaai.com/getting-started/installation ")
         return
-    elif run_type == "Multimodal":
-        from nexa.gguf.nexa_inference_vlm import NexaVLMInference
-        inference = NexaVLMInference(model_path=model_path, local_path=local_path, stop_words=stop_words, **kwargs)
-    elif run_type == "Audio":
-        from nexa.gguf.nexa_inference_voice import NexaVoiceInference
-        inference = NexaVoiceInference(model_path=model_path, local_path=local_path, **kwargs)
-    else:
-        raise ValueError(f"Unknown task: {run_type}")
 
     if hasattr(args, 'streamlit') and args.streamlit:
         inference.run_streamlit(model_path)
@@ -49,20 +54,25 @@ def run_onnx_inference(args):
     from nexa.general import pull_model
     local_path, run_type = pull_model(model_path)
 
-    if run_type == "NLP":
-        from nexa.onnx.nexa_inference_text import NexaTextInference as NexaTextOnnxInference
-        inference = NexaTextOnnxInference(model_path=model_path, local_path=local_path, **kwargs)
-    elif run_type == "Computer Vision":
-        from nexa.onnx.nexa_inference_image import NexaImageInference as NexaImageOnnxInference
-        inference = NexaImageOnnxInference(model_path=model_path, local_path=local_path, **kwargs)
-    elif run_type == "Audio":
-        from nexa.onnx.nexa_inference_voice import NexaVoiceInference as NexaVoiceOnnxInference
-        inference = NexaVoiceOnnxInference(model_path=model_path, local_path=local_path, **kwargs)
-    elif run_type == "TTS":
-        from nexa.onnx.nexa_inference_tts import NexaTTSInference as NexaTTSOnnxInference
-        inference = NexaTTSOnnxInference(model_path=model_path, local_path=local_path, **kwargs)
-    else:
-        raise ValueError(f"Unknown task: {run_type}")
+    try:
+        if run_type == "NLP":
+            from nexa.onnx.nexa_inference_text import NexaTextInference as NexaTextOnnxInference
+            inference = NexaTextOnnxInference(model_path=model_path, local_path=local_path, **kwargs)
+        elif run_type == "Computer Vision":
+            from nexa.onnx.nexa_inference_image import NexaImageInference as NexaImageOnnxInference
+            inference = NexaImageOnnxInference(model_path=model_path, local_path=local_path, **kwargs)
+        elif run_type == "Audio":
+            from nexa.onnx.nexa_inference_voice import NexaVoiceInference as NexaVoiceOnnxInference
+            inference = NexaVoiceOnnxInference(model_path=model_path, local_path=local_path, **kwargs)
+        elif run_type == "TTS":
+            from nexa.onnx.nexa_inference_tts import NexaTTSInference as NexaTTSOnnxInference
+            inference = NexaTTSOnnxInference(model_path=model_path, local_path=local_path, **kwargs)
+        else:
+            print(f"Unknown task: {run_type}. Skipping inference.")
+            return
+    except Exception as e:
+        print(f"Error loading ONNX models, please refer to our docs to install nexaai[onnx] package: https://docs.nexaai.com/getting-started/installation ")
+        return
 
     if hasattr(args, 'streamlit') and args.streamlit:
         inference.run_streamlit(model_path)
