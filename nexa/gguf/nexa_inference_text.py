@@ -54,7 +54,7 @@ class NexaTextInference:
         self.downloaded_path = local_path
 
         self.logprobs = kwargs.get('logprobs', None)
-        self.top_logprobs = kwargs.get('top_logprobs', 3 if self.logprobs else None)
+        self.top_logprobs = kwargs.get('top_logprobs', None)
 
         if self.downloaded_path is None:
             self.downloaded_path, run_type = pull_model(self.model_path)
@@ -332,26 +332,16 @@ if __name__ == "__main__":
         help="Run the inference in Streamlit UI",
     )
     parser.add_argument(
-        "-lps",
-        "--logprobs",
-        action="store_true",
-        help="Whether to return log probabilities of the output tokens",
-    )
-    parser.add_argument(
         "-tlps",
         "--top_logprobs",
         type=int,
-        default=None,
+        default=None,  # -tlps 5
         help="Number of most likely tokens to return at each token position",
     )
     args = parser.parse_args()
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")
     stop_words = kwargs.pop("stop_words", [])
-
-    # set top_logprobs to 3 if logprobs is True and top_logprobs is not specified:
-    if kwargs.get("logprobs") and kwargs.get("top_logprobs") is None:
-        kwargs["top_logprobs"] = 3
 
     inference = NexaTextInference(model_path, stop_words=stop_words, **kwargs)
     if args.streamlit:
