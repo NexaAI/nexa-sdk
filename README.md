@@ -2,7 +2,7 @@
 
 <h1>Nexa SDK</h1>
 
-  <img src="./assets/banner.png" alt="icon"/>
+  <img src="https://public-storage.nexa4ai.com/nexa-banner.png" alt="icon" onerror="this.onerror=null; this.src='./assets/banner.png'"/>
 
 [![MacOS][MacOS-image]][release-url] [![Linux][Linux-image]][release-url] [![Windows][Windows-image]][release-url]
 
@@ -146,6 +146,19 @@ CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp" pip install nexaai
 
 </details>
 
+### Local Build
+How to clone this repo
+```bash
+git clone --recursive https://github.com/NexaAI/nexa-sdk
+```
+If you forget to use `--recursive`, you can use below command to add submodule
+```bash
+git submodule update --init --recursive
+```
+Then you can build and install the package
+```bash
+pip install -e .
+```
 
 ### Docker Usage
 
