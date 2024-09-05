@@ -231,7 +231,22 @@ class NexaTextInference:
         if logprobs and top_logprobs is None:
             top_logprobs = 3
 
-        return self.model.create_completion(prompt=prompt, temperature=temperature, max_tokens=max_tokens, top_k=top_k, top_p=top_p, echo=echo, stream=stream, stop=stop, logprobs=logprobs, top_logprobs=top_logprobs)
+        # return self.model.create_completion(prompt=prompt, temperature=temperature, max_tokens=max_tokens, top_k=top_k, top_p=top_p, echo=echo, stream=stream, stop=stop, logprobs=logprobs, top_logprobs=top_logprobs)
+        kwargs = {
+            "prompt": prompt,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "top_k": top_k,
+            "top_p": top_p,
+            "echo": echo,
+            "stream": stream,
+            "stop": stop,
+            "logprobs": logprobs
+        }
+        if top_logprobs is not None:
+            kwargs["top_logprobs"] = top_logprobs
+
+        return self.model.create_completion(**kwargs)
 
 
     def _chat(self, user_input: str) -> Iterator:
