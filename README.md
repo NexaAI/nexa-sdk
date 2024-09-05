@@ -93,14 +93,31 @@ CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --
 
 #### GPU (CUDA)
 
-For the GPU version supporting **CUDA (Linux/Windows)**:
+For **Linux**:
 
 ```bash
 CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
+For **Windows PowerShell**:
+
+```bash
+$env:CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON"; pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+```
+
+For **Windows Command Prompt**:
+
+```bash
+set CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" & pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+```
+
+For **Windows Git Bash**:
+
+```bash
+CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+```
 > [!NOTE]
-> The CUDA wheels are built with CUDA 12.4, but should be compatible with all CUDA 12.X
+> If you want to use ONNX model, just replace `pip install nexaai` with `pip install nexaai[onnx]` in above commands
 
 
 <details>
