@@ -732,7 +732,7 @@ class Llama:
             apply_grammar=grammar is not None,
         )
 
-        if logprobs:
+        if logprobs is not None and (top_logprobs is not None and top_logprobs > 0):
             sampled_logprobs = self.logits_to_logprobs(logits)
             token_logprob = float(sampled_logprobs[id])
 

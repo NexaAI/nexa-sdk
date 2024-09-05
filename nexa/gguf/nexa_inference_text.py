@@ -332,11 +332,13 @@ if __name__ == "__main__":
         help="Run the inference in Streamlit UI",
     )
     parser.add_argument(
+        "-lps",
         "--logprobs",
         action="store_true",
         help="Whether to return log probabilities of the output tokens",
     )
     parser.add_argument(
+        "-tlps",
         "--top_logprobs",
         type=int,
         default=None,
