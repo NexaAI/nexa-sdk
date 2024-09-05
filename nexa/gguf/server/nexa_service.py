@@ -64,8 +64,8 @@ class GenerationRequest(BaseModel):
     top_k: int = 50
     top_p: float = 1.0
     stop_words: Optional[List[str]] = None
-    logprobs: Optional[bool] = None
-    top_logprobs: Optional[int] = None
+    logprobs: Optional[bool] = True  # changed default to True
+    top_logprobs: Optional[int] = 4  # changed default to 4
 
 async def load_model():
     global model, chat_format, completion_template, model_path
@@ -292,8 +292,8 @@ class ChatCompletionRequest(BaseModel):
     temperature: Optional[float] = 0.1
     stream: Optional[bool] = False
     stop_words: Optional[List[str]] = []
-    logprobs: Optional[bool] = True
-    top_logprobs: Optional[int] = None
+    logprobs: Optional[bool] = True  # changed default to True
+    top_logprobs: Optional[int] = 4  # changed default to 4
 
 class FunctionDefinitionRequestClass(BaseModel):
     type: str = "function"
