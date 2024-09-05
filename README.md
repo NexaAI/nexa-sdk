@@ -146,6 +146,19 @@ CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp" pip install nexaai
 
 </details>
 
+### Local Build
+How to clone this repo
+```bash
+git clone --recursive https://github.com/NexaAI/nexa-sdk
+```
+If you forget to use `--recursive`, you can use below command to add submodule
+```bash
+git submodule update --init --recursive
+```
+Then you can build and install the package
+```bash
+pip install -e .
+```
 
 ### Docker Usage
 
