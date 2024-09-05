@@ -62,6 +62,17 @@ Below is our differentiation from other similar tools:
 
 We have released pre-built wheels for various Python versions, platforms, and backends for convenient installation on our [index page](https://nexaai.github.io/nexa-sdk/whl/).
 
+How to clone this repo
+```bash
+git clone --recursive https://github.com/NexaAI/nexa-sdk
+```
+
+If you forget to use `--recursive`, you can use below command to add submodule
+```bash
+git submodule update --init --recursive
+```
+
+
 #### CPU
 
 ```bash
