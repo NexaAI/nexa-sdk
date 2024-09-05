@@ -120,7 +120,7 @@ NEXA_RUN_MODEL_MAP_FUNCTION_CALLING = {
 
 NEXA_RUN_PROJECTOR_MAP = {
     "nanollava": "nanoLLaVA:projector-fp16",
-    "nanoLLaVA:fp16": "nanoLLaVA:project-fp16",
+    "nanoLLaVA:fp16": "nanoLLaVA:projector-fp16",
     "llava-phi3": "llava-phi-3-mini:projector-q4_0",
     "llava-phi-3-mini:q4_0": "llava-phi-3-mini:projector-q4_0",
     "llava-phi-3-mini:fp16": "llava-phi-3-mini:projector-fp16",

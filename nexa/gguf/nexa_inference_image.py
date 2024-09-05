@@ -115,7 +115,7 @@ class NexaImageInference:
             except Exception as e:
                 logging.error(f"Attempt {attempt + 1} failed with error: {e}")
                 time.sleep(1)
-        logging.error("All retry attempts failed.")
+        print("All retry attempts failed becase of Out of Memory error, Try to use smaller models...")
         return None
 
     def txt2img(
