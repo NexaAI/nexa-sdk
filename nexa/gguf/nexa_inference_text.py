@@ -54,6 +54,7 @@ class NexaTextInference:
         self.downloaded_path = local_path
 
         self.logprobs = kwargs.get('logprobs', None)
+        self.top_logprobs = kwargs.get('top_logprobs', 3 if self.logprobs else None)
 
         if self.downloaded_path is None:
             self.downloaded_path, run_type = pull_model(self.model_path)
@@ -82,6 +83,7 @@ class NexaTextInference:
                     "Failed to load model or tokenizer. Exiting.", exc_info=True
                 )
                 exit(1)
+
     def create_embedding(
         self,
         input: Union[str, List[str]],
@@ -188,7 +190,7 @@ class NexaTextInference:
                 logging.error(f"Error during generation: {e}", exc_info=True)
             print("\n")
 
-    def create_chat_completion(self, messages, temperature=0.7, max_tokens=2048, top_k=50, top_p=1.0, stream=False, stop=None, logprobs=None):
+    def create_chat_completion(self, messages, temperature=0.7, max_tokens=2048, top_k=50, top_p=1.0, stream=False, stop=None, logprobs=None, top_logprobs=None):
         """
         Used for SDK. Generate completion for a chat conversation.
 
@@ -204,9 +206,12 @@ class NexaTextInference:
         Returns:
             Iterator: Iterator for the completion.
         """
-        return self.model.create_chat_completion(messages=messages, temperature=temperature, max_tokens=max_tokens, top_k=top_k, top_p=top_p, stream=stream, stop=stop, logprobs=logprobs)
+        if logprobs and top_logprobs is None:
+            top_logprobs = 3
 
-    def create_completion(self, prompt, temperature=0.7, max_tokens=2048, top_k=50, top_p=1.0, echo=False, stream=False, stop=None, logprobs=None):
+        return self.model.create_chat_completion(messages=messages, temperature=temperature, max_tokens=max_tokens, top_k=top_k, top_p=top_p, stream=stream, stop=stop, logprobs=logprobs, top_logprobs=top_logprobs)
+
+    def create_completion(self, prompt, temperature=0.7, max_tokens=2048, top_k=50, top_p=1.0, echo=False, stream=False, stop=None, logprobs=None, top_logprobs=None):
         """
         Used for SDK. Generate completion for a given prompt.
 
@@ -223,7 +228,10 @@ class NexaTextInference:
         Returns:
             Iterator: Iterator for the completion.
         """
-        return self.model.create_completion(prompt=prompt, temperature=temperature, max_tokens=max_tokens, top_k=top_k, top_p=top_p, echo=echo, stream=stream, stop=stop, logprobs=logprobs)
+        if logprobs and top_logprobs is None:
+            top_logprobs = 3
+
+        return self.model.create_completion(prompt=prompt, temperature=temperature, max_tokens=max_tokens, top_k=top_k, top_p=top_p, echo=echo, stream=stream, stop=stop, logprobs=logprobs, top_logprobs=top_logprobs)
 
 
     def _chat(self, user_input: str) -> Iterator:
@@ -237,6 +245,7 @@ class NexaTextInference:
             stream=True,
             stop=self.stop_words,
             logprobs=self.logprobs,
+            top_logprobs=self.top_logprobs,
         )
 
     def _complete(self, user_input: str) -> Iterator:
@@ -255,6 +264,7 @@ class NexaTextInference:
             stream=True,
             stop=self.stop_words,
             logprobs=self.logprobs,
+            top_logprobs=self.top_logprobs,
         )
 
     def run_streamlit(self, model_path: str):
@@ -321,10 +331,26 @@ if __name__ == "__main__":
         action="store_true",
         help="Run the inference in Streamlit UI",
     )
+    parser.add_argument(
+        "--logprobs",
+        action="store_true",
+        help="Whether to return log probabilities of the output tokens",
+    )
+    parser.add_argument(
+        "--top_logprobs",
+        type=int,
+        default=None,
+        help="Number of most likely tokens to return at each token position",
+    )
     args = parser.parse_args()
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")
     stop_words = kwargs.pop("stop_words", [])
+
+    # set top_logprobs to 3 if logprobs is True and top_logprobs is not specified:
+    if kwargs.get("logprobs") and kwargs.get("top_logprobs") is None:
+        kwargs["top_logprobs"] = 3
+
     inference = NexaTextInference(model_path, stop_words=stop_words, **kwargs)
     if args.streamlit:
         inference.run_streamlit(model_path)

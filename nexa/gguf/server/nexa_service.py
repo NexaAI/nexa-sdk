@@ -64,8 +64,8 @@ class GenerationRequest(BaseModel):
     top_k: int = 50
     top_p: float = 1.0
     stop_words: Optional[List[str]] = None
-    logprobs: Optional[bool] = True
-
+    logprobs: Optional[bool] = None
+    top_logprobs: Optional[int] = None
 
 async def load_model():
     global model, chat_format, completion_template, model_path
@@ -150,7 +150,7 @@ async def startup_event():
     await load_model()
 
 async def nexa_run_text_generation(
-    prompt, temperature, stop_words, max_new_tokens, top_k, top_p, logprobs=None
+    prompt, temperature, stop_words, max_new_tokens, top_k, top_p, logprobs=None, top_logprobs=None
 ) -> Dict[str, Any]:
     global model, chat_format, completion_template, conversation_history
     if model is None:
@@ -159,7 +159,7 @@ async def nexa_run_text_generation(
     generated_text = ""
     logprobs_or_none = None  # init to store the logprobs if requested
 
-    print(f"0️⃣ DEBUG: Initial logprobs value: {logprobs}")
+    print(f"0️⃣ DEBUG: Initial logprobs value: {logprobs}, top_logprobs: {top_logprobs}")
 
     if chat_format:
         print(f"❓{chat_format}")
@@ -175,6 +175,7 @@ async def nexa_run_text_generation(
             'stream': True,
             'stop': stop_words,
             'logprobs': logprobs,
+            'top_logprobs': top_logprobs,
         }
 
         # (DEBUG only) convert to JSON to print:
@@ -182,21 +183,11 @@ async def nexa_run_text_generation(
         print(f"📚 DEBUG: Full parameters for create_chat_completion:")
         print(params_json)
 
-        streamer = model.create_chat_completion(
-            messages=conversation_history,
-            temperature=temperature,
-            max_tokens=max_new_tokens,
-            top_k=top_k,
-            top_p=top_p,
-            stream=True,
-            stop=stop_words,
-            logprobs=logprobs,
-        )
+        streamer = model.create_chat_completion(**params)
 
-        print(f"1️⃣ DEBUG: Chat-format streamer created with logprobs={logprobs}")
+        print(f"1️⃣ DEBUG: Chat-format streamer created with logprobs={logprobs}, top_logprobs={top_logprobs}")
 
         for chunk in streamer:
-            # print(f"2️⃣ DEBUG: Raw chunk: {chunk}")
             print("2️⃣ DEBUG: Raw chunk:")
             pp.pprint(chunk)
             delta = chunk["choices"][0]["delta"]
@@ -225,8 +216,9 @@ async def nexa_run_text_generation(
             stream=True,
             stop=stop_words,
             logprobs=logprobs,
+            top_logprobs=top_logprobs,
         )
-        print(f"🤖1️⃣ DEBUG: Completion-format streamer created with logprobs={logprobs}")
+        print(f"🤖1️⃣ DEBUG: Completion-format streamer created with logprobs={logprobs}, top_logprobs={top_logprobs}")
 
         for chunk in streamer:
             # print(f"🤖2️⃣ DEBUG: Raw chunk: {chunk}")
@@ -268,7 +260,7 @@ async def read_root(request: Request):
 
 @app.post("/v1/completions")
 async def generate_text(request: GenerationRequest):
-    logging.info(f"[/v1/completions] Request logprobs: {request.logprobs}")
+    logging.info(f"[/v1/completions] Request logprobs: {request.logprobs}, top_logprobs: {request.top_logprobs}")
     try:
         result = await nexa_run_text_generation(**request.dict())
         # return JSONResponse(content={"result": result})
@@ -301,6 +293,7 @@ class ChatCompletionRequest(BaseModel):
     stream: Optional[bool] = False
     stop_words: Optional[List[str]] = []
     logprobs: Optional[bool] = True
+    top_logprobs: Optional[int] = None
 
 class FunctionDefinitionRequestClass(BaseModel):
     type: str = "function"
@@ -458,7 +451,7 @@ async def img2img(request: ImageGenerationRequest):
 
 @app.post("/v1/chat/completions")
 async def chat_completions(request: ChatCompletionRequest):
-    logging.info(f"[/v1/chat/completions] Request logprobs: {request.logprobs}")
+    logging.info(f"[/v1/chat/completions] Request logprobs: {request.logprobs}, top_logprobs: {request.top_logprobs}")
     try:
         generation_kwargs = GenerationRequest(
             prompt="" if len(request.messages) == 0 else request.messages[-1].content,
@@ -466,6 +459,7 @@ async def chat_completions(request: ChatCompletionRequest):
             max_new_tokens=request.max_tokens,
             stop_words=request.stop_words,
             logprobs=request.logprobs,
+            top_logprobs=request.top_logprobs,
         ).dict()
 
         if request.stream:
