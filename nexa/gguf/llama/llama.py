@@ -670,7 +670,7 @@ class Llama:
         mirostat_tau: float = 5.0,
         penalize_nl: bool = True,
         logits_processor: Optional[LogitsProcessorList] = None,
-        logprobs: Optional[int] = None,
+        logprobs: Optional[bool] = None,
         grammar: Optional[LlamaGrammar] = None,
         idx: Optional[int] = None,
     ):
@@ -772,7 +772,7 @@ class Llama:
         mirostat_eta: float = 0.1,
         penalize_nl: bool = True,
         logits_processor: Optional[LogitsProcessorList] = None,
-        logprobs: Optional[int] = None,
+        logprobs: Optional[bool] = None,
         stopping_criteria: Optional[StoppingCriteriaList] = None,
         grammar: Optional[LlamaGrammar] = None,
     ) -> Generator[int, Optional[Sequence[int]], None]:
@@ -1083,7 +1083,7 @@ class Llama:
         top_p: float = 0.95,
         min_p: float = 0.05,
         typical_p: float = 1.0,
-        logprobs: Optional[int] = None,
+        logprobs: Optional[bool] = None,
         echo: bool = False,
         stop: Optional[Union[str, List[str]]] = [],
         frequency_penalty: float = 0.0,
@@ -1737,7 +1737,7 @@ class Llama:
         top_p: float = 0.95,
         min_p: float = 0.05,
         typical_p: float = 1.0,
-        logprobs: Optional[int] = None,
+        logprobs: Optional[bool] = None,
         echo: bool = False,
         stop: Optional[Union[str, List[str]]] = [],
         frequency_penalty: float = 0.0,
@@ -1834,7 +1834,7 @@ class Llama:
         top_p: float = 0.95,
         min_p: float = 0.05,
         typical_p: float = 1.0,
-        logprobs: Optional[int] = None,
+        logprobs: Optional[bool] = None,
         echo: bool = False,
         stop: Optional[Union[str, List[str]]] = [],
         frequency_penalty: float = 0.0,
@@ -1945,7 +1945,7 @@ class Llama:
         logits_processor: Optional[LogitsProcessorList] = None,
         grammar: Optional[LlamaGrammar] = None,
         logit_bias: Optional[Dict[str, float]] = None,
-        logprobs: Optional[int] = None,
+        logprobs: Optional[bool] = None,
         top_logprobs: Optional[int] = None,
     ) -> Union[
         CreateChatCompletionResponse, Iterator[CreateChatCompletionStreamResponse]

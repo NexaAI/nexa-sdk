@@ -64,7 +64,7 @@ class GenerationRequest(BaseModel):
     top_k: int = 50
     top_p: float = 1.0
     stop_words: Optional[List[str]] = None
-    logprobs: Optional[int] = 3 # change the value that's passed in from the API request
+    logprobs: Optional[bool] = True
 
 
 async def load_model():
@@ -300,7 +300,7 @@ class ChatCompletionRequest(BaseModel):
     temperature: Optional[float] = 0.1
     stream: Optional[bool] = False
     stop_words: Optional[List[str]] = []
-    logprobs: Optional[int] = 3
+    logprobs: Optional[bool] = True
 
 class FunctionDefinitionRequestClass(BaseModel):
     type: str = "function"
