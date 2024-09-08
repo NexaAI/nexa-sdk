@@ -236,6 +236,7 @@ NEXA_OFFICIAL_MODELS_TYPE = {
   'Mistral-7B-Instruct-v0.2': 'NLP',
   'Phi-3-mini-128k-instruct': 'NLP',
   'Phi-3-mini-4k-instruct': 'NLP',
+  "Phi-3.5-mini-instruct": "NLP",
   'CodeQwen1.5-7B-Instruct': 'NLP',
   'Qwen2-0.5B-Instruct': 'NLP',
   'Qwen2-1.5B-Instruct': 'NLP',
