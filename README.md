@@ -63,7 +63,8 @@ Below is our differentiation from other similar tools:
 We have released pre-built wheels for various Python versions, platforms, and backends for convenient installation on our [index page](https://nexaai.github.io/nexa-sdk/whl/).
 
 > [!NOTE]
-> If you want to use ONNX model, just replace `pip install nexaai` with `pip install "nexaai[onnx]"` in provided commands
+> 1. If you want to use <strong>ONNX model</strong>, just replace `pip install nexaai` with `pip install "nexaai[onnx]"` in provided commands.
+> 2. For Chinese developers, we recommend you to use <strong>Tsinghua Open Source Mirror</strong> as extra index url, just replace `--extra-index-url https://pypi.org/simple` with `--extra-index-url https://pypi.tuna.tsinghua.edu.cn/simple` in provided commands.
 
 #### CPU
 
