@@ -170,7 +170,12 @@ class NexaTextInference:
                             decoding_start_time = time.time()
                             prefill_time = decoding_start_time - generation_start_time
                             first_token = False
-                        delta = chunk["choices"][0]["text"]
+                        choice = chunk["choices"][0]
+                        if "text" in choice:
+                            delta = choice["text"]
+                        elif "delta" in choice:
+                            delta = choice["delta"]["content"]
+                        
                         print(delta, end="", flush=True)
                         generated_text += delta
 
