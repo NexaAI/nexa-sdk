@@ -44,8 +44,10 @@ NEXA_RUN_MODEL_MAP_TEXT = {
     "dolphin-mistral": "dolphin-2.8-mistral-7b:q4_0",
     "phi2": "Phi-2:q4_0",
     "phi3": "Phi-3-mini-128k-instruct:q4_0",
+    "phi3.5": "Phi-3.5-mini-instruct:q4_0",
     "llama2-uncensored": "Llama2-7b-chat-uncensored:q4_0",
     "llama3-uncensored": "Llama3-8B-Lexi-Uncensored:q4_K_M",
+    "openelm": "OpenELM-3B:q4_K_M",
 }
 
 NEXA_RUN_MODEL_MAP_ONNX = {
@@ -139,10 +141,12 @@ NEXA_RUN_MODEL_MAP_IMAGE = {
     "sd1-4": "stable-diffusion-v1-4:q4_0",
     "sd1-5": "stable-diffusion-v1-5:q4_0",
     "sd2-1": "stable-diffusion-v2-1:fp16",
+    "sd3": "stable-diffusion-3-medium:q4_0",
     "sdxl-turbo": "sdxl-turbo:q8_0",
     "lcm-dreamshaper": "lcm-dreamshaper-v7:fp16",
     "anything-lcm": "anything-v30-LCM:fp16",
     "hassaku-lcm": "hassaku-hentai-model-v13-LCM:fp16",
+    "flux": "FLUX.1-schnell:q4_0",
 }
 
 NEXA_RUN_MODEL_MAP = {
@@ -172,10 +176,12 @@ NEXA_RUN_MODEL_PRECISION_MAP = {
     "sd1-4": "q4_0",
     "sd1-5": "q4_0",
     "sd2-1": "q4_0",
+    "sd3": "q4_0",
     "lcm-dreamshaper": "f16",
     "sdxl-turbo": "q8_0",
     "anything-lcm": "f16",
     "hassaku-lcm": "f16",
+    "flux": "q4_0",
 }
 
 EXIT_COMMANDS = ["/exit", "/quit", "/bye"]
@@ -236,7 +242,7 @@ NEXA_OFFICIAL_MODELS_TYPE = {
   'Mistral-7B-Instruct-v0.2': 'NLP',
   'Phi-3-mini-128k-instruct': 'NLP',
   'Phi-3-mini-4k-instruct': 'NLP',
-  "Phi-3.5-mini-instruct": "NLP",
+  'Phi-3.5-mini-instruct': 'NLP',
   'CodeQwen1.5-7B-Instruct': 'NLP',
   'Qwen2-0.5B-Instruct': 'NLP',
   'Qwen2-1.5B-Instruct': 'NLP',
@@ -270,13 +276,17 @@ NEXA_OFFICIAL_MODELS_TYPE = {
   'Llama2-7b-chat-uncensored': 'NLP',
   'Llama3-8B-Lexi-Uncensored': 'NLP',
   'Llama2-7b-function-calling': 'NLP',
+  'OpenELM-1_1B': 'NLP',
+  'OpenELM-3B': 'NLP',
   'lcm-dreamshaper-v7': 'Computer Vision',
   'stable-diffusion-v1-5': 'Computer Vision',
   'stable-diffusion-v1-4': 'Computer Vision',
   'stable-diffusion-v2-1': 'Computer Vision',
+  'stable-diffusion-3-medium': 'Computer Vision',
   'sdxl-turbo': 'Computer Vision',
   'hassaku-hentai-model-v13-LCM': 'Computer Vision',
   'anything-v30-LCM': 'Computer Vision',
+  'FLUX.1-schnell': 'Computer Vision',
   'Phi-3-vision-128k-instruct': 'Multimodal',
   'nanoLLaVA': 'Multimodal',
   'llava-v1.6-mistral-7b': 'Multimodal',
