@@ -32,7 +32,7 @@ def test_streaming():
     )
     for chunk in output:
         if "choices" in chunk:
-            print(chunk["choices"][0]["delta"]["content"], end="", flush=True)
+            print(chunk["choices"][0]["text"], end="", flush=True)
     # TODO: add assertions here
 
 # Test conversation mode with chat format
@@ -41,11 +41,12 @@ def test_create_chat_completion():
 
     output = model.create_chat_completion(
         messages=[
-            {"role": "user", "content": "write a long 1000 word story about a detective"}
+            {"role": "user", "content": "write a 100 word story about a detective"}
         ],
         stream=True,
     )
     for chunk in output:
+        print("chunk:\n",chunk)
         delta = chunk["choices"][0]["delta"]
         if "role" in delta:
             print(f'{delta["role"]}: ', end="", flush=True)

@@ -31,13 +31,7 @@ from pathlib import Path
 
 from nexa.gguf.llama.llama_types import *
 from nexa.gguf.llama.llama_grammar import LlamaGrammar
-from nexa.gguf.llama_cache import (
-    BaseLlamaCache,
-    LlamaCache,  # type: ignore
-    LlamaDiskCache,  # type: ignore
-    LlamaRAMCache,  # type: ignore
-)
-from nexa.gguf.llama_tokenizer import BaseLlamaTokenizer, LlamaTokenizer
+from nexa.gguf.llama.llama_tokenizer import BaseLlamaTokenizer, LlamaTokenizer
 import nexa.gguf.llama.llama_cpp as llama_cpp
 import nexa.gguf.llama.llama_chat_format as llama_chat_format
 
@@ -46,7 +40,7 @@ from nexa.gguf.llama.llama_speculative import LlamaDraftModel
 import numpy as np
 import numpy.typing as npt
 
-from nexa.gguf._internals_transformers import (
+from nexa.gguf.llama._internals_transformers import (
     _LlamaModel,  # type: ignore
     _LlamaContext,  # type: ignore
     _LlamaBatch,  # type: ignore
@@ -55,8 +49,8 @@ from nexa.gguf._internals_transformers import (
     _LlamaSamplingContext,  # type: ignore
     _normalize_embedding,  # type: ignore
 )
-from nexa.gguf._logger_transformers import set_verbose
-from nexa.gguf._utils_transformers import suppress_stdout_stderr
+from nexa.gguf.llama._logger_transformers import set_verbose
+from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
 
 
 class Llama:
@@ -355,8 +349,6 @@ class Llama:
         # Sampling Params
         self.last_n_tokens_size = last_n_tokens_size
 
-        self.cache: Optional[BaseLlamaCache] = None
-
         self.lora_base = lora_base
         self.lora_scale = lora_scale
         self.lora_path = lora_path
@@ -603,14 +595,6 @@ class Llama:
             The detokenized string.
         """
         return self.tokenizer_.detokenize(tokens, prev_tokens=prev_tokens, special=special)
-
-    def set_cache(self, cache: Optional[BaseLlamaCache]):
-        """Set the cache.
-
-        Args:
-            cache: The cache to set.
-        """
-        self.cache = cache
 
     def set_seed(self, seed: int):
         """Set the random seed.
@@ -1194,23 +1178,6 @@ class Llama:
                 "logprobs is not supported for models created with logits_all=False"
             )
 
-        if self.cache:
-            try:
-                cache_item = self.cache[prompt_tokens]
-                cache_prefix_len = Llama.longest_token_prefix(
-                    cache_item.input_ids.tolist(), prompt_tokens
-                )
-                eval_prefix_len = Llama.longest_token_prefix(
-                    self._input_ids.tolist(), prompt_tokens
-                )
-                if cache_prefix_len > eval_prefix_len:
-                    self.load_state(cache_item)
-                    if self.verbose:
-                        print("Llama._create_completion: cache hit", file=sys.stderr)
-            except KeyError:
-                if self.verbose:
-                    print("Llama._create_completion: cache miss", file=sys.stderr)
-
         if seed is not None:
             self._ctx.set_rng_seed(seed)
 
@@ -1530,18 +1497,7 @@ class Llama:
                     }
                 ],
             }
-            if self.cache:
-                if self.verbose:
-                    print("Llama._create_completion: cache save", file=sys.stderr)
-                self.cache[prompt_tokens + completion_tokens] = self.save_state()
-                if self.verbose:
-                    print("Llama._create_completion: cache saved", file=sys.stderr)
             return
-
-        if self.cache:
-            if self.verbose:
-                print("Llama._create_completion: cache save", file=sys.stderr)
-            self.cache[prompt_tokens + completion_tokens] = self.save_state()
 
         text_str = text.decode("utf-8", errors="ignore")
 

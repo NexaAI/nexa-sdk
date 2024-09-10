@@ -99,8 +99,8 @@ class NexaTextInference:
         logging.debug(f"Loading model from {self.downloaded_path}, use_cuda_or_metal : {is_gpu_available()}")
         start_time = time.time()
         with suppress_stdout_stderr():
+            from nexa.gguf.llama.llama import Llama
             try:
-                from nexa.gguf.llama.llama import Llama
                 self.model = Llama(
                     embedding=self.params.get("embedding", False),
                     model_path=self.downloaded_path,

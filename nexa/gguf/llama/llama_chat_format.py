@@ -315,7 +315,7 @@ def _convert_text_completion_chunks_to_chat(
                     "index": 0,
                     "delta": (
                         {
-                            "content": chunk["choices"][0]["delta"]["content"],
+                            "content": chunk["choices"][0]["text"],
                         }
                         if chunk["choices"][0]["finish_reason"] is None
                         else {}
