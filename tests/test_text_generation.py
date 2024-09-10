@@ -46,7 +46,6 @@ def test_create_chat_completion():
         stream=True,
     )
     for chunk in output:
-        print("chunk:\n",chunk)
         delta = chunk["choices"][0]["delta"]
         if "role" in delta:
             print(f'{delta["role"]}: ', end="", flush=True)
