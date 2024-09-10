@@ -48,7 +48,6 @@ jobs:
     - name: Build DLL (Windows)
       if: runner.os == 'Windows'
       run: |
-        set CMAKE_ARGS="-DCMAKE_CXX_FLAGS=/openmp"
         python -m pip install -e .
       shell: bash
 
