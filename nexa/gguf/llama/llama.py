@@ -686,9 +686,6 @@ class Llama:
         Returns:
             The sampled token.
         """
-
-        print(f"👉1️⃣ DEBUG: Sample method received logprobs={logprobs}, top_logprobs={top_logprobs}")
-
         assert self._ctx is not None
         assert self.n_tokens > 0
 
@@ -795,9 +792,6 @@ class Llama:
         Yields:
             The generated tokens.
         """
-
-        print(f"👉2️⃣ DEBUG: Generate method called with logprobs={logprobs}, top_logprobs={top_logprobs}")
-
         # Reset mirostat sampling
         self._mirostat_mu = ctypes.c_float(2.0 * mirostat_tau)
 
@@ -832,7 +826,6 @@ class Llama:
         while True:
             self.eval(tokens)
             while sample_idx < self.n_tokens:
-                print(f"👉3️⃣ DEBUG: Calling sample method with logprobs={logprobs}, top_logprobs={top_logprobs}")
                 result = self.sample(
                     top_k=top_k,
                     top_p=top_p,
@@ -854,8 +847,6 @@ class Llama:
                     idx=sample_idx,
                 )
 
-                print(f"🔍 DEBUG: Sample method returned: {result}")
-
                 if isinstance(result, dict):
                     token = result["token"]
                     logprobs_info = result
@@ -863,15 +854,12 @@ class Llama:
                     token = result
                     logprobs_info = None
 
-                print(f"👉4️⃣ DEBUG: Processed sample result: token: {token}, logprobs_info: {logprobs_info}")
-
                 sample_idx += 1
                 if stopping_criteria is not None and stopping_criteria(
                     self._input_ids, self._scores[-1, :]
                 ):
                     return
                 tokens_or_none = yield token, logprobs_info
-                print(f"👉5️⃣ DEBUG: Yielded token: {token}, logprobs_info: {logprobs_info}")
                 tokens.clear()
                 tokens.append(token)
                 if tokens_or_none is not None:
@@ -1256,8 +1244,6 @@ class Llama:
         multibyte_fix = 0
         logprobs_or_none = None
 
-        print(f"👉6️⃣ DEBUG: _create_completion called with logprobs={logprobs}, top_logprobs={top_logprobs}")
-
         for token, logprobs_info in self.generate(
             prompt_tokens,
             top_k=top_k,
@@ -1278,8 +1264,6 @@ class Llama:
             top_logprobs=top_logprobs,
             grammar=grammar,
         ):
-            print(f"👉7️⃣ DEBUG: Received from generate: token={token}, logprobs_info={logprobs_info}")
-
             assert self._model.model is not None
             if llama_cpp.llama_token_is_eog(self._model.model, token):
                 text = self.detokenize(completion_tokens, prev_tokens=prompt_tokens)
