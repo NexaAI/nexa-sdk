@@ -343,6 +343,14 @@ class _LlamaContext:
         assert self.ctx is not None
         return llama_cpp.llama_get_state_size(self.ctx)
 
+    # TODO: copy_state_data
+
+    # TODO: set_state_data
+
+    # TODO: llama_load_session_file
+
+    # TODO: llama_save_session_file
+
     def decode(self, batch: "_LlamaBatch"):
         assert self.ctx is not None
         assert batch.batch is not None

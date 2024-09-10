@@ -94,7 +94,7 @@ sdist.exclude = [
 build.verbose = true
 cmake.build-type = "Release"
 cmake.version = ">=3.16"
-cmake.args = ["-DCMAKE_BUILD_PARALLEL_LEVEL=16"]
+cmake.args = ["-DCMAKE_BUILD_PARALLEL_LEVEL=16","-DCMAKE_CXX_FLAGS=-fopenmp"]
 
 [tool.scikit-build.metadata.version]
 provider = "scikit_build_core.metadata.regex"

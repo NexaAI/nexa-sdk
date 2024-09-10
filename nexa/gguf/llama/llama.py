@@ -29,28 +29,34 @@ from collections import deque
 from pathlib import Path
 
 
+from nexa.gguf.llama.llama_types import *
+from nexa.gguf.llama.llama_grammar import LlamaGrammar
+from nexa.gguf.llama_cache import (
+    BaseLlamaCache,
+    LlamaCache,  # type: ignore
+    LlamaDiskCache,  # type: ignore
+    LlamaRAMCache,  # type: ignore
+)
+from nexa.gguf.llama_tokenizer import BaseLlamaTokenizer, LlamaTokenizer
+import nexa.gguf.llama.llama_cpp as llama_cpp
+import nexa.gguf.llama.llama_chat_format as llama_chat_format
+
+from nexa.gguf.llama.llama_speculative import LlamaDraftModel
+
 import numpy as np
 import numpy.typing as npt
 
-import nexa.gguf.llama.llama_chat_format as llama_chat_format
-import nexa.gguf.llama.llama_cpp as llama_cpp
-from nexa.gguf.llama._internals_transformers import _LlamaBatch  # type: ignore
-from nexa.gguf.llama._internals_transformers import _LlamaContext  # type: ignore
-from nexa.gguf.llama._internals_transformers import _LlamaModel  # type: ignore
-from nexa.gguf.llama._internals_transformers import _LlamaSamplingContext  # type: ignore
-from nexa.gguf.llama._internals_transformers import _LlamaSamplingParams  # type: ignore
-from nexa.gguf.llama._internals_transformers import _LlamaTokenDataArray  # type: ignore
-from nexa.gguf.llama._internals_transformers import _normalize_embedding  # type: ignore
-from nexa.gguf.llama._logger_transformers import set_verbose
-from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
-from nexa.gguf.llama.llama_cache import LlamaCache  # type: ignore
-from nexa.gguf.llama.llama_cache import LlamaDiskCache  # type: ignore
-from nexa.gguf.llama.llama_cache import LlamaRAMCache  # type: ignore
-from nexa.gguf.llama.llama_cache import BaseLlamaCache
-from nexa.gguf.llama.llama_grammar import LlamaGrammar
-from nexa.gguf.llama.llama_speculative import LlamaDraftModel
-from nexa.gguf.llama.llama_tokenizer import BaseLlamaTokenizer, LlamaTokenizer
-from nexa.gguf.llama.llama_types import *
+from nexa.gguf._internals_transformers import (
+    _LlamaModel,  # type: ignore
+    _LlamaContext,  # type: ignore
+    _LlamaBatch,  # type: ignore
+    _LlamaTokenDataArray,  # type: ignore
+    _LlamaSamplingParams,  # type: ignore
+    _LlamaSamplingContext,  # type: ignore
+    _normalize_embedding,  # type: ignore
+)
+from nexa.gguf._logger_transformers import set_verbose
+from nexa.gguf._utils_transformers import suppress_stdout_stderr
 
 
 class Llama:
@@ -147,7 +153,7 @@ class Llama:
             model_path: Path to the model.
             n_gpu_layers: Number of layers to offload to GPU (-ngl). If -1, all layers are offloaded.
             split_mode: How to split the model across GPUs. See llama_cpp.LLAMA_SPLIT_* for options.
-            main_gpu: main_gpu interpretation depends on split_mode: LLAMA_SPLIT_NONE: the GPU that is used for the entire model. LLAMA_SPLIT_ROW: the GPU that is used for small tensors and intermediate results. LLAMA_SPLIT_LAYER: ignored
+            main_gpu: main_gpu interpretation depends on split_mode: LLAMA_SPLIT_MODE_NONE: the GPU that is used for the entire model. LLAMA_SPLIT_MODE_ROW: the GPU that is used for small tensors and intermediate results. LLAMA_SPLIT_MODE_LAYER: ignored
             tensor_split: How split tensors should be distributed across GPUs. If None, the model is not split.
             rpc_servers: Comma separated list of RPC servers to use for offloading
             vocab_only: Only load the vocabulary no weights.
@@ -572,6 +578,8 @@ class Llama:
 
         Args:
             text: The utf-8 encoded string to tokenize.
+            add_bos: Whether to add a beginning of sequence token.
+            special: Whether to tokenize special tokens.
 
         Raises:
             RuntimeError: If the tokenization failed.
@@ -582,18 +590,19 @@ class Llama:
         return self.tokenizer_.tokenize(text, add_bos, special)
 
     def detokenize(
-        self, tokens: List[int], prev_tokens: Optional[List[int]] = None
+        self, tokens: List[int], prev_tokens: Optional[List[int]] = None, special: bool = False
     ) -> bytes:
         """Detokenize a list of tokens.
 
         Args:
             tokens: The list of tokens to detokenize.
-            prev_tokens: The list of previous tokens. Offset mapping will be performed if provided
+            prev_tokens: The list of previous tokens. Offset mapping will be performed if provided.
+            special: Whether to detokenize special tokens.
 
         Returns:
             The detokenized string.
         """
-        return self.tokenizer_.detokenize(tokens, prev_tokens=prev_tokens)
+        return self.tokenizer_.detokenize(tokens, prev_tokens=prev_tokens, special=special)
 
     def set_cache(self, cache: Optional[BaseLlamaCache]):
         """Set the cache.
@@ -1337,25 +1346,22 @@ class Llama:
                         returned_tokens += 1
                         yield {
                             "id": completion_id,
-                            "model": model_name,
-                            "object": "text_completion.chunk",
+                            "object": "text_completion",
                             "created": created,
+                            "model": model_name,
                             "choices": [
                                 {
+                                    "text": self.detokenize(
+                                        [token],
+                                        prev_tokens=prompt_tokens
+                                        + completion_tokens[:returned_tokens],
+                                    ).decode("utf-8", errors="ignore"),
                                     "index": 0,
-                                    "delta": {
-                                        "content": self.detokenize(
-                                            [token],
-                                            prev_tokens=prompt_tokens
-                                            + completion_tokens[:returned_tokens],
-                                        ).decode("utf-8", errors="ignore")
-                                    },
-                                    "finish_reason": None,
                                     "logprobs": logprobs_or_none,
+                                    "finish_reason": None,
                                 }
                             ],
                         }
-
                 else:
                     while len(remaining_tokens) > 0:
                         decode_success = False
@@ -1386,21 +1392,18 @@ class Llama:
 
                         yield {
                             "id": completion_id,
-                            "model": model_name,
-                            "object": "text_completion.chunk",
+                            "object": "text_completion",
                             "created": created,
+                            "model": model_name,
                             "choices": [
                                 {
+                                    "text": ts,
                                     "index": 0,
                                     "logprobs": None,
-                                    "delta": {
-                                        "content": ts,
-                                    },
                                     "finish_reason": None,
                                 }
                             ],
                         }
-
 
             if len(completion_tokens) >= max_tokens:
                 text = self.detokenize(completion_tokens, prev_tokens=prompt_tokens)
@@ -1481,59 +1484,52 @@ class Llama:
                     returned_tokens += 1
                     yield {
                         "id": completion_id,
-                        "model": model_name,
-                        "object": "text_completion.chunk",
+                        "object": "text_completion",
                         "created": created,
+                        "model": model_name,
                         "choices": [
                             {
+                                "text": last_text[
+                                    : len(last_text) - (token_end_position - end)
+                                ].decode("utf-8", errors="ignore"),
                                 "index": 0,
-                                "delta": {
-                                    "content": last_text[: len(last_text) - (token_end_position - end)].decode(
-                                        "utf-8", errors="ignore"
-                                    )
-                                },
                                 "logprobs": logprobs_or_none,
                                 "finish_reason": None,
                             }
                         ],
                     }
-
                     break
                 returned_tokens += 1
                 yield {
                     "id": completion_id,
-                    "model": model_name,
-                    "object": "text_completion.chunk",
+                    "object": "text_completion",
                     "created": created,
+                    "model": model_name,
                     "choices": [
                         {
+                            "text": self.detokenize([token]).decode(
+                                "utf-8", errors="ignore"
+                            ),
                             "index": 0,
-                            "delta": {
-                                "content": self.detokenize([token]).decode("utf-8", errors="ignore")
-                            },
                             "logprobs": logprobs_or_none,
                             "finish_reason": None,
                         }
                     ],
                 }
-
             yield {
                 "id": completion_id,
-                "model": model_name,
-                "object": "text_completion.chunk",
+                "object": "text_completion",
                 "created": created,
+                "model": model_name,
                 "choices": [
                     {
+                        "text": "",
                         "index": 0,
-                        "delta": {
-                            "content": "",
-                        },
                         "logprobs": None,
                         "finish_reason": finish_reason,
                     }
                 ],
             }
-
             if self.cache:
                 if self.verbose:
                     print("Llama._create_completion: cache save", file=sys.stderr)
@@ -2132,6 +2128,100 @@ class Llama:
             else:
                 break
         return longest_prefix
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        repo_id: str,
+        filename: Optional[str],
+        local_dir: Optional[Union[str, os.PathLike[str]]] = None,
+        local_dir_use_symlinks: Union[bool, Literal["auto"]] = "auto",
+        cache_dir: Optional[Union[str, os.PathLike[str]]] = None,
+        **kwargs: Any,
+    ) -> "Llama":
+        """Create a Llama model from a pretrained model name or path.
+        This method requires the huggingface-hub package.
+        You can install it with `pip install huggingface-hub`.
+
+        Args:
+            repo_id: The model repo id.
+            filename: A filename or glob pattern to match the model file in the repo.
+            local_dir: The local directory to save the model to.
+            local_dir_use_symlinks: Whether to use symlinks when downloading the model.
+            **kwargs: Additional keyword arguments to pass to the Llama constructor.
+
+        Returns:
+            A Llama model."""
+        try:
+            from huggingface_hub import hf_hub_download, HfFileSystem
+            from huggingface_hub.utils import validate_repo_id
+        except ImportError:
+            raise ImportError(
+                "Llama.from_pretrained requires the huggingface-hub package. "
+                "You can install it with `pip install huggingface-hub`."
+            )
+
+        validate_repo_id(repo_id)
+
+        hffs = HfFileSystem()
+
+        files = [
+            file["name"] if isinstance(file, dict) else file
+            for file in hffs.ls(repo_id, recursive=True)
+        ]
+
+        # split each file into repo_id, subfolder, filename
+        file_list: List[str] = []
+        for file in files:
+            rel_path = Path(file).relative_to(repo_id)
+            file_list.append(str(rel_path))
+
+        matching_files = [file for file in file_list if fnmatch.fnmatch(file, filename)]  # type: ignore
+
+        if len(matching_files) == 0:
+            raise ValueError(
+                f"No file found in {repo_id} that match {filename}\n\n"
+                f"Available Files:\n{json.dumps(file_list)}"
+            )
+
+        if len(matching_files) > 1:
+            raise ValueError(
+                f"Multiple files found in {repo_id} matching {filename}\n\n"
+                f"Available Files:\n{json.dumps(files)}"
+            )
+
+        (matching_file,) = matching_files
+
+        subfolder = str(Path(matching_file).parent)
+        filename = Path(matching_file).name
+
+        # download the file
+        hf_hub_download(
+            repo_id=repo_id,
+            filename=filename,
+            subfolder=subfolder,
+            local_dir=local_dir,
+            local_dir_use_symlinks=local_dir_use_symlinks,
+            cache_dir=cache_dir,
+        )
+
+        if local_dir is None:
+            model_path = hf_hub_download(
+                repo_id=repo_id,
+                filename=filename,
+                subfolder=subfolder,
+                local_dir=local_dir,
+                local_dir_use_symlinks=local_dir_use_symlinks,
+                cache_dir=cache_dir,
+                local_files_only=True,
+            )
+        else:
+            model_path = os.path.join(local_dir, filename)
+
+        return cls(
+            model_path=model_path,
+            **kwargs,
+        )
 
 
 class LlamaState:

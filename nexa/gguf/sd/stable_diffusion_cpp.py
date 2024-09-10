@@ -1,20 +1,23 @@
 from __future__ import annotations
 
+import sys
+import os
 import ctypes
 import functools
+import pathlib
 from enum import IntEnum
+
 from typing import (
-    TYPE_CHECKING,
     Any,
     Callable,
-    Generic,
     List,
+    Union,
     NewType,
     Optional,
+    TYPE_CHECKING,
     TypeVar,
-    Union,
+    Generic,
 )
-
 from typing_extensions import TypeAlias
 
 from nexa.gguf.lib_utils import load_library
@@ -45,9 +48,7 @@ if TYPE_CHECKING:
     class CtypesRef(Generic[CtypesCData]):
         pass
 
-    CtypesPointerOrRef: TypeAlias = Union[
-        CtypesPointer[CtypesCData], CtypesRef[CtypesCData]
-    ]
+    CtypesPointerOrRef: TypeAlias = Union[CtypesPointer[CtypesCData], CtypesRef[CtypesCData]]
 
     CtypesFuncPointer: TypeAlias = ctypes._FuncPointer  # type: ignore
 
@@ -55,9 +56,7 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 
 def ctypes_function_for_shared_library(lib: ctypes.CDLL):
-    def ctypes_function(
-        name: str, argtypes: List[Any], restype: Any, enabled: bool = True
-    ):
+    def ctypes_function(name: str, argtypes: List[Any], restype: Any, enabled: bool = True):
         def decorator(f: F) -> F:
             if enabled:
                 func = getattr(lib, name)
@@ -86,9 +85,7 @@ byref = ctypes.byref  # type: ignore
 
 # from ggml-backend.h
 # typedef bool (*ggml_backend_sched_eval_callback)(struct ggml_tensor * t, bool ask, void * user_data);
-ggml_backend_sched_eval_callback = ctypes.CFUNCTYPE(
-    ctypes.c_bool, ctypes.c_void_p, ctypes.c_bool, ctypes.c_void_p
-)
+ggml_backend_sched_eval_callback = ctypes.CFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_bool, ctypes.c_void_p)
 
 # // Abort callback
 # // If not NULL, called before ggml computation
@@ -119,6 +116,8 @@ class RNGType(IntEnum):
 #     DPMPP2S_A,
 #     DPMPP2M,
 #     DPMPP2Mv2,
+#     IPNDM,
+#     IPNDM_V,
 #     LCM,
 #     N_SAMPLE_METHODS
 # };
@@ -130,37 +129,43 @@ class SampleMethod(IntEnum):
     DPMPP2S_A = 4
     DPMPP2M = 5
     DPMPP2Mv2 = 6
-    LCM = 7
-    N_SAMPLE_METHODS = 8
+    IPNDM = 7
+    IPNDM_V = 8
+    LCM = 9
+    N_SAMPLE_METHODS = 10
 
 
 # enum schedule_t {
 #     DEFAULT,
 #     DISCRETE,
 #     KARRAS,
+#     EXPONENTIAL,
+#     AYS,
+#     GITS,
 #     N_SCHEDULES
 # };
 class Schedule(IntEnum):
     DEFAULT = 0
     DISCRETE = 1
     KARRAS = 2
-    AYS = 3
-    N_SCHEDULES = 4
+    EXPONENTIAL = 3
+    AYS = 4
+    GITS = 5
+    N_SCHEDULES = 6
 
 
 # // same as enum ggml_type
 # enum sd_type_t {
-#     SD_TYPE_F32  = 0,
-#     SD_TYPE_F16  = 1,
-#     SD_TYPE_Q4_0 = 2,
-#     SD_TYPE_Q4_1 = 3,
+#     SD_TYPE_F32     = 0,
+#     SD_TYPE_F16     = 1,
+#     SD_TYPE_Q4_0    = 2,
+#     SD_TYPE_Q4_1    = 3,
 #     // SD_TYPE_Q4_2 = 4, support has been removed
-#     // SD_TYPE_Q4_3 (5) support has been removed
-#     SD_TYPE_Q5_0 = 6,
-#     SD_TYPE_Q5_1 = 7,
-#     SD_TYPE_Q8_0 = 8,
-#     SD_TYPE_Q8_1 = 9,
-#     // k-quantizations
+#     // SD_TYPE_Q4_3 = 5, support has been removed
+#     SD_TYPE_Q5_0    = 6,
+#     SD_TYPE_Q5_1    = 7,
+#     SD_TYPE_Q8_0    = 8,
+#     SD_TYPE_Q8_1    = 9,
 #     SD_TYPE_Q2_K    = 10,
 #     SD_TYPE_Q3_K    = 11,
 #     SD_TYPE_Q4_K    = 12,
@@ -175,9 +180,16 @@ class Schedule(IntEnum):
 #     SD_TYPE_IQ3_S   = 21,
 #     SD_TYPE_IQ2_S   = 22,
 #     SD_TYPE_IQ4_XS  = 23,
-#     SD_TYPE_I8,
-#     SD_TYPE_I16,
-#     SD_TYPE_I32,
+#     SD_TYPE_I8      = 24,
+#     SD_TYPE_I16     = 25,
+#     SD_TYPE_I32     = 26,
+#     SD_TYPE_I64     = 27,
+#     SD_TYPE_F64     = 28,
+#     SD_TYPE_IQ1_M   = 29,
+#     SD_TYPE_BF16    = 30,
+#     SD_TYPE_Q4_0_4_4 = 31,
+#     SD_TYPE_Q4_0_4_8 = 32,
+#     SD_TYPE_Q4_0_8_8 = 33,
 #     SD_TYPE_COUNT,
 # };
 class GGMLType(IntEnum):
@@ -209,7 +221,14 @@ class GGMLType(IntEnum):
     SD_TYPE_I8 = 24
     SD_TYPE_I16 = 25
     SD_TYPE_I32 = 26
-    SD_TYPE_COUNT = 27
+    SD_TYPE_I64 = 27
+    SD_TYPE_F64 = 28
+    SD_TYPE_IQ1_M = 29
+    SD_TYPE_BF16 = 30
+    SD_TYPE_Q4_0_4_4 = 31
+    SD_TYPE_Q4_0_4_8 = 32
+    SD_TYPE_Q4_0_8_8 = 33
+    SD_TYPE_COUNT = 34
 
 
 # ==================================
@@ -227,6 +246,9 @@ sd_ctx_t_p_ctypes = ctypes.c_void_p
     "new_sd_ctx",
     [
         ctypes.c_char_p,  # model_path
+        ctypes.c_char_p,  # clip_l_path
+        ctypes.c_char_p,  # t5xxl_path
+        ctypes.c_char_p,  # diffusion_model_path
         ctypes.c_char_p,  # vae_path
         ctypes.c_char_p,  # taesd_path
         ctypes.c_char_p,  # control_net_path
@@ -238,8 +260,8 @@ sd_ctx_t_p_ctypes = ctypes.c_void_p
         ctypes.c_bool,  # free_params_immediately
         ctypes.c_int,  # n_threads
         ctypes.c_int,  # wtype (GGMLType)
-        ctypes.c_int,  # rng_type
-        ctypes.c_int,  # s
+        ctypes.c_int,  # rng_type (RNGType)
+        ctypes.c_int,  # s (Schedule)
         ctypes.c_bool,  # keep_clip_on_cpu
         ctypes.c_bool,  # keep_control_net_cpu
         ctypes.c_bool,  # keep_vae_on_cpu
@@ -248,6 +270,9 @@ sd_ctx_t_p_ctypes = ctypes.c_void_p
 )
 def new_sd_ctx(
     model_path: bytes,
+    clip_l_path: bytes,
+    t5xxl_path: bytes,
+    diffusion_model_path: bytes,
     vae_path: bytes,
     taesd_path: bytes,
     control_net_path: bytes,
@@ -259,8 +284,8 @@ def new_sd_ctx(
     free_params_immediately: bool,
     n_threads: int,
     wtype: int,  # GGMLType
-    rng_type: int,
-    s: int,
+    rng_type: int,  # RNGType
+    s: int,  # Schedule
     keep_clip_on_cpu: bool,
     keep_control_net_cpu: bool,
     keep_vae_on_cpu: bool,
@@ -309,6 +334,7 @@ sd_image_t_p = ctypes.POINTER(sd_image_t)
         ctypes.c_char_p,  # negative_prompt
         ctypes.c_int,  # clip_skip
         ctypes.c_float,  # cfg_scale
+        ctypes.c_float,  # guidance
         ctypes.c_int,  # width
         ctypes.c_int,  # height
         ctypes.c_int,  # sample_method
@@ -329,9 +355,10 @@ def txt2img(
     negative_prompt: bytes,
     clip_skip: int,
     cfg_scale: float,
+    guidance: float,
     width: int,
     height: int,
-    sample_method: int,
+    sample_method: int,  # SampleMethod
     sample_steps: int,
     seed: int,
     batch_count: int,
@@ -357,6 +384,7 @@ def txt2img(
         ctypes.c_char_p,  # negative_prompt
         ctypes.c_int,  # clip_skip
         ctypes.c_float,  # cfg_scale
+        ctypes.c_float,  # guidance
         ctypes.c_int,  # width
         ctypes.c_int,  # height
         ctypes.c_int,  # sample_method
@@ -379,9 +407,10 @@ def img2img(
     negative_prompt: bytes,
     clip_skip: int,
     cfg_scale: float,
+    guidance: float,
     width: int,
     height: int,
-    sample_method: int,
+    sample_method: int,  # SampleMethod
     sample_steps: int,
     strength: float,
     seed: int,
@@ -430,7 +459,7 @@ def img2vid(
     augmentation_level: float,
     min_cfg: float,
     cfg_scale: float,
-    sample_method: int,
+    sample_method: int,  # SampleMethod
     sample_steps: int,
     strength: float,
     seed: int,
@@ -583,9 +612,7 @@ def sd_get_system_info() -> bytes:
 # Progression
 # ==================================
 
-sd_progress_callback = ctypes.CFUNCTYPE(
-    None, ctypes.c_int, ctypes.c_int, ctypes.c_float, ctypes.c_void_p
-)
+sd_progress_callback = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_int, ctypes.c_float, ctypes.c_void_p)
 
 
 @ctypes_function(
@@ -606,19 +633,19 @@ def sd_set_progress_callback(
 # Logging
 # ==================================
 
-# sd_log_callback = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p, ctypes.c_void_p)
+sd_log_callback = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p, ctypes.c_void_p)
 
 
-# @ctypes_function(
-#     "sd_set_log_callback",
-#     [ctypes.c_void_p, ctypes.c_void_p],
-#     None,
-# )
-# def sd_set_log_callback(
-#     callback: Optional[CtypesFuncPointer],
-#     data: ctypes.c_void_p,
-#     /,
-# ):
-#     """Set callback for all future logging events.
-#     If this is not called, or NULL is supplied, everything is output on stderr."""
-#     ...
+@ctypes_function(
+    "sd_set_log_callback",
+    [ctypes.c_void_p, ctypes.c_void_p],
+    None,
+)
+def sd_set_log_callback(
+    callback: Optional[CtypesFuncPointer],
+    data: ctypes.c_void_p,
+    /,
+):
+    """Set callback for all future logging events.
+    If this is not called, or NULL is supplied, everything is output on stderr."""
+    ...
