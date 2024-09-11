@@ -24,10 +24,9 @@ dependencies = [
     "prompt_toolkit",
     "tqdm",                     # Shared dependencies
     "tabulate",
-    "streamlit",
+    "streamlit>=1.37.1",
     "streamlit-audiorec",
     "python-multipart",
-    "streamlit-audiorec",
     "cmake",
 ]
 classifiers = [

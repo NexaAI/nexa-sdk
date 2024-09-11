@@ -103,8 +103,8 @@ class NexaTextInference:
         logging.debug(f"Loading model from {self.downloaded_path}, use_cuda_or_metal : {is_gpu_available()}")
         start_time = time.time()
         with suppress_stdout_stderr():
+            from nexa.gguf.llama.llama import Llama
             try:
-                from nexa.gguf.llama.llama import Llama
                 self.model = Llama(
                     embedding=self.params.get("embedding", False),
                     model_path=self.downloaded_path,
@@ -174,7 +174,12 @@ class NexaTextInference:
                             decoding_start_time = time.time()
                             prefill_time = decoding_start_time - generation_start_time
                             first_token = False
-                        delta = chunk["choices"][0]["text"]
+                        choice = chunk["choices"][0]
+                        if "text" in choice:
+                            delta = choice["text"]
+                        elif "delta" in choice:
+                            delta = choice["delta"]["content"]
+                        
                         print(delta, end="", flush=True)
                         generated_text += delta
 

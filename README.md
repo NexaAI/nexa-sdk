@@ -2,7 +2,7 @@
 
 <h1>Nexa SDK</h1>
 
-  <img src="./assets/banner.png" alt="icon"/>
+  <img src="https://public-storage.nexa4ai.com/nexa-banner.png" alt="icon" onerror="this.onerror=null; this.src='./assets/banner.png'"/>
 
 [![MacOS][MacOS-image]][release-url] [![Linux][Linux-image]][release-url] [![Windows][Windows-image]][release-url]
 
@@ -21,7 +21,7 @@
 
 </div>
 
-Nexa SDK is a comprehensive toolkit for supporting **ONNX** and **GGML** models. It supports text generation, image generation, vision-language models (VLM), and text-to-speech (TTS) capabilities. Additionally, it offers an OpenAI-compatible API server with JSON schema mode for function calling and streaming support, and a user-friendly Streamlit UI.
+Nexa SDK is a comprehensive toolkit for supporting **ONNX** and **GGML** models. It supports text generation, image generation, vision-language models (VLM), and text-to-speech (TTS) capabilities. Additionally, it offers an OpenAI-compatible API server with JSON schema mode for function calling and streaming support, and a user-friendly Streamlit UI. Users can run Nexa SDK in any device with Python environment, and GPU acceleration is supported.
 
 ## Features
 
@@ -62,6 +62,7 @@ Below is our differentiation from other similar tools:
 
 We have released pre-built wheels for various Python versions, platforms, and backends for convenient installation on our [index page](https://nexaai.github.io/nexa-sdk/whl/).
 
+
 #### CPU
 
 ```bash
@@ -93,14 +94,31 @@ CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --
 
 #### GPU (CUDA)
 
-For the GPU version supporting **CUDA (Linux/Windows)**:
+For **Linux**:
 
 ```bash
 CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
+For **Windows PowerShell**:
+
+```bash
+$env:CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON"; pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+```
+
+For **Windows Command Prompt**:
+
+```bash
+set CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" & pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+```
+
+For **Windows Git Bash**:
+
+```bash
+CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+```
 > [!NOTE]
-> The CUDA wheels are built with CUDA 12.4, but should be compatible with all CUDA 12.X
+> If you want to use ONNX model, just replace `pip install nexaai` with `pip install nexaai[onnx]` in above commands
 
 
 <details>
@@ -118,6 +136,19 @@ CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp" pip install nexaai
 
 </details>
 
+### Local Build
+How to clone this repo
+```bash
+git clone --recursive https://github.com/NexaAI/nexa-sdk
+```
+If you forget to use `--recursive`, you can use below command to add submodule
+```bash
+git submodule update --init --recursive
+```
+Then you can build and install the package
+```bash
+pip install -e .
+```
 
 ### Docker Usage
 

@@ -4,6 +4,7 @@ from PIL import Image
 from nexa.general import pull_model
 import streamlit as st
 from nexa.gguf.nexa_inference_image import NexaImageInference
+import io
 
 default_model = sys.argv[1]
 
@@ -106,5 +107,16 @@ if st.button("Generate Image"):
                 st.session_state.nexa_model, prompt, negative_prompt
             )
             st.success("Images generated successfully!")
-            for image in images:
-                st.image(image, caption="Generated Image", use_column_width=True)
+            for i, image in enumerate(images):
+                st.image(image, caption=f"Generated Image", use_column_width=True)
+                
+                img_byte_arr = io.BytesIO()
+                image.save(img_byte_arr, format='PNG')
+                img_byte_arr = img_byte_arr.getvalue()
+
+                st.download_button(
+                    label=f"Download Image",
+                    data=img_byte_arr,
+                    file_name=f"generated_image.png",
+                    mime="image/png"
+                )

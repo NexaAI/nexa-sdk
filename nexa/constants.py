@@ -120,7 +120,7 @@ NEXA_RUN_MODEL_MAP_FUNCTION_CALLING = {
 
 NEXA_RUN_PROJECTOR_MAP = {
     "nanollava": "nanoLLaVA:projector-fp16",
-    "nanoLLaVA:fp16": "nanoLLaVA:project-fp16",
+    "nanoLLaVA:fp16": "nanoLLaVA:projector-fp16",
     "llava-phi3": "llava-phi-3-mini:projector-q4_0",
     "llava-phi-3-mini:q4_0": "llava-phi-3-mini:projector-q4_0",
     "llava-phi-3-mini:fp16": "llava-phi-3-mini:projector-fp16",
@@ -236,6 +236,7 @@ NEXA_OFFICIAL_MODELS_TYPE = {
   'Mistral-7B-Instruct-v0.2': 'NLP',
   'Phi-3-mini-128k-instruct': 'NLP',
   'Phi-3-mini-4k-instruct': 'NLP',
+  "Phi-3.5-mini-instruct": "NLP",
   'CodeQwen1.5-7B-Instruct': 'NLP',
   'Qwen2-0.5B-Instruct': 'NLP',
   'Qwen2-1.5B-Instruct': 'NLP',
@@ -269,6 +270,8 @@ NEXA_OFFICIAL_MODELS_TYPE = {
   'Llama2-7b-chat-uncensored': 'NLP',
   'Llama3-8B-Lexi-Uncensored': 'NLP',
   'Llama2-7b-function-calling': 'NLP',
+  'OpenELM-1_1B': 'NLP',
+  'OpenELM-3B': 'NLP',
   'lcm-dreamshaper-v7': 'Computer Vision',
   'stable-diffusion-v1-5': 'Computer Vision',
   'stable-diffusion-v1-4': 'Computer Vision',
