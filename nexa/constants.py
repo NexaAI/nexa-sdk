@@ -270,6 +270,8 @@ NEXA_OFFICIAL_MODELS_TYPE = {
   'Llama2-7b-chat-uncensored': 'NLP',
   'Llama3-8B-Lexi-Uncensored': 'NLP',
   'Llama2-7b-function-calling': 'NLP',
+  'OpenELM-1_1B': 'NLP',
+  'OpenELM-3B': 'NLP',
   'lcm-dreamshaper-v7': 'Computer Vision',
   'stable-diffusion-v1-5': 'Computer Vision',
   'stable-diffusion-v1-4': 'Computer Vision',

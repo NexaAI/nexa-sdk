@@ -1,7 +1,6 @@
 import os
 
 import nexa.gguf.sd.stable_diffusion_cpp as sd_cpp
-from nexa.gguf.sd.stable_diffusion_cpp import GGMLType
 
 
 # ============================================
@@ -18,6 +17,9 @@ class _StableDiffusionModel:
     def __init__(
         self,
         model_path: str,
+        clip_l_path: str,
+        t5xxl_path: str,
+        diffusion_model_path: str,
         vae_path: str,
         taesd_path: str,
         control_net_path: str,
@@ -37,6 +39,9 @@ class _StableDiffusionModel:
         verbose: bool,
     ):
         self.model_path = model_path
+        self.clip_l_path = clip_l_path
+        self.t5xxl_path = t5xxl_path
+        self.diffusion_model_path = diffusion_model_path
         self.vae_path = vae_path
         self.taesd_path = taesd_path
         self.control_net_path = control_net_path
@@ -65,9 +70,17 @@ class _StableDiffusionModel:
             if not os.path.exists(model_path):
                 raise ValueError(f"Model path does not exist: {model_path}")
 
+        if diffusion_model_path:
+            if not os.path.exists(diffusion_model_path):
+                raise ValueError(f"Diffusion model path does not exist: {diffusion_model_path}")
+
+        if model_path or diffusion_model_path:
             # Load the Stable Diffusion model ctx
             self.model = sd_cpp.new_sd_ctx(
                 self.model_path.encode("utf-8"),
+                self.clip_l_path.encode("utf-8"),
+                self.t5xxl_path.encode("utf-8"),
+                self.diffusion_model_path.encode("utf-8"),
                 self.vae_path.encode("utf-8"),
                 self.taesd_path.encode("utf-8"),
                 self.control_net_path.encode("utf-8"),
@@ -86,6 +99,7 @@ class _StableDiffusionModel:
                 self.keep_vae_on_cpu,
             )
 
+            # Check if the model was loaded successfully
             if self.model is None:
                 raise ValueError(f"Failed to load model from file: {model_path}")
 
@@ -130,15 +144,12 @@ class _UpscalerModel:
             if not os.path.exists(upscaler_path):
                 raise ValueError(f"Upscaler model path does not exist: {upscaler_path}")
 
-            # load the image upscaling model ctx
-            self.upscaler = sd_cpp.new_upscaler_ctx(
-                upscaler_path.encode("utf-8"), self.n_threads, self.wtype
-            )
+            # Load the image upscaling model ctx
+            self.upscaler = sd_cpp.new_upscaler_ctx(upscaler_path.encode("utf-8"), self.n_threads, self.wtype)
 
+            # Check if the model was loaded successfully
             if self.upscaler is None:
-                raise ValueError(
-                    f"Failed to load upscaler model from file: {upscaler_path}"
-                )
+                raise ValueError(f"Failed to load upscaler model from file: {upscaler_path}")
 
     def __del__(self):
         """Free the upscaler model when the object is deleted."""
