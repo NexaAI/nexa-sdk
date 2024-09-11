@@ -1,14 +1,19 @@
 import os
 from pathlib import Path
+from enum import Enum
 
+# Paths for caching, model hub, and tokens
 NEXA_CACHE_ROOT = Path(os.getenv("NEXA_CACHE_ROOT") or "~/.cache/nexa").expanduser()
 NEXA_TOKEN_PATH = NEXA_CACHE_ROOT / "token"
 NEXA_MODELS_HUB_DIR = NEXA_CACHE_ROOT / "hub"
 NEXA_MODELS_HUB_OFFICIAL_DIR = NEXA_MODELS_HUB_DIR / "official"
 NEXA_MODEL_LIST_PATH = NEXA_MODELS_HUB_DIR / "model_list.json"
+
+# URLs and buckets
 NEXA_API_URL = "https://model-hub-backend.nexa4ai.com"
 NEXA_OFFICIAL_BUCKET = "https://public-storage.nexa4ai.com/"
 
+# Nexa logo
 NEXA_LOGO = """
       _|    _|  _|_|_|  _|    _|    _|_|      _|_|    _|_|_|_|
       _|_|  _|  _|       _|  _|   _|    _|  _|    _|     _|
@@ -16,13 +21,18 @@ NEXA_LOGO = """
       _|  _|_|  _|        _| _|   _|    _|  _|    _|     _|
       _|    _|  _|_|_|  _|    _|  _|    _|  _|    _|  _|_|_|_|
 """
-# Maokun TODO: Update the model info and find a good default precision for each model
 
-PRODUCER_INFO = dict(
-    # producer_name="nexa.ai",  # onnxruntime: Model producer not matched: Expected "pytorch"
-    producer_version="0.0.0",
-    doc_string="Model exported by Nexa.ai",
-)
+# Model producer info
+PRODUCER_INFO = {
+    "producer_version": "0.0.0",
+    "doc_string": "Model exported by Nexa.ai",
+}
+
+class ModelType(Enum):
+    NLP = "NLP"
+    COMPUTER_VISION = "Computer Vision"
+    AUDIO = "Audio"
+    MULTIMODAL = "Multimodal"
 
 NEXA_RUN_MODEL_MAP_TEXT = {
     "octopus-v2": "Octopus-v2:q4_0",
@@ -102,20 +112,19 @@ NEXA_RUN_MODEL_MAP_VOICE = {
 }
 
 NEXA_RUN_MODEL_MAP_FUNCTION_CALLING = {
-  "llama2-function-calling": "Llama2-7b-function-calling:q4_K_M",
-  "Llama2-7b-function-calling:fp16": "Llama2-7b-function-calling:fp16",
-  "Llama2-7b-function-calling:q2_K": "Llama2-7b-function-calling:q2_K",
-  "Llama2-7b-function-calling:q3_K_L": "Llama2-7b-function-calling:q3_K_L",
-  "Llama2-7b-function-calling:q3_K_M": "Llama2-7b-function-calling:q3_K_M",
-  "Llama2-7b-function-calling:q3_K_S": "Llama2-7b-function-calling:q3_K_S",
-  "Llama2-7b-function-calling:q4_K_M": "Llama2-7b-function-calling:q4_K_M",
-  "Llama2-7b-function-calling:q4_K_S": "Llama2-7b-function-calling:q4_K_S",
-  "Llama2-7b-function-calling:q5_K_M": "Llama2-7b-function-calling:q5_K_M",
-  "Llama2-7b-function-calling:q5_K_S": "Llama2-7b-function-calling:q5_K_S",
-  "Llama2-7b-function-calling:q6_K": "Llama2-7b-function-calling:q6_K",
-  "Llama2-7b-function-calling:q8_0": "Llama2-7b-function-calling:q8_0",
+    "llama2-function-calling": "Llama2-7b-function-calling:q4_K_M",
+    "Llama2-7b-function-calling:fp16": "Llama2-7b-function-calling:fp16",
+    "Llama2-7b-function-calling:q2_K": "Llama2-7b-function-calling:q2_K",
+    "Llama2-7b-function-calling:q3_K_L": "Llama2-7b-function-calling:q3_K_L",
+    "Llama2-7b-function-calling:q3_K_M": "Llama2-7b-function-calling:q3_K_M",
+    "Llama2-7b-function-calling:q3_K_S": "Llama2-7b-function-calling:q3_K_S",
+    "Llama2-7b-function-calling:q4_K_M": "Llama2-7b-function-calling:q4_K_M",
+    "Llama2-7b-function-calling:q4_K_S": "Llama2-7b-function-calling:q4_K_S",
+    "Llama2-7b-function-calling:q5_K_M": "Llama2-7b-function-calling:q5_K_M",
+    "Llama2-7b-function-calling:q5_K_S": "Llama2-7b-function-calling:q5_K_S",
+    "Llama2-7b-function-calling:q6_K": "Llama2-7b-function-calling:q6_K",
+    "Llama2-7b-function-calling:q8_0": "Llama2-7b-function-calling:q8_0",
 }
-
 
 
 NEXA_RUN_PROJECTOR_MAP = {
@@ -138,8 +147,10 @@ NEXA_RUN_PROJECTOR_MAP = {
 NEXA_RUN_MODEL_MAP_IMAGE = {
     "sd1-4": "stable-diffusion-v1-4:q4_0",
     "sd1-5": "stable-diffusion-v1-5:q4_0",
-    "sd2-1": "stable-diffusion-v2-1:fp16",
+    "sd2-1": "stable-diffusion-v2-1:q4_0",
+    "sd3": "stable-diffusion-3-medium:q4_0",
     "sdxl-turbo": "sdxl-turbo:q8_0",
+    "flux": "FLUX.1-schnell:q4_0",
     "lcm-dreamshaper": "lcm-dreamshaper-v7:fp16",
     "anything-lcm": "anything-v30-LCM:fp16",
     "hassaku-lcm": "hassaku-hentai-model-v13-LCM:fp16",
@@ -172,6 +183,8 @@ NEXA_RUN_MODEL_PRECISION_MAP = {
     "sd1-4": "q4_0",
     "sd1-5": "q4_0",
     "sd2-1": "q4_0",
+    "sd3": "q4_0",
+    "flux": "q4_0",
     "lcm-dreamshaper": "f16",
     "sdxl-turbo": "q8_0",
     "anything-lcm": "f16",
@@ -181,7 +194,7 @@ NEXA_RUN_MODEL_PRECISION_MAP = {
 EXIT_COMMANDS = ["/exit", "/quit", "/bye"]
 EXIT_REMINDER = f"Please use Ctrl + d or one of {EXIT_COMMANDS} to exit.\n"
 
-NEXA_STOP_WORDS_MAP = {"octopus-v2": ["<nexa_end>"]}
+NEXA_STOP_WORDS_MAP = {"octopus-v2": ["<nexa_end>"], "octopus-v4": ["<nexa_end>"]}
 
 DEFAULT_TEXT_GEN_PARAMS = {
     "temperature": 0.7,
@@ -223,83 +236,83 @@ DEFAULT_VOICE_GEN_PARAMS = {
     "language": None,
     "task": "transcribe",
     "temperature": 0.0,
-    "compute_type": "default"
+    "compute_type": "default",
 }
 
 NEXA_OFFICIAL_MODELS_TYPE = {
-  'gemma-2b': 'NLP',
-  'Llama-2-7b-chat': 'NLP',
-  'Llama-2-7b': 'NLP',
-  'Meta-Llama-3-8B-Instruct': 'NLP',
-  'Meta-Llama-3.1-8B-Instruct': 'NLP',
-  'Mistral-7B-Instruct-v0.3': 'NLP',
-  'Mistral-7B-Instruct-v0.2': 'NLP',
-  'Phi-3-mini-128k-instruct': 'NLP',
-  'Phi-3-mini-4k-instruct': 'NLP',
-  "Phi-3.5-mini-instruct": "NLP",
-  'CodeQwen1.5-7B-Instruct': 'NLP',
-  'Qwen2-0.5B-Instruct': 'NLP',
-  'Qwen2-1.5B-Instruct': 'NLP',
-  'Qwen2-7B-Instruct': 'NLP',
-  'codegemma-2b': 'NLP',
-  'gemma-1.1-2b-instruct': 'NLP',
-  'gemma-2b-instruct': 'NLP',
-  'gemma-2-9b-instruct': 'NLP',
-  'gemma-1.1-7b-instruct': 'NLP',
-  'gemma-7b-instruct': 'NLP',
-  'gemma-7b': 'NLP',
-  'Qwen2-1.5B': 'NLP',
-  'codegemma-7b': 'NLP',
-  'TinyLlama-1.1B-Chat-v1.0': 'NLP',
-  'CodeLlama-7b-Instruct': 'NLP',
-  'gpt2': 'NLP',
-  'CodeLlama-7b': 'NLP',
-  'CodeLlama-7b-Python': 'NLP',
-  'Qwen1.5-7B-Instruct': 'NLP',
-  'Qwen1.5-7B': 'NLP',
-  'Phi-2': 'NLP',
-  'deepseek-coder-1.3b-instruct': 'NLP',
-  'deepseek-coder-1.3b-base': 'NLP',
-  'deepseek-coder-6.7b-instruct': 'NLP',
-  'dolphin-2.8-mistral-7b': 'NLP',
-  'gemma-2-2b-instruct': 'NLP',
-  'Octopus-v2': 'NLP',
-  'Octopus-v4': 'NLP',
-  'Octo-planner': 'NLP',
-  'deepseek-coder-6.7b-base': 'NLP',
-  'Llama2-7b-chat-uncensored': 'NLP',
-  'Llama3-8B-Lexi-Uncensored': 'NLP',
-  'Llama2-7b-function-calling': 'NLP',
-  'OpenELM-1_1B': 'NLP',
-  'OpenELM-3B': 'NLP',
-  'lcm-dreamshaper-v7': 'Computer Vision',
-  'stable-diffusion-v1-5': 'Computer Vision',
-  'stable-diffusion-v1-4': 'Computer Vision',
-  'stable-diffusion-v2-1': 'Computer Vision',
-  'sdxl-turbo': 'Computer Vision',
-  'hassaku-hentai-model-v13-LCM': 'Computer Vision',
-  'anything-v30-LCM': 'Computer Vision',
-  'Phi-3-vision-128k-instruct': 'Multimodal',
-  'nanoLLaVA': 'Multimodal',
-  'llava-v1.6-mistral-7b': 'Multimodal',
-  'llava-v1.6-vicuna-7b': 'Multimodal',
-  'llava-phi-3-mini': 'Multimodal',
-  'llava-llama-3-8b-v1.1': 'Multimodal',
-  'faster-whisper-tiny.en': 'Audio',
-  'faster-whisper-tiny': 'Audio',
-  'faster-whisper-small.en': 'Audio',
-  'faster-whisper-small': 'Audio',
-  'faster-whisper-medium.en': 'Audio',
-  'faster-whisper-medium': 'Audio',
-  'faster-whisper-base.en': 'Audio',
-  'faster-whisper-base': 'Audio',
-  'faster-whisper-large-v3': 'Audio',
-  'whisper-tiny.en': 'Audio',
-  'whisper-tiny': 'Audio',
-  'whisper-small.en': 'Audio',
-  'whisper-small': 'Audio',
-  'whisper-base.en': 'Audio',
-  'whisper-base': 'Audio',
+    "gemma-2b": ModelType.NLP,
+    "Llama-2-7b-chat": ModelType.NLP,
+    "Llama-2-7b": ModelType.NLP,
+    "Meta-Llama-3-8B-Instruct": ModelType.NLP,
+    "Meta-Llama-3.1-8B-Instruct": ModelType.NLP,
+    "Mistral-7B-Instruct-v0.3": ModelType.NLP,
+    "Mistral-7B-Instruct-v0.2": ModelType.NLP,
+    "Phi-3-mini-128k-instruct": ModelType.NLP,
+    "Phi-3-mini-4k-instruct": ModelType.NLP,
+    "Phi-3.5-mini-instruct": ModelType.NLP,
+    "CodeQwen1.5-7B-Instruct": ModelType.NLP,
+    "Qwen2-0.5B-Instruct": ModelType.NLP,
+    "Qwen2-1.5B-Instruct": ModelType.NLP,
+    "Qwen2-7B-Instruct": ModelType.NLP,
+    "codegemma-2b": ModelType.NLP,
+    "gemma-1.1-2b-instruct": ModelType.NLP,
+    "gemma-2b-instruct": ModelType.NLP,
+    "gemma-2-9b-instruct": ModelType.NLP,
+    "gemma-1.1-7b-instruct": ModelType.NLP,
+    "gemma-7b-instruct": ModelType.NLP,
+    "gemma-7b": ModelType.NLP,
+    "Qwen2-1.5B": ModelType.NLP,
+    "codegemma-7b": ModelType.NLP,
+    "TinyLlama-1.1B-Chat-v1.0": ModelType.NLP,
+    "CodeLlama-7b-Instruct": ModelType.NLP,
+    "gpt2": ModelType.NLP,
+    "CodeLlama-7b": ModelType.NLP,
+    "CodeLlama-7b-Python": ModelType.NLP,
+    "Qwen1.5-7B-Instruct": ModelType.NLP,
+    "Qwen1.5-7B": ModelType.NLP,
+    "Phi-2": ModelType.NLP,
+    "deepseek-coder-1.3b-instruct": ModelType.NLP,
+    "deepseek-coder-1.3b-base": ModelType.NLP,
+    "deepseek-coder-6.7b-instruct": ModelType.NLP,
+    "dolphin-2.8-mistral-7b": ModelType.NLP,
+    "gemma-2-2b-instruct": ModelType.NLP,
+    "Octopus-v2": ModelType.NLP,
+    "Octopus-v4": ModelType.NLP,
+    "Octo-planner": ModelType.NLP,
+    "deepseek-coder-6.7b-base": ModelType.NLP,
+    "Llama2-7b-chat-uncensored": ModelType.NLP,
+    "Llama3-8B-Lexi-Uncensored": ModelType.NLP,
+    "Llama2-7b-function-calling": ModelType.NLP,
+    "OpenELM-1_1B": ModelType.NLP,
+    "OpenELM-3B": ModelType.NLP,
+    "lcm-dreamshaper-v7": ModelType.COMPUTER_VISION,
+    "stable-diffusion-v1-5": ModelType.COMPUTER_VISION,
+    "stable-diffusion-v1-4": ModelType.COMPUTER_VISION,
+    "stable-diffusion-v2-1": ModelType.COMPUTER_VISION,
+    "stable-diffusion-3-medium": ModelType.COMPUTER_VISION,
+    "sdxl-turbo": ModelType.COMPUTER_VISION,
+    "hassaku-hentai-model-v13-LCM": ModelType.COMPUTER_VISION,
+    "anything-v30-LCM": ModelType.COMPUTER_VISION,
+    "FLUX.1-schnell": ModelType.COMPUTER_VISION,
+    "Phi-3-vision-128k-instruct": ModelType.MULTIMODAL,
+    "nanoLLaVA": ModelType.MULTIMODAL,
+    "llava-v1.6-mistral-7b": ModelType.MULTIMODAL,
+    "llava-v1.6-vicuna-7b": ModelType.MULTIMODAL,
+    "llava-phi-3-mini": ModelType.MULTIMODAL,
+    "llava-llama-3-8b-v1.1": ModelType.MULTIMODAL,
+    "faster-whisper-tiny.en": ModelType.AUDIO,
+    "faster-whisper-tiny": ModelType.AUDIO,
+    "faster-whisper-small.en": ModelType.AUDIO,
+    "faster-whisper-small": ModelType.AUDIO,
+    "faster-whisper-medium.en": ModelType.AUDIO,
+    "faster-whisper-medium": ModelType.AUDIO,
+    "faster-whisper-base.en": ModelType.AUDIO,
+    "faster-whisper-base": ModelType.AUDIO,
+    "faster-whisper-large-v3": ModelType.AUDIO,
+    "whisper-tiny.en": ModelType.AUDIO,
+    "whisper-tiny": ModelType.AUDIO,
+    "whisper-small.en": ModelType.AUDIO,
+    "whisper-small": ModelType.AUDIO,
+    "whisper-base.en": ModelType.AUDIO,
+    "whisper-base": ModelType.AUDIO,
 }
-
-
