@@ -207,7 +207,7 @@ class NexaTextInference:
             Iterator: Iterator for the completion.
         """
         if logprobs and top_logprobs is None:
-            top_logprobs = 3
+            top_logprobs = 4
 
         return self.model.create_chat_completion(messages=messages, temperature=temperature, max_tokens=max_tokens, top_k=top_k, top_p=top_p, stream=stream, stop=stop, logprobs=logprobs, top_logprobs=top_logprobs)
 
@@ -229,7 +229,7 @@ class NexaTextInference:
             Iterator: Iterator for the completion.
         """
         if logprobs and top_logprobs is None:
-            top_logprobs = 3
+            top_logprobs = 4
 
         return self.model.create_completion(prompt=prompt, temperature=temperature, max_tokens=max_tokens, top_k=top_k, top_p=top_p, echo=echo, stream=stream, stop=stop, logprobs=logprobs, top_logprobs=top_logprobs)
 

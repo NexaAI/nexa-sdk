@@ -31,10 +31,6 @@ from nexa.gguf.llama.llama import Llama
 from nexa.gguf.sd.stable_diffusion import StableDiffusion
 from faster_whisper import WhisperModel
 import argparse
-import pprint  # (DEBUG only)
-
-# (DEBUG only) create a PrettyPrinter object:
-pp = pprint.PrettyPrinter(indent=2, width=100, depth=None, compact=False)
 
 logging.basicConfig(level=logging.INFO)
 
@@ -57,15 +53,14 @@ function_call_system_prompt = [{"role": "system", "content": "A chat between a c
 model_path = None
 
 class GenerationRequest(BaseModel):
-    # prompt: str = "Tell me a story"
-    prompt: str = "Hello"
+    prompt: str = "Tell me a story"
     temperature: float = 1.0
     max_new_tokens: int = 128
     top_k: int = 50
     top_p: float = 1.0
     stop_words: Optional[List[str]] = None
-    logprobs: Optional[bool] = True  # changed default to True
-    top_logprobs: Optional[int] = 4  # changed default to 4
+    logprobs: Optional[bool] = False
+    top_logprobs: Optional[int] = 4
 
 async def load_model():
     global model, chat_format, completion_template, model_path
@@ -263,16 +258,14 @@ class ImageResponse(BaseModel):
     url: str
 
 class ChatCompletionRequest(BaseModel):
-    # messages: List[Message] = [
-    #     {"role": "user", "content": "Tell me a story"}]
     messages: List[Message] = [
-        {"role": "user", "content": "Hi"}]
+        {"role": "user", "content": "Tell me a story"}]
     max_tokens: Optional[int] = 128
     temperature: Optional[float] = 0.1
     stream: Optional[bool] = False
     stop_words: Optional[List[str]] = []
-    logprobs: Optional[bool] = True  # changed default to True
-    top_logprobs: Optional[int] = 4  # changed default to 4
+    logprobs: Optional[bool] = False
+    top_logprobs: Optional[int] = 4
 
 class FunctionDefinitionRequestClass(BaseModel):
     type: str = "function"
