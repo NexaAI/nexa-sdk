@@ -157,7 +157,6 @@ async def nexa_run_text_generation(
     if chat_format:
         conversation_history.append({"role": "user", "content": prompt})
 
-        # (DEBUG only) the params dictionary:
         params = {
             'messages': conversation_history,
             'temperature': temperature,
@@ -170,7 +169,6 @@ async def nexa_run_text_generation(
             'top_logprobs': top_logprobs,
         }
 
-        # (DEBUG only) convert to JSON to print:
         params_json = json.dumps(params, default=str, indent=2)
 
         streamer = model.create_chat_completion(**params)
