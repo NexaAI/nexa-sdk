@@ -19,3 +19,18 @@ git submodule update --init --recursive
 git add .gitmodules dependency/
 git commit -m "Added llama.cpp and stable-diffusion.cpp as submodules"
 ```
+
+# Update submodules
+pull the latest change
+```
+git pull origin main
+```
+Update submodules
+```
+git submodule update --remote --merge
+```
+Then add and commit the changes
+```
+git add .
+git commit -m "Updated submodules"
+```

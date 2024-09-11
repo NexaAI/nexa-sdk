@@ -1,4 +1,4 @@
-from typing import List, Optional, Union, Callable
+from typing import List, Dict, Optional, Union, Callable
 import random
 import ctypes
 import multiprocessing
@@ -6,7 +6,7 @@ from PIL import Image
 
 
 import nexa.gguf.sd.stable_diffusion_cpp as sd_cpp
-from nexa.gguf.sd.stable_diffusion_cpp import GGMLType
+from nexa.gguf.sd.stable_diffusion_cpp import GGMLType, RNGType, Schedule, SampleMethod
 
 
 from nexa.gguf.sd._internals_diffusion import _StableDiffusionModel, _UpscalerModel
@@ -19,6 +19,9 @@ class StableDiffusion:
     def __init__(
         self,
         model_path: str = "",
+        clip_l_path: str = "",
+        t5xxl_path: str = "",
+        diffusion_model_path: str = "",
         vae_path: str = "",
         taesd_path: str = "",
         control_net_path: str = "",
@@ -30,9 +33,9 @@ class StableDiffusion:
         vae_tiling: bool = False,
         free_params_immediately: bool = False,
         n_threads: int = -1,
-        wtype: str = "default",
-        rng_type: int = sd_cpp.RNGType.STD_DEFAULT_RNG,
-        schedule: int = sd_cpp.Schedule.DISCRETE,
+        wtype: Union[str, GGMLType, int, float, None] = "default",
+        rng_type: Union[str, RNGType, int, float, None] = "default",
+        schedule: Union[str, Schedule, int, float, None] = "default",
         keep_clip_on_cpu: bool = False,
         keep_control_net_cpu: bool = False,
         keep_vae_on_cpu: bool = False,
@@ -52,6 +55,9 @@ class StableDiffusion:
 
         Args:
             model_path: Path to the model.
+            clip_l_path: Path to the clip_l.
+            t5xxl_path: Path to the t5xxl.
+            diffusion_model_path: Path to the diffusion model.
             vae_path: Path to the vae.
             taesd_path: Path to the taesd.
             control_net_path: Path to the control net.
@@ -63,9 +69,9 @@ class StableDiffusion:
             vae_tiling: Process vae in tiles to reduce memory usage.
             free_params_immediately: Free parameters immediately after use.
             n_threads: Number of threads to use for generation.
-            wtype: The weight type (options: default, f32, f16, q4_0, q4_1, q5_0, q5_1, q8_0) (default: the weight type of the model file).
-            rng_type: RNG (default: cuda).
-            schedule: Denoiser sigma schedule (default: discrete).
+            wtype: The weight type (default: automatically determines the weight type of the model file).
+            rng_type: Random number generator.
+            schedule: Denoiser sigma schedule.
             keep_clip_on_cpu: Keep clip in CPU (for low vram).
             keep_control_net_cpu: Keep controlnet in CPU (for low vram).
             keep_vae_on_cpu: Keep vae in CPU (for low vram).
@@ -79,6 +85,9 @@ class StableDiffusion:
         """
         # Params
         self.model_path = model_path
+        self.clip_l_path = clip_l_path
+        self.t5xxl_path = t5xxl_path
+        self.diffusion_model_path = diffusion_model_path
         self.vae_path = vae_path
         self.taesd_path = taesd_path
         self.control_net_path = control_net_path
@@ -88,7 +97,7 @@ class StableDiffusion:
         self.vae_decode_only = vae_decode_only
         self.vae_tiling = vae_tiling
         self.free_params_immediately = free_params_immediately
-        self.n_threads = n_threads or max(multiprocessing.cpu_count() // 2, 1)
+        self.n_threads = n_threads or max(multiprocessing.cpu_count() // 2, 1)  # Default to half the number of CPUs
         self.wtype = wtype
         self.rng_type = rng_type
         self.schedule = schedule
@@ -101,33 +110,20 @@ class StableDiffusion:
         self.verbose = verbose
         # set_verbose(verbose)
 
-        # =========== SD Model loading ===========
+        # =========== Validate string and int inputs ===========
 
-        # Set the correspondoing weight type for type
-        if self.wtype == "default":
-            self.wtype = GGMLType.SD_TYPE_COUNT
-        elif self.wtype == "f32":
-            self.wtype = GGMLType.SD_TYPE_F32
-        elif self.wtype == "f16":
-            self.wtype = GGMLType.SD_TYPE_F16
-        elif self.wtype == "q4_0":
-            self.wtype = GGMLType.SD_TYPE_Q4_0
-        elif self.wtype == "q4_1":
-            self.wtype = GGMLType.SD_TYPE_Q4_1
-        elif self.wtype == "q5_0":
-            self.wtype = GGMLType.SD_TYPE_Q5_0
-        elif self.wtype == "q5_1":
-            self.wtype = GGMLType.SD_TYPE_Q5_1
-        elif self.wtype == "q8_0":
-            self.wtype = GGMLType.SD_TYPE_Q8_0
-        else:
-            raise ValueError(
-                f"error: invalid weight format {self.wtype}, must be one of [default, f32, f16, q4_0, q4_1, q5_0, q5_1, q8_0]"
-            )
+        self.wtype = validate_and_set_input(self.wtype, GGML_TYPE_MAP, "wtype")
+        self.rng_type = validate_and_set_input(self.rng_type, RNG_TYPE_MAP, "rng_type")
+        self.schedule = validate_and_set_input(self.schedule, SCHEDULE_MAP, "schedule")
+
+        # =========== SD Model loading ===========
 
         # Load the Stable Diffusion model
         self._model = _StableDiffusionModel(
             self.model_path,
+            self.clip_l_path,
+            self.t5xxl_path,
+            self.diffusion_model_path,
             self.vae_path,
             self.taesd_path,
             self.control_net_path,
@@ -149,9 +145,7 @@ class StableDiffusion:
 
         # =========== Upscaling Model loading ===========
 
-        self._upscaler = _UpscalerModel(
-            upscaler_path, self.n_threads, self.wtype, self.verbose
-        )
+        self._upscaler = _UpscalerModel(upscaler_path, self.n_threads, self.wtype, self.verbose)
 
     @property
     def model(self) -> sd_cpp.sd_ctx_t_p:
@@ -173,9 +167,10 @@ class StableDiffusion:
         negative_prompt: str = "",
         clip_skip: int = -1,
         cfg_scale: float = 7.0,
+        guidance: float = 3.5,
         width: int = 512,
         height: int = 512,
-        sample_method: int = sd_cpp.SampleMethod.EULER_A,
+        sample_method: Union[str, SampleMethod, int, float, None] = "euler_a",
         sample_steps: int = 20,
         seed: int = 42,
         batch_count: int = 1,
@@ -193,30 +188,35 @@ class StableDiffusion:
         Args:
             prompt: The prompt to render.
             negative_prompt: The negative prompt.
-            clip_skip: Ignore last layers of CLIP network; 1 ignores none, 2 ignores one layer (default: -1).
-            cfg_scale: Unconditional guidance scale: (default: 7.0).
-            width: Image height, in pixel space (default: 512).
-            height: Image width, in pixel space (default: 512).
-            sample_method: Sampling method (default: "euler_a").
-            sample_steps: Number of sample steps (default: 20).
+            clip_skip: Ignore last layers of CLIP network; 1 ignores none, 2 ignores one layer.
+            cfg_scale: Unconditional guidance scale.
+            guidance: Guidance scale.
+            width: Image height, in pixel space.
+            height: Image width, in pixel space.
+            sample_method: Sampling method.
+            sample_steps: Number of sample steps.
             seed: RNG seed (default: 42, use random seed for < 0).
             batch_count: Number of images to generate.
-            control_cond: A control condition image path or Pillow Image. (default: None).
-            control_strength: Strength to apply Control Net (default: 0.9).
+            control_cond: A control condition image path or Pillow Image.
+            control_strength: Strength to apply Control Net.
             style_strength: Strength for keeping input identity (default: 20%).
             normalize_input: Normalize PHOTOMAKER input id images.
             input_id_images_path: Path to PHOTOMAKER input id images dir.
             canny: Apply canny edge detection preprocessor to the control_cond image.
-            upscale_factor: The image upscaling factor (default: 1).
+            upscale_factor: The image upscaling factor.
             progress_callback: Callback function to call on each step end.
 
         Returns:
             A list of Pillow Images."""
 
         if self.model is None:
-            raise Exception(
-                "Stable diffusion model not loaded. Make sure you have set the `model_path`."
-            )
+            raise Exception("Stable diffusion model not loaded.")
+
+        # =========== Validate string and int inputs ===========
+
+        sample_method = validate_and_set_input(sample_method, SAMPLE_METHOD_MAP, "sample_method")
+
+        # =========== Set seed ===========
 
         # Set a random seed if seed is negative
         if seed < 0:
@@ -239,9 +239,7 @@ class StableDiffusion:
 
         # ==================== Convert the control condition to a C sd_image_t ====================
 
-        control_cond = self._format_control_cond(
-            control_cond, canny, self.control_net_path
-        )
+        control_cond = self._format_control_cond(control_cond, canny, self.control_net_path)
 
         # Run the txt2img to generate images
         c_images = sd_cpp.txt2img(
@@ -250,6 +248,7 @@ class StableDiffusion:
             negative_prompt.encode("utf-8"),
             clip_skip,
             cfg_scale,
+            guidance,
             width,
             height,
             sample_method,
@@ -277,9 +276,10 @@ class StableDiffusion:
         negative_prompt: str = "",
         clip_skip: int = -1,
         cfg_scale: float = 7.0,
+        guidance: float = 3.5,
         width: int = 512,
         height: int = 512,
-        sample_method: int = sd_cpp.SampleMethod.EULER_A,
+        sample_method: Union[str, SampleMethod, int, float, None] = "euler_a",
         sample_steps: int = 20,
         strength: float = 0.75,
         seed: int = 42,
@@ -299,31 +299,36 @@ class StableDiffusion:
             image: The input image path or Pillow Image to direct the generation.
             prompt: The prompt to render.
             negative_prompt: The negative prompt.
-            clip_skip: Ignore last layers of CLIP network; 1 ignores none, 2 ignores one layer (default: -1).
-            cfg_scale: Unconditional guidance scale: (default: 7.0).
-            width: Image height, in pixel space (default: 512).
-            height: Image width, in pixel space (default: 512).
-            sample_method: Sampling method (default: "euler_a").
-            sample_steps: Number of sample steps (default: 20).
-            strength: Strength for noising/unnoising (default: 0.75).
+            clip_skip: Ignore last layers of CLIP network; 1 ignores none, 2 ignores one layer.
+            cfg_scale: Unconditional guidance scale.
+            guidance: Guidance scale.
+            width: Image height, in pixel space.
+            height: Image width, in pixel space.
+            sample_method: Sampling method.
+            sample_steps: Number of sample steps.
+            strength: Strength for noising/unnoising.
             seed: RNG seed (default: 42, use random seed for < 0).
             batch_count: Number of images to generate.
-            control_cond: A control condition image path or Pillow Image. (default: None).
-            control_strength: Strength to apply Control Net (default: 0.9).
+            control_cond: A control condition image path or Pillow Image.
+            control_strength: Strength to apply Control Net.
             style_strength: Strength for keeping input identity (default: 20%).
             normalize_input: Normalize PHOTOMAKER input id images.
             input_id_images_path: Path to PHOTOMAKER input id images dir.
             canny: Apply canny edge detection preprocessor to the control_cond image.
-            upscale_factor: The image upscaling factor (default: 1).
+            upscale_factor: The image upscaling factor.
             progress_callback: Callback function to call on each step end.
 
         Returns:
             A list of Pillow Images."""
 
         if self.model is None:
-            raise Exception(
-                "Stable diffusion model not loaded. Make sure you have set the `model_path`"
-            )
+            raise Exception("Stable diffusion model not loaded.")
+
+        # =========== Validate string and int inputs ===========
+
+        sample_method = validate_and_set_input(sample_method, SAMPLE_METHOD_MAP, "sample_method")
+
+        # =========== Set seed ===========
 
         # Set a random seed if seed is negative
         if seed < 0:
@@ -346,15 +351,11 @@ class StableDiffusion:
 
         # ==================== Convert the control condition to a C sd_image_t ====================
 
-        control_cond = self._format_control_cond(
-            control_cond, canny, self.control_net_path
-        )
+        control_cond = self._format_control_cond(control_cond, canny, self.control_net_path)
 
         # ==================== Resize the input image ====================
 
-        image = self._resize_image(
-            image, width, height
-        )  # Input image and generated image must have the same size
+        image = self._resize_image(image, width, height)  # Input image and generated image must have the same size
 
         # ==================== Convert the image to a byte array ====================
 
@@ -367,6 +368,7 @@ class StableDiffusion:
             negative_prompt.encode("utf-8"),
             clip_skip,
             cfg_scale,
+            guidance,
             width,
             height,
             sample_method,
@@ -397,7 +399,7 @@ class StableDiffusion:
         augmentation_level: float = 0.0,
         min_cfg: float = 1.0,
         cfg_scale: float = 7.0,
-        sample_method: int = sd_cpp.SampleMethod.EULER_A,
+        sample_method: Union[str, SampleMethod, int, float, None] = "euler_a",
         sample_steps: int = 20,
         strength: float = 0.75,
         seed: int = 42,
@@ -407,17 +409,17 @@ class StableDiffusion:
 
         Args:
             image: The input image path or Pillow Image to direct the generation.
-            width: Video height, in pixel space (default: 512).
-            height: Video width, in pixel space (default: 512).
+            width: Video height, in pixel space.
+            height: Video width, in pixel space.
             video_frames: Number of frames in the video.
             motion_bucket_id: Motion bucket id.
             fps: Frames per second.
             augmentation_level: The augmentation level.
             min_cfg: The minimum cfg.
-            cfg_scale: Unconditional guidance scale: (default: 7.0).
-            sample_method: Sampling method (default: "euler_a").
-            sample_steps: Number of sample steps (default: 20).
-            strength: Strength for noising/unnoising (default: 0.75).
+            cfg_scale: Unconditional guidance scale.
+            sample_method: Sampling method.
+            sample_steps: Number of sample steps.
+            strength: Strength for noising/unnoising.
             seed: RNG seed (default: 42, use random seed for < 0).
             progress_callback: Callback function to call on each step end.
 
@@ -425,9 +427,13 @@ class StableDiffusion:
             A list of Pillow Images."""
 
         if self.model is None:
-            raise Exception(
-                "Stable diffusion model not loaded. Make sure you have set the `model_path`"
-            )
+            raise Exception("Stable diffusion model not loaded.")
+
+        # =========== Validate string and int inputs ===========
+
+        sample_method = validate_and_set_input(sample_method, SAMPLE_METHOD_MAP, "sample_method")
+
+        # =========== Set seed ===========
 
         # # Set a random seed if seed is negative
         # if seed < 0:
@@ -498,8 +504,8 @@ class StableDiffusion:
 
         Args:
             image: The input image path or Pillow Image.
-            width: Output image height, in pixel space (default: 512).
-            height: Output image width, in pixel space (default: 512).
+            width: Output image height, in pixel space.
+            height: Output image width, in pixel space.
             high_threshold: High edge detection threshold.
             low_threshold: Low edge detection threshold.
             weak: Weak edge thickness.
@@ -551,15 +557,13 @@ class StableDiffusion:
 
         Args:
             images: A list of image paths or Pillow Images to upscale.
-            upscale_factor: The image upscaling factor (default: 4).
+            upscale_factor: The image upscaling factor.
 
         Returns:
             A list of Pillow Images."""
 
         if self.upscaler is None:
-            raise Exception(
-                "Upscaling model not loaded. Make sure you have set the `upscaler_path`"
-            )
+            raise Exception("Upscaling model not loaded.")
 
         # ==================== Set the callback function ====================
 
@@ -606,9 +610,7 @@ class StableDiffusion:
     # Utility functions
     # ============================================
 
-    def _resize_image(
-        self, image: Union[Image.Image, str], width: int, height: int
-    ) -> Image.Image:
+    def _resize_image(self, image: Union[Image.Image, str], width: int, height: int) -> Image.Image:
         """Resize an image to a new width and height."""
         image, _, _ = self._format_image(image)
 
@@ -648,7 +650,7 @@ class StableDiffusion:
             return None
 
         if not control_net_path:
-            # log_event(1, "'control_net_path' not set. Skipping control condition.")
+            log_event(1, "'control_net_path' not set. Skipping control condition.")
             return None
 
         if canny:
@@ -679,9 +681,7 @@ class StableDiffusion:
 
     # ============= Image to C sd_image_t =============
 
-    def _c_uint8_to_sd_image_t_p(
-        self, image: ctypes.c_uint8, width, height, channel: int = 3
-    ):
+    def _c_uint8_to_sd_image_t_p(self, image: ctypes.c_uint8, width, height, channel: int = 3):
         # Create a new C sd_image_t
         c_image = sd_cpp.sd_image_t(
             width=width,
@@ -703,9 +703,7 @@ class StableDiffusion:
     # ============= C sd_image_t to Image =============
 
     def _c_array_to_bytes(self, c_array, buffer_size: int):
-        return bytearray(
-            ctypes.cast(c_array, ctypes.POINTER(ctypes.c_byte * buffer_size)).contents
-        )
+        return bytearray(ctypes.cast(c_array, ctypes.POINTER(ctypes.c_byte * buffer_size)).contents)
 
     def _dereference_sd_image_t_p(self, c_image: sd_cpp.sd_image_t):
         """Dereference a C sd_image_t pointer to a Python dictionary with height, width, channel and data (bytes)."""
@@ -721,13 +719,9 @@ class StableDiffusion:
         }
         return image
 
-    def _image_slice(
-        self, c_images: sd_cpp.sd_image_t_p, count: int, upscale_factor: int
-    ):
+    def _image_slice(self, c_images: sd_cpp.sd_image_t, count: int, upscale_factor: int):
         """Slice a C array of images."""
-        image_array = ctypes.cast(
-            c_images, ctypes.POINTER(sd_cpp.sd_image_t * count)
-        ).contents
+        image_array = ctypes.cast(c_images, ctypes.POINTER(sd_cpp.sd_image_t * count)).contents
 
         images = []
 
@@ -737,9 +731,7 @@ class StableDiffusion:
             # Upscale the image
             if upscale_factor > 1:
                 if self.upscaler is None:
-                    raise Exception(
-                        "Upscaling model not loaded. Make sure you have set the `upscaler_path`"
-                    )
+                    raise Exception("Upscaling model not loaded.")
                 else:
                     c_image = sd_cpp.upscale(
                         self.upscaler,
@@ -753,9 +745,7 @@ class StableDiffusion:
         # Return the list of images
         return images
 
-    def _sd_image_t_p_to_images(
-        self, c_images: sd_cpp.sd_image_t_p, count: int, upscale_factor: int
-    ):
+    def _sd_image_t_p_to_images(self, c_images: sd_cpp.sd_image_t, count: int, upscale_factor: int):
         """Convert C sd_image_t_p images to a Python list of images."""
 
         # Convert C array to Python list of images
@@ -764,9 +754,7 @@ class StableDiffusion:
         # Convert each image to PIL Image
         for i in range(len(images)):
             image = images[i]
-            images[i] = self._bytes_to_image(
-                image["data"], image["width"], image["height"]
-            )
+            images[i] = self._bytes_to_image(image["data"], image["width"], image["height"])
 
         return images
 
@@ -784,3 +772,92 @@ class StableDiffusion:
                     (byte_data[idx], byte_data[idx + 1], byte_data[idx + 2], 255),
                 )
         return image
+
+
+# ============================================
+# Mapping from strings to constants
+# ============================================
+
+
+def validate_and_set_input(user_input: Union[str, int, float], type_map: Dict, attribute_name: str):
+    """Validate an input strinbg or int from a map of strings to integers."""
+    if isinstance(user_input, float):
+        user_input = int(user_input)  # Convert float to int
+
+    # Handle string input
+    if isinstance(user_input, str):
+        user_input = user_input.strip().lower()
+        if user_input in type_map:
+            return int(type_map[user_input])
+        else:
+            raise ValueError(f"Invalid {attribute_name} type '{user_input}'. Must be one of {list(type_map.keys())}.")
+    elif isinstance(user_input, int) and user_input in type_map.values():
+        return int(user_input)
+    else:
+        raise ValueError(f"{attribute_name} must be a string or an integer and must be a valid type.")
+
+
+RNG_TYPE_MAP = {
+    "default": RNGType.STD_DEFAULT_RNG,
+    "cuda": RNGType.CUDA_RNG,
+}
+
+SAMPLE_METHOD_MAP = {
+    "euler_a": SampleMethod.EULER_A,
+    "euler": SampleMethod.EULER,
+    "heun": SampleMethod.HEUN,
+    "dpm2": SampleMethod.DPM2,
+    "dpmpp2s_a": SampleMethod.DPMPP2S_A,
+    "dpmpp2m": SampleMethod.DPMPP2M,
+    "dpmpp2mv2": SampleMethod.DPMPP2Mv2,
+    "ipndm": SampleMethod.IPNDM,
+    "ipndm_v": SampleMethod.IPNDM_V,
+    "lcm": SampleMethod.LCM,
+}
+
+SCHEDULE_MAP = {
+    "default": Schedule.DEFAULT,
+    "discrete": Schedule.DISCRETE,
+    "karras": Schedule.KARRAS,
+    "exponential": Schedule.EXPONENTIAL,
+    "ays": Schedule.AYS,
+    "gits": Schedule.GITS,
+}
+
+GGML_TYPE_MAP = {
+    "f32": GGMLType.SD_TYPE_F32,
+    "f16": GGMLType.SD_TYPE_F16,
+    "q4_0": GGMLType.SD_TYPE_Q4_0,
+    "q4_1": GGMLType.SD_TYPE_Q4_1,
+    "q5_0": GGMLType.SD_TYPE_Q5_0,
+    "q5_1": GGMLType.SD_TYPE_Q5_1,
+    "q8_0": GGMLType.SD_TYPE_Q8_0,
+    "q8_1": GGMLType.SD_TYPE_Q8_1,
+    # k-quantizations
+    "q2_k": GGMLType.SD_TYPE_Q2_K,
+    "q3_k": GGMLType.SD_TYPE_Q3_K,
+    "q4_k": GGMLType.SD_TYPE_Q4_K,
+    "q5_k": GGMLType.SD_TYPE_Q5_K,
+    "q6_k": GGMLType.SD_TYPE_Q6_K,
+    "q8_k": GGMLType.SD_TYPE_Q8_K,
+    "iq2_xxs": GGMLType.SD_TYPE_IQ2_XXS,
+    "iq2_xs": GGMLType.SD_TYPE_IQ2_XS,
+    "iq3_xxs": GGMLType.SD_TYPE_IQ3_XXS,
+    "iq1_s": GGMLType.SD_TYPE_IQ1_S,
+    "iq4_nl": GGMLType.SD_TYPE_IQ4_NL,
+    "iq3_s": GGMLType.SD_TYPE_IQ3_S,
+    "iq2_s": GGMLType.SD_TYPE_IQ2_S,
+    "iq4_xs": GGMLType.SD_TYPE_IQ4_XS,
+    "i8": GGMLType.SD_TYPE_I8,
+    "i16": GGMLType.SD_TYPE_I16,
+    "i32": GGMLType.SD_TYPE_I32,
+    "i64": GGMLType.SD_TYPE_I64,
+    "f64": GGMLType.SD_TYPE_F64,
+    "iq1_m": GGMLType.SD_TYPE_IQ1_M,
+    "bf16": GGMLType.SD_TYPE_BF16,
+    "q4_0_4_4": GGMLType.SD_TYPE_Q4_0_4_4,
+    "q4_0_4_8": GGMLType.SD_TYPE_Q4_0_4_8,
+    "q4_0_8_8": GGMLType.SD_TYPE_Q4_0_8_8,
+    # Default
+    "default": GGMLType.SD_TYPE_COUNT,
+}
