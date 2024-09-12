@@ -8,10 +8,11 @@ from pathlib import Path
 from nexa.constants import (
     DEFAULT_IMG_GEN_PARAMS,
     EXIT_REMINDER,
-    NEXA_RUN_MODEL_MAP,
     NEXA_RUN_MODEL_PRECISION_MAP,
     DEFAULT_IMG_GEN_PARAMS_LCM,
     DEFAULT_IMG_GEN_PARAMS_TURBO,
+    NEXA_RUN_MODEL_MAP_FLUX,
+    NEXA_RUN_T5XXL_MAP,
 )
 from nexa.utils import SpinningCursorAnimation, nexa_prompt
 from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
@@ -22,10 +23,15 @@ from nexa.general import pull_model
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
+
+# image generation retry attempts
 RETRY_ATTEMPTS = (
     3  # a temporary fix for the issue of segmentation fault for stable-diffusion-cpp
 )
 
+# FLUX vae and clip model paths
+FLUX_VAE_PATH = "FLUX.1-schnell:ae-fp16"
+FLUX_CLIP_L_PATH = "FLUX.1-schnell:clip_l-fp16"
 
 class NexaImageInference:
     """
@@ -55,15 +61,36 @@ class NexaImageInference:
         self.model_path = model_path
         self.downloaded_path = local_path
 
-        if self.downloaded_path is None:
-            self.downloaded_path, run_type = pull_model(self.model_path)
+        # FLUX model components
+        self.t5xxl_path = None
+        self.ae_path = None
+        self.clip_l_path = None
+        self.t5xxl_downloaded_path = None
+        self.ae_downloaded_path = None
+        self.clip_l_downloaded_path = None
 
+        # Download base model if not provided
         if self.downloaded_path is None:
-            logging.error(
-                f"Model ({model_path}) is not applicable. Please refer to our docs for proper usage.",
-                exc_info=True,
-            )
-            exit(1)
+            self.downloaded_path, _ = pull_model(self.model_path)
+            if self.downloaded_path is None:
+                logging.error(
+                    f"Model ({model_path}) is not applicable. Please refer to our docs for proper usage.",
+                    exc_info=True,
+                )
+                exit(1)
+
+        # Check if the model is a FLUX model and download additional components
+        if self.model_path in NEXA_RUN_MODEL_MAP_FLUX:
+            self.t5xxl_path = NEXA_RUN_T5XXL_MAP.get(model_path)
+            self.ae_path = FLUX_VAE_PATH
+            self.clip_l_path = FLUX_CLIP_L_PATH
+            
+            if self.t5xxl_path:
+                self.t5xxl_downloaded_path, _ = pull_model(self.t5xxl_path)
+            if self.ae_path:
+                self.ae_downloaded_path, _ = pull_model(self.ae_path)
+            if self.clip_l_path:
+                self.clip_l_downloaded_path, _ = pull_model(self.clip_l_path)
 
         if "lcm-dreamshaper" in self.model_path:
             self.params = DEFAULT_IMG_GEN_PARAMS_LCM
@@ -73,6 +100,7 @@ class NexaImageInference:
             self.params = DEFAULT_IMG_GEN_PARAMS
 
         self.params.update(kwargs)
+
         if not kwargs.get("streamlit", False):
             self._load_model(model_path)
             if self.model is None:

@@ -9,7 +9,6 @@ from nexa.constants import (
     DEFAULT_TEXT_GEN_PARAMS,
     NEXA_RUN_CHAT_TEMPLATE_MAP,
     NEXA_RUN_COMPLETION_TEMPLATE_MAP,
-    NEXA_RUN_MODEL_MAP,
     NEXA_STOP_WORDS_MAP,
 )
 from nexa.gguf.lib_utils import is_gpu_available
@@ -54,7 +53,7 @@ class NexaTextInference:
         self.downloaded_path = local_path
         
         if self.downloaded_path is None:
-            self.downloaded_path, run_type = pull_model(self.model_path)
+            self.downloaded_path, _ = pull_model(self.model_path)
 
         if self.downloaded_path is None:
             logging.error(

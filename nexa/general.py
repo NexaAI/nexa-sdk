@@ -15,7 +15,7 @@ from nexa.constants import (
     NEXA_TOKEN_PATH,
     NEXA_OFFICIAL_MODELS_TYPE,
 )
-
+from nexa.constants import ModelType
 
 def login():
     """
@@ -119,10 +119,10 @@ def pull_model(model_path):
             return result["local_path"], result["run_type"]
         else:
             print(f"Failed to pull model {model_path}")
-            return None, "UNKNOWN"
+            return None, "NLP"
     except Exception as e:
         logging.error(f"An error occurred while pulling the model: {e}")
-        return None, "UNKNOWN"
+        return None, "NLP"
 
 
 def pull_model_from_hub(model_path):
@@ -198,19 +198,20 @@ def pull_model_from_official(model_path):
         model_type = "gguf"
 
     run_type = get_run_type_from_model_path(model_path)
+    run_type_str = run_type.value if isinstance(run_type, ModelType) else str(run_type)
     success, location = download_model_from_official(model_path, model_type)
     
     return {
         "success": success,
         "local_path": location,
         "model_type": model_type,
-        "run_type": run_type
+        "run_type": run_type_str
     }
 
 
 def get_run_type_from_model_path(model_path):
     model_name, model_version = model_path.split(":")
-    return NEXA_OFFICIAL_MODELS_TYPE.get(model_name, "UNKNOWN")
+    return NEXA_OFFICIAL_MODELS_TYPE.get(model_name, ModelType.NLP).value
 
 
 def get_model_presigned_link(full_path, token):
