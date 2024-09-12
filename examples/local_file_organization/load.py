@@ -29,7 +29,6 @@ inference = NexaVLMInference(
     profiling=True
 )
 
-
 inference_text = NexaTextInference(
     model_path=model_path_text,
     local_path=None,
@@ -119,7 +118,10 @@ def print_tree_with_subprocess(path):
     print(result.stdout)
 
 def generate_image_description(image_path):
-    description_generator = inference._chat("Please provide a detailed description of this image in 10 sentences, emphasizing the meaning and context. Focus on capturing the key elements and underlying semantics.", image_path)
+    description_generator = inference._chat(
+        "Please provide a detailed description of this image in 10 sentences, emphasizing the meaning and context. Focus on capturing the key elements and underlying semantics.",
+        image_path
+    )
     description = get_response_text_from_generator(description_generator)
     return description
 
@@ -135,6 +137,26 @@ def get_decriptions_and_embeddings_for_images(image_paths):
         }
     return d
 
+def generate_text_description(input_text):
+    description_generator = inference._chat(
+        "Please provide a detailed summary of the following text in 10 sentences, emphasizing the key points and context.",
+        input_text
+    )
+    description = get_response_text_from_generator(description_generator)
+    return description
+
+def get_descriptions_and_embeddings_for_texts(texts):
+    results = []
+    for text in texts:
+        description = generate_text_description(text)
+        embeddings = inference_text.create_embedding(text)["data"][0]['embedding']
+        results.append({
+            'text': text,
+            'description': description,
+            'embeddings': embeddings
+        })
+    return results
+
 if __name__ == '__main__':
     path = "/Users/q/nexa_test/llama-fs/sample_data"
     
@@ -147,16 +169,29 @@ if __name__ == '__main__':
     print_tree_with_subprocess(path)
     
     image_files = [doc.metadata['file_path'] for doc in documents if doc.metadata['file_path'].endswith(('.png', '.jpg', '.jpeg'))]
-    descriptions_and_embeddings = get_decriptions_and_embeddings_for_images(image_files)
+    descriptions_and_embeddings_images = get_decriptions_and_embeddings_for_images(image_files)
     
-    output_file = "data/images_with_embeddings.json"
-    os.makedirs(os.path.dirname(output_file), exist_ok=True)  # Ensure the directory exists
-    with open(output_file, 'w') as f:
-        json.dump(descriptions_and_embeddings, f, indent=4)
+    text_files = [doc.metadata['file_path'] for doc in documents if doc.metadata['file_path'].endswith('.txt')]
+    descriptions_and_embeddings_texts = get_descriptions_and_embeddings_for_texts([read_text_file(file_path) for file_path in text_files])
     
-    for image_path, data in descriptions_and_embeddings.items():
+    output_file_images = "data/images_with_embeddings.json"
+    os.makedirs(os.path.dirname(output_file_images), exist_ok=True)  # Ensure the directory exists
+    with open(output_file_images, 'w') as f:
+        json.dump(descriptions_and_embeddings_images, f, indent=4)
+    
+    output_file_texts = "data/texts_with_embeddings.json"
+    os.makedirs(os.path.dirname(output_file_texts), exist_ok=True)  # Ensure the directory exists
+    with open(output_file_texts, 'w') as f:
+        json.dump(descriptions_and_embeddings_texts, f, indent=4)
+    
+    for image_path, data in descriptions_and_embeddings_images.items():
         print(f"Image: {image_path}")
         print(f"Description: {data['description']}")
         # print(f"Embedding: {data['embedding']}")
         print("-"*50)
-
+    
+    for text_data in descriptions_and_embeddings_texts:
+        print(f"Text: {text_data['text']}")
+        print(f"Description: {text_data['description']}")
+        # print(f"Embedding: {text_data['embeddings']}")
+        print("-"*50)
