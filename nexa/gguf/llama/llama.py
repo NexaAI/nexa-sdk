@@ -89,7 +89,7 @@ class Llama:
         yarn_beta_fast: float = 32.0,
         yarn_beta_slow: float = 1.0,
         yarn_orig_ctx: int = 0,
-        logits_all: bool = False,
+        logits_all: bool = True,  # switch
         embedding: bool = False,
         offload_kqv: bool = True,
         flash_attn: bool = False,
@@ -335,9 +335,10 @@ class Llama:
             yarn_beta_slow if yarn_beta_slow != 0.0 else 0
         )
         self.context_params.yarn_orig_ctx = yarn_orig_ctx if yarn_orig_ctx != 0 else 0
-        self.context_params.logits_all = (
-            logits_all if draft_model is None else True
-        )  # Must be set to True for speculative decoding
+        # self.context_params.logits_all = (
+        #     logits_all if draft_model is None else True
+        # )  # Must be set to True for speculative decoding
+        self.context_params.logits_all = True
         self.context_params.embeddings = embedding  # TODO: Rename to embeddings
         self.context_params.offload_kqv = offload_kqv
         self.context_params.flash_attn = flash_attn
@@ -662,6 +663,8 @@ class Llama:
         mirostat_tau: float = 5.0,
         penalize_nl: bool = True,
         logits_processor: Optional[LogitsProcessorList] = None,
+        logprobs: Optional[bool] = None,
+        top_logprobs: Optional[int] = None,
         grammar: Optional[LlamaGrammar] = None,
         idx: Optional[int] = None,
     ):
@@ -718,7 +721,27 @@ class Llama:
             id=id,
             apply_grammar=grammar is not None,
         )
-        return id
+
+        if logprobs is not None and (top_logprobs is not None and top_logprobs > 0):
+            sampled_logprobs = self.logits_to_logprobs(logits)
+            token_logprob = float(sampled_logprobs[id])
+
+            top_logprobs_dict = None
+            if top_logprobs is not None:
+                sorted_indices = sampled_logprobs.argsort()[::-1]
+                top_indices = sorted_indices[:top_logprobs]
+                top_logprobs_dict = {
+                    self.detokenize([i]).decode("utf-8", errors="ignore"): float(sampled_logprobs[i])
+                    for i in top_indices
+                }
+
+            return {
+                "token": id,
+                "token_logprob": token_logprob,
+                "top_logprobs": top_logprobs_dict
+            }
+        else:
+            return id
 
     def generate(
         self,
@@ -738,6 +761,8 @@ class Llama:
         mirostat_eta: float = 0.1,
         penalize_nl: bool = True,
         logits_processor: Optional[LogitsProcessorList] = None,
+        logprobs: Optional[bool] = None,
+        top_logprobs: Optional[int] = None,
         stopping_criteria: Optional[StoppingCriteriaList] = None,
         grammar: Optional[LlamaGrammar] = None,
     ) -> Generator[int, Optional[Sequence[int]], None]:
@@ -777,7 +802,7 @@ class Llama:
                 self.n_tokens = longest_prefix
                 if self.verbose:
                     print(f"Llama.generate: {longest_prefix} prefix-match hit, "
-                          f"remaining {len(tokens)} prompt tokens to eval", file=sys.stderr)                    
+                          f"remaining {len(tokens)} prompt tokens to eval", file=sys.stderr)
 
         # Reset the model state
         if reset:
@@ -794,7 +819,7 @@ class Llama:
         while True:
             self.eval(tokens)
             while sample_idx < self.n_tokens:
-                token = self.sample(
+                result = self.sample(
                     top_k=top_k,
                     top_p=top_p,
                     min_p=min_p,
@@ -808,17 +833,26 @@ class Llama:
                     mirostat_tau=mirostat_tau,
                     mirostat_eta=mirostat_eta,
                     logits_processor=logits_processor,
+                    logprobs=logprobs,
+                    top_logprobs=top_logprobs,
                     grammar=grammar,
                     penalize_nl=penalize_nl,
                     idx=sample_idx,
                 )
+
+                if isinstance(result, dict):
+                    token = result["token"]
+                    logprobs_info = result
+                else:
+                    token = result
+                    logprobs_info = None
 
                 sample_idx += 1
                 if stopping_criteria is not None and stopping_criteria(
                     self._input_ids, self._scores[-1, :]
                 ):
                     return
-                tokens_or_none = yield token
+                tokens_or_none = yield token, logprobs_info
                 tokens.clear()
                 tokens.append(token)
                 if tokens_or_none is not None:
@@ -1011,7 +1045,7 @@ class Llama:
         top_p: float = 0.95,
         min_p: float = 0.05,
         typical_p: float = 1.0,
-        logprobs: Optional[int] = None,
+        logprobs: Optional[bool] = None,
         echo: bool = False,
         stop: Optional[Union[str, List[str]]] = [],
         frequency_penalty: float = 0.0,
@@ -1027,6 +1061,7 @@ class Llama:
         model: Optional[str] = None,
         stopping_criteria: Optional[StoppingCriteriaList] = None,
         logits_processor: Optional[LogitsProcessorList] = None,
+        top_logprobs: Optional[int] = None,
         grammar: Optional[LlamaGrammar] = None,
         logit_bias: Optional[Dict[str, float]] = None,
     ) -> Union[
@@ -1183,7 +1218,9 @@ class Llama:
 
         finish_reason = "length"
         multibyte_fix = 0
-        for token in self.generate(
+        logprobs_or_none = None
+
+        for token, logprobs_info in self.generate(
             prompt_tokens,
             top_k=top_k,
             top_p=top_p,
@@ -1199,6 +1236,8 @@ class Llama:
             repeat_penalty=repeat_penalty,
             stopping_criteria=stopping_criteria,
             logits_processor=logits_processor,
+            logprobs=logprobs,
+            top_logprobs=top_logprobs,
             grammar=grammar,
         ):
             assert self._model.model is not None
@@ -1208,6 +1247,20 @@ class Llama:
                 break
 
             completion_tokens.append(token)
+
+            if logprobs_info and logprobs_or_none is None:
+                logprobs_or_none = {
+                    "tokens": [],
+                    "text_offset": [],
+                    "token_logprobs": [],
+                    "top_logprobs": []
+                }
+
+            if logprobs_info:
+                logprobs_or_none["tokens"].append(self.detokenize([token]).decode("utf-8", errors="ignore"))
+                logprobs_or_none["text_offset"].append(len(self.detokenize(completion_tokens[:-1])))
+                logprobs_or_none["token_logprobs"].append(logprobs_info["token_logprob"])
+                logprobs_or_none["top_logprobs"].append(logprobs_info["top_logprobs"])
 
             all_text = self.detokenize(completion_tokens, prev_tokens=prompt_tokens)
 
@@ -1407,7 +1460,7 @@ class Llama:
                     )
                 )
 
-                logprobs_or_none: Optional[CompletionLogprobs] = None
+                # logprobs_or_none: Optional[CompletionLogprobs] = None
                 if logprobs is not None:
                     if token == bos_token_id:
                         continue
@@ -1492,7 +1545,10 @@ class Llama:
                     {
                         "text": "",
                         "index": 0,
-                        "logprobs": None,
+                        "delta": {
+                            "content": "",
+                        },
+                        "logprobs": logprobs_or_none,
                         "finish_reason": finish_reason,
                     }
                 ],
@@ -1507,7 +1563,7 @@ class Llama:
         if suffix_token_id < 0 and suffix is not None:
             text_str = text_str + suffix
 
-        logprobs_or_none: Optional[CompletionLogprobs] = None
+        # logprobs_or_none: Optional[CompletionLogprobs] = None
         if logprobs is not None:
             text_offset = 0 if echo else len(prompt)
             token_offset = 0 if echo else len(prompt_tokens[1:])
@@ -1603,7 +1659,7 @@ class Llama:
         top_p: float = 0.95,
         min_p: float = 0.05,
         typical_p: float = 1.0,
-        logprobs: Optional[int] = None,
+        logprobs: Optional[bool] = None,
         echo: bool = False,
         stop: Optional[Union[str, List[str]]] = [],
         frequency_penalty: float = 0.0,
@@ -1621,6 +1677,7 @@ class Llama:
         logits_processor: Optional[LogitsProcessorList] = None,
         grammar: Optional[LlamaGrammar] = None,
         logit_bias: Optional[Dict[str, float]] = None,
+        top_logprobs: Optional[int] = None,
     ) -> Union[CreateCompletionResponse, Iterator[CreateCompletionStreamResponse]]:
         """Generate text from a prompt.
 
@@ -1700,7 +1757,7 @@ class Llama:
         top_p: float = 0.95,
         min_p: float = 0.05,
         typical_p: float = 1.0,
-        logprobs: Optional[int] = None,
+        logprobs: Optional[bool] = None,
         echo: bool = False,
         stop: Optional[Union[str, List[str]]] = [],
         frequency_penalty: float = 0.0,
