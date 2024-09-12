@@ -8,7 +8,6 @@ from pathlib import Path
 from nexa.constants import (
     DEFAULT_VOICE_GEN_PARAMS,
     EXIT_REMINDER,
-    NEXA_RUN_MODEL_MAP_VOICE,
 )
 from nexa.general import pull_model
 from nexa.utils import nexa_prompt, SpinningCursorAnimation
@@ -45,7 +44,7 @@ class NexaVoiceInference:
         self.params = DEFAULT_VOICE_GEN_PARAMS
 
         if self.downloaded_path is None:
-            self.downloaded_path, run_type = pull_model(self.model_path)
+            self.downloaded_path, _ = pull_model(self.model_path)
 
         if self.downloaded_path is None:
             logging.error(
