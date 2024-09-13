@@ -8,14 +8,12 @@ body:
     attributes:
       value: |
         ## 1. What issue or challenge are you experiencing?  
-        *What did you expect to happen, and what actually occurred?*
 
   - type: textarea
     id: issue-description
     attributes:
       label: Issue Description
-      description: What did you expect to happen, and what actually occurred?
-      placeholder: Describe the issue or challenge you're experiencing.
+      placeholder: What did you expect to happen, and what actually occurred?
     validations:
       required: true
 
@@ -23,17 +21,13 @@ body:
     attributes:
       value: |
         ## 2. How can we reproduce this issue?  
-        *List the steps or actions we can follow to replicate the issue.*
 
   - type: textarea
     id: reproduction-steps
     attributes:
       label: Steps to Reproduce
-      description: Provide the steps or actions that led to this problem.
       placeholder: |
-        1. Step 1
-        2. Step 2
-        3. Step 3
+        List the steps or actions we can follow to replicate the issue.
     validations:
       required: true
 
