@@ -12,6 +12,8 @@ from nexa.gguf import NexaVLMInference, NexaTextInference
 import numpy as np
 import json
 import os
+import re
+import shutil
 
 # Initialize the models
 model_path = "llava-v1.6-vicuna-7b:q4_0"
@@ -39,6 +41,12 @@ inference_text = NexaTextInference(
     profiling=True,
     embedding=True
 )
+
+def sanitize_description(description):
+    # Remove invalid characters and limit the length of the file name
+    sanitized = re.sub(r'[^\w\s-]', '', description).strip().lower()
+    sanitized = re.sub(r'[-\s]+', '-', sanitized)
+    return sanitized[:50]  # Limit to 50 characters
 
 def get_response_text_from_generator(generator):
     response_text = ""
@@ -213,6 +221,7 @@ def get_descriptions_and_embeddings_for_texts(text_tuples):
 
 if __name__ == '__main__':
     path = "/Users/q/nexa_test/llama-fs/sample_data"
+    new_path = "/Users/q/nexa_test/llama-fs/renamed_files"
     
     if not os.path.exists(path):
         print(f"Directory {path} does not exist. Please create it and add the necessary files.")
@@ -223,6 +232,7 @@ if __name__ == '__main__':
         
         print(f"Time taken to load documents: {end_time - start_time:.2f} seconds")
         print("-"*50)
+        print("Directory tree before renaming:")
         print_tree_with_subprocess(path)
         
         image_files = [doc.metadata['file_path'] for doc in documents if os.path.splitext(doc.metadata['file_path'].lower())[1] in ('.png', '.jpg', '.jpeg')]
@@ -250,14 +260,48 @@ if __name__ == '__main__':
         with open(output_file_texts, 'w') as f:
             json.dump(descriptions_and_embeddings_texts, f, indent=4)
         
+        renamed_files = set()
+        
+        # Ensure the new directory exists
+        os.makedirs(new_path, exist_ok=True)
+        
         for image_path, data in descriptions_and_embeddings_images.items():
             print(f"Image: {image_path}")
             print(f"Description: {data['description']}")
-            # print(f"Embedding: {data['embedding']}")
+            # Rename the file based on the description
+            new_file_name = sanitize_description(data['description']) + os.path.splitext(image_path)[1]
+            new_file_path = os.path.join(new_path, new_file_name)
+            
+            # Ensure unique file name
+            counter = 1
+            while new_file_path in renamed_files or os.path.exists(new_file_path):
+                new_file_name = f"{sanitize_description(data['description'])}_{counter}" + os.path.splitext(image_path)[1]
+                new_file_path = os.path.join(new_path, new_file_name)
+                counter += 1
+            
+            shutil.copy2(image_path, new_file_path)
+            renamed_files.add(new_file_path)
+            print(f"Copied and renamed to: {new_file_path}")
             print("-"*50)
         
         for text_data in descriptions_and_embeddings_texts:
             print(f"File: {text_data['file_path']}")
             print(f"Description: {text_data['description']}")
-            # print(f"Embedding: {text_data['embeddings']}")
+            # Rename the file based on the description
+            new_file_name = sanitize_description(text_data['description']) + os.path.splitext(text_data['file_path'])[1]
+            new_file_path = os.path.join(new_path, new_file_name)
+            
+            # Ensure unique file name
+            counter = 1
+            while new_file_path in renamed_files or os.path.exists(new_file_path):
+                new_file_name = f"{sanitize_description(text_data['description'])}_{counter}" + os.path.splitext(text_data['file_path'])[1]
+                new_file_path = os.path.join(new_path, new_file_name)
+                counter += 1
+            
+            shutil.copy2(text_data['file_path'], new_file_path)
+            renamed_files.add(new_file_path)
+            print(f"Copied and renamed to: {new_file_path}")
             print("-"*50)
+        
+        print("Directory tree after copying and renaming:")
+        print_tree_with_subprocess(new_path)
