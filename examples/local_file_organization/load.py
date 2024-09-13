@@ -104,15 +104,20 @@ def process_document(args):
     return Document(text=combined_text, metadata={'file_path': file_path}), file_path
 
 def load_documents_multiprocessing(path: str):
-    reader = SimpleDirectoryReader(
-        input_dir=path,
-        recursive=True,
-        required_exts=[".pdf", ".txt", ".png", ".jpg", ".jpeg", ".docx"]
-    )
+    if not os.path.exists(path):
+        raise ValueError(f"Directory {path} does not exist.")
+    
+    # List all files in the directory
+    file_paths = []
+    for root, _, files in os.walk(path):
+        for file in files:
+            file_paths.append(os.path.join(root, file))
+    
+    reader = SimpleDirectoryReader(input_files=file_paths).iter_data()
     
     chunk_size = 6144
     with Pool(cpu_count()) as pool:
-        results = pool.map(process_document, [(d.metadata['file_path'], chunk_size) for docs in reader.iter_data() for d in docs])
+        results = pool.map(process_document, [(d.metadata['file_path'], chunk_size) for docs in reader for d in docs])
     
     documents = [document for document, _ in results]
     file_paths = [file_path for _, file_path in results]
@@ -199,40 +204,43 @@ def get_descriptions_and_embeddings_for_texts(text_tuples):
 if __name__ == '__main__':
     path = "/Users/q/nexa_test/llama-fs/sample_data"
     
-    start_time = time.time()
-    documents, file_paths = load_documents_multiprocessing(path)
-    end_time = time.time()
-    
-    print(f"Time taken to load documents: {end_time - start_time:.2f} seconds")
-    print("-"*50)
-    print_tree_with_subprocess(path)
-    
-    image_files = [doc.metadata['file_path'] for doc in documents if os.path.splitext(doc.metadata['file_path'].lower())[1] in ('.png', '.jpg', '.jpeg')]
-    descriptions_and_embeddings_images = get_decriptions_and_embeddings_for_images(image_files)
-    
-    text_files = [doc.metadata['file_path'] for doc in documents if os.path.splitext(doc.metadata['file_path'].lower())[1] == '.txt']
-    # Create a list of tuples (file_path, text_content)
-    text_tuples = [(file_path, read_text_file(file_path)) for file_path in text_files]
-    descriptions_and_embeddings_texts = get_descriptions_and_embeddings_for_texts(text_tuples)
-    
-    output_file_images = "data/images_with_embeddings.json"
-    os.makedirs(os.path.dirname(output_file_images), exist_ok=True)  # Ensure the directory exists
-    with open(output_file_images, 'w') as f:
-        json.dump(descriptions_and_embeddings_images, f, indent=4)
-    
-    output_file_texts = "data/texts_with_embeddings.json"
-    os.makedirs(os.path.dirname(output_file_texts), exist_ok=True)  # Ensure the directory exists
-    with open(output_file_texts, 'w') as f:
-        json.dump(descriptions_and_embeddings_texts, f, indent=4)
-    
-    for image_path, data in descriptions_and_embeddings_images.items():
-        print(f"Image: {image_path}")
-        print(f"Description: {data['description']}")
-        # print(f"Embedding: {data['embedding']}")
+    if not os.path.exists(path):
+        print(f"Directory {path} does not exist. Please create it and add the necessary files.")
+    else:
+        start_time = time.time()
+        documents, file_paths = load_documents_multiprocessing(path)
+        end_time = time.time()
+        
+        print(f"Time taken to load documents: {end_time - start_time:.2f} seconds")
         print("-"*50)
-    
-    for text_data in descriptions_and_embeddings_texts:
-        print(f"File: {text_data['file_path']}")
-        print(f"Description: {text_data['description']}")
-        # print(f"Embedding: {text_data['embeddings']}")
-        print("-"*50)
+        print_tree_with_subprocess(path)
+        
+        image_files = [doc.metadata['file_path'] for doc in documents if os.path.splitext(doc.metadata['file_path'].lower())[1] in ('.png', '.jpg', '.jpeg')]
+        descriptions_and_embeddings_images = get_decriptions_and_embeddings_for_images(image_files)
+        
+        text_files = [doc.metadata['file_path'] for doc in documents if os.path.splitext(doc.metadata['file_path'].lower())[1] == '.txt']
+        # Create a list of tuples (file_path, text_content)
+        text_tuples = [(file_path, read_text_file(file_path)) for file_path in text_files]
+        descriptions_and_embeddings_texts = get_descriptions_and_embeddings_for_texts(text_tuples)
+        
+        output_file_images = "data/images_with_embeddings.json"
+        os.makedirs(os.path.dirname(output_file_images), exist_ok=True)  # Ensure the directory exists
+        with open(output_file_images, 'w') as f:
+            json.dump(descriptions_and_embeddings_images, f, indent=4)
+        
+        output_file_texts = "data/texts_with_embeddings.json"
+        os.makedirs(os.path.dirname(output_file_texts), exist_ok=True)  # Ensure the directory exists
+        with open(output_file_texts, 'w') as f:
+            json.dump(descriptions_and_embeddings_texts, f, indent=4)
+        
+        for image_path, data in descriptions_and_embeddings_images.items():
+            print(f"Image: {image_path}")
+            print(f"Description: {data['description']}")
+            # print(f"Embedding: {data['embedding']}")
+            print("-"*50)
+        
+        for text_data in descriptions_and_embeddings_texts:
+            print(f"File: {text_data['file_path']}")
+            print(f"Description: {text_data['description']}")
+            # print(f"Embedding: {text_data['embeddings']}")
+            print("-"*50)
