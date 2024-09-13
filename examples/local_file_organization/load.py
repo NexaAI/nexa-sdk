@@ -219,6 +219,18 @@ def get_descriptions_and_embeddings_for_texts(text_tuples):
         })
     return results
 
+def extract_topic(description):
+    # Extract the main topic from the description
+    # For simplicity, let's assume the topic is the first word of the description
+    topic = description.split()[0]
+    return topic
+
+def create_directory_structure(base_path, topic):
+    # Create a directory structure based on the topic
+    dir_path = os.path.join(base_path, topic)
+    os.makedirs(dir_path, exist_ok=True)
+    return dir_path
+
 if __name__ == '__main__':
     path = "/Users/q/nexa_test/llama-fs/sample_data"
     new_path = "/Users/q/nexa_test/llama-fs/renamed_files"
@@ -268,15 +280,19 @@ if __name__ == '__main__':
         for image_path, data in descriptions_and_embeddings_images.items():
             print(f"Image: {image_path}")
             print(f"Description: {data['description']}")
+            # Extract topic from description
+            topic = extract_topic(data['description'])
+            # Create directory structure based on topic
+            dir_path = create_directory_structure(new_path, topic)
             # Rename the file based on the description
             new_file_name = sanitize_description(data['description']) + os.path.splitext(image_path)[1]
-            new_file_path = os.path.join(new_path, new_file_name)
+            new_file_path = os.path.join(dir_path, new_file_name)
             
             # Ensure unique file name
             counter = 1
             while new_file_path in renamed_files or os.path.exists(new_file_path):
                 new_file_name = f"{sanitize_description(data['description'])}_{counter}" + os.path.splitext(image_path)[1]
-                new_file_path = os.path.join(new_path, new_file_name)
+                new_file_path = os.path.join(dir_path, new_file_name)
                 counter += 1
             
             shutil.copy2(image_path, new_file_path)
@@ -287,15 +303,19 @@ if __name__ == '__main__':
         for text_data in descriptions_and_embeddings_texts:
             print(f"File: {text_data['file_path']}")
             print(f"Description: {text_data['description']}")
+            # Extract topic from description
+            topic = extract_topic(text_data['description'])
+            # Create directory structure based on topic
+            dir_path = create_directory_structure(new_path, topic)
             # Rename the file based on the description
             new_file_name = sanitize_description(text_data['description']) + os.path.splitext(text_data['file_path'])[1]
-            new_file_path = os.path.join(new_path, new_file_name)
+            new_file_path = os.path.join(dir_path, new_file_name)
             
             # Ensure unique file name
             counter = 1
             while new_file_path in renamed_files or os.path.exists(new_file_path):
                 new_file_name = f"{sanitize_description(text_data['description'])}_{counter}" + os.path.splitext(text_data['file_path'])[1]
-                new_file_path = os.path.join(new_path, new_file_name)
+                new_file_path = os.path.join(dir_path, new_file_name)
                 counter += 1
             
             shutil.copy2(text_data['file_path'], new_file_path)
