@@ -1,41 +1,24 @@
-name: "🐞 Bug Report"
-description: "Tell us what went wrong"
-title: "[BUG] <title>"
-labels: ["🐞 bug"]
+name: "🙋‍♀️ Help & Questions"
+description: "Ask away! No question is too big or small"
+title: "[QUESTION] <title>"
+labels: ["🙋‍♀️ help wanted"]
 assignees: []
 body:
   - type: markdown
     attributes:
       value: |
-        ## 1. What issue or challenge are you experiencing?  
-
+        ## 1. What do you need help with or have questions about?
   - type: textarea
-    id: issue-description
+    id: question-description
     attributes:
-      label: Issue Description
-      description: What did you expect to happen, and what actually occurred?
+      label: Question or Issue
+      description: Describe the issue or question you have.
     validations:
       required: true
-
   - type: markdown
     attributes:
       value: |
-        ## 2. How can we reproduce this issue?  
-
-  - type: textarea
-    id: reproduction-steps
-    attributes:
-      label: Steps to Reproduce
-      description: List the steps or actions we can follow to replicate the issue.
-    validations:
-      required: true
-
-  - type: markdown
-    attributes:
-      value: |
-        ## 3. What's your setup?  
-        *Share details about your environment to help us troubleshoot:*
-
+        ## 2. What's your setup (if it's relevant to your question)?
   - type: input
     id: os
     attributes:
@@ -43,8 +26,7 @@ body:
       description: Your operating system.
       placeholder: e.g., Windows 10, macOS Ventura, Ubuntu 22.04
     validations:
-      required: true
-
+      required: false
   - type: input
     id: python-version
     attributes:
@@ -52,8 +34,7 @@ body:
       description: Your Python version.
       placeholder: e.g., 3.9.1
     validations:
-      required: true
-
+      required: false
   - type: input
     id: nexa-sdk-version
     attributes:
@@ -61,8 +42,7 @@ body:
       description: Your Nexa SDK version.
       placeholder: e.g., 0.0.8.1
     validations:
-      required: true
-
+      required: false
   - type: input
     id: gpu
     attributes:
