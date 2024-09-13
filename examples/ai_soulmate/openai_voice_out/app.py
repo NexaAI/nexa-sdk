@@ -4,6 +4,10 @@ from utils.initialize import initialize_chat, load_model
 from utils.gen_avatar import generate_ai_avatar
 from utils.transcribe import record_and_transcribe
 from utils.gen_response import generate_chat_response, generate_and_play_response
+from PIL import Image
+
+img = Image.open("../nexalogo.png")
+st.set_page_config(page_title="AI Soulmate", page_icon=img)
 
 ai_avatar = generate_ai_avatar()
 default_model = "llama3-uncensored"
