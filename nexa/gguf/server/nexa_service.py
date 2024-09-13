@@ -169,8 +169,6 @@ async def nexa_run_text_generation(
             'top_logprobs': top_logprobs,
         }
 
-        params_json = json.dumps(params, default=str, indent=2)
-
         streamer = model.create_chat_completion(**params)
 
         for chunk in streamer:
@@ -201,7 +199,6 @@ async def nexa_run_text_generation(
         )
 
         for chunk in streamer:
-            pp.pprint(chunk)
             delta = chunk["choices"][0]["text"]
             generated_text += delta
 
@@ -235,7 +232,7 @@ async def generate_text(request: GenerationRequest):
     logging.info(f"[/v1/completions] Request logprobs: {request.logprobs}, top_logprobs: {request.top_logprobs}")
     try:
         result = await nexa_run_text_generation(**request.dict())
-        # return JSONResponse(content={"result": result})
+
         return JSONResponse(content={
             "choices": [{
                 "text": result["result"],
