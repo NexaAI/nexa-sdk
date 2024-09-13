@@ -62,11 +62,17 @@ def read_word_file(file_path):
     return '\n'.join(full_text)
 
 def read_pdf_file(file_path):
-    doc = fitz.open(file_path)
-    full_text = []
-    for page in doc:
-        full_text.append(page.get_text())
-    return '\n'.join(full_text)
+    try:
+        print(f"Attempting to read PDF file: {file_path}")
+        doc = fitz.open(file_path)
+        full_text = []
+        for page in doc:
+            full_text.append(page.get_text())
+        print(f"Successfully read PDF file: {file_path}")
+        return '\n'.join(full_text)
+    except Exception as e:
+        print(f"Error reading PDF file {file_path}: {e}")
+        return ""
 
 def read_image_file(file_path):
     try:
@@ -96,7 +102,8 @@ def process_document(args):
     elif file_ext == '.txt':
         text = read_text_file(file_path)
     else:
-        raise ValueError(f"Unsupported file type: {file_path}")
+        print(f"Skipping unsupported file type: {file_path}")
+        return None, None
     
     splitter = TokenTextSplitter(chunk_size=chunk_size)
     contents = splitter.split_text(text)
@@ -118,6 +125,9 @@ def load_documents_multiprocessing(path: str):
     chunk_size = 6144
     with Pool(cpu_count()) as pool:
         results = pool.map(process_document, [(d.metadata['file_path'], chunk_size) for docs in reader for d in docs])
+    
+    # Filter out None results
+    results = [result for result in results if result[0] is not None]
     
     documents = [document for document, _ in results]
     file_paths = [file_path for _, file_path in results]
@@ -219,9 +229,16 @@ if __name__ == '__main__':
         descriptions_and_embeddings_images = get_decriptions_and_embeddings_for_images(image_files)
         
         text_files = [doc.metadata['file_path'] for doc in documents if os.path.splitext(doc.metadata['file_path'].lower())[1] == '.txt']
-        # Create a list of tuples (file_path, text_content)
+        pdf_files = [doc.metadata['file_path'] for doc in documents if os.path.splitext(doc.metadata['file_path'].lower())[1] == '.pdf']
+        
+        # Create a list of tuples (file_path, text_content) for text and PDF files
         text_tuples = [(file_path, read_text_file(file_path)) for file_path in text_files]
-        descriptions_and_embeddings_texts = get_descriptions_and_embeddings_for_texts(text_tuples)
+        pdf_tuples = [(file_path, read_pdf_file(file_path)) for file_path in pdf_files]
+        
+        # Combine text and PDF tuples
+        text_and_pdf_tuples = text_tuples + pdf_tuples
+        
+        descriptions_and_embeddings_texts = get_descriptions_and_embeddings_for_texts(text_and_pdf_tuples)
         
         output_file_images = "data/images_with_embeddings.json"
         os.makedirs(os.path.dirname(output_file_images), exist_ok=True)  # Ensure the directory exists
