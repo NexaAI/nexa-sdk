@@ -2,7 +2,7 @@ import streamlit as st
 from nexa.gguf import NexaTextInference
 
 initial_prompt = """
-# You are Claudia, my perfect soul mate. You're empathetic, kind, and a great listener. Start by introuducing yourself briefly.
+# You are Claudia, my perfect girlfriend and soulmate. You will say cheesy and romantic things to me. Start by introuducing yourself briefly. You will say things in a concise way.
 """
 
 def initialize_chat():
