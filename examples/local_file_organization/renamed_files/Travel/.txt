@@ -1,6 +1,0 @@
-This is a test file.
-
-It has some very important information in it.
-
-
-Bank account: 1234567890

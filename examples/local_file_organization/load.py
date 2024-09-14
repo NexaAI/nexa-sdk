@@ -69,15 +69,23 @@ def read_word_file(file_path):
         full_text.append(para.text)
     return '\n'.join(full_text)
 
+# Dictionary to cache PDF content
+pdf_cache = {}
+
 def read_pdf_file(file_path):
+    if file_path in pdf_cache:
+        return pdf_cache[file_path]
+    
     try:
         print(f"Attempting to read PDF file: {file_path}")
         doc = fitz.open(file_path)
         full_text = []
         for page in doc:
             full_text.append(page.get_text())
+        pdf_content = '\n'.join(full_text)
+        pdf_cache[file_path] = pdf_content
         print(f"Successfully read PDF file: {file_path}")
-        return '\n'.join(full_text)
+        return pdf_content
     except Exception as e:
         print(f"Error reading PDF file {file_path}: {e}")
         return ""
@@ -113,9 +121,14 @@ def process_document(args):
         print(f"Skipping unsupported file type: {file_path}")
         return None, None
     
-    splitter = TokenTextSplitter(chunk_size=chunk_size)
-    contents = splitter.split_text(text)
-    combined_text = ' '.join(contents)
+    if file_ext == '.pdf':
+        # Do not split PDF files into chunks
+        combined_text = text
+    else:
+        splitter = TokenTextSplitter(chunk_size=chunk_size)
+        contents = splitter.split_text(text)
+        combined_text = ' '.join(contents)
+    
     return Document(text=combined_text, metadata={'file_path': file_path}), file_path
 
 def load_documents_multiprocessing(path: str):
@@ -127,6 +140,9 @@ def load_documents_multiprocessing(path: str):
     for root, _, files in os.walk(path):
         for file in files:
             file_paths.append(os.path.join(root, file))
+    
+    # Limit to the first 10 files
+    file_paths = file_paths[:10]
     
     reader = SimpleDirectoryReader(input_files=file_paths).iter_data()
     
@@ -276,11 +292,20 @@ if __name__ == '__main__':
             json.dump(descriptions_and_embeddings_texts, f, indent=4)
         
         renamed_files = set()
+        processed_files = set()  # Set to keep track of processed files
         
         # Ensure the new directory exists
         os.makedirs(new_path, exist_ok=True)
         
+        # Counters for uploaded and generated files
+        uploaded_files_count = len(file_paths)
+        generated_files_count = 0
+        
         for image_path, data in descriptions_and_embeddings_images.items():
+            if image_path in processed_files:
+                continue  # Skip if the file has already been processed
+            processed_files.add(image_path)
+            
             print(f"Image: {image_path}")
             print(f"Description: {data['description']}")
             # Extract topic from description
@@ -300,10 +325,15 @@ if __name__ == '__main__':
             
             shutil.copy2(image_path, new_file_path)
             renamed_files.add(new_file_path)
+            generated_files_count += 1
             print(f"Copied and renamed to: {new_file_path}")
             print("-"*50)
         
         for text_data in descriptions_and_embeddings_texts:
+            if text_data['file_path'] in processed_files:
+                continue  # Skip if the file has already been processed
+            processed_files.add(text_data['file_path'])
+            
             print(f"File: {text_data['file_path']}")
             print(f"Description: {text_data['description']}")
             # Extract topic from description
@@ -323,8 +353,13 @@ if __name__ == '__main__':
             
             shutil.copy2(text_data['file_path'], new_file_path)
             renamed_files.add(new_file_path)
+            generated_files_count += 1
             print(f"Copied and renamed to: {new_file_path}")
             print("-"*50)
         
         print("Directory tree after copying and renaming:")
         print_tree_with_subprocess(new_path)
+        
+        # Print the counts
+        print(f"Number of files uploaded: {uploaded_files_count}")
+        print(f"Number of files generated after renaming: {generated_files_count}")
