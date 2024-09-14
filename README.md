@@ -136,6 +136,14 @@ CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp" pip install nexaai
 
 </details>
 
+#### GPU (ROCm)
+
+For **Linux**:
+
+```bash
+CMAKE_ARGS="-DGGML_HIPBLAS=on" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/rocm602 --extra-index-url https://pypi.org/simple --no-cache-dir
+```
+
 ### Local Build
 How to clone this repo
 ```bash
