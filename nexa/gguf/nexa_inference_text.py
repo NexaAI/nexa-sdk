@@ -28,7 +28,6 @@ class NexaTextInference:
 
     Methods:
         run: Run the text generation loop.
-        run_streamlit: Run the Streamlit UI.
         create_embedding: Embed a string.
         create_chat_completion: Generate completion for a chat conversation.
         create_completion: Generate completion for a given prompt.
@@ -38,7 +37,6 @@ class NexaTextInference:
     embedding (bool): Enable embedding generation.
     stop_words (list): List of stop words for early stopping.
     profiling (bool): Enable timing measurements for the generation process.
-    streamlit (bool): Run the inference in Streamlit UI.
     temperature (float): Temperature for sampling.
     max_new_tokens (int): Maximum number of new tokens to generate.
     top_k (int): Top-k sampling parameter.
@@ -75,13 +73,12 @@ class NexaTextInference:
             model_path, None
         )
 
-        if not kwargs.get("streamlit", False):
-            self._load_model()
-            if self.model is None:
-                logging.error(
-                    "Failed to load model or tokenizer. Exiting.", exc_info=True
-                )
-                exit(1)
+        self._load_model()
+        if self.model is None:
+            logging.error(
+                "Failed to load model or tokenizer. Exiting.", exc_info=True
+            )
+            exit(1)
 
     def create_embedding(
         self,
@@ -271,25 +268,6 @@ class NexaTextInference:
             top_logprobs=self.top_logprobs,
         )
 
-    def run_streamlit(self, model_path: str):
-        """
-        Used for CLI. Run the Streamlit UI.
-        """
-        logging.info("Running Streamlit UI...")
-
-        script_path = (
-            Path(os.path.abspath(__file__)).parent
-            / "streamlit"
-            / "streamlit_text_chat.py"
-        )
-
-        import sys
-
-        from streamlit.web import cli as stcli
-
-        sys.argv = ["streamlit", "run", str(script_path), model_path]
-        sys.exit(stcli.main())
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -329,26 +307,10 @@ if __name__ == "__main__":
         action="store_true",
         help="Enable timing measurements for the generation process",
     )
-    parser.add_argument(
-        "-st",
-        "--streamlit",
-        action="store_true",
-        help="Run the inference in Streamlit UI",
-    )
-    # parser.add_argument(
-    #     "-tlps",
-    #     "--top_logprobs",
-    #     type=int,
-    #     default=None,  # -tlps 5
-    #     help="Number of most likely tokens to return at each token position",
-    # )
     args = parser.parse_args()
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")
     stop_words = kwargs.pop("stop_words", [])
 
     inference = NexaTextInference(model_path, stop_words=stop_words, **kwargs)
-    if args.streamlit:
-        inference.run_streamlit(model_path)
-    else:
-        inference.run()
+    inference.run()

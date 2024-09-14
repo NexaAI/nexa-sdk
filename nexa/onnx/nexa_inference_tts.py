@@ -1,7 +1,6 @@
 import argparse
 import logging
 import os
-import sys
 import time
 from pathlib import Path
 
@@ -23,14 +22,12 @@ class NexaTTSInference:
 
     Methods:
         run: Run the text-to-speech generation loop.
-        run_streamlit: Run the Streamlit UI.
 
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.
     local_path (str): Local path of the model.
     output_dir (str): Output directory for tts.
     sampling_rate (int): Sampling rate for audio processing.
-    streamlit (bool): Run the inference in Streamlit UI.
     """
     
     def __init__(self, model_path, local_path=None, **kwargs):
@@ -111,20 +108,6 @@ class NexaTTSInference:
         file_path = os.path.join(output_path, file_name)
         sf.write(file_path, audio_data, sampling_rate)
 
-    def run_streamlit(self, model_path: str):
-        """
-        Run the Streamlit UI.
-        """
-        logging.info("Running Streamlit UI...")
-        from streamlit.web import cli as stcli
-
-        streamlit_script_path = (
-            Path(__file__).resolve().parent / "streamlit" / "streamlit_tts.py"
-        )
-
-        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path]
-        sys.exit(stcli.main())
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -142,12 +125,6 @@ if __name__ == "__main__":
         type=int,
         default=23000,
         help="Sampling rate for audio processing",
-    )
-    parser.add_argument(
-        "-st",
-        "--streamlit",
-        action="store_true",
-        help="Run the inference in Streamlit UI",
     )
 
     args = parser.parse_args()

@@ -17,7 +17,6 @@ from nexa.constants import (
 from nexa.utils import SpinningCursorAnimation, nexa_prompt
 from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
 
-from streamlit.web import cli as stcli
 from nexa.general import pull_model
 
 logging.basicConfig(
@@ -42,7 +41,6 @@ class NexaImageInference:
         img2img(image_path, prompt): Generate images from an image.
         run_txt2img: Run the text-to-image generation loop.
         run_img2img: Run the image-to-image generation loop.
-        run_streamlit: Run the Streamlit UI.
 
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.
@@ -53,8 +51,6 @@ class NexaImageInference:
     guidance_scale (float): Guidance scale for diffusion.
     output_path (str): Output path for the generated image.
     random_seed (int): Random seed for image generation.
-    streamlit (bool): Run the inference in Streamlit UI.
-
     """
 
     def __init__(self, model_path, local_path=None, **kwargs):
@@ -101,11 +97,10 @@ class NexaImageInference:
 
         self.params.update(kwargs)
 
-        if not kwargs.get("streamlit", False):
-            self._load_model(model_path)
-            if self.model is None:
-                logging.error("Failed to load the model or pipeline.")
-                exit(1)
+        self._load_model(model_path)
+        if self.model is None:
+            logging.error("Failed to load the model or pipeline.")
+            exit(1)
 
     @SpinningCursorAnimation()
     def _load_model(self, model_path: str):
@@ -277,22 +272,6 @@ class NexaImageInference:
             except Exception as e:
                 logging.error(f"Error during generation: {e}", exc_info=True)
 
-    def run_streamlit(self, model_path: str):
-        """
-        Run the Streamlit UI.
-        """
-        logging.info("Running Streamlit UI...")
-
-        streamlit_script_path = (
-            Path(os.path.abspath(__file__)).parent
-            / "streamlit"
-            / "streamlit_image_chat.py"
-        )
-
-        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path]
-        sys.exit(stcli.main())
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Run image generation with a specified model"
@@ -342,21 +321,11 @@ if __name__ == "__main__":
         default=0,
         help="Random seed for image generation",
     )
-    # parser.add_argument("--device", type=str, default='cuda' if torch.cuda.is_available() else 'cpu', help="Device to run the model on (default: cuda if available, else cpu)")
-    parser.add_argument(
-        "-st",
-        "--streamlit",
-        action="store_true",
-        help="Run the inference in Streamlit UI",
-    )
     args = parser.parse_args()
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")
     inference = NexaImageInference(model_path, **kwargs)
-    if args.streamlit:
-        inference.run_streamlit(model_path)
+    if args.img2img:
+        inference.run_img2img()
     else:
-        if args.img2img:
-            inference.run_img2img()
-        else:
-            inference.run_txt2img()
+        inference.run_txt2img()

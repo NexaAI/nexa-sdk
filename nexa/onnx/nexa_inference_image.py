@@ -2,7 +2,6 @@ import argparse
 import json
 import logging
 import os
-import sys
 import time
 from pathlib import Path
 
@@ -31,7 +30,6 @@ class NexaImageInference:
 
     Methods:
         run: Run the image generation loop.
-        run_streamlit: Run the Streamlit UI.
         generate_images: Generate images based on the given prompt, negative prompt, and parameters.
 
     Args:
@@ -44,7 +42,6 @@ class NexaImageInference:
     guidance_scale (float): Guidance scale for diffusion.
     output_path (str): Output path for the generated image. exapmle: generated_images/image.png
     random_seed (int): Random seed for image generation.
-    streamlit (bool): Run the inference in Streamlit UI.
     """
     def __init__(self, model_path, local_path=None, **kwargs):
         self.model_path = NEXA_RUN_MODEL_MAP_ONNX.get(model_path, model_path)
@@ -62,13 +59,12 @@ class NexaImageInference:
         self.pipeline = None
 
     def run(self):
-
         if self.download_onnx_folder is None:
             self.download_onnx_folder, run_type = pull_model(self.model_path)
 
         if self.download_onnx_folder is None:
             logging.error(
-                f"Model ({model_path}) is not applicable. Please refer to our docs for proper usage.",
+                f"Model ({self.model_path}) is not applicable. Please refer to our docs for proper usage.",
                 exc_info=True,
             )
             exit(1)
@@ -151,8 +147,6 @@ class NexaImageInference:
         images = self.pipeline(**pipeline_kwargs).images
         return images
 
-
-
     def _save_images(self, images):
         """
         Save the generated images to the specified output path.
@@ -165,20 +159,6 @@ class NexaImageInference:
             file_path = os.path.join(output_dir, file_name)
             image.save(file_path)
             print(f"Image {i+1} saved to: {file_path}")
-
-    def run_streamlit(self, model_path: str):
-        """
-        Run the Streamlit UI.
-        """
-        logging.info("Running Streamlit UI...")
-        from streamlit.web import cli as stcli
-
-        streamlit_script_path = (
-            Path(__file__).resolve().parent / "streamlit" / "streamlit_image_chat.py"
-        )
-
-        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path]
-        sys.exit(stcli.main())
 
 
 if __name__ == "__main__":
@@ -228,12 +208,6 @@ if __name__ == "__main__":
         type=int,
         default=0,
         help="Random seed for image generation",
-    )
-    parser.add_argument(
-        "-st",
-        "--streamlit",
-        action="store_true",
-        help="Run the inference in Streamlit UI",
     )
     args = parser.parse_args()
     kwargs = {k: v for k, v in vars(args).items() if v is not None}

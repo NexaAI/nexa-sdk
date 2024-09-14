@@ -24,8 +24,6 @@ dependencies = [
     "prompt_toolkit",
     "tqdm",                     # Shared dependencies
     "tabulate",
-    "streamlit>=1.37.1",
-    "streamlit-audiorec",
     "python-multipart",
     "cmake",
 ]
@@ -72,10 +70,8 @@ wheel.packages = [
     "nexa.gguf",
     "nexa.gguf.llama",
     "nexa.gguf.sd",
-    "nexa.gguf.streamlit",
     "nexa.gguf.server",
     "nexa.onnx",
-    "nexa.onnx.streamlit",
     "nexa.onnx.server",
 ]
 sdist.include = [

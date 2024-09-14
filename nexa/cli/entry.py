@@ -22,9 +22,7 @@ def run_ggml_inference(args):
         elif run_type == "Computer Vision":
             from nexa.gguf.nexa_inference_image import NexaImageInference
             inference = NexaImageInference(model_path=model_path, local_path=local_path, **kwargs)
-            if hasattr(args, 'streamlit') and args.streamlit:
-                inference.run_streamlit(model_path)
-            elif args.img2img:
+            if args.img2img:
                 inference.run_img2img()
             else:
                 inference.run_txt2img()
@@ -42,10 +40,7 @@ def run_ggml_inference(args):
         print(f"Error loading GGUF models, please refer to our docs to install nexaai package: https://docs.nexaai.com/getting-started/installation ")
         return
 
-    if hasattr(args, 'streamlit') and args.streamlit:
-        inference.run_streamlit(model_path)
-    else:
-        inference.run()
+    inference.run()
 
 def run_onnx_inference(args):
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
@@ -74,10 +69,7 @@ def run_onnx_inference(args):
         print(f"Error loading ONNX models, please refer to our docs to install nexaai[onnx] package: https://docs.nexaai.com/getting-started/installation ")
         return
 
-    if hasattr(args, 'streamlit') and args.streamlit:
-        inference.run_streamlit(model_path)
-    else:
-        inference.run()
+    inference.run()
 
 def main():
     parser = argparse.ArgumentParser(
@@ -97,7 +89,6 @@ def main():
     # Run command
     run_parser = subparsers.add_parser("run", help="Run inference for various tasks using GGUF models.")
     run_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
-    run_parser.add_argument("-st", "--streamlit", action="store_true", help="Run the inference in Streamlit UI")
     run_parser.add_argument("-pf", "--profiling", action="store_true", help="Enable profiling logs for the inference process")
 
     # Text generation/vlm arguments
@@ -133,7 +124,6 @@ def main():
     # ONNX command
     onnx_parser = subparsers.add_parser("onnx", help="Run inference for various tasks using ONNX models.")
     onnx_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
-    onnx_parser.add_argument("-st", "--streamlit", action="store_true", help="Run the inference in Streamlit UI")
 
     # ONNX Text generation arguments
     onnx_text_group = onnx_parser.add_argument_group('Text generation options')
@@ -174,7 +164,6 @@ def main():
     subparsers.add_parser("login", help="Login to Nexa API.")
     subparsers.add_parser("whoami", help="Show current user information.")
     subparsers.add_parser("logout", help="Logout from Nexa API.")
-
 
     args = parser.parse_args()
 

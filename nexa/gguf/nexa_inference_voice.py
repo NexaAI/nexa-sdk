@@ -1,7 +1,6 @@
 import argparse
 import logging
 import os
-import sys
 import time
 from pathlib import Path
 
@@ -23,7 +22,6 @@ class NexaVoiceInference:
 
     Methods:
       run: Run the voice transcription loop.
-      run_streamlit: Run the Streamlit UI.
       transcribe: Transcribe the audio file.
 
     Args:
@@ -56,14 +54,12 @@ class NexaVoiceInference:
         self.params.update(kwargs)
         self.model = None
 
-        if not kwargs.get("streamlit", False):
-            self._load_model()
-            if self.model is None:
-                logging.error(
-                    "Failed to load model, Exiting.", exc_info=True
-                )
-                exit(1)
-
+        self._load_model()
+        if self.model is None:
+            logging.error(
+                "Failed to load model, Exiting.", exc_info=True
+            )
+            exit(1)
 
     @SpinningCursorAnimation()
     def _load_model(self):
@@ -169,7 +165,6 @@ class NexaVoiceInference:
             **kwargs,
         )
 
-
     def _transcribe_audio(self, audio_path):
         logging.debug(f"Transcribing audio from: {audio_path}")
         try:
@@ -203,20 +198,6 @@ class NexaVoiceInference:
 
         logging.info(f"Transcription saved to: {output_path}")
         return output_path
-
-    def run_streamlit(self, model_path: str):
-        """
-        Run the Streamlit UI.
-        """
-        logging.info("Running Streamlit UI...")
-        from streamlit.web import cli as stcli
-
-        streamlit_script_path = (
-            Path(__file__).resolve().parent / "streamlit" / "streamlit_voice_chat.py"
-        )
-
-        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path]
-        sys.exit(stcli.main())
 
 
 if __name__ == "__main__":
@@ -267,17 +248,8 @@ if __name__ == "__main__":
         default="default",
         help="Type to use for computation (e.g., float16, int8, int8_float16)",
     )
-    parser.add_argument(
-        "-st",
-        "--streamlit",
-        action="store_true",
-        help="Run the inference in Streamlit UI",
-    )
     args = parser.parse_args()
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")
     inference = NexaVoiceInference(model_path, **kwargs)
-    if args.streamlit:
-        inference.run_streamlit(model_path)
-    else:
-        inference.run()
+    inference.run()
