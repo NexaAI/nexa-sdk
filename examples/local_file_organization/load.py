@@ -220,10 +220,13 @@ def get_descriptions_and_embeddings_for_texts(text_tuples):
     return results
 
 def extract_topic(description):
-    # Extract the main topic from the description
-    # For simplicity, let's assume the topic is the first word of the description
-    topic = description.split()[0]
-    return topic
+    # Use VLMInference to extract the main topic from the description
+    topic_generator = inference._chat(
+        "Please provide the main topic of the following description in a single word or short phrase.",
+        description
+    )
+    topic = get_response_text_from_generator(topic_generator)
+    return topic.strip()
 
 def create_directory_structure(base_path, topic):
     # Create a directory structure based on the topic
@@ -232,8 +235,8 @@ def create_directory_structure(base_path, topic):
     return dir_path
 
 if __name__ == '__main__':
-    path = "/Users/q/nexa_test/llama-fs/sample_data"
-    new_path = "/Users/q/nexa_test/llama-fs/renamed_files"
+    path = "/Users/q/nexa/nexa_sdk_local_file_organization/nexa-sdk/examples/local_file_organization/sample_data"
+    new_path = "/Users/q/nexa/nexa_sdk_local_file_organization/nexa-sdk/examples/local_file_organization/renamed_files"
     
     if not os.path.exists(path):
         print(f"Directory {path} does not exist. Please create it and add the necessary files.")
