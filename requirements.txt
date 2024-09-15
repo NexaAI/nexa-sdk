@@ -34,3 +34,6 @@ ttstokenizer
 prompt_toolkit
 tqdm
 tabulate
+
+# For building executables
+pyinstaller
