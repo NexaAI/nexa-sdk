@@ -210,7 +210,7 @@ def pull_model_from_official(model_path):
 
 
 def get_run_type_from_model_path(model_path):
-    model_name, model_version = model_path.split(":")
+    model_name, _ = model_path.split(":")
     return NEXA_OFFICIAL_MODELS_TYPE.get(model_name, ModelType.NLP).value
 
 
