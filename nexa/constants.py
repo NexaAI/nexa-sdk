@@ -186,12 +186,28 @@ NEXA_RUN_MODEL_MAP = {
 
 NEXA_RUN_CHAT_TEMPLATE_MAP = {
     "llama2": "llama-2",
+    "llama-2-7b-chat": "llama-2",
     "llama3": "llama-3",
+    "meta-llama-3-8b-instruct": "llama-3",
     "llama3.1": "llama-3",
+    "meta-llama-3.1-8b-instruct": "llama-3",
     "gemma": "gemma",
+    "gemma-1.1-2b-instruct": "gemma",
+    "gemma-1.1-7b-instruct": "gemma",
+    "gemma-2b-instruct": "gemma",
+    "gemma-7b-instruct": "gemma",
+    "gemma-2-2b-instruct": "gemma",
+    "gemma-2-9b-instruct": "gemma",
     "qwen1.5": "qwen",
+    "qwen1.5-7b-instruct": "qwen",
+    "codeqwen1.5-7b-instruct": "qwen",
     "qwen2": "qwen",
+    "qwen2-0.5b-instruct": "qwen",
+    "qwen2-1.5b-instruct": "qwen",
+    "qwen2-7b-instruct": "qwen",
     "mistral": "mistral-instruct",
+    "mistral-7b-instruct-v0.3": "mistral-instruct",
+    "mistral-7b-instruct-v0.2": "mistral-instruct",
 }
 
 NEXA_RUN_COMPLETION_TEMPLATE_MAP = {
