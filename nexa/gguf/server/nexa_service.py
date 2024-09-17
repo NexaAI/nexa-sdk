@@ -58,7 +58,7 @@ class GenerationRequest(BaseModel):
     max_new_tokens: int = 128
     top_k: int = 50
     top_p: float = 1.0
-    stop_words: Optional[List[str]] = None
+    stop_words: Optional[List[str]] = []
     logprobs: Optional[bool] = False
     top_logprobs: Optional[int] = 4
 
@@ -92,8 +92,9 @@ async def load_model():
 
                 logging.info(f"model loaded as {model}")
         else:
-            chat_format = NEXA_RUN_CHAT_TEMPLATE_MAP.get(model_path, None)
-            completion_template = NEXA_RUN_COMPLETION_TEMPLATE_MAP.get(model_path, None)
+            model_name = model_path.split(":")[0].lower()
+            chat_format = NEXA_RUN_CHAT_TEMPLATE_MAP.get(model_name, None)
+            completion_template = NEXA_RUN_COMPLETION_TEMPLATE_MAP.get(model_name, None)
             with suppress_stdout_stderr():
                 try:
                     model = Llama(
@@ -185,9 +186,13 @@ async def nexa_run_text_generation(
                             logprobs_or_none[key].extend(chunk["choices"][0]["logprobs"][key])  # accumulate data from each chunk
 
     else:
-        prompt = completion_template.format(prompt) if completion_template else prompt
+        if completion_template:
+            formatted_prompt = completion_template.format(input=prompt)
+        else:
+            formatted_prompt = prompt
+
         streamer = model.create_completion(
-            prompt=prompt,
+            prompt=formatted_prompt,
             temperature=temperature,
             max_tokens=max_new_tokens,
             top_k=top_k,
@@ -229,14 +234,14 @@ async def read_root(request: Request):
 
 @app.post("/v1/completions")
 async def generate_text(request: GenerationRequest):
-    logging.info(f"[/v1/completions] Request logprobs: {request.logprobs}, top_logprobs: {request.top_logprobs}")
+
     try:
         result = await nexa_run_text_generation(**request.dict())
 
         return JSONResponse(content={
             "choices": [{
                 "text": result["result"],
-                "logprobs": result["logprobs"]
+                "logprobs": result.get("logprobs")
             }]
         })
     except Exception as e:
@@ -418,7 +423,6 @@ async def img2img(request: ImageGenerationRequest):
 
 @app.post("/v1/chat/completions")
 async def chat_completions(request: ChatCompletionRequest):
-    logging.info(f"[/v1/chat/completions] Request logprobs: {request.logprobs}, top_logprobs: {request.top_logprobs}")
     try:
         generation_kwargs = GenerationRequest(
             prompt="" if len(request.messages) == 0 else request.messages[-1].content,
