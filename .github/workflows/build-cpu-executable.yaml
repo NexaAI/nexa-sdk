@@ -49,34 +49,35 @@ jobs:
     - name: Install nexaai
       run: pip install -e . --verbose --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cpu --extra-index-url https://pypi.org/simple --no-cache-dir
 
-    - name: Create version extraction script (Windows)
+    - name: Create and run version extraction script (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
-        Add-Content extract_version.py "import re"
-        Add-Content extract_version.py "import sys"
-        Add-Content extract_version.py "with open('nexa/__init__.py', 'r') as f:"
-        Add-Content extract_version.py "    content = f.read()"
-        Add-Content extract_version.py "match = re.search(r'^__version__\\s*=\\s*[\'\""]([^\'\""]*)[\'\""]', content, re.MULTILINE)"
-        Add-Content extract_version.py "if match:"
-        Add-Content extract_version.py "    print(match.group(1))"
-        Add-Content extract_version.py "else:"
-        Add-Content extract_version.py "    print('Version not found', file=sys.stderr)"
-        Add-Content extract_version.py "    sys.exit(1)"
+        Add-Content extract_version.py @"
+        import re
+        import sys
+        with open('nexa/__init__.py', 'r') as f:
+            content = f.read()
+        match = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', content, re.MULTILINE)
+        if match:
+            print(match.group(1))
+        else:
+            print('Version not found', file=sys.stderr)
+            sys.exit(1)
+        "@
+        $VERSION = python extract_version.py
+        if ($LASTEXITCODE -eq 0) {
+            echo "VERSION=$VERSION" >> $env:GITHUB_ENV
+            Write-Output "Version extracted: $VERSION"
+        } else {
+            Write-Error "Failed to extract version"
+            exit 1
+        }
 
-    - name: Create version extraction script (Unix)
-      if: runner.os != 'Windows'
+    - name: Extract version (Unix)
       run: |
-        echo "import re" > extract_version.py
-        echo "import sys" >> extract_version.py
-        echo "with open('nexa/__init__.py', 'r') as f:" >> extract_version.py
-        echo "    content = f.read()" >> extract_version.py
-        echo "match = re.search(r'^__version__\\s*=\\s*[\'\""]([^\'\""]*)[\'\""]', content, re.MULTILINE)" >> extract_version.py
-        echo "if match:" >> extract_version.py
-        echo "    print(match.group(1))" >> extract_version.py
-        echo "else:" >> extract_version.py
-        echo "    print('Version not found', file=sys.stderr)" >> extract_version.py
-        echo "    sys.exit(1)" >> extract_version.py
+        VERSION=$(python -c "import re; print(re.search(r'__version__\s*=\s*[\'\"](.*?)[\'\"]', open('nexa/__init__.py').read()).group(1))")
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
 
     - name: Build with PyInstaller
       run: pyinstaller entry.spec
