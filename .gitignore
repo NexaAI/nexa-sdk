@@ -87,3 +87,9 @@ build_*/
 
 # Other
 .cache/
+
+# Upload to s3 util script
+s3_utils.py
+
+# Packaged executables
+*.tar.gz
