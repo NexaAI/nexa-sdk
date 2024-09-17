@@ -49,7 +49,15 @@ jobs:
     - name: Install nexaai
       run: pip install -e . --verbose --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cpu --extra-index-url https://pypi.org/simple --no-cache-dir
 
-    - name: Extract version
+    - name: Extract version (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $VERSION = python -c "import re; print(re.search(r'__version__\s*=\s*[''""](.*?)[''""']', open('nexa/__init__.py').read()).group(1))"
+        echo "VERSION=$VERSION" >> $env:GITHUB_ENV
+
+    - name: Extract version (Unix)
+      if: runner.os != 'Windows'
       run: |
         VERSION=$(python -c "import re; print(re.search(r'__version__\s*=\s*[\'\"](.*?)[\'\"]', open('nexa/__init__.py').read()).group(1))")
         echo "VERSION=$VERSION" >> $GITHUB_ENV
