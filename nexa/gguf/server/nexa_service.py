@@ -44,7 +44,6 @@ app.add_middleware(
 )
 
 model = None
-is_chat_mode = False
 chat_format = None
 completion_template = None
 hostname = socket.gethostname()
@@ -218,9 +217,6 @@ async def nexa_run_text_generation(
                     for key in logprobs_or_none:  # tokens, token_logprobs, top_logprobs, text_offset
                         if key in chunk["choices"][0]["logprobs"]:
                             logprobs_or_none[key].extend(chunk["choices"][0]["logprobs"][key])  # accumulate data from each chunk
-
-    if is_chat_mode:
-        conversation_history.append({"role": "assistant", "content": generated_text})
 
     result = {
         "result": generated_text,
