@@ -15,10 +15,10 @@ jobs:
         python-version: [3.11]
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     
@@ -58,7 +58,7 @@ jobs:
         cd ..
     
     - name: Upload artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: nexa-${{ env.VERSION }}-cpu-${{ runner.os }}-amd64
         path: dist/nexa-${{ env.VERSION }}-cpu-*-amd64.*
