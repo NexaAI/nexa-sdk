@@ -1,13 +1,21 @@
 # -*- mode: python ; coding: utf-8 -*-
+import sys
 
+# Determine the correct file extension based on the operating system
+if sys.platform.startswith('win'):
+    lib_extension = '.dll'
+elif sys.platform.startswith('darwin'):
+    lib_extension = '.dylib'
+else:  # Linux and other Unix-like systems
+    lib_extension = '.so'
 
 a = Analysis(['./nexa/cli/entry.py'],
              pathex=[],
              binaries=[
-                 ('./nexa/gguf/lib/libggml_llama.so', './nexa/gguf/lib'),
-                 ('./nexa/gguf/lib/libllama.so', './nexa/gguf/lib'),
-                 ('./nexa/gguf/lib/libllava.so', './nexa/gguf/lib'),
-                 ('./nexa/gguf/lib/libstable-diffusion.so', './nexa/gguf/lib')
+                 (f'./nexa/gguf/lib/libggml_llama{lib_extension}', './nexa/gguf/lib'),
+                 (f'./nexa/gguf/lib/libllama{lib_extension}', './nexa/gguf/lib'),
+                 (f'./nexa/gguf/lib/libllava{lib_extension}', './nexa/gguf/lib'),
+                 (f'./nexa/gguf/lib/libstable-diffusion{lib_extension}', './nexa/gguf/lib')
              ],
              datas=[],
              hiddenimports=[],
@@ -18,6 +26,7 @@ a = Analysis(['./nexa/cli/entry.py'],
              win_private_assemblies=False,
              cipher=None,
              noarchive=False)
+
 pyz = PYZ(a.pure)
 
 exe = EXE(
@@ -37,6 +46,7 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
 )
+
 coll = COLLECT(
     exe,
     a.binaries,
