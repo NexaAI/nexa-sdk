@@ -3,20 +3,25 @@ import sys
 
 # Determine the correct file extension based on the operating system
 if sys.platform.startswith('win'):
-    lib_extension = '.dll'
+    lib_extensions = ['.dll', '.lib']
 elif sys.platform.startswith('darwin'):
-    lib_extension = '.dylib'
+    lib_extensions = ['.dylib']
 else:  # Linux and other Unix-like systems
-    lib_extension = '.so'
+    lib_extensions = ['.so']
+
+binaries = []
+
+if sys.platform.startswith('win'):
+    for lib_name in ['ggml_llama', 'llama', 'llava', 'stable-diffusion']:
+        for ext in lib_extensions:
+            binaries.append((f'./nexa/gguf/lib/{lib_name}{ext}', './nexa/gguf/lib'))
+else:
+    for lib_name in ['libggml_llama', 'libllama', 'libllava', 'libstable-diffusion']:
+        binaries.append((f'./nexa/gguf/lib/{lib_name}{lib_extensions[0]}', './nexa/gguf/lib'))
 
 a = Analysis(['./nexa/cli/entry.py'],
              pathex=[],
-             binaries=[
-                 (f'./nexa/gguf/lib/libggml_llama{lib_extension}', './nexa/gguf/lib'),
-                 (f'./nexa/gguf/lib/libllama{lib_extension}', './nexa/gguf/lib'),
-                 (f'./nexa/gguf/lib/libllava{lib_extension}', './nexa/gguf/lib'),
-                 (f'./nexa/gguf/lib/libstable-diffusion{lib_extension}', './nexa/gguf/lib')
-             ],
+             binaries=binaries,
              datas=[],
              hiddenimports=[],
              hookspath=[],
