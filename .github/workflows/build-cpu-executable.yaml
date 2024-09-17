@@ -55,7 +55,7 @@ jobs:
         touch dependency/llama.cpp/examples/llava/CMakeLists.txt
 
     - name: Install nexaai
-      run: pip install . --verbose
+      run: pip install -e .
 
     - name: Extract version
       run: |
