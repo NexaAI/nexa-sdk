@@ -51,16 +51,16 @@ jobs:
 
     - name: Create version extraction script
       run: |
-        echo "import re
-        import sys
-        with open('nexa/__init__.py', 'r') as f:
-            content = f.read()
-        match = re.search(r'^__version__\s*=\s*[\'\"']([^\'\""]*)[\'\"']', content, re.MULTILINE)
-        if match:
-            print(match.group(1))
-        else:
-            print('Version not found', file=sys.stderr)
-            sys.exit(1)" > extract_version.py
+        echo 'import re
+import sys
+with open("nexa/__init__.py", "r") as f:
+    content = f.read()
+match = re.search(r"^__version__\s*=\s*[\'\"]([^\'\"]*)[\'\"]", content, re.MULTILINE)
+if match:
+    print(match.group(1))
+else:
+    print("Version not found", file=sys.stderr)
+    sys.exit(1)' > extract_version.py
 
     - name: Extract version (Windows)
       if: runner.os == 'Windows'
@@ -74,6 +74,7 @@ jobs:
       run: |
         VERSION=$(python extract_version.py)
         echo "VERSION=$VERSION" >> $GITHUB_ENV
+
 
     - name: Build with PyInstaller
       run: pyinstaller entry.spec
