@@ -51,6 +51,7 @@ hostname = socket.gethostname()
 conversation_history = [{"role": "system", "content": "You are a helpful assistant"}]
 function_call_system_prompt = [{"role": "system", "content": "A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions. The assistant calls functions with appropriate input when necessary"}]
 model_path = None
+n_ctx = None
 
 class GenerationRequest(BaseModel):
     prompt: str = "Tell me a story"
@@ -63,9 +64,9 @@ class GenerationRequest(BaseModel):
     top_logprobs: Optional[int] = 4
 
 async def load_model():
-    global model, chat_format, completion_template, model_path
+    global model, chat_format, completion_template, model_path, n_ctx
     downloaded_path, run_type = pull_model(model_path)
-
+    print("n_ctx", n_ctx)
     if run_type == "NLP":
         if model_path in NEXA_RUN_MODEL_MAP_FUNCTION_CALLING:
             chat_format = "chatml-function-calling"
@@ -76,7 +77,8 @@ async def load_model():
                         verbose=False,
                         chat_format=chat_format,
                         n_gpu_layers=-1 if is_gpu_available() else 0,
-                        logits_all=True
+                        logits_all=True,
+                        n_ctx=n_ctx
                     )
                 except Exception as e:
                     logging.error(
@@ -87,7 +89,8 @@ async def load_model():
                         verbose=False,
                         chat_format=chat_format,
                         n_gpu_layers=0,  # hardcode to use CPU,
-                        logits_all=True
+                        logits_all=True,
+                        n_ctx=n_ctx
                     )
 
                 logging.info(f"model loaded as {model}")
@@ -102,7 +105,8 @@ async def load_model():
                         verbose=False,
                         chat_format=chat_format,
                         n_gpu_layers=-1 if is_gpu_available() else 0,
-                        logits_all=True  # switch on
+                        logits_all=True,
+                        n_ctx=n_ctx
                     )
                 except Exception as e:
                     logging.error(
@@ -113,7 +117,8 @@ async def load_model():
                         verbose=False,
                         chat_format=chat_format,
                         n_gpu_layers=0,  # hardcode to use CPU
-                        logits_all=True
+                        logits_all=True,
+                        n_ctx=n_ctx
                     )
                 logging.info(f"model loaded as {model}")
     elif run_type == "Computer Vision":
@@ -534,9 +539,10 @@ async def translate_audio(
 
 
 def run_nexa_ai_service(model_path_arg, **kwargs):
-    global model_path
+    global model_path, n_ctx
     model_path = model_path_arg or "gemma"
     os.environ["MODEL_PATH"] = model_path
+    n_ctx = kwargs.get("nctx", 2048)
     host = kwargs.get("host", "0.0.0.0")
     port = kwargs.get("port", 8000)
     reload = kwargs.get("reload", False)
@@ -549,6 +555,9 @@ if __name__ == "__main__":
     )
     parser.add_argument("model_path", type=str, nargs='?', default="gemma", help="Folder Path on Amazon S3")
     parser.add_argument(
+        "--nctx", type=int, default=2048, help="Length of context window"
+    )
+    parser.add_argument(
         "--host", type=str, default="0.0.0.0", help="Host to bind the server to"
     )
     parser.add_argument(
@@ -560,4 +569,4 @@ if __name__ == "__main__":
         help="Enable automatic reloading on code changes",
     )
     args = parser.parse_args()
-    run_nexa_ai_service(args.model_path, host=args.host, port=args.port, reload=args.reload)
+    run_nexa_ai_service(args.model_path, nctx=args.nctx, host=args.host, port=args.port, reload=args.reload)
