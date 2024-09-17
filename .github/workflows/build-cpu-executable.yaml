@@ -83,6 +83,7 @@ jobs:
       continue-on-error: true
 
     - name: Extract version (Unix)
+      if: runner.os != 'Windows'
       run: |
         VERSION=$(python -c "import re; print(re.search(r'__version__\s*=\s*[\'\"](.*?)[\'\"]', open('nexa/__init__.py').read()).group(1))")
         echo "VERSION=$VERSION" >> $GITHUB_ENV
