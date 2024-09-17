@@ -18,11 +18,8 @@ from pydantic import BaseModel
 from nexa.constants import (
     NEXA_RUN_CHAT_TEMPLATE_MAP,
     NEXA_RUN_COMPLETION_TEMPLATE_MAP,
-    NEXA_RUN_MODEL_MAP_TEXT,
-    NEXA_RUN_MODEL_MAP_IMAGE,
     NEXA_RUN_MODEL_PRECISION_MAP,
     NEXA_RUN_MODEL_MAP_FUNCTION_CALLING,
-    NEXA_RUN_MODEL_MAP_VOICE,
 )
 from nexa.gguf.lib_utils import is_gpu_available
 from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
