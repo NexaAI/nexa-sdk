@@ -45,14 +45,14 @@ jobs:
         python -m pip install --upgrade pip
         pip install pyinstaller wheel setuptools scikit-build-core
 
-    - name: Prepare build environment
-      run: |
-        mkdir -p dependency/stable-diffusion.cpp
-        mkdir -p dependency/llama.cpp
-        mkdir -p dependency/llama.cpp/examples/llava
-        touch dependency/stable-diffusion.cpp/CMakeLists.txt
-        touch dependency/llama.cpp/CMakeLists.txt
-        touch dependency/llama.cpp/examples/llava/CMakeLists.txt
+    # - name: Prepare build environment
+    #   run: |
+    #     mkdir -p dependency/stable-diffusion.cpp
+    #     mkdir -p dependency/llama.cpp
+    #     mkdir -p dependency/llama.cpp/examples/llava
+    #     touch dependency/stable-diffusion.cpp/CMakeLists.txt
+    #     touch dependency/llama.cpp/CMakeLists.txt
+    #     touch dependency/llama.cpp/examples/llava/CMakeLists.txt
 
     - name: Install nexaai
       run: pip install -e .
