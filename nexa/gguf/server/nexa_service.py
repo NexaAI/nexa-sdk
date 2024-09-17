@@ -66,7 +66,6 @@ class GenerationRequest(BaseModel):
 async def load_model():
     global model, chat_format, completion_template, model_path, n_ctx
     downloaded_path, run_type = pull_model(model_path)
-    print("n_ctx", n_ctx)
     if run_type == "NLP":
         if model_path in NEXA_RUN_MODEL_MAP_FUNCTION_CALLING:
             chat_format = "chatml-function-calling"
