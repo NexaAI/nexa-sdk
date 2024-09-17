@@ -16,47 +16,76 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
     
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     
-    - name: Install dependencies
+    - name: Install system dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake
+
+    - name: Install system dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install cmake
+
+    - name: Install system dependencies (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        choco install cmake
+
+    - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pyinstaller
-        pip install .
-    
+        pip install pyinstaller wheel setuptools scikit-build-core
+
+    - name: Prepare build environment
+      run: |
+        mkdir -p dependency/stable-diffusion.cpp
+        mkdir -p dependency/llama.cpp
+        mkdir -p dependency/llama.cpp/examples/llava
+        touch dependency/stable-diffusion.cpp/CMakeLists.txt
+        touch dependency/llama.cpp/CMakeLists.txt
+        touch dependency/llama.cpp/examples/llava/CMakeLists.txt
+
+    - name: Install nexaai
+      run: pip install . --verbose
+
     - name: Extract version
       run: |
         VERSION=$(python -c "import re; print(re.search(r'__version__\s*=\s*[\'\"](.*?)[\'\"]', open('nexa/__init__.py').read()).group(1))")
         echo "VERSION=$VERSION" >> $GITHUB_ENV
-    
+
     - name: Build with PyInstaller
-      run: pyinstaller nexa.spec
-    
+      run: pyinstaller entry.spec
+
     - name: Package (Linux)
       if: runner.os == 'Linux'
       run: |
         cd dist
         tar -czvf nexa-${{ env.VERSION }}-cpu-linux-amd64.tar.gz nexa
         cd ..
-    
+
     - name: Package (macOS)
       if: runner.os == 'macOS'
       run: |
         cd dist
         tar -czvf nexa-${{ env.VERSION }}-cpu-macos-amd64.tar.gz nexa
         cd ..
-    
+
     - name: Package (Windows)
       if: runner.os == 'Windows'
       run: |
         cd dist
         7z a -tzip nexa-${{ env.VERSION }}-cpu-windows-amd64.zip nexa
         cd ..
-    
+
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
