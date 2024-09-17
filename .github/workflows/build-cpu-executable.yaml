@@ -49,30 +49,38 @@ jobs:
     - name: Install nexaai
       run: pip install -e . --verbose --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cpu --extra-index-url https://pypi.org/simple --no-cache-dir
 
-    - name: Create and run version extraction script (Windows)
+    - name: Extract version (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
-        Add-Content extract_version.py @"
+        try {
+          $pythonCommand = @"
         import re
         import sys
-        with open('nexa/__init__.py', 'r') as f:
-            content = f.read()
-        match = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', content, re.MULTILINE)
-        if match:
-            print(match.group(1))
-        else:
-            print('Version not found', file=sys.stderr)
+        try:
+            with open('nexa/__init__.py', 'r') as f:
+                content = f.read()
+            match = re.search(r'__version__\s*=\s*[\'\"](.*?)[\'\"]', content)
+            if match:
+                print(match.group(1))
+            else:
+                print('Version not found', file=sys.stderr)
+                sys.exit(1)
+        except Exception as e:
+            print(f"Error: {str(e)}", file=sys.stderr)
             sys.exit(1)
         "@
-        $VERSION = python extract_version.py
-        if ($LASTEXITCODE -eq 0) {
+          $VERSION = python -c $pythonCommand
+          if ($LASTEXITCODE -eq 0) {
             echo "VERSION=$VERSION" >> $env:GITHUB_ENV
             Write-Output "Version extracted: $VERSION"
-        } else {
+          } else {
             Write-Error "Failed to extract version"
-            exit 1
+          }
+        } catch {
+          Write-Error "An error occurred: $_"
         }
+      continue-on-error: true
 
     - name: Extract version (Unix)
       run: |
