@@ -1,7 +1,6 @@
 import argparse
 import logging
 import os
-import sys
 import time
 from pathlib import Path
 
@@ -22,14 +21,12 @@ class NexaVoiceInference:
 
     Methods:
     run: Run the voice transcription loop.
-    run_streamlit: Run the Streamlit UI.
 
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.
     local_path (str): Local path of the model.
     output_dir (str): Output directory for transcriptions.
     sampling_rate (int): Sampling rate for audio processing.
-    streamlit (bool): Run the inference in Streamlit UI.
     """
 
     def __init__(self, model_path, local_path=None, **kwargs):
@@ -46,7 +43,7 @@ class NexaVoiceInference:
 
         if self.downloaded_onnx_folder is None:
             logging.error(
-                f"Model ({model_path}) is not applicable. Please refer to our docs for proper usage.",
+                f"Model ({self.model_path}) is not applicable. Please refer to our docs for proper usage.",
                 exc_info=True,
             )
             exit(1)
@@ -122,20 +119,6 @@ class NexaVoiceInference:
         logging.info(f"Transcription saved to: {output_path}")
         return output_path
 
-    def run_streamlit(self, model_path: str):
-        """
-        Run the Streamlit UI.
-        """
-        logging.info("Running Streamlit UI...")
-        from streamlit.web import cli as stcli
-
-        streamlit_script_path = (
-            Path(__file__).resolve().parent / "streamlit" / "streamlit_voice_chat.py"
-        )
-
-        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path]
-        sys.exit(stcli.main())
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -157,12 +140,6 @@ if __name__ == "__main__":
         type=int,
         default=16000,
         help="Sampling rate for audio processing",
-    )
-    parser.add_argument(
-        "-st",
-        "--streamlit",
-        action="store_true",
-        help="Run the inference in Streamlit UI",
     )
     args = parser.parse_args()
     kwargs = {k: v for k, v in vars(args).items() if v is not None}

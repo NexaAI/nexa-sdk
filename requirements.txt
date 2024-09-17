@@ -27,7 +27,6 @@ PyYAML
 requests
 setuptools
 soundfile
-streamlit-audiorec
 transformers
 ttstokenizer
 
@@ -35,4 +34,6 @@ ttstokenizer
 prompt_toolkit
 tqdm
 tabulate
-streamlit
+
+# For building executables
+pyinstaller

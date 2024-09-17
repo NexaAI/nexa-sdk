@@ -9,8 +9,6 @@ import time
 from pathlib import Path
 from typing import Iterator, List, Union
 
-from streamlit.web import cli as stcli
-
 from nexa.constants import (
     DEFAULT_TEXT_GEN_PARAMS,
     NEXA_RUN_CHAT_TEMPLATE_MAP,
@@ -75,7 +73,6 @@ class NexaVLMInference:
 
     Methods:
         run: Run the text generation loop.
-        run_streamlit: Run the Streamlit UI.
         create_chat_completion: Generate text completion for a given chat prompt.
 
     Args:
@@ -83,7 +80,6 @@ class NexaVLMInference:
     local_path (str): Local path of the model.
     stop_words (list): List of stop words for early stopping.
     profiling (bool): Enable timing measurements for the generation process.
-    streamlit (bool): Run the inference in Streamlit UI.
     temperature (float): Temperature for sampling.
     max_new_tokens (int): Maximum number of new tokens to generate.
     top_k (int): Top-k sampling parameter.
@@ -138,13 +134,12 @@ class NexaVLMInference:
 
         self.chat_format = NEXA_RUN_CHAT_TEMPLATE_MAP.get(model_path, None)
 
-        if not kwargs.get("streamlit", False):
-            self._load_model()
-            if self.model is None:
-                logging.error(
-                    "Failed to load model or tokenizer. Exiting.", exc_info=True
-                )
-                exit(1)
+        self._load_model()
+        if self.model is None:
+            logging.error(
+                "Failed to load model or tokenizer. Exiting.", exc_info=True
+            )
+            exit(1)
 
     @SpinningCursorAnimation()
     def _load_model(self):
@@ -327,16 +322,6 @@ class NexaVLMInference:
             stop=self.stop_words,
         )
 
-    def run_streamlit(self, model_path: str):
-        logging.info("Running Streamlit UI...")
-
-        streamlit_script_path = (
-            Path(os.path.abspath(__file__)).parent / "streamlit" / "streamlit_vlm.py"
-        )
-
-        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path]
-        sys.exit(stcli.main())
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -376,18 +361,9 @@ if __name__ == "__main__":
         action="store_true",
         help="Enable timing measurements for the generation process",
     )
-    parser.add_argument(
-        "-st",
-        "--streamlit",
-        action="store_true",
-        help="Run the inference in Streamlit UI",
-    )
     args = parser.parse_args()
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")
     stop_words = kwargs.pop("stop_words", [])
     inference = NexaVLMInference(model_path, stop_words=stop_words, **kwargs)
-    if args.streamlit:
-        inference.run_streamlit(model_path)
-    else:
-        inference.run()
+    inference.run()

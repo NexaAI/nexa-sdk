@@ -79,7 +79,7 @@ def nexa_prompt(placeholder: str = "Send a message ...") -> str:
 
         if user_input.lower() in EXIT_COMMANDS:
             print("Exiting...")
-            exit(0)
+            sys.exit(0)
         return user_input
     except KeyboardInterrupt:
         print(EXIT_REMINDER)
@@ -87,7 +87,7 @@ def nexa_prompt(placeholder: str = "Send a message ...") -> str:
     except EOFError:
         print("Exiting...")
 
-    exit(0)
+    sys.exit(0)
 
 
 class SpinningCursorAnimation:
@@ -130,12 +130,12 @@ class SpinningCursorAnimation:
     def __enter__(self):
         if self._use_alternate_stream:
             if sys.platform == "win32":  # Windows
-                self.stream = open('CONOUT$', "w")
+                self.stream = open("CONOUT$", "w")
             else:
                 try:
-                    self.stream = open('/dev/tty', "w")
+                    self.stream = open("/dev/tty", "w")
                 except (FileNotFoundError, OSError):
-                    self.stream = open('/dev/stdout', "w")
+                    self.stream = open("/dev/stdout", "w")
         self.thread = threading.Thread(target=self._spin)
         self.thread.start()
         return self

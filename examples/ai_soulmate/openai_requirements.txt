@@ -1,5 +1,0 @@
-nexaai
-sounddevice
-
-# OpenAI API support
-openai

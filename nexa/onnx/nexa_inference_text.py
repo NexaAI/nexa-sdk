@@ -1,6 +1,5 @@
 import argparse
 import logging
-import sys
 import time
 from pathlib import Path
 from typing import Any, Tuple
@@ -20,13 +19,11 @@ class NexaTextInference:
 
     Methods:
         run: Run the text generation loop.
-        run_streamlit: Run the Streamlit UI.
 
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.
     local_path (str): Local path of the model.
     profiling (bool): Enable timing measurements for the generation process.
-    streamlit (bool): Run the inference in Streamlit UI.
     temperature (float): Temperature for sampling.
     min_new_tokens (int): Minimum number of new tokens to generate.
     max_new_tokens (int): Maximum number of new tokens to generate.
@@ -141,48 +138,30 @@ class NexaTextInference:
                 logging.error(f"Error during text generation: {e}", exc_info=True)
 
     def run(self):
-        # Check if Streamlit mode should be run first
-        if self.params.get("streamlit"):
-            self.run_streamlit()
-        else:
-            if self.downloaded_onnx_folder is None:
-                self.downloaded_onnx_folder, run_type = pull_model(self.model_path)
+        if self.downloaded_onnx_folder is None:
+            self.downloaded_onnx_folder, run_type = pull_model(self.model_path)
 
-            if self.downloaded_onnx_folder is None:
-                logging.error(
-                    f"Model ({model_path}) is not applicable. Please refer to our docs for proper usage.",
-                    exc_info=True,
-                )
-                exit(1)
-            
-            self._load_model_and_tokenizer()
-
-            if self.model is None or self.tokenizer is None or self.streamer is None:
-                logging.error(
-                    "Failed to load model or tokenizer. Exiting.", exc_info=True
-                )
-                exit(1)
-
-            chat_mode = (
-                hasattr(self.tokenizer, "chat_template")
-                and self.tokenizer.chat_template is not None
+        if self.downloaded_onnx_folder is None:
+            logging.error(
+                f"Model ({self.model_path}) is not applicable. Please refer to our docs for proper usage.",
+                exc_info=True,
             )
+            exit(1)
+        
+        self._load_model_and_tokenizer()
 
-            self.start(chat_mode=chat_mode)
+        if self.model is None or self.tokenizer is None or self.streamer is None:
+            logging.error(
+                "Failed to load model or tokenizer. Exiting.", exc_info=True
+            )
+            exit(1)
 
-    def run_streamlit(self, model_path: str):
-        """
-        Run the Streamlit UI.
-        """
-        logging.info("Running Streamlit UI...")
-        from streamlit.web import cli as stcli
-
-        streamlit_script_path = (
-            Path(__file__).resolve().parent / "streamlit" / "streamlit_text_chat.py"
+        chat_mode = (
+            hasattr(self.tokenizer, "chat_template")
+            and self.tokenizer.chat_template is not None
         )
 
-        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path]
-        sys.exit(stcli.main())
+        self.start(chat_mode=chat_mode)
 
 
 if __name__ == "__main__":
@@ -220,12 +199,6 @@ if __name__ == "__main__":
         "--profiling",
         action="store_true",
         help="Enable profiling logs for the inference process",
-    )
-    parser.add_argument(
-        "st",
-        "--streamlit",
-        action="store_true",
-        help="Run the inference in Streamlit UI",
     )
     args = parser.parse_args()
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
