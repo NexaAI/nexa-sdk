@@ -47,7 +47,7 @@ model = None
 chat_format = None
 completion_template = None
 hostname = socket.gethostname()
-conversation_history = [{"role": "system", "content": "You are a helpful assistant"}]
+chat_completion_system_prompt = [{"role": "system", "content": "You are a helpful assistant"}]
 function_call_system_prompt = [{"role": "system", "content": "A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions. The assistant calls functions with appropriate input when necessary"}]
 model_path = None
 n_ctx = None
@@ -119,6 +119,7 @@ async def load_model():
                         n_ctx=n_ctx
                     )
                 logging.info(f"model loaded as {model}")
+                chat_format = model.metadata.get("tokenizer.chat_template", None)               
     elif run_type == "Computer Vision":
         with suppress_stdout_stderr():
             model = StableDiffusion(
@@ -151,7 +152,7 @@ async def startup_event():
 async def nexa_run_text_generation(
     prompt, temperature, stop_words, max_new_tokens, top_k, top_p, logprobs=None, top_logprobs=None
 ) -> Dict[str, Any]:
-    global model, chat_format, completion_template, conversation_history
+    global model, chat_format, completion_template
     if model is None:
         raise ValueError("Model is not loaded. Please check the model path and try again.")
 
@@ -159,10 +160,10 @@ async def nexa_run_text_generation(
     logprobs_or_none = None  # init to store the logprobs if requested
 
     if chat_format:
-        conversation_history.append({"role": "user", "content": prompt})
+        messages = chat_completion_system_prompt + [{"role": "user", "content": prompt}]
 
         params = {
-            'messages': conversation_history,
+            'messages': messages,
             'temperature': temperature,
             'max_tokens': max_new_tokens,
             'top_k': top_k,
@@ -186,8 +187,7 @@ async def nexa_run_text_generation(
                 else:
                     for key in logprobs_or_none:  # tokens, token_logprobs, top_logprobs, text_offset
                         if key in chunk["choices"][0]["logprobs"]:
-                            logprobs_or_none[key].extend(chunk["choices"][0]["logprobs"][key])  # accumulate data from each chunk
-
+                            logprobs_or_none[key].extend(chunk["choices"][0]["logprobs"][key])  # accumulate data from each chunk                            
     else:
         if completion_template:
             formatted_prompt = completion_template.format(input=prompt)
