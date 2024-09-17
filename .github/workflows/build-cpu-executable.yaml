@@ -49,32 +49,34 @@ jobs:
     - name: Install nexaai
       run: pip install -e . --verbose --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cpu --extra-index-url https://pypi.org/simple --no-cache-dir
 
-    - name: Create version extraction script
+    - name: Create version extraction script (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        Add-Content extract_version.py "import re"
+        Add-Content extract_version.py "import sys"
+        Add-Content extract_version.py "with open('nexa/__init__.py', 'r') as f:"
+        Add-Content extract_version.py "    content = f.read()"
+        Add-Content extract_version.py "match = re.search(r'^__version__\\s*=\\s*[\'\""]([^\'\""]*)[\'\""]', content, re.MULTILINE)"
+        Add-Content extract_version.py "if match:"
+        Add-Content extract_version.py "    print(match.group(1))"
+        Add-Content extract_version.py "else:"
+        Add-Content extract_version.py "    print('Version not found', file=sys.stderr)"
+        Add-Content extract_version.py "    sys.exit(1)"
+
+    - name: Create version extraction script (Unix)
+      if: runner.os != 'Windows'
       run: |
         echo "import re" > extract_version.py
         echo "import sys" >> extract_version.py
         echo "with open('nexa/__init__.py', 'r') as f:" >> extract_version.py
         echo "    content = f.read()" >> extract_version.py
-        echo "match = re.search(r'^__version__\\s*=\\s*[\'\"']([^\'\"']*)[\'\"']', content, re.MULTILINE)" >> extract_version.py
+        echo "match = re.search(r'^__version__\\s*=\\s*[\'\""]([^\'\""]*)[\'\""]', content, re.MULTILINE)" >> extract_version.py
         echo "if match:" >> extract_version.py
         echo "    print(match.group(1))" >> extract_version.py
         echo "else:" >> extract_version.py
         echo "    print('Version not found', file=sys.stderr)" >> extract_version.py
         echo "    sys.exit(1)" >> extract_version.py
-
-    - name: Extract version (Windows)
-      if: runner.os == 'Windows'
-      shell: pwsh
-      run: |
-        $VERSION = python extract_version.py
-        echo "VERSION=$VERSION" >> $env:GITHUB_ENV
-
-    - name: Extract version (Unix)
-      if: runner.os != 'Windows'
-      run: |
-        VERSION=$(python extract_version.py)
-        echo "VERSION=$VERSION" >> $GITHUB_ENV
-
 
     - name: Build with PyInstaller
       run: pyinstaller entry.spec
