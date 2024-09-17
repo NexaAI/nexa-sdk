@@ -49,6 +49,7 @@ function_call_system_prompt = [{"role": "system", "content": "A chat between a c
 model_path = None
 n_ctx = None
 
+# Request Classes
 class GenerationRequest(BaseModel):
     prompt: str = "Tell me a story"
     temperature: float = 1.0
@@ -59,6 +60,69 @@ class GenerationRequest(BaseModel):
     logprobs: Optional[bool] = False
     top_logprobs: Optional[int] = 4
 
+class Message(BaseModel):
+    role: str
+    content: str
+
+class ImageResponse(BaseModel):
+    base64: str
+    url: str
+
+class ChatCompletionRequest(BaseModel):
+    messages: List[Message] = [
+        {"role": "user", "content": "Tell me a story"}]
+    max_tokens: Optional[int] = 128
+    temperature: Optional[float] = 0.1
+    stream: Optional[bool] = False
+    stop_words: Optional[List[str]] = []
+    logprobs: Optional[bool] = False
+    top_logprobs: Optional[int] = 4
+
+class FunctionDefinitionRequestClass(BaseModel):
+    type: str = "function"
+    function: Dict[str, Any]
+
+    class Config:
+        extra = "allow"
+
+class FunctionCallRequest(BaseModel):
+    messages: List[Message] = [
+        Message(role="user", content="Extract Jason is 25 years old")]
+    tools: List[FunctionDefinitionRequestClass] = [
+        FunctionDefinitionRequestClass(
+            type="function",
+            function={
+                "name": "UserDetail",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "description": "The user's name"
+                        },
+                        "age": {
+                            "type": "integer",
+                            "description": "The user's age"
+                        }
+                    },
+                    "required": ["name", "age"]
+                }
+            }
+        )
+    ]
+    tool_choice: Optional[str] = "auto"
+
+class ImageGenerationRequest(BaseModel):
+    prompt: str = "A girl, standing in a field of flowers, vivid"
+    image_path: Optional[str] = ""
+    cfg_scale: float = 7.0
+    width: int = 256
+    height: int = 256
+    sample_steps: int = 20
+    seed: int = 0
+    negative_prompt: Optional[str] = ""
+
+# helper functions
 async def load_model():
     global model, chat_format, completion_template, model_path, n_ctx
     downloaded_path, run_type = pull_model(model_path)
@@ -138,14 +202,6 @@ async def load_model():
     else:
         raise ValueError(f"Model {model_path} not found in Model Hub")
 
-
-@app.on_event("startup")
-async def startup_event():
-    global model_path
-    model_path = os.getenv("MODEL_PATH", "gemma")
-    logging.info(f"Model Path: {model_path}")
-    await load_model()
-
 async def nexa_run_text_generation(
     prompt, temperature, stop_words, max_new_tokens, top_k, top_p, logprobs=None, top_logprobs=None
 ) -> Dict[str, Any]:
@@ -221,108 +277,6 @@ async def nexa_run_text_generation(
     }
     return result
 
-
-@app.get("/", response_class=HTMLResponse, tags=["Root"])
-async def read_root(request: Request):
-    return HTMLResponse(
-        content=f"<h1>Welcome to Nexa AI</h1><p>Hostname: {hostname}</p>"
-    )
-
-
-@app.post("/v1/completions", tags=["NLP"])
-async def generate_text(request: GenerationRequest):
-
-    try:
-        result = await nexa_run_text_generation(**request.dict())
-
-        return JSONResponse(content={
-            "choices": [{
-                "text": result["result"],
-                "logprobs": result.get("logprobs")
-            }]
-        })
-    except Exception as e:
-        logging.error(f"Error in text generation: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-class Message(BaseModel):
-    role: str
-    content: str
-
-class ImageResponse(BaseModel):
-    base64: str
-    url: str
-
-class ChatCompletionRequest(BaseModel):
-    messages: List[Message] = [
-        {"role": "user", "content": "Tell me a story"}]
-    max_tokens: Optional[int] = 128
-    temperature: Optional[float] = 0.1
-    stream: Optional[bool] = False
-    stop_words: Optional[List[str]] = []
-    logprobs: Optional[bool] = False
-    top_logprobs: Optional[int] = 4
-
-class FunctionDefinitionRequestClass(BaseModel):
-    type: str = "function"
-    function: Dict[str, Any]
-
-    class Config:
-        extra = "allow"
-
-class FunctionCallRequest(BaseModel):
-    messages: List[Message] = [
-        Message(role="user", content="Extract Jason is 25 years old")]
-    tools: List[FunctionDefinitionRequestClass] = [
-        FunctionDefinitionRequestClass(
-            type="function",
-            function={
-                "name": "UserDetail",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string",
-                            "description": "The user's name"
-                        },
-                        "age": {
-                            "type": "integer",
-                            "description": "The user's age"
-                        }
-                    },
-                    "required": ["name", "age"]
-                }
-            }
-        )
-    ]
-    tool_choice: Optional[str] = "auto"
-
-def _resp_async_generator(streamer):
-    _id = str(uuid.uuid4())
-
-    for token in streamer:
-        chunk = {
-            "id": _id,
-            "object": "chat.completion.chunk",
-            "created": time.time(),
-            "choices": [{"delta": {"content": token}}],
-        }
-        yield f"data: {json.dumps(chunk)}\n\n"
-
-    yield "data: [DONE]\n\n"
-
-
-class ImageGenerationRequest(BaseModel):
-    prompt: str = "A girl, standing in a field of flowers, vivid"
-    image_path: Optional[str] = ""
-    cfg_scale: float = 7.0
-    width: int = 256
-    height: int = 256
-    sample_steps: int = 20
-    seed: int = 0
-    negative_prompt: Optional[str] = ""
-
 async def nexa_run_image_generation(
     prompt,
     image_path,
@@ -369,52 +323,61 @@ def base64_encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
 
-@app.post("/v1/txt2img", tags=["Computer Vision"])
-async def txt2img(request: ImageGenerationRequest):
+
+def run_nexa_ai_service(model_path_arg, **kwargs):
+    global model_path, n_ctx
+    model_path = model_path_arg or "gemma"
+    os.environ["MODEL_PATH"] = model_path
+    n_ctx = kwargs.get("nctx", 2048)
+    host = kwargs.get("host", "0.0.0.0")
+    port = kwargs.get("port", 8000)
+    reload = kwargs.get("reload", False)
+    uvicorn.run(app, host=host, port=port, reload=reload)
+
+# Endpoints
+@app.on_event("startup")
+async def startup_event():
+    global model_path
+    model_path = os.getenv("MODEL_PATH", "gemma")
+    logging.info(f"Model Path: {model_path}")
+    await load_model()
+
+
+@app.get("/", response_class=HTMLResponse, tags=["Root"])
+async def read_root(request: Request):
+    return HTMLResponse(
+        content=f"<h1>Welcome to Nexa AI</h1><p>Hostname: {hostname}</p>"
+    )
+
+
+def _resp_async_generator(streamer):
+    _id = str(uuid.uuid4())
+
+    for token in streamer:
+        chunk = {
+            "id": _id,
+            "object": "chat.completion.chunk",
+            "created": time.time(),
+            "choices": [{"delta": {"content": token}}],
+        }
+        yield f"data: {json.dumps(chunk)}\n\n"
+
+    yield "data: [DONE]\n\n"
+
+@app.post("/v1/completions", tags=["NLP"])
+async def generate_text(request: GenerationRequest):
+
     try:
-        generation_kwargs = request.dict()
+        result = await nexa_run_text_generation(**request.dict())
 
-        generated_images = await nexa_run_image_generation(**generation_kwargs)
-
-        resp = {"created": time.time(), "data": []}
-
-        for image in generated_images:
-            id = int(time.time())
-            if not os.path.exists("nexa_server_output"):
-                os.makedirs("nexa_server_output")
-            image_path = os.path.join("nexa_server_output", f"txt2img_{id}.png")
-            image.save(image_path)
-            img = ImageResponse(base64=base64_encode_image(image_path), url=os.path.abspath(image_path))
-            resp["data"].append(img)
-
-        return resp
-
+        return JSONResponse(content={
+            "choices": [{
+                "text": result["result"],
+                "logprobs": result.get("logprobs")
+            }]
+        })
     except Exception as e:
-        logging.error(f"Error in txt2img generation: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/v1/img2img", tags=["Computer Vision"])
-async def img2img(request: ImageGenerationRequest):
-    try:
-        generation_kwargs = request.dict()
-
-        generated_images = await nexa_run_image_generation(**generation_kwargs)
-        resp = {"created": time.time(), "data": []}
-
-        for image in generated_images:
-            id = int(time.time())
-            if not os.path.exists("nexa_server_output"):
-                os.makedirs("nexa_server_output")
-            image_path = os.path.join("nexa_server_output", f"img2img_{id}.png")
-            image.save(image_path)
-            img = ImageResponse(base64=base64_encode_image(image_path), url=os.path.abspath(image_path))
-            resp["data"].append(img)
-
-        return resp
-
-
-    except Exception as e:
-        logging.error(f"Error in img2img generation: {e}")
+        logging.error(f"Error in text generation: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -475,6 +438,55 @@ async def function_call(request: FunctionCallRequest):
     except Exception as e:
         logging.error(f"Error in function calling: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    
+
+@app.post("/v1/txt2img", tags=["Computer Vision"])
+async def txt2img(request: ImageGenerationRequest):
+    try:
+        generation_kwargs = request.dict()
+
+        generated_images = await nexa_run_image_generation(**generation_kwargs)
+
+        resp = {"created": time.time(), "data": []}
+
+        for image in generated_images:
+            id = int(time.time())
+            if not os.path.exists("nexa_server_output"):
+                os.makedirs("nexa_server_output")
+            image_path = os.path.join("nexa_server_output", f"txt2img_{id}.png")
+            image.save(image_path)
+            img = ImageResponse(base64=base64_encode_image(image_path), url=os.path.abspath(image_path))
+            resp["data"].append(img)
+
+        return resp
+
+    except Exception as e:
+        logging.error(f"Error in txt2img generation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/v1/img2img", tags=["Computer Vision"])
+async def img2img(request: ImageGenerationRequest):
+    try:
+        generation_kwargs = request.dict()
+
+        generated_images = await nexa_run_image_generation(**generation_kwargs)
+        resp = {"created": time.time(), "data": []}
+
+        for image in generated_images:
+            id = int(time.time())
+            if not os.path.exists("nexa_server_output"):
+                os.makedirs("nexa_server_output")
+            image_path = os.path.join("nexa_server_output", f"img2img_{id}.png")
+            image.save(image_path)
+            img = ImageResponse(base64=base64_encode_image(image_path), url=os.path.abspath(image_path))
+            resp["data"].append(img)
+
+        return resp
+
+
+    except Exception as e:
+        logging.error(f"Error in img2img generation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/v1/audio/transcriptions", tags=["Audio"])
 async def transcribe_audio(
@@ -528,18 +540,6 @@ async def translate_audio(
         raise HTTPException(status_code=500, detail=f"Error during translation: {str(e)}")
     finally:
         os.unlink(temp_audio_path)
-
-
-def run_nexa_ai_service(model_path_arg, **kwargs):
-    global model_path, n_ctx
-    model_path = model_path_arg or "gemma"
-    os.environ["MODEL_PATH"] = model_path
-    n_ctx = kwargs.get("nctx", 2048)
-    host = kwargs.get("host", "0.0.0.0")
-    port = kwargs.get("port", 8000)
-    reload = kwargs.get("reload", False)
-    uvicorn.run(app, host=host, port=port, reload=reload)
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
