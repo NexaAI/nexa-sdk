@@ -222,14 +222,14 @@ async def nexa_run_text_generation(
     return result
 
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/", response_class=HTMLResponse, tags=["Root"])
 async def read_root(request: Request):
     return HTMLResponse(
         content=f"<h1>Welcome to Nexa AI</h1><p>Hostname: {hostname}</p>"
     )
 
 
-@app.post("/v1/completions")
+@app.post("/v1/completions", tags=["NLP"])
 async def generate_text(request: GenerationRequest):
 
     try:
@@ -369,7 +369,7 @@ def base64_encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
 
-@app.post("/v1/txt2img")
+@app.post("/v1/txt2img", tags=["Computer Vision"])
 async def txt2img(request: ImageGenerationRequest):
     try:
         generation_kwargs = request.dict()
@@ -393,7 +393,7 @@ async def txt2img(request: ImageGenerationRequest):
         logging.error(f"Error in txt2img generation: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/v1/img2img")
+@app.post("/v1/img2img", tags=["Computer Vision"])
 async def img2img(request: ImageGenerationRequest):
     try:
         generation_kwargs = request.dict()
@@ -418,7 +418,7 @@ async def img2img(request: ImageGenerationRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/v1/chat/completions")
+@app.post("/v1/chat/completions", tags=["NLP"])
 async def chat_completions(request: ChatCompletionRequest):
     try:
         generation_kwargs = GenerationRequest(
@@ -456,7 +456,7 @@ async def chat_completions(request: ChatCompletionRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/v1/function-calling")
+@app.post("/v1/function-calling", tags=["NLP"])
 async def function_call(request: FunctionCallRequest):
     try:
         messages = function_call_system_prompt + [
@@ -476,7 +476,7 @@ async def function_call(request: FunctionCallRequest):
         logging.error(f"Error in function calling: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/v1/audio/transcriptions")
+@app.post("/v1/audio/transcriptions", tags=["Audio"])
 async def transcribe_audio(
     file: UploadFile = File(...),
     beam_size: Optional[int] = Query(5, description="Beam size for transcription"),
@@ -504,7 +504,7 @@ async def transcribe_audio(
     finally:
         os.unlink(temp_audio_path)
 
-@app.post("/v1/audio/translations")
+@app.post("/v1/audio/translations", tags=["Audio"])
 async def translate_audio(
     file: UploadFile = File(...),
     beam_size: Optional[int] = Query(5, description="Beam size for translation"),
