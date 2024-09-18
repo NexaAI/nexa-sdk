@@ -2,9 +2,10 @@ name: Build Nexa Executables
 
 on:
   push:
-    branches: [ main ]
+    branches: [ perry/macos-cpu-bundle ]
   pull_request:
-    branches: [ main ]
+    branches: [ perry/macos-cpu-bundle ]
+  workflow_dispatch:
 
 jobs:
   build-macos:
