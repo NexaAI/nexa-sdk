@@ -1,4 +1,4 @@
-name: Build Nexa Executables
+name: Build Nexa Executables MacOS CPU Bundle
 
 on:
   push:
