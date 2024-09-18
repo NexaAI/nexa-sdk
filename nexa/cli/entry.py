@@ -79,6 +79,69 @@ def run_onnx_inference(args):
     else:
         inference.run()
 
+def run_eval_inference(args):
+    import argparse
+    import multiprocessing
+    import time
+    import requests
+    from nexa.eval.eval_runner import evaluate_model
+    from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
+
+    default_args = argparse.Namespace(
+        model="my-local-completions",
+        tasks=args.tasks,
+        model_args="base_url=http://0.0.0.0:8000/v1/completions",
+        num_fewshot=None, 
+        hf_hub_log_args="",
+        batch_size=8,
+        max_batch_size=None,
+        device="cuda", 
+        output_path=f"results/{args.model}/{args.tasks.replace(',', '_')}", 
+        limit=None,
+        use_cache=None, 
+        cache_requests=None,
+        check_integrity=False,
+        write_out=False,
+        log_samples=False,
+        system_instruction=None,
+        apply_chat_template=False,
+        fewshot_as_multiturn=False,
+        include_path=None, 
+        gen_kwargs=None,
+        verbosity="INFO",
+        predict_only=False,
+        wandb_args=None,
+        show_config=False,
+        seed=[0, 1234, 1234, 1234], 
+        trust_remote_code=False,
+    )
+
+    def start_server():
+        NexaServer(args.model)
+
+    server_process = multiprocessing.Process(target=start_server)
+    server_process.start()
+
+    try:
+        timeout = 60  # Timeout in seconds
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            try:
+                response = requests.get("http://0.0.0.0:8000/")
+                if response.status_code == 200:
+                    break
+            except requests.exceptions.ConnectionError:
+                pass
+            time.sleep(1)
+        else:
+            raise Exception("Server did not become ready within the specified timeout.")
+
+        evaluate_model(default_args)
+    finally:
+        server_process.terminate()
+        server_process.join()
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Nexa CLI tool for handling various model operations."
@@ -176,6 +239,11 @@ def main():
     subparsers.add_parser("whoami", help="Show current user information.")
     subparsers.add_parser("logout", help="Logout from Nexa API.")
 
+    # Benchmark Evaluation
+    eval_parser = subparsers.add_parser("eval", help="Evaluate models on specified tasks.")
+    eval_parser.add_argument("--model", type=str, required=True, help="Model to use for evaluation.")
+    eval_parser.add_argument("--tasks", type=str, required=True, help="Tasks to evaluate the model on, separated by commas.")
+
 
     args = parser.parse_args()
 
@@ -204,6 +272,8 @@ def main():
     elif args.command == "whoami":
         from nexa.general import whoami
         whoami()
+    elif args.command == "eval":
+        run_eval_inference(args)
     else:
         parser.print_help()
 

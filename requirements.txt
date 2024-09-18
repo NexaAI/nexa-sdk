@@ -36,3 +36,10 @@ prompt_toolkit
 tqdm
 tabulate
 streamlit
+
+# bechmark
+pytablewriter
+sacrebleu
+sqlitedict
+langdetect
+pytest
