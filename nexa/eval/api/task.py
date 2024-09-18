@@ -282,7 +282,8 @@ class Task(abc.ABC):
             cache_dir=cache_dir,
             download_mode=download_mode,
         )
-
+        self.dataset = self.dataset.select([0])
+        
     @property
     def config(self) -> TaskConfig:
         """Returns the TaskConfig associated with this class."""
