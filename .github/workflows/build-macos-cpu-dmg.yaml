@@ -67,8 +67,17 @@ jobs:
       env:
         APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
       run: |
-        echo "Using Developer ID: $APPLE_DEVELOPER_ID"
-        /usr/bin/codesign --force -s "$APPLE_DEVELOPER_ID" --options runtime dist/nexa.app -v --verbose
+        # First, sign all the individual components
+        find "dist/nexa.app/Contents/Frameworks" -type f \( -name "*.so" -o -name "*.dylib" \) -exec codesign --force --options runtime --timestamp -s "$APPLE_DEVELOPER_ID" {} \;
+        
+        # Then sign the main executable
+        codesign --force --options runtime --timestamp -s "$APPLE_DEVELOPER_ID" "dist/nexa.app/Contents/MacOS/nexa"
+        
+        # Finally, sign the entire app bundle
+        codesign --force --options runtime --timestamp -s "$APPLE_DEVELOPER_ID" "dist/nexa.app"
+        
+        # Verify the signature
+        codesign -vvv --deep --strict "dist/nexa.app"
 
     - name: Create DMG
       run: |
