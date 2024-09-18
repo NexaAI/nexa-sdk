@@ -41,17 +41,17 @@ jobs:
       run: pyinstaller nexa-macos-cpu.spec
 
     - name: Create keychain and import certificate
-        env:
-          CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE }}
-          CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
-        run: |
-          echo $CERTIFICATE_BASE64 | base64 --decode > certificate.p12
-          security create-keychain -p "" build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p "" build.keychain
-          security import certificate.p12 -k build.keychain -P $CERTIFICATE_PASSWORD -T /usr/bin/codesign
-          security find-identity -v -p codesigning build.keychain
-          security find-certificate -a -c "Developer ID Application" build.keychain
+      env:
+        CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE }}
+        CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+      run: |
+        echo $CERTIFICATE_BASE64 | base64 --decode > certificate.p12
+        security create-keychain -p "" build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p "" build.keychain
+        security import certificate.p12 -k build.keychain -P $CERTIFICATE_PASSWORD -T /usr/bin/codesign
+        security find-identity -v -p codesigning build.keychain
+        security find-certificate -a -c "Developer ID Application" build.keychain
 
     - name: Verify certificate import
       run: |
