@@ -100,15 +100,8 @@ jobs:
         NOTARIZATION_OUTPUT=$(xcrun notarytool submit Nexa-${{ env.VERSION }}.dmg --apple-id "$APPLE_ID" --password "$APPLE_ID_PASSWORD" --team-id "$APPLE_TEAM_ID")
         echo "$NOTARIZATION_OUTPUT"
         
-        # Extracting SUBMISSION_ID
-        SUBMISSION_ID=$(echo "$NOTARIZATION_OUTPUT" | grep -o 'id: [^,]*' | cut -d' ' -f2)
-        
-        # Set SUBMISSION_ID as a multiline environment variable
-        {
-          echo "SUBMISSION_ID<<EOF"
-          echo "$SUBMISSION_ID"
-          echo "EOF"
-        } >> "$GITHUB_ENV"
+        # Extracting and setting SUBMISSION_ID in one line
+        echo "SUBMISSION_ID=$(echo "$NOTARIZATION_OUTPUT" | grep -o 'id: [^,]*' | cut -d' ' -f2)" >> $GITHUB_ENV
 
     - name: Wait for notarization and check result
       env:
