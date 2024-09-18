@@ -85,20 +85,53 @@ jobs:
           "Nexa-${{ env.VERSION }}.dmg" \
           "dist/nexa.app"
 
-    - name: Notarize the app
+    - name: Upload artifact (pre-notarization)
+      uses: actions/upload-artifact@v4
+      with:
+        name: nexa-${{ env.VERSION }}-cpu-macos-amd64-pre-notarization
+        path: Nexa-${{ env.VERSION }}.dmg
+
+    - name: Submit for notarization
       env:
         APPLE_ID: ${{ secrets.APPLE_ID }}
         APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       run: |
-        xcrun notarytool submit Nexa-${{ env.VERSION }}.dmg --apple-id "$APPLE_ID" --password "$APPLE_ID_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
+        NOTARIZATION_OUTPUT=$(xcrun notarytool submit Nexa-${{ env.VERSION }}.dmg --apple-id "$APPLE_ID" --password "$APPLE_ID_PASSWORD" --team-id "$APPLE_TEAM_ID")
+        echo "$NOTARIZATION_OUTPUT"
+        SUBMISSION_ID=$(echo "$NOTARIZATION_OUTPUT" | grep -o 'id: [^,]*' | cut -d' ' -f2)
+        echo "SUBMISSION_ID=$SUBMISSION_ID" >> $GITHUB_ENV
+
+    - name: Wait for notarization and check result
+      env:
+        APPLE_ID: ${{ secrets.APPLE_ID }}
+        APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      run: |
+        while true; do
+          NOTARIZATION_INFO=$(xcrun notarytool info ${{ env.SUBMISSION_ID }} --apple-id "$APPLE_ID" --password "$APPLE_ID_PASSWORD" --team-id "$APPLE_TEAM_ID")
+          STATUS=$(echo "$NOTARIZATION_INFO" | grep "status" | cut -d: -f2 | xargs)
+          echo "Notarization status: $STATUS"
+          if [ "$STATUS" = "Accepted" ]; then
+            echo "Notarization successful"
+            break
+          elif [ "$STATUS" = "Invalid" ] || [ "$STATUS" = "Rejected" ]; then
+            echo "Notarization failed. Fetching detailed log..."
+            xcrun notarytool log ${{ env.SUBMISSION_ID }} --apple-id "$APPLE_ID" --password "$APPLE_ID_PASSWORD" --team-id "$APPLE_TEAM_ID"
+            exit 1
+          fi
+          echo "Waiting for 60 seconds before checking again..."
+          sleep 60
+        done
 
     - name: Staple the notarization ticket
+      if: success()
       run: |
         xcrun stapler staple Nexa-${{ env.VERSION }}.dmg
 
-    - name: Upload artifact
+    - name: Upload artifact (post-notarization)
+      if: success()
       uses: actions/upload-artifact@v4
       with:
-        name: nexa-${{ env.VERSION }}-cpu-macos-amd64
+        name: nexa-${{ env.VERSION }}-cpu-macos-amd64-notarized
         path: Nexa-${{ env.VERSION }}.dmg
