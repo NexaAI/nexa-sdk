@@ -70,7 +70,15 @@ def evaluate_model(args):
         **request_caching_args,
     )
 
+    # output_file = "test_results.json"
+    # with open(output_file, 'w') as f:
+    #     json.dump(results, f, indent=4)
+
+    # print(f"Results have been saved to {output_file}")
+
     if results is not None:
+        if args.log_samples:
+            samples = results.pop("samples")
         dumped = json.dumps(
             results, indent=2, default=handle_non_serializable, ensure_ascii=False
         )
@@ -78,7 +86,7 @@ def evaluate_model(args):
             print(dumped)
 
         batch_sizes = ",".join(map(str, results["config"]["batch_sizes"]))
-        evaluation_tracker.save_results_aggregated(results=results)
+        evaluation_tracker.save_results_aggregated(results=results, samples=samples if args.log_samples else None)
 
         if args.log_samples:
             for task_name, config in results["configs"].items():

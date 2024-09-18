@@ -43,3 +43,4 @@ sacrebleu
 sqlitedict
 langdetect
 pytest
+rouge_score
