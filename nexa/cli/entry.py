@@ -169,8 +169,13 @@ def main():
     server_parser.add_argument("--reload", action="store_true", help="Enable automatic reloading on code changes")
 
     # Other commands
-    subparsers.add_parser("pull", help="Pull a model from official or hub.").add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
-    subparsers.add_parser("remove", help="Remove a model from local machine.").add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
+    pull_parser = subparsers.add_parser("pull", help="Pull a model from official or hub.")
+    pull_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
+    pull_parser.add_argument("-hf", "--huggingface", action="store_true", help="Pull model from Hugging Face Hub")
+
+    remove_parser = subparsers.add_parser("remove", help="Remove a model from local machine.")
+    remove_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
+
     subparsers.add_parser("clean", help="Clean up all model files.")
     subparsers.add_parser("list", help="List all models in the local machine.")
     subparsers.add_parser("login", help="Login to Nexa API.")
@@ -186,7 +191,8 @@ def main():
         run_onnx_inference(args)
     elif args.command == "pull":
         from nexa.general import pull_model
-        pull_model(args.model_path)
+        hf = getattr(args, 'huggingface', False)
+        pull_model(args.model_path, hf)
     elif args.command == "remove":
         from nexa.general import remove_model
         remove_model(args.model_path)
