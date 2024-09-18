@@ -199,7 +199,8 @@ will create an interactive session with text generation
 | [gemma2](https://www.nexaai.com/google/gemma-2-2b-instruct/gguf-q4_0/readme)                            | NLP             | GGUF      | `nexa run gemma2`                  |
 | [qwen1.5](https://www.nexaai.com/Qwen/Qwen1.5-7B-Instruct/gguf-q4_0/readme)                             | NLP             | GGUF      | `nexa run qwen1.5`                 |
 | [qwen2](https://www.nexaai.com/Qwen/Qwen2-1.5B-Instruct/gguf-q4_0/readme)                               | NLP             | GGUF/ONNX | `nexa run qwen2`                   |
-| [qwen2.5](https://www.nexaai.com/Qwen/Qwen2.5-1.5B-Instruct/gguf-q4_0/readme)                           | NLP             | GGUF/ONNX | `nexa run qwen2.5`                 |
+| [qwen2.5](https://www.nexaai.com/Qwen/Qwen2.5-1.5B-Instruct/gguf-q4_0/readme)                           | NLP             | GGUF      | `nexa run qwen2.5`                 |
+| [mathqwen](https://nexaai.com/Qwen/Qwen2.5-Math-1.5B-Instruct/gguf-q4_0/file)                           | NLP             | GGUF      | `nexa run mathqwen`                |
 | [mistral](https://www.nexaai.com/mistralai/Mistral-7B-Instruct-v0.3/gguf-q4_0/readme)                   | NLP             | GGUF/ONNX | `nexa run mistral`                 |
 | [codegemma](https://www.nexaai.com/google/codegemma-2b/gguf-q4_0/readme)                                | NLP             | GGUF      | `nexa run codegemma`               |
 | [codellama](https://www.nexaai.com/meta/CodeLlama-7b-Instruct/gguf-q2_K/readme)                         | NLP             | GGUF      | `nexa run codellama`               |
