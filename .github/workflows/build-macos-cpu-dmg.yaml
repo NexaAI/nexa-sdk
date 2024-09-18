@@ -1,0 +1,91 @@
+name: Build Nexa Executables
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install system dependencies
+      run: |
+        brew install cmake
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller wheel setuptools scikit-build-core
+
+    - name: Install nexaai
+      run: pip install -e . --verbose --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cpu --extra-index-url https://pypi.org/simple --no-cache-dir
+
+    - name: Extract version
+      run: |
+        VERSION=$(python -c "import re; print(re.search(r'__version__\s*=\s*[\'\"](.*?)[\'\"]', open('nexa/__init__.py').read()).group(1))")
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+    - name: Build with PyInstaller
+      run: pyinstaller nexa-macos-cpu.spec
+
+    - name: Create keychain and import certificate
+      env:
+        CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE }}
+        CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+      run: |
+        echo $CERTIFICATE_BASE64 | base64 --decode > certificate.p12
+        security create-keychain -p "" build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p "" build.keychain
+        security import certificate.p12 -k build.keychain -P $CERTIFICATE_PASSWORD -T /usr/bin/codesign
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
+
+    - name: Sign the app
+      env:
+        APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
+      run: |
+        /usr/bin/codesign --force -s "$APPLE_DEVELOPER_ID" --options runtime dist/nexa.app -v
+
+    - name: Create DMG
+      run: |
+        brew install create-dmg
+        create-dmg \
+          --volname "Nexa Installer" \
+          --volicon "./nexa-icon.icns" \
+          --window-pos 200 120 \
+          --window-size 800 400 \
+          --icon-size 100 \
+          --icon "nexa.app" 200 190 \
+          --hide-extension "nexa.app" \
+          --app-drop-link 600 185 \
+          "Nexa-${{ env.VERSION }}.dmg" \
+          "dist/nexa.app"
+
+    - name: Notarize the app
+      env:
+        APPLE_ID: ${{ secrets.APPLE_ID }}
+        APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      run: |
+        xcrun notarytool submit Nexa-${{ env.VERSION }}.dmg --apple-id "$APPLE_ID" --password "$APPLE_ID_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
+
+    - name: Staple the notarization ticket
+      run: |
+        xcrun stapler staple Nexa-${{ env.VERSION }}.dmg
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: nexa-${{ env.VERSION }}-cpu-macos-amd64
+        path: Nexa-${{ env.VERSION }}.dmg
