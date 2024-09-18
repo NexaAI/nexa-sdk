@@ -7,6 +7,7 @@ NEXA_CACHE_ROOT = Path(os.getenv("NEXA_CACHE_ROOT") or "~/.cache/nexa").expandus
 NEXA_TOKEN_PATH = NEXA_CACHE_ROOT / "token"
 NEXA_MODELS_HUB_DIR = NEXA_CACHE_ROOT / "hub"
 NEXA_MODELS_HUB_OFFICIAL_DIR = NEXA_MODELS_HUB_DIR / "official"
+NEXA_MODELS_HUB_HF_DIR = NEXA_MODELS_HUB_DIR / "huggingface"
 NEXA_MODEL_LIST_PATH = NEXA_MODELS_HUB_DIR / "model_list.json"
 
 # URLs and buckets

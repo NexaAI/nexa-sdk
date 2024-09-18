@@ -9,11 +9,12 @@ def run_ggml_inference(args):
         from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
         NexaServer(model_path, **kwargs)
         return
-    
-    from nexa.general import pull_model
-    local_path, run_type = pull_model(model_path)
-    
+
+    hf = kwargs.pop('huggingface', False)
     stop_words = kwargs.pop("stop_words", [])
+
+    from nexa.general import pull_model
+    local_path, run_type = pull_model(model_path, hf)
 
     try:
         if run_type == "NLP":
@@ -107,6 +108,7 @@ def main():
     text_group.add_argument("-k", "--top_k", type=int, help="Top-k sampling parameter")
     text_group.add_argument("-p", "--top_p", type=float, help="Top-p sampling parameter")
     text_group.add_argument("-sw", "--stop_words", nargs="*", help="List of stop words for early stopping")
+    text_group.add_argument("-hf", "--huggingface", action="store_true", help="Load model from Hugging Face Hub")
 
     # Image generation arguments
     image_group = run_parser.add_argument_group('Image generation options')
