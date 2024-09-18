@@ -52,11 +52,22 @@ jobs:
         security import certificate.p12 -k build.keychain -P $CERTIFICATE_PASSWORD -T /usr/bin/codesign
         security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
 
+    - name: Verify certificate import
+      run: |
+        security find-identity -v -p codesigning
+        security find-certificate -a -c "Developer ID Application"
+
+    - name: Unlock keychain
+      run: |
+        security unlock-keychain -p "" build.keychain
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
+
     - name: Sign the app
       env:
         APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
       run: |
-        /usr/bin/codesign --force -s "$APPLE_DEVELOPER_ID" --options runtime dist/nexa.app -v
+        echo "Using Developer ID: $APPLE_DEVELOPER_ID"
+        /usr/bin/codesign --force -s "$APPLE_DEVELOPER_ID" --options runtime dist/nexa.app -v --verbose
 
     - name: Create DMG
       run: |
