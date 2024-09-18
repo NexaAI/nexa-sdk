@@ -51,7 +51,7 @@ NEXA_RUN_MODEL_MAP_TEXT = {
     "codegemma": "codegemma-2b:q4_0",
     "codellama": "CodeLlama-7b-Instruct:q4_0",
     "codeqwen": "Qwen2.5-Coder-1.5B-Instruct:q4_0",
-    "mathqwen": "Qwen2.5-Math-1.5B-Instruct",
+    "mathqwen": "Qwen2.5-Math-1.5B-Instruct:q4_0",
     "deepseek-coder": "deepseek-coder-1.3b-instruct:q4_0",
     "dolphin-mistral": "dolphin-2.8-mistral-7b:q4_0",
     "phi2": "Phi-2:q4_0",
