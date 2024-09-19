@@ -42,15 +42,12 @@ jobs:
 
     - name: Create launcher script
       run: |
-        # First, ensure we're not overwriting an existing directory
         if [ -d "nexa" ]; then
-          echo "Warning: 'nexa' directory already exists. Creating launcher script as 'nexa_launcher' instead."
           SCRIPT_NAME="nexa_launcher"
         else
           SCRIPT_NAME="nexa"
         fi
 
-        # Create the launcher script
         cat << EOF > "$SCRIPT_NAME"
         #!/bin/bash
 
@@ -64,20 +61,16 @@ jobs:
         fi
         EOF
 
-        # Make the script executable
         chmod +x "$SCRIPT_NAME"
-
-        # Display the contents of the script for verification
-        echo "Created launcher script '$SCRIPT_NAME' with the following contents:"
-        cat "$SCRIPT_NAME"
-
-        # Update subsequent steps to use the correct script name
         echo "LAUNCHER_SCRIPT_NAME=$SCRIPT_NAME" >> $GITHUB_ENV
 
     - name: Add launcher script to app bundle
       run: |
         mkdir -p "dist/nexa.app/Contents/Resources"
         cp "${{ env.LAUNCHER_SCRIPT_NAME }}" "dist/nexa.app/Contents/Resources/nexa"
+        mkdir -p "dist/nexa.app/Contents/Frameworks/nexa"
+        cp "${{ env.LAUNCHER_SCRIPT_NAME }}" "dist/nexa.app/Contents/Frameworks/nexa/nexa_launcher"
+        chmod +x "dist/nexa.app/Contents/Frameworks/nexa/nexa_launcher"
 
     - name: Modify Info.plist
       run: |
@@ -86,10 +79,7 @@ jobs:
 
     - name: Set app icon
       run: |
-        # Ensure the icon is in the correct location
         cp nexa-icon.icns dist/nexa.app/Contents/Resources/
-
-        # Update Info.plist to use the icon
         /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile nexa-icon" dist/nexa.app/Contents/Info.plist
 
     - name: Create keychain and import certificate
@@ -102,23 +92,15 @@ jobs:
         security default-keychain -s build.keychain
         security unlock-keychain -p "" build.keychain
         security import certificate.p12 -k build.keychain -P $CERTIFICATE_PASSWORD -T /usr/bin/codesign
-        security find-identity -v -p codesigning build.keychain
-        security find-certificate -a -c "Developer ID Application" build.keychain
-
-    - name: Verify certificate import
-      run: |
-        security find-identity -v -p codesigning
-        security find-certificate -a -c "Developer ID Application"
-
-    - name: Unlock keychain
-      run: |
-        security unlock-keychain -p "" build.keychain
         security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
 
     - name: Sign the app
       env:
         APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
       run: |
+        # Sign nexa_launcher individually
+        codesign --force --options runtime --timestamp -s "$APPLE_DEVELOPER_ID" "dist/nexa.app/Contents/Frameworks/nexa/nexa_launcher"
+        
         # Sign Python binaries
         codesign --force --options runtime --timestamp -s "$APPLE_DEVELOPER_ID" "dist/nexa.app/Contents/Resources/Python"
         codesign --force --options runtime --timestamp -s "$APPLE_DEVELOPER_ID" "dist/nexa.app/Contents/Resources/Python.framework/Python"
@@ -131,39 +113,28 @@ jobs:
         # Sign the main executable
         codesign --force --options runtime --timestamp -s "$APPLE_DEVELOPER_ID" "dist/nexa.app/Contents/MacOS/nexa"
         
-        # Sign the entire app bundle
-        codesign --force --options runtime --timestamp -s "$APPLE_DEVELOPER_ID" "dist/nexa.app"
+        # Sign the entire app bundle with --deep option
+        codesign --force --options runtime --timestamp --deep -s "$APPLE_DEVELOPER_ID" "dist/nexa.app"
         
         # Verify the signature
         codesign -vvv --deep --strict "dist/nexa.app"
 
-        # List all signed components for verification
-        codesign -dvv "dist/nexa.app"
-
     - name: Create PKG Installer
       run: |
-        # Create necessary directories
-        mkdir -p pkg_root/Applications
-        mkdir -p pkg_scripts
+        mkdir -p pkg_root/Applications pkg_scripts
 
-        # Copy the app to the package root
         cp -R dist/nexa.app pkg_root/Applications/
 
-        # Create preinstall script
         cat << EOF > pkg_scripts/preinstall
         #!/bin/bash
-        # Remove any existing symlink or file
         rm -f /usr/local/bin/nexa
         exit 0
         EOF
 
-        # Create postinstall script
         cat << EOF > pkg_scripts/postinstall
         #!/bin/bash
-        # Create symlink
         ln -sf /Applications/Nexa.app/Contents/Resources/nexa /usr/local/bin/nexa
 
-        # Modify the main launcher
         LAUNCHER="/Applications/Nexa.app/Contents/MacOS/nexa"
         mv "\$LAUNCHER" "\$LAUNCHER.real"
         cat << EOL > "\$LAUNCHER"
@@ -175,10 +146,8 @@ jobs:
         exit 0
         EOF
 
-        # Make scripts executable
         chmod +x pkg_scripts/preinstall pkg_scripts/postinstall
 
-        # Build the package
         pkgbuild --root pkg_root \
                 --scripts pkg_scripts \
                 --identifier com.yourcompany.nexa \
@@ -186,22 +155,18 @@ jobs:
                 --install-location / \
                 "Nexa-${{ env.VERSION }}.pkg"
 
-        # Clean up
         rm -rf pkg_root pkg_scripts
 
     - name: Sign PKG
       env:
         APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
       run: |
-        # Sign the package
         productsign --sign "$APPLE_DEVELOPER_ID" \
                     "Nexa-${{ env.VERSION }}.pkg" \
                     "Nexa-${{ env.VERSION }}-signed.pkg"
 
-        # Verify the signature
         pkgutil --check-signature "Nexa-${{ env.VERSION }}-signed.pkg"
 
-        # Replace the unsigned package with the signed one
         mv "Nexa-${{ env.VERSION }}-signed.pkg" "Nexa-${{ env.VERSION }}.pkg"
 
     - name: Notarize PKG
@@ -210,27 +175,17 @@ jobs:
         APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       run: |
-        # Submit for notarization
         NOTARIZATION_OUTPUT=$(xcrun notarytool submit "Nexa-${{ env.VERSION }}.pkg" --apple-id "$APPLE_ID" --password "$APPLE_ID_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait)
         echo "$NOTARIZATION_OUTPUT"
 
-        # Check if notarization was successful
         if echo "$NOTARIZATION_OUTPUT" | grep -q "status: Accepted"; then
           echo "Notarization successful"
-          
-          # Staple the ticket
           xcrun stapler staple "Nexa-${{ env.VERSION }}.pkg"
-          
           echo "Notarization ticket stapled to the package"
         else
           echo "Notarization failed"
           exit 1
         fi
-
-    - name: Staple the notarization ticket
-      if: success()
-      run: |
-        xcrun stapler staple Nexa-${{ env.VERSION }}.dmg
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
