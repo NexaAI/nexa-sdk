@@ -88,7 +88,7 @@ def run_eval_inference(args):
     from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
 
     default_args = argparse.Namespace(
-        model="my-local-completions",
+        model="nexa-gguf",
         tasks=args.tasks,
         model_args="base_url=http://0.0.0.0:8000/v1/completions",
         num_fewshot=None, 

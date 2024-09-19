@@ -92,6 +92,17 @@ def evaluate_model(args):
             for task_name, config in results["configs"].items():
                 evaluation_tracker.save_results_samples(task_name=task_name, samples=results["samples"][task_name])
 
+        if (
+            evaluation_tracker.push_results_to_hub
+            or evaluation_tracker.push_samples_to_hub
+        ):
+            evaluation_tracker.recreate_metadata_card()
+            
+        print(
+            f"{args.model} ({args.model_args}), gen_kwargs: ({args.gen_kwargs}), limit: {args.limit}, num_fewshot: {args.num_fewshot}, "
+            f"batch_size: {args.batch_size}{f' ({batch_sizes})' if batch_sizes else ''}"
+        )
+
         print(make_table(results))
         if "groups" in results:
             print(make_table(results, "groups"))
