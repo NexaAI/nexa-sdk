@@ -1,4 +1,4 @@
-name: Build Nexa Executables MacOS CPU Bundle
+name: Build Nexa Executables MacOS CPU and Metal Bundles
 
 on:
   push:
@@ -100,7 +100,6 @@ jobs:
 
     - name: Rename and upload app
       run: |
-        mv dist/nexa.app dist/nexa.app
         tar -czf nexa.tar.gz -C dist nexa.app
       
     - uses: actions/upload-artifact@v4
@@ -137,7 +136,7 @@ jobs:
         pip install pyinstaller wheel setuptools scikit-build-core
 
     - name: Install nexaai
-      run: CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple --no-cache-dir
+      run: CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install -e . --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple --no-cache-dir
 
     - name: Extract version
       run: |
@@ -197,7 +196,6 @@ jobs:
 
     - name: Rename and upload app
       run: |
-        mv dist/nexa-metal.app dist/nexa-metal.app
         tar -czf nexa-metal.tar.gz -C dist nexa-metal.app
       
     - uses: actions/upload-artifact@v4
