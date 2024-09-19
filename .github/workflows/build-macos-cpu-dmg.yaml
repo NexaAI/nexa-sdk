@@ -170,7 +170,6 @@ jobs:
     #     mv "Nexa-${{ env.VERSION }}-signed.pkg" "Nexa-${{ env.VERSION }}.pkg"
 
     - name: Notarize PKG
-    - name: Notarize PKG
       env:
         APPLE_ID: ${{ secrets.APPLE_ID }}
         APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
