@@ -170,6 +170,7 @@ jobs:
     #     mv "Nexa-${{ env.VERSION }}-signed.pkg" "Nexa-${{ env.VERSION }}.pkg"
 
     - name: Notarize PKG
+    - name: Notarize PKG
       env:
         APPLE_ID: ${{ secrets.APPLE_ID }}
         APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
@@ -180,8 +181,10 @@ jobs:
         echo "Submission output:"
         echo "$SUBMIT_OUTPUT"
         
-        # Extract the submission ID
-        SUBMISSION_ID=$(echo "$SUBMIT_OUTPUT" | grep "id:" | awk '{print $2}')
+        # Extract the submission ID (ensuring it's a single line)
+        SUBMISSION_ID=$(echo "$SUBMIT_OUTPUT" | grep "id:" | awk '{print $2}' | tr -d '\n')
+        
+        echo "Extracted Submission ID: $SUBMISSION_ID"
         
         if [ -z "$SUBMISSION_ID" ]; then
           echo "Failed to extract submission ID. Notarization likely failed."
