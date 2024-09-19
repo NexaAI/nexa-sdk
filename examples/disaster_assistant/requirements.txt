@@ -1,0 +1,10 @@
+firebase_admin==6.5.0
+jsonschema==4.23.0
+nexa==1.0
+openai==1.46.0
+python-dotenv==1.0.1
+Requests==2.32.3
+scipy==1.14.1
+sounddevice==0.4.7
+streamlit==1.38.0
+

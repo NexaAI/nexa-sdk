@@ -8,6 +8,7 @@ NEXA_TOKEN_PATH = NEXA_CACHE_ROOT / "token"
 NEXA_MODELS_HUB_DIR = NEXA_CACHE_ROOT / "hub"
 NEXA_MODEL_EVAL_RESULTS_PATH = NEXA_CACHE_ROOT / "eval"
 NEXA_MODELS_HUB_OFFICIAL_DIR = NEXA_MODELS_HUB_DIR / "official"
+NEXA_MODELS_HUB_HF_DIR = NEXA_MODELS_HUB_DIR / "huggingface"
 NEXA_MODEL_LIST_PATH = NEXA_MODELS_HUB_DIR / "model_list.json"
 
 # URLs and buckets
@@ -47,10 +48,12 @@ NEXA_RUN_MODEL_MAP_TEXT = {
     "gemma2": "gemma-2-2b-instruct:q4_0",
     "qwen1.5": "Qwen1.5-7B-Instruct:q4_0",
     "qwen2": "Qwen2-1.5B-Instruct:q4_0",
+    "qwen2.5": "Qwen2.5-1.5B-Instruct:q4_0",
     "mistral": "Mistral-7B-Instruct-v0.3:q4_0",
     "codegemma": "codegemma-2b:q4_0",
     "codellama": "CodeLlama-7b-Instruct:q4_0",
-    "codeqwen": "CodeQwen1.5-7B-Instruct:q4_0",
+    "codeqwen": "Qwen2.5-Coder-1.5B-Instruct:q4_0",
+    "mathqwen": "Qwen2.5-Math-1.5B-Instruct:q4_0",
     "deepseek-coder": "deepseek-coder-1.3b-instruct:q4_0",
     "dolphin-mistral": "dolphin-2.8-mistral-7b:q4_0",
     "phi2": "Phi-2:q4_0",
@@ -203,6 +206,7 @@ NEXA_RUN_CHAT_TEMPLATE_MAP = {
     "qwen1.5-7b-instruct": "qwen",
     "codeqwen1.5-7b-instruct": "qwen",
     "qwen2": "qwen",
+    "qwen2.5": "qwen",
     "qwen2-0.5b-instruct": "qwen",
     "qwen2-1.5b-instruct": "qwen",
     "qwen2-7b-instruct": "qwen",
@@ -302,6 +306,13 @@ NEXA_OFFICIAL_MODELS_TYPE = {
     "gemma-7b-instruct": ModelType.NLP,
     "gemma-7b": ModelType.NLP,
     "Qwen2-1.5B": ModelType.NLP,
+    "Qwen2.5-0.5B-Instruct": ModelType.NLP,
+    "Qwen2.5-1.5B-Instruct": ModelType.NLP,
+    "Qwen2.5-3B-Instruct": ModelType.NLP,
+    "Qwen2.5-Coder-1.5B-Instruct": ModelType.NLP,
+    "Qwen2.5-Coder-7B-Instruct": ModelType.NLP,
+    "Qwen2.5-Math-1.5B-Instruct": ModelType.NLP,
+    "Qwen2.5-Math-7B-Instruct": ModelType.NLP,
     "codegemma-7b": ModelType.NLP,
     "TinyLlama-1.1B-Chat-v1.0": ModelType.NLP,
     "CodeLlama-7b-Instruct": ModelType.NLP,
