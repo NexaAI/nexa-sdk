@@ -9,11 +9,12 @@ def run_ggml_inference(args):
         from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
         NexaServer(model_path, **kwargs)
         return
-    
-    from nexa.general import pull_model
-    local_path, run_type = pull_model(model_path)
-    
+
+    hf = kwargs.pop('huggingface', False)
     stop_words = kwargs.pop("stop_words", [])
+
+    from nexa.general import pull_model
+    local_path, run_type = pull_model(model_path, hf)
 
     try:
         if run_type == "NLP":
@@ -79,68 +80,13 @@ def run_onnx_inference(args):
     else:
         inference.run()
 
-def run_eval_inference(args):
-    import argparse
-    import multiprocessing
-    import time
-    import requests
-    from nexa.eval.eval_runner import evaluate_model
-    from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
-
-    default_args = argparse.Namespace(
-        model="nexa-gguf",
-        tasks=args.tasks,
-        model_args="base_url=http://0.0.0.0:8000/v1/completions",
-        num_fewshot=None, 
-        hf_hub_log_args="",
-        batch_size=8,
-        max_batch_size=None,
-        device="cuda", 
-        output_path=f"results/{args.model}/{args.tasks.replace(',', '_')}", 
-        limit=None,
-        use_cache=None, 
-        cache_requests=None,
-        check_integrity=False,
-        write_out=False,
-        log_samples=False,
-        system_instruction=None,
-        apply_chat_template=False,
-        fewshot_as_multiturn=False,
-        include_path=None, 
-        gen_kwargs=None,
-        verbosity="INFO",
-        predict_only=False,
-        wandb_args=None,
-        show_config=False,
-        seed=[0, 1234, 1234, 1234], 
-        trust_remote_code=False,
-    )
-
-    def start_server():
-        NexaServer(args.model)
-
-    server_process = multiprocessing.Process(target=start_server)
-    server_process.start()
-
-    try:
-        timeout = 60  # Timeout in seconds
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            try:
-                response = requests.get("http://0.0.0.0:8000/")
-                if response.status_code == 200:
-                    break
-            except requests.exceptions.ConnectionError:
-                pass
-            time.sleep(1)
-        else:
-            raise Exception("Server did not become ready within the specified timeout.")
-
-        evaluate_model(default_args)
-    finally:
-        server_process.terminate()
-        server_process.join()
-
+def run_eval_tasks(args):
+    kwargs = {k: v for k, v in vars(args).items() if v is not None}
+    model_path = kwargs.pop("model_path")
+    
+    from nexa.eval.nexa_eval import NexaEval
+    evaluator = NexaEval(model_path, args.tasks)
+    evaluator.run_evaluation()
 
 def main():
     parser = argparse.ArgumentParser(
@@ -170,6 +116,7 @@ def main():
     text_group.add_argument("-k", "--top_k", type=int, help="Top-k sampling parameter")
     text_group.add_argument("-p", "--top_p", type=float, help="Top-p sampling parameter")
     text_group.add_argument("-sw", "--stop_words", nargs="*", help="List of stop words for early stopping")
+    text_group.add_argument("-hf", "--huggingface", action="store_true", help="Load model from Hugging Face Hub")
 
     # Image generation arguments
     image_group = run_parser.add_argument_group('Image generation options')
@@ -224,15 +171,20 @@ def main():
 
     # GGML server parser
     server_parser = subparsers.add_parser("server", help="Run the Nexa AI Text Generation Service")
-    server_parser.add_argument("model_path", type=str, help="Path or identifier for the model in S3")
+    server_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
     server_parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to bind the server to")
     server_parser.add_argument("--port", type=int, default=8000, help="Port to bind the server to")
     server_parser.add_argument("--reload", action="store_true", help="Enable automatic reloading on code changes")
     server_parser.add_argument("--nctx", type=int, default=2048, help="Length of context window")
 
     # Other commands
-    subparsers.add_parser("pull", help="Pull a model from official or hub.").add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
-    subparsers.add_parser("remove", help="Remove a model from local machine.").add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
+    pull_parser = subparsers.add_parser("pull", help="Pull a model from official or hub.")
+    pull_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
+    pull_parser.add_argument("-hf", "--huggingface", action="store_true", help="Pull model from Hugging Face Hub")
+
+    remove_parser = subparsers.add_parser("remove", help="Remove a model from local machine.")
+    remove_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
+
     subparsers.add_parser("clean", help="Clean up all model files.")
     subparsers.add_parser("list", help="List all models in the local machine.")
     subparsers.add_parser("login", help="Login to Nexa API.")
@@ -241,7 +193,7 @@ def main():
 
     # Benchmark Evaluation
     eval_parser = subparsers.add_parser("eval", help="Evaluate models on specified tasks.")
-    eval_parser.add_argument("--model", type=str, required=True, help="Model to use for evaluation.")
+    eval_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
     eval_parser.add_argument("--tasks", type=str, required=True, help="Tasks to evaluate the model on, separated by commas.")
 
 
@@ -251,9 +203,12 @@ def main():
         run_ggml_inference(args)
     elif args.command == "onnx":
         run_onnx_inference(args)
+    elif args.command == "eval":
+        run_eval_tasks(args)
     elif args.command == "pull":
         from nexa.general import pull_model
-        pull_model(args.model_path)
+        hf = getattr(args, 'huggingface', False)
+        pull_model(args.model_path, hf)
     elif args.command == "remove":
         from nexa.general import remove_model
         remove_model(args.model_path)
@@ -272,8 +227,6 @@ def main():
     elif args.command == "whoami":
         from nexa.general import whoami
         whoami()
-    elif args.command == "eval":
-        run_eval_inference(args)
     else:
         parser.print_help()
 

@@ -1,0 +1,74 @@
+{
+  "victim_info": {
+    "id": "",
+    "emergency_status": "",
+    "location": {
+      "lat": 0.0,
+      "lon": 0.0,
+      "details": "",
+      "nearest_landmark": ""
+    },
+    "personal_info": {
+      "name": "",
+      "age": 0,
+      "gender": "",
+      "language": "",
+      "physical_description": ""
+    },
+    "medical_info": {
+      "injuries": [""],
+      "pain_level": 0,
+      "medical_conditions": [""],
+      "medications": [""],
+      "allergies": [""],
+      "blood_type": ""
+    },
+    "situation": {
+      "disaster_type": "",
+      "immediate_needs": [""],
+      "trapped": false,
+      "mobility": "",
+      "nearby_hazards": [""]
+    },
+    "contact_info": {
+      "phone": "",
+      "email": "",
+      "emergency_contact": {
+        "name": "",
+        "relationship": "",
+        "phone": ""
+      }
+    },
+    "resources": {
+      "food_status": "",
+      "water_status": "",
+      "shelter_status": "",
+      "communication_devices": [""]
+    },
+    "rescue_info": {
+      "last_contact": "",
+      "rescue_team_eta": "",
+      "special_rescue_needs": ""
+    },
+    "environmental_data": {
+      "temperature": 0,
+      "humidity": 0,
+      "air_quality": "",
+      "weather": ""
+    },
+    "device_data": {
+      "battery_level": 0,
+      "network_status": ""
+    },
+    "social_info": {
+      "group_size": 0,
+      "dependents": 0,
+      "nearby_victims_count": 0,
+      "can_communicate_verbally": false
+    },
+    "psychological_status": {
+      "stress_level": "",
+      "special_needs": ""
+    }
+  }
+}
