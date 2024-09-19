@@ -40,51 +40,6 @@ jobs:
     - name: Build with PyInstaller
       run: pyinstaller nexa-macos-cpu.spec
 
-    - name: Create keychain and import certificate
-      env:
-        CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE }}
-        CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
-      run: |
-        echo $CERTIFICATE_BASE64 | base64 --decode > certificate.p12
-        security create-keychain -p "" build.keychain
-        security default-keychain -s build.keychain
-        security unlock-keychain -p "" build.keychain
-        security import certificate.p12 -k build.keychain -P $CERTIFICATE_PASSWORD -T /usr/bin/codesign
-        security find-identity -v -p codesigning build.keychain
-        security find-certificate -a -c "Developer ID Application" build.keychain
-
-    - name: Verify certificate import
-      run: |
-        security find-identity -v -p codesigning
-        security find-certificate -a -c "Developer ID Application"
-
-    - name: Unlock keychain
-      run: |
-        security unlock-keychain -p "" build.keychain
-        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
-
-    - name: Sign the app
-      env:
-        APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
-      run: |
-        # Sign the Python framework
-        codesign --force --options runtime --timestamp -s "$APPLE_DEVELOPER_ID" "dist/nexa.app/Contents/Frameworks/Python.framework/Versions/3.11/Python"
-
-        # Sign all other components (as before)
-        find "dist/nexa.app/Contents/Frameworks" -type f \( -name "*.so" -o -name "*.dylib" \) -exec codesign --force --options runtime --timestamp -s "$APPLE_DEVELOPER_ID" {} \;
-        
-        # Sign the main executable
-        codesign --force --options runtime --timestamp -s "$APPLE_DEVELOPER_ID" "dist/nexa.app/Contents/MacOS/nexa"
-        
-        # Sign the entire app bundle
-        codesign --force --options runtime --timestamp -s "$APPLE_DEVELOPER_ID" "dist/nexa.app"
-        
-        # Verify the signature
-        codesign -vvv --deep --strict "dist/nexa.app"
-
-        # List all signed components for verification
-        codesign -dvv "dist/nexa.app"
-
     - name: Create launcher script
       run: |
         # First, ensure we're not overwriting an existing directory
@@ -136,6 +91,54 @@ jobs:
 
         # Update Info.plist to use the icon
         /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile nexa-icon" dist/nexa.app/Contents/Info.plist
+
+    - name: Create keychain and import certificate
+      env:
+        CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE }}
+        CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+      run: |
+        echo $CERTIFICATE_BASE64 | base64 --decode > certificate.p12
+        security create-keychain -p "" build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p "" build.keychain
+        security import certificate.p12 -k build.keychain -P $CERTIFICATE_PASSWORD -T /usr/bin/codesign
+        security find-identity -v -p codesigning build.keychain
+        security find-certificate -a -c "Developer ID Application" build.keychain
+
+    - name: Verify certificate import
+      run: |
+        security find-identity -v -p codesigning
+        security find-certificate -a -c "Developer ID Application"
+
+    - name: Unlock keychain
+      run: |
+        security unlock-keychain -p "" build.keychain
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
+
+    - name: Sign the app
+      env:
+        APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
+      run: |
+        # Sign Python binaries
+        codesign --force --options runtime --timestamp -s "$APPLE_DEVELOPER_ID" "dist/nexa.app/Contents/Resources/Python"
+        codesign --force --options runtime --timestamp -s "$APPLE_DEVELOPER_ID" "dist/nexa.app/Contents/Resources/Python.framework/Python"
+        codesign --force --options runtime --timestamp -s "$APPLE_DEVELOPER_ID" "dist/nexa.app/Contents/Frameworks/Python"
+        codesign --force --options runtime --timestamp -s "$APPLE_DEVELOPER_ID" "dist/nexa.app/Contents/Frameworks/Python.framework/Python"
+
+        # Sign all other components
+        find "dist/nexa.app/Contents" -type f \( -name "*.so" -o -name "*.dylib" \) -exec codesign --force --options runtime --timestamp -s "$APPLE_DEVELOPER_ID" {} \;
+        
+        # Sign the main executable
+        codesign --force --options runtime --timestamp -s "$APPLE_DEVELOPER_ID" "dist/nexa.app/Contents/MacOS/nexa"
+        
+        # Sign the entire app bundle
+        codesign --force --options runtime --timestamp -s "$APPLE_DEVELOPER_ID" "dist/nexa.app"
+        
+        # Verify the signature
+        codesign -vvv --deep --strict "dist/nexa.app"
+
+        # List all signed components for verification
+        codesign -dvv "dist/nexa.app"
 
     - name: Create DMG with Postinstall Script
       run: |
@@ -199,6 +202,16 @@ jobs:
 
         # Clean up
         rm -rf dmg_contents
+
+    - name: Sign the DMG
+      env:
+        APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
+      run: |
+        # Sign the DMG
+        codesign --force --sign "$APPLE_DEVELOPER_ID" --options runtime "Nexa-${{ env.VERSION }}.dmg"
+
+        # Verify the DMG signature
+        codesign -vvv --deep --strict "Nexa-${{ env.VERSION }}.dmg"
 
     - name: Upload artifact (pre-notarization)
       uses: actions/upload-artifact@v4
