@@ -103,7 +103,7 @@ jobs:
         APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
       run: |
         # Sign nexa_launcher individually
-        codesign --force --options runtime --timestamp -s "$APPLE_DEVELOPER_ID" "dist/nexa.app/Contents/Frameworks/nexa/nexa_launcher"
+        # codesign --force --options runtime --timestamp -s "$APPLE_DEVELOPER_ID" "dist/nexa.app/Contents/Frameworks/nexa/nexa_launcher"
         
         # Sign Python binaries
         codesign --force --options runtime --timestamp -s "$APPLE_DEVELOPER_ID" "dist/nexa.app/Contents/Resources/Python"
