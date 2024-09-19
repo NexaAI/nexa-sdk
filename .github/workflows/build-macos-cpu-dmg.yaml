@@ -123,44 +123,64 @@ jobs:
         # Verify the signature
         codesign -vvv --deep --strict "dist/nexa.app"
 
+    # - name: Create PKG Installer
+    #   run: |
+    #     # mkdir -p pkg_root/Applications pkg_scripts
+    #     mkdir -p pkg_root/Applications
+
+    #     cp -R dist/nexa.app pkg_root/Applications/
+
+    #     # cat << EOF > pkg_scripts/preinstall
+    #     # #!/bin/bash
+    #     # rm -f /usr/local/bin/nexa
+    #     # exit 0
+    #     # EOF
+
+    #     # cat << EOF > pkg_scripts/postinstall
+    #     # #!/bin/bash
+    #     # ln -sf /Applications/Nexa.app/Contents/Resources/nexa /usr/local/bin/nexa
+
+    #     # LAUNCHER="/Applications/Nexa.app/Contents/MacOS/nexa"
+    #     # mv "\$LAUNCHER" "\$LAUNCHER.real"
+    #     # cat << EOL > "\$LAUNCHER"
+    #     # #!/bin/bash
+    #     # "\$LAUNCHER.real" --gui
+    #     # EOL
+    #     # chmod +x "\$LAUNCHER"
+
+    #     # exit 0
+    #     # EOF
+
+    #     # chmod +x pkg_scripts/preinstall pkg_scripts/postinstall
+
+    #     # pkgbuild --root pkg_root \
+    #     #         --scripts pkg_scripts \
+    #     #         --identifier com.nexaai.sdk \
+    #     #         --version ${{ env.VERSION }} \
+    #     #         --install-location / \
+    #     #         "Nexa-${{ env.VERSION }}-unsigned.pkg"
+
+    #     pkgbuild --root pkg_root \
+    #             --identifier com.nexaai.sdk \
+    #             --version ${{ env.VERSION }} \
+    #             --install-location / \
+    #             "Nexa-${{ env.VERSION }}-unsigned.pkg"
+
+    #     # rm -rf pkg_root pkg_scripts
+    #     rm -rf pkg_root
+
     - name: Create PKG Installer
       run: |
-        # mkdir -p pkg_root/Applications pkg_scripts
         mkdir -p pkg_root/Applications
 
         cp -R dist/nexa.app pkg_root/Applications/
 
-        # cat << EOF > pkg_scripts/preinstall
-        # #!/bin/bash
-        # rm -f /usr/local/bin/nexa
-        # exit 0
-        # EOF
-
-        # cat << EOF > pkg_scripts/postinstall
-        # #!/bin/bash
-        # ln -sf /Applications/Nexa.app/Contents/Resources/nexa /usr/local/bin/nexa
-
-        # LAUNCHER="/Applications/Nexa.app/Contents/MacOS/nexa"
-        # mv "\$LAUNCHER" "\$LAUNCHER.real"
-        # cat << EOL > "\$LAUNCHER"
-        # #!/bin/bash
-        # "\$LAUNCHER.real" --gui
-        # EOL
-        # chmod +x "\$LAUNCHER"
-
-        # exit 0
-        # EOF
-
-        # chmod +x pkg_scripts/preinstall pkg_scripts/postinstall
-
         pkgbuild --root pkg_root \
-                # --scripts pkg_scripts \
                 --identifier com.nexaai.sdk \
                 --version ${{ env.VERSION }} \
                 --install-location / \
                 "Nexa-${{ env.VERSION }}-unsigned.pkg"
 
-        # rm -rf pkg_root pkg_scripts
         rm -rf pkg_root
 
     - name: Sign PKG
