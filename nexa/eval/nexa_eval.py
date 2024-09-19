@@ -22,7 +22,7 @@ class NexaEval:
         self.server_url = "http://0.0.0.0:8000"
         output_path = Path(NEXA_MODEL_EVAL_RESULTS_PATH) / self.model_name / self.model_tag / tasks.replace(',', '_')
         self.eval_args = {
-            "model": "my-local-completions",
+            "model": "nexa-gguf",
             "tasks": tasks,
             "model_args": f"base_url={self.server_url}/v1/completions",
             "num_fewshot": None,

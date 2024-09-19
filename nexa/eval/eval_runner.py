@@ -91,6 +91,11 @@ def evaluate_model(args):
         if args.log_samples:
             for task_name, config in results["configs"].items():
                 evaluation_tracker.save_results_samples(task_name=task_name, samples=results["samples"][task_name])
+           
+        print(
+            f"{args.model} ({args.model_args}), gen_kwargs: ({args.gen_kwargs}), limit: {args.limit}, num_fewshot: {args.num_fewshot}, "
+            f"batch_size: {args.batch_size}{f' ({batch_sizes})' if batch_sizes else ''}"
+        )
 
         print(make_table(results))
         if "groups" in results:
