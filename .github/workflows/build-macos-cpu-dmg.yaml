@@ -157,17 +157,17 @@ jobs:
 
         rm -rf pkg_root pkg_scripts
 
-    - name: Sign PKG
-      env:
-        APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
-      run: |
-        productsign --sign "$APPLE_DEVELOPER_ID" \
-                    "Nexa-${{ env.VERSION }}.pkg" \
-                    "Nexa-${{ env.VERSION }}-signed.pkg"
+    # - name: Sign PKG
+    #   env:
+    #     APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
+    #   run: |
+    #     productsign --sign "$APPLE_DEVELOPER_ID" \
+    #                 "Nexa-${{ env.VERSION }}.pkg" \
+    #                 "Nexa-${{ env.VERSION }}-signed.pkg"
 
-        pkgutil --check-signature "Nexa-${{ env.VERSION }}-signed.pkg"
+    #     pkgutil --check-signature "Nexa-${{ env.VERSION }}-signed.pkg"
 
-        mv "Nexa-${{ env.VERSION }}-signed.pkg" "Nexa-${{ env.VERSION }}.pkg"
+    #     mv "Nexa-${{ env.VERSION }}-signed.pkg" "Nexa-${{ env.VERSION }}.pkg"
 
     - name: Notarize PKG
       env:
