@@ -153,21 +153,24 @@ jobs:
                 --identifier com.yourcompany.nexa \
                 --version ${{ env.VERSION }} \
                 --install-location / \
-                "Nexa-${{ env.VERSION }}.pkg"
+                "Nexa-${{ env.VERSION }}-unsigned.pkg"
 
         rm -rf pkg_root pkg_scripts
 
-    # - name: Sign PKG
-    #   env:
-    #     APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
-    #   run: |
-    #     productsign --sign "$APPLE_DEVELOPER_ID" \
-    #                 "Nexa-${{ env.VERSION }}.pkg" \
-    #                 "Nexa-${{ env.VERSION }}-signed.pkg"
+    - name: Sign PKG
+      env:
+        APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
+      run: |
+        # Sign the package
+        productsign --sign "$APPLE_DEVELOPER_ID" \
+                    "Nexa-${{ env.VERSION }}-unsigned.pkg" \
+                    "Nexa-${{ env.VERSION }}.pkg"
 
-    #     pkgutil --check-signature "Nexa-${{ env.VERSION }}-signed.pkg"
+        # Verify the signature
+        pkgutil --check-signature "Nexa-${{ env.VERSION }}.pkg"
 
-    #     mv "Nexa-${{ env.VERSION }}-signed.pkg" "Nexa-${{ env.VERSION }}.pkg"
+        # Remove the unsigned package
+        rm "Nexa-${{ env.VERSION }}-unsigned.pkg"
 
     - name: Notarize PKG
       env:
