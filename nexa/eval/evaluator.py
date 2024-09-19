@@ -24,7 +24,7 @@ from nexa.eval.evaluator_utils import (
     print_writeout,
     run_task_tests,
 )
-from nexa.eval.loggers import EvaluationTracker
+
 from nexa.eval.loggers.utils import add_env_info, add_tokenizer_info, get_git_commit_hash
 from nexa.eval.tasks import (
     TaskManager,
@@ -62,7 +62,7 @@ def simple_evaluate(
     check_integrity: bool = False,
     write_out: bool = False,
     log_samples: bool = True,
-    evaluation_tracker: Optional[EvaluationTracker] = None,
+    evaluation_tracker = None,
     system_instruction: Optional[str] = None,
     apply_chat_template: Union[bool, str] = False,
     fewshot_as_multiturn: bool = False,
