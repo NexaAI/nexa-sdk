@@ -85,20 +85,102 @@ jobs:
         # List all signed components for verification
         codesign -dvv "dist/nexa.app"
 
+    - name: Create launcher script
+      run: |
+        cat << EOF > nexa
+        #!/bin/bash
+
+        NEXA_APP="/Applications/Nexa.app"
+        NEXA_EXECUTABLE="\$NEXA_APP/Contents/MacOS/nexa"
+
+        if [ "\$1" = "--gui" ]; then
+            osascript -e "tell application \"Terminal\" to do script \"\$NEXA_EXECUTABLE\""
+        else
+            "\$NEXA_EXECUTABLE" "\$@"
+        fi
+        EOF
+        chmod +x nexa
+
+    - name: Add launcher script to app bundle
+      run: |
+        mkdir -p "dist/nexa.app/Contents/Resources"
+        cp nexa "dist/nexa.app/Contents/Resources/"
+
+    - name: Modify Info.plist
+      run: |
+        /usr/libexec/PlistBuddy -c "Set CFBundleExecutable nexa" "dist/nexa.app/Contents/Info.plist"
+        /usr/libexec/PlistBuddy -c "Add LSUIElement string 1" "dist/nexa.app/Contents/Info.plist"
+
+    - name: Set app icon
+      run: |
+        # Ensure the icon is in the correct location
+        cp nexa-icon.icns dist/nexa.app/Contents/Resources/
+
+        # Update Info.plist to use the icon
+        /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile nexa-icon" dist/nexa.app/Contents/Info.plist
+
     - name: Create DMG
       run: |
-        brew install create-dmg
-        create-dmg \
-          --volname "Nexa Installer" \
-          --volicon "./nexa-icon.icns" \
-          --window-pos 200 120 \
-          --window-size 800 400 \
-          --icon-size 100 \
-          --icon "nexa.app" 200 190 \
-          --hide-extension "nexa.app" \
-          --app-drop-link 600 185 \
-          "Nexa-${{ env.VERSION }}.dmg" \
-          "dist/nexa.app"
+        # Create a temporary directory for DMG contents
+        mkdir dmg_contents
+        cp -r dist/nexa.app dmg_contents/
+        cp nexa-icon.icns dmg_contents/.VolumeIcon.icns
+
+        # Create the DMG
+        hdiutil create -volname "Nexa Installer" -srcfolder dmg_contents -ov -format UDZO "Nexa-${{ env.VERSION }}.dmg"
+
+        # Mount the DMG
+        hdiutil attach "Nexa-${{ env.VERSION }}.dmg"
+
+        # Set the custom icon for the DMG
+        SetFile -a C "/Volumes/Nexa Installer"
+
+        # Create .DS_Store with custom layout
+        echo '
+        tell application "Finder"
+          tell disk "Nexa Installer"
+            open
+            set current view of container window to icon view
+            set toolbar visible of container window to false
+            set statusbar visible of container window to false
+            set the bounds of container window to {400, 100, 885, 430}
+            set theViewOptions to the icon view options of container window
+            set arrangement of theViewOptions to not arranged
+            set icon size of theViewOptions to 72
+            make new alias file at container window to POSIX file "/Applications" with properties {name:"Applications"}
+            set position of item "nexa.app" of container window to {100, 180}
+            set position of item "Applications" of container window to {375, 180}
+            update without registering applications
+            delay 5
+            close
+          end tell
+        end tell
+        ' | osascript
+
+        # Detach the DMG
+        hdiutil detach "/Volumes/Nexa Installer"
+
+        # Convert the DMG to read-only
+        hdiutil convert "Nexa-${{ env.VERSION }}.dmg" -format UDZO -o "Nexa-${{ env.VERSION }}-final.dmg"
+        mv "Nexa-${{ env.VERSION }}-final.dmg" "Nexa-${{ env.VERSION }}.dmg"
+
+    - name: Add postinstall script to DMG
+      run: |
+        cat << EOF > postinstall
+        #!/bin/bash
+        ln -sf "/Applications/Nexa.app/Contents/Resources/nexa" "/usr/local/bin/nexa"
+        LAUNCHER="/Applications/Nexa.app/Contents/MacOS/nexa"
+        mv "\$LAUNCHER" "\$LAUNCHER.real"
+        cat << EOL > "\$LAUNCHER"
+        #!/bin/bash
+        "\$LAUNCHER.real" --gui
+        EOL
+        chmod +x "\$LAUNCHER"
+        EOF
+        chmod +x postinstall
+        hdiutil attach "Nexa-${{ env.VERSION }}.dmg"
+        cp postinstall "/Volumes/Nexa Installer/"
+        hdiutil detach "/Volumes/Nexa Installer"
 
     - name: Upload artifact (pre-notarization)
       uses: actions/upload-artifact@v4
