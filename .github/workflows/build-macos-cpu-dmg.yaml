@@ -87,24 +87,42 @@ jobs:
 
     - name: Create launcher script
       run: |
-        cat << EOF > nexa
+        # First, ensure we're not overwriting an existing directory
+        if [ -d "nexa" ]; then
+          echo "Warning: 'nexa' directory already exists. Creating launcher script as 'nexa_launcher' instead."
+          SCRIPT_NAME="nexa_launcher"
+        else
+          SCRIPT_NAME="nexa"
+        fi
+
+        # Create the launcher script
+        cat << EOF > "$SCRIPT_NAME"
         #!/bin/bash
 
         NEXA_APP="/Applications/Nexa.app"
         NEXA_EXECUTABLE="\$NEXA_APP/Contents/MacOS/nexa"
 
         if [ "\$1" = "--gui" ]; then
-            osascript -e "tell application \"Terminal\" to do script \"\$NEXA_EXECUTABLE\""
+          osascript -e "tell application \"Terminal\" to do script \"\$NEXA_EXECUTABLE\""
         else
-            "\$NEXA_EXECUTABLE" "\$@"
+          "\$NEXA_EXECUTABLE" "\$@"
         fi
         EOF
-        chmod +x nexa
+
+        # Make the script executable
+        chmod +x "$SCRIPT_NAME"
+
+        # Display the contents of the script for verification
+        echo "Created launcher script '$SCRIPT_NAME' with the following contents:"
+        cat "$SCRIPT_NAME"
+
+        # Update subsequent steps to use the correct script name
+        echo "LAUNCHER_SCRIPT_NAME=$SCRIPT_NAME" >> $GITHUB_ENV
 
     - name: Add launcher script to app bundle
       run: |
         mkdir -p "dist/nexa.app/Contents/Resources"
-        cp nexa "dist/nexa.app/Contents/Resources/"
+        cp "${{ env.LAUNCHER_SCRIPT_NAME }}" "dist/nexa.app/Contents/Resources/nexa"
 
     - name: Modify Info.plist
       run: |
