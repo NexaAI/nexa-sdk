@@ -137,15 +137,29 @@ jobs:
         # Update Info.plist to use the icon
         /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile nexa-icon" dist/nexa.app/Contents/Info.plist
 
-    - name: Create DMG
+    - name: Create DMG with Postinstall Script
       run: |
         # Create a temporary directory for DMG contents
         mkdir dmg_contents
         cp -r dist/nexa.app dmg_contents/
         cp nexa-icon.icns dmg_contents/.VolumeIcon.icns
 
+        # Create postinstall script
+        cat << EOF > dmg_contents/postinstall
+        #!/bin/bash
+        ln -sf "/Applications/Nexa.app/Contents/Resources/nexa" "/usr/local/bin/nexa"
+        LAUNCHER="/Applications/Nexa.app/Contents/MacOS/nexa"
+        mv "\$LAUNCHER" "\$LAUNCHER.real"
+        cat << EOL > "\$LAUNCHER"
+        #!/bin/bash
+        "\$LAUNCHER.real" --gui
+        EOL
+        chmod +x "\$LAUNCHER"
+        EOF
+        chmod +x dmg_contents/postinstall
+
         # Create the DMG
-        hdiutil create -volname "Nexa Installer" -srcfolder dmg_contents -ov -format UDZO "Nexa-${{ env.VERSION }}.dmg"
+        hdiutil create -volname "Nexa Installer" -srcfolder dmg_contents -ov -format UDRW "Nexa-${{ env.VERSION }}.dmg"
 
         # Mount the DMG
         hdiutil attach "Nexa-${{ env.VERSION }}.dmg"
@@ -168,6 +182,7 @@ jobs:
             make new alias file at container window to POSIX file "/Applications" with properties {name:"Applications"}
             set position of item "nexa.app" of container window to {100, 180}
             set position of item "Applications" of container window to {375, 180}
+            set position of item "postinstall" of container window to {237, 180}
             update without registering applications
             delay 5
             close
@@ -182,23 +197,8 @@ jobs:
         hdiutil convert "Nexa-${{ env.VERSION }}.dmg" -format UDZO -o "Nexa-${{ env.VERSION }}-final.dmg"
         mv "Nexa-${{ env.VERSION }}-final.dmg" "Nexa-${{ env.VERSION }}.dmg"
 
-    - name: Add postinstall script to DMG
-      run: |
-        cat << EOF > postinstall
-        #!/bin/bash
-        ln -sf "/Applications/Nexa.app/Contents/Resources/nexa" "/usr/local/bin/nexa"
-        LAUNCHER="/Applications/Nexa.app/Contents/MacOS/nexa"
-        mv "\$LAUNCHER" "\$LAUNCHER.real"
-        cat << EOL > "\$LAUNCHER"
-        #!/bin/bash
-        "\$LAUNCHER.real" --gui
-        EOL
-        chmod +x "\$LAUNCHER"
-        EOF
-        chmod +x postinstall
-        hdiutil attach "Nexa-${{ env.VERSION }}.dmg"
-        cp postinstall "/Volumes/Nexa Installer/"
-        hdiutil detach "/Volumes/Nexa Installer"
+        # Clean up
+        rm -rf dmg_contents
 
     - name: Upload artifact (pre-notarization)
       uses: actions/upload-artifact@v4
