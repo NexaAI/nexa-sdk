@@ -82,16 +82,20 @@ jobs:
         cp nexa-icon.icns dist/nexa.app/Contents/Resources/
         /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile nexa-icon" dist/nexa.app/Contents/Info.plist
 
-    - name: Create keychain and import certificate
+    - name: Import Code Signing Certificates
       env:
-        CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE }}
-        CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        APP_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE }}
+        APP_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        INSTALLER_CERTIFICATE_BASE64: ${{ secrets.MACOS_INSTALLER_CERTIFICATE }}
+        INSTALLER_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_INSTALLER_CERTIFICATE_PASSWORD }}
       run: |
-        echo $CERTIFICATE_BASE64 | base64 --decode > certificate.p12
+        echo $APP_CERTIFICATE_BASE64 | base64 --decode > app_certificate.p12
+        echo $INSTALLER_CERTIFICATE_BASE64 | base64 --decode > installer_certificate.p12
         security create-keychain -p "" build.keychain
         security default-keychain -s build.keychain
         security unlock-keychain -p "" build.keychain
-        security import certificate.p12 -k build.keychain -P $CERTIFICATE_PASSWORD -T /usr/bin/codesign
+        security import app_certificate.p12 -k build.keychain -P $APP_CERTIFICATE_PASSWORD -T /usr/bin/codesign
+        security import installer_certificate.p12 -k build.keychain -P $INSTALLER_CERTIFICATE_PASSWORD -T /usr/bin/productsign
         security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
 
     - name: Sign the app
@@ -159,10 +163,10 @@ jobs:
 
     - name: Sign PKG
       env:
-        APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
+        APPLE_INSTALLER_ID: ${{ secrets.APPLE_INSTALLER_ID }}
       run: |
         # Sign the package
-        productsign --sign "$APPLE_DEVELOPER_ID" \
+        productsign --sign "$APPLE_INSTALLER_ID" \
                     "Nexa-${{ env.VERSION }}-unsigned.pkg" \
                     "Nexa-${{ env.VERSION }}.pkg"
 
