@@ -181,7 +181,7 @@ jobs:
         echo "$SUBMIT_OUTPUT"
         
         # Extract the submission ID (ensuring it's a single line)
-        SUBMISSION_ID=$(echo "$SUBMIT_OUTPUT" | grep "id:" | awk '{print $2}' | tr -d '\n')
+        SUBMISSION_ID=$(echo "$NOTARIZATION_OUTPUT" | grep 'id:' | head -n 1 | awk '{print $2}' | tr -d '\n')
         
         echo "Extracted Submission ID: $SUBMISSION_ID"
         
