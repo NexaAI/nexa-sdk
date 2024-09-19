@@ -94,7 +94,7 @@ def run_eval_inference(model_path: str, tasks: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run Nexa Model Evaluation")
     parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
-    parser.add_argument("tasks", type=str, help="Tasks to evaluate, comma-separated")
+    parser.add_argument("--tasks", type=str, help="Tasks to evaluate, comma-separated")
     
     args = parser.parse_args()
     run_eval_inference(args.model_path, args.tasks)
