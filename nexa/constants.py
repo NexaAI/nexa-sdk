@@ -6,6 +6,7 @@ from enum import Enum
 NEXA_CACHE_ROOT = Path(os.getenv("NEXA_CACHE_ROOT") or "~/.cache/nexa").expanduser()
 NEXA_TOKEN_PATH = NEXA_CACHE_ROOT / "token"
 NEXA_MODELS_HUB_DIR = NEXA_CACHE_ROOT / "hub"
+NEXA_MODEL_EVAL_RESULTS_PATH = NEXA_CACHE_ROOT / "eval"
 NEXA_MODELS_HUB_OFFICIAL_DIR = NEXA_MODELS_HUB_DIR / "official"
 NEXA_MODEL_LIST_PATH = NEXA_MODELS_HUB_DIR / "model_list.json"
 
