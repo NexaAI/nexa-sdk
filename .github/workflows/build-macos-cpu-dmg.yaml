@@ -125,40 +125,9 @@ jobs:
 
     # - name: Create PKG Installer
     #   run: |
-    #     # mkdir -p pkg_root/Applications pkg_scripts
     #     mkdir -p pkg_root/Applications
 
     #     cp -R dist/nexa.app pkg_root/Applications/
-
-    #     # cat << EOF > pkg_scripts/preinstall
-    #     # #!/bin/bash
-    #     # rm -f /usr/local/bin/nexa
-    #     # exit 0
-    #     # EOF
-
-    #     # cat << EOF > pkg_scripts/postinstall
-    #     # #!/bin/bash
-    #     # ln -sf /Applications/Nexa.app/Contents/Resources/nexa /usr/local/bin/nexa
-
-    #     # LAUNCHER="/Applications/Nexa.app/Contents/MacOS/nexa"
-    #     # mv "\$LAUNCHER" "\$LAUNCHER.real"
-    #     # cat << EOL > "\$LAUNCHER"
-    #     # #!/bin/bash
-    #     # "\$LAUNCHER.real" --gui
-    #     # EOL
-    #     # chmod +x "\$LAUNCHER"
-
-    #     # exit 0
-    #     # EOF
-
-    #     # chmod +x pkg_scripts/preinstall pkg_scripts/postinstall
-
-    #     # pkgbuild --root pkg_root \
-    #     #         --scripts pkg_scripts \
-    #     #         --identifier com.nexaai.sdk \
-    #     #         --version ${{ env.VERSION }} \
-    #     #         --install-location / \
-    #     #         "Nexa-${{ env.VERSION }}-unsigned.pkg"
 
     #     pkgbuild --root pkg_root \
     #             --identifier com.nexaai.sdk \
@@ -166,22 +135,51 @@ jobs:
     #             --install-location / \
     #             "Nexa-${{ env.VERSION }}-unsigned.pkg"
 
-    #     # rm -rf pkg_root pkg_scripts
     #     rm -rf pkg_root
 
     - name: Create PKG Installer
       run: |
-        mkdir -p pkg_root/Applications
+        mkdir -p pkg_root/Applications pkg_scripts
 
         cp -R dist/nexa.app pkg_root/Applications/
 
+        cat << EOF > pkg_scripts/preinstall
+        #!/bin/bash
+        # Remove existing symlink if it exists
+        rm -f /usr/local/bin/nexa
+        exit 0
+        EOF
+
+        cat << EOF > pkg_scripts/postinstall
+        #!/bin/bash
+        # Create the symlink
+        ln -sf /Applications/nexa.app/Contents/MacOS/nexa /usr/local/bin/nexa
+
+        # Ensure the symlink is created successfully
+        if [ -L "/usr/local/bin/nexa" ]; then
+          echo "Symlink created successfully"
+        else
+          echo "Failed to create symlink"
+          exit 1
+        fi
+
+        # Set correct permissions
+        chown root:wheel /usr/local/bin/nexa
+        chmod 755 /usr/local/bin/nexa
+
+        exit 0
+        EOF
+
+        chmod +x pkg_scripts/preinstall pkg_scripts/postinstall
+
         pkgbuild --root pkg_root \
-                --identifier com.nexaai.sdk \
+                --scripts pkg_scripts \
+                --identifier com.yourcompany.nexa \
                 --version ${{ env.VERSION }} \
                 --install-location / \
                 "Nexa-${{ env.VERSION }}-unsigned.pkg"
 
-        rm -rf pkg_root
+        rm -rf pkg_root pkg_scripts
 
     - name: Sign PKG
       env:
