@@ -22,7 +22,6 @@ from nexa.eval.evaluator_utils import (
     get_task_list,
     prepare_print_tasks,
     print_writeout,
-    run_task_tests,
 )
 
 from nexa.eval.loggers.utils import add_env_info, add_tokenizer_info, get_git_commit_hash

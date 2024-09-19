@@ -1,7 +1,6 @@
 from functools import cached_property
 from nexa.eval.api.registry import register_model
 from nexa.eval.models.api_models import TemplateAPI
-from nexa.eval.models.openai_completions import LocalCompletionsAPI
 from typing import Any, Dict, List, Optional, Tuple, Union
 from nexa.eval.api.registry import register_model
 from nexa.eval.utils import eval_logger
@@ -13,7 +12,7 @@ from requests.exceptions import RequestException
 from tqdm import tqdm
 from nexa.eval.api.model import LM
 
-@register_model("my-local-completions")
+@register_model("nexa-completions")
 class nexa_models(TemplateAPI):
     def __init__(
         self,

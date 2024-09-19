@@ -1,14 +1,10 @@
-import argparse
+
 import json
 import logging
 import os
 import sys
-import datasets
-import subprocess
-import time
-import requests
 from nexa.eval import evaluator, utils
-from nexa.eval.loggers import EvaluationTracker, WandbLogger
+from nexa.eval.loggers import EvaluationTracker
 from nexa.eval.tasks import TaskManager
 from nexa.eval.utils import handle_non_serializable, make_table, simple_parse_args_string
 
