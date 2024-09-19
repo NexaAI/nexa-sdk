@@ -176,13 +176,12 @@ jobs:
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       run: |
         echo "Submitting package for notarization..."
-        SUBMIT_OUTPUT=$(xcrun notarytool submit "Nexa-${{ env.VERSION }}.pkg" --apple-id "$APPLE_ID" --password "$APPLE_ID_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait)
+        NOTARIZATION_OUTPUT=$(xcrun notarytool submit "Nexa-${{ env.VERSION }}.pkg" --apple-id "$APPLE_ID" --password "$APPLE_ID_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait)
         echo "Submission output:"
-        echo "$SUBMIT_OUTPUT"
+        echo "$NOTARIZATION_OUTPUT"
         
         # Extract the submission ID (ensuring it's a single line)
         SUBMISSION_ID=$(echo "$NOTARIZATION_OUTPUT" | grep 'id:' | head -n 1 | awk '{print $2}' | tr -d '\n')
-        
         echo "Extracted Submission ID: $SUBMISSION_ID"
         
         if [ -z "$SUBMISSION_ID" ]; then
@@ -190,22 +189,28 @@ jobs:
           exit 1
         fi
         
-        echo "Fetching notarization info for submission ID: $SUBMISSION_ID"
-        NOTARIZATION_INFO=$(xcrun notarytool info "$SUBMISSION_ID" --apple-id "$APPLE_ID" --password "$APPLE_ID_PASSWORD" --team-id "$APPLE_TEAM_ID")
-        echo "Notarization info:"
-        echo "$NOTARIZATION_INFO"
-        
-        if echo "$NOTARIZATION_INFO" | grep -q "status: Accepted"; then
-          echo "Notarization successful"
-          echo "Stapling notarization ticket to the package..."
-          xcrun stapler staple "Nexa-${{ env.VERSION }}.pkg"
-          echo "Notarization ticket stapled to the package"
-        else
-          echo "Notarization failed. Fetching submission log..."
-          xcrun notarytool log "$SUBMISSION_ID" --apple-id "$APPLE_ID" --password "$APPLE_ID_PASSWORD" --team-id "$APPLE_TEAM_ID"
-          echo "Notarization failed. See log above for details."
-          exit 1
-        fi
+        # Wait for notarization to complete and check the result
+        while true; do
+          NOTARIZATION_INFO=$(xcrun notarytool info "$SUBMISSION_ID" --apple-id "$APPLE_ID" --password "$APPLE_ID_PASSWORD" --team-id "$APPLE_TEAM_ID")
+          STATUS=$(echo "$NOTARIZATION_INFO" | grep "status:" | cut -d: -f2 | xargs)
+          echo "Notarization status: $STATUS"
+          
+          if [ "$STATUS" = "Accepted" ]; then
+            echo "Notarization successful"
+            echo "Stapling notarization ticket to the package..."
+            xcrun stapler staple "Nexa-${{ env.VERSION }}.pkg"
+            echo "Notarization ticket stapled to the package"
+            break
+          elif [ "$STATUS" = "Invalid" ] || [ "$STATUS" = "Rejected" ]; then
+            echo "Notarization failed. Fetching detailed log..."
+            xcrun notarytool log "$SUBMISSION_ID" --apple-id "$APPLE_ID" --password "$APPLE_ID_PASSWORD" --team-id "$APPLE_TEAM_ID"
+            echo "Notarization failed. See log above for details."
+            exit 1
+          fi
+          
+          echo "Waiting for 30 seconds before checking again..."
+          sleep 30
+        done
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
