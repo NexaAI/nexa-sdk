@@ -140,17 +140,30 @@ jobs:
         # List all signed components for verification
         codesign -dvv "dist/nexa.app"
 
-    - name: Create DMG with Postinstall Script
+    - name: Create PKG Installer
       run: |
-        # Create a temporary directory for DMG contents
-        mkdir dmg_contents
-        cp -r dist/nexa.app dmg_contents/
-        cp nexa-icon.icns dmg_contents/.VolumeIcon.icns
+        # Create necessary directories
+        mkdir -p pkg_root/Applications
+        mkdir -p pkg_scripts
+
+        # Copy the app to the package root
+        cp -R dist/nexa.app pkg_root/Applications/
+
+        # Create preinstall script
+        cat << EOF > pkg_scripts/preinstall
+        #!/bin/bash
+        # Remove any existing symlink or file
+        rm -f /usr/local/bin/nexa
+        exit 0
+        EOF
 
         # Create postinstall script
-        cat << EOF > dmg_contents/postinstall
+        cat << EOF > pkg_scripts/postinstall
         #!/bin/bash
-        ln -sf "/Applications/Nexa.app/Contents/Resources/nexa" "/usr/local/bin/nexa"
+        # Create symlink
+        ln -sf /Applications/Nexa.app/Contents/Resources/nexa /usr/local/bin/nexa
+
+        # Modify the main launcher
         LAUNCHER="/Applications/Nexa.app/Contents/MacOS/nexa"
         mv "\$LAUNCHER" "\$LAUNCHER.real"
         cat << EOL > "\$LAUNCHER"
@@ -158,110 +171,69 @@ jobs:
         "\$LAUNCHER.real" --gui
         EOL
         chmod +x "\$LAUNCHER"
+
+        exit 0
         EOF
-        chmod +x dmg_contents/postinstall
 
-        # Create the DMG
-        hdiutil create -volname "Nexa Installer" -srcfolder dmg_contents -ov -format UDRW "Nexa-${{ env.VERSION }}.dmg"
+        # Make scripts executable
+        chmod +x pkg_scripts/preinstall pkg_scripts/postinstall
 
-        # Mount the DMG
-        hdiutil attach "Nexa-${{ env.VERSION }}.dmg"
-
-        # Set the custom icon for the DMG
-        SetFile -a C "/Volumes/Nexa Installer"
-
-        # Create .DS_Store with custom layout
-        echo '
-        tell application "Finder"
-          tell disk "Nexa Installer"
-            open
-            set current view of container window to icon view
-            set toolbar visible of container window to false
-            set statusbar visible of container window to false
-            set the bounds of container window to {400, 100, 885, 430}
-            set theViewOptions to the icon view options of container window
-            set arrangement of theViewOptions to not arranged
-            set icon size of theViewOptions to 72
-            make new alias file at container window to POSIX file "/Applications" with properties {name:"Applications"}
-            set position of item "nexa.app" of container window to {100, 180}
-            set position of item "Applications" of container window to {375, 180}
-            set position of item "postinstall" of container window to {237, 180}
-            update without registering applications
-            delay 5
-            close
-          end tell
-        end tell
-        ' | osascript
-
-        # Detach the DMG
-        hdiutil detach "/Volumes/Nexa Installer"
-
-        # Convert the DMG to read-only
-        hdiutil convert "Nexa-${{ env.VERSION }}.dmg" -format UDZO -o "Nexa-${{ env.VERSION }}-final.dmg"
-        mv "Nexa-${{ env.VERSION }}-final.dmg" "Nexa-${{ env.VERSION }}.dmg"
+        # Build the package
+        pkgbuild --root pkg_root \
+                --scripts pkg_scripts \
+                --identifier com.yourcompany.nexa \
+                --version ${{ env.VERSION }} \
+                --install-location / \
+                "Nexa-${{ env.VERSION }}.pkg"
 
         # Clean up
-        rm -rf dmg_contents
+        rm -rf pkg_root pkg_scripts
 
-    - name: Sign the DMG
+    - name: Sign PKG
       env:
         APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
       run: |
-        # Sign the DMG
-        codesign --force --sign "$APPLE_DEVELOPER_ID" --options runtime "Nexa-${{ env.VERSION }}.dmg"
+        # Sign the package
+        productsign --sign "$APPLE_DEVELOPER_ID" \
+                    "Nexa-${{ env.VERSION }}.pkg" \
+                    "Nexa-${{ env.VERSION }}-signed.pkg"
 
-        # Verify the DMG signature
-        codesign -vvv --deep --strict "Nexa-${{ env.VERSION }}.dmg"
+        # Verify the signature
+        pkgutil --check-signature "Nexa-${{ env.VERSION }}-signed.pkg"
 
-    - name: Upload artifact (pre-notarization)
-      uses: actions/upload-artifact@v4
-      with:
-        name: nexa-${{ env.VERSION }}-cpu-macos-amd64-pre-notarization
-        path: Nexa-${{ env.VERSION }}.dmg
+        # Replace the unsigned package with the signed one
+        mv "Nexa-${{ env.VERSION }}-signed.pkg" "Nexa-${{ env.VERSION }}.pkg"
 
-    - name: Submit for notarization
+    - name: Notarize PKG
       env:
         APPLE_ID: ${{ secrets.APPLE_ID }}
         APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       run: |
-        NOTARIZATION_OUTPUT=$(xcrun notarytool submit Nexa-${{ env.VERSION }}.dmg --apple-id "$APPLE_ID" --password "$APPLE_ID_PASSWORD" --team-id "$APPLE_TEAM_ID")
+        # Submit for notarization
+        NOTARIZATION_OUTPUT=$(xcrun notarytool submit "Nexa-${{ env.VERSION }}.pkg" --apple-id "$APPLE_ID" --password "$APPLE_ID_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait)
         echo "$NOTARIZATION_OUTPUT"
-        
-        # Extracting SUBMISSION_ID and ensuring it's on a single line
-        SUBMISSION_ID=$(echo "$NOTARIZATION_OUTPUT" | grep 'id:' | head -n 1 | awk '{print $2}' | tr -d '\n')
-        echo "SUBMISSION_ID=$SUBMISSION_ID" >> $GITHUB_ENV
 
-    - name: Wait for notarization and check result
-      env:
-        APPLE_ID: ${{ secrets.APPLE_ID }}
-        APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-      run: |
-        while true; do
-          NOTARIZATION_INFO=$(xcrun notarytool info ${{ env.SUBMISSION_ID }} --apple-id "$APPLE_ID" --password "$APPLE_ID_PASSWORD" --team-id "$APPLE_TEAM_ID")
-          STATUS=$(echo "$NOTARIZATION_INFO" | grep "status" | cut -d: -f2 | xargs)
-          echo "Notarization status: $STATUS"
-          if [ "$STATUS" = "Accepted" ]; then
-            echo "Notarization successful"
-            break
-          elif [ "$STATUS" = "Invalid" ] || [ "$STATUS" = "Rejected" ]; then
-            echo "Notarization failed. Fetching detailed log..."
-            xcrun notarytool log ${{ env.SUBMISSION_ID }} --apple-id "$APPLE_ID" --password "$APPLE_ID_PASSWORD" --team-id "$APPLE_TEAM_ID"
-            exit 1
-          fi
-          echo "Waiting for 60 seconds before checking again..."
-          sleep 60
-        done
+        # Check if notarization was successful
+        if echo "$NOTARIZATION_OUTPUT" | grep -q "status: Accepted"; then
+          echo "Notarization successful"
+          
+          # Staple the ticket
+          xcrun stapler staple "Nexa-${{ env.VERSION }}.pkg"
+          
+          echo "Notarization ticket stapled to the package"
+        else
+          echo "Notarization failed"
+          exit 1
+        fi
 
     - name: Staple the notarization ticket
       if: success()
       run: |
         xcrun stapler staple Nexa-${{ env.VERSION }}.dmg
 
-    - name: Upload artifact (post-notarization)
-      if: success()
+    - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: nexa-${{ env.VERSION }}-cpu-macos-amd64-notarized
-        path: Nexa-${{ env.VERSION }}.dmg
+        name: nexa-${{ env.VERSION }}-cpu-macos-amd64
+        path: Nexa-${{ env.VERSION }}.pkg
