@@ -18,6 +18,7 @@ uvicorn
 pydantic
 pillow
 python-multipart
+huggingface_hub
 
 # For onnx
 optimum[onnxruntime]  # for CPU version
@@ -44,3 +45,4 @@ sqlitedict
 langdetect
 pytest
 rouge_score
+immutabledict

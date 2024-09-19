@@ -1,6 +1,7 @@
 import json
 import logging
 from pathlib import Path
+from typing import Tuple
 import shutil
 import requests
 
@@ -10,6 +11,7 @@ from nexa.constants import (
     NEXA_MODEL_LIST_PATH,
     NEXA_MODELS_HUB_DIR,
     NEXA_MODELS_HUB_OFFICIAL_DIR,
+    NEXA_MODELS_HUB_HF_DIR,
     NEXA_OFFICIAL_BUCKET,
     NEXA_RUN_MODEL_MAP,
     NEXA_TOKEN_PATH,
@@ -99,19 +101,22 @@ def get_user_info(token):
         return None
 
 
-def pull_model(model_path):
+def pull_model(model_path, hf = False):
     model_path = NEXA_RUN_MODEL_MAP.get(model_path, model_path)
 
     try:
-        if is_model_exists(model_path):
-            location, run_type = get_model_info(model_path)
-            print(f"Model {model_path} already exists at {location}")
-            return location, run_type
+        if hf == True:
+            result = pull_model_from_hf(model_path)
+        else: 
+            if is_model_exists(model_path):
+                location, run_type = get_model_info(model_path)
+                print(f"Model {model_path} already exists at {location}")
+                return location, run_type
 
-        if "/" in model_path:
-            result = pull_model_from_hub(model_path)
-        else:
-            result = pull_model_from_official(model_path)
+            if "/" in model_path:
+                result = pull_model_from_hub(model_path)
+            else:
+                result = pull_model_from_official(model_path)
 
         if result["success"]:
             add_model_to_list(model_path, result["local_path"], result["model_type"], result["run_type"])
@@ -206,6 +211,18 @@ def pull_model_from_official(model_path):
         "local_path": location,
         "model_type": model_type,
         "run_type": run_type_str
+    }
+
+def pull_model_from_hf(repo_id):
+    repo_id, filename = select_gguf_in_hf_repo(repo_id)
+    success, model_path = download_gguf_from_hf(repo_id, filename)
+
+    # For beta version, we only support NLP gguf models
+    return {
+        "success": success,
+        "local_path": model_path,
+        "model_type": "gguf",
+        "run_type": "NLP"
     }
 
 
@@ -309,6 +326,30 @@ def download_model_from_official(model_path, model_type):
         print(f"An error occurred while downloading or processing the model: {e}")
         return False, None
 
+def download_gguf_from_hf(repo_id, filename):
+    try:
+        from huggingface_hub import hf_hub_download
+        from pathlib import Path
+    except ImportError:
+        print("The huggingface-hub package is required. Please install it with `pip install huggingface-hub`.")
+        return None
+
+    # Define the local directory to save the model
+    local_dir = NEXA_MODELS_HUB_HF_DIR / Path(repo_id)
+    local_dir.mkdir(parents=True, exist_ok=True)
+
+    # Download the model
+    try:
+        model_path = hf_hub_download(
+            repo_id=repo_id,
+            filename=filename,
+            local_dir=local_dir,
+            local_files_only=False,
+        )
+        return True, model_path
+    except Exception as e:
+        print(f"Failed to download the model: {e}")
+        return False, None
 
 def is_model_exists(model_name):
     if not NEXA_MODEL_LIST_PATH.exists():
@@ -441,12 +482,65 @@ def clean():
     except Exception as e:
         print(f"An error occurred while cleaning the directory: {e}")
 
+def select_gguf_in_hf_repo(repo_id: str) -> Tuple[str, str]:
+    """
+    Lists all files ending with .gguf in the given Hugging Face repository,
+    prompts the user to select one, and returns the repo_id and the selected filename.
 
+    Args:
+        repo_id (str): The Hugging Face repository ID.
 
-if __name__ == "__main__":
-    # login()
-    # whoami()
-    # logout()
-    # pull_model("phi3")
-    list_models()
-    # remove_model("phi3")
+    Returns:
+        Tuple[str, str]: A tuple containing the repo_id and the selected filename.
+    """
+    try:
+        from huggingface_hub import HfFileSystem
+        from huggingface_hub.utils import validate_repo_id
+        from pathlib import Path
+    except ImportError:
+        print("The huggingface-hub package is required. Please install it with `pip install huggingface-hub`.")
+        exit(1)
+
+    validate_repo_id(repo_id)
+    hffs = HfFileSystem()
+
+    try:
+        files = [
+            file["name"] if isinstance(file, dict) else file
+            for file in hffs.ls(repo_id, recursive=True)
+        ]
+    except Exception as e:
+        print(f"Error accessing repository '{repo_id}'. Please make sure you have access to the Hugging Face repository first.")
+        exit(1)
+
+    # Remove the repo prefix from files
+    file_list = []
+    for file in files:
+        rel_path = Path(file).relative_to(repo_id)
+        file_list.append(str(rel_path))
+
+    # Filter for files ending with .gguf
+    gguf_files = [file for file in file_list if file.endswith('.gguf')]
+
+    if not gguf_files:
+        print(f"No gguf models found in repository '{repo_id}'.")
+        exit(1)
+
+    print("Available gguf models in the repository:")
+    for i, file in enumerate(gguf_files, 1):
+        print(f"{i}. {file}")
+
+    # Prompt the user to select a file
+    while True:
+        try:
+            selected_index = int(input("Please enter the number of the model you want to download and use: "))
+            if 1 <= selected_index <= len(gguf_files):
+                filename = gguf_files[selected_index - 1]
+                print(f"You have selected: {filename}")
+                break
+            else:
+                print(f"Please enter a number between 1 and {len(gguf_files)}")
+        except ValueError:
+            print("Invalid input. Please enter a number.")
+
+    return repo_id, filename
