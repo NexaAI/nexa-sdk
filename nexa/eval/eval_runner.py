@@ -14,9 +14,6 @@ def evaluate_model(args):
     eval_logger.info(f"Verbosity set to {args.verbosity}")
     os.environ["TOKENIZERS_PARALLELISM"] = "false" 
 
-    if args.wandb_args:
-        wandb_logger = WandbLogger(**simple_parse_args_string(args.wandb_args))
-
     if args.output_path:
         args.hf_hub_log_args += f",output_path={args.output_path}"
     if os.environ.get("HF_TOKEN", None):
@@ -61,7 +58,6 @@ def evaluate_model(args):
         predict_only=args.predict_only,
         random_seed=args.seed[0],
         numpy_random_seed=args.seed[1],
-        torch_random_seed=args.seed[2],
         fewshot_random_seed=args.seed[3],
         **request_caching_args,
     )
