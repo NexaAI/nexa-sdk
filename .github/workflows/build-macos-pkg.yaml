@@ -258,8 +258,9 @@ jobs:
         #!/bin/bash
         # Remove existing symlink if it exists
         rm -f /usr/local/bin/nexa
-        # Remove existing Nexa app if it exists
+        # Remove existing Nexa apps if they exist
         rm -rf /Applications/nexa.app
+        rm -rf /Applications/nexa-metal.app
         exit 0
         EOF
 
@@ -267,15 +268,17 @@ jobs:
         #!/bin/bash
         # Determine if Metal is supported
         if /usr/sbin/system_profiler SPDisplaysDataType | grep -q "Metal: Supported"; then
-          cp -R /Applications/nexa-metal.app /Applications/nexa.app
+          # Use the Metal version
+          mv /Applications/nexa-metal.app /Applications/nexa.app
           rm -rf /Applications/nexa-metal.app
+          ln -sf /Applications/nexa.app/Contents/MacOS/nexa-metal /usr/local/bin/nexa
+          echo "Metal version of Nexa installed"
         else
-          cp -R /Applications/nexa.app /Applications/nexa.app
-          rm -rf /Applications/nexa.app
+          # CPU version is already in place, just remove the Metal version
+          rm -rf /Applications/nexa-metal.app
+          ln -sf /Applications/nexa.app/Contents/MacOS/nexa /usr/local/bin/nexa
+          echo "CPU version of Nexa installed"
         fi
-
-        # Create the symlink
-        ln -sf /Applications/nexa.app/Contents/MacOS/nexa /usr/local/bin/nexa
 
         # Ensure the symlink is created successfully
         if [ -L "/usr/local/bin/nexa" ]; then
