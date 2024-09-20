@@ -6,7 +6,8 @@ from file_utils import (
     collect_file_paths,
     separate_files_by_type,
     read_text_file,
-    read_pdf_file
+    read_pdf_file,
+    read_docx_file  # Importing read_docx_file
 )
 
 from data_processing import (
@@ -17,21 +18,26 @@ from data_processing import (
 
 def main():
     # Paths configuration
-    base_path = "/Users/q/nexa/nexa_sdk_local_file_organization/nexa-sdk/examples/local_file_organization/sample_data"
-    new_path = "/Users/q/nexa/nexa_sdk_local_file_organization/nexa-sdk/examples/local_file_organization/renamed_files"
+    input_path = "/Users/q/nexa/nexa_sdk_local_file_organization/nexa-sdk/examples/local_file_organization/sample_data"
+    output_path = "/Users/q/nexa/nexa_sdk_local_file_organization/nexa-sdk/examples/local_file_organization/renamed_files"
 
-    if not os.path.exists(base_path):
-        print(f"Directory {base_path} does not exist. Please create it and add the necessary files.")
+    if not os.path.exists(input_path):
+        print(f"Input path {input_path} does not exist. Please create it and add the necessary files.")
         return
 
     start_time = time.time()
-    file_paths = collect_file_paths(base_path)
+    file_paths = collect_file_paths(input_path)
     end_time = time.time()
 
     print(f"Time taken to load file paths: {end_time - start_time:.2f} seconds")
     print("-" * 50)
     print("Directory tree before renaming:")
-    display_directory_tree(base_path)
+    display_directory_tree(input_path)
+
+    # Inserted the custom message as requested
+    print("*" * 50)
+    print("The file upload successful. It will take some minutes")
+    print("*" * 50)
 
     # Separate files by type
     image_files, text_files, pdf_files = separate_files_by_type(file_paths)
@@ -40,7 +46,17 @@ def main():
     data_images = process_image_files(image_files)
 
     # Process text files
-    text_tuples = [(fp, read_text_file(fp)) for fp in text_files]
+    text_tuples = []
+    for fp in text_files:
+        ext = os.path.splitext(fp.lower())[1]
+        if ext == '.txt':
+            text_content = read_text_file(fp)
+        elif ext == '.docx':
+            text_content = read_docx_file(fp)
+        else:
+            print(f"Unsupported text file format: {fp}")
+            continue  # Skip unsupported file formats
+        text_tuples.append((fp, text_content))
 
     # Process PDF files
     pdf_tuples = [(fp, read_pdf_file(fp)) for fp in pdf_files]
@@ -54,16 +70,16 @@ def main():
     # Prepare for copying and renaming
     renamed_files = set()
     processed_files = set()
-    os.makedirs(new_path, exist_ok=True)
+    os.makedirs(output_path, exist_ok=True)
 
     # Copy and rename image files
-    copy_and_rename_files(data_images, new_path, renamed_files, processed_files)
+    copy_and_rename_files(data_images, output_path, renamed_files, processed_files)
 
     # Copy and rename text and PDF files
-    copy_and_rename_files(data_texts, new_path, renamed_files, processed_files)
+    copy_and_rename_files(data_texts, output_path, renamed_files, processed_files)
 
     print("Directory tree after copying and renaming:")
-    display_directory_tree(new_path)
+    display_directory_tree(output_path)
 
 if __name__ == '__main__':
     main()

@@ -1,7 +1,6 @@
 import os
 import re
 import shutil
-import subprocess
 from PIL import Image
 import pytesseract
 import fitz  # PyMuPDF
@@ -38,9 +37,13 @@ def sanitize_filename(name, max_length=50, max_words=5):
 
 def read_docx_file(file_path):
     """Read text content from a .docx file."""
-    doc = docx.Document(file_path)
-    full_text = [para.text for para in doc.paragraphs]
-    return '\n'.join(full_text)
+    try:
+        doc = docx.Document(file_path)
+        full_text = [para.text for para in doc.paragraphs]
+        return '\n'.join(full_text)
+    except Exception as e:
+        print(f"Error reading DOCX file {file_path}: {e}")
+        return ""
 
 def read_pdf_file(file_path):
     """Read text content from a PDF file."""
@@ -71,14 +74,30 @@ def read_image_file(file_path):
 def read_text_file(file_path):
     """Read text content from a text file."""
     max_chars = 3000  # Limit processing time
-    with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
-        text = file.read(max_chars)
-    return text
+    try:
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
+            text = file.read(max_chars)
+        return text
+    except Exception as e:
+        print(f"Error reading text file {file_path}: {e}")
+        return ""
 
 def display_directory_tree(path):
-    """Display the directory tree using the 'tree' command."""
-    result = subprocess.run(['tree', path], capture_output=True, text=True)
-    print(result.stdout)
+    """Display the directory tree in a format similar to the 'tree' command."""
+    def tree(dir_path, prefix=''):
+        contents = sorted([c for c in os.listdir(dir_path) if not c.startswith('.')])
+        pointers = [ '├── ' ] * (len(contents) - 1) + [ '└── ' ] if contents else []
+        for pointer, name in zip(pointers, contents):
+            full_path = os.path.join(dir_path, name)
+            print(prefix + pointer + name)
+            if os.path.isdir(full_path):
+                extension = '│   ' if pointer == '├── ' else '    '
+                tree(full_path, prefix + extension)
+    if os.path.isdir(path):
+        print(os.path.basename(path) + '/')
+        tree(path)
+    else:
+        print(os.path.basename(path))
 
 def create_folder(base_path, foldername):
     """Create a directory for the given folder name."""
@@ -88,13 +107,16 @@ def create_folder(base_path, foldername):
     return dir_path
 
 def collect_file_paths(base_path):
-    """Collect all file paths from the base directory."""
-    file_paths = [
-        os.path.join(root, file)
-        for root, _, files in os.walk(base_path)
-        for file in files
-    ]
-    return file_paths
+    """Collect all file paths from the base directory or single file."""
+    if os.path.isfile(base_path):
+        return [base_path]
+    else:
+        file_paths = [
+            os.path.join(root, file)
+            for root, _, files in os.walk(base_path)
+            for file in files
+        ]
+        return file_paths
 
 def separate_files_by_type(file_paths):
     """Separate files into images, text files, and PDF files based on their extensions."""

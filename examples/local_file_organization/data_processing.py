@@ -4,41 +4,59 @@ from nexa.gguf import NexaVLMInference, NexaTextInference
 from file_utils import sanitize_filename, create_folder
 import os
 import shutil
+import sys
+import contextlib
+
 # Global variables to hold the models
 image_inference = None
 text_inference = None
+
+@contextlib.contextmanager
+def suppress_stdout_stderr():
+    """A context manager that redirects stdout and stderr to devnull."""
+    with open(os.devnull, 'w') as devnull:
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
+        sys.stdout = devnull
+        sys.stderr = devnull
+        try:
+            yield
+        finally:
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
 
 def initialize_models():
     """Initialize the models if they haven't been initialized yet."""
     global image_inference, text_inference
     if image_inference is None or text_inference is None:
-        # Initialize the models
-        model_path = "llava-v1.6-vicuna-7b:q4_0"
-        model_path_text = "gemma-2b:q2_K"
+        with suppress_stdout_stderr():
+            # Initialize the models
+            model_path = "llava-v1.6-vicuna-7b:q4_0"
+            model_path_text = "gemma-2b:q2_K"
 
-        # Initialize the image inference model
-        image_inference = NexaVLMInference(
-            model_path=model_path,
-            local_path=None,
-            stop_words=[],
-            temperature=0.3,
-            max_new_tokens=256,  # Reduced to speed up processing
-            top_k=3,
-            top_p=0.2,
-            profiling=False
-        )
+            # Initialize the image inference model
+            image_inference = NexaVLMInference(
+                model_path=model_path,
+                local_path=None,
+                stop_words=[],
+                temperature=0.3,
+                max_new_tokens=256,  # Reduced to speed up processing
+                top_k=3,
+                top_p=0.2,
+                profiling=False
+            )
 
-        # Initialize the text inference model
-        text_inference = NexaTextInference(
-            model_path=model_path_text,
-            local_path=None,
-            stop_words=[],
-            temperature=0.5,
-            max_new_tokens=256,  # Reduced to speed up processing
-            top_k=3,
-            top_p=0.3,
-            profiling=False
-        )
+            # Initialize the text inference model
+            text_inference = NexaTextInference(
+                model_path=model_path_text,
+                local_path=None,
+                stop_words=[],
+                temperature=0.5,
+                max_new_tokens=256,  # Reduced to speed up processing
+                top_k=3,
+                top_p=0.3,
+                profiling=False
+            )
 
 def get_text_from_generator(generator):
     """Extract text from the generator response."""
@@ -243,4 +261,3 @@ def copy_and_rename_files(data_list, new_path, renamed_files, processed_files):
         renamed_files.add(new_file_path)
         print(f"Copied and renamed to: {new_file_path}")
         print("-" * 50)
-
