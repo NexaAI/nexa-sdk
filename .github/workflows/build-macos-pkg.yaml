@@ -269,6 +269,8 @@ jobs:
         # Determine if Metal is supported
         if /usr/sbin/system_profiler SPDisplaysDataType | grep -i "metal support:" | grep -vq "none"; then
           # Use the Metal version
+          # MUST remove the CPU version first
+          rm -rf /Applications/nexa.app
           mv /Applications/nexa-metal.app /Applications/nexa.app
           rm -rf /Applications/nexa-metal.app
           ln -sf /Applications/nexa.app/Contents/MacOS/nexa-metal /usr/local/bin/nexa
