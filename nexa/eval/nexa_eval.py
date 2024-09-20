@@ -96,7 +96,6 @@ class NexaEval:
             task_manager=task_manager,
             random_seed=args.seed[0],
             numpy_random_seed=args.seed[1],
-            torch_random_seed=args.seed[2],
             fewshot_random_seed=args.seed[3],
             **request_caching_args,
         )
