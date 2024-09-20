@@ -65,16 +65,30 @@ Or download the repository as a ZIP file and extract it to your desired location
 
 
 
-### 2. Set Up the  Environment
+
+
+
+Create a new Conda environment named `local_file_organizer` with Python 3.12:
+
+```zsh
+conda create --name local_file_organizer python=3.12
+```
+
+Activate the environment:
+
+```zsh
+conda activate local_file_organizer
+```
+
+### 2. Set Up the  SDK Environment
 
 <!-- ## Installation -->
 
 We have released pre-built wheels for various Python versions, platforms, and backends for convenient installation on our [index page](https://nexaai.github.io/nexa-sdk/whl/).
 
-> [!NOTE]
->
-> 1. If you want to use <strong>ONNX model</strong>, just replace `pip install nexaai` with `pip install "nexaai[onnx]"` in provided commands.
-> 2. For Chinese developers, we recommend you to use <strong>Tsinghua Open Source Mirror</strong> as extra index url, just replace `--extra-index-url https://pypi.org/simple` with `--extra-index-url https://pypi.tuna.tsinghua.edu.cn/simple` in provided commands.
+> **Note:**
+> 1. If you want to use **ONNX model**, just replace `pip install nexaai` with `pip install "nexaai[onnx]"` in provided commands.
+> 2. For Chinese developers, we recommend you to use **Tsinghua Open Source Mirror** as extra index URL, just replace `--extra-index-url https://pypi.org/simple` with `--extra-index-url https://pypi.tuna.tsinghua.edu.cn/simple` in provided commands.
 
 #### CPU
 
@@ -155,20 +169,6 @@ CMAKE_ARGS="-DGGML_HIPBLAS=on" pip install nexaai --prefer-binary --index-url ht
 ```
 
 
-
-
-Create a new Conda environment named `local_file_organizer` with Python 3.12:
-
-```zsh
-conda create --name local_file_organizer python=3.12
-```
-
-Activate the environment:
-
-```zsh
-conda activate local_file_organizer
-```
-
 ### 3. Install Dependencies
 
 Ensure you are in the project directory and install the required dependencies using `requirements.txt`:
@@ -203,6 +203,8 @@ input_path = "/home/user/documents/input_files"
 output_path = "/home/user/documents/organized_files"
 ```
 
+
+
 ## Usage
 
 With the environment activated and dependencies installed, run the script using:
@@ -222,6 +224,14 @@ The script will:
 ## Example Output
 
 ```
+--------------------------------------------------
+Enter the path of the directory you want to organize: /home/user/documents/input_files
+--------------------------------------------------
+Enter the path to store organized files and folders (press Enter to use 'renamed_folder' in the input directory): 
+Output path successfully upload: /home/user/documents/renamed_folder
+--------------------------------------------------
+Time taken to load file paths: 0.00 seconds
+--------------------------------------------------
 Directory tree before renaming:
 Path/to/your/input/files/or/folder
 ├── image.jpg

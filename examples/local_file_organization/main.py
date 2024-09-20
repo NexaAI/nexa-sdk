@@ -18,14 +18,30 @@ from data_processing import (
 
 def main():
     # Paths configuration
-    input_path = "Path/to/your/input/files/or/folder"
-    output_path = "Path/to/your/output/files/or/folder"
-
-
+    print("-" * 50)
+    input_path = input("Enter the path of the directory you want to organize: ").strip()
     if not os.path.exists(input_path):
         print(f"Input path {input_path} does not exist. Please create it and add the necessary files.")
         return
 
+    # Confirm successful input path
+    print(f"Input path successfully uploaded: {input_path}")
+    print("-" * 50)
+
+    # Default output path is a folder named "renamed_folder" in the same directory as the input path
+    output_path = input("Enter the path to store organized files and folders (press Enter to use 'renamed_folder' in the input directory): ").strip()
+    if not output_path:
+        # Get the parent directory of the input path and append 'renamed_folder'
+        output_path = os.path.join(os.path.dirname(input_path), 'renamed_folder')
+
+    # Ensure the output directory exists
+    os.makedirs(output_path, exist_ok=True)
+
+    # Confirm successful output path
+    print(f"Output path successfully upload: {output_path}")
+    print("-" * 50)
+
+    # Start processing files
     start_time = time.time()
     file_paths = collect_file_paths(input_path)
     end_time = time.time()
@@ -35,9 +51,8 @@ def main():
     print("Directory tree before renaming:")
     display_directory_tree(input_path)
 
-    # Inserted the custom message as requested
     print("*" * 50)
-    print("The file upload successful. It will take some minutes")
+    print("The file upload was successful. It will take some minutes.")
     print("*" * 50)
 
     # Separate files by type
@@ -67,7 +82,6 @@ def main():
     # Prepare for copying and renaming
     renamed_files = set()
     processed_files = set()
-    os.makedirs(output_path, exist_ok=True)
 
     # Copy and rename image files
     copy_and_rename_files(data_images, output_path, renamed_files, processed_files)
@@ -75,6 +89,9 @@ def main():
     # Copy and rename text files
     copy_and_rename_files(data_texts, output_path, renamed_files, processed_files)
 
+    print("-" * 50)
+    print(f"the folder content are rename and clean up successfully.")
+    print("-" * 50)
     print("Directory tree after copying and renaming:")
     display_directory_tree(output_path)
 
