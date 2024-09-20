@@ -3,7 +3,13 @@ import logging
 import multiprocessing
 import time
 import requests
-from nexa.eval.eval_runner import evaluate_model
+import json
+import os
+import sys
+from nexa.eval import evaluator, utils
+from nexa.eval.loggers import EvaluationTracker
+from nexa.eval.tasks import TaskManager
+from nexa.eval.utils import handle_non_serializable, make_table, simple_parse_args_string
 from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
 from nexa.constants import NEXA_MODEL_EVAL_RESULTS_PATH, NEXA_RUN_MODEL_MAP
 from pathlib import Path
@@ -25,29 +31,15 @@ class NexaEval:
             "model": "nexa-gguf",
             "tasks": tasks,
             "model_args": f"base_url={self.server_url}/v1/completions",
-            "num_fewshot": None,
             "hf_hub_log_args": "",
             "batch_size": 8,
-            "max_batch_size": None,
             "device": "cuda",
             "output_path": str(output_path),
-            "limit": None,
-            "use_cache": None,
             "cache_requests": None,
-            "check_integrity": False,
-            "write_out": False,
             "log_samples": False,
-            "system_instruction": None,
-            "apply_chat_template": False,
-            "fewshot_as_multiturn": False,
             "include_path": None,
-            "gen_kwargs": None,
             "verbosity": "INFO",
-            "predict_only": False,
-            "wandb_args": None,
-            "show_config": False,
             "seed": [0, 1234, 1234, 1234],
-            "trust_remote_code": False,
         }
 
 
@@ -72,6 +64,56 @@ class NexaEval:
                 pass
             time.sleep(1)
         raise Exception("Server did not become ready within the specified timeout.")
+    
+
+    def evaluate_model(self, args):
+
+        if args.output_path:
+            args.hf_hub_log_args += f",output_path={args.output_path}"
+        if os.environ.get("HF_TOKEN", None):
+            args.hf_hub_log_args += f",token={os.environ.get('HF_TOKEN')}"
+        
+        evaluation_tracker_args = simple_parse_args_string(args.hf_hub_log_args)
+        evaluation_tracker = EvaluationTracker(**evaluation_tracker_args)
+        task_manager = TaskManager(args.verbosity, include_path=args.include_path)
+        
+        if args.tasks is None:
+            logging.error("Need to specify task to evaluate.")
+            sys.exit()
+        else:
+            task_list = args.tasks.split(",")
+            task_names = task_manager.match_tasks(task_list)
+        
+        logging.info(f"Selected Tasks: {task_names}")
+
+        request_caching_args = evaluator.request_caching_arg_to_dict(cache_requests=args.cache_requests)
+        results = evaluator.simple_evaluate(
+            model=args.model,
+            model_args=args.model_args,
+            tasks=task_names,
+            batch_size=args.batch_size,
+            device=args.device,
+            evaluation_tracker=evaluation_tracker,
+            task_manager=task_manager,
+            random_seed=args.seed[0],
+            numpy_random_seed=args.seed[1],
+            torch_random_seed=args.seed[2],
+            fewshot_random_seed=args.seed[3],
+            **request_caching_args,
+        )
+
+        if results is not None:
+            if args.log_samples:
+                samples = results.pop("samples")
+            evaluation_tracker.save_results_aggregated(results=results, samples=samples if args.log_samples else None)
+
+            if args.log_samples:
+                for task_name, config in results["configs"].items():
+                    evaluation_tracker.save_results_samples(task_name=task_name, samples=results["samples"][task_name])
+            print(make_table(results))
+            if "groups" in results:
+                print(make_table(results, "groups"))
+    
 
     def run_evaluation(self):
         try:
@@ -79,7 +121,7 @@ class NexaEval:
             if self.wait_for_server():
                 logging.info(f"Starting evaluation for tasks: {self.tasks}")
                 args = argparse.Namespace(**self.eval_args)
-                evaluate_model(args)
+                self.evaluate_model(args)
                 logging.info("Evaluation completed")
         finally:
             if self.server_process:
