@@ -1,12 +1,13 @@
 
 # Local File Organizer
 
-This project is a local file organizer that processes files in a specified input directory, generates metadata using AI models, and organizes them into a structured output directory based on the generated metadata.
+This project is a local file organizer that processes files in a specified input directory, generates metadata using LLM models, and organizes them into a structured output directory based on the generated metadata.
 
 ## Table of Contents
 
 - [Introduction](#introduction)
 - [Features](#features)
+- [Supported file types](#supported-file-types)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
   - [1. Clone the Repository](#1-clone-the-repository)
@@ -36,11 +37,12 @@ The Local File Organizer automates the process of organizing files by:
 - **Parallel Processing:** Utilizes multiprocessing to speed up file processing.
 - **Customizable Prompts:** Prompts used for LLM model interactions can be customized.
 
-## Supported file types include:
+## Supported file types
 
 - **Images:** `.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`
 - **Text Files:** `.txt`, `.docx`
 - **PDFs:** `.pdf`
+
 ## Prerequisites
 
 - **Operating System:** Compatible with Windows, macOS, and Linux.
