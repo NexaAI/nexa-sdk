@@ -19,7 +19,6 @@ from typing import (
     Union,
 )
 
-import torch
 import transformers
 
 from nexa.eval.utils import eval_logger

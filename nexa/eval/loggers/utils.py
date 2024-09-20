@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
-from torch.utils.collect_env import get_pretty_env_info
 from transformers import __version__ as trans_version
 
 

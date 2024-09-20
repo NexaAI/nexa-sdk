@@ -1,4 +1,3 @@
-import itertools
 import json
 import logging
 import random
@@ -7,7 +6,6 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, List, Optional, Union
 
 import numpy as np
-import torch
 
 import nexa.eval.api.metrics
 import nexa.eval.api.registry
@@ -71,7 +69,6 @@ def simple_evaluate(
     predict_only: bool = False,
     random_seed: int = 0,
     numpy_random_seed: int = 1234,
-    torch_random_seed: int = 1234,
     fewshot_random_seed: int = 1234,
 ):
     """Instantiate and evaluate a model on a list of tasks.
@@ -151,10 +148,6 @@ def simple_evaluate(
     if numpy_random_seed is not None:
         seed_message.append(f"Setting numpy seed to {numpy_random_seed}")
         np.random.seed(numpy_random_seed)
-
-    if torch_random_seed is not None:
-        seed_message.append(f"Setting torch manual seed to {torch_random_seed}")
-        torch.manual_seed(torch_random_seed)
 
     if seed_message:
         eval_logger.info(" | ".join(seed_message))
@@ -348,7 +341,6 @@ def simple_evaluate(
                 "gen_kwargs": gen_kwargs,
                 "random_seed": random_seed,
                 "numpy_seed": numpy_random_seed,
-                "torch_seed": torch_random_seed,
                 "fewshot_seed": fewshot_random_seed,
             }
         )
@@ -448,22 +440,6 @@ def evaluate(
             reqtype = instance.request_type
             requests[reqtype].append(instance)
 
-        if lm.world_size > 1:
-            instances_rnk = torch.tensor(len(task._instances), device=lm.device)
-            gathered_item = (
-                lm.accelerator.gather(instances_rnk).cpu().detach().numpy().tolist()
-            )
-            # "multiple_choice" task types dispatch (several) "loglikelihood" request types
-            reqtype = (
-                "loglikelihood"
-                if task.OUTPUT_TYPE == "multiple_choice"
-                else task.OUTPUT_TYPE
-            )
-            # compute number of pseudo-batches to pad with (FSDP/DDP require even batches among ranks)
-            numpad = max(gathered_item) - gathered_item[lm.rank]
-            # todo: may not account for padding in cases like SquadV2 which has multiple req types
-            padding_requests[reqtype] += numpad
-
     ### Run LM on inputs, get all outputs ###
     # execute each type of request
     for reqtype, reqs in requests.items():
@@ -541,37 +517,6 @@ def evaluate(
                     task_output.logged_samples.append(example)
                 for metric, value in metrics.items():
                     task_output.sample_metrics[(metric, filter_key)].append(value)
-
-    if WORLD_SIZE > 1:
-        # if multigpu, then gather data across all ranks to rank 0
-        # first gather logged samples across all ranks
-        for task_output in eval_tasks:
-            if log_samples:
-                # for task_name, task_samples in list(samples.items()):
-                full_samples = [None] * WORLD_SIZE if RANK == 0 else None
-                torch.distributed.gather_object(
-                    obj=task_output.logged_samples,
-                    object_gather_list=full_samples,
-                    dst=0,
-                )
-
-                if RANK == 0:
-                    task_output.logged_samples = list(
-                        itertools.chain.from_iterable(full_samples)
-                    )
-
-            # then collect metrics across all ranks
-            for metrics in task_output.sample_metrics:
-                metric_list = [None] * WORLD_SIZE if RANK == 0 else None
-                torch.distributed.gather_object(
-                    obj=task_output.sample_metrics[metrics],
-                    object_gather_list=metric_list,
-                    dst=0,
-                )
-                if RANK == 0:
-                    task_output.sample_metrics[metrics] = list(
-                        itertools.chain.from_iterable(metric_list)
-                    )
 
     if RANK == 0:
         ### Aggregate results over all datapoints ###
