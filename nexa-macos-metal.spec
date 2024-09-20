@@ -47,7 +47,7 @@ if sys.platform.startswith('darwin'):
                  a.datas,
                  name='nexa-metal.app',
                  icon=None,
-                 bundle_identifier='com.nexaai.sdk',
+                 bundle_identifier='com.nexaai.sdk-metal',
                  info_plist={
                      'NSHighResolutionCapable': 'True',
                      'LSBackgroundOnly': 'False',

@@ -267,7 +267,7 @@ jobs:
         cat << EOF > pkg_scripts/postinstall
         #!/bin/bash
         # Determine if Metal is supported
-        if /usr/sbin/system_profiler SPDisplaysDataType | grep -q "Metal: Supported"; then
+        if /usr/sbin/system_profiler SPDisplaysDataType | grep -i "metal support:" | grep -vq "none"; then
           # Use the Metal version
           mv /Applications/nexa-metal.app /Applications/nexa.app
           rm -rf /Applications/nexa-metal.app
