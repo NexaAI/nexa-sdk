@@ -18,8 +18,9 @@ from data_processing import (
 
 def main():
     # Paths configuration
-    input_path = "/Users/q/nexa/nexa_sdk_local_file_organization/nexa-sdk/examples/local_file_organization/sample_data"
-    output_path = "/Users/q/nexa/nexa_sdk_local_file_organization/nexa-sdk/examples/local_file_organization/renamed_files"
+    input_path = "Path/to/your/input/files/or/folder"
+    output_path = "Path/to/your/output/files/or/folder"
+
 
     if not os.path.exists(input_path):
         print(f"Input path {input_path} does not exist. Please create it and add the necessary files.")

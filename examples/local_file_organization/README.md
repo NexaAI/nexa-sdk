@@ -96,16 +96,16 @@ Open `main.py` and locate and modify the following lines to point to your desire
 
 ```python
 # Paths configuration
-base_path = "Path/to/your/input/files/or/folder"
-new_path = "Path/to/your/output/files/or/folder"
+input_path = "Path/to/your/input/files/or/folder"
+output_path = "Path/to/your/output/files/or/folder"
 ```
 
 **Example:**
 
 ```python
 # Paths configuration
-base_path = "/home/user/documents/input_files"
-new_path = "/home/user/documents/organized_files"
+input_path = "/home/user/documents/input_files"
+output_path = "/home/user/documents/organized_files"
 ```
 
 ## Usage
