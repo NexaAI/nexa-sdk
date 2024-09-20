@@ -1,5 +1,4 @@
 cmake
-nexaai
 pytesseract
 PyMuPDF
 python-docx

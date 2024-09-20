@@ -62,7 +62,100 @@ git clone https://github.com/NexaAI/nexa-sdk.git
 
 Or download the repository as a ZIP file and extract it to your desired location.
 
-### 2. Set Up the Python Environment
+
+
+
+### 2. Set Up the  Environment
+
+<!-- ## Installation -->
+
+We have released pre-built wheels for various Python versions, platforms, and backends for convenient installation on our [index page](https://nexaai.github.io/nexa-sdk/whl/).
+
+> [!NOTE]
+>
+> 1. If you want to use <strong>ONNX model</strong>, just replace `pip install nexaai` with `pip install "nexaai[onnx]"` in provided commands.
+> 2. For Chinese developers, we recommend you to use <strong>Tsinghua Open Source Mirror</strong> as extra index url, just replace `--extra-index-url https://pypi.org/simple` with `--extra-index-url https://pypi.tuna.tsinghua.edu.cn/simple` in provided commands.
+
+#### CPU
+
+```bash
+pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cpu --extra-index-url https://pypi.org/simple --no-cache-dir
+```
+
+#### GPU (Metal)
+
+For the GPU version supporting **Metal (macOS)**:
+
+```bash
+CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple --no-cache-dir
+```
+
+<details>
+<summary><strong>FAQ: cannot use Metal/GPU on M1</strong></summary>
+
+Try the following command:
+
+```bash
+wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-arm64.sh
+bash Miniforge3-MacOSX-arm64.sh
+conda create -n nexasdk python=3.10
+conda activate nexasdk
+CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple --no-cache-dir
+```
+
+</details>
+
+#### GPU (CUDA)
+
+For **Linux**:
+
+```zsh
+CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+```
+
+For **Windows PowerShell**:
+
+```zsh
+$env:CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON"; pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+```
+
+For **Windows Command Prompt**:
+
+```zsh
+set CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" & pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+```
+
+For **Windows Git Bash**:
+
+```zsh
+CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+```
+
+<details>
+<summary><strong>FAQ: Building Issues for llava</strong></summary>
+
+If you encounter the following issue while building:
+
+![](docs/.media/error.jpeg)
+
+try the following command:
+
+```zsh
+CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp" pip install nexaai
+```
+
+</details>
+
+#### GPU (ROCm)
+
+For **Linux**:
+
+```zsh
+CMAKE_ARGS="-DGGML_HIPBLAS=on" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/rocm602 --extra-index-url https://pypi.org/simple --no-cache-dir
+```
+
+
+
 
 Create a new Conda environment named `local_file_organizer` with Python 3.12:
 
