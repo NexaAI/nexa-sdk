@@ -46,7 +46,7 @@ class NexaEval:
         self.server_process = multiprocessing.Process(
             target=NexaServer,
             args=(self.model_path,),
-            kwargs={"host": "0.0.0.0", "port": 8000}
+            kwargs={"host": "0.0.0.0", "port": 8000, "nctx": 4096},
         )
         self.server_process.start()
         logging.info(f"Started server process for model: {self.model_path}")
