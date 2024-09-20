@@ -40,12 +40,12 @@ def main():
     print("*" * 50)
 
     # Separate files by type
-    image_files, text_files, pdf_files = separate_files_by_type(file_paths)
+    image_files, text_files = separate_files_by_type(file_paths)
 
     # Process image files
     data_images = process_image_files(image_files)
 
-    # Process text files
+    # Prepare text tuples for processing
     text_tuples = []
     for fp in text_files:
         ext = os.path.splitext(fp.lower())[1]
@@ -53,19 +53,15 @@ def main():
             text_content = read_text_file(fp)
         elif ext == '.docx':
             text_content = read_docx_file(fp)
+        elif ext == '.pdf':
+            text_content = read_pdf_file(fp)
         else:
             print(f"Unsupported text file format: {fp}")
             continue  # Skip unsupported file formats
         text_tuples.append((fp, text_content))
 
-    # Process PDF files
-    pdf_tuples = [(fp, read_pdf_file(fp)) for fp in pdf_files]
-
-    # Combine text and PDF tuples
-    text_pdf_tuples = text_tuples + pdf_tuples
-
-    # Process text and PDF files
-    data_texts = process_text_files(text_pdf_tuples)
+    # Process text files
+    data_texts = process_text_files(text_tuples)
 
     # Prepare for copying and renaming
     renamed_files = set()
@@ -75,7 +71,7 @@ def main():
     # Copy and rename image files
     copy_and_rename_files(data_images, output_path, renamed_files, processed_files)
 
-    # Copy and rename text and PDF files
+    # Copy and rename text files
     copy_and_rename_files(data_texts, output_path, renamed_files, processed_files)
 
     print("Directory tree after copying and renaming:")

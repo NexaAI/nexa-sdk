@@ -243,10 +243,10 @@ def copy_and_rename_files(data_list, new_path, renamed_files, processed_files):
             continue
         processed_files.add(file_path)
 
-        # Use AI-generated folder name
+        # Use folder name which generated from the description
         dir_path = create_folder(new_path, data['foldername'])
 
-        # Use AI-generated filename
+        # Use filename which generated from the  description
         new_file_name = data['filename'] + os.path.splitext(file_path)[1]
         new_file_path = os.path.join(dir_path, new_file_name)
 

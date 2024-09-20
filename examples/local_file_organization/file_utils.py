@@ -83,10 +83,10 @@ def read_text_file(file_path):
         return ""
 
 def display_directory_tree(path):
-    """Display the directory tree in a format similar to the 'tree' command."""
+    """Display the directory tree in a format similar to the 'tree' command, including the full path."""
     def tree(dir_path, prefix=''):
         contents = sorted([c for c in os.listdir(dir_path) if not c.startswith('.')])
-        pointers = [ '├── ' ] * (len(contents) - 1) + [ '└── ' ] if contents else []
+        pointers = ['├── '] * (len(contents) - 1) + ['└── '] if contents else []
         for pointer, name in zip(pointers, contents):
             full_path = os.path.join(dir_path, name)
             print(prefix + pointer + name)
@@ -94,10 +94,10 @@ def display_directory_tree(path):
                 extension = '│   ' if pointer == '├── ' else '    '
                 tree(full_path, prefix + extension)
     if os.path.isdir(path):
-        print(os.path.basename(path) + '/')
+        print(os.path.abspath(path))
         tree(path)
     else:
-        print(os.path.basename(path))
+        print(os.path.abspath(path))
 
 def create_folder(base_path, foldername):
     """Create a directory for the given folder name."""
@@ -119,13 +119,12 @@ def collect_file_paths(base_path):
         return file_paths
 
 def separate_files_by_type(file_paths):
-    """Separate files into images, text files, and PDF files based on their extensions."""
+    """Separate files into images and text files based on their extensions."""
     image_extensions = ('.png', '.jpg', '.jpeg', '.gif', '.bmp')
-    text_extensions = ('.txt', '.docx')
-    pdf_extension = '.pdf'
+    text_extensions = ('.txt', '.docx', '.pdf')
 
     image_files = [fp for fp in file_paths if os.path.splitext(fp.lower())[1] in image_extensions]
     text_files = [fp for fp in file_paths if os.path.splitext(fp.lower())[1] in text_extensions]
-    pdf_files = [fp for fp in file_paths if os.path.splitext(fp.lower())[1] == pdf_extension]
 
-    return image_files, text_files, pdf_files
+    return image_files, text_files  # Return only two values
+
