@@ -27,20 +27,20 @@ The Local File Organizer automates the process of organizing files by:
 - Generating descriptions, folder names, and filenames using LLM models.
 - Organizing the files into a new directory structure based on the generated metadata.
 
+
+## Features
+
+- **Automated File Organization:** Automatically sorts files into folders based on LLM categories.
+- **Metadata Generation:** Generates descriptions and filenames using LLM models.
+- **Support for Multiple File Types:** Handles images, text files, and PDFs.
+- **Parallel Processing:** Utilizes multiprocessing to speed up file processing.
+- **Customizable Prompts:** Prompts used for LLM model interactions can be customized.
+
 ## Supported file types include:
 
 - **Images:** `.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`
 - **Text Files:** `.txt`, `.docx`
 - **PDFs:** `.pdf`
-
-<!-- ## Features
-
-- **Automated File Organization:** Automatically sorts files into folders based on AI-generated categories.
-- **Metadata Generation:** Generates descriptions and filenames using AI models.
-- **Support for Multiple File Types:** Handles images, text files, and PDFs.
-- **Parallel Processing:** Utilizes multiprocessing to speed up file processing.
-- **Customizable Prompts:** Prompts used for AI model interactions can be customized. -->
-
 ## Prerequisites
 
 - **Operating System:** Compatible with Windows, macOS, and Linux.
@@ -62,16 +62,16 @@ Or download the repository as a ZIP file and extract it to your desired location
 
 ### 2. Set Up the Python Environment
 
-Create a new Conda environment named `local_file_manager` with Python 3.12:
+Create a new Conda environment named `local_file_organizer` with Python 3.12:
 
 ```zsh
-conda create --name local_file_manager python=3.12
+conda create --name local_file_organizer python=3.12
 ```
 
 Activate the environment:
 
 ```zsh
-conda activate local_file_manager
+conda activate local_file_organizer
 ```
 
 ### 3. Install Dependencies
