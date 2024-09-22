@@ -3,7 +3,7 @@ import sys
 
 import numpy as np
 import streamlit as st
-
+from optimum.onnxruntime import ORTLatentConsistencyModelPipeline
 from nexa.general import pull_model
 from nexa.onnx.nexa_inference_image import NexaImageInference
 
@@ -12,14 +12,14 @@ default_model = sys.argv[1]
 
 @st.cache_resource
 def load_model(model_path):
-    nexa_model = NexaImageInference(model_path)
-    nexa_model.downloaded_onnx_folder = pull_model(nexa_model.model_path)
+    local_path, run_type = pull_model(model_path)
+    nexa_model = NexaImageInference(model_path=model_path, local_path=local_path)
 
-    if nexa_model.downloaded_onnx_folder is None:
+    if nexa_model.download_onnx_folder is None:
         st.error("Failed to download the model. Please check the model path.")
         return None
 
-    nexa_model._load_model(nexa_model.downloaded_onnx_folder)
+    nexa_model._load_model(nexa_model.download_onnx_folder)
     return nexa_model
 
 
@@ -30,17 +30,21 @@ def generate_images(nexa_model: NexaImageInference, prompt, negative_prompt):
 
     generator = np.random.RandomState(nexa_model.params["random_seed"])
 
-    images = nexa_model.pipeline(
-        prompt=prompt,
-        negative_prompt=negative_prompt if negative_prompt else None,
-        num_inference_steps=nexa_model.params["num_inference_steps"],
-        num_images_per_prompt=nexa_model.params["num_images_per_prompt"],
-        height=nexa_model.params["height"],
-        width=nexa_model.params["width"],
-        generator=generator,
-        guidance_scale=nexa_model.params["guidance_scale"],
-    ).images
+    is_lcm_pipeline = isinstance(nexa_model.pipeline, ORTLatentConsistencyModelPipeline)
 
+    pipeline_kwargs = {
+        "prompt": prompt,
+        "num_inference_steps": nexa_model.params["num_inference_steps"],
+        "num_images_per_prompt": nexa_model.params["num_images_per_prompt"],
+        "height": nexa_model.params["height"],
+        "width": nexa_model.params["width"],
+        "generator": generator,
+        "guidance_scale": nexa_model.params["guidance_scale"],
+    }
+    if not is_lcm_pipeline and negative_prompt:
+        pipeline_kwargs["negative_prompt"] = negative_prompt
+
+    images = nexa_model.pipeline(**pipeline_kwargs).images
     return images
 
 
@@ -51,7 +55,7 @@ st.sidebar.header("Model Configuration")
 model_path = st.sidebar.text_input("Model path", default_model)
 
 if not model_path:
-    st.warning("Please enter a valid S3 model filename to proceed.")
+    st.warning("Please enter a valid path or identifier for the model in Nexa Model Hub to proceed.")
     st.stop()
 
 # Initialize or update the model when the path changes

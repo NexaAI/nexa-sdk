@@ -1,0 +1,53 @@
+name: "🙋‍♀️ Help & Questions"
+description: "Ask away! No question is too big or small"
+title: "[QUESTION] <title>"
+labels: ["🙋‍♀️ help wanted"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 1. What do you need help with or have questions about?
+  - type: textarea
+    id: question-description
+    attributes:
+      label: Question or Issue
+      description: Describe the issue or question you have.
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        ## 2. What's your setup (if it's relevant to your question)?
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      description: Your operating system.
+      placeholder: e.g., Windows 10, macOS Ventura, Ubuntu 22.04
+    validations:
+      required: false
+  - type: input
+    id: python-version
+    attributes:
+      label: Python Version
+      description: Your Python version.
+      placeholder: e.g., 3.9.1
+    validations:
+      required: false
+  - type: input
+    id: nexa-sdk-version
+    attributes:
+      label: Nexa SDK Version
+      description: Your Nexa SDK version.
+      placeholder: e.g., 0.0.8.1
+    validations:
+      required: false
+  - type: input
+    id: gpu
+    attributes:
+      label: GPU (if using one)
+      description: Your GPU model.
+      placeholder: e.g., NVIDIA RTX 3090, Apple M1
+    validations:
+      required: false

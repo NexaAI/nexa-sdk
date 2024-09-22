@@ -237,6 +237,7 @@ ChatCompletionRequestMessage = Union[
     ChatCompletionRequestSystemMessage,
     ChatCompletionRequestUserMessage,
     ChatCompletionRequestAssistantMessage,
+    ChatCompletionRequestUserMessage,
     ChatCompletionRequestToolMessage,
     ChatCompletionRequestFunctionMessage,
 ]

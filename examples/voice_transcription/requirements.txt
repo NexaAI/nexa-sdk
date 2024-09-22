@@ -1,0 +1,9 @@
+nexaai
+webrtcvad
+streamlit
+wave
+
+# Audio processing
+# Note: PyAudio might require system-level dependencies. 
+# If installation fails, please refer to the README for additional instructions.
+pyaudio

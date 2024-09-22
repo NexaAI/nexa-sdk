@@ -1,32 +1,36 @@
 import os
 import sys
-
 from PIL import Image
-
+from nexa.general import pull_model
 import streamlit as st
 from nexa.gguf.nexa_inference_image import NexaImageInference
+import io
 
 default_model = sys.argv[1]
 
 
 @st.cache_resource
 def load_model(model_path):
-    nexa_model = NexaImageInference(model_path)
+    local_path, run_type = pull_model(model_path)
+    nexa_model = NexaImageInference(model_path=model_path, local_path=local_path)
     return nexa_model
 
 
-def generate_images(nexa_model, prompt, negative_prompt):
+def generate_images(nexa_model: NexaImageInference, prompt: str, negative_prompt: str):
     output_dir = os.path.dirname(nexa_model.params["output_path"])
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    nexa_model._generate_images(prompt, negative_prompt)
-
-    images = []
-    for file_name in os.listdir(output_dir):
-        if file_name.endswith(".png"):
-            image_path = os.path.join(output_dir, file_name)
-            images.append(Image.open(image_path))
+    images = nexa_model.txt2img(
+        prompt=prompt,
+        negative_prompt=negative_prompt,
+        cfg_scale=nexa_model.params["guidance_scale"],
+        width=nexa_model.params["width"],
+        height=nexa_model.params["height"],
+        sample_steps=nexa_model.params["num_inference_steps"],
+        seed=nexa_model.params["random_seed"]
+    )
+    
     return images
 
 
@@ -68,12 +72,6 @@ num_inference_steps = st.sidebar.slider(
     100,
     st.session_state.nexa_model.params["num_inference_steps"],
 )
-num_images_per_prompt = st.sidebar.slider(
-    "Number of Images per Prompt",
-    1,
-    10,
-    st.session_state.nexa_model.params["num_images_per_prompt"],
-)
 height = st.sidebar.slider(
     "Height", 64, 1024, st.session_state.nexa_model.params["height"]
 )
@@ -90,7 +88,6 @@ random_seed = st.sidebar.slider(
 st.session_state.nexa_model.params.update(
     {
         "num_inference_steps": num_inference_steps,
-        "num_images_per_prompt": num_images_per_prompt,
         "height": height,
         "width": width,
         "guidance_scale": guidance_scale,
@@ -110,5 +107,16 @@ if st.button("Generate Image"):
                 st.session_state.nexa_model, prompt, negative_prompt
             )
             st.success("Images generated successfully!")
-            for image in images:
-                st.image(image, caption="Generated Image", use_column_width=True)
+            for i, image in enumerate(images):
+                st.image(image, caption=f"Generated Image", use_column_width=True)
+                
+                img_byte_arr = io.BytesIO()
+                image.save(img_byte_arr, format='PNG')
+                img_byte_arr = img_byte_arr.getvalue()
+
+                st.download_button(
+                    label=f"Download Image",
+                    data=img_byte_arr,
+                    file_name=f"generated_image.png",
+                    mime="image/png"
+                )

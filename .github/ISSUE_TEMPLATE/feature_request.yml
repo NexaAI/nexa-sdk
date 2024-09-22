@@ -1,0 +1,28 @@
+name: "💡 Feature Request"
+description: "Describe the feature you'd like to see added"
+title: "[FEATURE] <title>"
+labels: ["💡 feature request"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 1. What feature are you requesting?
+  - type: textarea
+    id: feature-description
+    attributes:
+      label: Feature Description
+      description: Describe the feature you would like to see added and how it would help you.
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        ## 2. Any similar features or references?
+  - type: textarea
+    id: similar-features
+    attributes:
+      label: Similar Features or References
+      description: Provide links or descriptions of any existing features or examples that are similar to what you're requesting.
+    validations:
+      required: false

@@ -1,0 +1,138 @@
+{
+  "metadata": {
+    "data_source": "Gemini Vocal Assistant and Phone Sensors",
+    "last_updated": "2023-08-06T18:45:00Z",
+    "version": "1.3"
+  },
+  "victims": {
+    "43105061": {
+      "communication_ability": {
+        "can_speak": true,
+        "preferred_communication_method": "Voice",
+        "speech_impairment": "None"
+      },
+      "contact_info": {
+        "email": "john.doe@email.com",
+        "emergency_contact": {
+          "name": "Jane Doe",
+          "phone": "555-987-6543",
+          "relationship": "Wife"
+        },
+        "phone": "555-123-4567"
+      },
+      "device_data": {
+        "accelerometer": {
+          "x": 0.02,
+          "y": 0.01,
+          "z": 9.8
+        },
+        "battery_level": 47,
+        "mesh_network": {
+          "connected_nodes": 3,
+          "last_message_received": "2023-08-06T18:42:00Z",
+          "last_message_sent": "2023-08-06T18:40:00Z",
+          "role": "Emitter and Receptor",
+          "status": "Active"
+        },
+        "network_status": "Weak cellular signal"
+      },
+      "emergency_status": "Medium Priority",
+      "environmental_data": {
+        "air_quality": "Poor - dust from debris",
+        "humidity": 65,
+        "temperature": 28,
+        "weather": "Clear sky"
+      },
+      "id": "43105061",
+      "location": {
+        "details": "Third floor, northwest corner of apartment building",
+        "gps": {
+          "lat": 47.724477,
+          "lon": -116.826249
+        },
+        "nearest_landmark": "City Hall (2 blocks east)",
+        "structure_type": "Multi-story residential building"
+      },
+      "medical_info": {
+        "allergies": [
+          "Penicillin"
+        ],
+        "blood_type": "O+",
+        "injuries": [
+          "Broken leg",
+          "Minor cuts"
+        ],
+        "medical_conditions": [
+          "Diabetes"
+        ],
+        "medications": [
+          "Insulin"
+        ],
+        "pain_level": 7
+      },
+      "personal_info": {
+        "age": 35,
+        "gender": "Male",
+        "language": "English",
+        "name": "John Doe",
+        "physical_description": "6ft tall, brown hair, glasses"
+      },
+      "psychological_status": {
+        "special_needs": "Claustrophobic, needs reassurance",
+        "stress_level": "Moderate"
+      },
+      "rescue_info": {
+        "last_contact": "2023-08-06T18:30:00Z",
+        "rescue_team_eta": "2023-08-06T20:00:00Z",
+        "special_rescue_needs": "May require stretcher due to leg injury"
+      },
+      "resources": {
+        "communication_devices": [
+          "Smartphone with 47% battery",
+          "Whistle"
+        ],
+        "food": {
+          "details": "1 day supply",
+          "status": "Limited"
+        },
+        "shelter": {
+          "details": "In damaged building, needs evacuation",
+          "status": "Partial"
+        },
+        "water": {
+          "details": "Less than 1L remaining",
+          "status": "Critical"
+        }
+      },
+      "situation": {
+        "disaster_type": "Earthquake",
+        "immediate_needs": [
+          "Medical attention",
+          "Shelter",
+          "Water"
+        ],
+        "mobility": "Limited - can crawl",
+        "nearby_hazards": [
+          "Unstable debris",
+          "Gas leak suspected"
+        ],
+        "trapped": false
+      },
+      "social_info": {
+        "can_communicate_verbally": true,
+        "dependents": 0,
+        "group_size": 1,
+        "nearby_victims": {
+          "details": "Heard voices from neighboring apartments",
+          "estimated_count": 5
+        }
+      },
+      "vital_signs": {
+        "blood_pressure": "130/85",
+        "heart_rate": 90,
+        "respiratory_rate": 18,
+        "temperature": 37.2
+      }
+    }
+  }
+}

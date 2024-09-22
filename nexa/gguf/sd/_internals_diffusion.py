@@ -1,7 +1,9 @@
 import os
+from contextlib import ExitStack
+
+from nexa.gguf.sd._utils_diffusion import suppress_stdout_stderr
 
 import nexa.gguf.sd.stable_diffusion_cpp as sd_cpp
-from nexa.gguf.sd.stable_diffusion_cpp import GGMLType
 
 
 # ============================================
@@ -18,6 +20,9 @@ class _StableDiffusionModel:
     def __init__(
         self,
         model_path: str,
+        clip_l_path: str,
+        t5xxl_path: str,
+        diffusion_model_path: str,
         vae_path: str,
         taesd_path: str,
         control_net_path: str,
@@ -37,6 +42,9 @@ class _StableDiffusionModel:
         verbose: bool,
     ):
         self.model_path = model_path
+        self.clip_l_path = clip_l_path
+        self.t5xxl_path = t5xxl_path
+        self.diffusion_model_path = diffusion_model_path
         self.vae_path = vae_path
         self.taesd_path = taesd_path
         self.control_net_path = control_net_path
@@ -54,6 +62,7 @@ class _StableDiffusionModel:
         self.keep_control_net_cpu = keep_control_net_cpu
         self.keep_vae_on_cpu = keep_vae_on_cpu
         self.verbose = verbose
+        self._exit_stack = ExitStack()
 
         self.model = None
 
@@ -65,35 +74,55 @@ class _StableDiffusionModel:
             if not os.path.exists(model_path):
                 raise ValueError(f"Model path does not exist: {model_path}")
 
-            # Load the Stable Diffusion model ctx
-            self.model = sd_cpp.new_sd_ctx(
-                self.model_path.encode("utf-8"),
-                self.vae_path.encode("utf-8"),
-                self.taesd_path.encode("utf-8"),
-                self.control_net_path.encode("utf-8"),
-                self.lora_model_dir.encode("utf-8"),
-                self.embed_dir.encode("utf-8"),
-                self.stacked_id_embed_dir.encode("utf-8"),
-                self.vae_decode_only,
-                self.vae_tiling,
-                self.free_params_immediately,
-                self.n_threads,
-                self.wtype,
-                self.rng_type,
-                self.schedule,
-                self.keep_clip_on_cpu,
-                self.keep_control_net_cpu,
-                self.keep_vae_on_cpu,
-            )
+        if diffusion_model_path:
+            if not os.path.exists(diffusion_model_path):
+                raise ValueError(f"Diffusion model path does not exist: {diffusion_model_path}")
 
+        if model_path or diffusion_model_path:
+            with suppress_stdout_stderr(disable=verbose):
+                # Load the Stable Diffusion model ctx
+                self.model = sd_cpp.new_sd_ctx(
+                    self.model_path.encode("utf-8"),
+                    self.clip_l_path.encode("utf-8"),
+                    self.t5xxl_path.encode("utf-8"),
+                    self.diffusion_model_path.encode("utf-8"),
+                    self.vae_path.encode("utf-8"),
+                    self.taesd_path.encode("utf-8"),
+                    self.control_net_path.encode("utf-8"),
+                    self.lora_model_dir.encode("utf-8"),
+                    self.embed_dir.encode("utf-8"),
+                    self.stacked_id_embed_dir.encode("utf-8"),
+                    self.vae_decode_only,
+                    self.vae_tiling,
+                    self.free_params_immediately,
+                    self.n_threads,
+                    self.wtype,
+                    self.rng_type,
+                    self.schedule,
+                    self.keep_clip_on_cpu,
+                    self.keep_control_net_cpu,
+                    self.keep_vae_on_cpu,
+                )
+
+            # Check if the model was loaded successfully
             if self.model is None:
                 raise ValueError(f"Failed to load model from file: {model_path}")
 
+        def free_ctx():
+            """Free the model from memory."""
+            if self.model is not None and self._free_sd_ctx is not None:
+                self._free_sd_ctx(self.model)
+                self.model = None
+
+        self._exit_stack.callback(free_ctx)
+
+    def close(self):
+        """Closes the exit stack, ensuring all context managers are exited."""
+        self._exit_stack.close()
+
     def __del__(self):
-        """Free the model when the object is deleted."""
-        if self.model is not None and self._free_sd_ctx is not None:
-            self._free_sd_ctx(self.model)
-            self.model = None
+        """Free memory when the object is deleted."""
+        self.close()
 
 
 # ============================================
@@ -118,6 +147,7 @@ class _UpscalerModel:
         self.n_threads = n_threads
         self.wtype = wtype
         self.verbose = verbose
+        self._exit_stack = ExitStack()
 
         self.upscaler = None
 
@@ -130,18 +160,25 @@ class _UpscalerModel:
             if not os.path.exists(upscaler_path):
                 raise ValueError(f"Upscaler model path does not exist: {upscaler_path}")
 
-            # load the image upscaling model ctx
-            self.upscaler = sd_cpp.new_upscaler_ctx(
-                upscaler_path.encode("utf-8"), self.n_threads, self.wtype
-            )
+            # Load the image upscaling model ctx
+            self.upscaler = sd_cpp.new_upscaler_ctx(upscaler_path.encode("utf-8"), self.n_threads, self.wtype)
 
+            # Check if the model was loaded successfully
             if self.upscaler is None:
-                raise ValueError(
-                    f"Failed to load upscaler model from file: {upscaler_path}"
-                )
+                raise ValueError(f"Failed to load upscaler model from file: {upscaler_path}")
+
+        def free_ctx():
+            """Free the model from memory."""
+            if self.upscaler is not None and self._free_upscaler_ctx is not None:
+                self._free_upscaler_ctx(self.upscaler)
+                self.upscaler = None
+
+        self._exit_stack.callback(free_ctx)
+
+    def close(self):
+        """Closes the exit stack, ensuring all context managers are exited."""
+        self._exit_stack.close()
 
     def __del__(self):
-        """Free the upscaler model when the object is deleted."""
-        if self.upscaler is not None and self._free_upscaler_ctx is not None:
-            self._free_upscaler_ctx(self.upscaler)
-            self.upscaler = None
+        """Free memory when the object is deleted."""
+        self.close()

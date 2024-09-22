@@ -304,6 +304,7 @@ def _convert_text_completion_chunks_to_chat(
                     }
                 ],
             }
+
         yield {
             "id": "chat" + chunk["id"],
             "model": chunk["model"],

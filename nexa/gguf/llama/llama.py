@@ -1,51 +1,56 @@
 from __future__ import annotations
 
-import contextlib
-import ctypes
-import multiprocessing
 import os
 import sys
-import time
-import typing
 import uuid
+import time
+import json
+import ctypes
+import typing
+import fnmatch
 import warnings
-from collections import deque
+import contextlib
+import multiprocessing
+
 from typing import (
     Any,
-    Callable,
-    Deque,
-    Dict,
-    Generator,
-    Iterator,
     List,
+    Literal,
     Optional,
-    Sequence,
     Union,
+    Generator,
+    Sequence,
+    Iterator,
+    Deque,
+    Callable,
+    Dict,
 )
+from collections import deque
+from pathlib import Path
+
+
+from nexa.gguf.llama.llama_types import *
+from nexa.gguf.llama.llama_grammar import LlamaGrammar
+from nexa.gguf.llama.llama_tokenizer import BaseLlamaTokenizer, LlamaTokenizer
+import nexa.gguf.llama.llama_cpp as llama_cpp
+import nexa.gguf.llama.llama_chat_format as llama_chat_format
+
+from nexa.gguf.llama.llama_speculative import LlamaDraftModel
 
 import numpy as np
 import numpy.typing as npt
 
-import nexa.gguf.llama.llama_chat_format as llama_chat_format
-import nexa.gguf.llama.llama_cpp as llama_cpp
-from nexa.gguf.llama._internals_transformers import _LlamaBatch  # type: ignore
-from nexa.gguf.llama._internals_transformers import _LlamaContext  # type: ignore
-from nexa.gguf.llama._internals_transformers import _LlamaModel  # type: ignore
-from nexa.gguf.llama._internals_transformers import _LlamaSamplingContext  # type: ignore
-from nexa.gguf.llama._internals_transformers import _LlamaSamplingParams  # type: ignore
-from nexa.gguf.llama._internals_transformers import _LlamaTokenDataArray  # type: ignore
-from nexa.gguf.llama._internals_transformers import _normalize_embedding  # type: ignore
+from nexa.gguf.llama._internals_transformers import (
+    _LlamaModel,  # type: ignore
+    _LlamaContext,  # type: ignore
+    _LlamaBatch,  # type: ignore
+    _LlamaTokenDataArray,  # type: ignore
+    _LlamaSamplingParams,  # type: ignore
+    _LlamaSamplingContext,  # type: ignore
+    _normalize_embedding,  # type: ignore
+)
 from nexa.gguf.llama._logger_transformers import set_verbose
 from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
-
-# from nexa.gguf.llama.llama_cache import LlamaCache  # type: ignore
-# from nexa.gguf.llama.llama_cache import LlamaDiskCache  # type: ignore
-# from nexa.gguf.llama.llama_cache import LlamaRAMCache  # type: ignore
-from nexa.gguf.llama.llama_cache import BaseLlamaCache
-from nexa.gguf.llama.llama_grammar import LlamaGrammar
-from nexa.gguf.llama.llama_speculative import LlamaDraftModel
-from nexa.gguf.llama.llama_tokenizer import BaseLlamaTokenizer, LlamaTokenizer
-from nexa.gguf.llama.llama_types import *
 
 
 class Llama:
@@ -84,7 +89,7 @@ class Llama:
         yarn_beta_fast: float = 32.0,
         yarn_beta_slow: float = 1.0,
         yarn_orig_ctx: int = 0,
-        logits_all: bool = False,
+        logits_all: bool = True,  # switch
         embedding: bool = False,
         offload_kqv: bool = True,
         flash_attn: bool = False,
@@ -142,7 +147,7 @@ class Llama:
             model_path: Path to the model.
             n_gpu_layers: Number of layers to offload to GPU (-ngl). If -1, all layers are offloaded.
             split_mode: How to split the model across GPUs. See llama_cpp.LLAMA_SPLIT_* for options.
-            main_gpu: main_gpu interpretation depends on split_mode: LLAMA_SPLIT_NONE: the GPU that is used for the entire model. LLAMA_SPLIT_ROW: the GPU that is used for small tensors and intermediate results. LLAMA_SPLIT_LAYER: ignored
+            main_gpu: main_gpu interpretation depends on split_mode: LLAMA_SPLIT_MODE_NONE: the GPU that is used for the entire model. LLAMA_SPLIT_MODE_ROW: the GPU that is used for small tensors and intermediate results. LLAMA_SPLIT_MODE_LAYER: ignored
             tensor_split: How split tensors should be distributed across GPUs. If None, the model is not split.
             rpc_servers: Comma separated list of RPC servers to use for offloading
             vocab_only: Only load the vocabulary no weights.
@@ -187,6 +192,7 @@ class Llama:
             A Llama instance.
         """
         self.verbose = verbose
+        self._stack = contextlib.ExitStack()
 
         set_verbose(verbose)
 
@@ -251,28 +257,28 @@ class Llama:
             for i, (k, v) in enumerate(kv_overrides.items()):
                 self._kv_overrides_array[i].key = k.encode("utf-8")
                 if isinstance(v, bool):
-                    self._kv_overrides_array[
-                        i
-                    ].tag = llama_cpp.LLAMA_KV_OVERRIDE_TYPE_BOOL
+                    self._kv_overrides_array[i].tag = (
+                        llama_cpp.LLAMA_KV_OVERRIDE_TYPE_BOOL
+                    )
                     self._kv_overrides_array[i].value.val_bool = v
                 elif isinstance(v, int):
-                    self._kv_overrides_array[
-                        i
-                    ].tag = llama_cpp.LLAMA_KV_OVERRIDE_TYPE_INT
+                    self._kv_overrides_array[i].tag = (
+                        llama_cpp.LLAMA_KV_OVERRIDE_TYPE_INT
+                    )
                     self._kv_overrides_array[i].value.val_i64 = v
                 elif isinstance(v, float):
-                    self._kv_overrides_array[
-                        i
-                    ].tag = llama_cpp.LLAMA_KV_OVERRIDE_TYPE_FLOAT
+                    self._kv_overrides_array[i].tag = (
+                        llama_cpp.LLAMA_KV_OVERRIDE_TYPE_FLOAT
+                    )
                     self._kv_overrides_array[i].value.val_f64 = v
                 elif isinstance(v, str):  # type: ignore
                     v_bytes = v.encode("utf-8")
                     if len(v_bytes) > 128:  # TODO: Make this a constant
                         raise ValueError(f"Value for {k} is too long: {v}")
                     v_bytes = v_bytes.ljust(128, b"\0")
-                    self._kv_overrides_array[
-                        i
-                    ].tag = llama_cpp.LLAMA_KV_OVERRIDE_TYPE_STR
+                    self._kv_overrides_array[i].tag = (
+                        llama_cpp.LLAMA_KV_OVERRIDE_TYPE_STR
+                    )
                     # copy min(v_bytes, 128) to str_value
                     address = typing.cast(
                         int,
@@ -288,9 +294,9 @@ class Llama:
                 else:
                     raise ValueError(f"Unknown value type for {k}: {v}")
 
-            self._kv_overrides_array[
-                -1
-            ].key = b"\0"  # ensure sentinel element is zeroed
+            self._kv_overrides_array[-1].key = (
+                b"\0"  # ensure sentinel element is zeroed
+            )
             self.model_params.kv_overrides = self._kv_overrides_array
 
         self.n_batch = min(n_ctx, n_batch)  # ???
@@ -329,9 +335,10 @@ class Llama:
             yarn_beta_slow if yarn_beta_slow != 0.0 else 0
         )
         self.context_params.yarn_orig_ctx = yarn_orig_ctx if yarn_orig_ctx != 0 else 0
-        self.context_params.logits_all = (
-            logits_all if draft_model is None else True
-        )  # Must be set to True for speculative decoding
+        # self.context_params.logits_all = (
+        #     logits_all if draft_model is None else True
+        # )  # Must be set to True for speculative decoding
+        self.context_params.logits_all = True
         self.context_params.embeddings = embedding  # TODO: Rename to embeddings
         self.context_params.offload_kqv = offload_kqv
         self.context_params.flash_attn = flash_attn
@@ -343,8 +350,6 @@ class Llama:
         # Sampling Params
         self.last_n_tokens_size = last_n_tokens_size
 
-        self.cache: Optional[BaseLlamaCache] = None
-
         self.lora_base = lora_base
         self.lora_scale = lora_scale
         self.lora_path = lora_path
@@ -353,8 +358,6 @@ class Llama:
 
         if not os.path.exists(model_path):
             raise ValueError(f"Model path does not exist: {model_path}")
-
-        self._stack = contextlib.ExitStack()
 
         self._model = self._stack.enter_context(
             contextlib.closing(
@@ -409,6 +412,15 @@ class Llama:
                 raise RuntimeError(
                     f"Failed to initialize LoRA adapter from lora path: {self.lora_path}"
                 )
+
+            def free_lora_adapter():
+                if self._lora_adapter is None:
+                    return
+                llama_cpp.llama_lora_adapter_free(self._lora_adapter)
+                self._lora_adapter = None
+
+            self._stack.callback(free_lora_adapter)
+
             assert self._ctx.ctx is not None
             if llama_cpp.llama_lora_adapter_set(
                 self._ctx.ctx, self._lora_adapter, self.lora_scale
@@ -422,9 +434,9 @@ class Llama:
 
         self.chat_format = chat_format
         self.chat_handler = chat_handler
-        self._chat_handlers: Dict[
-            str, llama_chat_format.LlamaChatCompletionHandler
-        ] = {}
+        self._chat_handlers: Dict[str, llama_chat_format.LlamaChatCompletionHandler] = (
+            {}
+        )
 
         self.draft_model = draft_model
 
@@ -559,6 +571,8 @@ class Llama:
 
         Args:
             text: The utf-8 encoded string to tokenize.
+            add_bos: Whether to add a beginning of sequence token.
+            special: Whether to tokenize special tokens.
 
         Raises:
             RuntimeError: If the tokenization failed.
@@ -569,26 +583,19 @@ class Llama:
         return self.tokenizer_.tokenize(text, add_bos, special)
 
     def detokenize(
-        self, tokens: List[int], prev_tokens: Optional[List[int]] = None
+        self, tokens: List[int], prev_tokens: Optional[List[int]] = None, special: bool = False
     ) -> bytes:
         """Detokenize a list of tokens.
 
         Args:
             tokens: The list of tokens to detokenize.
-            prev_tokens: The list of previous tokens. Offset mapping will be performed if provided
+            prev_tokens: The list of previous tokens. Offset mapping will be performed if provided.
+            special: Whether to detokenize special tokens.
 
         Returns:
             The detokenized string.
         """
-        return self.tokenizer_.detokenize(tokens, prev_tokens=prev_tokens)
-
-    def set_cache(self, cache: Optional[BaseLlamaCache]):
-        """Set the cache.
-
-        Args:
-            cache: The cache to set.
-        """
-        self.cache = cache
+        return self.tokenizer_.detokenize(tokens, prev_tokens=prev_tokens, special=special)
 
     def set_seed(self, seed: int):
         """Set the random seed.
@@ -656,6 +663,8 @@ class Llama:
         mirostat_tau: float = 5.0,
         penalize_nl: bool = True,
         logits_processor: Optional[LogitsProcessorList] = None,
+        logprobs: Optional[bool] = None,
+        top_logprobs: Optional[int] = None,
         grammar: Optional[LlamaGrammar] = None,
         idx: Optional[int] = None,
     ):
@@ -712,7 +721,27 @@ class Llama:
             id=id,
             apply_grammar=grammar is not None,
         )
-        return id
+
+        if logprobs is not None and (top_logprobs is not None and top_logprobs > 0):
+            sampled_logprobs = self.logits_to_logprobs(logits)
+            token_logprob = float(sampled_logprobs[id])
+
+            top_logprobs_dict = None
+            if top_logprobs is not None:
+                sorted_indices = sampled_logprobs.argsort()[::-1]
+                top_indices = sorted_indices[:top_logprobs]
+                top_logprobs_dict = {
+                    self.detokenize([i]).decode("utf-8", errors="ignore"): float(sampled_logprobs[i])
+                    for i in top_indices
+                }
+
+            return {
+                "token": id,
+                "token_logprob": token_logprob,
+                "top_logprobs": top_logprobs_dict
+            }
+        else:
+            return id
 
     def generate(
         self,
@@ -732,6 +761,8 @@ class Llama:
         mirostat_eta: float = 0.1,
         penalize_nl: bool = True,
         logits_processor: Optional[LogitsProcessorList] = None,
+        logprobs: Optional[bool] = None,
+        top_logprobs: Optional[int] = None,
         stopping_criteria: Optional[StoppingCriteriaList] = None,
         grammar: Optional[LlamaGrammar] = None,
     ) -> Generator[int, Optional[Sequence[int]], None]:
@@ -766,11 +797,12 @@ class Llama:
                 else:
                     break
             if longest_prefix > 0:
-                if self.verbose:
-                    print("Llama.generate: prefix-match hit", file=sys.stderr)
                 reset = False
                 tokens = tokens[longest_prefix:]
                 self.n_tokens = longest_prefix
+                if self.verbose:
+                    print(f"Llama.generate: {longest_prefix} prefix-match hit, "
+                          f"remaining {len(tokens)} prompt tokens to eval", file=sys.stderr)
 
         # Reset the model state
         if reset:
@@ -787,7 +819,7 @@ class Llama:
         while True:
             self.eval(tokens)
             while sample_idx < self.n_tokens:
-                token = self.sample(
+                result = self.sample(
                     top_k=top_k,
                     top_p=top_p,
                     min_p=min_p,
@@ -801,17 +833,26 @@ class Llama:
                     mirostat_tau=mirostat_tau,
                     mirostat_eta=mirostat_eta,
                     logits_processor=logits_processor,
+                    logprobs=logprobs,
+                    top_logprobs=top_logprobs,
                     grammar=grammar,
                     penalize_nl=penalize_nl,
                     idx=sample_idx,
                 )
+
+                if isinstance(result, dict):
+                    token = result["token"]
+                    logprobs_info = result
+                else:
+                    token = result
+                    logprobs_info = None
 
                 sample_idx += 1
                 if stopping_criteria is not None and stopping_criteria(
                     self._input_ids, self._scores[-1, :]
                 ):
                     return
-                tokens_or_none = yield token
+                tokens_or_none = yield token, logprobs_info
                 tokens.clear()
                 tokens.append(token)
                 if tokens_or_none is not None:
@@ -1004,7 +1045,7 @@ class Llama:
         top_p: float = 0.95,
         min_p: float = 0.05,
         typical_p: float = 1.0,
-        logprobs: Optional[int] = None,
+        logprobs: Optional[bool] = None,
         echo: bool = False,
         stop: Optional[Union[str, List[str]]] = [],
         frequency_penalty: float = 0.0,
@@ -1020,6 +1061,7 @@ class Llama:
         model: Optional[str] = None,
         stopping_criteria: Optional[StoppingCriteriaList] = None,
         logits_processor: Optional[LogitsProcessorList] = None,
+        top_logprobs: Optional[int] = None,
         grammar: Optional[LlamaGrammar] = None,
         logit_bias: Optional[Dict[str, float]] = None,
     ) -> Union[
@@ -1046,13 +1088,13 @@ class Llama:
 
         if (
             (isinstance(prompt, list) and suffix is None)
-            or self._model.add_bos_token() == 0
+            or not self._model.add_bos_token()
             or bos_tokens[:1] == [-1]
         ):
             bos_tokens = []
 
         if (isinstance(prompt, list) and suffix is None) or (
-            self._model.add_eos_token() != 1 and sep_token_id == -1
+            not self._model.add_eos_token() and sep_token_id == -1
         ):
             eos_tokens = []
 
@@ -1171,29 +1213,14 @@ class Llama:
                 "logprobs is not supported for models created with logits_all=False"
             )
 
-        if self.cache:
-            try:
-                cache_item = self.cache[prompt_tokens]
-                cache_prefix_len = Llama.longest_token_prefix(
-                    cache_item.input_ids.tolist(), prompt_tokens
-                )
-                eval_prefix_len = Llama.longest_token_prefix(
-                    self._input_ids.tolist(), prompt_tokens
-                )
-                if cache_prefix_len > eval_prefix_len:
-                    self.load_state(cache_item)
-                    if self.verbose:
-                        print("Llama._create_completion: cache hit", file=sys.stderr)
-            except KeyError:
-                if self.verbose:
-                    print("Llama._create_completion: cache miss", file=sys.stderr)
-
         if seed is not None:
             self._ctx.set_rng_seed(seed)
 
         finish_reason = "length"
         multibyte_fix = 0
-        for token in self.generate(
+        logprobs_or_none = None
+
+        for token, logprobs_info in self.generate(
             prompt_tokens,
             top_k=top_k,
             top_p=top_p,
@@ -1209,6 +1236,8 @@ class Llama:
             repeat_penalty=repeat_penalty,
             stopping_criteria=stopping_criteria,
             logits_processor=logits_processor,
+            logprobs=logprobs,
+            top_logprobs=top_logprobs,
             grammar=grammar,
         ):
             assert self._model.model is not None
@@ -1218,6 +1247,20 @@ class Llama:
                 break
 
             completion_tokens.append(token)
+
+            if logprobs_info and logprobs_or_none is None:
+                logprobs_or_none = {
+                    "tokens": [],
+                    "text_offset": [],
+                    "token_logprobs": [],
+                    "top_logprobs": []
+                }
+
+            if logprobs_info:
+                logprobs_or_none["tokens"].append(self.detokenize([token]).decode("utf-8", errors="ignore"))
+                logprobs_or_none["text_offset"].append(len(self.detokenize(completion_tokens[:-1])))
+                logprobs_or_none["token_logprobs"].append(logprobs_info["token_logprob"])
+                logprobs_or_none["top_logprobs"].append(logprobs_info["top_logprobs"])
 
             all_text = self.detokenize(completion_tokens, prev_tokens=prompt_tokens)
 
@@ -1417,7 +1460,7 @@ class Llama:
                     )
                 )
 
-                logprobs_or_none: Optional[CompletionLogprobs] = None
+                # logprobs_or_none: Optional[CompletionLogprobs] = None
                 if logprobs is not None:
                     if token == bos_token_id:
                         continue
@@ -1502,22 +1545,15 @@ class Llama:
                     {
                         "text": "",
                         "index": 0,
-                        "logprobs": None,
+                        "delta": {
+                            "content": "",
+                        },
+                        "logprobs": logprobs_or_none,
                         "finish_reason": finish_reason,
                     }
                 ],
             }
-            if self.cache:
-                if self.verbose:
-                    print("Llama._create_completion: cache save", file=sys.stderr)
-                self.cache[prompt_tokens + completion_tokens] = self.save_state()
-                print("Llama._create_completion: cache saved", file=sys.stderr)
             return
-
-        if self.cache:
-            if self.verbose:
-                print("Llama._create_completion: cache save", file=sys.stderr)
-            self.cache[prompt_tokens + completion_tokens] = self.save_state()
 
         text_str = text.decode("utf-8", errors="ignore")
 
@@ -1527,7 +1563,7 @@ class Llama:
         if suffix_token_id < 0 and suffix is not None:
             text_str = text_str + suffix
 
-        logprobs_or_none: Optional[CompletionLogprobs] = None
+        # logprobs_or_none: Optional[CompletionLogprobs] = None
         if logprobs is not None:
             text_offset = 0 if echo else len(prompt)
             token_offset = 0 if echo else len(prompt_tokens[1:])
@@ -1623,7 +1659,7 @@ class Llama:
         top_p: float = 0.95,
         min_p: float = 0.05,
         typical_p: float = 1.0,
-        logprobs: Optional[int] = None,
+        logprobs: Optional[bool] = None,
         echo: bool = False,
         stop: Optional[Union[str, List[str]]] = [],
         frequency_penalty: float = 0.0,
@@ -1641,6 +1677,7 @@ class Llama:
         logits_processor: Optional[LogitsProcessorList] = None,
         grammar: Optional[LlamaGrammar] = None,
         logit_bias: Optional[Dict[str, float]] = None,
+        top_logprobs: Optional[int] = None,
     ) -> Union[CreateCompletionResponse, Iterator[CreateCompletionStreamResponse]]:
         """Generate text from a prompt.
 
@@ -1720,7 +1757,7 @@ class Llama:
         top_p: float = 0.95,
         min_p: float = 0.05,
         typical_p: float = 1.0,
-        logprobs: Optional[int] = None,
+        logprobs: Optional[bool] = None,
         echo: bool = False,
         stop: Optional[Union[str, List[str]]] = [],
         frequency_penalty: float = 0.0,
@@ -1930,10 +1967,7 @@ class Llama:
             stream = kwargs.get("stream", False)  # type: ignore
             assert isinstance(stream, bool)
             if stream:
-                return (
-                    ChatCompletionChunk(**chunk)
-                    for chunk in self.create_chat_completion(*args, **kwargs)
-                )  # type: ignore
+                return (ChatCompletionChunk(**chunk) for chunk in self.create_chat_completion(*args, **kwargs))  # type: ignore
             else:
                 return ChatCompletion(**self.create_chat_completion(*args, **kwargs))  # type: ignore
         except ImportError:
@@ -2078,8 +2112,6 @@ class Llama:
         self._stack.close()
 
     def __del__(self) -> None:
-        if self._lora_adapter is not None:
-            llama_cpp.llama_lora_adapter_free(self._lora_adapter)
         self.close()
 
     @staticmethod
@@ -2109,6 +2141,100 @@ class Llama:
             else:
                 break
         return longest_prefix
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        repo_id: str,
+        filename: Optional[str],
+        local_dir: Optional[Union[str, os.PathLike[str]]] = None,
+        local_dir_use_symlinks: Union[bool, Literal["auto"]] = "auto",
+        cache_dir: Optional[Union[str, os.PathLike[str]]] = None,
+        **kwargs: Any,
+    ) -> "Llama":
+        """Create a Llama model from a pretrained model name or path.
+        This method requires the huggingface-hub package.
+        You can install it with `pip install huggingface-hub`.
+
+        Args:
+            repo_id: The model repo id.
+            filename: A filename or glob pattern to match the model file in the repo.
+            local_dir: The local directory to save the model to.
+            local_dir_use_symlinks: Whether to use symlinks when downloading the model.
+            **kwargs: Additional keyword arguments to pass to the Llama constructor.
+
+        Returns:
+            A Llama model."""
+        try:
+            from huggingface_hub import hf_hub_download, HfFileSystem
+            from huggingface_hub.utils import validate_repo_id
+        except ImportError:
+            raise ImportError(
+                "Llama.from_pretrained requires the huggingface-hub package. "
+                "You can install it with `pip install huggingface-hub`."
+            )
+
+        validate_repo_id(repo_id)
+
+        hffs = HfFileSystem()
+
+        files = [
+            file["name"] if isinstance(file, dict) else file
+            for file in hffs.ls(repo_id, recursive=True)
+        ]
+
+        # split each file into repo_id, subfolder, filename
+        file_list: List[str] = []
+        for file in files:
+            rel_path = Path(file).relative_to(repo_id)
+            file_list.append(str(rel_path))
+
+        matching_files = [file for file in file_list if fnmatch.fnmatch(file, filename)]  # type: ignore
+
+        if len(matching_files) == 0:
+            raise ValueError(
+                f"No file found in {repo_id} that match {filename}\n\n"
+                f"Available Files:\n{json.dumps(file_list)}"
+            )
+
+        if len(matching_files) > 1:
+            raise ValueError(
+                f"Multiple files found in {repo_id} matching {filename}\n\n"
+                f"Available Files:\n{json.dumps(files)}"
+            )
+
+        (matching_file,) = matching_files
+
+        subfolder = str(Path(matching_file).parent)
+        filename = Path(matching_file).name
+
+        # download the file
+        hf_hub_download(
+            repo_id=repo_id,
+            filename=filename,
+            subfolder=subfolder,
+            local_dir=local_dir,
+            local_dir_use_symlinks=local_dir_use_symlinks,
+            cache_dir=cache_dir,
+        )
+
+        if local_dir is None:
+            model_path = hf_hub_download(
+                repo_id=repo_id,
+                filename=filename,
+                subfolder=subfolder,
+                local_dir=local_dir,
+                local_dir_use_symlinks=local_dir_use_symlinks,
+                cache_dir=cache_dir,
+                local_files_only=True,
+            )
+        else:
+            model_path = os.path.join(local_dir, filename)
+
+        return cls(
+            model_path=model_path,
+            **kwargs,
+        )
 
 
 class LlamaState:

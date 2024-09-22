@@ -1,0 +1,87 @@
+name: Build Wheels (ROCm) (Linux)
+
+on: workflow_dispatch
+
+permissions:
+  contents: write
+
+jobs:
+  define_matrix:
+    name: Define Build Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Define Job Output
+        id: set-matrix
+        run: |
+          $matrix = @{
+              'os' = @('ubuntu-22.04')
+              'pyver' = @("3.7", "3.8", "3.9", "3.10", "3.11", "3.12")
+              'rocm' = @("6.0.2")
+              'releasetag' = @("basic")
+          }
+
+          $matrixOut = ConvertTo-Json $matrix -Compress
+          Write-Output ('matrix=' + $matrixOut) >> $env:GITHUB_OUTPUT
+
+  build_wheels:
+    name: Build Wheel ${{ matrix.os }} ${{ matrix.pyver }} ROCm ${{ matrix.rocm }} ${{ matrix.releasetag }}
+    needs: define_matrix
+    runs-on: ${{ matrix.os }}
+    container: rocm/dev-ubuntu-22.04:${{ matrix.rocm }}
+    strategy:
+      matrix: ${{ fromJSON(needs.define_matrix.outputs.matrix) }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      ROCMVER: ${{ matrix.rocm }}
+      AVXVER: ${{ matrix.releasetag }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.pyver }}
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential git cmake rocblas-dev hipblas-dev
+          python -m pip install build wheel
+
+      - name: Build Wheel
+        run: |
+          export ROCM_PATH=/opt/rocm
+          export HIP_PATH=$ROCM_PATH/hip
+          export PATH=$ROCM_PATH/bin:$PATH
+          export LD_LIBRARY_PATH=$ROCM_PATH/lib:$LD_LIBRARY_PATH
+
+          export VERBOSE=1
+          export CMAKE_BUILD_PARALLEL_LEVEL=$(nproc)
+          export CMAKE_ARGS='-DGGML_HIPBLAS=ON -DCMAKE_HIP_COMPILER="$(hipconfig -l)/clang"'
+          export CMAKE_ARGS="$CMAKE_ARGS -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_F16C=OFF"
+
+          python -m build --wheel
+
+          # Extract ROCm version without dots
+          ROCM_VERSION=$(echo $ROCMVER | tr -d '.')
+          echo "ROCM_VERSION=$ROCM_VERSION" >> $GITHUB_ENV
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          # Set tag_name to <tag>-rocm<rocm_version>
+          tag_name: ${{ github.ref_name }}-rocm${{ env.ROCM_VERSION }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

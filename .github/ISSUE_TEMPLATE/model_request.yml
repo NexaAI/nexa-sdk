@@ -1,0 +1,28 @@
+name: "📦 Model Request"
+description: "Describe the model you'd like to see supported"
+title: "[MODEL REQUEST] <title>"
+labels: ["📦 model request"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 1. Which model are you requesting?
+  - type: textarea
+    id: model-description
+    attributes:
+      label: Model Description
+      description: Describe the model you need.
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        ## 2. Any resources for us to learn more about this model?
+  - type: textarea
+    id: model-resources
+    attributes:
+      label: Model Resources
+      description: Share any links or resources.
+    validations:
+      required: false

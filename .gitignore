@@ -1,9 +1,6 @@
 # Files
 *.safetensors
 *.gguf
-*.png
-*.jpeg
-*.jpg
 *.bin
 *.mp3
 *.wav
@@ -17,7 +14,8 @@ build*.sh
 *.so
 *.dll
 *.dylib
-setup.py
+*.a
+generated_images/
 
 # Python
 __pycache__/

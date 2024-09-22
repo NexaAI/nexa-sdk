@@ -12,10 +12,9 @@ from optimum.onnxruntime import (
     ORTStableDiffusionPipeline,
     ORTStableDiffusionXLPipeline,
 )
-
-from nexa.constants import EXIT_REMINDER, NEXA_RUN_MODEL_MAP_ONNX
 from nexa.general import pull_model
-from nexa.utils import nexa_prompt
+from nexa.constants import EXIT_REMINDER, NEXA_RUN_MODEL_MAP_ONNX
+from nexa.utils import nexa_prompt, SpinningCursorAnimation
 
 logging.basicConfig(level=logging.INFO)
 
@@ -31,11 +30,13 @@ class NexaImageInference:
     A class used for loading image models and running image generation.
 
     Methods:
-    run: Run the image generation loop.
-    run_streamlit: Run the Streamlit UI.
+        run: Run the image generation loop.
+        run_streamlit: Run the Streamlit UI.
+        generate_images: Generate images based on the given prompt, negative prompt, and parameters.
 
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.
+    local_path (str): Local path of the model.
     num_inference_steps (int): Number of inference steps.
     num_images_per_prompt (int): Number of images to generate per prompt.
     width (int): Width of the output image.
@@ -45,8 +46,9 @@ class NexaImageInference:
     random_seed (int): Random seed for image generation.
     streamlit (bool): Run the inference in Streamlit UI.
     """
-    def __init__(self, model_path, **kwargs):
+    def __init__(self, model_path, local_path=None, **kwargs):
         self.model_path = NEXA_RUN_MODEL_MAP_ONNX.get(model_path, model_path)
+        self.download_onnx_folder = local_path
         self.params = {
             "num_inference_steps": 20,
             "num_images_per_prompt": 1,
@@ -60,19 +62,21 @@ class NexaImageInference:
         self.pipeline = None
 
     def run(self):
-        # Step 1: Download the ONNX folder from S3
-        downloaded_onnx_folder = pull_model(self.model_path)
 
-        if downloaded_onnx_folder is None:
-            logging.error("Failed to download the model. Exiting.")
-            return
+        if self.download_onnx_folder is None:
+            self.download_onnx_folder, run_type = pull_model(self.model_path)
 
-        # Step 2: Load the model
-        self._load_model(downloaded_onnx_folder)
+        if self.download_onnx_folder is None:
+            logging.error(
+                f"Model ({model_path}) is not applicable. Please refer to our docs for proper usage.",
+                exc_info=True,
+            )
+            exit(1)
 
-        # Step 3: Enter dialogue mode
+        self._load_model(self.download_onnx_folder)
         self._dialogue_mode()
 
+    @SpinningCursorAnimation()
     def _load_model(self, model_path):
         """
         Load the model from the given model path using the appropriate pipeline.
@@ -98,22 +102,29 @@ class NexaImageInference:
         """
         Enter a dialogue mode where the user can input prompts and negative prompts repeatedly.
         """
-        print("Enter 'quit' to exit the program.")
         while True:
             try:
                 prompt = nexa_prompt("Enter your prompt: ")
                 negative_prompt = nexa_prompt(
                     "Enter your negative prompt (press Enter to skip): "
                 )
-                self._generate_images(prompt, negative_prompt)
+                images = self.generate_images(prompt, negative_prompt)
+                self._save_images(images)
             except KeyboardInterrupt:
                 print(EXIT_REMINDER)
             except Exception as e:
                 logging.error(f"Error during text generation: {e}", exc_info=True)
 
-    def _generate_images(self, prompt, negative_prompt):
+    def generate_images(self, prompt, negative_prompt):
         """
-        Generate images based on the given prompt, negative prompt, and parameters.
+        Used for SDK. Generate images based on the given prompt, negative prompt, and parameters.
+
+        Arg:
+            prompt (str): Prompt for the image generation.
+            negative_prompt (str): Negative prompt for the image generation.
+
+        Returns:
+            list: List of generated images.
         """
         if self.pipeline is None:
             logging.error("Model not loaded. Exiting.")
@@ -121,28 +132,26 @@ class NexaImageInference:
 
         generator = np.random.RandomState(self.params["random_seed"])
 
-        try:
-            is_lcm_pipeline = isinstance(
-                self.pipeline, ORTLatentConsistencyModelPipeline
-            )
+        is_lcm_pipeline = isinstance(
+            self.pipeline, ORTLatentConsistencyModelPipeline
+        )
 
-            pipeline_kwargs = {
-                "prompt": prompt,
-                "num_inference_steps": self.params["num_inference_steps"],
-                "num_images_per_prompt": self.params["num_images_per_prompt"],
-                "height": self.params["height"],
-                "width": self.params["width"],
-                "generator": generator,
-                "guidance_scale": self.params["guidance_scale"],
-            }
-            if not is_lcm_pipeline and negative_prompt:
-                pipeline_kwargs["negative_prompt"] = negative_prompt
+        pipeline_kwargs = {
+            "prompt": prompt,
+            "num_inference_steps": self.params["num_inference_steps"],
+            "num_images_per_prompt": self.params["num_images_per_prompt"],
+            "height": self.params["height"],
+            "width": self.params["width"],
+            "generator": generator,
+            "guidance_scale": self.params["guidance_scale"],
+        }
+        if not is_lcm_pipeline and negative_prompt:
+            pipeline_kwargs["negative_prompt"] = negative_prompt
 
-            images = self.pipeline(**pipeline_kwargs).images
+        images = self.pipeline(**pipeline_kwargs).images
+        return images
 
-            self._save_images(images)
-        except Exception as e:
-            logging.error(f"Error during image generation: {e}")
+
 
     def _save_images(self, images):
         """
@@ -155,7 +164,7 @@ class NexaImageInference:
             file_name = f"image_{i+1}_{int(time.time())}.png"
             file_path = os.path.join(output_dir, file_name)
             image.save(file_path)
-            logging.info(f"Image {i+1} saved to: {file_path}")
+            print(f"Image {i+1} saved to: {file_path}")
 
     def run_streamlit(self, model_path: str):
         """

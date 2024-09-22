@@ -1,0 +1,73 @@
+name: "🐞 Bug Report"
+description: "Tell us what went wrong"
+title: "[BUG] <title>"
+labels: ["🐞 bug"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 1. What issue or challenge are you experiencing?  
+
+  - type: textarea
+    id: issue-description
+    attributes:
+      label: Issue Description
+      description: What did you expect to happen, and what actually occurred?
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ## 2. How can we reproduce this issue?  
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: Steps to Reproduce
+      description: List the steps or actions we can follow to replicate the issue.
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ## 3. What's your setup?  
+        *Share details about your environment to help us troubleshoot:*
+
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      description: Your operating system.
+      placeholder: e.g., Windows 10, macOS Ventura, Ubuntu 22.04
+    validations:
+      required: true
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python Version
+      description: Your Python version.
+      placeholder: e.g., 3.9.1
+    validations:
+      required: true
+
+  - type: input
+    id: nexa-sdk-version
+    attributes:
+      label: Nexa SDK Version
+      description: Your Nexa SDK version.
+      placeholder: e.g., 0.0.8.1
+    validations:
+      required: true
+
+  - type: input
+    id: gpu
+    attributes:
+      label: GPU (if using one)
+      description: Your GPU model.
+      placeholder: e.g., NVIDIA RTX 3090, Apple M1
+    validations:
+      required: false

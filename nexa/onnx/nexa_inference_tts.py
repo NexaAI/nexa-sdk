@@ -11,9 +11,8 @@ import yaml
 from ttstokenizer import TTSTokenizer
 
 from nexa.constants import EXIT_REMINDER, NEXA_RUN_MODEL_MAP_ONNX
-from nexa.general import pull_model
 from nexa.utils import nexa_prompt
-
+from nexa.general import pull_model
 logging.basicConfig(level=logging.INFO)
 
 
@@ -23,17 +22,18 @@ class NexaTTSInference:
     A class used for loading text-to-speech models and running text-to-speech generation.
 
     Methods:
-    run: Run the text-to-speech generation loop.
-    run_streamlit: Run the Streamlit UI.
+        run: Run the text-to-speech generation loop.
+        run_streamlit: Run the Streamlit UI.
 
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.
+    local_path (str): Local path of the model.
     output_dir (str): Output directory for tts.
     sampling_rate (int): Sampling rate for audio processing.
     streamlit (bool): Run the inference in Streamlit UI.
     """
     
-    def __init__(self, model_path, **kwargs):
+    def __init__(self, model_path, local_path=None, **kwargs):
         self.model_path = NEXA_RUN_MODEL_MAP_ONNX.get(model_path, model_path)
         self.yaml_file_name = None
         self.params = {
@@ -44,9 +44,18 @@ class NexaTTSInference:
         self.model = None
         self.processor = None
         self.config = None
-        self.downloaded_onnx_folder = None
+        self.downloaded_onnx_folder = local_path
 
-        self.downloaded_onnx_folder = pull_model(self.model_path)
+        if self.downloaded_onnx_folder is None:
+            self.downloaded_onnx_folder, run_type = pull_model(self.model_path)
+        
+        if self.downloaded_onnx_folder is None:
+            logging.error(
+                f"Model ({model_path}) is not applicable. Please refer to our docs for proper usage.",
+                exc_info=True,
+            )
+            exit(1)
+
         self.yaml_file_name = os.path.join(self.downloaded_onnx_folder, "config.yaml")
         with open(self.yaml_file_name, "r", encoding="utf-8") as f:
             self.config = yaml.safe_load(f)
@@ -71,19 +80,30 @@ class NexaTTSInference:
         while True:
             try:
                 user_input = nexa_prompt("Enter text to generate audio: ")
-                self._audio_generation(user_input)
+                outputs = self.audio_generation(user_input)
+                self._save_audio(
+                    outputs[0], self.params["sampling_rate"], self.params["output_path"]
+                )
+                logging.info(f"Audio saved to {self.params['output_path']}")                
             except KeyboardInterrupt:
                 print(EXIT_REMINDER)
             except Exception as e:
                 logging.error(f"Error during text generation: {e}", exc_info=True)
 
-    def _audio_generation(self, user_input):
+    def audio_generation(self, user_input):
+        """
+        Used for SDK. Generate audio from the user input.
+
+        Args:
+            user_input (str): User input for audio generation.
+
+        Returns:
+            np.array: Audio data.
+        """
         inputs = self.tokenizer(user_input)
         outputs = self.model.run(None, {"text": inputs})
-        self._save_audio(
-            outputs[0], self.params["sampling_rate"], self.params["output_path"]
-        )
-        logging.info(f"Audio saved to {self.params['output_path']}")
+        return outputs
+
 
     def _save_audio(self, audio_data, sampling_rate, output_path):
         os.makedirs(output_path, exist_ok=True)

@@ -7,7 +7,7 @@ import readline
 import sys
 import time
 from pathlib import Path
-from typing import Iterator
+from typing import Iterator, List, Union
 
 from streamlit.web import cli as stcli
 
@@ -18,13 +18,14 @@ from nexa.constants import (
     NEXA_RUN_PROJECTOR_MAP,
 )
 from nexa.general import pull_model
-from nexa.gguf.llama.llama import Llama
+from nexa.gguf.lib_utils import is_gpu_available
 from nexa.gguf.llama.llama_chat_format import (
     Llava15ChatHandler,
     Llava16ChatHandler,
     NanoLlavaChatHandler,
 )
-from nexa.utils import SpinningCursorAnimation, nexa_prompt, suppress_stdout_stderr
+from nexa.utils import SpinningCursorAnimation, nexa_prompt
+from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -46,11 +47,19 @@ def image_to_base64_data_uri(file_path):
 # HACK: This is moved from nexa.constants to avoid circular imports
 NEXA_PROJECTOR_HANDLER_MAP: dict[str, Llava15ChatHandler] = {
     "nanollava": NanoLlavaChatHandler,
+    "nanoLLaVA:fp16": NanoLlavaChatHandler,
     "llava-phi3": Llava15ChatHandler,
-    # "llava1.5": Llava15ChatHandler,
+    "llava-phi-3-mini:q4_0": Llava15ChatHandler,
+    "llava-phi-3-mini:fp16": Llava15ChatHandler,
     "llava-llama3": Llava15ChatHandler,
+    "llava-llama-3-8b-v1.1:q4_0": Llava15ChatHandler,
+    "llava-llama-3-8b-v1.1:fp16": Llava15ChatHandler,
     "llava1.6-mistral": Llava16ChatHandler,
+    "llava-v1.6-mistral-7b:q4_0": Llava16ChatHandler,
+    "llava-v1.6-mistral-7b:fp16": Llava16ChatHandler,
     "llava1.6-vicuna": Llava16ChatHandler,
+    "llava-v1.6-vicuna-7b:q4_0": Llava16ChatHandler,
+    "llava-v1.6-vicuna-7b:fp16": Llava16ChatHandler,
 }
 
 assert (
@@ -65,11 +74,13 @@ class NexaVLMInference:
     A class used for loading VLM models and running text generation.
 
     Methods:
-    run: Run the text generation loop.
-    run_streamlit: Run the Streamlit UI.
+        run: Run the text generation loop.
+        run_streamlit: Run the Streamlit UI.
+        create_chat_completion: Generate text completion for a given chat prompt.
 
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.
+    local_path (str): Local path of the model.
     stop_words (list): List of stop words for early stopping.
     profiling (bool): Enable timing measurements for the generation process.
     streamlit (bool): Run the inference in Streamlit UI.
@@ -78,44 +89,43 @@ class NexaVLMInference:
     top_k (int): Top-k sampling parameter.
     top_p (float): Top-p sampling parameter
     """
-    def __init__(self, model_path, stop_words=None, **kwargs):
+    def __init__(self, model_path, local_path=None, stop_words=None, **kwargs):
         self.params = DEFAULT_TEXT_GEN_PARAMS
         self.params.update(kwargs)
         self.model = None
         self.projector = None
-
         self.projector_path = NEXA_RUN_PROJECTOR_MAP.get(model_path, None)
-        self.downloaded_path = None
+        self.downloaded_path = local_path
         self.projector_downloaded_path = None
 
-        if model_path in NEXA_RUN_MODEL_MAP_VLM:
-            logging.debug(f"Found model {model_path} in public hub")
-            self.model_path = NEXA_RUN_MODEL_MAP_VLM.get(model_path)
-            self.projector_path = NEXA_RUN_PROJECTOR_MAP.get(model_path)
-            self.downloaded_path = pull_model(self.model_path)
-            self.projector_downloaded_path = pull_model(self.projector_path)
-        elif (local_dir := Path(model_path).parent).exists():
-            logging.debug(f"Using local model at {local_dir}")
+        if self.downloaded_path is not None:
+            if model_path in NEXA_RUN_MODEL_MAP_VLM:
+                self.projector_path = NEXA_RUN_PROJECTOR_MAP[model_path]
+                self.projector_downloaded_path, _ = pull_model(self.projector_path)
+        elif model_path in NEXA_RUN_MODEL_MAP_VLM:
+            self.model_path = NEXA_RUN_MODEL_MAP_VLM[model_path]
+            self.projector_path = NEXA_RUN_PROJECTOR_MAP[model_path]
+            self.downloaded_path, _ = pull_model(self.model_path)
+            self.projector_downloaded_path, _ = pull_model(self.projector_path)
+        elif Path(model_path).parent.exists():
+            local_dir = Path(model_path).parent
             model_name = Path(model_path).name
             tag_and_ext = model_name.split(":")[-1]
             self.downloaded_path = local_dir / f"model-{tag_and_ext}"
             self.projector_downloaded_path = local_dir / f"projector-{tag_and_ext}"
-            if not (
-                self.downloaded_path.exists()
-                and self.projector_downloaded_path.exists()
-            ):
+            if not (self.downloaded_path.exists() and self.projector_downloaded_path.exists()):
                 logging.error(
                     f"Model or projector not found in {local_dir}. "
                     "Make sure to name them as 'model-<tag>.gguf' and 'projector-<tag>.gguf'."
                 )
                 exit(1)
         else:
-            logging.error("Using model from hub is not supported yet.")
+            logging.error("VLM user model from hub is not supported yet.")
             exit(1)
 
         if self.downloaded_path is None:
             logging.error(
-                f"Model ({model_path}) is not appicable. Please refer to our docs for proper usage.",
+                f"Model ({model_path}) is not applicable. Please refer to our docs for proper usage.",
                 exc_info=True,
             )
             exit(1)
@@ -148,17 +158,55 @@ class NexaVLMInference:
                 if self.projector_downloaded_path
                 else None
             )
-            self.model = Llama(
-                model_path=self.downloaded_path,
-                chat_handler=self.projector,
-                verbose=False,
-                chat_format=self.chat_format,
-                n_ctx=self.params.get("max_new_tokens", 2048),
-                n_gpu_layers=-1,  # offload all layers to GPU
-            )
+            try:
+                from nexa.gguf.llama.llama import Llama
+                self.model = Llama(
+                    model_path=self.downloaded_path,
+                    chat_handler=self.projector,
+                    verbose=False,
+                    chat_format=self.chat_format,
+                    n_ctx=2048,
+                    n_gpu_layers=-1 if is_gpu_available() else 0,
+                )
+            except Exception as e:
+                logging.error(
+                    f"Failed to load model: {e}. Falling back to CPU.",
+                    exc_info=True,
+                )
+                self.model = Llama(
+                    model_path=self.downloaded_path,
+                    chat_handler=self.projector,
+                    verbose=False,
+                    chat_format=self.chat_format,
+                    n_ctx=2048,
+                    n_gpu_layers=0,  # hardcode to use CPU
+                )
+
         load_time = time.time() - start_time
         if self.profiling:
             logging.info(f"Model loaded in {load_time:.2f} seconds")
+
+    def embed(
+        self,
+        input: Union[str, List[str]],
+        normalize: bool = False,
+        truncate: bool = True,
+        return_count: bool = False,
+    ):
+        """Embed a string.
+
+        Args:
+            input: The utf-8 encoded string or a list of string to embed.
+            normalize: whether to normalize embedding in embedding dimension.
+            trunca
+            truncate: whether to truncate tokens to window length before generating embedding.
+            return count: if true, return (embedding, count) tuple. else return embedding only.
+
+
+        Returns:
+            A list of embeddings
+        """
+        return self.model.embed(input, normalize, truncate, return_count)
 
     def run(self):
         # I just use completion, no conversation history
@@ -192,6 +240,64 @@ class NexaVLMInference:
             except Exception as e:
                 logging.error(f"Error during generation: {e}", exc_info=True)
             print("\n")
+
+    def create_chat_completion(self,
+                            messages,
+                            max_tokens:int = 2048,
+                            temperature: float = 0.2,
+                            top_p: float = 0.95,
+                            top_k: int = 40,
+                            stream=False,
+                            stop=[]):
+        """
+        Generate text completion for a given chat prompt.
+
+        Args:
+            messages (list): List of messages in the chat prompt.
+            temperature (float): Temperature for sampling.
+            max_tokens (int): Maximum number of tokens to generate.
+            top_k (int): Top-k sampling parameter.
+            top_p (float): Top-p sampling parameter.
+            stream (bool): Stream the output.
+            stop (list): List of stop words for early stopping.
+
+        Returns:
+            Iterator: An iterator of the generated text completion
+            return format:
+            {
+                "choices": [
+                    {
+                    "finish_reason": "stop",
+                    "index": 0,
+                    "message": {
+                        "content": "The 2020 World Series was played in Texas at Globe Life Field in Arlington.",
+                        "role": "assistant"
+                    },
+                    "logprobs": null
+                    }
+                ],
+                "created": 1677664795,
+                "id": "chatcmpl-7QyqpwdfhqwajicIEznoc6Q47XAyW",
+                "model": "gpt-4o-mini",
+                "object": "chat.completion",
+                "usage": {
+                    "completion_tokens": 17,
+                    "prompt_tokens": 57,
+                    "total_tokens": 74
+                }
+            }
+            usage: message = completion.choices[0].message.content
+
+        """
+        return self.model.create_chat_completion(
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            top_k=top_k,
+            top_p=top_p,
+            stream=stream,
+            stop=stop,
+        )
 
     def _chat(self, user_input: str, image_path: str = None) -> Iterator:
         data_uri = image_to_base64_data_uri(image_path) if image_path else None

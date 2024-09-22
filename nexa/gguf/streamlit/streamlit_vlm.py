@@ -1,11 +1,10 @@
-import os
 import sys
 import tempfile
 from typing import Iterator
 
 import streamlit as st
 from PIL import Image
-
+from nexa.general import pull_model
 from nexa.gguf.nexa_inference_vlm import NexaVLMInference
 
 default_model = sys.argv[1]
@@ -13,7 +12,8 @@ default_model = sys.argv[1]
 
 @st.cache_resource
 def load_model(model_path):
-    nexa_model = NexaVLMInference(model_path)
+    local_path, run_type = pull_model(model_path)
+    nexa_model = NexaVLMInference(model_path=model_path, local_path=local_path)
     return nexa_model
 
 
@@ -96,15 +96,15 @@ if generate_button:
         with spinner_placeholder:
             with st.spinner("Generating description..."):
                 with tempfile.NamedTemporaryFile() as image_path:
-                    print(image_path.name)
                     if uploaded_file:
-                        image_path = os.path.join("/tmp", uploaded_file.name)
+                        ext = uploaded_file.name.split(".")[-1]
+                        full_path = f"{image_path.name}.{ext}"
                         with Image.open(uploaded_file) as img:
-                            img.save(image_path)
+                            img.save(full_path)
 
                     full_response = ""
                     for chunk in generate_response(
-                        st.session_state.nexa_model, image_path, user_input
+                        st.session_state.nexa_model, full_path, user_input
                     ):
                         delta = chunk["choices"][0]["delta"]
                         if "role" in delta:

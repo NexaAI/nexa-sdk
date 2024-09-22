@@ -3,18 +3,19 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Iterator
+from typing import Iterator, List, Union
 
 from nexa.constants import (
     DEFAULT_TEXT_GEN_PARAMS,
     NEXA_RUN_CHAT_TEMPLATE_MAP,
     NEXA_RUN_COMPLETION_TEMPLATE_MAP,
-    NEXA_RUN_MODEL_MAP,
     NEXA_STOP_WORDS_MAP,
 )
+from nexa.gguf.lib_utils import is_gpu_available
 from nexa.general import pull_model
-from nexa.gguf.llama.llama import Llama
-from nexa.utils import SpinningCursorAnimation, nexa_prompt, suppress_stdout_stderr
+from nexa.utils import SpinningCursorAnimation, nexa_prompt
+from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
+
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -23,14 +24,18 @@ logging.basicConfig(
 
 class NexaTextInference:
     """
-    A class used for load text models and run text generation.
+    A class used for loading text models and running text generation.
 
     Methods:
-    run: Run the text generation loop.
-    run_streamlit: Run the Streamlit UI.
-
+        run: Run the text generation loop.
+        run_streamlit: Run the Streamlit UI.
+        create_embedding: Embed a string.
+        create_chat_completion: Generate completion for a chat conversation.
+        create_completion: Generate completion for a given prompt.
     Args:
     model_path (str): Path or identifier for the model in Nexa Model Hub.
+    local_path (str, optional): Local path of the model.
+    embedding (bool): Enable embedding generation.
     stop_words (list): List of stop words for early stopping.
     profiling (bool): Enable timing measurements for the generation process.
     streamlit (bool): Run the inference in Streamlit UI.
@@ -39,23 +44,19 @@ class NexaTextInference:
     top_k (int): Top-k sampling parameter.
     top_p (float): Top-p sampling parameter
     """
-    def __init__(self, model_path, stop_words=None, **kwargs):
+    def __init__(self, model_path, local_path=None, stop_words=None, **kwargs):
         self.params = DEFAULT_TEXT_GEN_PARAMS
         self.params.update(kwargs)
         self.model = None
 
-        self.model_path = None
-        self.downloaded_path = None
-        if model_path in NEXA_RUN_MODEL_MAP:
-            logging.debug(f"Found model {model_path} in public hub")
-            self.model_path = NEXA_RUN_MODEL_MAP.get(model_path)
-            self.downloaded_path = pull_model(self.model_path)
-        elif os.path.exists(model_path):
-            logging.debug(f"Using local model at {model_path}")
-            self.downloaded_path = model_path
-        else:
-            logging.debug(f"Trying to use model from hub at {model_path}")
-            self.downloaded_path = pull_model(model_path)
+        self.model_path = model_path
+        self.downloaded_path = local_path
+
+        self.logprobs = kwargs.get('logprobs', None)
+        self.top_logprobs = kwargs.get('top_logprobs', None)
+
+        if self.downloaded_path is None:
+            self.downloaded_path, _ = pull_model(self.model_path)
 
         if self.downloaded_path is None:
             logging.error(
@@ -63,17 +64,12 @@ class NexaTextInference:
                 exc_info=True,
             )
             exit(1)
-
-        self.stop_words = (
-            stop_words if stop_words else NEXA_STOP_WORDS_MAP.get(model_path, [])
-        )
-
         self.profiling = kwargs.get("profiling", False)
 
-        self.chat_format = NEXA_RUN_CHAT_TEMPLATE_MAP.get(model_path, None)
-        self.completion_template = NEXA_RUN_COMPLETION_TEMPLATE_MAP.get(
-            model_path, None
-        )
+        model_name = model_path.split(":")[0].lower()
+        self.stop_words = (stop_words if stop_words else NEXA_STOP_WORDS_MAP.get(model_name, []))
+        self.chat_format = NEXA_RUN_CHAT_TEMPLATE_MAP.get(model_name, None)
+        self.completion_template = NEXA_RUN_COMPLETION_TEMPLATE_MAP.get(model_name, None)
 
         if not kwargs.get("streamlit", False):
             self._load_model()
@@ -83,17 +79,45 @@ class NexaTextInference:
                 )
                 exit(1)
 
+    def create_embedding(
+        self,
+        input: Union[str, List[str]],
+    ):
+        """Embed a string.
+
+        Args:
+            input: The utf-8 encoded string or a list of string to embed.
+
+        Returns:
+            A list of embeddings
+        """
+        return self.model.create_embedding(input)
+
     @SpinningCursorAnimation()
     def _load_model(self):
-        logging.debug(f"Loading model from {self.downloaded_path}")
+        logging.debug(f"Loading model from {self.downloaded_path}, use_cuda_or_metal : {is_gpu_available()}")
         start_time = time.time()
         with suppress_stdout_stderr():
-            self.model = Llama(
-                model_path=self.downloaded_path,
-                verbose=self.profiling,
-                chat_format=self.chat_format,
-                n_gpu_layers=-1,  # Uncomment to use GPU acceleration
-            )
+            from nexa.gguf.llama.llama import Llama
+            try:
+                self.model = Llama(
+                    embedding=self.params.get("embedding", False),
+                    model_path=self.downloaded_path,
+                    verbose=self.profiling,
+                    chat_format=self.chat_format,
+                    n_ctx=2048,
+                    n_gpu_layers=-1 if is_gpu_available() else 0,
+                )
+            except Exception as e:
+                logging.error(f"Failed to load model: {e}. Falling back to CPU.", exc_info=True)
+                self.model = Llama(
+                    model_path=self.downloaded_path,
+                    verbose=self.profiling,
+                    chat_format=self.chat_format,
+                    n_ctx=2048,
+                    n_gpu_layers=0,  # hardcode to use CPU
+                )
+
         load_time = time.time() - start_time
         if self.profiling:
             logging.debug(f"Model loaded in {load_time:.2f} seconds")
@@ -110,6 +134,9 @@ class NexaTextInference:
         self.conversation_history = [] if self.chat_format else None
 
     def run(self):
+        """
+        CLI interactive session. Not for SDK.
+        """
         while True:
             generated_text = ""
             try:
@@ -142,31 +169,83 @@ class NexaTextInference:
                             decoding_start_time = time.time()
                             prefill_time = decoding_start_time - generation_start_time
                             first_token = False
-                        delta = chunk["choices"][0]["text"]
+                        choice = chunk["choices"][0]
+                        if "text" in choice:
+                            delta = choice["text"]
+                        elif "delta" in choice:
+                            delta = choice["delta"]["content"]
+                        
                         print(delta, end="", flush=True)
                         generated_text += delta
 
-
                 if self.chat_format:
-                    self.conversation_history.append(
-                        {"role": "assistant", "content": generated_text}
-                    )
+                    if len(self.conversation_history) >= 2:
+                        self.conversation_history = self.conversation_history[2:]
+
+                    self.conversation_history.append({"role": "user", "content": user_input})
+                    self.conversation_history.append({"role": "assistant", "content": generated_text})
             except KeyboardInterrupt:
                 pass
             except Exception as e:
                 logging.error(f"Error during generation: {e}", exc_info=True)
             print("\n")
 
+    def create_chat_completion(self, messages, temperature=0.7, max_tokens=2048, top_k=50, top_p=1.0, stream=False, stop=None, logprobs=None, top_logprobs=None):
+        """
+        Used for SDK. Generate completion for a chat conversation.
+
+        Args:
+            messages (list): List of messages in the conversation.
+            temperature (float): Temperature for sampling.
+            max_tokens (int): Maximum number of new tokens to generate.
+            top_k (int): Top-k sampling parameter.
+            top_p (float): Top-p sampling parameter.
+            stream (bool): Stream the output.
+            stop (list): List of stop words for early stopping.
+
+        Returns:
+            Iterator: Iterator for the completion.
+        """
+        if logprobs and top_logprobs is None:
+            top_logprobs = 4
+
+        return self.model.create_chat_completion(messages=messages, temperature=temperature, max_tokens=max_tokens, top_k=top_k, top_p=top_p, stream=stream, stop=stop, logprobs=logprobs, top_logprobs=top_logprobs)
+
+    def create_completion(self, prompt, temperature=0.7, max_tokens=2048, top_k=50, top_p=1.0, echo=False, stream=False, stop=None, logprobs=None, top_logprobs=None):
+        """
+        Used for SDK. Generate completion for a given prompt.
+
+        Args:
+            prompt (str): Prompt for the completion.
+            temperature (float): Temperature for sampling.
+            max_tokens (int): Maximum number of new tokens to generate.
+            top_k (int): Top-k sampling parameter.
+            top_p (float): Top-p sampling parameter.
+            echo (bool): Echo the prompt back in the output.
+            stream (bool): Stream the output.
+            stop (list): List of stop words for early stopping.
+
+        Returns:
+            Iterator: Iterator for the completion.
+        """
+        if logprobs and top_logprobs is None:
+            top_logprobs = 4
+
+        return self.model.create_completion(prompt=prompt, temperature=temperature, max_tokens=max_tokens, top_k=top_k, top_p=top_p, echo=echo, stream=stream, stop=stop, logprobs=logprobs, top_logprobs=top_logprobs)
+
+
     def _chat(self, user_input: str) -> Iterator:
-        self.conversation_history.append({"role": "user", "content": user_input})
+        current_messages = self.conversation_history + [{"role": "user", "content": user_input}]
         return self.model.create_chat_completion(
-            messages=self.conversation_history,
+            messages=current_messages,
             temperature=self.params["temperature"],
             max_tokens=self.params["max_new_tokens"],
             top_k=self.params["top_k"],
             top_p=self.params["top_p"],
             stream=True,
             stop=self.stop_words,
+            logprobs=self.logprobs,
+            top_logprobs=self.top_logprobs,
         )
 
     def _complete(self, user_input: str) -> Iterator:
@@ -184,11 +263,13 @@ class NexaTextInference:
             echo=False,  # Echo the prompt back in the output
             stream=True,
             stop=self.stop_words,
+            logprobs=self.logprobs,
+            top_logprobs=self.top_logprobs,
         )
 
     def run_streamlit(self, model_path: str):
         """
-        Run the Streamlit UI.
+        Used for CLI. Run the Streamlit UI.
         """
         logging.info("Running Streamlit UI...")
 
@@ -250,10 +331,18 @@ if __name__ == "__main__":
         action="store_true",
         help="Run the inference in Streamlit UI",
     )
+    # parser.add_argument(
+    #     "-tlps",
+    #     "--top_logprobs",
+    #     type=int,
+    #     default=None,  # -tlps 5
+    #     help="Number of most likely tokens to return at each token position",
+    # )
     args = parser.parse_args()
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")
     stop_words = kwargs.pop("stop_words", [])
+
     inference = NexaTextInference(model_path, stop_words=stop_words, **kwargs)
     if args.streamlit:
         inference.run_streamlit(model_path)
