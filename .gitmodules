@@ -4,5 +4,4 @@
 	branch = master
 [submodule "dependency/llama.cpp"]
 	path = dependency/llama.cpp
-	url = https://github.com/ggerganov/llama.cpp
-	branch = experiment-branch
+	url = https://github.com/NexaAI/llama.cpp.git
