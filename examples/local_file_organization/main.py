@@ -28,11 +28,11 @@ def main():
     print(f"Input path successfully uploaded: {input_path}")
     print("-" * 50)
 
-    # Default output path is a folder named "renamed_folder" in the same directory as the input path
-    output_path = input("Enter the path to store organized files and folders (press Enter to use 'renamed_folder' in the input directory): ").strip()
+    # Default output path is a folder named "organized_folder" in the same directory as the input path
+    output_path = input("Enter the path to store organized files and folders (press Enter to use 'organized_folder' in the input directory): ").strip()
     if not output_path:
-        # Get the parent directory of the input path and append 'renamed_folder'
-        output_path = os.path.join(os.path.dirname(input_path), 'renamed_folder')
+        # Get the parent directory of the input path and append 'organized_folder'
+        output_path = os.path.join(os.path.dirname(input_path), 'organized_folder')
 
     # Ensure the output directory exists
     os.makedirs(output_path, exist_ok=True)

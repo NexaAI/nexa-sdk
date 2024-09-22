@@ -127,4 +127,3 @@ def separate_files_by_type(file_paths):
     text_files = [fp for fp in file_paths if os.path.splitext(fp.lower())[1] in text_extensions]
 
     return image_files, text_files  # Return only two values
-

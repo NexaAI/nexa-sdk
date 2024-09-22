@@ -32,7 +32,7 @@ def initialize_models():
         with suppress_stdout_stderr():
             # Initialize the models
             model_path = "llava-v1.6-vicuna-7b:q4_0"
-            model_path_text = "gemma-2b:q2_K"
+            model_path_text = "gemma-2-2b-instruct:q4_0"
 
             # Initialize the image inference model
             image_inference = NexaVLMInference(

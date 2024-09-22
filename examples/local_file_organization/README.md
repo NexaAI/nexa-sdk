@@ -1,234 +1,15 @@
+# Local File Organizer: AI File Management Run Entirely on Your Device, Privacy Assured
 
-# Local File Organizer
+Tired of digital clutter? Overwhelmed by disorganized files scattered across your computer? Let AI do the heavy lifting! The Local File Organizer is your personal organizing assistant, using cutting-edge AI to bring order to your file chaos - all while respecting your privacy.
 
-This project is a local file organizer that processes files in a specified input directory, generates metadata using LLM models, and organizes them into a structured output directory based on the generated metadata.
-
-## Table of Contents
-
-- [Introduction](#introduction)
-- [Features](#features)
-- [Supported file types](#supported-file-types)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-  - [1. Clone the Repository](#1-clone-the-repository)
-  - [2. Set Up the Python Environment](#2-set-up-the-python-environment)
-  - [3. Install Dependencies](#3-install-dependencies)
-- [Configuration](#configuration)
-- [Usage](#usage)
-- [Example Output](#example-output)
-- [Notes](#notes)
-
-
-
-## Introduction
-
-The Local File Organizer automates the process of organizing files by:
-
-- Scanning a specified input directory for files.
-- Generating descriptions, folder names, and filenames using LLM models.
-- Organizing the files into a new directory structure based on the generated metadata.
-
-
-## Features
-
-- **Automated File Organization:** Automatically sorts files into folders based on LLM categories.
-- **Metadata Generation:** Generates descriptions and filenames using LLM models.
-- **Support for Multiple File Types:** Handles images, text files, and PDFs.
-- **Parallel Processing:** Utilizes multiprocessing to speed up file processing.
-- **Customizable Prompts:** Prompts used for LLM model interactions can be customized.
-
-## Supported file types
-
-- **Images:** `.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`
-- **Text Files:** `.txt`, `.docx`
-- **PDFs:** `.pdf`
-
-## Prerequisites
-
-- **Operating System:** Compatible with Windows, macOS, and Linux.
-- **Python Version:** Python 3.12
-- **Conda:** Anaconda or Miniconda installed.
-- **Git:** For cloning the repository (or you can download the code as a ZIP file).
-
-## Installation
-
-### 1. Clone the Repository
-
-Clone this repository to your local machine using Git:
-
-```zsh
-git clone https://github.com/NexaAI/nexa-sdk.git
-```
-
-Or download the repository as a ZIP file and extract it to your desired location.
-
-
-
-
-
-
-
-Create a new Conda environment named `local_file_organizer` with Python 3.12:
-
-```zsh
-conda create --name local_file_organizer python=3.12
-```
-
-Activate the environment:
-
-```zsh
-conda activate local_file_organizer
-```
-
-### 2. Set Up the  SDK Environment
-
-<!-- ## Installation -->
-
-We have released pre-built wheels for various Python versions, platforms, and backends for convenient installation on our [index page](https://nexaai.github.io/nexa-sdk/whl/).
-
-> **Note:**
-> 1. If you want to use **ONNX model**, just replace `pip install nexaai` with `pip install "nexaai[onnx]"` in provided commands.
-> 2. For Chinese developers, we recommend you to use **Tsinghua Open Source Mirror** as extra index URL, just replace `--extra-index-url https://pypi.org/simple` with `--extra-index-url https://pypi.tuna.tsinghua.edu.cn/simple` in provided commands.
-
-#### CPU
-
-```bash
-pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cpu --extra-index-url https://pypi.org/simple --no-cache-dir
-```
-
-#### GPU (Metal)
-
-For the GPU version supporting **Metal (macOS)**:
-
-```bash
-CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple --no-cache-dir
-```
-
-<details>
-<summary><strong>FAQ: cannot use Metal/GPU on M1</strong></summary>
-
-Try the following command:
-
-```bash
-wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-arm64.sh
-bash Miniforge3-MacOSX-arm64.sh
-conda create -n nexasdk python=3.10
-conda activate nexasdk
-CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple --no-cache-dir
-```
-
-</details>
-
-#### GPU (CUDA)
-
-For **Linux**:
-
-```zsh
-CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
-```
-
-For **Windows PowerShell**:
-
-```zsh
-$env:CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON"; pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
-```
-
-For **Windows Command Prompt**:
-
-```zsh
-set CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" & pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
-```
-
-For **Windows Git Bash**:
-
-```zsh
-CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
-```
-
-<details>
-<summary><strong>FAQ: Building Issues for llava</strong></summary>
-
-If you encounter the following issue while building:
-
-![](docs/.media/error.jpeg)
-
-try the following command:
-
-```zsh
-CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp" pip install nexaai
-```
-
-</details>
-
-#### GPU (ROCm)
-
-For **Linux**:
-
-```zsh
-CMAKE_ARGS="-DGGML_HIPBLAS=on" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/rocm602 --extra-index-url https://pypi.org/simple --no-cache-dir
-```
-
-
-### 3. Install Dependencies
-
-Ensure you are in the project directory and install the required dependencies using `requirements.txt`:
-
-```zsh
-pip install -r requirements.txt
-```
-
-**Note:** If you encounter issues with any packages, install them individually:
-
-```zsh
-pip install nexa Pillow pytesseract PyMuPDF python-docx
-```
-
-## Configuration
-
-Before running the script, you need to set the input (`base_path`) and output (`new_path`) directories in `main.py`.
-
-Open `main.py` and locate and modify the following lines to point to your desired input and output directories:
-
-```python
-# Paths configuration
-input_path = "Path/to/your/input/files/or/folder"
-output_path = "Path/to/your/output/files/or/folder"
-```
-
-**Example:**
-
-```python
-# Paths configuration
-input_path = "/home/user/documents/input_files"
-output_path = "/home/user/documents/organized_files"
-```
-
-
-
-## Usage
-
-With the environment activated and dependencies installed, run the script using:
-
-```zsh
-python main.py
-```
-
-The script will:
-
-1. Display the directory tree of your input directory.
-2. Inform you that the files have been uploaded and processing will begin.
-3. Process each file, generating metadata.
-4. Copy and rename the files into the output directory based on the generated metadata.
-5. Display the directory tree of your output directory after processing.
-
-## Example Output
+## A Glimpse of How It Works
 
 ```
 --------------------------------------------------
 Enter the path of the directory you want to organize: /home/user/documents/input_files
 --------------------------------------------------
-Enter the path to store organized files and folders (press Enter to use 'renamed_folder' in the input directory): 
-Output path successfully upload: /home/user/documents/renamed_folder
+Enter the path to store organized files and folders (press Enter to use 'organized_folder' in the input directory)
+Output path successfully upload: /home/user/documents/organzied_folder
 --------------------------------------------------
 Time taken to load file paths: 0.00 seconds
 --------------------------------------------------
@@ -267,7 +48,130 @@ Path/to/your/output/files/or/folder
 3 directories, 3 files
 ```
 
+## What It Does
+
+This intelligent file organizer harnesses the power of advanced AI models, including language models (LMs) and vision-language models (VLMs), to automate the process of organizing files by:
+
+
+* Scanning a specified input directory for files.
+* Content Understanding: 
+  - **Textual Analysis**: Uses the [Gemma-2-2B](https://nexaai.com/google/gemma-2-2b-instruct/gguf-q4_0/file) language model (LM) to analyze and summarize text-based content, generating relevant descriptions and filenames.
+  - **Visual Content Analysis**: Uses the [LLaVA-v1.6](https://nexaai.com/liuhaotian/llava-v1.6-vicuna-7b/gguf-q4_0/file) vision-language model (VLM), based on Vicuna-7B, to interpret visual files such as images, providing context-aware categorization and descriptions.
+
+* Understanding the content of your files (text, images, and more) to generate relevant descriptions, folder names, and filenames.
+* Organizing the files into a new directory structure based on the generated metadata.
+
+The best part? All AI processing happens 100% on your local device using the [Nexa SDK](https://github.com/NexaAI/nexa-sdk). No internet connection required, no data leaves your computer, and no AI API is needed - keeping your files completely private and secure.
+
+We hope this tool can help bring some order to your digital life, making file management a little easier and more efficient.
+
+## Features
+
+- **Automated File Organization:** Automatically sorts files into folders based on AI-generated categories.
+- **Intelligent Metadata Generation:** Creates descriptions and filenames using advanced AI models.
+- **Support for Multiple File Types:** Handles images, text files, and PDFs.
+- **Parallel Processing:** Utilizes multiprocessing to speed up file processing.
+- **Customizable Prompts:** Prompts used for AI model interactions can be customized.
+
+## Supported file types
+
+- **Images:** `.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`
+- **Text Files:** `.txt`, `.docx`
+- **PDFs:** `.pdf`
+
+## Prerequisites
+
+- **Operating System:** Compatible with Windows, macOS, and Linux.
+- **Python Version:** Python 3.12
+- **Conda:** Anaconda or Miniconda installed.
+- **Git:** For cloning the repository (or you can download the code as a ZIP file).
+
+## Installation
+
+### 1. Clone the Repository
+
+Clone this repository to your local machine using Git:
+
+```zsh
+git clone https://github.com/QiuYannnn/Local-File-Organizer.git
+```
+
+Or download the repository as a ZIP file and extract it to your desired location.
+
+### 2. Set Up the Python Environment
+
+Create a new Conda environment named `local_file_organizer` with Python 3.12:
+
+```zsh
+conda create --name local_file_organizer python=3.12
+```
+
+Activate the environment:
+
+```zsh
+conda activate local_file_organizer
+```
+
+### 3. Install Nexa SDK 🛠️
+
+#### CPU Installation
+To install the CPU version of Nexa SDK, run:
+```bash
+pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cpu --extra-index-url https://pypi.org/simple --no-cache-dir
+```
+
+#### GPU Installation (Metal - macOS)
+For the GPU version supporting Metal (macOS), run:
+```bash
+CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple --no-cache-dir
+```
+For detailed installation instructions of Nexa SDK for **CUDA** and **AMD GPU** support, please refer to the [Installation section](https://github.com/NexaAI/nexa-sdk?tab=readme-ov-file#installation) in the main README.
+
+
+### 4. Install Dependencies
+
+Ensure you are in the project directory and install the required dependencies using `requirements.txt`:
+
+```zsh
+pip install -r requirements.txt
+```
+
+**Note:** If you encounter issues with any packages, install them individually:
+
+```zsh
+pip install nexa Pillow pytesseract PyMuPDF python-docx
+```
+
+With the environment activated and dependencies installed, run the script using:
+## Running the Script
+```zsh
+python main.py
+```
+
+The script will:
+
+1. Display the directory tree of your input directory.
+2. Inform you that the files have been uploaded and processing will begin.
+3. Process each file, generating metadata.
+4. Copy and rename the files into the output directory based on the generated metadata.
+5. Display the directory tree of your output directory after processing.
+
 **Note:** The actual descriptions, folder names, and filenames will be generated by the AI models based on your files' content.
+
+#### Enter the Input Path
+You will be prompted to enter the path of the directory where the files you want to organize are stored. Enter the full path to that directory and press Enter.
+
+```zsh
+Enter the path of the directory you want to organize: /path/to/your/input_folder
+```
+
+#### Enter the Output Path
+Next, you will be prompted to enter the path where you want the organized files to be stored. You can either specify a directory or press Enter to use the default directory (organzied_folder) inside the input directory.
+
+```zsh
+Enter the path to store organized files and folders (press Enter to use 'organzied_folder' in the input directory): /path/to/your/output_folder
+```
+If you press Enter without specifying a path, the script will create a folder named organzied_folder in the input directory to store the organized files.
 
 ## Notes
 
