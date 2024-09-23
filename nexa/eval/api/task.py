@@ -932,8 +932,6 @@ class ConfigurableTask(Task):
             name=self.DATASET_NAME,
             **dataset_kwargs if dataset_kwargs is not None else {},
         )
-        # For DEBUGGING, select a subset of the dataset
-        self.dataset['test'] = self.dataset['test'].select(range(5))
 
 
     def has_training_docs(self) -> bool:

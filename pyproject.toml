@@ -29,6 +29,14 @@ dependencies = [
     "streamlit-audiorec",
     "python-multipart",
     "cmake",
+    "evaluate",
+    "pytablewriter",
+    "sacrebleu",
+    "sqlitedict",
+    "langdetect",
+    "rouge_score",
+    "immutabledict",
+    "transformers",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -78,6 +86,7 @@ wheel.packages = [
     "nexa.onnx",
     "nexa.onnx.streamlit",
     "nexa.onnx.server",
+    "nexa.eval",
 ]
 sdist.include = [
     "CMakeLists.txt",

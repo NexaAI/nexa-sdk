@@ -11,6 +11,6 @@ try:
     # enable hf hub transfer if available
     import huggingface_hub.constants  # type: ignore
 
-    huggingface_hub.constants.HF_HUB_ENABLE_HF_TRANSFER = True
+    huggingface_hub.constants.HF_HUB_ENABLE_HF_TRANSFER = False
 except ImportError:
     pass
