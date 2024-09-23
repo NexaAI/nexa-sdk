@@ -149,8 +149,6 @@ def simple_evaluate(
         seed_message.append(f"Setting numpy seed to {numpy_random_seed}")
         np.random.seed(numpy_random_seed)
 
-    if seed_message:
-        eval_logger.info(" | ".join(seed_message))
 
     if tasks is None:
         tasks = []
@@ -174,9 +172,6 @@ def simple_evaluate(
             model_args = ""
 
         if isinstance(model_args, dict):
-            eval_logger.info(
-                f"Initializing {model} model, with arguments: {model_args}"
-            )
             lm = nexa.eval.api.registry.get_model(model).create_from_arg_obj(
                 model_args,
                 {
@@ -187,9 +182,6 @@ def simple_evaluate(
             )
 
         else:
-            eval_logger.info(
-                f"Initializing {model} model, with arguments: {simple_parse_args_string(model_args)}"
-            )
             lm = nexa.eval.api.registry.get_model(model).create_from_arg_string(
                 model_args,
                 {

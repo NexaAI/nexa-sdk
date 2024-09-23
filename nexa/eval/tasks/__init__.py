@@ -488,12 +488,6 @@ class TaskManager:
                         for attr in ["tag", "group"]:
                             if attr in config:
                                 if attr == "group" and print_info:
-                                    self.logger.info(
-                                        "`group` and `group_alias` keys in tasks' configs will no longer be used in the next release of lm-eval. "
-                                        "`tag` will be used to allow to call a collection of tasks just like `group`. "
-                                        "`group` will be removed in order to not cause confusion with the new ConfigurableGroup "
-                                        "which will be the official way to create groups with addition of group-wide configurations."
-                                    )
                                     print_info = False
                                     # attr = "tag"
 
@@ -509,10 +503,6 @@ class TaskManager:
                                             "yaml_path": -1,
                                         }
                                     elif tasks_and_groups[tag]["type"] != "tag":
-                                        self.logger.info(
-                                            f"The tag {tag} is already registered as a group, this tag will not be registered. "
-                                            "This may affect tasks you want to call."
-                                        )
                                         break
                                     else:
                                         tasks_and_groups[tag]["task"].append(task)

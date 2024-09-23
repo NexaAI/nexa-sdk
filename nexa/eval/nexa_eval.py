@@ -86,20 +86,26 @@ class NexaEval:
         logging.info(f"Selected Tasks: {task_names}")
 
         request_caching_args = evaluator.request_caching_arg_to_dict(cache_requests=args.cache_requests)
-        results = evaluator.simple_evaluate(
-            model=args.model,
-            model_args=args.model_args,
-            tasks=task_names,
-            batch_size=args.batch_size,
-            device=args.device,
-            evaluation_tracker=evaluation_tracker,
-            task_manager=task_manager,
-            random_seed=args.seed[0],
-            numpy_random_seed=args.seed[1],
-            fewshot_random_seed=args.seed[3],
-            **request_caching_args,
-        )
-
+        from datasets.exceptions import DatasetNotFoundError
+        try:
+            results = evaluator.simple_evaluate(
+                model=args.model,
+                model_args=args.model_args,
+                tasks=task_names,
+                batch_size=args.batch_size,
+                device=args.device,
+                evaluation_tracker=evaluation_tracker,
+                task_manager=task_manager,
+                random_seed=args.seed[0],
+                numpy_random_seed=args.seed[1],
+                fewshot_random_seed=args.seed[3],
+                **request_caching_args,
+            )
+        except DatasetNotFoundError as e:
+            logging.error(f"Error: {e}")
+            logging.error("Run 'huggingface-cli login' to authenticate with the Hugging Face Hub.")
+            return
+        
         if results is not None:
             if args.log_samples:
                 samples = results.pop("samples")
