@@ -24,7 +24,7 @@ class NexaEval:
         self.model_tag = model_path.split(":")[1].lower()
         self.tasks = tasks
         self.server_process = None
-        self.server_url = "http://0.0.0.0:8000"
+        self.server_url = "http://0.0.0.0:8300"
         output_path = Path(NEXA_MODEL_EVAL_RESULTS_PATH) / self.model_name / self.model_tag / tasks.replace(',', '_')
         self.eval_args = {
             "model": "nexa-gguf",
@@ -46,7 +46,7 @@ class NexaEval:
         self.server_process = multiprocessing.Process(
             target=NexaServer,
             args=(self.model_path,),
-            kwargs={"host": "0.0.0.0", "port": 8000, "nctx": 4096},
+            kwargs={"host": "0.0.0.0", "port": 8300, "nctx": 4096},
         )
         self.server_process.start()
         logging.info(f"Started server process for model: {self.model_path}")
