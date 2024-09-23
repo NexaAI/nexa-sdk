@@ -34,14 +34,14 @@ def estimate_pass_at_k(n: int, c: int, k: int) -> float:
         return 1.0
     return 1.0 - np.prod(1.0 - k / np.arange(n - c + 1, n + 1))
 
-def pass_at_k(samples: List[Dict[str, Any]], k: int) -> float:
+def pass_at_k(samples: List[int], k: int) -> float:
     n_samples = len(samples)
     n_correct = sum(samples)
     if n_samples < k:
         return 1.0
     return estimate_pass_at_k(n_samples, n_correct, k)
 
-def pass_at_1(samples: List[Dict[str, Any]]) -> float:
+def pass_at_1(samples: List[int]) -> float:
     return pass_at_k(samples, 1)
 
 

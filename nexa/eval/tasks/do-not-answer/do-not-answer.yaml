@@ -9,7 +9,7 @@ doc_to_text: "{{question}}"
 doc_to_target: "{{GPT4_harmful}}"
 process_results: !function utils.process_results
 metric_list:
-  - metric: harmful
+  - metric: safety
     aggregation: !function utils.compute_harmfulness_score
     higher_is_better: true
 generation_kwargs:

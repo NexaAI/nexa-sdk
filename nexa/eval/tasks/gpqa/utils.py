@@ -31,7 +31,6 @@ def process_docs(dataset: datasets.Dataset) -> datasets.Dataset:
             "choice2": choices[1],
             "choice3": choices[2],
             "choice4": choices[3],
-            "choices": [choices[0], choices[1], choices[2], choices[3]],
             "answer": f"({chr(65 + correct_answer_index)})",
         }
         return out_doc
