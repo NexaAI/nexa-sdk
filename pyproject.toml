@@ -21,6 +21,7 @@ dependencies = [
     "uvicorn",
     "pydantic",
     "pillow",
+    "huggingface_hub",
     "prompt_toolkit",
     "tqdm",                     # Shared dependencies
     "tabulate",

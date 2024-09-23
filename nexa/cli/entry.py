@@ -13,11 +13,12 @@ def run_ggml_inference(args):
         NexaServer(model_path, **kwargs)
         return
 
+    hf = kwargs.pop("huggingface", False)
+    stop_words = kwargs.pop("stop_words", [])
+
     from nexa.general import pull_model
 
-    local_path, run_type = pull_model(model_path)
-
-    stop_words = kwargs.pop("stop_words", [])
+    local_path, run_type = pull_model(model_path, hf)
 
     try:
         if run_type == "NLP":
@@ -169,6 +170,12 @@ def main():
     )
     text_group.add_argument(
         "-sw", "--stop_words", nargs="*", help="List of stop words for early stopping"
+    )
+    text_group.add_argument(
+        "-hf",
+        "--huggingface",
+        action="store_true",
+        help="Load model from Hugging Face Hub",
     )
 
     # Image generation arguments
@@ -334,22 +341,35 @@ def main():
         action="store_true",
         help="Enable automatic reloading on code changes",
     )
+    server_parser.add_argument(
+        "--nctx", type=int, default=2048, help="Length of context window"
+    )
 
     # Other commands
-    subparsers.add_parser(
+    pull_parser = subparsers.add_parser(
         "pull", help="Pull a model from official or hub."
-    ).add_argument(
+    )
+    pull_parser.add_argument(
         "model_path",
         type=str,
         help="Path or identifier for the model in Nexa Model Hub",
     )
-    subparsers.add_parser(
+    pull_parser.add_argument(
+        "-hf",
+        "--huggingface",
+        action="store_true",
+        help="Pull model from Hugging Face Hub",
+    )
+
+    remove_parser = subparsers.add_parser(
         "remove", help="Remove a model from local machine."
-    ).add_argument(
+    )
+    remove_parser.add_argument(
         "model_path",
         type=str,
         help="Path or identifier for the model in Nexa Model Hub",
     )
+
     subparsers.add_parser("clean", help="Clean up all model files.")
     subparsers.add_parser("list", help="List all models in the local machine.")
     subparsers.add_parser("login", help="Login to Nexa API.")
@@ -365,7 +385,8 @@ def main():
     elif args.command == "pull":
         from nexa.general import pull_model
 
-        pull_model(args.model_path)
+        hf = getattr(args, "huggingface", False)
+        pull_model(args.model_path, hf)
     elif args.command == "remove":
         from nexa.general import remove_model
 

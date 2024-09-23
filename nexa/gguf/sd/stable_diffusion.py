@@ -2,15 +2,16 @@ from typing import List, Dict, Optional, Union, Callable
 import random
 import ctypes
 import multiprocessing
-from PIL import Image
+import contextlib
 
+from PIL import Image
 
 import nexa.gguf.sd.stable_diffusion_cpp as sd_cpp
 from nexa.gguf.sd.stable_diffusion_cpp import GGMLType, RNGType, Schedule, SampleMethod
 
 
 from nexa.gguf.sd._internals_diffusion import _StableDiffusionModel, _UpscalerModel
-# from nexa._logger_diffusion import set_verbose
+from nexa.gguf.sd._utils_diffusion import suppress_stdout_stderr
 
 
 class StableDiffusion:
@@ -104,6 +105,7 @@ class StableDiffusion:
         self.keep_clip_on_cpu = keep_clip_on_cpu
         self.keep_control_net_cpu = keep_control_net_cpu
         self.keep_vae_on_cpu = keep_vae_on_cpu
+        self._stack = contextlib.ExitStack()
 
         # =========== Logging ===========
 
@@ -118,34 +120,46 @@ class StableDiffusion:
 
         # =========== SD Model loading ===========
 
-        # Load the Stable Diffusion model
-        self._model = _StableDiffusionModel(
-            self.model_path,
-            self.clip_l_path,
-            self.t5xxl_path,
-            self.diffusion_model_path,
-            self.vae_path,
-            self.taesd_path,
-            self.control_net_path,
-            self.lora_model_dir,
-            self.embed_dir,
-            self.stacked_id_embed_dir,
-            self.vae_decode_only,
-            self.vae_tiling,
-            self.free_params_immediately,
-            self.n_threads,
-            self.wtype,
-            self.rng_type,
-            self.schedule,
-            self.keep_clip_on_cpu,
-            self.keep_control_net_cpu,
-            self.keep_vae_on_cpu,
-            self.verbose,
+        self._model = self._stack.enter_context(
+            contextlib.closing(
+                _StableDiffusionModel(
+                    self.model_path,
+                    self.clip_l_path,
+                    self.t5xxl_path,
+                    self.diffusion_model_path,
+                    self.vae_path,
+                    self.taesd_path,
+                    self.control_net_path,
+                    self.lora_model_dir,
+                    self.embed_dir,
+                    self.stacked_id_embed_dir,
+                    self.vae_decode_only,
+                    self.vae_tiling,
+                    self.free_params_immediately,
+                    self.n_threads,
+                    self.wtype,
+                    self.rng_type,
+                    self.schedule,
+                    self.keep_clip_on_cpu,
+                    self.keep_control_net_cpu,
+                    self.keep_vae_on_cpu,
+                    self.verbose,
+                )
+            )
         )
 
         # =========== Upscaling Model loading ===========
 
-        self._upscaler = _UpscalerModel(upscaler_path, self.n_threads, self.wtype, self.verbose)
+        self._upscaler = self._stack.enter_context(
+            contextlib.closing(
+                _UpscalerModel(
+                    upscaler_path,
+                    self.n_threads,
+                    self.wtype,
+                    self.verbose,
+                )
+            )
+        )
 
     @property
     def model(self) -> sd_cpp.sd_ctx_t_p:
@@ -216,6 +230,10 @@ class StableDiffusion:
 
         sample_method = validate_and_set_input(sample_method, SAMPLE_METHOD_MAP, "sample_method")
 
+        # Ensure dimensions are multiples of 64
+        width = validate_dimensions(width, "width")
+        height = validate_dimensions(height, "height")
+
         # =========== Set seed ===========
 
         # Set a random seed if seed is negative
@@ -241,26 +259,27 @@ class StableDiffusion:
 
         control_cond = self._format_control_cond(control_cond, canny, self.control_net_path)
 
-        # Run the txt2img to generate images
-        c_images = sd_cpp.txt2img(
-            self.model,
-            prompt.encode("utf-8"),
-            negative_prompt.encode("utf-8"),
-            clip_skip,
-            cfg_scale,
-            guidance,
-            width,
-            height,
-            sample_method,
-            sample_steps,
-            seed,
-            batch_count,
-            control_cond,
-            control_strength,
-            style_strength,
-            normalize_input,
-            input_id_images_path.encode("utf-8"),
-        )
+        with suppress_stdout_stderr(disable=self.verbose):
+            # Generate images
+            c_images = sd_cpp.txt2img(
+                self.model,
+                prompt.encode("utf-8"),
+                negative_prompt.encode("utf-8"),
+                clip_skip,
+                cfg_scale,
+                guidance,
+                width,
+                height,
+                sample_method,
+                sample_steps,
+                seed,
+                batch_count,
+                control_cond,
+                control_strength,
+                style_strength,
+                normalize_input,
+                input_id_images_path.encode("utf-8"),
+            )
 
         # Convert the C array of images to a Python list of images
         return self._sd_image_t_p_to_images(c_images, batch_count, upscale_factor)
@@ -328,6 +347,10 @@ class StableDiffusion:
 
         sample_method = validate_and_set_input(sample_method, SAMPLE_METHOD_MAP, "sample_method")
 
+        # Ensure dimensions are multiples of 64
+        width = validate_dimensions(width, "width")
+        height = validate_dimensions(height, "height")
+
         # =========== Set seed ===========
 
         # Set a random seed if seed is negative
@@ -361,27 +384,29 @@ class StableDiffusion:
 
         image_pointer = self._image_to_sd_image_t_p(image)
 
-        c_images = sd_cpp.img2img(
-            self.model,
-            image_pointer,
-            prompt.encode("utf-8"),
-            negative_prompt.encode("utf-8"),
-            clip_skip,
-            cfg_scale,
-            guidance,
-            width,
-            height,
-            sample_method,
-            sample_steps,
-            strength,
-            seed,
-            batch_count,
-            control_cond,
-            control_strength,
-            style_strength,
-            normalize_input,
-            input_id_images_path.encode("utf-8"),
-        )
+        with suppress_stdout_stderr(disable=self.verbose):
+            # Generate images
+            c_images = sd_cpp.img2img(
+                self.model,
+                image_pointer,
+                prompt.encode("utf-8"),
+                negative_prompt.encode("utf-8"),
+                clip_skip,
+                cfg_scale,
+                guidance,
+                width,
+                height,
+                sample_method,
+                sample_steps,
+                strength,
+                seed,
+                batch_count,
+                control_cond,
+                control_strength,
+                style_strength,
+                normalize_input,
+                input_id_images_path.encode("utf-8"),
+            )
         return self._sd_image_t_p_to_images(c_images, batch_count, upscale_factor)
 
     # ============================================
@@ -426,14 +451,20 @@ class StableDiffusion:
         Returns:
             A list of Pillow Images."""
 
-        if self.model is None:
-            raise Exception("Stable diffusion model not loaded.")
+        raise NotImplementedError("Not yet implemented.")
 
-        # =========== Validate string and int inputs ===========
+        # if self.model is None:
+        #     raise Exception("Stable diffusion model not loaded.")
 
-        sample_method = validate_and_set_input(sample_method, SAMPLE_METHOD_MAP, "sample_method")
+        # # =========== Validate string and int inputs ===========
 
-        # =========== Set seed ===========
+        # sample_method = validate_and_set_input(sample_method, SAMPLE_METHOD_MAP, "sample_method")
+
+        # # Ensure dimensions are multiples of 64
+        # width = validate_dimensions(width, "width")
+        # height = validate_dimensions(height, "height")
+
+        # # =========== Set seed ===========
 
         # # Set a random seed if seed is negative
         # if seed < 0:
@@ -464,25 +495,26 @@ class StableDiffusion:
 
         # image_pointer = self._image_to_sd_image_t_p(image)
 
-        # c_video = sd_cpp.img2vid(
-        #     self.model,
-        #     image_pointer,
-        #     width,
-        #     height,
-        #     video_frames,
-        #     motion_bucket_id,
-        #     fps,
-        #     augmentation_level,
-        #     min_cfg,
-        #     cfg_scale,
-        #     sample_method,
-        #     sample_steps,
-        #     strength,
-        #     seed,
-        # )
+        # with suppress_stdout_stderr(disable=self.verbose):
+        #     # Generate the video
+        #     c_video = sd_cpp.img2vid(
+        #         self.model,
+        #         image_pointer,
+        #         width,
+        #         height,
+        #         video_frames,
+        #         motion_bucket_id,
+        #         fps,
+        #         augmentation_level,
+        #         min_cfg,
+        #         cfg_scale,
+        #         sample_method,
+        #         sample_steps,
+        #         strength,
+        #         seed,
+        #     )
 
         # return self._sd_image_t_p_to_images(c_video, video_frames, 1)
-        raise NotImplementedError("Not yet implemented.")
 
     # ============================================
     # Preprocess Canny
@@ -491,8 +523,6 @@ class StableDiffusion:
     def preprocess_canny(
         self,
         image: Union[Image.Image, str],
-        width: int = 512,
-        height: int = 512,
         high_threshold: float = 0.08,
         low_threshold: float = 0.08,
         weak: float = 0.8,
@@ -500,12 +530,10 @@ class StableDiffusion:
         inverse: bool = False,
         output_as_c_uint8: bool = False,
     ) -> Image.Image:
-        """Apply canny edge detection to an input image.
+        """Apply canny edge detection to an input image. Width and height determined automatically.
 
         Args:
             image: The input image path or Pillow Image.
-            width: Output image height, in pixel space.
-            height: Output image width, in pixel space.
             high_threshold: High edge detection threshold.
             low_threshold: Low edge detection threshold.
             weak: Weak edge thickness.
@@ -519,17 +547,18 @@ class StableDiffusion:
         # Convert the image to a C uint8 pointer
         data, width, height = self._cast_image(image)
 
-        # Run the preprocess canny
-        c_image = sd_cpp.preprocess_canny(
-            data,
-            width,
-            height,
-            high_threshold,
-            low_threshold,
-            weak,
-            strong,
-            inverse,
-        )
+        with suppress_stdout_stderr(disable=self.verbose):
+            # Run the preprocess canny
+            c_image = sd_cpp.preprocess_canny(
+                data,
+                int(width),
+                int(height),
+                high_threshold,
+                low_threshold,
+                weak,
+                strong,
+                inverse,
+            )
 
         # Return the c_image if output_as_c_uint8 (for running inside txt2img/img2img pipeline)
         if output_as_c_uint8:
@@ -592,12 +621,13 @@ class StableDiffusion:
             # Convert the image to a byte array
             image_bytes = self._image_to_sd_image_t_p(image)
 
-            # Upscale the image
-            image = sd_cpp.upscale(
-                self.upscaler,
-                image_bytes,
-                upscale_factor,
-            )
+            with suppress_stdout_stderr(disable=self.verbose):
+                # Upscale the image
+                image = sd_cpp.upscale(
+                    self.upscaler,
+                    image_bytes,
+                    upscale_factor,
+                )
 
             # Load the image from the C sd_image_t and convert it to a PIL Image
             image = self._dereference_sd_image_t_p(image)
@@ -649,9 +679,9 @@ class StableDiffusion:
         if not control_cond:
             return None
 
-        if not control_net_path:
-            log_event(1, "'control_net_path' not set. Skipping control condition.")
-            return None
+        # if not control_net_path:
+        #     log_event(1, "'control_net_path' not set. Skipping control condition.")
+        #     return None
 
         if canny:
             # Convert Pillow Image to canny edge detection image then format into C sd_image_t
@@ -772,6 +802,29 @@ class StableDiffusion:
                     (byte_data[idx], byte_data[idx + 1], byte_data[idx + 2], 255),
                 )
         return image
+
+    def __setstate__(self, state):
+        self.__init__(**state)
+
+    def close(self) -> None:
+        """Explicitly free the model from memory."""
+        self._stack.close()
+
+    def __del__(self) -> None:
+        self.close()
+
+
+# ============================================
+# Validate dimension parameters
+# ============================================
+
+
+def validate_dimensions(dimension: int | float, attribute_name: str) -> int:
+    """Dimensions must be a multiple of 64 otherwise a GGML_ASSERT error is encountered."""
+    dimension = int(dimension)
+    if dimension <= 0 or dimension % 64 != 0:
+        raise ValueError(f"The '{attribute_name}' must be a multiple of 64.")
+    return dimension
 
 
 # ============================================

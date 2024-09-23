@@ -46,23 +46,22 @@ Detailed API documentation is available [here](https://docs.nexaai.com/).
 Below is our differentiation from other similar tools:
 
 | **Feature**                | **[Nexa SDK](https://github.com/NexaAI/nexa-sdk)** | **[ollama](https://github.com/ollama/ollama)** | **[Optimum](https://github.com/huggingface/optimum)** | **[LM Studio](https://github.com/lmstudio-ai)** |
-|----------------------------|:-------------------------------------------------:|:----------------------------------------------:|:-----------------------------------------------:|:-----------------------------------------------:|
-| **GGML Support**            | ✅                                                | ✅                                               | ❌                                               | ✅                                               |
-| **ONNX Support**            | ✅                                                | ❌                                               | ✅                                               | ❌                                               |
-| **Text Generation**         | ✅                                                | ✅                                               | ✅                                               | ✅                                               |
-| **Image Generation**        | ✅                                                | ❌                                               | ❌                                               | ❌                                               |
-| **Vision-Language Models**  | ✅                                                | ✅                                               | ✅                                               | ✅                                               |
-| **Text-to-Speech**          | ✅                                                | ❌                                               | ✅                                               | ❌                                               |
-| **Server Capability**       | ✅                                                | ✅                                               | ✅                                               | ✅                                               |
-| **User Interface**          | ✅                                                | ❌                                               | ❌                                               | ✅                                               |
-
-
+| -------------------------- | :------------------------------------------------: | :--------------------------------------------: | :---------------------------------------------------: | :---------------------------------------------: |
+| **GGML Support**           |                         ✅                         |                       ✅                       |                          ❌                           |                       ✅                        |
+| **ONNX Support**           |                         ✅                         |                       ❌                       |                          ✅                           |                       ❌                        |
+| **Text Generation**        |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
+| **Image Generation**       |                         ✅                         |                       ❌                       |                          ❌                           |                       ❌                        |
+| **Vision-Language Models** |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
+| **Text-to-Speech**         |                         ✅                         |                       ❌                       |                          ✅                           |                       ❌                        |
+| **Server Capability**      |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
+| **User Interface**         |                         ✅                         |                       ❌                       |                          ❌                           |                       ✅                        |
 
 ## Installation
 
 We have released pre-built wheels for various Python versions, platforms, and backends for convenient installation on our [index page](https://nexaai.github.io/nexa-sdk/whl/).
 
 > [!NOTE]
+>
 > 1. If you want to use <strong>ONNX model</strong>, just replace `pip install nexaai` with `pip install "nexaai[onnx]"` in provided commands.
 > 2. For Chinese developers, we recommend you to use <strong>Tsinghua Open Source Mirror</strong> as extra index url, just replace `--extra-index-url https://pypi.org/simple` with `--extra-index-url https://pypi.tuna.tsinghua.edu.cn/simple` in provided commands.
 
@@ -145,40 +144,24 @@ CMAKE_ARGS="-DGGML_HIPBLAS=on" pip install nexaai --prefer-binary --index-url ht
 ```
 
 ### Local Build
+
 How to clone this repo
+
 ```bash
 git clone --recursive https://github.com/NexaAI/nexa-sdk
 ```
+
 If you forget to use `--recursive`, you can use below command to add submodule
+
 ```bash
 git submodule update --init --recursive
 ```
+
 Then you can build and install the package
+
 ```bash
 pip install -e .
 ```
-
-### Docker Usage
-
-Note: Docker doesn't support GPU acceleration
-
-```bash
-docker pull nexa4ai/sdk:latest
-```
-
-replace following placeholder with your path and command
-
-```bash
-docker run -v <your_model_dir>:/model -it nexa4ai/sdk:latest [nexa_command] [your_model_relative_path]
-```
-
-Example:
-
-```bash
-docker run -v /home/ubuntu/.cache/nexa/hub/official:/model -it nexa4ai/sdk:latest nexa gen-text /model/Phi-3-mini-128k-instruct/q4_0.gguf
-```
-
-will create an interactive session with text generation
 
 ## Supported Models
 
@@ -194,6 +177,8 @@ will create an interactive session with text generation
 | [gemma2](https://www.nexaai.com/google/gemma-2-2b-instruct/gguf-q4_0/readme)                            | NLP             | GGUF      | `nexa run gemma2`                  |
 | [qwen1.5](https://www.nexaai.com/Qwen/Qwen1.5-7B-Instruct/gguf-q4_0/readme)                             | NLP             | GGUF      | `nexa run qwen1.5`                 |
 | [qwen2](https://www.nexaai.com/Qwen/Qwen2-1.5B-Instruct/gguf-q4_0/readme)                               | NLP             | GGUF/ONNX | `nexa run qwen2`                   |
+| [qwen2.5](https://www.nexaai.com/Qwen/Qwen2.5-1.5B-Instruct/gguf-q4_0/readme)                           | NLP             | GGUF      | `nexa run qwen2.5`                 |
+| [mathqwen](https://nexaai.com/Qwen/Qwen2.5-Math-1.5B-Instruct/gguf-q4_0/readme)                         | NLP             | GGUF      | `nexa run mathqwen`                |
 | [mistral](https://www.nexaai.com/mistralai/Mistral-7B-Instruct-v0.3/gguf-q4_0/readme)                   | NLP             | GGUF/ONNX | `nexa run mistral`                 |
 | [codegemma](https://www.nexaai.com/google/codegemma-2b/gguf-q4_0/readme)                                | NLP             | GGUF      | `nexa run codegemma`               |
 | [codellama](https://www.nexaai.com/meta/CodeLlama-7b-Instruct/gguf-q2_K/readme)                         | NLP             | GGUF      | `nexa run codellama`               |
@@ -238,15 +223,15 @@ Here's a brief overview of the main CLI commands:
 
 For detailed information on CLI commands and usage, please refer to the [CLI Reference](CLI.md) document.
 
-
 ## Start Local Server
 
-To start a local server using models on your local computer, you can use the `nexa server` command. 
+To start a local server using models on your local computer, you can use the `nexa server` command.
 For detailed information on server setup, API endpoints, and usage examples, please refer to the [Server Reference](SERVER.md) document.
 
-
 ## Acknowledgements
+
 We would like to thank the following projects:
+
 - [llama.cpp](https://github.com/ggerganov/llama.cpp)
 - [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)
 - [optimum](https://github.com/huggingface/optimum)

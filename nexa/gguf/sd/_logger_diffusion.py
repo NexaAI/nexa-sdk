@@ -2,8 +2,6 @@ import sys
 import ctypes
 import logging
 
-import nexa.gguf.sd.stable_diffusion_cpp as stable_diffusion_cpp
-
 # enum sd_log_level_t {
 #     SD_LOG_DEBUG = 0,
 #     SD_LOG_INFO = 1,

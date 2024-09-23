@@ -62,16 +62,12 @@ class NexaTextInference:
                 exc_info=True,
             )
             exit(1)
-
-        self.stop_words = (
-            stop_words if stop_words else NEXA_STOP_WORDS_MAP.get(model_path, [])
-        )
         self.profiling = kwargs.get("profiling", False)
 
-        self.chat_format = NEXA_RUN_CHAT_TEMPLATE_MAP.get(model_path, None)
-        self.completion_template = NEXA_RUN_COMPLETION_TEMPLATE_MAP.get(
-            model_path, None
-        )
+        model_name = model_path.split(":")[0].lower()
+        self.stop_words = (stop_words if stop_words else NEXA_STOP_WORDS_MAP.get(model_name, []))
+        self.chat_format = NEXA_RUN_CHAT_TEMPLATE_MAP.get(model_name, None)
+        self.completion_template = NEXA_RUN_COMPLETION_TEMPLATE_MAP.get(model_name, None)
 
         self._load_model()
         if self.model is None:
