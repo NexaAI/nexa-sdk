@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 
 import datasets
 
-from lm_eval.utils import eval_logger
+from nexa.eval.utils import eval_logger
 
 
 try:
