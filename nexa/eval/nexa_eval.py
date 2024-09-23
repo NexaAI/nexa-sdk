@@ -105,6 +105,15 @@ class NexaEval:
             logging.error(f"Error: {e}")
             logging.error("Run 'huggingface-cli login' to authenticate with the Hugging Face Hub.")
             return
+        except RuntimeError as e:
+            if "TensorFlow 2.0 or PyTorch should be installed" in str(e):
+                logging.error("Error: This task requires either TensorFlow or PyTorch, but neither is installed.")
+                logging.error("To run this task, please install one of the following:")
+                logging.error("- PyTorch: Visit https://pytorch.org/ for installation instructions.")
+                logging.error("- TensorFlow: Visit https://www.tensorflow.org/install/ for installation instructions.")
+            else:
+                logging.error(f"An unexpected error occurred: {e}")
+            return
         
         if results is not None:
             if args.log_samples:
