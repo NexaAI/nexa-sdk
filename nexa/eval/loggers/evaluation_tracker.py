@@ -19,15 +19,10 @@ from huggingface_hub.utils import build_hf_headers, get_session, hf_raise_for_st
 
 from nexa.eval.utils import (
     eval_logger,
-    get_file_datetime,
-    get_file_task_name,
-    get_results_filenames,
-    get_sample_results_filenames,
     handle_non_serializable,
     hash_string,
     sanitize_list,
     sanitize_model_name,
-    sanitize_task_name,
 )
 
 
@@ -112,12 +107,6 @@ class EvaluationTracker:
     def __init__(
         self,
         output_path: str = None,
-        hub_results_org: str = "",
-        hub_repo_name: str = "",
-        details_repo_name: str = "",
-        results_repo_name: str = "",
-        push_results_to_hub: bool = False,
-        push_samples_to_hub: bool = False,
         public_repo: bool = False,
         token: str = "",
         leaderboard_url: str = "",
@@ -129,12 +118,6 @@ class EvaluationTracker:
 
         Args:
             output_path (str): Path to save the results. If not provided, the results won't be saved.
-            hub_results_org (str): The Hugging Face organization to push the results to. If not provided, the results will be pushed to the owner of the Hugging Face token.
-            hub_repo_name (str): The name of the Hugging Face repository to push the results to. If not provided, the results will be pushed to `lm-eval-results`.
-            details_repo_name (str): The name of the Hugging Face repository to push the details to. If not provided, the results will be pushed to `lm-eval-results`.
-            result_repo_name (str): The name of the Hugging Face repository to push the results to. If not provided, the results will not be pushed and will be found in the details_hub_repo.
-            push_results_to_hub (bool): Whether to push the results to the Hugging Face hub.
-            push_samples_to_hub (bool): Whether to push the samples to the Hugging Face hub.
             public_repo (bool): Whether to push the results to a public or private repository.
             token (str): Token to use when pushing to the Hugging Face hub. This token should have write access to `hub_results_org`.
             leaderboard_url (str): URL to the leaderboard on the Hugging Face hub on the dataset card.
@@ -144,48 +127,12 @@ class EvaluationTracker:
         self.general_config_tracker = GeneralConfigTracker()
 
         self.output_path = output_path
-        self.push_results_to_hub = push_results_to_hub
-        self.push_samples_to_hub = push_samples_to_hub
         self.public_repo = public_repo
         self.leaderboard_url = leaderboard_url
         self.point_of_contact = point_of_contact
         self.api = HfApi(token=token) if token else None
         self.gated_repo = gated
 
-        if not self.api and (push_results_to_hub or push_samples_to_hub):
-            raise ValueError(
-                "Hugging Face token is not defined, but 'push_results_to_hub' or 'push_samples_to_hub' is set to True. "
-                "Please provide a valid Hugging Face token by setting the HF_TOKEN environment variable."
-            )
-
-        if (
-            self.api
-            and hub_results_org == ""
-            and (push_results_to_hub or push_samples_to_hub)
-        ):
-            hub_results_org = self.api.whoami()["name"]
-            eval_logger.warning(
-                f"hub_results_org was not specified. Results will be pushed to '{hub_results_org}'."
-            )
-
-        if hub_repo_name == "":
-            details_repo_name = (
-                details_repo_name if details_repo_name != "" else "lm-eval-results"
-            )
-            results_repo_name = (
-                results_repo_name if results_repo_name != "" else details_repo_name
-            )
-        else:
-            details_repo_name = hub_repo_name
-            results_repo_name = hub_repo_name
-            eval_logger.warning(
-                "hub_repo_name was specified. Both details and results will be pushed to the same repository. Using hub_repo_name is no longer recommended, details_repo_name and results_repo_name should be used instead."
-            )
-
-        self.details_repo = f"{hub_results_org}/{details_repo_name}"
-        self.details_repo_private = f"{hub_results_org}/{details_repo_name}-private"
-        self.results_repo = f"{hub_results_org}/{results_repo_name}"
-        self.results_repo_private = f"{hub_results_org}/{results_repo_name}-private"
 
     def save_results_aggregated(
         self,
@@ -362,160 +309,3 @@ class EvaluationTracker:
                 eval_logger.info(repr(e))
         else:
             eval_logger.info("Output path not provided, skipping saving sample results")
-
-    def recreate_metadata_card(self) -> None:
-        """
-        Creates a metadata card for the evaluation results dataset and pushes it to the Hugging Face hub.
-        """
-
-        eval_logger.info("Recreating metadata card")
-        repo_id = self.details_repo if self.public_repo else self.details_repo_private
-
-        files_in_repo = self.api.list_repo_files(repo_id=repo_id, repo_type="dataset")
-        results_files = get_results_filenames(files_in_repo)
-        sample_files = get_sample_results_filenames(files_in_repo)
-
-        # Build a dictionary to store the latest evaluation datetime for:
-        # - Each tested model and its aggregated results
-        # - Each task and sample results, if existing
-        # i.e. {
-        #     "org__model_name__gsm8k": "2021-09-01T12:00:00",
-        #     "org__model_name__ifeval": "2021-09-01T12:00:00",
-        #     "org__model_name__results": "2021-09-01T12:00:00"
-        # }
-        latest_task_results_datetime = defaultdict(lambda: datetime.min.isoformat())
-
-        for file_path in sample_files:
-            file_path = Path(file_path)
-            filename = file_path.name
-            model_name = file_path.parent
-            task_name = get_file_task_name(filename)
-            results_datetime = get_file_datetime(filename)
-            task_name_sanitized = sanitize_task_name(task_name)
-            # Results and sample results for the same model and task will have the same datetime
-            samples_key = f"{model_name}__{task_name_sanitized}"
-            results_key = f"{model_name}__results"
-            latest_datetime = max(
-                latest_task_results_datetime[samples_key],
-                results_datetime,
-            )
-            latest_task_results_datetime[samples_key] = latest_datetime
-            latest_task_results_datetime[results_key] = max(
-                latest_task_results_datetime[results_key],
-                latest_datetime,
-            )
-
-        # Create metadata card
-        card_metadata = MetadataConfigs()
-
-        # Add the latest aggregated results to the metadata card for easy access
-        for file_path in results_files:
-            file_path = Path(file_path)
-            results_filename = file_path.name
-            model_name = file_path.parent
-            eval_date = get_file_datetime(results_filename)
-            eval_date_sanitized = re.sub(r"[^\w\.]", "_", eval_date)
-            results_filename = Path("**") / Path(results_filename).name
-            config_name = f"{model_name}__results"
-            sanitized_last_eval_date_results = re.sub(
-                r"[^\w\.]", "_", latest_task_results_datetime[config_name]
-            )
-
-            if eval_date_sanitized == sanitized_last_eval_date_results:
-                # Ensure that all results files are listed in the metadata card
-                current_results = card_metadata.get(config_name, {"data_files": []})
-                current_results["data_files"].append(
-                    {"split": eval_date_sanitized, "path": [str(results_filename)]}
-                )
-                card_metadata[config_name] = current_results
-                # If the results file is the newest, update the "latest" field in the metadata card
-                card_metadata[config_name]["data_files"].append(
-                    {"split": "latest", "path": [str(results_filename)]}
-                )
-
-        # Add the tasks details configs
-        for file_path in sample_files:
-            file_path = Path(file_path)
-            filename = file_path.name
-            model_name = file_path.parent
-            task_name = get_file_task_name(filename)
-            eval_date = get_file_datetime(filename)
-            task_name_sanitized = sanitize_task_name(task_name)
-            eval_date_sanitized = re.sub(r"[^\w\.]", "_", eval_date)
-            results_filename = Path("**") / Path(filename).name
-            config_name = f"{model_name}__{task_name_sanitized}"
-            sanitized_last_eval_date_results = re.sub(
-                r"[^\w\.]", "_", latest_task_results_datetime[config_name]
-            )
-            if eval_date_sanitized == sanitized_last_eval_date_results:
-                # Ensure that all sample results files are listed in the metadata card
-                current_details_for_task = card_metadata.get(
-                    config_name, {"data_files": []}
-                )
-                current_details_for_task["data_files"].append(
-                    {"split": eval_date_sanitized, "path": [str(results_filename)]}
-                )
-                card_metadata[config_name] = current_details_for_task
-                # If the samples results file is the newest, update the "latest" field in the metadata card
-                card_metadata[config_name]["data_files"].append(
-                    {"split": "latest", "path": [str(results_filename)]}
-                )
-
-        # Get latest results and extract info to update metadata card examples
-        latest_datetime = max(latest_task_results_datetime.values())
-        latest_model_name = max(
-            latest_task_results_datetime, key=lambda k: latest_task_results_datetime[k]
-        )
-        last_results_file = [
-            f for f in results_files if latest_datetime.replace(":", "-") in f
-        ][0]
-        last_results_file_path = hf_hub_url(
-            repo_id=repo_id, filename=last_results_file, repo_type="dataset"
-        )
-        latest_results_file = load_dataset(
-            "json", data_files=last_results_file_path, split="train"
-        )
-        results_dict = latest_results_file["results"][0]
-        new_dictionary = {"all": results_dict}
-        new_dictionary.update(results_dict)
-        results_string = json.dumps(new_dictionary, indent=4)
-
-        dataset_summary = (
-            "Dataset automatically created during the evaluation run of model "
-        )
-        if self.general_config_tracker.model_source == "hf":
-            dataset_summary += f"[{self.general_config_tracker.model_name}](https://huggingface.co/{self.general_config_tracker.model_name})\n"
-        else:
-            dataset_summary += f"{self.general_config_tracker.model_name}\n"
-        dataset_summary += (
-            f"The dataset is composed of {len(card_metadata)-1} configuration(s), each one corresponding to one of the evaluated task.\n\n"
-            f"The dataset has been created from {len(results_files)} run(s). Each run can be found as a specific split in each "
-            'configuration, the split being named using the timestamp of the run.The "train" split is always pointing to the latest results.\n\n'
-            'An additional configuration "results" store all the aggregated results of the run.\n\n'
-            "To load the details from a run, you can for instance do the following:\n"
-        )
-        if self.general_config_tracker.model_source == "hf":
-            dataset_summary += (
-                "```python\nfrom datasets import load_dataset\n"
-                f'data = load_dataset(\n\t"{repo_id}",\n\tname="{latest_model_name}",\n\tsplit="latest"\n)\n```\n\n'
-            )
-        dataset_summary += (
-            "## Latest results\n\n"
-            f'These are the [latest results from run {latest_datetime}]({last_results_file_path.replace("/resolve/", "/blob/")}) '
-            "(note that there might be results for other tasks in the repos if successive evals didn't cover the same tasks. "
-            'You find each in the results and the "latest" split for each eval):\n\n'
-            f"```python\n{results_string}\n```"
-        )
-        card_data = DatasetCardData(
-            dataset_summary=dataset_summary,
-            repo_url=f"https://huggingface.co/{self.general_config_tracker.model_name}",
-            pretty_name=f"Evaluation run of {self.general_config_tracker.model_name}",
-            leaderboard_url=self.leaderboard_url,
-            point_of_contact=self.point_of_contact,
-        )
-        card_metadata.to_dataset_card_data(card_data)
-        card = DatasetCard.from_template(
-            card_data,
-            pretty_name=card_data.pretty_name,
-        )
-        card.push_to_hub(repo_id, repo_type="dataset")

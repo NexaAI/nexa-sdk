@@ -22,7 +22,7 @@ from nexa.eval.evaluator_utils import (
     print_writeout,
 )
 
-from nexa.eval.loggers.utils import add_env_info, add_tokenizer_info, get_git_commit_hash
+from nexa.eval.loggers.utils import add_env_info, add_tokenizer_info
 from nexa.eval.tasks import (
     TaskManager,
     get_task_dict,
@@ -270,9 +270,6 @@ def simple_evaluate(
 
     task_dict = _adjust_config(task_dict)
 
-    if check_integrity:
-        run_task_tests(task_list=tasks)
-
     # hotfix: delete when chat_template fixed
     try:
         chat = lm.chat_template(apply_chat_template)
@@ -316,10 +313,7 @@ def simple_evaluate(
             "model": model_name,
             "model_args": model_args,
         }
-        # add more detailed model info if available
-        # if isinstance(lm, nexa.eval.models.huggingface.HFLM):
-        #     results["config"].update(lm.get_model_info())
-        # add info about execution
+
         results["config"].update(
             {
                 "batch_size": batch_size,
@@ -336,7 +330,6 @@ def simple_evaluate(
                 "fewshot_seed": fewshot_random_seed,
             }
         )
-        results["git_hash"] = get_git_commit_hash()
         results["date"] = start_date
         add_env_info(results)  # additional environment info to results
         add_tokenizer_info(results, lm)  # additional info about tokenizer

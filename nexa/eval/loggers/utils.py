@@ -4,9 +4,9 @@ import re
 import subprocess
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
+from nexa import __version__
 
 import numpy as np
-from transformers import __version__ as trans_version
 
 
 logger = logging.getLogger(__name__)
@@ -80,33 +80,10 @@ def get_commit_from_path(repo_path: Union[Path, str]) -> Optional[str]:
     return git_hash
 
 
-def get_git_commit_hash():
-    """
-    Gets the git commit hash of your current repo (if it exists).
-    Source: https://github.com/EleutherAI/gpt-neox/blob/b608043be541602170bfcfb8ec9bf85e8a0799e0/megatron/neox_arguments/neox_args.py#L42
-    """
-    try:
-        git_hash = subprocess.check_output(["git", "describe", "--always"]).strip()
-        git_hash = git_hash.decode()
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        # FileNotFoundError occurs when git not installed on system
-        git_hash = get_commit_from_path(os.getcwd())  # git hash of repo if exists
-    return git_hash
-
-
 def add_env_info(storage: Dict[str, Any]):
-    try:
-        pretty_env_info = get_pretty_env_info()
-    except Exception as err:
-        pretty_env_info = str(err)
-    transformers_version = trans_version
-    upper_dir_commit = get_commit_from_path(
-        Path(os.getcwd(), "..")
-    )  # git hash of upper repo if exists
+    nexa_sdk_version = __version__
     added_info = {
-        "pretty_env_info": pretty_env_info,
-        "transformers_version": transformers_version,
-        "upper_git_hash": upper_dir_commit,  # in case this repo is submodule
+        "nexa_sdk_version": nexa_sdk_version
     }
     storage.update(added_info)
 
