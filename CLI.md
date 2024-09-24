@@ -149,9 +149,9 @@ Image generation options:
   --lora_dir LORA_DIR   Path to directory containing LoRA files
   --wtype WTYPE         Weight type (f32, f16, q4_0, q4_1, q5_0, q5_1, q8_0)
   --control_net_path CONTROL_NET_PATH
-                        Path to control net model
+                        Path to the control net model
   --control_image_path CONTROL_IMAGE_PATH
-                        Path to image condition for Control Net
+                        Path to the image condition for Control Net
   --control_strength CONTROL_STRENGTH
                         Strength to apply Control Net
 ```
