@@ -1,5 +1,4 @@
 import argparse
-import logging
 import multiprocessing
 import time
 import requests
@@ -12,8 +11,11 @@ from nexa.eval.utils import handle_non_serializable, make_table, simple_parse_ar
 from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
 from nexa.constants import NEXA_MODEL_EVAL_RESULTS_PATH, NEXA_RUN_MODEL_MAP
 from pathlib import Path
+from datetime import datetime
 
-logging.basicConfig(level=logging.INFO)
+def print_message(level, message):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"{timestamp} - {level} - {message}")
 
 class NexaEval:
     def __init__(self, model_path: str, tasks: str):
@@ -49,7 +51,7 @@ class NexaEval:
             kwargs={"host": "0.0.0.0", "port": 8300, "nctx": 4096},
         )
         self.server_process.start()
-        logging.info(f"Started server process for model: {self.model_path}")
+        print("INFO", f"Started server process for model: {self.model_path}")
 
     def wait_for_server(self, timeout: int = 60) -> bool:
         start_time = time.time()
@@ -57,7 +59,7 @@ class NexaEval:
             try:
                 response = requests.get(f"{self.server_url}/")
                 if response.status_code == 200:
-                    logging.info("Server is ready")
+                    print_message("INFO", "Server is ready")
                     return True
             except requests.exceptions.ConnectionError:
                 pass
@@ -77,13 +79,13 @@ class NexaEval:
         task_manager = TaskManager(args.verbosity, include_path=args.include_path)
         
         if args.tasks is None:
-            logging.error("Need to specify task to evaluate.")
+            print("ERROR", "Need to specify task to evaluate.")
             sys.exit()
         else:
             task_list = args.tasks.split(",")
             task_names = task_manager.match_tasks(task_list)
         
-        logging.info(f"Selected Tasks: {task_names}")
+        print_message("INFO", f"Selected Tasks: {task_names}")
 
         request_caching_args = evaluator.request_caching_arg_to_dict(cache_requests=args.cache_requests)
         from datasets.exceptions import DatasetNotFoundError
@@ -101,18 +103,24 @@ class NexaEval:
                 fewshot_random_seed=args.seed[3],
                 **request_caching_args,
             )
+        except ValueError as e:
+            if "No tasks specified, or no tasks found" in str(e):
+                print_message("ERROR", f"Error: No valid tasks were found for evaluation. Specified tasks: {args.tasks}. Please verify the task names and try again.")
+            else:
+                print_message("ERROR", f"An unexpected ValueError occurred: {e}")
+            return
         except DatasetNotFoundError as e:
-            logging.error(f"Error: {e}")
-            logging.error("Run 'huggingface-cli login' to authenticate with the Hugging Face Hub.")
+            print_message("ERROR", f"Error: {e}")
+            print_message("ERROR", "Run 'huggingface-cli login' to authenticate with the Hugging Face Hub.")
             return
         except RuntimeError as e:
             if "TensorFlow 2.0 or PyTorch should be installed" in str(e):
-                logging.error("Error: This task requires either TensorFlow or PyTorch, but neither is installed.")
-                logging.error("To run this task, please install one of the following:")
-                logging.error("- PyTorch: Visit https://pytorch.org/ for installation instructions.")
-                logging.error("- TensorFlow: Visit https://www.tensorflow.org/install/ for installation instructions.")
+                print_message("ERROR", "This task requires either TensorFlow or PyTorch, but neither is installed.")
+                print_message("ERROR", "To run this task, please install one of the following:")
+                print_message("ERROR", "- PyTorch: Visit https://pytorch.org/ for installation instructions.")
+                print_message("ERROR", "- TensorFlow: Visit https://www.tensorflow.org/install/ for installation instructions.")
             else:
-                logging.error(f"An unexpected error occurred: {e}")
+                print_message("ERROR", f"An unexpected error occurred: {e}")
             return
         
         if results is not None:
@@ -132,15 +140,15 @@ class NexaEval:
         try:
             self.start_server()
             if self.wait_for_server():
-                logging.info(f"Starting evaluation for tasks: {self.tasks}")
+                print_message("INFO", f"Starting evaluation for tasks: {self.tasks}")
                 args = argparse.Namespace(**self.eval_args)
                 self.evaluate_model(args)
-                logging.info("Evaluation completed")
+                print_message("INFO", "Evaluation completed")
         finally:
             if self.server_process:
                 self.server_process.terminate()
                 self.server_process.join()
-                logging.info("Server process terminated")
+                print_message("INFO", "Server process terminated")
 
 def run_eval_inference(model_path: str, tasks: str):
     evaluator = NexaEval(model_path, tasks)
