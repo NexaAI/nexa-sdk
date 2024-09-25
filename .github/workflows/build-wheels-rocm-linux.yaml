@@ -1,8 +1,6 @@
 name: Build Wheels (ROCm) (Linux)
 
 on:
-  push:
-    branches: [perry/change-github-runner]
   workflow_dispatch:
 
 permissions:
@@ -24,8 +22,7 @@ jobs:
         run: |
           $matrix = @{
               'os' = @('ubuntu-22.04')
-              # 'pyver' = @("3.7", "3.8", "3.9", "3.10", "3.11", "3.12")
-              'pyver' = @("3.11")
+              'pyver' = @("3.7", "3.8", "3.9", "3.10", "3.11", "3.12")
               'rocm' = @("6.2.1")
               'releasetag' = @("basic")
           }
