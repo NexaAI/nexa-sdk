@@ -1,6 +1,9 @@
 name: Build Wheels (ROCm) (Linux)
 
-on: workflow_dispatch
+on:
+  push:
+    branches: [perry/change-github-runner]
+  workflow_dispatch:
 
 permissions:
   contents: write
