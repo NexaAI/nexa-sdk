@@ -22,7 +22,7 @@ jobs:
           $matrix = @{
               'os' = @('ubuntu-22.04')
               'pyver' = @("3.7", "3.8", "3.9", "3.10", "3.11", "3.12")
-              'rocm' = @("6.0.2")
+              'rocm' = @("6.2.1")
               'releasetag' = @("basic")
           }
 
@@ -32,8 +32,7 @@ jobs:
   build_wheels:
     name: Build Wheel ${{ matrix.os }} ${{ matrix.pyver }} ROCm ${{ matrix.rocm }} ${{ matrix.releasetag }}
     needs: define_matrix
-    runs-on: ${{ matrix.os }}
-    container: rocm/dev-ubuntu-22.04:${{ matrix.rocm }}
+    runs-on: linux-ubuntu-22.04
     strategy:
       matrix: ${{ fromJSON(needs.define_matrix.outputs.matrix) }}
     defaults:
@@ -54,23 +53,25 @@ jobs:
           python-version: ${{ matrix.pyver }}
           cache: "pip"
 
+      - name: Install ROCm Toolkit
+        run: |
+          sudo apt update
+          sudo apt install "linux-headers-$(uname -r)" "linux-modules-extra-$(uname -r)"
+          sudo usermod -a -G render,video $LOGNAME # Add the current user to the render and video groups
+          wget https://repo.radeon.com/amdgpu-install/6.2.1/ubuntu/jammy/amdgpu-install_6.2.60201-1_all.deb
+          sudo apt install ./amdgpu-install_6.2.60201-1_all.deb
+          sudo apt update
+          sudo apt install amdgpu-dkms rocm
+
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential git cmake rocblas-dev hipblas-dev
+          sudo apt-get install -y build-essential git cmake
           python -m pip install build wheel
 
       - name: Build Wheel
         run: |
-          export ROCM_PATH=/opt/rocm
-          export HIP_PATH=$ROCM_PATH/hip
-          export PATH=$ROCM_PATH/bin:$PATH
-          export LD_LIBRARY_PATH=$ROCM_PATH/lib:$LD_LIBRARY_PATH
-
-          export VERBOSE=1
-          export CMAKE_BUILD_PARALLEL_LEVEL=$(nproc)
-          export CMAKE_ARGS='-DGGML_HIPBLAS=ON -DCMAKE_HIP_COMPILER="$(hipconfig -l)/clang"'
-          export CMAKE_ARGS="$CMAKE_ARGS -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_F16C=OFF"
+          export CMAKE_ARGS='-DGGML_HIPBLAS=ON'
 
           python -m build --wheel
 
