@@ -4,10 +4,10 @@ import time
 import requests
 import os
 import sys
-from nexa.eval import evaluator, utils
+from nexa.eval import evaluator
 from nexa.eval.loggers import EvaluationTracker
 from nexa.eval.tasks import TaskManager
-from nexa.eval.utils import handle_non_serializable, make_table, simple_parse_args_string
+from nexa.eval.utils import make_table, simple_parse_args_string
 from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
 from nexa.constants import NEXA_MODEL_EVAL_RESULTS_PATH, NEXA_RUN_MODEL_MAP
 from pathlib import Path

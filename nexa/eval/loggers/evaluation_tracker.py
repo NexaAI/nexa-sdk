@@ -2,20 +2,13 @@ import json
 import os
 import re
 import time
-from collections import defaultdict
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 
-from datasets import load_dataset
-from datasets.utils.metadata import MetadataConfigs
 from huggingface_hub import (
-    DatasetCard,
-    DatasetCardData,
     HfApi,
-    hf_hub_url,
 )
-from huggingface_hub.utils import build_hf_headers, get_session, hf_raise_for_status
 
 from nexa.eval.utils import (
     eval_logger,
@@ -111,7 +104,6 @@ class EvaluationTracker:
         token: str = "",
         leaderboard_url: str = "",
         point_of_contact: str = "",
-        gated: bool = False,
     ) -> None:
         """
         Creates all the necessary loggers for evaluation tracking.
@@ -122,7 +114,6 @@ class EvaluationTracker:
             token (str): Token to use when pushing to the Hugging Face hub. This token should have write access to `hub_results_org`.
             leaderboard_url (str): URL to the leaderboard on the Hugging Face hub on the dataset card.
             point_of_contact (str): Contact information on the Hugging Face hub dataset card.
-            gated (bool): Whether to gate the repository.
         """
         self.general_config_tracker = GeneralConfigTracker()
 
@@ -131,7 +122,6 @@ class EvaluationTracker:
         self.leaderboard_url = leaderboard_url
         self.point_of_contact = point_of_contact
         self.api = HfApi(token=token) if token else None
-        self.gated_repo = gated
 
 
     def save_results_aggregated(
@@ -280,18 +270,6 @@ class EvaluationTracker:
                         private=not self.public_repo,
                         exist_ok=True,
                     )
-                    try:
-                        if self.gated_repo:
-                            headers = build_hf_headers()
-                            r = get_session().put(
-                                url=f"https://huggingface.co/api/datasets/{repo_id}/settings",
-                                headers=headers,
-                                json={"gated": "auto"},
-                            )
-                            hf_raise_for_status(r)
-                    except Exception as e:
-                        eval_logger.warning("Could not gate the repository")
-                        eval_logger.info(repr(e))
                     self.api.upload_folder(
                         repo_id=repo_id,
                         folder_path=str(path),

@@ -5,11 +5,6 @@ from typing import Dict
 from nexa.eval import utils
 from nexa.eval.utils import eval_logger
 
-
-# Prompt library.
-# Stores prompts in a dictionary indexed by 2 levels:
-# prompt category name, and prompt name.
-# This allows us to access prompts
 PROMPT_REGISTRY: Dict[str, Dict[str, str]] = {
     "qa-basic": {
         "question-newline-answer": "Question: {{question}}\nAnswer:",
@@ -26,30 +21,7 @@ def get_prompt(prompt_id: str, dataset_name: str = None, subset_name: str = None
     else:
         dataset_full_name = f"{dataset_name}-{subset_name}"
     eval_logger.info(f"Loading prompt from {category_name} for {dataset_full_name}")
-    if category_name == "promptsource":
-        try:
-            from promptsource.templates import DatasetTemplates
-        except ModuleNotFoundError:
-            raise Exception(
-                "Tried to load a Promptsource template, but promptsource is not installed ",
-                "please install promptsource via pip install lm-eval[promptsource] or pip install -e .[promptsource]",
-            )
-        try:
-            if subset_name is None:
-                prompts = DatasetTemplates(dataset_name=dataset_name)
-            else:
-                prompts = DatasetTemplates(
-                    dataset_name=dataset_name, subset_name=subset_name
-                )
-        except Exception:
-            raise ValueError(f"{dataset_name} and {subset_name} not found")
-        if prompt_name in prompts.all_template_names:
-            return prompts[prompt_name]
-        else:
-            raise ValueError(
-                f"{prompt_name} not in prompt list {prompts.all_template_names}"
-            )
-    elif ".yaml" in category_name:
+    if ".yaml" in category_name:
         import yaml
 
         with open(category_name, "rb") as file:
@@ -72,19 +44,7 @@ def load_prompt_list(
 ):
     category_name, prompt_name = use_prompt.split(":")
 
-    if category_name == "promptsource":
-        from promptsource.templates import DatasetTemplates
-
-        if subset_name is None:
-            prompts = DatasetTemplates(dataset_name=dataset_name)
-        else:
-            prompts = DatasetTemplates(
-                dataset_name=dataset_name, subset_name=subset_name
-            )
-
-        prompt_list = utils.pattern_match(prompt_name, prompts.all_template_names)
-
-    elif ".yaml" in category_name:
+    if ".yaml" in category_name:
         import yaml
 
         if yaml_path is not None:
