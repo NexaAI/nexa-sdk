@@ -29,11 +29,13 @@ PRODUCER_INFO = {
     "doc_string": "Model exported by Nexa.ai",
 }
 
+
 class ModelType(Enum):
     NLP = "NLP"
     COMPUTER_VISION = "Computer Vision"
     AUDIO = "Audio"
     MULTIMODAL = "Multimodal"
+
 
 NEXA_RUN_MODEL_MAP_TEXT = {
     "octopus-v2": "Octopus-v2:q4_0",
@@ -43,6 +45,7 @@ NEXA_RUN_MODEL_MAP_TEXT = {
     "llama2": "Llama-2-7b-chat:q4_0",
     "llama3": "Meta-Llama-3-8B-Instruct:q4_0",
     "llama3.1": "Meta-Llama-3.1-8B-Instruct:q4_0",
+    "llama3.2": "Llama3.2-3B-Instruct:q4_0",
     "gemma": "gemma-1.1-2b-instruct:q4_0",
     "gemma2": "gemma-2-2b-instruct:q4_0",
     "qwen1.5": "Qwen1.5-7B-Instruct:q4_0",
@@ -117,18 +120,18 @@ NEXA_RUN_MODEL_MAP_VOICE = {
 }
 
 NEXA_RUN_MODEL_MAP_FUNCTION_CALLING = {
-  "llama2-function-calling": "Llama2-7b-function-calling:q4_K_M",
-  "Llama2-7b-function-calling:fp16": "Llama2-7b-function-calling:fp16",
-  "Llama2-7b-function-calling:q2_K": "Llama2-7b-function-calling:q2_K",
-  "Llama2-7b-function-calling:q3_K_L": "Llama2-7b-function-calling:q3_K_L",
-  "Llama2-7b-function-calling:q3_K_M": "Llama2-7b-function-calling:q3_K_M",
-  "Llama2-7b-function-calling:q3_K_S": "Llama2-7b-function-calling:q3_K_S",
-  "Llama2-7b-function-calling:q4_K_M": "Llama2-7b-function-calling:q4_K_M",
-  "Llama2-7b-function-calling:q4_K_S": "Llama2-7b-function-calling:q4_K_S",
-  "Llama2-7b-function-calling:q5_K_M": "Llama2-7b-function-calling:q5_K_M",
-  "Llama2-7b-function-calling:q5_K_S": "Llama2-7b-function-calling:q5_K_S",
-  "Llama2-7b-function-calling:q6_K": "Llama2-7b-function-calling:q6_K",
-  "Llama2-7b-function-calling:q8_0": "Llama2-7b-function-calling:q8_0",
+    "llama2-function-calling": "Llama2-7b-function-calling:q4_K_M",
+    "Llama2-7b-function-calling:fp16": "Llama2-7b-function-calling:fp16",
+    "Llama2-7b-function-calling:q2_K": "Llama2-7b-function-calling:q2_K",
+    "Llama2-7b-function-calling:q3_K_L": "Llama2-7b-function-calling:q3_K_L",
+    "Llama2-7b-function-calling:q3_K_M": "Llama2-7b-function-calling:q3_K_M",
+    "Llama2-7b-function-calling:q3_K_S": "Llama2-7b-function-calling:q3_K_S",
+    "Llama2-7b-function-calling:q4_K_M": "Llama2-7b-function-calling:q4_K_M",
+    "Llama2-7b-function-calling:q4_K_S": "Llama2-7b-function-calling:q4_K_S",
+    "Llama2-7b-function-calling:q5_K_M": "Llama2-7b-function-calling:q5_K_M",
+    "Llama2-7b-function-calling:q5_K_S": "Llama2-7b-function-calling:q5_K_S",
+    "Llama2-7b-function-calling:q6_K": "Llama2-7b-function-calling:q6_K",
+    "Llama2-7b-function-calling:q8_0": "Llama2-7b-function-calling:q8_0",
 }
 
 NEXA_RUN_PROJECTOR_MAP = {
@@ -194,6 +197,9 @@ NEXA_RUN_CHAT_TEMPLATE_MAP = {
     "meta-llama-3-8b-instruct": "llama-3",
     "llama3.1": "llama-3",
     "meta-llama-3.1-8b-instruct": "llama-3",
+    "llama3.2": "llama-3",
+    "llama3.2-1b-instruct": "llama-3",
+    "llama3.2-3b-instruct": "llama-3",
     "gemma": "gemma",
     "gemma-1.1-2b-instruct": "gemma",
     "gemma-1.1-7b-instruct": "gemma",
@@ -209,6 +215,14 @@ NEXA_RUN_CHAT_TEMPLATE_MAP = {
     "qwen2-0.5b-instruct": "qwen",
     "qwen2-1.5b-instruct": "qwen",
     "qwen2-7b-instruct": "qwen",
+    "qwen2.5-0.5b-instruct": "qwen",
+    "qwen2.5-1.5b-instruct": "qwen",
+    "qwen2.5-3b-instruct": "qwen",
+    "qwen2.5-7b-instruct": "qwen",
+    "qwen2.5-coder-1.5b-instruct": "qwen",
+    "qwen2.5-coder-7b-instruct": "qwen",
+    "qwen2.5-math-1.5b-instruct": "qwen",
+    "qwen2.5-math-7b-instruct": "qwen",
     "mistral": "mistral-instruct",
     "mistral-7b-instruct-v0.3": "mistral-instruct",
     "mistral-7b-instruct-v0.2": "mistral-instruct",
@@ -234,10 +248,7 @@ NEXA_RUN_MODEL_PRECISION_MAP = {
 EXIT_COMMANDS = ["/exit", "/quit", "/bye"]
 EXIT_REMINDER = f"Please use Ctrl + d or one of {EXIT_COMMANDS} to exit.\n"
 
-NEXA_STOP_WORDS_MAP = {
-    "octopus-v2": ["<nexa_end>"],
-    "octopus-v4": ["<nexa_end>"]
-}
+NEXA_STOP_WORDS_MAP = {"octopus-v2": ["<nexa_end>"], "octopus-v4": ["<nexa_end>"]}
 
 DEFAULT_TEXT_GEN_PARAMS = {
     "temperature": 0.7,
@@ -288,6 +299,8 @@ NEXA_OFFICIAL_MODELS_TYPE = {
     "Llama-2-7b": ModelType.NLP,
     "Meta-Llama-3-8B-Instruct": ModelType.NLP,
     "Meta-Llama-3.1-8B-Instruct": ModelType.NLP,
+    "Llama3.2-3B-Instruct": ModelType.NLP,
+    "Llama3.2-1B-Instruct": ModelType.NLP,
     "Mistral-7B-Instruct-v0.3": ModelType.NLP,
     "Mistral-7B-Instruct-v0.2": ModelType.NLP,
     "Phi-3-mini-128k-instruct": ModelType.NLP,
@@ -366,5 +379,3 @@ NEXA_OFFICIAL_MODELS_TYPE = {
     "whisper-base.en": ModelType.AUDIO,
     "whisper-base": ModelType.AUDIO,
 }
-
-
