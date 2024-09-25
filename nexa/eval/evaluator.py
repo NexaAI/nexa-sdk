@@ -11,7 +11,6 @@ import nexa.eval.api.metrics
 import nexa.eval.api.registry
 import nexa.eval.api.task
 import nexa.eval.models
-from nexa.eval.caching.cache import delete_cache
 from nexa.eval.evaluator_utils import (
     consolidate_group_results,
     consolidate_results,
@@ -50,10 +49,6 @@ def simple_evaluate(
     batch_size: Optional[Union[int, str]] = None,
     max_batch_size: Optional[int] = None,
     device: Optional[str] = None,
-    use_cache: Optional[str] = None,
-    cache_requests: bool = False,
-    rewrite_requests_cache: bool = False,
-    delete_requests_cache: bool = False,
     limit: Optional[Union[int, float]] = None,
     bootstrap_iters: int = 100000,
     check_integrity: bool = False,
@@ -88,14 +83,6 @@ def simple_evaluate(
         Maximal batch size to try with automatic batch size detection
     :param device: str, optional
         PyTorch device (e.g. "cpu" or "cuda:0") for running models
-    :param use_cache: str, optional
-        A path to a sqlite db file for caching model responses. `None` if not caching.
-    :param cache_requests: bool, optional
-        Speed up evaluation by caching the building of dataset requests. `None` if not caching.
-    :param rewrite_requests_cache: bool, optional
-        Rewrites all of the request cache if set to `True`. `None` if not desired.
-    :param delete_requests_cache: bool, optional
-        Deletes all of the request cache if set to `True`. `None` if not desired.
     :param limit: int or float, optional
         Limit the number of examples per task (only use this for testing), If <1, limit is a percentage of the total number of examples.
     :param bootstrap_iters:
@@ -134,10 +121,6 @@ def simple_evaluate(
     """
     eval_logger.setLevel(getattr(logging, f"{verbosity}"))
     start_date = time.time()
-
-    if delete_requests_cache:
-        eval_logger.info("Deleting requests cache...")
-        delete_cache()
 
     seed_message = []
     if random_seed is not None:
@@ -197,18 +180,6 @@ def simple_evaluate(
             )
         eval_logger.info("Using pre-initialized model")
         lm = model
-
-    if use_cache is not None:
-        eval_logger.info(f"Using cache at {use_cache + '_rank' + str(lm.rank) + '.db'}")
-        lm = nexa.eval.api.model.CachingLM(
-            lm,
-            use_cache
-            # each rank receives a different cache db.
-            # necessary to avoid multiple writes to cache at once
-            + "_rank"
-            + str(lm.rank)
-            + ".db",
-        )
 
     if task_manager is None:
         task_manager = TaskManager(verbosity)
@@ -289,8 +260,6 @@ def simple_evaluate(
         lm=lm,
         task_dict=task_dict,
         limit=limit,
-        cache_requests=cache_requests,
-        rewrite_requests_cache=rewrite_requests_cache,
         bootstrap_iters=bootstrap_iters,
         write_out=write_out,
         log_samples=True if predict_only else log_samples,
@@ -321,7 +290,6 @@ def simple_evaluate(
                     list(lm.batch_sizes.values()) if hasattr(lm, "batch_sizes") else []
                 ),
                 "device": device,
-                "use_cache": use_cache,
                 "limit": limit,
                 "bootstrap_iters": bootstrap_iters,
                 "gen_kwargs": gen_kwargs,
@@ -343,8 +311,6 @@ def evaluate(
     lm: "LM",
     task_dict,
     limit: Optional[int] = None,
-    cache_requests: bool = False,
-    rewrite_requests_cache: bool = False,
     bootstrap_iters: Optional[int] = 100000,
     write_out: bool = False,
     log_samples: bool = True,
@@ -403,8 +369,6 @@ def evaluate(
             limit=limit,
             rank=lm.rank,
             world_size=lm.world_size,
-            cache_requests=cache_requests,
-            rewrite_requests_cache=rewrite_requests_cache,
             system_instruction=system_instruction,
             apply_chat_template=bool(apply_chat_template),
             fewshot_as_multiturn=fewshot_as_multiturn,
@@ -580,13 +544,3 @@ def evaluate(
 
     else:
         return None
-
-
-def request_caching_arg_to_dict(cache_requests: str) -> dict:
-    request_caching_args = {
-        "cache_requests": cache_requests in {"true", "refresh"},
-        "rewrite_requests_cache": cache_requests == "refresh",
-        "delete_requests_cache": cache_requests == "delete",
-    }
-
-    return request_caching_args

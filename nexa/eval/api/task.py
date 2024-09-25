@@ -36,7 +36,6 @@ from nexa.eval.api.registry import (
     get_metric_aggregation,
     is_higher_better,
 )
-from nexa.eval.caching.cache import load_from_cache, save_to_cache
 from nexa.eval.filters import build_filter_ensemble
 from nexa.eval.prompts import get_prompt
 
@@ -407,31 +406,9 @@ class Task(abc.ABC):
         )
         cache_key += f"-tokenizer{tokenizer_name}"
 
-        cached_instances = load_from_cache(file_name=cache_key)
-
-        if cache_requests and cached_instances and not rewrite_requests_cache:
-            cached_instances = cached_instances[:limit]
-
-            flattened_instances = [
-                instance
-                for instance_group in cached_instances
-                for instance in instance_group
-            ]
-
-            self._instances = flattened_instances
-            return
-
         eval_logger.info(f"Building contexts for {self.config.task} on rank {rank}...")
 
         instances = []
-
-        # process all documents when caching is specified for simplicity
-        if (
-            cache_requests
-            and (not cached_instances or rewrite_requests_cache)
-            and limit is not None
-        ):
-            limit = None
 
         doc_id_docs = list(
             self.doc_iterator(rank=rank, limit=limit, world_size=world_size)
@@ -479,10 +456,7 @@ class Task(abc.ABC):
 
         if len(self._instances) == 0:
             raise ValueError("task.build_requests() did not find any docs!")
-
-        if cache_requests and (not cached_instances or rewrite_requests_cache):
-            save_to_cache(file_name=cache_key, obj=instances)
-
+        
     @abc.abstractmethod
     def construct_requests(self, doc, ctx, **kwargs):
         """Uses RequestFactory to construct Requests and returns an iterable of

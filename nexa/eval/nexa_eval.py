@@ -36,7 +36,6 @@ class NexaEval:
             "batch_size": 8,
             "device": "cuda",
             "output_path": str(output_path),
-            "cache_requests": None,
             "log_samples": False,
             "include_path": None,
             "verbosity": "INFO",
@@ -87,7 +86,6 @@ class NexaEval:
         
         print_message("INFO", f"Selected Tasks: {task_names}")
 
-        request_caching_args = evaluator.request_caching_arg_to_dict(cache_requests=args.cache_requests)
         from datasets.exceptions import DatasetNotFoundError
         try:
             results = evaluator.simple_evaluate(
@@ -101,7 +99,6 @@ class NexaEval:
                 random_seed=args.seed[0],
                 numpy_random_seed=args.seed[1],
                 fewshot_random_seed=args.seed[3],
-                **request_caching_args,
             )
         except ValueError as e:
             if "No tasks specified, or no tasks found" in str(e):
