@@ -6,10 +6,6 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 
-from huggingface_hub import (
-    HfApi,
-)
-
 from nexa.eval.utils import (
     eval_logger,
     handle_non_serializable,
@@ -101,7 +97,6 @@ class EvaluationTracker:
         self,
         output_path: str = None,
         public_repo: bool = False,
-        token: str = "",
         leaderboard_url: str = "",
         point_of_contact: str = "",
     ) -> None:
@@ -111,7 +106,6 @@ class EvaluationTracker:
         Args:
             output_path (str): Path to save the results. If not provided, the results won't be saved.
             public_repo (bool): Whether to push the results to a public or private repository.
-            token (str): Token to use when pushing to the Hugging Face hub. This token should have write access to `hub_results_org`.
             leaderboard_url (str): URL to the leaderboard on the Hugging Face hub on the dataset card.
             point_of_contact (str): Contact information on the Hugging Face hub dataset card.
         """
@@ -121,7 +115,6 @@ class EvaluationTracker:
         self.public_repo = public_repo
         self.leaderboard_url = leaderboard_url
         self.point_of_contact = point_of_contact
-        self.api = HfApi(token=token) if token else None
 
 
     def save_results_aggregated(
@@ -170,35 +163,6 @@ class EvaluationTracker:
                 file_results_aggregated = path.joinpath(f"results_{self.date_id}.json")
                 file_results_aggregated.open("w", encoding="utf-8").write(dumped)
 
-                if self.api and self.push_results_to_hub:
-                    repo_id = (
-                        self.results_repo
-                        if self.public_repo
-                        else self.results_repo_private
-                    )
-                    self.api.create_repo(
-                        repo_id=repo_id,
-                        repo_type="dataset",
-                        private=not self.public_repo,
-                        exist_ok=True,
-                    )
-                    self.api.upload_file(
-                        repo_id=repo_id,
-                        path_or_fileobj=str(
-                            path.joinpath(f"results_{self.date_id}.json")
-                        ),
-                        path_in_repo=os.path.join(
-                            self.general_config_tracker.model_name,
-                            f"results_{self.date_id}.json",
-                        ),
-                        repo_type="dataset",
-                        commit_message=f"Adding aggregated results for {self.general_config_tracker.model_name}",
-                    )
-                    eval_logger.info(
-                        "Successfully pushed aggregated results to the Hugging Face Hub. "
-                        f"You can find them at: {repo_id}"
-                    )
-
             except Exception as e:
                 eval_logger.warning("Could not save results aggregated")
                 eval_logger.info(repr(e))
@@ -232,9 +196,6 @@ class EvaluationTracker:
                 )
 
                 for sample in samples:
-                    # we first need to sanitize arguments and resps
-                    # otherwise we won't be able to load the dataset
-                    # using the datasets library
                     arguments = {}
                     for i, arg in enumerate(sample["arguments"]):
                         arguments[f"gen_args_{i}"] = {}
@@ -257,30 +218,6 @@ class EvaluationTracker:
 
                     with open(file_results_samples, "a", encoding="utf-8") as f:
                         f.write(sample_dump)
-
-                if self.api and self.push_samples_to_hub:
-                    repo_id = (
-                        self.details_repo
-                        if self.public_repo
-                        else self.details_repo_private
-                    )
-                    self.api.create_repo(
-                        repo_id=repo_id,
-                        repo_type="dataset",
-                        private=not self.public_repo,
-                        exist_ok=True,
-                    )
-                    self.api.upload_folder(
-                        repo_id=repo_id,
-                        folder_path=str(path),
-                        path_in_repo=self.general_config_tracker.model_name_sanitized,
-                        repo_type="dataset",
-                        commit_message=f"Adding samples results for {task_name} to {self.general_config_tracker.model_name}",
-                    )
-                    eval_logger.info(
-                        f"Successfully pushed sample results for task: {task_name} to the Hugging Face Hub. "
-                        f"You can find them at: {repo_id}"
-                    )
 
             except Exception as e:
                 eval_logger.warning("Could not save sample results")
