@@ -140,7 +140,7 @@ CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp" pip install nexaai
 For **Linux**:
 
 ```bash
-CMAKE_ARGS="-DGGML_HIPBLAS=on" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/rocm602 --extra-index-url https://pypi.org/simple --no-cache-dir
+CMAKE_ARGS="-DGGML_HIPBLAS=on" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/rocm621 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 ### Local Build
@@ -162,28 +162,6 @@ Then you can build and install the package
 ```bash
 pip install -e .
 ```
-
-### Docker Usage
-
-Note: Docker doesn't support GPU acceleration
-
-```bash
-docker pull nexa4ai/sdk:latest
-```
-
-replace following placeholder with your path and command
-
-```bash
-docker run -v <your_model_dir>:/model -it nexa4ai/sdk:latest [nexa_command] [your_model_relative_path]
-```
-
-Example:
-
-```bash
-docker run -v /home/ubuntu/.cache/nexa/hub/official:/model -it nexa4ai/sdk:latest nexa gen-text /model/Phi-3-mini-128k-instruct/q4_0.gguf
-```
-
-will create an interactive session with text generation
 
 ## Supported Models
 

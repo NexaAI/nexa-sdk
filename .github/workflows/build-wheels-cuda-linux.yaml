@@ -32,7 +32,7 @@ jobs:
   build_wheels:
     name: Build Wheel ${{ matrix.os }} ${{ matrix.pyver }} ${{ matrix.cuda }} ${{ matrix.releasetag == 'wheels' && 'AVX2' || matrix.releasetag }}
     needs: define_matrix
-    runs-on: ${{ matrix.os }}
+    runs-on: sdk-linux-8-core
     strategy:
       matrix: ${{ fromJSON(needs.define_matrix.outputs.matrix) }}
     defaults:
