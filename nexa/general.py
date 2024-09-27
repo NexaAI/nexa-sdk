@@ -293,8 +293,8 @@ def download_chunk(url, start, end, output_file, chunk_number):
 def download_file_with_progress(
     url: str,
     file_path: Path,
-    chunk_size: int = 50 * 1024 * 1024,
-    max_workers: int = 16,
+    chunk_size: int = 40 * 1024 * 1024,
+    max_workers: int = 20,
     use_processes: bool = False
 ):
     file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -357,9 +357,7 @@ def download_file_with_progress(
             end_time = time.time()
             total_time = end_time - start_time
             average_speed = file_size / total_time / (1024 * 1024)  # in MB/s
-            print(f"\nDownload completed: {file_path}")
-            print(f"Total time: {total_time:.2f} seconds")
-            print(f"Average download speed: {average_speed:.2f} MB/s")
+
         else:
             raise Exception("Some chunks failed to download")
 
@@ -376,7 +374,6 @@ def download_file_with_progress(
                 os.remove(chunk_file)
         if os.path.exists(file_path):
             os.remove(file_path)
-
 
 
 def download_model_from_official(model_path, model_type):
