@@ -1,0 +1,21 @@
+tag:
+  - do-not-answer
+task: do-not-answer
+dataset_path: LibrAI/do-not-answer
+dataset_name: null
+output_type: generate_until
+test_split: train
+doc_to_text: "{{question}}"
+doc_to_target: "{{GPT4_harmful}}"
+process_results: !function utils.process_results
+metric_list:
+  - metric: safety
+    aggregation: !function utils.compute_harmfulness_score
+    higher_is_better: true
+generation_kwargs:
+  until:
+    - "\n"
+  temperature: 0
+num_fewshot: 0
+metadata:
+  version: 1.0
