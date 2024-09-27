@@ -1948,7 +1948,7 @@ class Llama:
         *args: Any,
         **kwargs: Any,
     ):
-        """Generate a chat completion with return type based on the the OpenAI v1 API.
+        """Generate a chat completion with return type based on the OpenAI v1 API.
 
         OpenAI python package is required to use this method.
 

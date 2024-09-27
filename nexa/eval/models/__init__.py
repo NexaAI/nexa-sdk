@@ -1,5 +1,4 @@
 from . import (
-    api_models,
     nexa_models,
 )
 

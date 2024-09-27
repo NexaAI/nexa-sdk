@@ -1,104 +1,14 @@
 from functools import cached_property
 from nexa.eval.api.registry import register_model
-from nexa.eval.models.api_models import TemplateAPI
 from typing import Any, Dict, List, Optional, Tuple, Union
 from nexa.eval.api.registry import register_model
 from nexa.eval.utils import eval_logger
-
 import logging
 import time
 import requests
 from requests.exceptions import RequestException
 from tqdm import tqdm
 from nexa.eval.api.model import LM
-
-@register_model("nexa-completions")
-class nexa_models(TemplateAPI):
-    def __init__(
-        self,
-        base_url=None,
-        tokenizer_backend="huggingface",
-        **kwargs,
-    ):
-        super().__init__(
-            base_url=base_url, tokenizer_backend=tokenizer_backend, **kwargs
-        )
-        if self._batch_size > 1:
-            eval_logger.warning(
-                "Chat completions does not support batching. Defaulting to batch size 1."
-            )
-            self._batch_size = 1
-
-    def _create_payload(
-        self,
-        messages: Union[List[List[int]], List[dict], List[str], str],
-        generate=False,
-        gen_kwargs: Optional[dict] = None,
-        seed: int = 1234,
-        **kwargs,
-    ) -> dict:
-        if generate:
-            gen_kwargs.pop("do_sample", False)
-            max_tokens = gen_kwargs.pop("max_gen_toks", self._max_gen_toks)
-            temperature = gen_kwargs.pop("temperature", 0)
-            stop = gen_kwargs.pop("until", ["<|endoftext|>"])
-            payload = {
-                "prompt": messages,
-                "model": self.model,
-                "max_tokens": max_tokens,
-                "temperature": temperature,
-                "stop": stop,
-                "seed": seed,
-                **gen_kwargs,
-            }
-            # print("Generated Payload:", payload)
-            return payload
-        else:
-            payload = {
-                "model": self.model,
-                "prompt": messages,
-                "temperature": 0,
-                "max_tokens": 1,
-                "logprobs": 1,
-                "seed": seed,
-                "echo": True,
-            }
-            # print("Logprobs Payload:", payload) 
-            return payload
-      
-    @staticmethod
-    def parse_logprobs(
-        outputs: Union[Dict, List[Dict]],
-        tokens: List[List[int]] = None,
-        ctxlens: List[int] = None,
-        **kwargs,
-    ) -> List[Tuple[float, bool]]:
-        res = []
-        if not isinstance(outputs, list):
-            outputs = [outputs]
-        for out in outputs:
-            for choice, ctxlen in zip(out["choices"], ctxlens):
-                assert ctxlen > 0, "Context length must be greater than 0"
-                logprobs = sum(choice["logprobs"]["token_logprobs"][ctxlen:-1])
-                tokens = choice["logprobs"]["token_logprobs"][ctxlen:-1]
-                top_logprobs = choice["logprobs"]["top_logprobs"][ctxlen:-1]
-                is_greedy = True
-                for tok, top in zip(tokens, top_logprobs):
-                    if tok != max(top, key=top.get):
-                        is_greedy = False
-                        break
-                res.append((logprobs, is_greedy))
-        return res
-
-    @staticmethod
-    def parse_generations(outputs: Union[Dict, List[Dict]], **kwargs) -> List[str]:
-        res = []
-        if not isinstance(outputs, list):
-            outputs = [outputs]
-        for out in outputs:
-            for choices in out["choices"]:
-                res.append(choices["text"])
-        return res
     
 def get_result(logprobs, context_length):
     is_greedy = True
@@ -214,8 +124,3 @@ class GGUFLM(LM):
                 logger.error(f"Invalid response for greedy_until. Response: {response}")
                 res.append(None)  # Add default value in case of error
         return res
-
-    def loglikelihood_rolling(self, requests, disable_tqdm: bool = False):
-        raise NotImplementedError(
-            "loglikelihood_rolling not yet supported for GGUF models"
-        )
