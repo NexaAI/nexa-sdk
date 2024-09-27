@@ -62,7 +62,7 @@ class TemplateAPI(TemplateLM):
         # however the requests can be sent as a string if the API doesn't support token inputs.
         # use tokenized_requests=False
         tokenizer_backend: Optional[
-            Literal["tiktoken", "huggingface", None]
+            Literal["huggingface", None]
         ] = "huggingface",
         truncate: bool = False,
         # number of concurrent requests. More useful if not batching
@@ -132,21 +132,6 @@ class TemplateAPI(TemplateLM):
                     )
                     # Not used as the API will handle padding but to mirror the behavior of the HFLM
                     self.tokenizer = configure_pad_token(self.tokenizer)
-                elif self.tokenizer_backend == "tiktoken":
-                    try:
-                        import tiktoken
-
-                        self.tokenizer = tiktoken.encoding_for_model(self.model)
-                    except ModuleNotFoundError as e:
-                        raise Exception(
-                            "Attempted to use 'openai' LM type, but the package `tiktoken` is not installed. "
-                            "Please install it via `pip install lm-eval[api]` or `pip install -e .[api]`."
-                        ) from e
-                    if "openai" not in self.base_url:
-                        eval_logger.warning(
-                            f"Passed `base_url={self.base_url}` but using (OpenAI) Tiktoken tokenizer backend. "
-                            "Pass `tokenizer_backend=huggingface` and provide the HF tokenizer name if your model does not use Tiktoken."
-                        )
             else:
                 import transformers
 
@@ -260,8 +245,6 @@ class TemplateAPI(TemplateLM):
         else:
             if self.tokenizer_backend == "huggingface":
                 return self.tokenizer.eos_token_id
-            elif self.tokenizer_backend == "tiktoken":
-                return self.tokenizer.eot_token
 
     @cached_property
     def prefix_token_id(self) -> Optional[int]:
@@ -317,8 +300,6 @@ class TemplateAPI(TemplateLM):
     def decode_batch(self, tokens: List[List[int]]) -> List[str]:
         if self.tokenizer_backend == "huggingface":
             return self.tokenizer.batch_decode(tokens)
-        elif self.tokenizer_backend == "tiktoken":
-            return self.tokenizer.decode_batch(tokens)
 
     def model_call(
         self,
