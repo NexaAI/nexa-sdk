@@ -144,7 +144,7 @@ def pull_model_from_hub(model_path):
 
     try:
         result = get_model_presigned_link(model_path, token)
-        run_type = result['type']
+        run_type = result['run_type']
         presigned_links = result['presigned_urls']
     except Exception as e:
         print(f"Failed to get download models: {e}")
