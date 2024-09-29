@@ -51,7 +51,6 @@ def simple_evaluate(
     device: Optional[str] = None,
     limit: Optional[Union[int, float]] = None,
     bootstrap_iters: int = 100000,
-    check_integrity: bool = False,
     write_out: bool = False,
     log_samples: bool = True,
     evaluation_tracker = None,
@@ -87,8 +86,6 @@ def simple_evaluate(
         Limit the number of examples per task (only use this for testing), If <1, limit is a percentage of the total number of examples.
     :param bootstrap_iters:
         Number of iterations for bootstrap statistics, used when calculating stderrs. set to 0 for no stderr calculations to be performed.
-    :param check_integrity: bool
-        Whether to run the relevant part of the test suite for the tasks
     :param write_out: bool
         If True, write out an example document and model input for checking task integrity
     :param log_samples: bool
