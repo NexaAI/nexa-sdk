@@ -9,7 +9,7 @@ from nexa.eval.api.metrics import (
     stderr_for_metric,
 )
 from nexa.eval.api.task import Task
-from nexa.eval.utils import eval_logger, positional_deprecated
+from nexa.eval.utils import eval_logger
 
 
 class TaskOutput:

@@ -522,7 +522,6 @@ class Task(abc.ABC):
         """Downstream loglikelihood_rolling perplexity tasks with custom word boundaries should override this!"""
         return len(re.split(r"\s+", doc))
 
-    @utils.positional_deprecated
     def fewshot_context(
         self,
         doc,
@@ -996,7 +995,6 @@ class ConfigurableTask(Task):
             # if fewshot_as_multiturn is True, append as next user entry (last is always assistant)
             labeled_examples.append({"role": "user", "content": question})
 
-    @utils.positional_deprecated
     def fewshot_context(
         self,
         doc: str,

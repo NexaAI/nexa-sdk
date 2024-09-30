@@ -30,7 +30,6 @@ from nexa.eval.utils import (
     eval_logger,
     handle_non_serializable,
     hash_string,
-    positional_deprecated,
     simple_parse_args_string,
 )
 
@@ -40,7 +39,6 @@ if TYPE_CHECKING:
     from nexa.eval.api.task import Task
 
 
-@positional_deprecated
 def simple_evaluate(
     model,
     model_args: Optional[Union[str, dict]] = None,
@@ -303,7 +301,6 @@ def simple_evaluate(
         return None
 
 
-@positional_deprecated
 def evaluate(
     lm: "LM",
     task_dict,

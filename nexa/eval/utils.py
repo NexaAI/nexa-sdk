@@ -380,25 +380,6 @@ def make_table(result_dict, column: str = "results", sort_results: bool = False)
     return md_writer.dumps()
 
 
-def positional_deprecated(fn):
-    """
-    A decorator to nudge users into passing only keyword args (`kwargs`) to the
-    wrapped function, `fn`.
-    """
-
-    @functools.wraps(fn)
-    def _wrapper(*args, **kwargs):
-        if len(args) != 1 if inspect.ismethod(fn) else 0:
-            print(
-                f"WARNING: using {fn.__name__} with positional arguments is "
-                "deprecated and will be disallowed in a future version of "
-                "lm-evaluation-harness!"
-            )
-        return fn(*args, **kwargs)
-
-    return _wrapper
-
-
 def ignore_constructor(loader, node):
     return node
 
