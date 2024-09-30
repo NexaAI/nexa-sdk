@@ -43,7 +43,6 @@ from nexa.eval.prompts import get_prompt
 ALL_OUTPUT_TYPES = [
     "loglikelihood",
     "multiple_choice",
-    "loglikelihood_rolling",
     "generate_until",
 ]
 
@@ -1261,8 +1260,6 @@ class ConfigurableTask(Task):
     ) -> Union[List[Instance], Instance]:
         if self.OUTPUT_TYPE == "loglikelihood":
             arguments = (ctx, self.doc_to_target(doc))
-        elif self.OUTPUT_TYPE == "loglikelihood_rolling":
-            arguments = (self.doc_to_target(doc),)
         elif self.OUTPUT_TYPE == "multiple_choice":
             choices = self.doc_to_choice(doc)
             target_delimiter = self.config.target_delimiter
@@ -1327,27 +1324,6 @@ class ConfigurableTask(Task):
             return {
                 **({"perplexity": ll} if "perplexity" in use_metric else {}),
                 **({"acc": int(is_greedy)} if "acc" in use_metric else {}),
-            }
-        elif self.OUTPUT_TYPE == "loglikelihood_rolling":
-            (loglikelihood,) = results
-            _words = self.count_words(self.doc_to_target(doc))
-            _bytes = self.count_bytes(self.doc_to_target(doc))
-            return {
-                **(
-                    {"word_perplexity": (loglikelihood, _words)}
-                    if "word_perplexity" in use_metric
-                    else {}
-                ),
-                **(
-                    {"byte_perplexity": (loglikelihood, _bytes)}
-                    if "byte_perplexity" in use_metric
-                    else {}
-                ),
-                **(
-                    {"bits_per_byte": (loglikelihood, _bytes)}
-                    if "bits_per_byte" in use_metric
-                    else {}
-                ),
             }
         elif self.OUTPUT_TYPE == "multiple_choice":
             lls, is_greedy = zip(*results)
@@ -1501,7 +1477,7 @@ class ConfigurableTask(Task):
         else:
             raise ValueError(
                 f"Passed invalid output_type '{self.OUTPUT_TYPE}' ! Please use one of ",
-                "'loglikelihood', 'loglikelihood_rolling', 'generate_until' or 'multiple_choice'",
+                "'loglikelihood', 'generate_until' or 'multiple_choice'",
             )
 
         return result_dict
