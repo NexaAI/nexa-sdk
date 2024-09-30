@@ -81,10 +81,6 @@ HIGHER_IS_BETTER_REGISTRY = {}
 FILTER_REGISTRY = {}
 
 DEFAULT_METRIC_REGISTRY = {
-    "loglikelihood": [
-        "perplexity",
-        "acc",
-    ],
     "multiple_choice": ["acc", "acc_norm"],
     "generate_until": ["exact_match"],
 }

@@ -142,7 +142,7 @@ def brier_score_fn(items):  # This is a passthrough function
 @register_metric(
     metric="acc",
     higher_is_better=True,
-    output_type=["loglikelihood", "multiple_choice"],
+    output_type=["multiple_choice"],
     aggregation="mean",
 )
 def acc_fn(items):  # This is a passthrough function
@@ -152,7 +152,7 @@ def acc_fn(items):  # This is a passthrough function
 @register_metric(
     metric="acc_norm",
     higher_is_better=True,
-    output_type=["loglikelihood", "multiple_choice"],
+    output_type=["multiple_choice"],
     aggregation="mean",
 )
 def acc_norm_fn(items):  # This is a passthrough function
@@ -235,16 +235,6 @@ def exact_match_fn(**kwargs):
     return exact_match_hf_evaluate(**kwargs)
 
 
-@register_metric(
-    metric="perplexity",
-    higher_is_better=False,
-    output_type="loglikelihood",
-    aggregation="perplexity",
-)
-def perplexity_fn(items):  # This is a passthrough function
-    return items
-
-
 def pop_stddev(arr):
     mu = mean(arr)
     return math.sqrt(sum([(x - mu) ** 2 for x in arr]) / len(arr))
@@ -262,7 +252,7 @@ def mean_stderr(arr):
 @register_metric(
     metric="bypass",
     higher_is_better=True,
-    output_type=["loglikelihood", "multiple_choice", "generate_until"],
+    output_type=["multiple_choice", "generate_until"],
     aggregation="bypass",
 )
 def bypass(items):
@@ -317,31 +307,6 @@ def chrf_fn(items):  # This is a passthrough function
 )
 def ter_fn(items):  # This is a passthrough function
     return items
-
-
-@register_metric(
-    metric="acc_all",
-    higher_is_better=True,
-    output_type="loglikelihood",
-    aggregation="mean",
-)
-def acc_all(items):
-    # Only count as correct if all answers are labeled correctly for each question
-    question_scoring_dict = {}
-    preds = list(zip(*items))[0]
-    docs = list(zip(*items))[1]
-
-    for doc, pred in zip(docs, preds):
-        paragraph_id = doc["idx"]["paragraph"]
-        question_id = doc["idx"]["question"]
-        if (paragraph_id, question_id) not in question_scoring_dict:
-            question_scoring_dict[(paragraph_id, question_id)] = []
-
-        gold_label = doc["label"] == 1
-
-        question_scoring_dict[(paragraph_id, question_id)].append(gold_label == pred)
-    acc = np.mean([int(all(x)) for x in question_scoring_dict.values()])
-    return acc
 
 
 def acc_all_stderr(items):

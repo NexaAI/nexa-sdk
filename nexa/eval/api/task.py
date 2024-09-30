@@ -41,7 +41,6 @@ from nexa.eval.prompts import get_prompt
 
 
 ALL_OUTPUT_TYPES = [
-    "loglikelihood",
     "multiple_choice",
     "generate_until",
 ]
@@ -1258,9 +1257,8 @@ class ConfigurableTask(Task):
     def construct_requests(
         self, doc: dict, ctx: str, **kwargs
     ) -> Union[List[Instance], Instance]:
-        if self.OUTPUT_TYPE == "loglikelihood":
-            arguments = (ctx, self.doc_to_target(doc))
-        elif self.OUTPUT_TYPE == "multiple_choice":
+
+        if self.OUTPUT_TYPE == "multiple_choice":
             choices = self.doc_to_choice(doc)
             target_delimiter = self.config.target_delimiter
             if self.multiple_input:
@@ -1318,14 +1316,8 @@ class ConfigurableTask(Task):
 
         result_dict = {}
         use_metric = list(self._metric_fn_list.keys())
-        if self.OUTPUT_TYPE == "loglikelihood":
-            results = results[0]
-            ll, is_greedy = results
-            return {
-                **({"perplexity": ll} if "perplexity" in use_metric else {}),
-                **({"acc": int(is_greedy)} if "acc" in use_metric else {}),
-            }
-        elif self.OUTPUT_TYPE == "multiple_choice":
+
+        if self.OUTPUT_TYPE == "multiple_choice":
             lls, is_greedy = zip(*results)
 
             # retrieve choices in List[str] form, to compute choice lengths, etc.
@@ -1477,7 +1469,7 @@ class ConfigurableTask(Task):
         else:
             raise ValueError(
                 f"Passed invalid output_type '{self.OUTPUT_TYPE}' ! Please use one of ",
-                "'loglikelihood', 'generate_until' or 'multiple_choice'",
+                "'generate_until' or 'multiple_choice'",
             )
 
         return result_dict
