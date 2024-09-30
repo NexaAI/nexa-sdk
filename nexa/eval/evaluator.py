@@ -119,7 +119,7 @@ def simple_evaluate(
 
     seed_message = []
     if random_seed is not None:
-        # See https://github.com/EleutherAI/lm-evaluation-harness/pull/1412
+
         seed_message.append(f"Setting random seed to {random_seed}")
         random.seed(random_seed)
 

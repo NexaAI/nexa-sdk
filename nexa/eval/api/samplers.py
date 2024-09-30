@@ -168,22 +168,6 @@ class FirstNSampler(ContextSampler):
         return self.docs[:n]
 
 
-class BalancedSampler(ContextSampler):
-    def sample(self, n) -> None:
-        """
-        TODO: this should return approximately class-balanced samples from our fewshot examples.
-        TODO: what order should they be in? maybe random?
-        """
-
-        pass
-
-
-class ManualSampler(ContextSampler):
-    def sample(self, n) -> None:
-        """ """
-        pass
-
-
 SAMPLER_REGISTRY = {
     "default": ContextSampler,
     "first_n": FirstNSampler,
