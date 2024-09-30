@@ -45,7 +45,7 @@ ALL_OUTPUT_TYPES = [
     "generate_until",
 ]
 
-eval_logger = logging.getLogger("lm-eval")
+eval_logger = logging.getLogger("nexa-eval")
 
 
 @dataclass
@@ -96,7 +96,7 @@ class TaskConfig(dict):
     def __post_init__(self) -> None:
         if self.group is not None:
             eval_logger.warning(
-                "A task YAML file was found to contain a `group` key. Groups which provide aggregate scores over several subtasks now require a separate config file--if not aggregating, you may want to use the `tag` config option instead within your config. Setting `group` within a TaskConfig will be deprecated in v0.4.4. Please see https://github.com/EleutherAI/lm-evaluation-harness/blob/main/docs/task_guide.md for more information."
+                "A task YAML file was found to contain a `group` key. Groups which provide aggregate scores over several subtasks now require a separate config file--if not aggregating, you may want to use the `tag` config option instead within your config. "
             )
 
             if self.tag is None:

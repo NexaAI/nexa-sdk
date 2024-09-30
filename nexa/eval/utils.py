@@ -22,7 +22,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d:%H:%M:%S",
     level=logging.INFO,
 )
-eval_logger = logging.getLogger("lm-eval")
+eval_logger = logging.getLogger("nexa-eval")
 
 SPACING = " " * 47
 
@@ -214,7 +214,7 @@ def positional_deprecated(fn):
             print(
                 f"WARNING: using {fn.__name__} with positional arguments is "
                 "deprecated and will be disallowed in a future version of "
-                "lm-evaluation-harness!"
+                "nexa-eval!"
             )
         return fn(*args, **kwargs)
 

@@ -6,7 +6,7 @@ import evaluate as hf_evaluate
 from nexa.eval.api.model import LM
 
 
-eval_logger = logging.getLogger("lm-eval")
+eval_logger = logging.getLogger("nexa-eval")
 
 MODEL_REGISTRY = {}
 
@@ -121,7 +121,7 @@ def get_metric(name: str, hf_evaluate_metric=False) -> Callable:
             return METRIC_REGISTRY[name]
         else:
             eval_logger.warning(
-                f"Could not find registered metric '{name}' in lm-eval, searching in HF Evaluate library..."
+                f"Could not find registered metric '{name}' in nexa-eval, searching in HF Evaluate library..."
             )
 
     try:

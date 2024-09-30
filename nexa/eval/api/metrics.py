@@ -12,7 +12,7 @@ import sacrebleu
 from nexa.eval.api.registry import register_aggregation, register_metric
 
 
-eval_logger = logging.getLogger("lm-eval")
+eval_logger = logging.getLogger("nexa-eval")
 
 
 # Register Aggregations First
@@ -467,7 +467,6 @@ def combined_sample_stderr(stderrs: List[float], sizes: List[int], metrics=None)
     ), "Need to pass a list of each subtask's metric for this stderr aggregation"
     assert len(stderrs) == len(sizes) and len(sizes) == len(metrics)
 
-    # See https://github.com/EleutherAI/lm-evaluation-harness/pull/1390 for more documentation.
     # This formula depends on sample means.
     # removed because it seems to give erroneously huge stderrs for groupings of tasks
     # and does not seem to match up with bootstrap-calculated stderrs for groups.

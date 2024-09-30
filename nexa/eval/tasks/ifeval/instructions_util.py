@@ -25,7 +25,6 @@ from packaging import version
 
 
 # Downloading 'punkt' with nltk<3.9 has a remote code vuln.
-# see  https://github.com/EleutherAI/lm-evaluation-harness/issues/2210
 # and https://github.com/nltk/nltk/issues/3266
 # for more information.
 NLTK_MIN_VERSION = "3.9.1"

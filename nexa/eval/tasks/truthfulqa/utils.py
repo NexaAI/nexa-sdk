@@ -157,7 +157,6 @@ def rouge(refs, preds):
 
     global ROUGE_SCORER
     if ROUGE_SCORER is None:
-        # init RougeScorer once (https://github.com/EleutherAI/lm-evaluation-harness/issues/1692)--rouge_types are constant
         ROUGE_SCORER = rouge_scorer.RougeScorer(rouge_types)
     scorer = ROUGE_SCORER
     # Add newlines between sentences to correctly compute `rougeLsum`.
