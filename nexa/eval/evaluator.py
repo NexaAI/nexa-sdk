@@ -106,8 +106,6 @@ def simple_evaluate(
         Random seed for python's random module. If set to None, the seed will not be set.
     :param numpy_random_seed: int
         Random seed for numpy. If set to None, the seed will not be set.
-    :param torch_random_seed: int
-        Random seed for torch. If set to None, the seed will not be set.
     :param fewshot_random_seed: int
         Random seed for fewshot sampler random generator. If set to None, the seed of generator will be set to None.
 

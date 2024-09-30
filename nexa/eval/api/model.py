@@ -162,8 +162,3 @@ class LM(abc.ABC):
     def set_cache_hook(self, cache_hook) -> None:
         self.cache_hook = cache_hook
 
-
-### SQLite-based caching of LM responses
-def hash_args(attr, args):
-    dat = json.dumps([attr] + list(args))
-    return hashlib.sha256(dat.encode("utf-8")).hexdigest()
