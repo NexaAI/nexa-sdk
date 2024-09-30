@@ -26,27 +26,8 @@ def mean(arr):
     return sum(arr) / len(arr)
 
 
-@register_aggregation("median")
-def median(arr):
-    return arr[len(arr) // 2]
-
-
 # Certain metrics must be calculated across all documents in a benchmark.
 # We use them as aggregation metrics, paired with no-op passthrough metric fns.
-@register_aggregation("perplexity")
-def perplexity(items):
-    return math.exp(-mean(items))
-
-
-@register_aggregation("weighted_perplexity")
-def weighted_perplexity(items):
-    return math.exp(-weighted_mean(items))
-
-
-@register_aggregation("bits_per_byte")
-def bits_per_byte(items):
-    return -weighted_mean(items) / math.log(2)
-
 
 @register_aggregation("f1")
 def f1_score(items):
@@ -86,21 +67,6 @@ def bleu(items):
     preds = list(zip(*items))[1]
     refs, preds = _sacreformat(refs, preds)
     return sacrebleu.corpus_bleu(preds, refs).score
-
-
-@register_aggregation("chrf")
-def chrf(items):
-    """chrF++ is a tool for automatic evaluation of machine translation output
-    based on character n-gram precision and recall enhanced with word n-grams.
-    Source: https://github.com/m-popovic/chrF
-    Paper: https://www.aclweb.org/anthology/W15-3049.pdf
-
-    Higher is better  # TODO I think
-    """
-    refs = list(zip(*items))[0]
-    preds = list(zip(*items))[1]
-    refs, preds = _sacreformat(refs, preds)
-    return sacrebleu.corpus_chrf(preds, refs).score
 
 
 @register_aggregation("ter")
@@ -235,11 +201,6 @@ def exact_match_fn(**kwargs):
     return exact_match_hf_evaluate(**kwargs)
 
 
-def pop_stddev(arr):
-    mu = mean(arr)
-    return math.sqrt(sum([(x - mu) ** 2 for x in arr]) / len(arr))
-
-
 def sample_stddev(arr):
     mu = mean(arr)
     return math.sqrt(sum([(x - mu) ** 2 for x in arr]) / (len(arr) - 1))
@@ -290,16 +251,6 @@ def bleu_fn(items):  # This is a passthrough function
 
 
 @register_metric(
-    metric="chrf",
-    higher_is_better=True,
-    output_type="generate_until",
-    aggregation="chrf",
-)
-def chrf_fn(items):  # This is a passthrough function
-    return items
-
-
-@register_metric(
     metric="ter",
     higher_is_better=True,
     output_type="generate_until",
@@ -325,20 +276,6 @@ def acc_all_stderr(items):
 
     acc = mean_stderr([int(all(x)) for x in question_scoring_dict.values()])
     return acc
-
-
-def metric_max_over_ground_truths(metric_fn, prediction, ground_truths):
-    """Compute max metric between prediction and each ground truth."""
-    scores_for_ground_truths = []
-    for ground_truth in ground_truths:
-        score = metric_fn(prediction, ground_truth)
-        scores_for_ground_truths.append(score)
-    return max(scores_for_ground_truths)
-
-
-def weighted_mean(items):
-    a, b = zip(*items)
-    return sum(a) / sum(b)
 
 
 def is_non_str_iterable(obj):
@@ -429,9 +366,7 @@ def stderr_for_metric(metric, bootstrap_iters: int):
         median,
         matthews_corrcoef,
         f1_score,
-        perplexity,
         bleu,
-        chrf,
         ter,
     ]
 

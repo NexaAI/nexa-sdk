@@ -46,33 +46,6 @@ ALL_TASKS = set()
 func2task_index = {}
 
 
-def register_task(name):
-    def decorate(fn):
-        assert (
-            name not in TASK_REGISTRY
-        ), f"task named '{name}' conflicts with existing registered task!"
-
-        TASK_REGISTRY[name] = fn
-        ALL_TASKS.add(name)
-        func2task_index[fn.__name__] = name
-        return fn
-
-    return decorate
-
-
-def register_group(name):
-    def decorate(fn):
-        func_name = func2task_index[fn.__name__]
-        if name in GROUP_REGISTRY:
-            GROUP_REGISTRY[name].append(func_name)
-        else:
-            GROUP_REGISTRY[name] = [func_name]
-            ALL_TASKS.add(name)
-        return fn
-
-    return decorate
-
-
 OUTPUT_TYPE_REGISTRY = {}
 METRIC_REGISTRY = {}
 METRIC_AGGREGATION_REGISTRY = {}
