@@ -22,7 +22,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d:%H:%M:%S",
     level=logging.INFO,
 )
-eval_logger = logging.getLogger("lm-eval")
+eval_logger = logging.getLogger("nexa-eval")
 
 SPACING = " " * 47
 
@@ -34,29 +34,6 @@ HIGHER_IS_BETTER_SYMBOLS = {
 
 def hash_string(string: str) -> str:
     return hashlib.sha256(string.encode("utf-8")).hexdigest()
-
-
-def escaped_split(text, sep_char, maxsplit=-1):
-    """Split text into a list on occurrences of the given separation
-    character `sep_char`. The separation character may be escaped by a
-    backslash to avoid splitting at that location.
-
-    The separation character must be a string of size 1.
-
-    If `maxsplit` is given, at most `maxsplit` splits are done (thus,
-    the list will have at most `maxsplit + 1` elements). If `maxsplit`
-    is not specified or less than 0, then there is no limit on the
-    number of splits (all possible splits are made).
-    """
-    assert (
-        len(sep_char) == 1
-    ), "separation string must be a single character for escaped splitting"
-
-    if maxsplit == 0:
-        return text
-    maxsplit = max(0, maxsplit)
-
-    return re.split(r"(?<!\\)" + sep_char, text, maxsplit)
 
 
 def handle_arg_string(arg):
@@ -109,11 +86,6 @@ def simple_parse_args_string(args_string):
     return args_dict
 
 
-def join_iters(iters):
-    for iter in iters:
-        yield from iter
-
-
 def group(arr, fn):
     res = collections.defaultdict(list)
 
@@ -142,23 +114,6 @@ def softmax(x):
     return e_x / e_x.sum()
 
 
-def general_detokenize(string):
-    string = string.replace(" n't", "n't")
-    string = string.replace(" )", ")")
-    string = string.replace("( ", "(")
-    string = string.replace('" ', '"')
-    string = string.replace(' "', '"')
-    string = re.sub(r" (['.,])", r"\1", string)
-    return string
-
-
-def get_file_task_name(filename: str) -> str:
-    """
-    Given the sample results filenames, extracts and returns the task name.
-    """
-    return filename[filename.find("_") + 1 : filename.rfind("_")]
-
-
 def get_file_datetime(filename: str) -> str:
     """
     Given the results and sample results filenames, extracts and returns the datetime.
@@ -171,141 +126,8 @@ def sanitize_model_name(model_name: str) -> str:
     Given the model name, returns a sanitized version of it.
     """
     return re.sub(r"[\"<>:/\|\\?\*\[\]]+", "__", model_name)
-
-
-def sanitize_task_name(task_name: str) -> str:
-    """
-    Given the task name, returns a sanitized version of it.
-    """
-    return re.sub(r"\W", "_", task_name)
-
-
-def get_latest_filename(filenames: List[str]) -> str:
-    """
-    Given a list of filenames, returns the filename with the latest datetime.
-    """
-    return max(filenames, key=lambda f: get_file_datetime(f))
-
-
-def get_results_filenames(filenames: List[str]) -> List[str]:
-    """
-    Extracts filenames that correspond to aggregated results.
-    """
     return [f for f in filenames if "/results_" in f and ".json" in f]
-
-
-def get_sample_results_filenames(filenames: List[str]) -> List[str]:
-    """
-    Extracts filenames that correspond to sample results.
-    """
     return [f for f in filenames if "/samples_" in f and ".json" in f]
-
-
-def get_rolling_token_windows(token_list, prefix_token, max_seq_len, context_len):
-    """
-    - context_len allows for a rolling window context, allowing each prediction window to potentially
-      condition on some context
-
-    :param token_list: list
-        List of tokens to be PREDICTED
-    :param max_seq_len: int
-        max_seq_len of model (or max_seq_len we want to use)
-    :param context_len: int
-        Amount of desired token context for prediction. Needs to be at least 1.
-    :param prefix_token: token
-        Dummy token like <eos> so the first token has something to condition on
-    :return: generator
-        Generator of tuples
-            (input_tokens, pred_tokens)
-        Note: Score only the last len(pred_tokens) logits of the LM
-    """
-    assert 1 <= context_len <= max_seq_len
-    if not token_list:
-        return
-    # +1 offset, going from input->preds
-    pred_len = max_seq_len - context_len + 1
-    predicted = 0
-
-    # Special handling for first window: predict all tokens
-    first_seq_len = min(max_seq_len, len(token_list))
-    yield ([prefix_token] + token_list[: first_seq_len - 1], token_list[:first_seq_len])
-    predicted += first_seq_len
-
-    while predicted < len(token_list):
-        window_pred_len = min(len(token_list) - predicted, pred_len)
-        window_end = predicted + window_pred_len
-
-        yield (
-            token_list[window_end - max_seq_len - 1 : window_end - 1],
-            token_list[window_end - window_pred_len : window_end],
-        )
-        predicted += window_pred_len
-
-
-def make_disjoint_window(pair):
-    """Takes output from get_rolling_token_windows and makes the context not overlap with the continuation"""
-    a, b = pair
-    return a[: len(a) - (len(b) - 1)], b
-
-
-class EnhancedJSONEncoder(json.JSONEncoder):
-    """
-    Provides a proper json encoding for the loggers and trackers json dumps.
-    Notably manages the json encoding of dataclasses.
-    """
-
-    def default(self, o):
-        if is_dataclass(o):
-            return asdict(o)
-        return super().default(o)
-
-
-class Reorderer:
-    def __init__(self, arr: List[Any], fn: Callable) -> None:
-        """Reorder an array according to some function
-
-        Args:
-            arr (List[Any]): The initial array
-            fn (Callable[[Any], Any]): A function to determine the priority of elements
-        """
-        self.size = len(arr)
-        arr = list(enumerate(arr))
-        arr = group(arr, lambda x: fn(x[1]))
-        # arr = [([y[0] for y in x], x[0][1]) for x in arr]
-        # TODO: overhaul reorderer. It currently grouped requests by content but we don't want this
-        arr = [([y[0]], x[0][1]) for x in arr for y in x]
-        arr.sort(key=lambda x: fn(x[1]))
-
-        self.arr = arr
-
-    def get_reordered(self):
-        """Gets the reordered array
-
-        Returns:
-            List[Any]: The reordered array
-        """
-        return [x[1] for x in self.arr]
-
-    def get_original(self, newarr):
-        """Restores the original order of a new array based on the old array's order
-
-        Args:
-            newarr (List[Any]): The array to be restored
-
-        Returns:
-            List[Any]: The array restored to the original order
-        """
-        res = [None] * self.size
-        cov = [False] * self.size
-
-        for (inds, _), v in zip(self.arr, newarr):
-            for ind in inds:
-                res[ind] = v
-                cov[ind] = True
-
-        assert all(cov)
-
-        return res
 
 
 def make_table(result_dict, column: str = "results", sort_results: bool = False):
@@ -392,7 +214,7 @@ def positional_deprecated(fn):
             print(
                 f"WARNING: using {fn.__name__} with positional arguments is "
                 "deprecated and will be disallowed in a future version of "
-                "lm-evaluation-harness!"
+                "nexa-eval!"
             )
         return fn(*args, **kwargs)
 
@@ -489,13 +311,3 @@ def create_iterator(raw_iterator, *, rank=0, world_size=1, limit=None):
     among ranks in multigpu setting or only pulling a sample of documents
     """
     return islice(raw_iterator, rank, limit, world_size)
-
-
-def weighted_f1_score(items):
-    from sklearn.metrics import f1_score
-
-    unzipped_list = list(zip(*items))
-    golds = unzipped_list[0]
-    preds = unzipped_list[1]
-    fscore = f1_score(golds, preds, average="weighted")
-    return fscore

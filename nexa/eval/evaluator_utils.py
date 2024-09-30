@@ -105,7 +105,7 @@ class TaskOutput:
                 stderr_fn = stderr_for_metric(
                     metric=agg_fn,
                     bootstrap_iters=min(bootstrap_iters, 100)
-                    if metric in ["bleu", "chrf", "ter"]
+                    if metric in ["bleu", "ter"]
                     else bootstrap_iters,
                 )
                 self.agg_metrics[f"{metric}_stderr,{filter_key}"] = (

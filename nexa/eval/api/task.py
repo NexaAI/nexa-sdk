@@ -27,7 +27,7 @@ from tqdm import tqdm
 from nexa.eval import utils
 from nexa.eval.api import samplers
 from nexa.eval.api.instance import Instance, OutputType
-from nexa.eval.api.metrics import bits_per_byte, mean, weighted_perplexity
+from nexa.eval.api.metrics import mean
 from nexa.eval.api.registry import (
     AGGREGATION_REGISTRY,
     DEFAULT_METRIC_REGISTRY,
@@ -41,13 +41,11 @@ from nexa.eval.prompts import get_prompt
 
 
 ALL_OUTPUT_TYPES = [
-    "loglikelihood",
     "multiple_choice",
-    "loglikelihood_rolling",
     "generate_until",
 ]
 
-eval_logger = logging.getLogger("lm-eval")
+eval_logger = logging.getLogger("nexa-eval")
 
 
 @dataclass
@@ -98,7 +96,7 @@ class TaskConfig(dict):
     def __post_init__(self) -> None:
         if self.group is not None:
             eval_logger.warning(
-                "A task YAML file was found to contain a `group` key. Groups which provide aggregate scores over several subtasks now require a separate config file--if not aggregating, you may want to use the `tag` config option instead within your config. Setting `group` within a TaskConfig will be deprecated in v0.4.4. Please see https://github.com/EleutherAI/lm-evaluation-harness/blob/main/docs/task_guide.md for more information."
+                "A task YAML file was found to contain a `group` key. Groups which provide aggregate scores over several subtasks now require a separate config file--if not aggregating, you may want to use the `tag` config option instead within your config. "
             )
 
             if self.tag is None:
@@ -1259,11 +1257,8 @@ class ConfigurableTask(Task):
     def construct_requests(
         self, doc: dict, ctx: str, **kwargs
     ) -> Union[List[Instance], Instance]:
-        if self.OUTPUT_TYPE == "loglikelihood":
-            arguments = (ctx, self.doc_to_target(doc))
-        elif self.OUTPUT_TYPE == "loglikelihood_rolling":
-            arguments = (self.doc_to_target(doc),)
-        elif self.OUTPUT_TYPE == "multiple_choice":
+
+        if self.OUTPUT_TYPE == "multiple_choice":
             choices = self.doc_to_choice(doc)
             target_delimiter = self.config.target_delimiter
             if self.multiple_input:
@@ -1321,35 +1316,8 @@ class ConfigurableTask(Task):
 
         result_dict = {}
         use_metric = list(self._metric_fn_list.keys())
-        if self.OUTPUT_TYPE == "loglikelihood":
-            results = results[0]
-            ll, is_greedy = results
-            return {
-                **({"perplexity": ll} if "perplexity" in use_metric else {}),
-                **({"acc": int(is_greedy)} if "acc" in use_metric else {}),
-            }
-        elif self.OUTPUT_TYPE == "loglikelihood_rolling":
-            (loglikelihood,) = results
-            _words = self.count_words(self.doc_to_target(doc))
-            _bytes = self.count_bytes(self.doc_to_target(doc))
-            return {
-                **(
-                    {"word_perplexity": (loglikelihood, _words)}
-                    if "word_perplexity" in use_metric
-                    else {}
-                ),
-                **(
-                    {"byte_perplexity": (loglikelihood, _bytes)}
-                    if "byte_perplexity" in use_metric
-                    else {}
-                ),
-                **(
-                    {"bits_per_byte": (loglikelihood, _bytes)}
-                    if "bits_per_byte" in use_metric
-                    else {}
-                ),
-            }
-        elif self.OUTPUT_TYPE == "multiple_choice":
+
+        if self.OUTPUT_TYPE == "multiple_choice":
             lls, is_greedy = zip(*results)
 
             # retrieve choices in List[str] form, to compute choice lengths, etc.
@@ -1501,7 +1469,7 @@ class ConfigurableTask(Task):
         else:
             raise ValueError(
                 f"Passed invalid output_type '{self.OUTPUT_TYPE}' ! Please use one of ",
-                "'loglikelihood', 'loglikelihood_rolling', 'generate_until' or 'multiple_choice'",
+                "'generate_until' or 'multiple_choice'",
             )
 
         return result_dict

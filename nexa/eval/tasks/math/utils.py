@@ -13,12 +13,10 @@ try:
 except ModuleNotFoundError:
     raise ModuleNotFoundError(
         "`sympy` is required for generating translation task prompt templates. \
-please install sympy via pip install lm-eval[math] or pip install -e .[math]",
+please install sympy via pip install nexa-eval[math] or pip install -e .[math]",
     )
 
 
-# taken from
-# https://github.com/wellecks/lm-evaluation-harness/blob/master/lm_eval/tasks/minerva_math.py
 def doc_to_text(doc: dict) -> str:
     return "Problem:" + "\n" + doc["problem"] + "\n\n" + "Solution:"
 

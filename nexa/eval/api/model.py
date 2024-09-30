@@ -11,7 +11,7 @@ from tqdm import tqdm
 from nexa.eval import utils
 
 
-eval_logger = logging.getLogger("lm-eval")
+eval_logger = logging.getLogger("nexa-eval")
 
 T = TypeVar("T", bound="LM")
 
