@@ -41,12 +41,11 @@ if TYPE_CHECKING:
 
 def simple_evaluate(
     model,
-    model_args: Optional[Union[str, dict]] = None,
-    tasks: Optional[List[Union[str, dict, object]]] = None,
+    model_args: Optional[str] = None,
+    tasks: Optional[List[str]] = None,
     num_fewshot: Optional[int] = None,
     batch_size: Optional[Union[int, str]] = None,
     max_batch_size: Optional[int] = None,
-    device: Optional[str] = None,
     limit: Optional[Union[int, float]] = None,
     bootstrap_iters: int = 100000,
     write_out: bool = False,
@@ -67,10 +66,10 @@ def simple_evaluate(
 
     :param model: Union[str, LM]
         Name of model or LM object, see nexa.eval.models.get_model
-    :param model_args: Optional[str, dict]
-        String or dict arguments for each model class, see LM.create_from_arg_string and LM.create_from_arg_object.
+    :param model_args: Optional[str]
+        String for model class, see LM.create_from_arg_string and LM.create_from_arg_object.
         Ignored if `model` argument is a LM object.
-    :param tasks: list[Union[str, dict, Task]]
+    :param tasks: list[str]
         List of task names or Task objects. Task objects will be taken to have name task.EVAL_HARNESS_NAME if defined and type(task).__name__ otherwise.
     :param num_fewshot: int
         Number of examples in few-shot context
@@ -78,8 +77,6 @@ def simple_evaluate(
         Batch size for model
     :param max_batch_size: int, optional
         Maximal batch size to try with automatic batch size detection
-    :param device: str, optional
-        PyTorch device (e.g. "cpu" or "cuda:0") for running models
     :param limit: int or float, optional
         Limit the number of examples per task (only use this for testing), If <1, limit is a percentage of the total number of examples.
     :param bootstrap_iters:
@@ -133,46 +130,13 @@ def simple_evaluate(
             "No tasks specified, or no tasks found. Please verify the task names."
         )
 
-    if gen_kwargs is not None:
-        gen_kwargs = simple_parse_args_string(gen_kwargs)
-        eval_logger.warning(
-            "generation_kwargs specified through cli, these settings will update set parameters in yaml tasks. "
-            "Ensure 'do_sample=True' for non-greedy decoding!"
-        )
-        if gen_kwargs == "":
-            gen_kwargs = None
-
-    if isinstance(model, str):
-        if model_args is None:
-            eval_logger.warning("model_args not specified. Using defaults.")
-            model_args = ""
-
-        if isinstance(model_args, dict):
-            lm = nexa.eval.api.registry.get_model(model).create_from_arg_obj(
-                model_args,
-                {
-                    "batch_size": batch_size,
-                    "max_batch_size": max_batch_size,
-                    "device": device,
-                },
-            )
-
-        else:
-            lm = nexa.eval.api.registry.get_model(model).create_from_arg_string(
-                model_args,
-                {
-                    "batch_size": batch_size,
-                    "max_batch_size": max_batch_size,
-                    "device": device,
-                },
-            )
-    else:
-        if not isinstance(model, nexa.eval.api.model.LM):
-            raise TypeError(
-                f"The value of `model` passed to simple_evaluate() was of type {type(model)}, but is required to be a subclass of nexa.eval.api.model.LM . This may be because you are passing an initialized Hugging Face PreTrainedModel without having wrapped it in `nexa.eval.models.huggingface.HFLM(pretrained=my_model)` first."
-            )
-        eval_logger.info("Using pre-initialized model")
-        lm = model
+    lm = nexa.eval.api.registry.get_model(model).create_from_arg_string(
+        model_args,
+        {
+            "batch_size": batch_size,
+            "max_batch_size": max_batch_size
+        },
+    )
 
     if task_manager is None:
         task_manager = TaskManager(verbosity)
@@ -282,7 +246,6 @@ def simple_evaluate(
                 "batch_sizes": (
                     list(lm.batch_sizes.values()) if hasattr(lm, "batch_sizes") else []
                 ),
-                "device": device,
                 "limit": limit,
                 "bootstrap_iters": bootstrap_iters,
                 "gen_kwargs": gen_kwargs,
@@ -406,8 +369,8 @@ def evaluate(
 
     RANK = lm.rank
     WORLD_SIZE = lm.world_size
+    
     ### Postprocess outputs ###
-    # TODO: del model here, maybe (idea: allow user to specify device of e.g. reward model separately)
     for task_output in eval_tasks:
         task = task_output.task
         task.apply_filters()
