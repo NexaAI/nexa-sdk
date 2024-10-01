@@ -18,7 +18,6 @@ from nexa.eval.evaluator_utils import (
     get_subtask_list,
     get_task_list,
     prepare_print_tasks,
-    print_writeout,
 )
 
 from nexa.eval.loggers.utils import add_env_info, add_tokenizer_info
@@ -47,7 +46,6 @@ def simple_evaluate(
     max_batch_size: Optional[int] = None,
     limit: Optional[Union[int, float]] = None,
     bootstrap_iters: int = 100000,
-    write_out: bool = False,
     log_samples: bool = True,
     evaluation_tracker = None,
     system_instruction: Optional[str] = None,
@@ -78,8 +76,6 @@ def simple_evaluate(
         Limit the number of examples per task (only use this for testing), If <1, limit is a percentage of the total number of examples.
     :param bootstrap_iters:
         Number of iterations for bootstrap statistics, used when calculating stderrs. set to 0 for no stderr calculations to be performed.
-    :param write_out: bool
-        If True, write out an example document and model input for checking task integrity
     :param log_samples: bool
         If True, write out all model outputs and documents for per-sample measurement and post-hoc analysis
     :param system_instruction: str
@@ -201,7 +197,6 @@ def simple_evaluate(
         task_dict=task_dict,
         limit=limit,
         bootstrap_iters=bootstrap_iters,
-        write_out=write_out,
         log_samples=True if predict_only else log_samples,
         system_instruction=system_instruction,
         verbosity=verbosity,
@@ -248,7 +243,6 @@ def evaluate(
     task_dict,
     limit: Optional[int] = None,
     bootstrap_iters: Optional[int] = 100000,
-    write_out: bool = False,
     log_samples: bool = True,
     system_instruction: Optional[str] = None,
     verbosity: str = "INFO",
@@ -263,8 +257,6 @@ def evaluate(
         Limit the number of examples per task (only use this for testing)
     :param bootstrap_iters:
         Number of iterations for bootstrap statistics, used when calculating stderr. Set to 0 for skipping all stderr calculations.
-    :param write_out: bool
-        If True, write out an example document and model input for checking task integrity
     :param log_samples: bool
         If True, write out all model outputs and documents for per-sample measurement and post-hoc analysis
     :param system_instruction: str
@@ -298,8 +290,6 @@ def evaluate(
             world_size=lm.world_size,
             system_instruction=system_instruction
         )
-        if write_out:
-            print_writeout(task)
         # aggregate Instances by LM method requested to get output.
         for instance in task.instances:
             reqtype = instance.request_type
