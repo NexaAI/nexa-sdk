@@ -1,4 +1,0 @@
-cmake
-pytesseract
-PyMuPDF
-python-docx
