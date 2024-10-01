@@ -81,25 +81,15 @@ class EvaluationTracker:
     def __init__(
         self,
         output_path: str = None,
-        public_repo: bool = False,
-        leaderboard_url: str = "",
-        point_of_contact: str = "",
     ) -> None:
         """
         Creates all the necessary loggers for evaluation tracking.
 
         Args:
             output_path (str): Path to save the results. If not provided, the results won't be saved.
-            public_repo (bool): Whether to push the results to a public or private repository.
-            leaderboard_url (str): URL to the leaderboard on the Hugging Face hub on the dataset card.
-            point_of_contact (str): Contact information on the Hugging Face hub dataset card.
         """
         self.general_config_tracker = GeneralConfigTracker()
-
         self.output_path = output_path
-        self.public_repo = public_repo
-        self.leaderboard_url = leaderboard_url
-        self.point_of_contact = point_of_contact
 
 
     def save_results_aggregated(
@@ -162,7 +152,7 @@ class EvaluationTracker:
         samples: dict,
     ) -> None:
         """
-        Saves the samples results to the output path and pushes them to the Hugging Face hub if requested.
+        Saves the samples results to the output path.
 
         Args:
             task_name (str): The task name to save the samples for.
