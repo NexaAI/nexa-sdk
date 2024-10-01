@@ -51,8 +51,6 @@ def simple_evaluate(
     log_samples: bool = True,
     evaluation_tracker = None,
     system_instruction: Optional[str] = None,
-    apply_chat_template: Union[bool, str] = False,
-    fewshot_as_multiturn: bool = False,
     gen_kwargs: Optional[str] = None,
     task_manager: Optional[TaskManager] = None,
     verbosity: str = "INFO",
@@ -86,13 +84,6 @@ def simple_evaluate(
         If True, write out all model outputs and documents for per-sample measurement and post-hoc analysis
     :param system_instruction: str
         System instruction to be applied to the prompt
-    :param apply_chat_template: Union[bool, str]
-        Specifies whether to apply a chat template to the prompt.
-        - If set to True, the default chat template is applied.
-        - If set to a string, applies the specified chat template by name.
-        Defaults to False (no chat template applied).
-    :param fewshot_as_multiturn: bool
-        Whether to provide the fewshot examples as a multiturn conversation or a single user turn.
     :param gen_kwargs: str
         String arguments for model generation
         Ignored for all tasks with loglikelihood output_type
@@ -197,19 +188,12 @@ def simple_evaluate(
 
     task_dict = _adjust_config(task_dict)
 
-    # hotfix: delete when chat_template fixed
-    try:
-        chat = lm.chat_template(apply_chat_template)
-    except:  # noqa: E722
-        chat = None
 
     if evaluation_tracker is not None:
         evaluation_tracker.general_config_tracker.log_experiment_args(
             model_source=model,
             model_args=model_args,
             system_instruction=system_instruction,
-            chat_template=chat,
-            fewshot_as_multiturn=fewshot_as_multiturn,
         )
 
     results = evaluate(
@@ -220,8 +204,6 @@ def simple_evaluate(
         write_out=write_out,
         log_samples=True if predict_only else log_samples,
         system_instruction=system_instruction,
-        apply_chat_template=apply_chat_template,
-        fewshot_as_multiturn=fewshot_as_multiturn,
         verbosity=verbosity,
     )
 
@@ -269,8 +251,6 @@ def evaluate(
     write_out: bool = False,
     log_samples: bool = True,
     system_instruction: Optional[str] = None,
-    apply_chat_template: Union[bool, str] = False,
-    fewshot_as_multiturn: bool = False,
     verbosity: str = "INFO",
 ):
     """Instantiate and evaluate a model on a list of tasks.
@@ -289,13 +269,6 @@ def evaluate(
         If True, write out all model outputs and documents for per-sample measurement and post-hoc analysis
     :param system_instruction: str
         System instruction to be applied to the prompt
-    :param apply_chat_template: Union[bool, str]
-        Specifies whether to apply a chat template to the prompt.
-        - If set to True, the default chat template is applied.
-        - If set to a string, applies the specified chat template by name.
-        Defaults to False (no chat template applied).
-    :param fewshot_as_multiturn: bool
-        Whether to provide the fewshot examples as a multiturn conversation or a single user turn.
     :return
         Dictionary of results
     """
@@ -324,17 +297,7 @@ def evaluate(
             rank=lm.rank,
             world_size=lm.world_size,
             system_instruction=system_instruction,
-            apply_chat_template=bool(apply_chat_template),
-            fewshot_as_multiturn=fewshot_as_multiturn,
-            chat_template=getattr(lm, "apply_chat_template")
-            if apply_chat_template
-            else None,
-            tokenizer_name=getattr(lm, "tokenizer_name", "")
-            if apply_chat_template
-            else "",
-        )
-        eval_logger.debug(
-            f"Task: {task_output.task_name}; number of requests on this rank: {len(task.instances)}"
+            tokenizer_name= "",
         )
         if write_out:
             print_writeout(task)
