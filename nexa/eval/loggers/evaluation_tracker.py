@@ -10,7 +10,6 @@ from nexa.eval.utils import (
     eval_logger,
     handle_non_serializable,
     hash_string,
-    sanitize_list,
     sanitize_model_name,
 )
 
@@ -145,57 +144,3 @@ class EvaluationTracker:
             eval_logger.info(
                 "Output path not provided, skipping saving results aggregated"
             )
-
-    def save_results_samples(
-        self,
-        task_name: str,
-        samples: dict,
-    ) -> None:
-        """
-        Saves the samples results to the output path.
-
-        Args:
-            task_name (str): The task name to save the samples for.
-            samples (dict): The samples results to save.
-        """
-        if self.output_path:
-            try:
-                eval_logger.info(f"Saving per-sample results for: {task_name}")
-
-                path = Path(self.output_path if self.output_path else Path.cwd())
-                path = path.joinpath(self.general_config_tracker.model_name_sanitized)
-                path.mkdir(parents=True, exist_ok=True)
-
-                file_results_samples = path.joinpath(
-                    f"samples_{task_name}_{self.date_id}.jsonl"
-                )
-
-                for sample in samples:
-                    arguments = {}
-                    for i, arg in enumerate(sample["arguments"]):
-                        arguments[f"gen_args_{i}"] = {}
-                        for j, tmp in enumerate(arg):
-                            arguments[f"gen_args_{i}"][f"arg_{j}"] = tmp
-
-                    sample["resps"] = sanitize_list(sample["resps"])
-                    sample["filtered_resps"] = sanitize_list(sample["filtered_resps"])
-                    sample["arguments"] = arguments
-                    sample["target"] = str(sample["target"])
-
-                    sample_dump = (
-                        json.dumps(
-                            sample,
-                            default=handle_non_serializable,
-                            ensure_ascii=False,
-                        )
-                        + "\n"
-                    )
-
-                    with open(file_results_samples, "a", encoding="utf-8") as f:
-                        f.write(sample_dump)
-
-            except Exception as e:
-                eval_logger.warning("Could not save sample results")
-                eval_logger.info(repr(e))
-        else:
-            eval_logger.info("Output path not provided, skipping saving sample results")

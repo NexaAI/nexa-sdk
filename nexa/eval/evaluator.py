@@ -44,7 +44,6 @@ def simple_evaluate(
     batch_size: Optional[Union[int, str]] = None,
     limit: Optional[Union[int, float]] = None,
     bootstrap_iters: int = 100000,
-    log_samples: bool = True,
     evaluation_tracker = None,
     task_manager: Optional[TaskManager] = None,
     verbosity: str = "INFO",
@@ -69,8 +68,6 @@ def simple_evaluate(
         Limit the number of examples per task (only use this for testing), If <1, limit is a percentage of the total number of examples.
     :param bootstrap_iters:
         Number of iterations for bootstrap statistics, used when calculating stderrs. set to 0 for no stderr calculations to be performed.
-    :param log_samples: bool
-        If True, write out all model outputs and documents for per-sample measurement and post-hoc analysis
     :param random_seed: int
         Random seed for python's random module. If set to None, the seed will not be set.
     :param numpy_random_seed: int
@@ -168,7 +165,6 @@ def simple_evaluate(
         task_dict=task_dict,
         limit=limit,
         bootstrap_iters=bootstrap_iters,
-        log_samples=log_samples,
         verbosity=verbosity,
     )
 
@@ -209,7 +205,6 @@ def evaluate(
     task_dict,
     limit: Optional[int] = None,
     bootstrap_iters: Optional[int] = 100000,
-    log_samples: bool = True,
     verbosity: str = "INFO",
 ):
     """Instantiate and evaluate a model on a list of tasks.
@@ -222,8 +217,6 @@ def evaluate(
         Limit the number of examples per task (only use this for testing)
     :param bootstrap_iters:
         Number of iterations for bootstrap statistics, used when calculating stderr. Set to 0 for skipping all stderr calculations.
-    :param log_samples: bool
-        If True, write out all model outputs and documents for per-sample measurement and post-hoc analysis
     :return
         Dictionary of results
     """
@@ -238,12 +231,7 @@ def evaluate(
 
     # get lists of group hierarchy and each type of request
     eval_tasks = get_task_list(task_dict)
-    if not log_samples:
-        if not all(
-            "bypass" not in getattr(task_output.task, "_metric_fn_list", {}).keys()
-            for task_output in eval_tasks
-        ):
-            raise ValueError("log_samples must be True for 'bypass' metric-only tasks")
+
     for task_output in eval_tasks:
         task: Task = task_output.task
         limit = get_sample_size(task, limit)
@@ -308,30 +296,29 @@ def evaluate(
                 metrics = task.process_results(
                     doc, [req.filtered_resps[filter_key] for req in requests]
                 )
-                if log_samples:
-                    target = task.doc_to_target(doc)
-                    example = {
-                        "doc_id": doc_id,
-                        "doc": doc,
-                        "target": target,
-                        "arguments": [req.args for req in requests],
-                        "resps": [req.resps for req in requests],
-                        "filtered_resps": [
-                            req.filtered_resps[filter_key] for req in requests
-                        ],
-                        "doc_hash": hash_string(
-                            json.dumps(
-                                requests[0].doc,
-                                indent=2,
-                                default=handle_non_serializable,
-                                ensure_ascii=False,
-                            )
-                        ),
-                        "prompt_hash": hash_string(requests[0].arguments[0]),
-                        "target_hash": hash_string(str(target)),
-                    }
-                    example.update(metrics)
-                    task_output.logged_samples.append(example)
+                target = task.doc_to_target(doc)
+                example = {
+                    "doc_id": doc_id,
+                    "doc": doc,
+                    "target": target,
+                    "arguments": [req.args for req in requests],
+                    "resps": [req.resps for req in requests],
+                    "filtered_resps": [
+                        req.filtered_resps[filter_key] for req in requests
+                    ],
+                    "doc_hash": hash_string(
+                        json.dumps(
+                            requests[0].doc,
+                            indent=2,
+                            default=handle_non_serializable,
+                            ensure_ascii=False,
+                        )
+                    ),
+                    "prompt_hash": hash_string(requests[0].arguments[0]),
+                    "target_hash": hash_string(str(target)),
+                }
+                example.update(metrics)
+                task_output.logged_samples.append(example)
                 for metric, value in metrics.items():
                     task_output.sample_metrics[(metric, filter_key)].append(value)
 
@@ -405,8 +392,8 @@ def evaluate(
                 for task_output in eval_tasks
             },
         }
-        if log_samples:
-            results_dict["samples"] = dict(samples)
+        
+        results_dict["samples"] = dict(samples)
 
         return results_dict
 

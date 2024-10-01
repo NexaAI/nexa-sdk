@@ -35,7 +35,6 @@ class NexaEval:
             "hf_hub_log_args": "",
             "batch_size": 8,
             "output_path": str(output_path),
-            "log_samples": False,
             "include_path": None,
             "verbosity": "INFO",
             "seed": [0, 1234, 1234, 1234],
@@ -119,13 +118,7 @@ class NexaEval:
             return
         
         if results is not None:
-            if args.log_samples:
-                samples = results.pop("samples")
-            evaluation_tracker.save_results_aggregated(results=results, samples=samples if args.log_samples else None)
-
-            if args.log_samples:
-                for task_name, config in results["configs"].items():
-                    evaluation_tracker.save_results_samples(task_name=task_name, samples=results["samples"][task_name])
+            evaluation_tracker.save_results_aggregated(results=results, samples= None)
             print(make_table(results))
             if "groups" in results:
                 print(make_table(results, "groups"))
