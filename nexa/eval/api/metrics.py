@@ -260,6 +260,31 @@ def ter_fn(items):  # This is a passthrough function
     return items
 
 
+@register_metric(
+    metric="acc_all",
+    higher_is_better=True,
+    output_type="loglikelihood",
+    aggregation="mean",
+)
+def acc_all(items):
+    # Only count as correct if all answers are labeled correctly for each question
+    question_scoring_dict = {}
+    preds = list(zip(*items))[0]
+    docs = list(zip(*items))[1]
+
+    for doc, pred in zip(docs, preds):
+        paragraph_id = doc["idx"]["paragraph"]
+        question_id = doc["idx"]["question"]
+        if (paragraph_id, question_id) not in question_scoring_dict:
+            question_scoring_dict[(paragraph_id, question_id)] = []
+
+        gold_label = doc["label"] == 1
+
+        question_scoring_dict[(paragraph_id, question_id)].append(gold_label == pred)
+    acc = np.mean([int(all(x)) for x in question_scoring_dict.values()])
+    return acc
+
+
 def acc_all_stderr(items):
     # Only count as correct if all answers are labeled correctly for each question
     question_scoring_dict = {}
@@ -363,7 +388,6 @@ def stderr_for_metric(metric, bootstrap_iters: int):
         return None
 
     bootstrappable = [
-        median,
         matthews_corrcoef,
         f1_score,
         bleu,
