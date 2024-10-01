@@ -129,7 +129,7 @@ def simple_evaluate(
             "No tasks specified, or no tasks found. Please verify the task names."
         )
 
-    lm = nexa.eval.api.registry.get_model(model).create_from_arg_string(
+    lm = GGUFLM.create_from_arg_string(
         model_args,
         {
             "batch_size": batch_size,
