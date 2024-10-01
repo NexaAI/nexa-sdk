@@ -81,23 +81,12 @@ def simple_evaluate(
     eval_logger.setLevel(getattr(logging, f"{verbosity}"))
     start_date = time.time()
 
-    seed_message = []
-    if random_seed is not None:
+    # set random_seed
+    random.seed(random_seed)
+    np.random.seed(numpy_random_seed)
 
-        seed_message.append(f"Setting random seed to {random_seed}")
-        random.seed(random_seed)
-
-    if numpy_random_seed is not None:
-        seed_message.append(f"Setting numpy seed to {numpy_random_seed}")
-        np.random.seed(numpy_random_seed)
-
-
-    if tasks is None:
-        tasks = []
-    if len(tasks) == 0:
-        raise ValueError(
-            "No tasks specified, or no tasks found. Please verify the task names."
-        )
+    if not tasks:
+        raise ValueError("No tasks specified, or no tasks found. Please verify the task names.")
 
     lm = GGUFLM.create_from_arg_string(
         model_args,
@@ -105,9 +94,6 @@ def simple_evaluate(
             "batch_size": batch_size,
         },
     )
-
-    if task_manager is None:
-        task_manager = TaskManager(verbosity)
 
     task_dict = get_task_dict(tasks, task_manager)
 

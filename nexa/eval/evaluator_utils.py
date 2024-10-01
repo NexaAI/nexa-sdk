@@ -485,6 +485,5 @@ def consolidate_group_results(
                 group_metadata = group_config.get("metadata", None)
                 if group_metadata is not None:
                     versions[group_or_task] = group_metadata.get("version", None)
-    # print(results)
     return results, versions, show_group_table, task_aggregation_list
 

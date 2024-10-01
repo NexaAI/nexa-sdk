@@ -37,7 +37,6 @@ class NexaEval:
             "output_path": str(output_path),
             "include_path": None,
             "verbosity": "INFO",
-            "seed": [0, 1234, 1234, 1234],
         }
 
 
@@ -92,10 +91,7 @@ class NexaEval:
                 tasks=task_names,
                 batch_size=args.batch_size,
                 evaluation_tracker=evaluation_tracker,
-                task_manager=task_manager,
-                random_seed=args.seed[0],
-                numpy_random_seed=args.seed[1],
-                fewshot_random_seed=args.seed[3],
+                task_manager=task_manager
             )
         except ValueError as e:
             if "No tasks specified, or no tasks found" in str(e):
