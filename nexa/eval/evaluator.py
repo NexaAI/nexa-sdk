@@ -10,7 +10,7 @@ import numpy as np
 import nexa.eval.api.metrics
 import nexa.eval.api.registry
 import nexa.eval.api.task
-import nexa.eval.models
+from nexa.eval.nexa_models import GGUFLM
 from nexa.eval.evaluator_utils import (
     consolidate_group_results,
     consolidate_results,
@@ -36,7 +36,6 @@ from nexa.eval.utils import (
 
 
 if TYPE_CHECKING:
-    from nexa.eval.api.model import LM
     from nexa.eval.api.task import Task
 
 
@@ -69,7 +68,7 @@ def simple_evaluate(
     """Instantiate and evaluate a model on a list of tasks.
 
     :param model: Union[str, LM]
-        Name of model or LM object, see nexa.eval.models.get_model
+        Name of model or LM object
     :param model_args: Optional[str, dict]
         String or dict arguments for each model class, see LM.create_from_arg_string and LM.create_from_arg_object.
         Ignored if `model` argument is a LM object.
@@ -155,7 +154,7 @@ def simple_evaluate(
             model_args = ""
 
         if isinstance(model_args, dict):
-            lm = nexa.eval.api.registry.get_model(model).create_from_arg_obj(
+            lm = GGUFLM.create_from_arg_obj(
                 model_args,
                 {
                     "batch_size": batch_size,
@@ -165,7 +164,7 @@ def simple_evaluate(
             )
 
         else:
-            lm = nexa.eval.api.registry.get_model(model).create_from_arg_string(
+            lm = GGUFLM.create_from_arg_string(
                 model_args,
                 {
                     "batch_size": batch_size,
@@ -174,10 +173,10 @@ def simple_evaluate(
                 },
             )
     else:
-        if not isinstance(model, nexa.eval.api.model.LM):
-            raise TypeError(
-                f"The value of `model` passed to simple_evaluate() was of type {type(model)}, but is required to be a subclass of nexa.eval.api.model.LM . This may be because you are passing an initialized Hugging Face PreTrainedModel without having wrapped it in `nexa.eval.models.huggingface.HFLM(pretrained=my_model)` first."
-            )
+
+        raise TypeError(
+            f"The value of `model` passed to simple_evaluate() was of type {type(model)}, but is required to be a GGUFLM."
+        )
         eval_logger.info("Using pre-initialized model")
         lm = model
 
@@ -308,7 +307,7 @@ def simple_evaluate(
 
 @positional_deprecated
 def evaluate(
-    lm: "LM",
+    lm: "GGUFLM",
     task_dict,
     limit: Optional[int] = None,
     bootstrap_iters: Optional[int] = 100000,
