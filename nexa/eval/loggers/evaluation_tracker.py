@@ -32,8 +32,6 @@ class GeneralConfigTracker:
     model_source: str = None
     model_name: str = None
     model_name_sanitized: str = None
-    system_instruction: str = None
-    system_instruction_sha: str = None
     start_time: float = None
     end_time: float = None
     total_evaluation_time_seconds: str = None
@@ -62,16 +60,11 @@ class GeneralConfigTracker:
         self,
         model_source: str,
         model_args: str,
-        system_instruction: str,
     ) -> None:
         """Logs model parameters and job ID."""
         self.model_source = model_source
         self.model_name = GeneralConfigTracker._get_model_name(model_args)
         self.model_name_sanitized = sanitize_model_name(self.model_name)
-        self.system_instruction = system_instruction
-        self.system_instruction_sha = (
-            hash_string(system_instruction) if system_instruction else None
-        )
 
     def log_end_time(self) -> None:
         """Logs the end time of the evaluation and calculates the total evaluation time."""

@@ -48,11 +48,9 @@ def simple_evaluate(
     bootstrap_iters: int = 100000,
     log_samples: bool = True,
     evaluation_tracker = None,
-    system_instruction: Optional[str] = None,
     gen_kwargs: Optional[str] = None,
     task_manager: Optional[TaskManager] = None,
     verbosity: str = "INFO",
-    predict_only: bool = False,
     random_seed: int = 0,
     numpy_random_seed: int = 1234,
     fewshot_random_seed: int = 1234,
@@ -78,13 +76,9 @@ def simple_evaluate(
         Number of iterations for bootstrap statistics, used when calculating stderrs. set to 0 for no stderr calculations to be performed.
     :param log_samples: bool
         If True, write out all model outputs and documents for per-sample measurement and post-hoc analysis
-    :param system_instruction: str
-        System instruction to be applied to the prompt
     :param gen_kwargs: str
         String arguments for model generation
         Ignored for all tasks with loglikelihood output_type
-    :param predict_only: bool
-        If true only model outputs will be generated and returned. Metrics will not be evaluated
     :param random_seed: int
         Random seed for python's random module. If set to None, the seed will not be set.
     :param numpy_random_seed: int
@@ -147,13 +141,6 @@ def simple_evaluate(
                             key="generation_kwargs", value=gen_kwargs, update=True
                         )
 
-                if predict_only:
-                    eval_logger.info(
-                        f"Processing {task_name} in output-only mode. Metrics will not be calculated!"
-                    )
-                    # we have to change the class properties post-hoc. This is pretty hacky.
-                    task_obj.override_metric(metric_name="bypass")
-
                 # override tasks' fewshot values to the provided num_fewshot arg value
                 # except if tasks have it set to 0 manually in their configs--then we should never overwrite that
                 if num_fewshot is not None:
@@ -189,7 +176,6 @@ def simple_evaluate(
         evaluation_tracker.general_config_tracker.log_experiment_args(
             model_source=model,
             model_args=model_args,
-            system_instruction=system_instruction,
         )
 
     results = evaluate(
@@ -197,8 +183,7 @@ def simple_evaluate(
         task_dict=task_dict,
         limit=limit,
         bootstrap_iters=bootstrap_iters,
-        log_samples=True if predict_only else log_samples,
-        system_instruction=system_instruction,
+        log_samples=log_samples,
         verbosity=verbosity,
     )
 
@@ -244,7 +229,6 @@ def evaluate(
     limit: Optional[int] = None,
     bootstrap_iters: Optional[int] = 100000,
     log_samples: bool = True,
-    system_instruction: Optional[str] = None,
     verbosity: str = "INFO",
 ):
     """Instantiate and evaluate a model on a list of tasks.
@@ -259,8 +243,6 @@ def evaluate(
         Number of iterations for bootstrap statistics, used when calculating stderr. Set to 0 for skipping all stderr calculations.
     :param log_samples: bool
         If True, write out all model outputs and documents for per-sample measurement and post-hoc analysis
-    :param system_instruction: str
-        System instruction to be applied to the prompt
     :return
         Dictionary of results
     """
@@ -288,7 +270,6 @@ def evaluate(
             limit=limit,
             rank=lm.rank,
             world_size=lm.world_size,
-            system_instruction=system_instruction
         )
         # aggregate Instances by LM method requested to get output.
         for instance in task.instances:

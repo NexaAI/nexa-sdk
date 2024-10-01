@@ -381,7 +381,6 @@ class Task(abc.ABC):
         limit: Union[int, None] = None,
         rank: int = 0,
         world_size: int = 1,
-        system_instruction: Optional[str] = None,
     ) -> None:
         """Build a set of Instances for a task, and store them in task.instances"""
 
@@ -389,11 +388,6 @@ class Task(abc.ABC):
         og_limit = limit
 
         cache_key = f"requests-{self._config.task}-{self.config.num_fewshot}shot-rank{rank}-world_size{world_size}"
-        cache_key += (
-            f"-system_prompt_hash{utils.hash_string(system_instruction)}"
-            if system_instruction is not None
-            else ""
-        )
 
         eval_logger.info(f"Building contexts for {self.config.task} on rank {rank}...")
 
@@ -413,7 +407,6 @@ class Task(abc.ABC):
             fewshot_ctx = self.fewshot_context(
                 doc,
                 0 if self.config.num_fewshot is None else self.config.num_fewshot,
-                system_instruction,
             )
 
             # TODO: we should override self.config.repeats if doing greedy gen so users don't waste time+compute
@@ -601,31 +594,6 @@ class Task(abc.ABC):
             current_value.update(value)
         else:
             setattr(self._config, key, value)
-
-    def override_metric(self, metric_name: str) -> None:
-        """
-        Override the default metrics used for evaluation with custom metrics.
-
-        Parameters:
-        - metric_name (str): The name of the custom metric to override. Should be registered in api.metrics.
-        """
-        (
-            self._metric_fn_list,
-            self._aggregation_list,
-            self._metric_fn_kwargs,
-            self._higher_is_better,
-        ) = ({}, {}, {}, {})
-        self._metric_fn_list[metric_name] = get_metric(metric_name)
-        self._aggregation_list[metric_name] = get_metric_aggregation(metric_name)
-        self._higher_is_better[metric_name] = is_higher_better(metric_name)
-        self._metric_fn_kwargs[metric_name] = {}
-        if not isinstance(self, ConfigurableTask):
-            self.process_results = lambda x, y: {metric_name: get_metric(metric_name)}
-            self.aggregation = lambda: {
-                metric_name: get_metric_aggregation(metric_name)
-            }
-        setattr(self._config, "metric_list", [{"metric": metric_name}])
-        setattr(self._config, "process_results", None)
 
     def set_fewshot_seed(self, seed: Optional[int] = None) -> None:
         self.fewshot_rnd = random.Random(seed)
@@ -981,7 +949,6 @@ class ConfigurableTask(Task):
         self,
         doc: str,
         num_fewshot: int,
-        system_instruction: Optional[str] = None
     ) -> str:
         """Returns a fewshot context string that is made up of a prepended description
         (if provided), the `num_fewshot` number of examples, and an appended prompt example.
@@ -990,8 +957,6 @@ class ConfigurableTask(Task):
             The document as returned from training_docs, validation_docs, or test_docs.
         :param num_fewshot: int
             The number of fewshot examples to provide in the returned context string.
-        :param  system_instruction: str
-            System instruction to be applied to the prompt.
         """
 
         labeled_examples = ""
@@ -1001,13 +966,7 @@ class ConfigurableTask(Task):
             description = utils.apply_template(self.config.description, doc)
 
         # create system prompt based on the provided system instruction and description
-        if system_instruction is not None and description:
-            system_prompt = (
-                f"{system_instruction}{self.sampler.fewshot_delimiter}{description}"
-            )
-        elif system_instruction is not None:
-            system_prompt = system_instruction
-        elif description:
+        if description:
             system_prompt = description
         else:
             system_prompt = ""
