@@ -47,7 +47,6 @@ def simple_evaluate(
     bootstrap_iters: int = 100000,
     log_samples: bool = True,
     evaluation_tracker = None,
-    gen_kwargs: Optional[str] = None,
     task_manager: Optional[TaskManager] = None,
     verbosity: str = "INFO",
     random_seed: int = 0,
@@ -73,9 +72,6 @@ def simple_evaluate(
         Number of iterations for bootstrap statistics, used when calculating stderrs. set to 0 for no stderr calculations to be performed.
     :param log_samples: bool
         If True, write out all model outputs and documents for per-sample measurement and post-hoc analysis
-    :param gen_kwargs: str
-        String arguments for model generation
-        Ignored for all tasks with loglikelihood output_type
     :param random_seed: int
         Random seed for python's random module. If set to None, the seed will not be set.
     :param numpy_random_seed: int
@@ -131,12 +127,6 @@ def simple_evaluate(
                 }
 
             else:
-                if task_obj.get_config("output_type") == "generate_until":
-                    if gen_kwargs is not None:
-                        task_obj.set_config(
-                            key="generation_kwargs", value=gen_kwargs, update=True
-                        )
-
                 # override tasks' fewshot values to the provided num_fewshot arg value
                 # except if tasks have it set to 0 manually in their configs--then we should never overwrite that
                 if num_fewshot is not None:
@@ -205,7 +195,6 @@ def simple_evaluate(
                 ),
                 "limit": limit,
                 "bootstrap_iters": bootstrap_iters,
-                "gen_kwargs": gen_kwargs,
                 "random_seed": random_seed,
                 "numpy_seed": numpy_random_seed,
                 "fewshot_seed": fewshot_random_seed,
