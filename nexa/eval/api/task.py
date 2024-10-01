@@ -382,7 +382,6 @@ class Task(abc.ABC):
         rank: int = 0,
         world_size: int = 1,
         system_instruction: Optional[str] = None,
-        tokenizer_name: str = "",
     ) -> None:
         """Build a set of Instances for a task, and store them in task.instances"""
 
@@ -395,7 +394,6 @@ class Task(abc.ABC):
             if system_instruction is not None
             else ""
         )
-        cache_key += f"-tokenizer{tokenizer_name}"
 
         eval_logger.info(f"Building contexts for {self.config.task} on rank {rank}...")
 

@@ -296,8 +296,7 @@ def evaluate(
             limit=limit,
             rank=lm.rank,
             world_size=lm.world_size,
-            system_instruction=system_instruction,
-            tokenizer_name= "",
+            system_instruction=system_instruction
         )
         if write_out:
             print_writeout(task)
