@@ -68,7 +68,7 @@ class GGUFLM:
                     and "token_logprobs" in logprobs
                     and logprobs["token_logprobs"]
                 ):
-                    logprob, is_greedy = get_result(logprobs, len(context))
+                    logprob, is_greedy = self.get_result(logprobs, len(context))
                     res.append((logprob, is_greedy))
                 else:
                     logger.warning(
@@ -107,7 +107,7 @@ class GGUFLM:
         return res
 
 
-    def get_result(logprobs, context_length):
+    def get_result(self, logprobs, context_length):
         is_greedy = True
         offsets = logprobs["text_offset"]
         tokens = logprobs["tokens"]
