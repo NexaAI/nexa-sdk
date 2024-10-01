@@ -29,7 +29,6 @@ from nexa.eval.utils import (
     eval_logger,
     handle_non_serializable,
     hash_string,
-    simple_parse_args_string,
 )
 
 
@@ -58,7 +57,7 @@ def simple_evaluate(
     :param model: Union[str, LM]
         Name of model or LM object, see nexa.eval.models.get_model
     :param model_args: Optional[str]
-        String for model class, see LM.create_from_arg_string and LM.create_from_arg_object.
+        String for model class, see LM.create_from_arg_string.
         Ignored if `model` argument is a LM object.
     :param tasks: list[str]
         List of task names or Task objects. Task objects will be taken to have name task.EVAL_HARNESS_NAME if defined and type(task).__name__ otherwise.
