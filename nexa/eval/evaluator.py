@@ -43,7 +43,6 @@ def simple_evaluate(
     tasks: Optional[List[str]] = None,
     num_fewshot: Optional[int] = None,
     batch_size: Optional[Union[int, str]] = None,
-    max_batch_size: Optional[int] = None,
     limit: Optional[Union[int, float]] = None,
     bootstrap_iters: int = 100000,
     log_samples: bool = True,
@@ -68,8 +67,6 @@ def simple_evaluate(
         Number of examples in few-shot context
     :param batch_size: int or str, optional
         Batch size for model
-    :param max_batch_size: int, optional
-        Maximal batch size to try with automatic batch size detection
     :param limit: int or float, optional
         Limit the number of examples per task (only use this for testing), If <1, limit is a percentage of the total number of examples.
     :param bootstrap_iters:
@@ -114,7 +111,6 @@ def simple_evaluate(
         model_args,
         {
             "batch_size": batch_size,
-            "max_batch_size": max_batch_size
         },
     )
 
