@@ -190,9 +190,6 @@ def simple_evaluate(
         results["config"].update(
             {
                 "batch_size": batch_size,
-                "batch_sizes": (
-                    list(lm.batch_sizes.values()) if hasattr(lm, "batch_sizes") else []
-                ),
                 "limit": limit,
                 "bootstrap_iters": bootstrap_iters,
                 "random_seed": random_seed,
