@@ -5,45 +5,29 @@ from PIL import Image
 import pytesseract
 import fitz  # PyMuPDF
 import docx
+import pandas as pd  # Import pandas to read Excel and CSV files
+from pptx import Presentation  # Import Presentation for PPT files
 
-def sanitize_filename(name, max_length=50, max_words=5):
-    """Sanitize the filename by removing unwanted words and characters."""
-    # Remove file extension if present
-    name = os.path.splitext(name)[0]
-    # Remove unwanted words and data type words
-    name = re.sub(
-        r'\b(jpg|jpeg|png|gif|bmp|txt|pdf|docx|image|picture|photo|this|that|these|those|here|there|'
-        r'please|note|additional|notes|folder|name|sure|heres|a|an|the|and|of|in|'
-        r'to|for|on|with|your|answer|should|be|only|summary|summarize|text|category)\b',
-        '',
-        name,
-        flags=re.IGNORECASE
-    )
-    # Remove non-word characters except underscores
-    sanitized = re.sub(r'[^\w\s]', '', name).strip()
-    # Replace multiple underscores or spaces with a single underscore
-    sanitized = re.sub(r'[\s_]+', '_', sanitized)
-    # Convert to lowercase
-    sanitized = sanitized.lower()
-    # Remove leading/trailing underscores
-    sanitized = sanitized.strip('_')
-    # Split into words and limit the number of words
-    words = sanitized.split('_')
-    limited_words = [word for word in words if word]  # Remove empty strings
-    limited_words = limited_words[:max_words]
-    limited_name = '_'.join(limited_words)
-    # Limit length
-    return limited_name[:max_length] if limited_name else 'untitled'
+def read_text_file(file_path):
+    """Read text content from a text file."""
+    max_chars = 3000  # Limit processing time
+    try:
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
+            text = file.read(max_chars)
+        return text
+    except Exception as e:
+        print(f"Error reading text file {file_path}: {e}")
+        return None
 
 def read_docx_file(file_path):
-    """Read text content from a .docx file."""
+    """Read text content from a .docx or .doc file."""
     try:
         doc = docx.Document(file_path)
         full_text = [para.text for para in doc.paragraphs]
         return '\n'.join(full_text)
     except Exception as e:
         print(f"Error reading DOCX file {file_path}: {e}")
-        return ""
+        return None
 
 def read_pdf_file(file_path):
     """Read text content from a PDF file."""
@@ -59,28 +43,50 @@ def read_pdf_file(file_path):
         return pdf_content
     except Exception as e:
         print(f"Error reading PDF file {file_path}: {e}")
-        return ""
+        return None
 
-def read_image_file(file_path):
-    """Extract text from an image file using OCR."""
+def read_spreadsheet_file(file_path):
+    """Read text content from an Excel or CSV file."""
     try:
-        image = Image.open(file_path)
-        text = pytesseract.image_to_string(image)
+        if file_path.lower().endswith('.csv'):
+            df = pd.read_csv(file_path)
+        else:
+            df = pd.read_excel(file_path)
+        text = df.to_string()
         return text
     except Exception as e:
-        print(f"Error reading image file {file_path}: {e}")
-        return ""
+        print(f"Error reading spreadsheet file {file_path}: {e}")
+        return None
 
-def read_text_file(file_path):
-    """Read text content from a text file."""
-    max_chars = 3000  # Limit processing time
+def read_ppt_file(file_path):
+    """Read text content from a PowerPoint file."""
     try:
-        with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
-            text = file.read(max_chars)
-        return text
+        prs = Presentation(file_path)
+        full_text = []
+        for slide in prs.slides:
+            for shape in slide.shapes:
+                if hasattr(shape, "text"):
+                    full_text.append(shape.text)
+        return '\n'.join(full_text)
     except Exception as e:
-        print(f"Error reading text file {file_path}: {e}")
-        return ""
+        print(f"Error reading PowerPoint file {file_path}: {e}")
+        return None
+
+def read_file_data(file_path):
+    """Read content from a file based on its extension."""
+    ext = os.path.splitext(file_path.lower())[1]
+    if ext in ['.txt', '.md']:
+        return read_text_file(file_path)
+    elif ext in ['.docx', '.doc']:
+        return read_docx_file(file_path)
+    elif ext == '.pdf':
+        return read_pdf_file(file_path)
+    elif ext in ['.xls', '.xlsx', '.csv']:
+        return read_spreadsheet_file(file_path)
+    elif ext in ['.ppt', '.pptx']:
+        return read_ppt_file(file_path)
+    else:
+        return None  # Unsupported file type
 
 def display_directory_tree(path):
     """Display the directory tree in a format similar to the 'tree' command, including the full path."""
@@ -99,31 +105,25 @@ def display_directory_tree(path):
     else:
         print(os.path.abspath(path))
 
-def create_folder(base_path, foldername):
-    """Create a directory for the given folder name."""
-    sanitized_folder_name = sanitize_filename(foldername)
-    dir_path = os.path.join(base_path, sanitized_folder_name)
-    os.makedirs(dir_path, exist_ok=True)
-    return dir_path
-
 def collect_file_paths(base_path):
-    """Collect all file paths from the base directory or single file."""
+    """Collect all file paths from the base directory or single file, excluding hidden files."""
     if os.path.isfile(base_path):
         return [base_path]
     else:
-        file_paths = [
-            os.path.join(root, file)
-            for root, _, files in os.walk(base_path)
-            for file in files
-        ]
+        file_paths = []
+        for root, _, files in os.walk(base_path):
+            for file in files:
+                if not file.startswith('.'):  # Exclude hidden files
+                    file_paths.append(os.path.join(root, file))
         return file_paths
 
 def separate_files_by_type(file_paths):
     """Separate files into images and text files based on their extensions."""
-    image_extensions = ('.png', '.jpg', '.jpeg', '.gif', '.bmp')
-    text_extensions = ('.txt', '.docx', '.pdf')
-
+    image_extensions = ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff')
+    text_extensions = ('.txt', '.docx', '.doc', '.pdf', '.md', '.xls', '.xlsx', '.ppt', '.pptx', '.csv')
     image_files = [fp for fp in file_paths if os.path.splitext(fp.lower())[1] in image_extensions]
     text_files = [fp for fp in file_paths if os.path.splitext(fp.lower())[1] in text_extensions]
 
     return image_files, text_files  # Return only two values
+
+# TODO:ebook: '.mobi', '.azw', '.azw3', '.epub',

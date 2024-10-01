@@ -2,3 +2,9 @@ cmake
 pytesseract
 PyMuPDF
 python-docx
+pandas
+openpyxl
+xlrd
+nltk
+rich
+python-pptx
