@@ -568,7 +568,7 @@ def get_task_dict(
     """Creates a dictionary of task objects from either a name of task, config, or prepared Task object.
 
     :param task_name_list: List[Union[str, Dict, Task]]
-        Name of model or LM object, see nexa.eval.models.get_model
+        Name of model or LM object
     :param task_manager: TaskManager = None
         A TaskManager object that stores indexed tasks. If not set,
         task_manager will load one. This should be set by the user

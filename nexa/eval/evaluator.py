@@ -10,7 +10,7 @@ import numpy as np
 import nexa.eval.api.metrics
 import nexa.eval.api.registry
 import nexa.eval.api.task
-import nexa.eval.models
+from nexa.eval.nexa_models import GGUFLM
 from nexa.eval.evaluator_utils import (
     consolidate_group_results,
     consolidate_results,
@@ -35,7 +35,6 @@ from nexa.eval.utils import (
 
 
 if TYPE_CHECKING:
-    from nexa.eval.api.model import LM
     from nexa.eval.api.task import Task
 
 
@@ -263,7 +262,7 @@ def simple_evaluate(
 
 
 def evaluate(
-    lm: "LM",
+    lm: "GGUFLM",
     task_dict,
     limit: Optional[int] = None,
     bootstrap_iters: Optional[int] = 100000,
