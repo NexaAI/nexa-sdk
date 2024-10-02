@@ -118,15 +118,6 @@ def get_file_datetime(filename: str) -> str:
     return filename[filename.rfind("_") + 1 :].replace(".jsonl", "")
 
 
-def sanitize_model_name(model_name: str) -> str:
-    """
-    Given the model name, returns a sanitized version of it.
-    """
-    return re.sub(r"[\"<>:/\|\\?\*\[\]]+", "__", model_name)
-    return [f for f in filenames if "/results_" in f and ".json" in f]
-    return [f for f in filenames if "/samples_" in f and ".json" in f]
-
-
 def make_table(result_dict, column: str = "results", sort_results: bool = False):
     """Generate table of results."""
     

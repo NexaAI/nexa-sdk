@@ -28,7 +28,7 @@ class NexaEval:
         self.server_url = "http://0.0.0.0:8300"
         output_path = Path(NEXA_MODEL_EVAL_RESULTS_PATH) / self.model_name / self.model_tag / tasks.replace(',', '_')
         self.eval_args = {
-            "model": "nexa-gguf",
+            "model": model_path,
             "tasks": tasks,
             "model_args": f"base_url={self.server_url}/v1/completions",
             "hf_hub_log_args": "",
@@ -64,7 +64,7 @@ class NexaEval:
 
     def evaluate_model(self, args):
         
-        evaluation_tracker = EvaluationTracker(output_path=args.output_path)
+        evaluation_tracker = EvaluationTracker(output_path=args.output_path, model_name=args.model)
         task_manager = TaskManager(args.verbosity, include_path=args.include_path)
         
         if args.tasks is None:
@@ -83,7 +83,6 @@ class NexaEval:
                 model_args=args.model_args,
                 tasks=task_names,
                 batch_size=args.batch_size,
-                evaluation_tracker=evaluation_tracker,
                 task_manager=task_manager
             )
         except ValueError as e:

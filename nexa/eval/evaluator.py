@@ -42,7 +42,6 @@ def nexa_evaluate(
     batch_size: Optional[Union[int, str]] = None,
     limit: Optional[Union[int, float]] = None,
     bootstrap_iters: int = 100000,
-    evaluation_tracker=None,
     task_manager: Optional[TaskManager] = None,
     verbosity: str = "INFO",
     random_seed: int = 0,
@@ -125,12 +124,6 @@ def nexa_evaluate(
         return adjusted_task_dict
 
     task_dict = _adjust_config(task_dict)
-
-    if evaluation_tracker is not None:
-        evaluation_tracker.log_experiment_args(
-            model_source=model,
-            model_args=model_args,
-        )
 
     # Begin evaluation logic
     requests = defaultdict(list)

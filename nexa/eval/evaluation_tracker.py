@@ -6,8 +6,6 @@ from pathlib import Path
 from nexa.eval.utils import (
     eval_logger,
     handle_non_serializable,
-    hash_string,
-    sanitize_model_name,
 )
 
 
@@ -19,6 +17,7 @@ class EvaluationTracker:
 
     def __init__(
         self,
+        model_name: str = None,
         output_path: str = None,
     ) -> None:
         """
@@ -28,40 +27,11 @@ class EvaluationTracker:
             output_path (str): Path to save the results. If not provided, the results won't be saved.
         """
         # Initialize tracking variables
-        self.model_source: str = None
-        self.model_name: str = None
-        self.model_name_sanitized: str = None
+        self.model_name: str = model_name
         self.start_time: float = time.perf_counter()
         self.end_time: float = None
         self.total_evaluation_time_seconds: str = None
-
         self.output_path = output_path
-
-    @staticmethod
-    def _get_model_name(model_args: str) -> str:
-        """Extracts the model name from the model arguments."""
-
-        def extract_model_name(model_args: str, key: str) -> str:
-            """Extracts the model name from the model arguments using a key."""
-            args_after_key = model_args.split(key)[1]
-            return args_after_key.split(",")[0]
-
-        # Order does matter; e.g., 'peft' and 'delta' are provided together with 'pretrained'
-        prefixes = ["peft=", "delta=", "pretrained=", "model=", "path=", "engine="]
-        for prefix in prefixes:
-            if prefix in model_args:
-                return extract_model_name(model_args, prefix)
-        return ""
-
-    def log_experiment_args(
-        self,
-        model_source: str,
-        model_args: str,
-    ) -> None:
-        """Logs model parameters and job ID."""
-        self.model_source = model_source
-        self.model_name = self._get_model_name(model_args)
-        self.model_name_sanitized = sanitize_model_name(self.model_name)
 
     def log_end_time(self) -> None:
         """Logs the end time of the evaluation and calculates the total evaluation time."""
@@ -86,9 +56,7 @@ class EvaluationTracker:
 
                 # Collect configuration attributes
                 config_attrs = {
-                    "model_source": self.model_source,
                     "model_name": self.model_name,
-                    "model_name_sanitized": self.model_name_sanitized,
                     "start_time": self.start_time,
                     "end_time": self.end_time,
                     "total_evaluation_time_seconds": self.total_evaluation_time_seconds,
@@ -103,7 +71,6 @@ class EvaluationTracker:
                 )
 
                 path = Path(self.output_path if self.output_path else Path.cwd())
-                path = path.joinpath(self.model_name_sanitized)
                 path.mkdir(parents=True, exist_ok=True)
 
                 date_id = datetime.now().isoformat().replace(":", "-")
