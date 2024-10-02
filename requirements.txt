@@ -42,8 +42,6 @@ streamlit
 evaluate
 pytablewriter
 sacrebleu
-sqlitedict
 langdetect
 rouge_score
 immutabledict
-transformers
