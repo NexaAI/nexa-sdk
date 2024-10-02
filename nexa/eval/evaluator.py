@@ -20,7 +20,6 @@ from nexa.eval.evaluator_utils import (
     get_task_list,
     prepare_print_tasks,
 )
-
 from nexa.eval.tasks import (
     TaskManager,
     get_task_dict,
@@ -34,8 +33,8 @@ from nexa.eval.utils import (
 
 if TYPE_CHECKING:
     from nexa.eval.api.task import Task
-    
-def simple_evaluate(
+
+def nexa_evaluate(
     model,
     model_args: Optional[str] = None,
     tasks: Optional[List[str]] = None,
@@ -43,7 +42,7 @@ def simple_evaluate(
     batch_size: Optional[Union[int, str]] = None,
     limit: Optional[Union[int, float]] = None,
     bootstrap_iters: int = 100000,
-    evaluation_tracker = None,
+    evaluation_tracker=None,
     task_manager: Optional[TaskManager] = None,
     verbosity: str = "INFO",
     random_seed: int = 0,
@@ -58,21 +57,21 @@ def simple_evaluate(
         String for model class, see LM.create_from_arg_string.
         Ignored if `model` argument is a LM object.
     :param tasks: list[str]
-        List of task names or Task objects. Task objects will be taken to have name task.EVAL_HARNESS_NAME if defined and type(task).__name__ otherwise.
+        List of task names or Task objects.
     :param num_fewshot: int
         Number of examples in few-shot context
     :param batch_size: int
         Batch size for model
     :param limit: int or float, optional
-        Limit the number of examples per task (only use this for testing), If <1, limit is a percentage of the total number of examples.
+        Limit the number of examples per task (only use this for testing). If <1, limit is a percentage of the total number of examples.
     :param bootstrap_iters:
-        Number of iterations for bootstrap statistics, used when calculating stderrs. set to 0 for no stderr calculations to be performed.
+        Number of iterations for bootstrap statistics, used when calculating stderrs. Set to 0 for no stderr calculations to be performed.
     :param random_seed: int
-        Random seed for python's random module. If set to None, the seed will not be set.
+        Random seed for Python's random module. If set to None, the seed will not be set.
     :param numpy_random_seed: int
-        Random seed for numpy. If set to None, the seed will not be set.
+        Random seed for NumPy. If set to None, the seed will not be set.
     :param fewshot_random_seed: int
-        Random seed for fewshot sampler random generator. If set to None, the seed of generator will be set to None.
+        Random seed for few-shot sampler random generator. If set to None, the seed of generator will be set to None.
 
     :return
         Dictionary of results
@@ -80,7 +79,7 @@ def simple_evaluate(
     eval_logger.setLevel(getattr(logging, f"{verbosity}"))
     start_date = time.time()
 
-    # set random_seed
+    # Set random seeds
     random.seed(random_seed)
     np.random.seed(numpy_random_seed)
 
@@ -96,22 +95,16 @@ def simple_evaluate(
 
     task_dict = get_task_dict(tasks, task_manager)
 
-    # helper function to recursively apply config overrides to leaf subtasks, skipping their constituent groups.
-    # (setting of num_fewshot ; bypassing metric calculation ; setting fewshot seed)
+    # Helper function to recursively apply config overrides to leaf subtasks
     def _adjust_config(task_dict):
         adjusted_task_dict = {}
         for task_name, task_obj in task_dict.items():
             if isinstance(task_obj, dict):
-                adjusted_task_dict = {
-                    **adjusted_task_dict,
-                    **{task_name: _adjust_config(task_obj)},
-                }
-
+                adjusted_task_dict[task_name] = _adjust_config(task_obj)
             else:
-                # override tasks' fewshot values to the provided num_fewshot arg value
-                # except if tasks have it set to 0 manually in their configs--then we should never overwrite that
                 if num_fewshot is not None:
-                    if (default_num_fewshot := task_obj.get_config("num_fewshot")) == 0:
+                    default_num_fewshot = task_obj.get_config("num_fewshot")
+                    if default_num_fewshot == 0:
                         eval_logger.info(
                             f"num_fewshot has been set to 0 for {task_name} in its config. Manual configuration will be ignored."
                         )
@@ -121,23 +114,17 @@ def simple_evaluate(
                         )
                         task_obj.set_config(key="num_fewshot", value=num_fewshot)
                 else:
-                    # if num_fewshot not provided, and the task does not define a default one, default to 0
-                    if (
-                        default_num_fewshot := task_obj.get_config("num_fewshot")
-                    ) is None:
+                    default_num_fewshot = task_obj.get_config("num_fewshot")
+                    if default_num_fewshot is None:
                         task_obj.set_config(key="num_fewshot", value=0)
-                # fewshot_random_seed set for tasks, even with a default num_fewshot (e.g. in the YAML file)
                 task_obj.set_fewshot_seed(seed=fewshot_random_seed)
                 eval_logger.info(
-                    f"Setting fewshot random generator seed to {fewshot_random_seed}"
+                    f"Setting few-shot random generator seed to {fewshot_random_seed}"
                 )
-
                 adjusted_task_dict[task_name] = task_obj
-
         return adjusted_task_dict
 
     task_dict = _adjust_config(task_dict)
-
 
     if evaluation_tracker is not None:
         evaluation_tracker.log_experiment_args(
@@ -145,96 +132,26 @@ def simple_evaluate(
             model_args=model_args,
         )
 
-
-    results = evaluate(
-        lm=lm,
-        task_dict=task_dict,
-        limit=limit,
-        bootstrap_iters=bootstrap_iters,
-        verbosity=verbosity,
-    )
-
-    if lm.rank == 0:
-        if isinstance(model, str):
-            model_name = model
-        elif hasattr(model, "config") and hasattr(model.config, "_name_or_path"):
-            model_name = model.config._name_or_path
-        else:
-            model_name = type(model).__name__
-
-        # add info about the model and few shot config
-        results["config"] = {
-            "model": model_name,
-            "model_args": model_args,
-        }
-
-        results["config"].update(
-            {
-                "batch_size": batch_size,
-                "limit": limit,
-                "bootstrap_iters": bootstrap_iters,
-                "random_seed": random_seed,
-                "numpy_seed": numpy_random_seed,
-                "fewshot_seed": fewshot_random_seed,
-            }
-        )
-        results["date"] = start_date
-        results["nexa_sdk_version"] =  __version__
-        return results
-    else:
-        return None
-
-
-def evaluate(
-    lm: "GGUFLM",
-    task_dict,
-    limit: Optional[int] = None,
-    bootstrap_iters: Optional[int] = 100000,
-    verbosity: str = "INFO",
-):
-    """Instantiate and evaluate a model on a list of tasks.
-
-    :param lm: obj
-        Language Model
-    :param task_dict: dict[str, Task]
-        Dictionary of tasks. Tasks will be taken to have name type(task).config.task .
-    :param limit: int, optional
-        Limit the number of examples per task (only use this for testing)
-    :param bootstrap_iters:
-        Number of iterations for bootstrap statistics, used when calculating stderr. Set to 0 for skipping all stderr calculations.
-    :return
-        Dictionary of results
-    """
-
-    eval_logger.setLevel(getattr(logging, f"{verbosity}"))
-
-    # tracks all Instances/requests a model must generate output on.
+    # Begin evaluation logic
     requests = defaultdict(list)
-    # stores the amount to pad out reqs per req. type so that
-    # number of fwd passes per distributed rank is equal
     padding_requests = defaultdict(int)
-
-    # get lists of group hierarchy and each type of request
     eval_tasks = get_task_list(task_dict)
 
     for task_output in eval_tasks:
         task: Task = task_output.task
-        limit = get_sample_size(task, limit)
+        task_limit = get_sample_size(task, limit)
         task.build_all_requests(
-            limit=limit,
+            limit=task_limit,
             rank=lm.rank,
             world_size=lm.world_size,
         )
-        # aggregate Instances by LM method requested to get output.
         for instance in task.instances:
             reqtype = instance.request_type
             requests[reqtype].append(instance)
 
-    ### Run LM on inputs, get all outputs ###
-    # execute each type of request
+    # Run LM on inputs, get all outputs
     for reqtype, reqs in requests.items():
         eval_logger.info(f"Running {reqtype} requests")
-        # create `K` copies of each request `req` based off `K = req.repeats`
         cloned_reqs = []
         for req in reqs:
             cloned_reqs.extend([req] * req.repeats)
@@ -243,38 +160,26 @@ def evaluate(
             for _ in range(padding_requests[reqtype]):
                 cloned_reqs.extend([req] * req.repeats)
 
-        # run requests through model
         resps = getattr(lm, reqtype)(cloned_reqs)
 
-        # put responses from model into a list of length K for each request.
         for x, req in zip(resps, cloned_reqs):
             req.resps.append(x)
 
         if lm.world_size > 1:
             lm.accelerator.wait_for_everyone()
 
-    RANK = lm.rank
-    WORLD_SIZE = lm.world_size
-    
-    ### Postprocess outputs ###
+    # Postprocess outputs
     for task_output in eval_tasks:
         task = task_output.task
         task.apply_filters()
-
-        ### Collect values of metrics on all datapoints ###
-        # # unpack results and sort back in order and return control to Task
-        # TODO: make it possible to use a different metric per filter
-        # Pre-process task.instances to group by doc_id
         instances_by_doc_id = defaultdict(list)
         for instance in task.instances:
             instances_by_doc_id[instance.doc_id].append(instance)
-        # Sort instances within each group
         for instances in instances_by_doc_id.values():
             instances.sort(key=lambda x: x.idx)
-        # iterate over different filters used
         for filter_key in task.instances[0].filtered_resps.keys():
             doc_iterator = task.doc_iterator(
-                rank=RANK, limit=limit, world_size=WORLD_SIZE
+                rank=lm.rank, limit=task_limit, world_size=lm.world_size
             )
             for doc_id, doc in doc_iterator:
                 requests = instances_by_doc_id[doc_id]
@@ -307,9 +212,8 @@ def evaluate(
                 for metric, value in metrics.items():
                     task_output.sample_metrics[(metric, filter_key)].append(value)
 
-    if RANK == 0:
-        ### Aggregate results over all datapoints ###
-        # aggregate results ; run bootstrap CIs
+    if lm.rank == 0:
+        # Aggregate results over all datapoints
         for task_output in eval_tasks:
             task_output.calculate_aggregate_metric(bootstrap_iters=bootstrap_iters)
         (
@@ -321,7 +225,7 @@ def evaluate(
             higher_is_better,
         ) = consolidate_results(eval_tasks)
 
-        ### Calculate group metrics ###
+        # Calculate group metrics
         if bool(results):
             results, versions, show_group_table, *_ = consolidate_group_results(
                 results, versions, task_dict
@@ -330,24 +234,16 @@ def evaluate(
         results_agg, group_agg = prepare_print_tasks(task_dict, results)
         subtask_list = get_subtask_list(task_dict)
 
-        # collect all higher_is_better values for metrics
-        # in the group's subtasks.
-        # TODO: clean this up ; unify with the below metric_list loop?
-        _higher_is_better = {}
+        # Collect higher_is_better values
         for group, task_list in subtask_list.items():
-            if (
-                len(task_list) != 0
-            ):  # subtask list will list "task_name": [] for solo tasks
-                for task in task_list:
-                    for m, h in higher_is_better[task].items():
-                        if m not in _higher_is_better.keys():
+            _higher_is_better = {}
+            if task_list:
+                for task_name in task_list:
+                    task_higher_is_better = higher_is_better[task_name]
+                    for m, h in task_higher_is_better.items():
+                        if m not in _higher_is_better:
                             _higher_is_better[m] = h
-
-                        if (
-                            m in _higher_is_better
-                            and _higher_is_better[m] is not None
-                            and _higher_is_better[m] != h
-                        ):
+                        elif _higher_is_better[m] != h:
                             eval_logger.warning(
                                 f"Higher_is_better values for metric {m} in group {group} are not consistent. Defaulting to None."
                             )
@@ -370,17 +266,37 @@ def evaluate(
                 task_output.task_name: {
                     "original": len(task_output.task.eval_docs),
                     "effective": min(
-                        limit if limit else len(task_output.task.eval_docs),
+                        task_limit if task_limit else len(task_output.task.eval_docs),
                         len(task_output.task.eval_docs),
                     ),
                 }
                 for task_output in eval_tasks
             },
+            "samples": dict(samples),
         }
-        
-        results_dict["samples"] = dict(samples)
 
+        # Add model info to results
+        if isinstance(model, str):
+            model_name = model
+        elif hasattr(model, "config") and hasattr(model.config, "_name_or_path"):
+            model_name = model.config._name_or_path
+        else:
+            model_name = type(model).__name__
+
+        results_dict["config"] = {
+            "model": model_name,
+            "model_args": model_args,
+            "batch_size": batch_size,
+            "limit": limit,
+            "bootstrap_iters": bootstrap_iters,
+            "random_seed": random_seed,
+            "numpy_seed": numpy_random_seed,
+            "fewshot_seed": fewshot_random_seed,
+        }
+        results_dict.update({
+            "date": start_date,
+            "nexa_sdk_version":  __version__,
+        })
         return results_dict
-
     else:
         return None

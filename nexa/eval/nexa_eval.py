@@ -79,7 +79,7 @@ class NexaEval:
 
         from datasets.exceptions import DatasetNotFoundError
         try:
-            results = evaluator.simple_evaluate(
+            results = evaluator.nexa_evaluate(
                 model=args.model,
                 model_args=args.model_args,
                 tasks=task_names,
