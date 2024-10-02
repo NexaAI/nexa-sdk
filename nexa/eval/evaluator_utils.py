@@ -8,7 +8,7 @@ from nexa.eval.api.metrics import (
     pooled_sample_stderr,
     stderr_for_metric,
 )
-from nexa.eval.api.task import Task
+from nexa.eval.tasks.task import Task
 from nexa.eval.utils import eval_logger
 
 

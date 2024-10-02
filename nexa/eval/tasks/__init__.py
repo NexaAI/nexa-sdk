@@ -7,7 +7,7 @@ from typing import Dict, List, Mapping, Optional, Union
 
 from nexa.eval import utils
 from nexa.eval.api.group import ConfigurableGroup, GroupConfig
-from nexa.eval.api.task import ConfigurableTask, Task
+from nexa.eval.tasks.task import ConfigurableTask, Task
 from nexa.eval.evaluator_utils import get_subtask_list
 
 
