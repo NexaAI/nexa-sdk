@@ -1,6 +1,4 @@
-from functools import cached_property
-from typing import Any, Dict, List, Optional, Tuple, Union
-from nexa.eval.utils import eval_logger
+from typing import Optional
 from nexa.eval import utils
 import logging
 import time

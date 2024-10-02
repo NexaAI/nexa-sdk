@@ -1,10 +1,7 @@
 import collections
 import fnmatch
-import functools
 import hashlib
 import importlib.util
-import inspect
-import json
 import logging
 import os
 import re

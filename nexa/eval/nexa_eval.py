@@ -2,7 +2,6 @@ import argparse
 import multiprocessing
 import time
 import requests
-import os
 import sys
 from nexa.eval import evaluator
 from nexa.eval.evaluation_tracker import EvaluationTracker

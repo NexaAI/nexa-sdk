@@ -4,8 +4,6 @@ from typing import List
 from nexa.eval.api.filter import FilterEnsemble
 from nexa.eval.api.registry import get_filter
 
-from . import extraction, selection
-
 
 def build_filter_ensemble(
     filter_name: str, components: List[List[str]]
