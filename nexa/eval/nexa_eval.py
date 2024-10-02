@@ -3,14 +3,14 @@ import multiprocessing
 import time
 import requests
 import sys
+import json
+from datetime import datetime
+from pathlib import Path
 from nexa.eval import evaluator
-from nexa.eval.evaluation_tracker import EvaluationTracker
 from nexa.eval.tasks import TaskManager
-from nexa.eval.utils import make_table, simple_parse_args_string
+from nexa.eval.utils import make_table, simple_parse_args_string, handle_non_serializable
 from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
 from nexa.constants import NEXA_MODEL_EVAL_RESULTS_PATH, NEXA_RUN_MODEL_MAP
-from pathlib import Path
-from datetime import datetime
 
 def print_message(level, message):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -63,10 +63,10 @@ class NexaEval:
     
 
     def evaluate_model(self, args):
-        
-        evaluation_tracker = EvaluationTracker(output_path=args.output_path, model_name=args.model)
+
+        start_time = time.perf_counter()
         task_manager = TaskManager(args.verbosity, include_path=args.include_path)
-        
+
         if args.tasks is None:
             print("ERROR", "Need to specify task to evaluate.")
             sys.exit()
@@ -106,7 +106,42 @@ class NexaEval:
             return
         
         if results is not None:
-            evaluation_tracker.save_results_aggregated(results=results)
+            end_time = time.perf_counter()
+            total_evaluation_time_seconds = str(end_time - start_time)
+
+            config_attrs = {
+                "model_name": args.model,
+                "start_time": start_time,
+                "end_time": end_time,
+                "total_evaluation_time_seconds": total_evaluation_time_seconds,
+            }
+            results.update(config_attrs)
+
+            if args.output_path:
+                try:
+                    print_message("INFO", "Saving aggregated results")
+
+                    dumped = json.dumps(
+                        results,
+                        indent=2,
+                        default=handle_non_serializable,
+                        ensure_ascii=False,
+                    )
+
+                    path = Path(args.output_path)
+                    path.mkdir(parents=True, exist_ok=True)
+
+                    date_id = datetime.now().isoformat().replace(":", "-")
+                    file_results_aggregated = path.joinpath(f"results_{date_id}.json")
+                    with file_results_aggregated.open("w", encoding="utf-8") as f:
+                        f.write(dumped)
+
+                except Exception as e:
+                    print_message("WARNING", "Could not save aggregated results")
+                    print_message("INFO", repr(e))
+            else:
+                print_message("INFO", "Output path not provided, skipping saving aggregated results")
+
             print(make_table(results))
             if "groups" in results:
                 print(make_table(results, "groups"))
