@@ -7,7 +7,7 @@ from typing import Dict, List, Mapping, Optional, Union
 
 from nexa.eval import utils
 from nexa.eval.api.group import ConfigurableGroup, GroupConfig
-from nexa.eval.tasks.task import ConfigurableTask, Task
+from nexa.eval.tasks.task import Task
 from nexa.eval.evaluator_utils import get_subtask_list
 
 
@@ -269,11 +269,11 @@ class TaskManager:
                     task_object = config["class"](config=config)
                 else:
                     task_object = config["class"]()
-                if isinstance(task_object, ConfigurableTask):
+                if isinstance(task_object, Task):
                     # very scuffed: set task name here. TODO: fixme?
                     task_object.config.task = config["task"]
             else:
-                task_object = ConfigurableTask(config=config)
+                task_object = Task(config=config)
 
             return {task: task_object}
 
