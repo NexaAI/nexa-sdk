@@ -76,7 +76,9 @@ class _StableDiffusionModel:
 
         if diffusion_model_path:
             if not os.path.exists(diffusion_model_path):
-                raise ValueError(f"Diffusion model path does not exist: {diffusion_model_path}")
+                raise ValueError(
+                    f"Diffusion model path does not exist: {diffusion_model_path}"
+                )
 
         if model_path or diffusion_model_path:
             with suppress_stdout_stderr(disable=verbose):
@@ -161,11 +163,15 @@ class _UpscalerModel:
                 raise ValueError(f"Upscaler model path does not exist: {upscaler_path}")
 
             # Load the image upscaling model ctx
-            self.upscaler = sd_cpp.new_upscaler_ctx(upscaler_path.encode("utf-8"), self.n_threads, self.wtype)
+            self.upscaler = sd_cpp.new_upscaler_ctx(
+                upscaler_path.encode("utf-8"), self.n_threads, self.wtype
+            )
 
             # Check if the model was loaded successfully
             if self.upscaler is None:
-                raise ValueError(f"Failed to load upscaler model from file: {upscaler_path}")
+                raise ValueError(
+                    f"Failed to load upscaler model from file: {upscaler_path}"
+                )
 
         def free_ctx():
             """Free the model from memory."""
