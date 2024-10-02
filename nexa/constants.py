@@ -118,6 +118,7 @@ NEXA_RUN_MODEL_MAP_VOICE = {
     "faster-whisper-base": "faster-whisper-base:bin-cpu-fp16",
     "faster-whisper-base.en": "faster-whisper-base.en:bin-cpu-fp16",
     "faster-whisper-large": "faster-whisper-large-v3:bin-cpu-fp16",
+    "faster-whisper-large-turbo": "faster-whisper-large-v3-turbo:bin-cpu-fp16",
 }
 
 NEXA_RUN_MODEL_MAP_FUNCTION_CALLING = {
@@ -349,6 +350,7 @@ NEXA_OFFICIAL_MODELS_TYPE = {
     "Llama2-7b-function-calling": ModelType.NLP,
     "OpenELM-1_1B": ModelType.NLP,
     "OpenELM-3B": ModelType.NLP,
+    "AMD-Llama-135m": ModelType.NLP,
     "lcm-dreamshaper-v7": ModelType.COMPUTER_VISION,
     "stable-diffusion-v1-5": ModelType.COMPUTER_VISION,
     "stable-diffusion-v1-4": ModelType.COMPUTER_VISION,
@@ -373,6 +375,7 @@ NEXA_OFFICIAL_MODELS_TYPE = {
     "faster-whisper-base.en": ModelType.AUDIO,
     "faster-whisper-base": ModelType.AUDIO,
     "faster-whisper-large-v3": ModelType.AUDIO,
+    "faster-whisper-large-v3-turbo": ModelType.AUDIO,
     "whisper-tiny.en": ModelType.AUDIO,
     "whisper-tiny": ModelType.AUDIO,
     "whisper-small.en": ModelType.AUDIO,
