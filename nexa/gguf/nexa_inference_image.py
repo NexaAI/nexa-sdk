@@ -84,7 +84,7 @@ class NexaImageInference:
             self.t5xxl_path = NEXA_RUN_T5XXL_MAP.get(model_path)
             self.ae_path = FLUX_VAE_PATH
             self.clip_l_path = FLUX_CLIP_L_PATH
-            
+
             if self.t5xxl_path:
                 self.t5xxl_downloaded_path, _ = pull_model(self.t5xxl_path)
             if self.ae_path:

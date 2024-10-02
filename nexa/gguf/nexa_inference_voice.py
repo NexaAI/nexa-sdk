@@ -38,6 +38,7 @@ class NexaVoiceInference:
     output_dir (str): Output directory for transcriptions.
 
     """
+
     def __init__(self, model_path, local_path=None, **kwargs):
         self.model_path = model_path
         self.downloaded_path = local_path
@@ -59,11 +60,8 @@ class NexaVoiceInference:
         if not kwargs.get("streamlit", False):
             self._load_model()
             if self.model is None:
-                logging.error(
-                    "Failed to load model, Exiting.", exc_info=True
-                )
+                logging.error("Failed to load model, Exiting.", exc_info=True)
                 exit(1)
-
 
     @SpinningCursorAnimation()
     def _load_model(self):
@@ -169,7 +167,6 @@ class NexaVoiceInference:
             **kwargs,
         )
 
-
     def _transcribe_audio(self, audio_path):
         logging.debug(f"Transcribing audio from: {audio_path}")
         try:
@@ -223,9 +220,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Run voice transcription with a specified model"
     )
-    parser.add_argument(
-        "model_path", type=str, help="Path or identifier for the model"
-    )
+    parser.add_argument("model_path", type=str, help="Path or identifier for the model")
     parser.add_argument(
         "-o",
         "--output_dir",

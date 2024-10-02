@@ -3,13 +3,9 @@ import random
 import ctypes
 import multiprocessing
 import contextlib
-
 from PIL import Image
-
 import nexa.gguf.sd.stable_diffusion_cpp as sd_cpp
 from nexa.gguf.sd.stable_diffusion_cpp import GGMLType, RNGType, Schedule, SampleMethod
-
-
 from nexa.gguf.sd._internals_diffusion import _StableDiffusionModel, _UpscalerModel
 from nexa.gguf.sd._utils_diffusion import suppress_stdout_stderr
 
@@ -98,7 +94,7 @@ class StableDiffusion:
         self.vae_decode_only = vae_decode_only
         self.vae_tiling = vae_tiling
         self.free_params_immediately = free_params_immediately
-        self.n_threads = n_threads or max(multiprocessing.cpu_count() // 2, 1)  # Default to half the number of CPUs
+        self.n_threads = n_threads or max(multiprocessing.cpu_count() // 2, 1) # Default to half the number of CPUs
         self.wtype = wtype
         self.rng_type = rng_type
         self.schedule = schedule
@@ -259,7 +255,7 @@ class StableDiffusion:
 
         control_cond = self._format_control_cond(control_cond, canny, self.control_net_path)
 
-        with suppress_stdout_stderr(disable=self.verbose):
+        with suppress_stdout_stderr(disable=True):
             # Generate images
             c_images = sd_cpp.txt2img(
                 self.model,
@@ -378,13 +374,13 @@ class StableDiffusion:
 
         # ==================== Resize the input image ====================
 
-        image = self._resize_image(image, width, height)  # Input image and generated image must have the same size
+        image = self._resize_image(image, width, height) # Input image and generated image must have the same size
 
         # ==================== Convert the image to a byte array ====================
 
         image_pointer = self._image_to_sd_image_t_p(image)
 
-        with suppress_stdout_stderr(disable=self.verbose):
+        with suppress_stdout_stderr(disable=True):
             # Generate images
             c_images = sd_cpp.img2img(
                 self.model,

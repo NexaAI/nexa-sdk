@@ -2,6 +2,7 @@ import sys
 import ctypes
 import logging
 
+
 # enum sd_log_level_t {
 #     SD_LOG_DEBUG = 0,
 #     SD_LOG_INFO = 1,
