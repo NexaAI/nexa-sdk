@@ -3,13 +3,9 @@ import random
 import ctypes
 import multiprocessing
 import contextlib
-
 from PIL import Image
-
 import nexa.gguf.sd.stable_diffusion_cpp as sd_cpp
 from nexa.gguf.sd.stable_diffusion_cpp import GGMLType, RNGType, Schedule, SampleMethod
-
-from nexa.gguf.sd._logger_diffusion import set_verbose, log_event
 from nexa.gguf.sd._internals_diffusion import _StableDiffusionModel, _UpscalerModel
 from nexa.gguf.sd._utils_diffusion import suppress_stdout_stderr
 
@@ -98,9 +94,7 @@ class StableDiffusion:
         self.vae_decode_only = vae_decode_only
         self.vae_tiling = vae_tiling
         self.free_params_immediately = free_params_immediately
-        self.n_threads = n_threads or max(
-            multiprocessing.cpu_count() // 2, 1
-        )  # Default to half the number of CPUs
+        self.n_threads = n_threads or max(multiprocessing.cpu_count() // 2, 1) # Default to half the number of CPUs
         self.wtype = wtype
         self.rng_type = rng_type
         self.schedule = schedule
@@ -112,7 +106,7 @@ class StableDiffusion:
         # =========== Logging ===========
 
         self.verbose = verbose
-        set_verbose(verbose)
+        # set_verbose(verbose)
 
         # =========== Validate string and int inputs ===========
 
@@ -230,9 +224,7 @@ class StableDiffusion:
 
         # =========== Validate string and int inputs ===========
 
-        sample_method = validate_and_set_input(
-            sample_method, SAMPLE_METHOD_MAP, "sample_method"
-        )
+        sample_method = validate_and_set_input(sample_method, SAMPLE_METHOD_MAP, "sample_method")
 
         # Ensure dimensions are multiples of 64
         width = validate_dimensions(width, "width")
@@ -261,9 +253,7 @@ class StableDiffusion:
 
         # ==================== Convert the control condition to a C sd_image_t ====================
 
-        control_cond = self._format_control_cond(
-            control_cond, canny, self.control_net_path
-        )
+        control_cond = self._format_control_cond(control_cond, canny, self.control_net_path)
 
         with suppress_stdout_stderr(disable=self.verbose):
             # Generate images
@@ -351,9 +341,7 @@ class StableDiffusion:
 
         # =========== Validate string and int inputs ===========
 
-        sample_method = validate_and_set_input(
-            sample_method, SAMPLE_METHOD_MAP, "sample_method"
-        )
+        sample_method = validate_and_set_input(sample_method, SAMPLE_METHOD_MAP, "sample_method")
 
         # Ensure dimensions are multiples of 64
         width = validate_dimensions(width, "width")
@@ -382,15 +370,11 @@ class StableDiffusion:
 
         # ==================== Convert the control condition to a C sd_image_t ====================
 
-        control_cond = self._format_control_cond(
-            control_cond, canny, self.control_net_path
-        )
+        control_cond = self._format_control_cond(control_cond, canny, self.control_net_path)
 
         # ==================== Resize the input image ====================
 
-        image = self._resize_image(
-            image, width, height
-        )  # Input image and generated image must have the same size
+        image = self._resize_image(image, width, height) # Input image and generated image must have the same size
 
         # ==================== Convert the image to a byte array ====================
 
@@ -652,9 +636,7 @@ class StableDiffusion:
     # Utility functions
     # ============================================
 
-    def _resize_image(
-        self, image: Union[Image.Image, str], width: int, height: int
-    ) -> Image.Image:
+    def _resize_image(self, image: Union[Image.Image, str], width: int, height: int) -> Image.Image:
         """Resize an image to a new width and height."""
         image, _, _ = self._format_image(image)
 
@@ -693,9 +675,9 @@ class StableDiffusion:
         if not control_cond:
             return None
 
-        if not control_net_path:
-            log_event(1, "'control_net_path' not set. Skipping control condition.")
-            return None
+        # if not control_net_path:
+        #     log_event(1, "'control_net_path' not set. Skipping control condition.")
+        #     return None
 
         if canny:
             # Convert Pillow Image to canny edge detection image then format into C sd_image_t
@@ -725,9 +707,7 @@ class StableDiffusion:
 
     # ============= Image to C sd_image_t =============
 
-    def _c_uint8_to_sd_image_t_p(
-        self, image: ctypes.c_uint8, width, height, channel: int = 3
-    ):
+    def _c_uint8_to_sd_image_t_p(self, image: ctypes.c_uint8, width, height, channel: int = 3):
         # Create a new C sd_image_t
         c_image = sd_cpp.sd_image_t(
             width=width,
@@ -749,9 +729,7 @@ class StableDiffusion:
     # ============= C sd_image_t to Image =============
 
     def _c_array_to_bytes(self, c_array, buffer_size: int):
-        return bytearray(
-            ctypes.cast(c_array, ctypes.POINTER(ctypes.c_byte * buffer_size)).contents
-        )
+        return bytearray(ctypes.cast(c_array, ctypes.POINTER(ctypes.c_byte * buffer_size)).contents)
 
     def _dereference_sd_image_t_p(self, c_image: sd_cpp.sd_image_t):
         """Dereference a C sd_image_t pointer to a Python dictionary with height, width, channel and data (bytes)."""
@@ -767,13 +745,9 @@ class StableDiffusion:
         }
         return image
 
-    def _image_slice(
-        self, c_images: sd_cpp.sd_image_t, count: int, upscale_factor: int
-    ):
+    def _image_slice(self, c_images: sd_cpp.sd_image_t, count: int, upscale_factor: int):
         """Slice a C array of images."""
-        image_array = ctypes.cast(
-            c_images, ctypes.POINTER(sd_cpp.sd_image_t * count)
-        ).contents
+        image_array = ctypes.cast(c_images, ctypes.POINTER(sd_cpp.sd_image_t * count)).contents
 
         images = []
 
@@ -797,9 +771,7 @@ class StableDiffusion:
         # Return the list of images
         return images
 
-    def _sd_image_t_p_to_images(
-        self, c_images: sd_cpp.sd_image_t, count: int, upscale_factor: int
-    ):
+    def _sd_image_t_p_to_images(self, c_images: sd_cpp.sd_image_t, count: int, upscale_factor: int):
         """Convert C sd_image_t_p images to a Python list of images."""
 
         # Convert C array to Python list of images
@@ -808,9 +780,7 @@ class StableDiffusion:
         # Convert each image to PIL Image
         for i in range(len(images)):
             image = images[i]
-            images[i] = self._bytes_to_image(
-                image["data"], image["width"], image["height"]
-            )
+            images[i] = self._bytes_to_image(image["data"], image["width"], image["height"])
 
         return images
 
@@ -858,9 +828,7 @@ def validate_dimensions(dimension: int | float, attribute_name: str) -> int:
 # ============================================
 
 
-def validate_and_set_input(
-    user_input: Union[str, int, float], type_map: Dict, attribute_name: str
-):
+def validate_and_set_input(user_input: Union[str, int, float], type_map: Dict, attribute_name: str):
     """Validate an input strinbg or int from a map of strings to integers."""
     if isinstance(user_input, float):
         user_input = int(user_input)  # Convert float to int
@@ -871,15 +839,11 @@ def validate_and_set_input(
         if user_input in type_map:
             return int(type_map[user_input])
         else:
-            raise ValueError(
-                f"Invalid {attribute_name} type '{user_input}'. Must be one of {list(type_map.keys())}."
-            )
+            raise ValueError(f"Invalid {attribute_name} type '{user_input}'. Must be one of {list(type_map.keys())}.")
     elif isinstance(user_input, int) and user_input in type_map.values():
         return int(user_input)
     else:
-        raise ValueError(
-            f"{attribute_name} must be a string or an integer and must be a valid type."
-        )
+        raise ValueError(f"{attribute_name} must be a string or an integer and must be a valid type.")
 
 
 RNG_TYPE_MAP = {

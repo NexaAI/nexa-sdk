@@ -48,9 +48,7 @@ if TYPE_CHECKING:
     class CtypesRef(Generic[CtypesCData]):
         pass
 
-    CtypesPointerOrRef: TypeAlias = Union[
-        CtypesPointer[CtypesCData], CtypesRef[CtypesCData]
-    ]
+    CtypesPointerOrRef: TypeAlias = Union[CtypesPointer[CtypesCData], CtypesRef[CtypesCData]]
 
     CtypesFuncPointer: TypeAlias = ctypes._FuncPointer  # type: ignore
 
@@ -58,9 +56,7 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 
 def ctypes_function_for_shared_library(lib: ctypes.CDLL):
-    def ctypes_function(
-        name: str, argtypes: List[Any], restype: Any, enabled: bool = True
-    ):
+    def ctypes_function(name: str, argtypes: List[Any], restype: Any, enabled: bool = True):
         def decorator(f: F) -> F:
             if enabled:
                 func = getattr(lib, name)
@@ -89,9 +85,7 @@ byref = ctypes.byref  # type: ignore
 
 # from ggml-backend.h
 # typedef bool (*ggml_backend_sched_eval_callback)(struct ggml_tensor * t, bool ask, void * user_data);
-ggml_backend_sched_eval_callback = ctypes.CFUNCTYPE(
-    ctypes.c_bool, ctypes.c_void_p, ctypes.c_bool, ctypes.c_void_p
-)
+ggml_backend_sched_eval_callback = ctypes.CFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_bool, ctypes.c_void_p)
 
 # // Abort callback
 # // If not NULL, called before ggml computation
@@ -618,9 +612,7 @@ def sd_get_system_info() -> bytes:
 # Progression
 # ==================================
 
-sd_progress_callback = ctypes.CFUNCTYPE(
-    None, ctypes.c_int, ctypes.c_int, ctypes.c_float, ctypes.c_void_p
-)
+sd_progress_callback = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_int, ctypes.c_float, ctypes.c_void_p)
 
 
 @ctypes_function(

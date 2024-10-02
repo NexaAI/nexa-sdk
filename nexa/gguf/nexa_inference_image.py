@@ -33,7 +33,6 @@ RETRY_ATTEMPTS = (
 FLUX_VAE_PATH = "FLUX.1-schnell:ae-fp16"
 FLUX_CLIP_L_PATH = "FLUX.1-schnell:clip_l-fp16"
 
-
 class NexaImageInference:
     """
     A class used for loading image models and running image generation.
@@ -93,9 +92,7 @@ class NexaImageInference:
             if self.clip_l_path:
                 self.clip_l_downloaded_path, _ = pull_model(self.clip_l_path)
         if "lcm-dreamshaper" in self.model_path or "flux" in self.model_path:
-            self.params = (
-                DEFAULT_IMG_GEN_PARAMS_LCM.copy()
-            )  # both lcm-dreamshaper and flux use the same params
+            self.params = DEFAULT_IMG_GEN_PARAMS_LCM.copy() # both lcm-dreamshaper and flux use the same params
         elif "sdxl-turbo" in self.model_path:
             self.params = DEFAULT_IMG_GEN_PARAMS_TURBO.copy()
         else:
@@ -112,12 +109,7 @@ class NexaImageInference:
     def _load_model(self, model_path: str):
         with suppress_stdout_stderr():
             from nexa.gguf.sd.stable_diffusion import StableDiffusion
-
-            if (
-                self.t5xxl_downloaded_path
-                and self.ae_downloaded_path
-                and self.clip_l_downloaded_path
-            ):
+            if self.t5xxl_downloaded_path and self.ae_downloaded_path and self.clip_l_downloaded_path:
                 self.model = StableDiffusion(
                     diffusion_model_path=self.downloaded_path,
                     clip_l_path=self.clip_l_downloaded_path,
@@ -161,9 +153,7 @@ class NexaImageInference:
             except Exception as e:
                 logging.error(f"Attempt {attempt + 1} failed with error: {e}")
                 time.sleep(1)
-        print(
-            "All retry attempts failed becase of Out of Memory error, Try to use smaller models..."
-        )
+        print("All retry attempts failed becase of Out of Memory error, Try to use smaller models...")
         return None
 
     def txt2img(
