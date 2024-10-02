@@ -5,7 +5,7 @@ import requests
 import os
 import sys
 from nexa.eval import evaluator
-from nexa.eval.loggers import EvaluationTracker
+from nexa.eval.evaluation_tracker import EvaluationTracker
 from nexa.eval.tasks import TaskManager
 from nexa.eval.utils import make_table, simple_parse_args_string
 from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
