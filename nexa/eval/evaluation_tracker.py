@@ -71,33 +71,18 @@ class EvaluationTracker:
     def save_results_aggregated(
         self,
         results: dict,
-        samples: dict,
     ) -> None:
         """
-        Saves the aggregated results and samples to the output path and pushes them to the Hugging Face hub if requested.
+        Saves the aggregated results to the output path and pushes them to the Hugging Face hub if requested.
 
         Args:
             results (dict): The aggregated results to save.
-            samples (dict): The samples results to save.
         """
         self.log_end_time()
 
         if self.output_path:
             try:
                 eval_logger.info("Saving results aggregated")
-
-                # Calculate cumulative hash for each task - only if samples are provided
-                task_hashes = {}
-                if samples:
-                    for task_name, task_samples in samples.items():
-                        sample_hashes = [
-                            s["doc_hash"] + s["prompt_hash"] + s["target_hash"]
-                            for s in task_samples
-                        ]
-                        task_hashes[task_name] = hash_string("".join(sample_hashes))
-
-                # Update initial results dict
-                results.update({"task_hashes": task_hashes})
 
                 # Collect configuration attributes
                 config_attrs = {

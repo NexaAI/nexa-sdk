@@ -107,7 +107,7 @@ class NexaEval:
             return
         
         if results is not None:
-            evaluation_tracker.save_results_aggregated(results=results, samples= None)
+            evaluation_tracker.save_results_aggregated(results=results)
             print(make_table(results))
             if "groups" in results:
                 print(make_table(results, "groups"))
