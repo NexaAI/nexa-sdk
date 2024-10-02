@@ -420,37 +420,6 @@ def pooled_sample_stderr(stderrs: List[float], sizes: List[int]):
     return np.sqrt(pooled_sample_var / sum(sizes))
 
 
-def combined_sample_stderr(stderrs: List[float], sizes: List[int], metrics=None):
-    assert (
-        metrics is not None
-    ), "Need to pass a list of each subtask's metric for this stderr aggregation"
-    assert len(stderrs) == len(sizes) and len(sizes) == len(metrics)
-
-    # This formula depends on sample means.
-    # removed because it seems to give erroneously huge stderrs for groupings of tasks
-    # and does not seem to match up with bootstrap-calculated stderrs for groups.
-
-    ### don't use this unless a statistician has told you it's the right thing to do ###
-
-    # accumulators: we'll aggregate pairwise N - 1 times
-    variance = stderrs[0] ** 2
-    curr_size = sizes[0]
-    curr_score = metrics[0]
-
-    for stderr, size, score in zip(stderrs[1:], sizes[1:], metrics[1:]):
-        curr_score = ((curr_score * curr_size) + (score * size)) / (
-            curr_size + size
-        )  # NOTE: this assumes our aggregation fn is "mean"
-
-        variance = ((curr_size - 1) * variance + (size - 1) * (stderr**2)) / (
-            curr_size + size - 1
-        ) + curr_size * size / ((curr_size + size) * (curr_size + size - 1)) * (
-            curr_score - score
-        ) ** 2
-
-    return np.sqrt(variance)
-
-
 def aggregate_subtask_metrics(metrics, sizes, weight_by_size=True):
     # A helper function that is used to aggregate
     # subtask scores cross-task.

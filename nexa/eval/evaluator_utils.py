@@ -472,7 +472,7 @@ def consolidate_group_results(
                             sizes,
                             metric_config["weight_by_size"],
                         )
-                        # TODO: calculate groups' metrics using arbitrary agg fns
+
                         if "N/A" in stderrs:
                             results[group_or_task][stderr] = "N/A"
                         else:
