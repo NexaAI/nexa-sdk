@@ -149,7 +149,8 @@ def make_table(result_dict, column: str = "results", sort_results: bool = False)
         "",
         "Stderr",
     ]
-
+    
+    from pytablewriter import MarkdownTableWriter
     md_writer = MarkdownTableWriter()
     md_writer.headers = all_headers
 

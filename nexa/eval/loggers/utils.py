@@ -1,13 +1,6 @@
 import logging
-import os
-import re
-import subprocess
-from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict
 from nexa import __version__
-
-import numpy as np
-
 
 logger = logging.getLogger(__name__)
 
