@@ -5,7 +5,7 @@ import requests
 import os
 import sys
 from nexa.eval import evaluator
-from nexa.eval.loggers import EvaluationTracker
+from nexa.eval.evaluation_tracker import EvaluationTracker
 from nexa.eval.tasks import TaskManager
 from nexa.eval.utils import make_table, simple_parse_args_string
 from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
@@ -64,14 +64,8 @@ class NexaEval:
     
 
     def evaluate_model(self, args):
-
-        if args.output_path:
-            args.hf_hub_log_args += f",output_path={args.output_path}"
-        if os.environ.get("HF_TOKEN", None):
-            args.hf_hub_log_args += f",token={os.environ.get('HF_TOKEN')}"
         
-        evaluation_tracker_args = simple_parse_args_string(args.hf_hub_log_args)
-        evaluation_tracker = EvaluationTracker(**evaluation_tracker_args)
+        evaluation_tracker = EvaluationTracker(output_path=args.output_path)
         task_manager = TaskManager(args.verbosity, include_path=args.include_path)
         
         if args.tasks is None:

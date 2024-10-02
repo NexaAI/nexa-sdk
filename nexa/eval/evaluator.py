@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, List, Optional, Union
 
 import numpy as np
 
+from nexa import __version__
 import nexa.eval.api.metrics
 import nexa.eval.api.registry
 import nexa.eval.api.task
@@ -20,7 +21,6 @@ from nexa.eval.evaluator_utils import (
     prepare_print_tasks,
 )
 
-from nexa.eval.loggers.utils import add_env_info
 from nexa.eval.tasks import (
     TaskManager,
     get_task_dict,
@@ -34,8 +34,7 @@ from nexa.eval.utils import (
 
 if TYPE_CHECKING:
     from nexa.eval.api.task import Task
-
-
+    
 def simple_evaluate(
     model,
     model_args: Optional[str] = None,
@@ -141,10 +140,11 @@ def simple_evaluate(
 
 
     if evaluation_tracker is not None:
-        evaluation_tracker.general_config_tracker.log_experiment_args(
+        evaluation_tracker.log_experiment_args(
             model_source=model,
             model_args=model_args,
         )
+
 
     results = evaluate(
         lm=lm,
@@ -179,7 +179,7 @@ def simple_evaluate(
             }
         )
         results["date"] = start_date
-        add_env_info(results)  # additional environment info to results
+        results["nexa_sdk_version"] =  __version__
         return results
     else:
         return None

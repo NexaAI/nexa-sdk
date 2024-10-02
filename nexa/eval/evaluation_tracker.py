@@ -1,8 +1,5 @@
 import json
-import os
-import re
 import time
-from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -12,63 +9,6 @@ from nexa.eval.utils import (
     hash_string,
     sanitize_model_name,
 )
-
-
-@dataclass(init=False)
-class GeneralConfigTracker:
-    """
-    Tracker for the evaluation parameters.
-
-    Attributes:
-        model_source (str): Source of the model (e.g. Hugging Face, GGUF, etc.)
-        model_name (str): Name of the model.
-        model_name_sanitized (str): Sanitized model name for directory creation.
-        start_time (float): Start time of the experiment. Logged at class init.
-        end_time (float): Start time of the experiment. Logged when calling [`GeneralConfigTracker.log_end_time`]
-        total_evaluation_time_seconds (str): Inferred total evaluation time in seconds (from the start and end times).
-    """
-
-    model_source: str = None
-    model_name: str = None
-    model_name_sanitized: str = None
-    start_time: float = None
-    end_time: float = None
-    total_evaluation_time_seconds: str = None
-
-    def __init__(self) -> None:
-        """Starts the evaluation timer."""
-        self.start_time = time.perf_counter()
-
-    @staticmethod
-    def _get_model_name(model_args: str) -> str:
-        """Extracts the model name from the model arguments."""
-
-        def extract_model_name(model_args: str, key: str) -> str:
-            """Extracts the model name from the model arguments using a key."""
-            args_after_key = model_args.split(key)[1]
-            return args_after_key.split(",")[0]
-
-        # order does matter, e.g. peft and delta are provided together with pretrained
-        prefixes = ["peft=", "delta=", "pretrained=", "model=", "path=", "engine="]
-        for prefix in prefixes:
-            if prefix in model_args:
-                return extract_model_name(model_args, prefix)
-        return ""
-
-    def log_experiment_args(
-        self,
-        model_source: str,
-        model_args: str,
-    ) -> None:
-        """Logs model parameters and job ID."""
-        self.model_source = model_source
-        self.model_name = GeneralConfigTracker._get_model_name(model_args)
-        self.model_name_sanitized = sanitize_model_name(self.model_name)
-
-    def log_end_time(self) -> None:
-        """Logs the end time of the evaluation and calculates the total evaluation time."""
-        self.end_time = time.perf_counter()
-        self.total_evaluation_time_seconds = str(self.end_time - self.start_time)
 
 
 class EvaluationTracker:
@@ -87,9 +27,46 @@ class EvaluationTracker:
         Args:
             output_path (str): Path to save the results. If not provided, the results won't be saved.
         """
-        self.general_config_tracker = GeneralConfigTracker()
+        # Initialize tracking variables
+        self.model_source: str = None
+        self.model_name: str = None
+        self.model_name_sanitized: str = None
+        self.start_time: float = time.perf_counter()
+        self.end_time: float = None
+        self.total_evaluation_time_seconds: str = None
+
         self.output_path = output_path
 
+    @staticmethod
+    def _get_model_name(model_args: str) -> str:
+        """Extracts the model name from the model arguments."""
+
+        def extract_model_name(model_args: str, key: str) -> str:
+            """Extracts the model name from the model arguments using a key."""
+            args_after_key = model_args.split(key)[1]
+            return args_after_key.split(",")[0]
+
+        # Order does matter; e.g., 'peft' and 'delta' are provided together with 'pretrained'
+        prefixes = ["peft=", "delta=", "pretrained=", "model=", "path=", "engine="]
+        for prefix in prefixes:
+            if prefix in model_args:
+                return extract_model_name(model_args, prefix)
+        return ""
+
+    def log_experiment_args(
+        self,
+        model_source: str,
+        model_args: str,
+    ) -> None:
+        """Logs model parameters and job ID."""
+        self.model_source = model_source
+        self.model_name = self._get_model_name(model_args)
+        self.model_name_sanitized = sanitize_model_name(self.model_name)
+
+    def log_end_time(self) -> None:
+        """Logs the end time of the evaluation and calculates the total evaluation time."""
+        self.end_time = time.perf_counter()
+        self.total_evaluation_time_seconds = str(self.end_time - self.start_time)
 
     def save_results_aggregated(
         self,
@@ -103,13 +80,13 @@ class EvaluationTracker:
             results (dict): The aggregated results to save.
             samples (dict): The samples results to save.
         """
-        self.general_config_tracker.log_end_time()
+        self.log_end_time()
 
         if self.output_path:
             try:
                 eval_logger.info("Saving results aggregated")
 
-                # calculate cumulative hash for each task - only if samples are provided
+                # Calculate cumulative hash for each task - only if samples are provided
                 task_hashes = {}
                 if samples:
                     for task_name, task_samples in samples.items():
@@ -119,9 +96,20 @@ class EvaluationTracker:
                         ]
                         task_hashes[task_name] = hash_string("".join(sample_hashes))
 
-                # update initial results dict
+                # Update initial results dict
                 results.update({"task_hashes": task_hashes})
-                results.update(asdict(self.general_config_tracker))
+
+                # Collect configuration attributes
+                config_attrs = {
+                    "model_source": self.model_source,
+                    "model_name": self.model_name,
+                    "model_name_sanitized": self.model_name_sanitized,
+                    "start_time": self.start_time,
+                    "end_time": self.end_time,
+                    "total_evaluation_time_seconds": self.total_evaluation_time_seconds,
+                }
+                results.update(config_attrs)
+
                 dumped = json.dumps(
                     results,
                     indent=2,
@@ -130,11 +118,11 @@ class EvaluationTracker:
                 )
 
                 path = Path(self.output_path if self.output_path else Path.cwd())
-                path = path.joinpath(self.general_config_tracker.model_name_sanitized)
+                path = path.joinpath(self.model_name_sanitized)
                 path.mkdir(parents=True, exist_ok=True)
 
-                self.date_id = datetime.now().isoformat().replace(":", "-")
-                file_results_aggregated = path.joinpath(f"results_{self.date_id}.json")
+                date_id = datetime.now().isoformat().replace(":", "-")
+                file_results_aggregated = path.joinpath(f"results_{date_id}.json")
                 file_results_aggregated.open("w", encoding="utf-8").write(dumped)
 
             except Exception as e:
