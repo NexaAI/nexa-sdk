@@ -20,7 +20,7 @@ from nexa.eval.evaluator_utils import (
     prepare_print_tasks,
 )
 
-from nexa.eval.loggers.utils import add_env_info, add_tokenizer_info
+from nexa.eval.loggers.utils import add_env_info
 from nexa.eval.tasks import (
     TaskManager,
     get_task_dict,
@@ -180,7 +180,6 @@ def simple_evaluate(
         )
         results["date"] = start_date
         add_env_info(results)  # additional environment info to results
-        add_tokenizer_info(results, lm)  # additional info about tokenizer
         return results
     else:
         return None
