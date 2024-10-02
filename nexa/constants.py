@@ -349,6 +349,7 @@ NEXA_OFFICIAL_MODELS_TYPE = {
     "Llama2-7b-function-calling": ModelType.NLP,
     "OpenELM-1_1B": ModelType.NLP,
     "OpenELM-3B": ModelType.NLP,
+    "AMD-Llama-135m": ModelType.NLP,
     "lcm-dreamshaper-v7": ModelType.COMPUTER_VISION,
     "stable-diffusion-v1-5": ModelType.COMPUTER_VISION,
     "stable-diffusion-v1-4": ModelType.COMPUTER_VISION,
