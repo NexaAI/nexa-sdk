@@ -255,7 +255,7 @@ class StableDiffusion:
 
         control_cond = self._format_control_cond(control_cond, canny, self.control_net_path)
 
-        with suppress_stdout_stderr(disable=self.verbose):
+        with suppress_stdout_stderr(disable=True):
             # Generate images
             c_images = sd_cpp.txt2img(
                 self.model,
@@ -380,7 +380,7 @@ class StableDiffusion:
 
         image_pointer = self._image_to_sd_image_t_p(image)
 
-        with suppress_stdout_stderr(disable=self.verbose):
+        with suppress_stdout_stderr(disable=True):
             # Generate images
             c_images = sd_cpp.img2img(
                 self.model,
