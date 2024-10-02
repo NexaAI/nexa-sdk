@@ -141,10 +141,11 @@ def simple_evaluate(
 
 
     if evaluation_tracker is not None:
-        evaluation_tracker.general_config_tracker.log_experiment_args(
+        evaluation_tracker.log_experiment_args(
             model_source=model,
             model_args=model_args,
         )
+
 
     results = evaluate(
         lm=lm,
