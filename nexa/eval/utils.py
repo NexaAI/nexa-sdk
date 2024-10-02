@@ -132,8 +132,7 @@ def sanitize_model_name(model_name: str) -> str:
 
 def make_table(result_dict, column: str = "results", sort_results: bool = False):
     """Generate table of results."""
-    from pytablewriter import LatexTableWriter, MarkdownTableWriter
-
+    
     if column == "results":
         column_name = "Tasks"
     elif column == "groups":
@@ -150,11 +149,10 @@ def make_table(result_dict, column: str = "results", sort_results: bool = False)
         "",
         "Stderr",
     ]
-
+    
+    from pytablewriter import MarkdownTableWriter
     md_writer = MarkdownTableWriter()
-    latex_writer = LatexTableWriter()
     md_writer.headers = all_headers
-    latex_writer.headers = all_headers
 
     values = []
 
@@ -194,10 +192,6 @@ def make_table(result_dict, column: str = "results", sort_results: bool = False)
             k = ""
             version = ""
     md_writer.value_matrix = values
-    latex_writer.value_matrix = values
-
-    # todo: make latex table look good
-    # print(latex_writer.dumps())
 
     return md_writer.dumps()
 

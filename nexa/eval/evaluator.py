@@ -18,10 +18,9 @@ from nexa.eval.evaluator_utils import (
     get_subtask_list,
     get_task_list,
     prepare_print_tasks,
-    print_writeout,
 )
 
-from nexa.eval.loggers.utils import add_env_info, add_tokenizer_info
+from nexa.eval.loggers.utils import add_env_info
 from nexa.eval.tasks import (
     TaskManager,
     get_task_dict,
@@ -30,7 +29,6 @@ from nexa.eval.utils import (
     eval_logger,
     handle_non_serializable,
     hash_string,
-    simple_parse_args_string,
 )
 
 
@@ -44,19 +42,11 @@ def simple_evaluate(
     tasks: Optional[List[str]] = None,
     num_fewshot: Optional[int] = None,
     batch_size: Optional[Union[int, str]] = None,
-    max_batch_size: Optional[int] = None,
     limit: Optional[Union[int, float]] = None,
     bootstrap_iters: int = 100000,
-    write_out: bool = False,
-    log_samples: bool = True,
     evaluation_tracker = None,
-    system_instruction: Optional[str] = None,
-    apply_chat_template: Union[bool, str] = False,
-    fewshot_as_multiturn: bool = False,
-    gen_kwargs: Optional[str] = None,
     task_manager: Optional[TaskManager] = None,
     verbosity: str = "INFO",
-    predict_only: bool = False,
     random_seed: int = 0,
     numpy_random_seed: int = 1234,
     fewshot_random_seed: int = 1234,
@@ -66,38 +56,18 @@ def simple_evaluate(
     :param model: Union[str, LM]
         Name of model or LM object, see nexa.eval.models.get_model
     :param model_args: Optional[str]
-        String for model class, see LM.create_from_arg_string and LM.create_from_arg_object.
+        String for model class, see LM.create_from_arg_string.
         Ignored if `model` argument is a LM object.
     :param tasks: list[str]
         List of task names or Task objects. Task objects will be taken to have name task.EVAL_HARNESS_NAME if defined and type(task).__name__ otherwise.
     :param num_fewshot: int
         Number of examples in few-shot context
-    :param batch_size: int or str, optional
+    :param batch_size: int
         Batch size for model
-    :param max_batch_size: int, optional
-        Maximal batch size to try with automatic batch size detection
     :param limit: int or float, optional
         Limit the number of examples per task (only use this for testing), If <1, limit is a percentage of the total number of examples.
     :param bootstrap_iters:
         Number of iterations for bootstrap statistics, used when calculating stderrs. set to 0 for no stderr calculations to be performed.
-    :param write_out: bool
-        If True, write out an example document and model input for checking task integrity
-    :param log_samples: bool
-        If True, write out all model outputs and documents for per-sample measurement and post-hoc analysis
-    :param system_instruction: str
-        System instruction to be applied to the prompt
-    :param apply_chat_template: Union[bool, str]
-        Specifies whether to apply a chat template to the prompt.
-        - If set to True, the default chat template is applied.
-        - If set to a string, applies the specified chat template by name.
-        Defaults to False (no chat template applied).
-    :param fewshot_as_multiturn: bool
-        Whether to provide the fewshot examples as a multiturn conversation or a single user turn.
-    :param gen_kwargs: str
-        String arguments for model generation
-        Ignored for all tasks with loglikelihood output_type
-    :param predict_only: bool
-        If true only model outputs will be generated and returned. Metrics will not be evaluated
     :param random_seed: int
         Random seed for python's random module. If set to None, the seed will not be set.
     :param numpy_random_seed: int
@@ -111,34 +81,19 @@ def simple_evaluate(
     eval_logger.setLevel(getattr(logging, f"{verbosity}"))
     start_date = time.time()
 
-    seed_message = []
-    if random_seed is not None:
+    # set random_seed
+    random.seed(random_seed)
+    np.random.seed(numpy_random_seed)
 
-        seed_message.append(f"Setting random seed to {random_seed}")
-        random.seed(random_seed)
-
-    if numpy_random_seed is not None:
-        seed_message.append(f"Setting numpy seed to {numpy_random_seed}")
-        np.random.seed(numpy_random_seed)
-
-
-    if tasks is None:
-        tasks = []
-    if len(tasks) == 0:
-        raise ValueError(
-            "No tasks specified, or no tasks found. Please verify the task names."
-        )
+    if not tasks:
+        raise ValueError("No tasks specified, or no tasks found. Please verify the task names.")
 
     lm = GGUFLM.create_from_arg_string(
         model_args,
         {
             "batch_size": batch_size,
-            "max_batch_size": max_batch_size
         },
     )
-
-    if task_manager is None:
-        task_manager = TaskManager(verbosity)
 
     task_dict = get_task_dict(tasks, task_manager)
 
@@ -154,19 +109,6 @@ def simple_evaluate(
                 }
 
             else:
-                if task_obj.get_config("output_type") == "generate_until":
-                    if gen_kwargs is not None:
-                        task_obj.set_config(
-                            key="generation_kwargs", value=gen_kwargs, update=True
-                        )
-
-                if predict_only:
-                    eval_logger.info(
-                        f"Processing {task_name} in output-only mode. Metrics will not be calculated!"
-                    )
-                    # we have to change the class properties post-hoc. This is pretty hacky.
-                    task_obj.override_metric(metric_name="bypass")
-
                 # override tasks' fewshot values to the provided num_fewshot arg value
                 # except if tasks have it set to 0 manually in their configs--then we should never overwrite that
                 if num_fewshot is not None:
@@ -197,19 +139,11 @@ def simple_evaluate(
 
     task_dict = _adjust_config(task_dict)
 
-    # hotfix: delete when chat_template fixed
-    try:
-        chat = lm.chat_template(apply_chat_template)
-    except:  # noqa: E722
-        chat = None
 
     if evaluation_tracker is not None:
         evaluation_tracker.general_config_tracker.log_experiment_args(
             model_source=model,
             model_args=model_args,
-            system_instruction=system_instruction,
-            chat_template=chat,
-            fewshot_as_multiturn=fewshot_as_multiturn,
         )
 
     results = evaluate(
@@ -217,11 +151,6 @@ def simple_evaluate(
         task_dict=task_dict,
         limit=limit,
         bootstrap_iters=bootstrap_iters,
-        write_out=write_out,
-        log_samples=True if predict_only else log_samples,
-        system_instruction=system_instruction,
-        apply_chat_template=apply_chat_template,
-        fewshot_as_multiturn=fewshot_as_multiturn,
         verbosity=verbosity,
     )
 
@@ -242,12 +171,8 @@ def simple_evaluate(
         results["config"].update(
             {
                 "batch_size": batch_size,
-                "batch_sizes": (
-                    list(lm.batch_sizes.values()) if hasattr(lm, "batch_sizes") else []
-                ),
                 "limit": limit,
                 "bootstrap_iters": bootstrap_iters,
-                "gen_kwargs": gen_kwargs,
                 "random_seed": random_seed,
                 "numpy_seed": numpy_random_seed,
                 "fewshot_seed": fewshot_random_seed,
@@ -255,7 +180,6 @@ def simple_evaluate(
         )
         results["date"] = start_date
         add_env_info(results)  # additional environment info to results
-        add_tokenizer_info(results, lm)  # additional info about tokenizer
         return results
     else:
         return None
@@ -266,11 +190,6 @@ def evaluate(
     task_dict,
     limit: Optional[int] = None,
     bootstrap_iters: Optional[int] = 100000,
-    write_out: bool = False,
-    log_samples: bool = True,
-    system_instruction: Optional[str] = None,
-    apply_chat_template: Union[bool, str] = False,
-    fewshot_as_multiturn: bool = False,
     verbosity: str = "INFO",
 ):
     """Instantiate and evaluate a model on a list of tasks.
@@ -283,19 +202,6 @@ def evaluate(
         Limit the number of examples per task (only use this for testing)
     :param bootstrap_iters:
         Number of iterations for bootstrap statistics, used when calculating stderr. Set to 0 for skipping all stderr calculations.
-    :param write_out: bool
-        If True, write out an example document and model input for checking task integrity
-    :param log_samples: bool
-        If True, write out all model outputs and documents for per-sample measurement and post-hoc analysis
-    :param system_instruction: str
-        System instruction to be applied to the prompt
-    :param apply_chat_template: Union[bool, str]
-        Specifies whether to apply a chat template to the prompt.
-        - If set to True, the default chat template is applied.
-        - If set to a string, applies the specified chat template by name.
-        Defaults to False (no chat template applied).
-    :param fewshot_as_multiturn: bool
-        Whether to provide the fewshot examples as a multiturn conversation or a single user turn.
     :return
         Dictionary of results
     """
@@ -310,12 +216,7 @@ def evaluate(
 
     # get lists of group hierarchy and each type of request
     eval_tasks = get_task_list(task_dict)
-    if not log_samples:
-        if not all(
-            "bypass" not in getattr(task_output.task, "_metric_fn_list", {}).keys()
-            for task_output in eval_tasks
-        ):
-            raise ValueError("log_samples must be True for 'bypass' metric-only tasks")
+
     for task_output in eval_tasks:
         task: Task = task_output.task
         limit = get_sample_size(task, limit)
@@ -323,21 +224,7 @@ def evaluate(
             limit=limit,
             rank=lm.rank,
             world_size=lm.world_size,
-            system_instruction=system_instruction,
-            apply_chat_template=bool(apply_chat_template),
-            fewshot_as_multiturn=fewshot_as_multiturn,
-            chat_template=getattr(lm, "apply_chat_template")
-            if apply_chat_template
-            else None,
-            tokenizer_name=getattr(lm, "tokenizer_name", "")
-            if apply_chat_template
-            else "",
         )
-        eval_logger.debug(
-            f"Task: {task_output.task_name}; number of requests on this rank: {len(task.instances)}"
-        )
-        if write_out:
-            print_writeout(task)
         # aggregate Instances by LM method requested to get output.
         for instance in task.instances:
             reqtype = instance.request_type
@@ -394,30 +281,29 @@ def evaluate(
                 metrics = task.process_results(
                     doc, [req.filtered_resps[filter_key] for req in requests]
                 )
-                if log_samples:
-                    target = task.doc_to_target(doc)
-                    example = {
-                        "doc_id": doc_id,
-                        "doc": doc,
-                        "target": target,
-                        "arguments": [req.args for req in requests],
-                        "resps": [req.resps for req in requests],
-                        "filtered_resps": [
-                            req.filtered_resps[filter_key] for req in requests
-                        ],
-                        "doc_hash": hash_string(
-                            json.dumps(
-                                requests[0].doc,
-                                indent=2,
-                                default=handle_non_serializable,
-                                ensure_ascii=False,
-                            )
-                        ),
-                        "prompt_hash": hash_string(requests[0].arguments[0]),
-                        "target_hash": hash_string(str(target)),
-                    }
-                    example.update(metrics)
-                    task_output.logged_samples.append(example)
+                target = task.doc_to_target(doc)
+                example = {
+                    "doc_id": doc_id,
+                    "doc": doc,
+                    "target": target,
+                    "arguments": [req.args for req in requests],
+                    "resps": [req.resps for req in requests],
+                    "filtered_resps": [
+                        req.filtered_resps[filter_key] for req in requests
+                    ],
+                    "doc_hash": hash_string(
+                        json.dumps(
+                            requests[0].doc,
+                            indent=2,
+                            default=handle_non_serializable,
+                            ensure_ascii=False,
+                        )
+                    ),
+                    "prompt_hash": hash_string(requests[0].arguments[0]),
+                    "target_hash": hash_string(str(target)),
+                }
+                example.update(metrics)
+                task_output.logged_samples.append(example)
                 for metric, value in metrics.items():
                     task_output.sample_metrics[(metric, filter_key)].append(value)
 
@@ -491,8 +377,8 @@ def evaluate(
                 for task_output in eval_tasks
             },
         }
-        if log_samples:
-            results_dict["samples"] = dict(samples)
+        
+        results_dict["samples"] = dict(samples)
 
         return results_dict
 

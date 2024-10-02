@@ -10,7 +10,6 @@ from nexa.eval.utils import (
     eval_logger,
     handle_non_serializable,
     hash_string,
-    sanitize_list,
     sanitize_model_name,
 )
 
@@ -32,11 +31,6 @@ class GeneralConfigTracker:
     model_source: str = None
     model_name: str = None
     model_name_sanitized: str = None
-    system_instruction: str = None
-    system_instruction_sha: str = None
-    fewshot_as_multiturn: bool = None
-    chat_template: str = None
-    chat_template_sha: str = None
     start_time: float = None
     end_time: float = None
     total_evaluation_time_seconds: str = None
@@ -65,21 +59,11 @@ class GeneralConfigTracker:
         self,
         model_source: str,
         model_args: str,
-        system_instruction: str,
-        chat_template: str,
-        fewshot_as_multiturn: bool,
     ) -> None:
         """Logs model parameters and job ID."""
         self.model_source = model_source
         self.model_name = GeneralConfigTracker._get_model_name(model_args)
         self.model_name_sanitized = sanitize_model_name(self.model_name)
-        self.system_instruction = system_instruction
-        self.system_instruction_sha = (
-            hash_string(system_instruction) if system_instruction else None
-        )
-        self.chat_template = chat_template
-        self.chat_template_sha = hash_string(chat_template) if chat_template else None
-        self.fewshot_as_multiturn = fewshot_as_multiturn
 
     def log_end_time(self) -> None:
         """Logs the end time of the evaluation and calculates the total evaluation time."""
@@ -96,25 +80,15 @@ class EvaluationTracker:
     def __init__(
         self,
         output_path: str = None,
-        public_repo: bool = False,
-        leaderboard_url: str = "",
-        point_of_contact: str = "",
     ) -> None:
         """
         Creates all the necessary loggers for evaluation tracking.
 
         Args:
             output_path (str): Path to save the results. If not provided, the results won't be saved.
-            public_repo (bool): Whether to push the results to a public or private repository.
-            leaderboard_url (str): URL to the leaderboard on the Hugging Face hub on the dataset card.
-            point_of_contact (str): Contact information on the Hugging Face hub dataset card.
         """
         self.general_config_tracker = GeneralConfigTracker()
-
         self.output_path = output_path
-        self.public_repo = public_repo
-        self.leaderboard_url = leaderboard_url
-        self.point_of_contact = point_of_contact
 
 
     def save_results_aggregated(
@@ -170,57 +144,3 @@ class EvaluationTracker:
             eval_logger.info(
                 "Output path not provided, skipping saving results aggregated"
             )
-
-    def save_results_samples(
-        self,
-        task_name: str,
-        samples: dict,
-    ) -> None:
-        """
-        Saves the samples results to the output path and pushes them to the Hugging Face hub if requested.
-
-        Args:
-            task_name (str): The task name to save the samples for.
-            samples (dict): The samples results to save.
-        """
-        if self.output_path:
-            try:
-                eval_logger.info(f"Saving per-sample results for: {task_name}")
-
-                path = Path(self.output_path if self.output_path else Path.cwd())
-                path = path.joinpath(self.general_config_tracker.model_name_sanitized)
-                path.mkdir(parents=True, exist_ok=True)
-
-                file_results_samples = path.joinpath(
-                    f"samples_{task_name}_{self.date_id}.jsonl"
-                )
-
-                for sample in samples:
-                    arguments = {}
-                    for i, arg in enumerate(sample["arguments"]):
-                        arguments[f"gen_args_{i}"] = {}
-                        for j, tmp in enumerate(arg):
-                            arguments[f"gen_args_{i}"][f"arg_{j}"] = tmp
-
-                    sample["resps"] = sanitize_list(sample["resps"])
-                    sample["filtered_resps"] = sanitize_list(sample["filtered_resps"])
-                    sample["arguments"] = arguments
-                    sample["target"] = str(sample["target"])
-
-                    sample_dump = (
-                        json.dumps(
-                            sample,
-                            default=handle_non_serializable,
-                            ensure_ascii=False,
-                        )
-                        + "\n"
-                    )
-
-                    with open(file_results_samples, "a", encoding="utf-8") as f:
-                        f.write(sample_dump)
-
-            except Exception as e:
-                eval_logger.warning("Could not save sample results")
-                eval_logger.info(repr(e))
-        else:
-            eval_logger.info("Output path not provided, skipping saving sample results")

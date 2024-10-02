@@ -143,15 +143,5 @@ class GGUFLM:
         args = utils.simple_parse_args_string(arg_string)
         args2 = {k: v for k, v in additional_config.items() if v is not None}
         return cls(**args, **args2)
-
-    @classmethod
-    def create_from_arg_obj(
-        cls, arg_dict: dict, additional_config: Optional[dict] = None
-    ):
-        additional_config = {} if additional_config is None else additional_config
-        additional_config = {
-            k: v for k, v in additional_config.items() if v is not None
-        }
-        return cls(**arg_dict, **additional_config)
     
     
