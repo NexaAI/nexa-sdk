@@ -411,7 +411,6 @@ class Task:
             name=self.DATASET_NAME,
             **dataset_kwargs if dataset_kwargs is not None else {},
         )
-        self.dataset['train'] = self.dataset['train'].select(range(5))
 
 
     def has_training_docs(self) -> bool:
