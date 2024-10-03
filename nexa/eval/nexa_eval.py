@@ -17,12 +17,13 @@ def print_message(level, message):
     print(f"{timestamp} - {level} - {message}")
 
 class NexaEval:
-    def __init__(self, model_path: str, tasks: str):
+    def __init__(self, model_path: str, tasks: str, limit: float = None):
         model_path = NEXA_RUN_MODEL_MAP.get(model_path, model_path)
         self.model_path = model_path
         
         self.model_name = model_path.split(":")[0].lower()
         self.model_tag = model_path.split(":")[1].lower()
+        self.limit = limit
         self.tasks = tasks
         self.server_process = None
         self.server_url = "http://0.0.0.0:8300"
@@ -30,6 +31,7 @@ class NexaEval:
         self.eval_args = {
             "model": model_path,
             "tasks": tasks,
+            "limit": limit,
             "model_args": f"base_url={self.server_url}/v1/completions",
             "hf_hub_log_args": "",
             "batch_size": 8,
@@ -81,6 +83,7 @@ class NexaEval:
             results = evaluator.nexa_evaluate(
                 model=args.model,
                 model_args=args.model_args,
+                limit=args.limit,
                 tasks=task_names,
                 batch_size=args.batch_size,
                 task_manager=task_manager
@@ -169,6 +172,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run Nexa Model Evaluation")
     parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
     parser.add_argument("--tasks", type=str, help="Tasks to evaluate, comma-separated")
+    parser.add_argument("--limit", type=float, help="Limit the number of examples per task. If <1, limit is a percentage of the total number of examples.", default=None)
     
     args = parser.parse_args()
-    run_eval_inference(args.model_path, args.tasks)
+    run_eval_inference(args.model_path, args.tasks, args.limit)
