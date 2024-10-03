@@ -3,6 +3,7 @@ import ast
 import logging
 import random
 import re
+from functools import partial
 from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import asdict, dataclass
@@ -35,7 +36,7 @@ from nexa.eval.api.registry import (
     get_metric_aggregation,
     is_higher_better,
 )
-from nexa.eval.filters import build_filter_ensemble
+from nexa.eval.nexa_task.filter import build_filter_ensemble
 from nexa.eval.prompts import get_prompt
 
 
