@@ -28,14 +28,7 @@ dependencies = [
     "streamlit>=1.37.1",
     "streamlit-audiorec",
     "python-multipart",
-    "cmake",
-    "evaluate",
-    "pytablewriter",
-    "sacrebleu",
-    "langdetect",
-    "rouge_score",
-    "immutabledict",
-    "transformers",
+    "cmake"
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -62,10 +55,22 @@ onnx = [
     "ttstokenizer",
 ]
 
+eval = [
+    "sympy",
+    "openai",
+    "antlr4-python3-runtime",
+    "rouge_score",
+    "evaluate",
+    "pytablewriter",
+    "sacrebleu",
+    "langdetect",
+    "immutabledict",
+]
+
 [project.urls]
-Homepage = "https://github.com/NexaAI/nexaai-sdk-cpp"
-Issues = "https://github.com/NexaAI/nexaai-sdk-cpp/issues"
-Documentation = "https://docs-test.nexa4ai.com/"
+Homepage = "https://github.com/NexaAI/nexa-sdk"
+Issues = "https://github.com/NexaAI/nexa-sdk/issues"
+Documentation = "https://docs.nexa4ai.com/"
 
 [project.scripts]
 nexa-cli = "nexa.cli.entry:main"
