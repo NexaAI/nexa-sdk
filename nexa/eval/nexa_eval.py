@@ -7,7 +7,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 from nexa.eval import evaluator
-from nexa.eval.tasks import TaskManager
+from nexa.eval.nexa_task.task_manager import TaskManager
 from nexa.eval.utils import make_table, simple_parse_args_string, handle_non_serializable
 from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
 from nexa.constants import NEXA_MODEL_EVAL_RESULTS_PATH, NEXA_RUN_MODEL_MAP

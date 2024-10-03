@@ -20,7 +20,7 @@ from nexa.eval.evaluator_utils import (
     get_task_list,
     prepare_print_tasks,
 )
-from nexa.eval.tasks import (
+from nexa.eval.nexa_task.task_manager import (
     TaskManager,
     get_task_dict,
 )

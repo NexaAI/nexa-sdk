@@ -39,6 +39,7 @@ tabulate
 streamlit
 
 # eval
+sympy
 evaluate
 pytablewriter
 sacrebleu
