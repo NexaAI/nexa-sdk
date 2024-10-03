@@ -85,7 +85,7 @@ def run_eval_tasks(args):
     model_path = kwargs.pop("model_path")
     
     from nexa.eval.nexa_eval import NexaEval
-    evaluator = NexaEval(model_path, args.tasks)
+    evaluator = NexaEval(model_path, args.tasks, args.limit)
     evaluator.run_evaluation()
 
 def main():
@@ -195,6 +195,7 @@ def main():
     eval_parser = subparsers.add_parser("eval", help="Evaluate models on specified tasks.")
     eval_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
     eval_parser.add_argument("--tasks", type=str, required=True, help="Tasks to evaluate the model on, separated by commas.")
+    eval_parser.add_argument("--limit", type=float, help="Limit the number of examples per task. If <1, limit is a percentage of the total number of examples.", default=None)
 
 
     args = parser.parse_args()
