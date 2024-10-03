@@ -3,6 +3,7 @@ import ast
 import logging
 import random
 import re
+from functools import partial
 from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import asdict, dataclass
@@ -24,8 +25,8 @@ import numpy as np
 from tqdm import tqdm
 
 from nexa.eval import utils
-from nexa.eval.api import samplers
-from nexa.eval.api.instance import Instance, OutputType
+from nexa.eval.nexa_task import samplers
+from nexa.eval.nexa_task.instance import Instance, OutputType
 from nexa.eval.api.metrics import mean
 from nexa.eval.api.registry import (
     AGGREGATION_REGISTRY,
@@ -35,7 +36,7 @@ from nexa.eval.api.registry import (
     get_metric_aggregation,
     is_higher_better,
 )
-from nexa.eval.filters import build_filter_ensemble
+from nexa.eval.nexa_task.filter import build_filter_ensemble
 from nexa.eval.prompts import get_prompt
 
 
@@ -180,452 +181,11 @@ class TaskConfig(dict):
                 return str(value)
 
 
-class Task(abc.ABC):
-    """A task represents an entire benchmark including its dataset, problems,
-    answers, and evaluation methods. See BoolQ for a simple example implementation
-
-    A `doc` can be any python object which represents one instance of evaluation.
-    This is usually a dictionary e.g.
-        {"question": ..., "answer": ...} or
-        {"question": ..., question, answer)
-    """
-
-    VERSION: Optional[Union[int, str]] = None
-
-    # The name of the `Task` benchmark as denoted in the HuggingFace datasets Hub
-    # or a path to a custom `datasets` loading script.
+class Task:
+    VERSION: Optional[Union[int, str]] = "Yaml"
+    OUTPUT_TYPE: Optional[str] = None
     DATASET_PATH: Optional[str] = None
-
-    # The name of a subset within `DATASET_PATH`.
     DATASET_NAME: Optional[str] = None
-
-    OUTPUT_TYPE: Optional[OutputType] = None
-
-    def __init__(
-        self,
-        data_dir: Optional[str] = None,
-        cache_dir: Optional[str] = None,
-        download_mode: Optional[datasets.DownloadMode] = None,
-        config: Optional[Mapping] = None,  # Union[dict, TaskConfig]
-    ) -> None:
-        """
-        :param data_dir: str
-            Stores the path to a local folder containing the `Task`'s data files.
-            Use this to specify the path to manually downloaded data (usually when
-            the dataset is not publicly accessible).
-        :param cache_dir: str
-            The directory to read/write the `Task` dataset. This follows the
-            HuggingFace `datasets` API with the default cache directory located at:
-                `~/.cache/huggingface/datasets`
-            NOTE: You can change the cache location globally for a given process
-            to another directory:
-                `export HF_DATASETS_CACHE="/path/to/another/directory"`
-        :param download_mode: datasets.DownloadMode
-            How to treat pre-existing `Task` downloads and data.
-            - `datasets.DownloadMode.REUSE_DATASET_IF_EXISTS`
-                Reuse download and reuse dataset.
-            - `datasets.DownloadMode.REUSE_CACHE_IF_EXISTS`
-                Reuse download with fresh dataset.
-            - `datasets.DownloadMode.FORCE_REDOWNLOAD`
-                Fresh download and fresh dataset.
-        """
-        self.download(data_dir, cache_dir, download_mode)
-        self._training_docs: Optional[list] = None
-        self._fewshot_docs: Optional[list] = None
-        self._instances: Optional[List[Instance]] = None
-
-        self._config: TaskConfig = TaskConfig({**config}) if config else TaskConfig()
-
-        self._filters = [build_filter_ensemble("none", [["take_first", None]])]
-        self.fewshot_rnd: Optional[random.Random] = (
-            None  # purposely induce errors in case of improper usage
-        )
-
-    def download(
-        self,
-        data_dir: Optional[str] = None,
-        cache_dir: Optional[str] = None,
-        download_mode=None,
-    ) -> None:
-        """Downloads and returns the task dataset.
-        Override this method to download the dataset from a custom API.
-
-        :param data_dir: str
-            Stores the path to a local folder containing the `Task`'s data files.
-            Use this to specify the path to manually downloaded data (usually when
-            the dataset is not publicly accessible).
-        :param cache_dir: str
-            The directory to read/write the `Task` dataset. This follows the
-            HuggingFace `datasets` API with the default cache directory located at:
-                `~/.cache/huggingface/datasets`
-            NOTE: You can change the cache location globally for a given process
-            by setting the shell environment variable, `HF_DATASETS_CACHE`,
-            to another directory:
-                `export HF_DATASETS_CACHE="/path/to/another/directory"`
-        :param download_mode: datasets.DownloadMode
-            How to treat pre-existing `Task` downloads and data.
-            - `datasets.DownloadMode.REUSE_DATASET_IF_EXISTS`
-                Reuse download and reuse dataset.
-            - `datasets.DownloadMode.REUSE_CACHE_IF_EXISTS`
-                Reuse download with fresh dataset.
-            - `datasets.DownloadMode.FORCE_REDOWNLOAD`
-                Fresh download and fresh dataset.
-        """
-        self.dataset = datasets.load_dataset(
-            path=self.DATASET_PATH,
-            name=self.DATASET_NAME,
-            data_dir=data_dir,
-            cache_dir=cache_dir,
-            download_mode=download_mode,
-        )
-        # self.dataset = self.dataset.select([0])
-        
-    @property
-    def config(self) -> TaskConfig:
-        """Returns the TaskConfig associated with this class."""
-        return self._config
-
-    @abc.abstractmethod
-    def has_training_docs(self):
-        """Whether the task has a training set"""
-        pass
-
-    @abc.abstractmethod
-    def has_validation_docs(self):
-        """Whether the task has a validation set"""
-        pass
-
-    @abc.abstractmethod
-    def has_test_docs(self):
-        """Whether the task has a test set"""
-        pass
-
-    def training_docs(self) -> Iterable:
-        """
-        :return: Iterable[obj]
-            A iterable of any object, that doc_to_text can handle
-        """
-        return []
-
-    def validation_docs(self) -> Iterable:
-        """
-        :return: Iterable[obj]
-            A iterable of any object, that doc_to_text can handle
-        """
-        return []
-
-    def test_docs(self) -> Iterable:
-        """
-        :return: Iterable[obj]
-            A iterable of any object, that doc_to_text can handle
-        """
-        return []
-
-    def fewshot_docs(self) -> Iterable:
-        """
-        :return: Iterable[obj]
-            A iterable of any object, that doc_to_text can handle
-        """
-        if self.has_training_docs():
-            return self.training_docs()
-        elif self.has_validation_docs():
-            return self.validation_docs()
-        else:
-            eval_logger.warning(
-                f"[Task: {self.config.task}] has_training_docs and has_validation_docs are False"
-                ", using test_docs as fewshot_docs but this is not recommended."
-            )
-            return self.test_docs()
-
-    def _process_doc(self, doc: dict) -> dict:
-        """
-        Override this to process (detokenize, strip, replace, etc.) individual
-        documents. This can be used in a map over documents of a data split.
-        E.g. `map(self._process_doc, self.dataset["validation"])`
-
-        :return: dict
-            The processed version of the specified `doc`.
-        """
-        return doc
-
-    @property
-    def instances(self) -> List[Instance]:
-        """After calling `task.build_all_requests()`, tasks
-        maintain a list of the dataset instances which will be evaluated.
-        """
-        return self._instances
-
-    def fewshot_examples(self, k, rnd):
-        if self._training_docs is None:
-            self._training_docs = list(self.training_docs())
-
-        return rnd.sample(self._training_docs, k)
-
-    def doc_to_decontamination_query(self, doc):
-        raise NotImplementedError(
-            "Override doc_to_decontamination_query with document specific decontamination query."
-        )
-
-    @abc.abstractmethod
-    def doc_to_text(self, doc):
-        pass
-
-    @abc.abstractmethod
-    def doc_to_target(self, doc):
-        pass
-
-    def build_all_requests(
-        self,
-        *,
-        limit: Union[int, None] = None,
-        rank: int = 0,
-        world_size: int = 1,
-    ) -> None:
-        """Build a set of Instances for a task, and store them in task.instances"""
-
-        # used with caching
-        og_limit = limit
-
-        cache_key = f"requests-{self._config.task}-{self.config.num_fewshot}shot-rank{rank}-world_size{world_size}"
-
-        eval_logger.info(f"Building contexts for {self.config.task} on rank {rank}...")
-
-        instances = []
-
-        doc_id_docs = list(
-            self.doc_iterator(rank=rank, limit=limit, world_size=world_size)
-        )
-
-        num_docs = len(doc_id_docs)
-
-        for doc_id, doc in tqdm(
-            doc_id_docs,
-            total=num_docs,
-        ):
-            # sample fewshot context #TODO: need to offset doc_id by rank now!
-            fewshot_ctx = self.fewshot_context(
-                doc,
-                0 if self.config.num_fewshot is None else self.config.num_fewshot,
-            )
-
-            # TODO: we should override self.config.repeats if doing greedy gen so users don't waste time+compute
-            inst = self.construct_requests(
-                doc=doc,
-                ctx=fewshot_ctx,
-                metadata=(self.config["task"], doc_id, self.config.repeats),
-            )
-
-            if not isinstance(inst, list):
-                inst = [inst]
-
-            instances.append(inst)
-
-        # now flatten, this is to allow slicing to work with pickles
-
-        sliced_instances = instances[:og_limit]
-
-        flattened_instances = [
-            instance
-            for instance_group in sliced_instances
-            for instance in instance_group
-        ]
-
-        self._instances = flattened_instances
-
-        if len(self._instances) == 0:
-            raise ValueError("task.build_requests() did not find any docs!")
-        
-    @abc.abstractmethod
-    def construct_requests(self, doc, ctx, **kwargs):
-        """Uses RequestFactory to construct Requests and returns an iterable of
-        Requests which will be sent to the LM.
-
-        :param doc:
-            The document as returned from training_docs, validation_docs, or test_docs.
-        :param ctx: str
-            The context string, generated by fewshot_context. This includes the natural
-            language description, as well as the few shot examples, and the question
-            part of the document for `doc`.
-        :param doc_idx: int
-            The index of a document within `self.test_docs()` or `self.validation_docs()`,
-            whichever is the main split used.
-        :param repeats: int
-        TODO: update this docstring
-            The number of times each instance in a dataset is inferred on. Defaults to 1,
-            can be increased for techniques like majority voting.
-        """
-        pass
-
-    @abc.abstractmethod
-    def process_results(self, doc, results):
-        """Take a single document and the LM results and evaluates, returning a
-        dict where keys are the names of submetrics and values are the values of
-        the metric for that one document
-
-        :param doc:
-            The document as returned from training_docs, validation_docs, or test_docs.
-        :param results:
-            The results of the requests created in construct_requests.
-        """
-        pass
-
-    @abc.abstractmethod
-    def aggregation(self):
-        """
-        :returns: {str: [metric_score] -> float}
-            A dictionary where keys are the names of submetrics and values are
-            functions that aggregate a list of metric scores
-        """
-        pass
-
-    @abc.abstractmethod
-    def higher_is_better(self):
-        """
-        :returns: {str: bool}
-            A dictionary where keys are the names of submetrics and values are
-            whether a higher value of the submetric is better
-        """
-        pass
-
-    def get_config(self, key: str) -> Any:
-        return getattr(self._config, key, None)
-
-    @classmethod
-    def count_bytes(cls, doc):
-        """Used for byte-level perplexity metrics in rolling loglikelihood"""
-        return len(doc.encode("utf-8"))
-
-    @classmethod
-    def count_words(cls, doc):
-        """Downstream loglikelihood_rolling perplexity tasks with custom word boundaries should override this!"""
-        return len(re.split(r"\s+", doc))
-
-    def fewshot_context(
-        self,
-        doc,
-        num_fewshot,
-        rnd=None,
-        description=None,
-    ):
-        """Returns a fewshot context string that is made up of a prepended description
-        (if provided), the `num_fewshot` number of examples, and an appended prompt example.
-
-        :param doc: str
-            The document as returned from training_docs, validation_docs, or test_docs.
-        :param num_fewshot: int
-            The number of fewshot examples to provide in the returned context string.
-        :param rnd: random.Random
-            The pseudo-random number generator used to randomly sample examples.
-            WARNING: This is currently a required arg although it's optionalized with a default `None`.
-        :param description: str
-            The task's description that will be prepended to the fewshot examples.
-        :returns: str
-            The fewshot context.
-        """
-        if rnd is None:
-            if self.fewshot_rnd is not None:
-                rnd = self.fewshot_rnd
-            else:
-                raise ValueError(
-                    "A `random.Random` generator argument must be provided to `rnd`"
-                )
-
-        description = description if description else ""
-
-        if num_fewshot == 0:
-            labeled_examples = ""
-        else:
-            # for sets with no training docs, draw from other set *but ensure no overlap with current doc*
-            if self.has_training_docs():
-                fewshotex = self.fewshot_examples(k=num_fewshot, rnd=rnd)
-            else:
-                if self._fewshot_docs is None:
-                    self._fewshot_docs = list(
-                        self.validation_docs()
-                        if self.has_validation_docs()
-                        else self.test_docs()
-                    )
-
-                fewshotex = rnd.sample(self._fewshot_docs, num_fewshot + 1)
-
-                # get rid of the doc that's the one we're evaluating, if it's in the fewshot
-                fewshotex = [x for x in fewshotex if x != doc][:num_fewshot]
-
-            labeled_examples = (
-                "\n\n".join(
-                    [
-                        self.doc_to_text(doc) + self.doc_to_target(doc)
-                        for doc in fewshotex
-                    ]
-                )
-                + "\n\n"
-            )
-
-        example = self.doc_to_text(doc)
-        return description + labeled_examples + example
-
-    def apply_filters(self) -> Optional[List[Instance]]:
-        """Iterates over FilterEnsembles and applies them to instances"""
-        if hasattr(self, "_filters"):
-            for f in self._filters:
-                f.apply(self._instances)
-        else:
-            eval_logger.warning("No filter defined, passing through instances")
-            return self._instances
-
-    def dump_config(self) -> dict:
-        """Returns the config as a dictionary."""
-        # TODO: this should only return the overrides applied to a non-YAML task's configuration.
-        # (num_fewshot)
-        return self.config.to_dict()
-
-    def set_config(self, key: str, value: Any, update: bool = False) -> None:
-        """Set or update the configuration for a given key."""
-        if key is None:
-            raise ValueError("Key must be provided.")
-
-        if update:
-            current_value = getattr(self._config, key, {})
-            if not isinstance(current_value, dict):
-                raise TypeError(
-                    f"Expected a dict for key '{key}', got {type(current_value).__name__} instead."
-                )
-            current_value.update(value)
-        else:
-            setattr(self._config, key, value)
-
-    def set_fewshot_seed(self, seed: Optional[int] = None) -> None:
-        self.fewshot_rnd = random.Random(seed)
-        if hasattr(self, "sampler"):
-            self.sampler.rnd = self.fewshot_rnd
-
-    @property
-    def eval_docs(self) -> Union[datasets.Dataset, List[dict]]:
-        if self.has_test_docs():
-            return self.test_docs()
-        elif self.has_validation_docs():
-            return self.validation_docs()
-        else:
-            raise ValueError(
-                f"Task dataset (path={self.DATASET_PATH}, name={self.DATASET_NAME}) must have valid or test docs!"
-            )
-
-    def doc_iterator(
-        self, *, rank: int = 0, limit: Union[int, None] = None, world_size: int = 1
-    ) -> Iterator[Tuple[int, Any]]:
-        limit = int(limit) if limit else None
-        doc_iterator = utils.create_iterator(
-            enumerate(self.eval_docs),
-            rank=int(rank),
-            limit=limit,
-            world_size=int(world_size),
-        )
-        return doc_iterator
-
-
-class ConfigurableTask(Task):
-    VERSION = "Yaml"
-    OUTPUT_TYPE = None
     CONFIG = None
 
     def __init__(
@@ -635,21 +195,14 @@ class ConfigurableTask(Task):
         download_mode=None,
         config: Optional[dict] = None,
     ) -> None:  # TODO no super() call here
-        # Get pre-configured attributes
-        self._config = self.CONFIG
+        
+        self.config = self.CONFIG if self.CONFIG else (TaskConfig(**config) if config else TaskConfig())
 
-        # Use new configurations if there was no preconfiguration
-        if self.config is None:
-            self._config = TaskConfig(**config)
-        # Overwrite configs
-        else:
-            if config is not None:
-                self._config.__dict__.update(config)
+        if config is not None:
+            self.config.__dict__.update(config)
 
         if self.config is None:
-            raise ValueError(
-                "Must pass a config to ConfigurableTask, either in cls.CONFIG or `config` kwarg"
-            )
+            raise ValueError("Must pass a config to Task, either in cls.CONFIG or `config` kwarg")
 
         if isinstance(self.config.metadata, dict):
             if "version" in self.config.metadata:
@@ -1033,7 +586,7 @@ class ConfigurableTask(Task):
                 return doc[doc_to_text]
             else:
                 text_string = utils.apply_template(doc_to_text, doc)
-                if text_string.isdigit() and self._config.doc_to_choice is not None:
+                if text_string.isdigit() and self.config.doc_to_choice is not None:
                     return ast.literal_eval(text_string)
                 else:
                     return text_string
@@ -1069,7 +622,7 @@ class ConfigurableTask(Task):
                 return doc[doc_to_target]
             else:
                 target_string = utils.apply_template(doc_to_target, doc)
-                if target_string.isdigit() and self._config.doc_to_choice is not None:
+                if target_string.isdigit() and self.config.doc_to_choice is not None:
                     return ast.literal_eval(target_string)
                 elif (
                     len(target_string) >= 2
@@ -1350,7 +903,7 @@ class ConfigurableTask(Task):
         return self._higher_is_better
 
     def get_config(self, key: str) -> Any:
-        return getattr(self._config, key, None)
+        return getattr(self.config, key, None)
 
     @property
     def task_name(self) -> Any:
@@ -1358,8 +911,126 @@ class ConfigurableTask(Task):
 
     def __repr__(self):
         return (
-            f"ConfigurableTask(task_name={getattr(self.config, 'task', None)},"
+            f"Task(task_name={getattr(self.config, 'task', None)},"
             f"output_type={self.OUTPUT_TYPE},"
             f"num_fewshot={getattr(self.config, 'num_fewshot', None)},"
             f"num_samples={len(self.eval_docs)})"
         )
+
+    def fewshot_docs(self) -> Iterable:
+        """
+        :return: Iterable[obj]
+            A iterable of any object, that doc_to_text can handle
+        """
+        if self.has_training_docs():
+            return self.training_docs()
+        elif self.has_validation_docs():
+            return self.validation_docs()
+        else:
+            eval_logger.warning(
+                f"[Task: {self.config.task}] has_training_docs and has_validation_docs are False"
+                ", using test_docs as fewshot_docs but this is not recommended."
+            )
+            return self.test_docs()
+
+    @property
+    def eval_docs(self) -> Union[datasets.Dataset, List[dict]]:
+        if self.has_test_docs():
+            return self.test_docs()
+        elif self.has_validation_docs():
+            return self.validation_docs()
+        else:
+            raise ValueError(
+                f"Task dataset (path={self.DATASET_PATH}, name={self.DATASET_NAME}) must have valid or test docs!"
+            )
+
+    def set_fewshot_seed(self, seed: Optional[int] = None) -> None:
+        self.fewshot_rnd = random.Random(seed)
+        if hasattr(self, "sampler"):
+            self.sampler.rnd = self.fewshot_rnd
+
+    def dump_config(self) -> dict:
+        """Returns the config as a dictionary."""
+        # TODO: this should only return the overrides applied to a non-YAML task's configuration.
+        # (num_fewshot)
+        return self.config.to_dict()
+
+    def build_all_requests(
+        self,
+        *,
+        limit: Union[int, None] = None,
+        rank: int = 0,
+        world_size: int = 1,
+    ) -> None:
+        """Build a set of Instances for a task, and store them in task.instances"""
+
+        # used with caching
+        og_limit = limit
+
+        cache_key = f"requests-{self.config.task}-{self.config.num_fewshot}shot-rank{rank}-world_size{world_size}"
+
+        eval_logger.info(f"Building contexts for {self.config.task} on rank {rank}...")
+
+        instances = []
+
+        doc_id_docs = list(
+            self.doc_iterator(rank=rank, limit=limit, world_size=world_size)
+        )
+
+        num_docs = len(doc_id_docs)
+
+        for doc_id, doc in tqdm(
+            doc_id_docs,
+            total=num_docs,
+        ):
+            # sample fewshot context #TODO: need to offset doc_id by rank now!
+            fewshot_ctx = self.fewshot_context(
+                doc,
+                0 if self.config.num_fewshot is None else self.config.num_fewshot,
+            )
+
+            # TODO: we should override self.config.repeats if doing greedy gen so users don't waste time+compute
+            inst = self.construct_requests(
+                doc=doc,
+                ctx=fewshot_ctx,
+                metadata=(self.config["task"], doc_id, self.config.repeats),
+            )
+
+            if not isinstance(inst, list):
+                inst = [inst]
+
+            instances.append(inst)
+
+        # now flatten, this is to allow slicing to work with pickles
+
+        sliced_instances = instances[:og_limit]
+
+        flattened_instances = [
+            instance
+            for instance_group in sliced_instances
+            for instance in instance_group
+        ]
+
+        self._instances = flattened_instances
+
+        if len(self._instances) == 0:
+            raise ValueError("task.build_requests() did not find any docs!")
+        
+    def doc_iterator(
+        self, *, rank: int = 0, limit: Union[int, None] = None, world_size: int = 1
+    ) -> Iterator[Tuple[int, Any]]:
+        limit = int(limit) if limit else None
+        doc_iterator = utils.create_iterator(
+            enumerate(self.eval_docs),
+            rank=int(rank),
+            limit=limit,
+            world_size=int(world_size),
+        )
+        return doc_iterator
+
+    @property
+    def instances(self) -> List[Instance]:
+        """After calling `task.build_all_requests()`, tasks
+        maintain a list of the dataset instances which will be evaluated.
+        """
+        return self._instances

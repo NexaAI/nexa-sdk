@@ -12,7 +12,7 @@ class ContextSampler:
             )
 
         self.task = task
-        self.config = task._config
+        self.config = task.config
 
         self.target_delimiter = self.config.target_delimiter
         self.fewshot_delimiter = self.config.fewshot_delimiter
