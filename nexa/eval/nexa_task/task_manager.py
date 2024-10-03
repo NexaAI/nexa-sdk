@@ -65,7 +65,7 @@ class TaskManager:
         """
         if include_defaults:
             current_dir = os.path.dirname(os.path.abspath(__file__))
-            tasks_dir = os.path.normpath(os.path.join(current_dir, '../tasks'))
+            tasks_dir = os.path.normpath(os.path.join(current_dir, '../benchmark_tasks'))
             all_paths = [tasks_dir]
         else:
             all_paths = []
