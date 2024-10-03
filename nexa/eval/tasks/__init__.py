@@ -6,7 +6,7 @@ from functools import partial
 from typing import Dict, List, Mapping, Optional, Union
 
 from nexa.eval import utils
-from nexa.eval.api.group import ConfigurableGroup, GroupConfig
+from nexa.eval.nexa_task.group import ConfigurableGroup, GroupConfig
 from nexa.eval.nexa_task.task import Task
 from nexa.eval.evaluator_utils import get_subtask_list
 

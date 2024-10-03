@@ -2,7 +2,7 @@ import collections
 import math
 from typing import List, Optional, Tuple, Union
 
-from nexa.eval.api.group import ConfigurableGroup
+from nexa.eval.nexa_task.group import ConfigurableGroup
 from nexa.eval.api.metrics import (
     aggregate_subtask_metrics,
     pooled_sample_stderr,

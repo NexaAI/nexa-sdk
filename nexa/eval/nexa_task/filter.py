@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Callable, Iterable, List, Union
 
-from nexa.eval.api.instance import Instance
+from nexa.eval.nexa_task.instance import Instance
 from nexa.eval.api.registry import register_filter, get_filter
 
 
