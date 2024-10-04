@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING, List, Optional, Union
 import numpy as np
 
 from nexa import __version__
-import nexa.eval.api.metrics
-import nexa.eval.api.registry
+import nexa.eval.nexa_task.metrics
+import nexa.eval.nexa_task.registry
 from nexa.eval.nexa_task.task import Task
 from nexa.eval.nexa_models import GGUFLM
 from nexa.eval.evaluator_utils import (
