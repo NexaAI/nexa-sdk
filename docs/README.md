@@ -132,9 +132,9 @@ python -m nexa.gguf.server.nexa_service llama2-function-calling
 ### Test Eval
 
 ```bash
-python -m nexa.cli.entry eval gemma --tasks ifeval
-python -m nexa.cli.entry eval gemma --tasks math
-python -m nexa.cli.entry eval gemma --tasks mgsm_direct
+python -m nexa.cli.entry eval phi3 --tasks ifeval --limit 5
+python -m nexa.cli.entry eval phi3 --tasks math --limit 5
+python -m nexa.cli.entry eval phi3 --tasks mgsm_direct --limit 5
 ```
 
 ### Test CLI with GGML Files
