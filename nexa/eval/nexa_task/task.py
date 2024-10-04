@@ -1034,3 +1034,18 @@ class Task:
         maintain a list of the dataset instances which will be evaluated.
         """
         return self._instances
+
+    def set_config(self, key: str, value: Any, update: bool = False) -> None:
+        """Set or update the configuration for a given key."""
+        if key is None:
+            raise ValueError("Key must be provided.")
+
+        if update:
+            current_value = getattr(self.config, key, {})
+            if not isinstance(current_value, dict):
+                raise TypeError(
+                    f"Expected a dict for key '{key}', got {type(current_value).__name__} instead."
+                )
+            current_value.update(value)
+        else:
+            setattr(self.config, key, value)
