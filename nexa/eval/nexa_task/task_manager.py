@@ -16,7 +16,7 @@ GROUP_ONLY_KEYS = list(GroupConfig().to_dict().keys())
 
 class TaskManager:
     """
-    TaskManager indexes all tasks from the default `nexa.eval/tasks/`
+    TaskManager indexes all tasks from the default `nexa.eval/benchmark_tasks/`
     and an optional directory if provided.
     """
 
