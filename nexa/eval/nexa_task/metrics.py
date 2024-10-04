@@ -9,7 +9,7 @@ from typing import List
 import numpy as np
 import sacrebleu
 
-from nexa.eval.api.registry import register_aggregation, register_metric
+from nexa.eval.nexa_task.registry import register_aggregation, register_metric
 
 
 eval_logger = logging.getLogger("nexa-eval")
