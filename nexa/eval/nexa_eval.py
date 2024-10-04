@@ -158,6 +158,7 @@ class NexaEval:
                 args = argparse.Namespace(**self.eval_args)
                 self.evaluate_model(args)
                 print_message("INFO", "Evaluation completed")
+                print_message("INFO", f"Output file has been saved to {self.eval_args['output_path']}")
         finally:
             if self.server_process:
                 self.server_process.terminate()

@@ -117,9 +117,7 @@ def nexa_evaluate(
                     if default_num_fewshot is None:
                         task_obj.set_config(key="num_fewshot", value=0)
                 task_obj.set_fewshot_seed(seed=fewshot_random_seed)
-                eval_logger.info(
-                    f"Setting few-shot random generator seed to {fewshot_random_seed}"
-                )
+                # eval_logger.info(f"Setting few-shot random generator seed to {fewshot_random_seed}")
                 adjusted_task_dict[task_name] = task_obj
         return adjusted_task_dict
 

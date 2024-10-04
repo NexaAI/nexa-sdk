@@ -95,9 +95,9 @@ class TaskConfig(dict):
 
     def __post_init__(self) -> None:
         if self.group is not None:
-            eval_logger.warning(
-                "A task YAML file was found to contain a `group` key. Groups which provide aggregate scores over several subtasks now require a separate config file--if not aggregating, you may want to use the `tag` config option instead within your config. "
-            )
+            # eval_logger.warning(
+            #     "A task YAML file was found to contain a `group` key. Groups which provide aggregate scores over several subtasks now require a separate config file--if not aggregating, you may want to use the `tag` config option instead within your config. "
+            # )
 
             if self.tag is None:
                 self.tag = self.group
