@@ -107,6 +107,7 @@ class NexaTextInference:
                     chat_format=self.chat_format,
                     n_ctx=2048,
                     n_gpu_layers=-1 if is_gpu_available() else 0,
+                    lora_path=self.params.get("lora_path", ""),
                 )
             except Exception as e:
                 logging.error(f"Failed to load model: {e}. Falling back to CPU.", exc_info=True)
@@ -116,6 +117,7 @@ class NexaTextInference:
                     chat_format=self.chat_format,
                     n_ctx=2048,
                     n_gpu_layers=0,  # hardcode to use CPU
+                    lora_path=self.params.get("lora_path", ""),
                 )
 
         load_time = time.time() - start_time
@@ -331,13 +333,11 @@ if __name__ == "__main__":
         action="store_true",
         help="Run the inference in Streamlit UI",
     )
-    # parser.add_argument(
-    #     "-tlps",
-    #     "--top_logprobs",
-    #     type=int,
-    #     default=None,  # -tlps 5
-    #     help="Number of most likely tokens to return at each token position",
-    # )
+    parser.add_argument(
+        "--lora_path",
+        type=str,
+        help="Path to a LoRA file to apply to the model.",
+    )
     args = parser.parse_args()
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")

@@ -120,6 +120,7 @@ def main():
     text_group.add_argument("-k", "--top_k", type=int, help="Top-k sampling parameter")
     text_group.add_argument("-p", "--top_p", type=float, help="Top-p sampling parameter")
     text_group.add_argument("-sw", "--stop_words", nargs="*", help="List of stop words for early stopping")
+    text_group.add_argument("--lora_path", type=str, help="Path to a LoRA file to apply to the model.")
     text_group.add_argument("-hf", "--huggingface", action="store_true", help="Load model from Hugging Face Hub")
 
     # Image generation arguments
@@ -135,7 +136,7 @@ def main():
     image_group.add_argument("--wtype", type=str, help="Weight type (f32, f16, q4_0, q4_1, q5_0, q5_1, q8_0)")
     image_group.add_argument("--control_net_path", type=str, help="Path to control net model")
     image_group.add_argument("--control_image_path", type=str, help="Path to image condition for Control Net")
-    image_group.add_argument("--control_strength", type=str, help="Strength to apply Control Net")
+    image_group.add_argument("--control_strength", type=float, help="Strength to apply Control Net")
 
     # ASR arguments
     asr_group = run_parser.add_argument_group('Automatic Speech Recognition options')
