@@ -15,9 +15,9 @@ GROUP_ONLY_KEYS = list(GroupConfig().to_dict().keys())
 
 
 class TaskManager:
-    """TaskManager indexes all tasks from the default `nexa.eval/tasks/`
+    """
+    TaskManager indexes all tasks from the default `nexa.eval/tasks/`
     and an optional directory if provided.
-
     """
 
     def __init__(
@@ -64,7 +64,9 @@ class TaskManager:
             Dictionary of task names as key and task metadata
         """
         if include_defaults:
-            all_paths = [os.path.dirname(os.path.abspath(__file__)) + "/"]
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            tasks_dir = os.path.normpath(os.path.join(current_dir, '../benchmark_tasks'))
+            all_paths = [tasks_dir]
         else:
             all_paths = []
         if include_path is not None:
@@ -631,10 +633,6 @@ def get_task_dict(
         **task_name_from_object_dict,
     }
 
-    # behavior can get odd if one tries to invoke several groups that "compete" for the same task.
-    # (notably, because one could request several num_fewshot values at once in GroupConfig overrides for the subtask
-    # and we'd be unsure which to use and report.)
-    # we explicitly check and error in this case.
     _check_duplicates(get_subtask_list(final_task_dict))
 
     return final_task_dict
