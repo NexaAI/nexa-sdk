@@ -311,7 +311,8 @@ def download_file_with_progress(
     file_path: Path,
     chunk_size: int = 40 * 1024 * 1024,
     max_workers: int = 20,
-    use_processes: bool = default_use_processes()
+    use_processes: bool = default_use_processes(),
+    **kwargs
 ):
     file_path.parent.mkdir(parents=True, exist_ok=True)
 
