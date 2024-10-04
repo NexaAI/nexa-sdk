@@ -81,16 +81,16 @@ def run_onnx_inference(args):
         inference.run()
 
 def run_eval_tasks(args):
-    try: 
-        kwargs = {k: v for k, v in vars(args).items() if v is not None}
-        model_path = kwargs.pop("model_path")
-        
-        from nexa.eval.nexa_eval import NexaEval
-        evaluator = NexaEval(model_path, args.tasks, args.limit)
-        evaluator.run_evaluation()
-    except Exception as e:
-        print(f"Error running evaluation, please run: pip install nexaai[eval]")
-        return
+    # try: 
+    kwargs = {k: v for k, v in vars(args).items() if v is not None}
+    model_path = kwargs.pop("model_path")
+    
+    from nexa.eval.nexa_eval import NexaEval
+    evaluator = NexaEval(model_path, args.tasks, args.limit)
+    evaluator.run_evaluation()
+    # except Exception as e:
+    #     print(f"Error running evaluation, please run: pip install nexaai[eval]")
+    #     return
 
 def main():
     parser = argparse.ArgumentParser(

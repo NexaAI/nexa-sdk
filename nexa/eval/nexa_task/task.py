@@ -27,8 +27,8 @@ from tqdm import tqdm
 from nexa.eval import utils
 from nexa.eval.nexa_task import samplers
 from nexa.eval.nexa_task.instance import Instance, OutputType
-from nexa.eval.api.metrics import mean
-from nexa.eval.api.registry import (
+from nexa.eval.nexa_task.metrics import mean
+from nexa.eval.nexa_task.registry import (
     AGGREGATION_REGISTRY,
     DEFAULT_METRIC_REGISTRY,
     get_aggregation,
