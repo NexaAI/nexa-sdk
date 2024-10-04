@@ -80,6 +80,18 @@ def run_onnx_inference(args):
     else:
         inference.run()
 
+def run_eval_tasks(args):
+    try: 
+        kwargs = {k: v for k, v in vars(args).items() if v is not None}
+        model_path = kwargs.pop("model_path")
+        
+        from nexa.eval.nexa_eval import NexaEval
+        evaluator = NexaEval(model_path, args.tasks, args.limit)
+        evaluator.run_evaluation()
+    except Exception as e:
+        print(f"Error running evaluation, please run: pip install nexaai[eval]")
+        return
+
 def main():
     parser = argparse.ArgumentParser(
         description="Nexa CLI tool for handling various model operations."
@@ -164,7 +176,7 @@ def main():
 
     # GGML server parser
     server_parser = subparsers.add_parser("server", help="Run the Nexa AI Text Generation Service")
-    server_parser.add_argument("model_path", type=str, help="Path or identifier for the model in S3")
+    server_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
     server_parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to bind the server to")
     server_parser.add_argument("--port", type=int, default=8000, help="Port to bind the server to")
     server_parser.add_argument("--reload", action="store_true", help="Enable automatic reloading on code changes")
@@ -184,6 +196,12 @@ def main():
     subparsers.add_parser("whoami", help="Show current user information.")
     subparsers.add_parser("logout", help="Logout from Nexa API.")
 
+    # Benchmark Evaluation
+    eval_parser = subparsers.add_parser("eval", help="Evaluate models on specified tasks.")
+    eval_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
+    eval_parser.add_argument("--tasks", type=str, required=True, help="Tasks to evaluate the model on, separated by commas.")
+    eval_parser.add_argument("--limit", type=float, help="Limit the number of examples per task. If <1, limit is a percentage of the total number of examples.", default=None)
+
 
     args = parser.parse_args()
 
@@ -191,6 +209,8 @@ def main():
         run_ggml_inference(args)
     elif args.command == "onnx":
         run_onnx_inference(args)
+    elif args.command == "eval":
+        run_eval_tasks(args)
     elif args.command == "pull":
         from nexa.general import pull_model
         hf = getattr(args, 'huggingface', False)

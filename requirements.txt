@@ -37,3 +37,12 @@ prompt_toolkit
 tqdm
 tabulate
 streamlit
+
+# eval
+sympy
+evaluate
+pytablewriter
+sacrebleu
+langdetect
+rouge_score
+immutabledict
