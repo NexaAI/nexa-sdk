@@ -77,7 +77,7 @@ class NexaImageInference:
 
         # Download base model if not provided
         if self.downloaded_path is None:
-            self.downloaded_path, _ = pull_model(self.model_path)
+            self.downloaded_path, _ = pull_model(self.model_path, **kwargs)
             if self.downloaded_path is None:
                 logging.error(
                     f"Model ({model_path}) is not applicable. Please refer to our docs for proper usage.",
@@ -92,11 +92,11 @@ class NexaImageInference:
             self.clip_l_path = FLUX_CLIP_L_PATH
 
             if self.t5xxl_path:
-                self.t5xxl_downloaded_path, _ = pull_model(self.t5xxl_path)
+                self.t5xxl_downloaded_path, _ = pull_model(self.t5xxl_path, **kwargs)
             if self.ae_path:
-                self.ae_downloaded_path, _ = pull_model(self.ae_path)
+                self.ae_downloaded_path, _ = pull_model(self.ae_path, **kwargs)
             if self.clip_l_path:
-                self.clip_l_downloaded_path, _ = pull_model(self.clip_l_path)
+                self.clip_l_downloaded_path, _ = pull_model(self.clip_l_path, **kwargs)
         if "lcm-dreamshaper" in self.model_path or "flux" in self.model_path:
             self.params = DEFAULT_IMG_GEN_PARAMS_LCM.copy() # both lcm-dreamshaper and flux use the same params
         elif "sdxl-turbo" in self.model_path:

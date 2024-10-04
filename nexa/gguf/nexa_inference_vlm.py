@@ -101,12 +101,12 @@ class NexaVLMInference:
         if self.downloaded_path is not None:
             if model_path in NEXA_RUN_MODEL_MAP_VLM:
                 self.projector_path = NEXA_RUN_PROJECTOR_MAP[model_path]
-                self.projector_downloaded_path, _ = pull_model(self.projector_path)
+                self.projector_downloaded_path, _ = pull_model(self.projector_path, **kwargs)
         elif model_path in NEXA_RUN_MODEL_MAP_VLM:
             self.model_path = NEXA_RUN_MODEL_MAP_VLM[model_path]
             self.projector_path = NEXA_RUN_PROJECTOR_MAP[model_path]
-            self.downloaded_path, _ = pull_model(self.model_path)
-            self.projector_downloaded_path, _ = pull_model(self.projector_path)
+            self.downloaded_path, _ = pull_model(self.model_path, **kwargs)
+            self.projector_downloaded_path, _ = pull_model(self.projector_path, **kwargs)
         elif Path(model_path).parent.exists():
             local_dir = Path(model_path).parent
             model_name = Path(model_path).name
