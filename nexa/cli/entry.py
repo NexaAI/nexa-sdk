@@ -33,7 +33,8 @@ def run_ggml_inference(args):
             local_path = os.path.abspath(model_path)
             model_path = ""
         else:  # hf case
-            local_path = model_path
+            from nexa.general import pull_model
+            local_path, _ = pull_model(model_path, hf=True)
     else:
         from nexa.general import pull_model
         local_path, run_type = pull_model(model_path)
