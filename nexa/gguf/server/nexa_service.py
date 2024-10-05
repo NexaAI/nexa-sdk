@@ -190,7 +190,18 @@ async def load_model():
                         n_ctx=n_ctx
                     )
                 logging.info(f"model loaded as {model}")
-                chat_format = model.metadata.get("tokenizer.chat_template", None)               
+                chat_format = model.metadata.get("tokenizer.chat_template", None)
+            
+            if (
+                completion_template is None
+                and (
+                    chat_format := model.metadata.get("tokenizer.chat_template", None)
+                )
+                is not None
+            ):
+                chat_format = chat_format
+                print("chat_format", chat_format)
+                logging.debug("Chat format detected")
     elif model_type == "Computer Vision":
         with suppress_stdout_stderr():
             model = StableDiffusion(
@@ -218,12 +229,15 @@ async def nexa_run_text_generation(
     global model, chat_format, completion_template
     if model is None:
         raise ValueError("Model is not loaded. Please check the model path and try again.")
-
+    
     generated_text = ""
     logprobs_or_none = None  # init to store the logprobs if requested
 
     if chat_format:
-        messages = chat_completion_system_prompt + [{"role": "user", "content": prompt}]
+        if is_local_path or is_huggingface: # do not add system prompt if local path or huggingface
+            messages = [{"role": "user", "content": prompt}]
+        else:
+            messages = chat_completion_system_prompt + [{"role": "user", "content": prompt}]
 
         params = {
             'messages': messages,
