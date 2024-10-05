@@ -200,7 +200,6 @@ async def load_model():
                 is not None
             ):
                 chat_format = chat_format
-                print("chat_format", chat_format)
                 logging.debug("Chat format detected")
     elif model_type == "Computer Vision":
         with suppress_stdout_stderr():
@@ -380,10 +379,6 @@ async def startup_event():
     is_local_path = os.getenv("IS_LOCAL_PATH", "False").lower() == "true"
     is_huggingface = os.getenv("HUGGINGFACE", "False").lower() == "true"
     model_type = os.getenv("MODEL_TYPE", "")
-    logging.info(f"Model Path: {model_path}")
-    logging.info(f"Is Local Path: {is_local_path}")
-    logging.info(f"Is Hugging Face: {is_huggingface}")
-    logging.info(f"Model Type: {model_type}")
     await load_model()
 
 
