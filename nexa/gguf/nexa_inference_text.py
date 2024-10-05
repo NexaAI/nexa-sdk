@@ -269,7 +269,7 @@ class NexaTextInference:
             top_logprobs=self.top_logprobs,
         )
 
-    def run_streamlit(self, model_path: str):
+    def run_streamlit(self, model_path: str, is_local_path = False, hf = False):
         """
         Used for CLI. Run the Streamlit UI.
         """
@@ -282,10 +282,17 @@ class NexaTextInference:
         )
 
         import sys
-
         from streamlit.web import cli as stcli
 
-        sys.argv = ["streamlit", "run", str(script_path), model_path]
+        # Convert all arguments to strings
+        args = [
+            "streamlit", "run", str(script_path),
+            str(model_path),
+            str(is_local_path),
+            str(hf),
+        ]
+
+        sys.argv = args
         sys.exit(stcli.main())
 
 

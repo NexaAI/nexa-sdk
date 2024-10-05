@@ -24,6 +24,7 @@ def run_ggml_inference(args):
 
     stop_words = kwargs.pop("stop_words", [])
 
+    local_path = None
     if is_local_path or hf:
         if not model_type:
             print("Error: --model_type must be provided when using --local_path or --huggingface")
@@ -31,7 +32,7 @@ def run_ggml_inference(args):
         run_type = ModelType[model_type].value
         if is_local_path:
             local_path = os.path.abspath(model_path)
-            model_path = ""
+            model_path = local_path
         else:  # hf case
             from nexa.general import pull_model
             local_path, _ = pull_model(model_path, hf=True)
@@ -67,7 +68,7 @@ def run_ggml_inference(args):
         return
 
     if hasattr(args, 'streamlit') and args.streamlit:
-        inference.run_streamlit(model_path)
+        inference.run_streamlit(model_path, is_local_path = is_local_path, hf = hf)
     else:
         inference.run()
 
