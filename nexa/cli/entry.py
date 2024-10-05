@@ -1,20 +1,33 @@
 import argparse
+import os
 from nexa import __version__
+from nexa.constants import ModelType
+
 
 def run_ggml_inference(args):
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")
+    local_path = kwargs.pop("local_path", False)
+    model_type = kwargs.pop("model_type", None)
+    hf = kwargs.pop('huggingface', False)
 
     if args.command == "server":
         from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
         NexaServer(model_path, **kwargs)
         return
 
-    hf = kwargs.pop('huggingface', False)
     stop_words = kwargs.pop("stop_words", [])
 
-    from nexa.general import pull_model
-    local_path, run_type = pull_model(model_path, hf)
+    if local_path:
+        if not model_type:
+            print("Error: --model_type must be provided when using --local_path")
+            return
+        run_type = ModelType[model_type].value
+        local_path = os.path.abspath(model_path)
+        model_path = ""
+    else:
+        from nexa.general import pull_model
+        local_path, run_type = pull_model(model_path, hf)
 
     try:
         if run_type == "NLP":
@@ -51,9 +64,19 @@ def run_ggml_inference(args):
 def run_onnx_inference(args):
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")
+    local_path = kwargs.pop("local_path", False)
+    model_type = kwargs.pop("model_type", None)
 
-    from nexa.general import pull_model
-    local_path, run_type = pull_model(model_path)
+    if local_path:
+        if not model_type:
+            print("Error: --model_type must be provided when using --local_path")
+            return
+        run_type = ModelType[model_type].value
+        local_path = os.path.abspath(model_path)
+        model_path = ""
+    else:
+        from nexa.general import pull_model
+        local_path, run_type = pull_model(model_path)
 
     try:
         if run_type == "NLP":
@@ -100,6 +123,9 @@ def main():
     run_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
     run_parser.add_argument("-st", "--streamlit", action="store_true", help="Run the inference in Streamlit UI")
     run_parser.add_argument("-pf", "--profiling", action="store_true", help="Enable profiling logs for the inference process")
+    run_parser.add_argument("-lp", "--local_path", action="store_true", help="Indicate that the model path provided is the local path")
+    run_parser.add_argument("-mt", "--model_type", type=str, choices=[e.name for e in ModelType], help="Indicate the model running type")
+    run_parser.add_argument("-hf", "--huggingface", action="store_true", help="Load model from Hugging Face Hub")
 
     # Text generation/vlm arguments
     text_group = run_parser.add_argument_group('Text generation/VLM options')
@@ -109,7 +135,6 @@ def main():
     text_group.add_argument("-p", "--top_p", type=float, help="Top-p sampling parameter")
     text_group.add_argument("-sw", "--stop_words", nargs="*", help="List of stop words for early stopping")
     text_group.add_argument("--lora_path", type=str, help="Path to a LoRA file to apply to the model.")
-    text_group.add_argument("-hf", "--huggingface", action="store_true", help="Load model from Hugging Face Hub")
 
     # Image generation arguments
     image_group = run_parser.add_argument_group('Image generation options')
@@ -137,6 +162,8 @@ def main():
     onnx_parser = subparsers.add_parser("onnx", help="Run inference for various tasks using ONNX models.")
     onnx_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
     onnx_parser.add_argument("-st", "--streamlit", action="store_true", help="Run the inference in Streamlit UI")
+    onnx_parser.add_argument("-lp", "--local_path", action="store_true", help="Indicate that the model path provided is the local path")
+    onnx_parser.add_argument("-mt", "--model_type", type=str, choices=[e.name for e in ModelType], help="Indicate the model running type")
 
     # ONNX Text generation arguments
     onnx_text_group = onnx_parser.add_argument_group('Text generation options')
@@ -188,8 +215,17 @@ def main():
     args = parser.parse_args()
 
     if args.command in ["run", "server"]:
+        if args.local_path and args.huggingface:
+            print("Error: --local_path and --huggingface flags cannot be used together")
+            return
+        if args.local_path and not args.model_type:
+            print("Error: --model_type must be provided when using --local_path")
+            return
         run_ggml_inference(args)
     elif args.command == "onnx":
+        if args.local_path and not args.model_type:
+            print("Error: --model_type must be provided when using --local_path")
+            return
         run_onnx_inference(args)
     elif args.command == "pull":
         from nexa.general import pull_model
