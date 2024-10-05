@@ -102,6 +102,9 @@ options:
   -h, --help            show this help message and exit
   -pf, --profiling      Enable profiling logs for the inference process
   -st, --streamlit      Run the inference in Streamlit UI
+  -lp, --local_path     Indicate that the model path provided is the local path, must be used with -mt
+  -mt, --model_type     Indicate the model running type, must be used with -lp
+  -hf, --huggingface    Load model from Hugging Face Hub
 
 Text generation options:
   -t, --temperature TEMPERATURE
@@ -132,6 +135,9 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   -st, --streamlit      Run the inference in Streamlit UI
+  -lp, --local_path     Indicate that the model path provided is the local path, must be used with -mt
+  -mt, --model_type     Indicate the model running type, must be used with -lp
+  -hf, --huggingface    Load model from Hugging Face Hub
 
 Image generation options:
   -i2i, --img2img       Whether to run image-to-image generation
@@ -175,6 +181,9 @@ options:
   -h, --help            show this help message and exit
   -pf, --profiling      Enable profiling logs for the inference process
   -st, --streamlit      Run the inference in Streamlit UI
+  -lp, --local_path     Indicate that the model path provided is the local path, must be used with -mt
+  -mt, --model_type     Indicate the model running type, must be used with -lp
+  -hf, --huggingface    Load model from Hugging Face Hub
 
 VLM generation options:
   -t, --temperature TEMPERATURE
@@ -205,6 +214,9 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   -st, --streamlit      Run the inference in Streamlit UI
+  -lp, --local_path     Indicate that the model path provided is the local path, must be used with -mt
+  -mt, --model_type     Indicate the model running type, must be used with -lp
+  -hf, --huggingface    Load model from Hugging Face Hub
 
 Automatic Speech Recognition options:
   -b, --beam_size BEAM_SIZE

@@ -226,7 +226,7 @@ def pull_model_from_hf(repo_id):
         "success": success,
         "local_path": model_path,
         "model_type": "gguf",
-        "run_type": "NLP"
+        "run_type": "NLP" # Just for compatibility, hf model type will be passed from outsice
     }
 
 

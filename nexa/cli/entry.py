@@ -7,27 +7,36 @@ from nexa.constants import ModelType
 def run_ggml_inference(args):
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")
-    local_path = kwargs.pop("local_path", False)
+    is_local_path = kwargs.pop("local_path", False)
     model_type = kwargs.pop("model_type", None)
     hf = kwargs.pop('huggingface', False)
 
     if args.command == "server":
         from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
-        NexaServer(model_path, **kwargs)
+        NexaServer(
+            model_path_arg=model_path,
+            is_local_path_arg=is_local_path,
+            model_type_arg=model_type,
+            huggingface=hf,
+            **kwargs
+        )
         return
 
     stop_words = kwargs.pop("stop_words", [])
 
-    if local_path:
+    if is_local_path or hf:
         if not model_type:
-            print("Error: --model_type must be provided when using --local_path")
+            print("Error: --model_type must be provided when using --local_path or --huggingface")
             return
         run_type = ModelType[model_type].value
-        local_path = os.path.abspath(model_path)
-        model_path = ""
+        if is_local_path:
+            local_path = os.path.abspath(model_path)
+            model_path = ""
+        else:  # hf case
+            local_path = model_path
     else:
         from nexa.general import pull_model
-        local_path, run_type = pull_model(model_path, hf)
+        local_path, run_type = pull_model(model_path)
 
     try:
         if run_type == "NLP":
@@ -64,10 +73,10 @@ def run_ggml_inference(args):
 def run_onnx_inference(args):
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")
-    local_path = kwargs.pop("local_path", False)
+    is_local_path = kwargs.pop("local_path", False)
     model_type = kwargs.pop("model_type", None)
 
-    if local_path:
+    if is_local_path:
         if not model_type:
             print("Error: --model_type must be provided when using --local_path")
             return
@@ -123,9 +132,9 @@ def main():
     run_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
     run_parser.add_argument("-st", "--streamlit", action="store_true", help="Run the inference in Streamlit UI")
     run_parser.add_argument("-pf", "--profiling", action="store_true", help="Enable profiling logs for the inference process")
-    run_parser.add_argument("-lp", "--local_path", action="store_true", help="Indicate that the model path provided is the local path")
-    run_parser.add_argument("-mt", "--model_type", type=str, choices=[e.name for e in ModelType], help="Indicate the model running type")
-    run_parser.add_argument("-hf", "--huggingface", action="store_true", help="Load model from Hugging Face Hub")
+    run_parser.add_argument("-lp", "--local_path", action="store_true", help="Indicate that the model path provided is the local path, must be used with -mt")
+    run_parser.add_argument("-mt", "--model_type", type=str, choices=[e.name for e in ModelType], help="Indicate the model running type, must be used with -lp or -hf")
+    run_parser.add_argument("-hf", "--huggingface", action="store_true", help="Load model from Hugging Face Hub, must be used with -mt")
 
     # Text generation/vlm arguments
     text_group = run_parser.add_argument_group('Text generation/VLM options')
@@ -191,7 +200,10 @@ def main():
 
     # GGML server parser
     server_parser = subparsers.add_parser("server", help="Run the Nexa AI Text Generation Service")
-    server_parser.add_argument("model_path", type=str, help="Path or identifier for the model in S3")
+    server_parser.add_argument("model_path", type=str, nargs='?', help="Path or identifier for the model in Nexa Model Hub")
+    server_parser.add_argument("-lp", "--local_path", action="store_true", help="Indicate that the model path provided is the local path, must be used with -mt")
+    server_parser.add_argument("-mt", "--model_type", type=str, choices=[e.name for e in ModelType], help="Indicate the model running type, must be used with -lp or -hf")
+    server_parser.add_argument("-hf", "--huggingface", action="store_true", help="Load model from Hugging Face Hub, must be used with -mt")
     server_parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to bind the server to")
     server_parser.add_argument("--port", type=int, default=8000, help="Port to bind the server to")
     server_parser.add_argument("--reload", action="store_true", help="Enable automatic reloading on code changes")
@@ -218,8 +230,8 @@ def main():
         if args.local_path and args.huggingface:
             print("Error: --local_path and --huggingface flags cannot be used together")
             return
-        if args.local_path and not args.model_type:
-            print("Error: --model_type must be provided when using --local_path")
+        if (args.local_path or args.huggingface) and not args.model_type:
+            print("Error: --model_type must be provided when using --local_path or --huggingface")
             return
         run_ggml_inference(args)
     elif args.command == "onnx":
