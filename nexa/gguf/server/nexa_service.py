@@ -211,6 +211,8 @@ async def load_model():
                 n_threads=multiprocessing.cpu_count(),
             )
         logging.info(f"model loaded as {model}")
+    elif model_type == "Multimodal":
+        raise ValueError("Multimodal model is currently not supported in server mode. Please use SDK to run Multimodal model.")
     elif model_type == "Audio":
         with suppress_stdout_stderr():
             model = WhisperModel(

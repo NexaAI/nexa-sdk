@@ -10,13 +10,17 @@ def run_ggml_inference(args):
     is_local_path = kwargs.pop("local_path", False)
     model_type = kwargs.pop("model_type", None)
     hf = kwargs.pop('huggingface', False)
+    
+    run_type = None
+    if model_type:
+        run_type = ModelType[model_type].value
 
     if args.command == "server":
         from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
         NexaServer(
             model_path_arg=model_path,
             is_local_path_arg=is_local_path,
-            model_type_arg=model_type,
+            model_type_arg=run_type,
             huggingface=hf,
             **kwargs
         )
@@ -29,14 +33,36 @@ def run_ggml_inference(args):
         if not model_type:
             print("Error: --model_type must be provided when using --local_path or --huggingface")
             return
-        run_type = ModelType[model_type].value
         if is_local_path:
             local_path = os.path.abspath(model_path)
             model_path = local_path
+            if run_type == "Multimodal":
+                if not os.path.isdir(local_path):
+                    print("Error: For Multimodal models with --local_path, the provided path must be a directory.")
+                    return
+                print(f"Files in {local_path}:")
+                files = os.listdir(local_path)
+                for i, file in enumerate(files):
+                    print(f"{i+1}. {file}")
+                
+                model_choice = int(input("Enter the index of the model gguf: ")) - 1
+                projector_choice = int(input("Enter the number of the projector gguf: ")) - 1
+                
+                if 0 <= model_choice < len(files) and 0 <= projector_choice < len(files):
+                    local_path = os.path.join(local_path, files[model_choice])
+                    model_path = local_path
+                    projector_local_path = os.path.join(os.path.dirname(local_path), files[projector_choice])
+                else:
+                    print("Invalid selection. Aborting.")
+                    return
         else:  # hf case
+            # TODO: remove this after adding support for Multimodal model in CLI
+            if run_type == "Multimodal":
+                print("Running multimodal model from Hugging Face is currently not supported in CLI mode. Please use SDK to run Multimodal model.")
+                return
             from nexa.general import pull_model
             local_path, _ = pull_model(model_path, hf=True)
-    else:
+    else: # Model Hub
         from nexa.general import pull_model
         local_path, run_type = pull_model(model_path)
 
@@ -48,7 +74,7 @@ def run_ggml_inference(args):
             from nexa.gguf.nexa_inference_image import NexaImageInference
             inference = NexaImageInference(model_path=model_path, local_path=local_path, **kwargs)
             if hasattr(args, 'streamlit') and args.streamlit:
-                inference.run_streamlit(model_path, is_local_path = is_local_path, hf = hf)
+                inference.run_streamlit(model_path, is_local_path=is_local_path, hf=hf)
             elif args.img2img:
                 inference.run_img2img()
             else:
@@ -56,7 +82,10 @@ def run_ggml_inference(args):
             return
         elif run_type == "Multimodal":
             from nexa.gguf.nexa_inference_vlm import NexaVLMInference
-            inference = NexaVLMInference(model_path=model_path, local_path=local_path, stop_words=stop_words, **kwargs)
+            if is_local_path:
+                inference = NexaVLMInference(model_path=model_path, local_path=local_path, projector_local_path=projector_local_path, stop_words=stop_words, **kwargs)
+            else:
+                inference = NexaVLMInference(model_path=model_path, local_path=local_path, stop_words=stop_words, **kwargs)
         elif run_type == "Audio":
             from nexa.gguf.nexa_inference_voice import NexaVoiceInference
             inference = NexaVoiceInference(model_path=model_path, local_path=local_path, **kwargs)
@@ -68,7 +97,10 @@ def run_ggml_inference(args):
         return
 
     if hasattr(args, 'streamlit') and args.streamlit:
-        inference.run_streamlit(model_path, is_local_path = is_local_path, hf = hf)
+        if run_type == "Multimodal":
+            inference.run_streamlit(model_path, is_local_path = is_local_path, hf = hf, projector_local_path = projector_local_path)
+        else:
+            inference.run_streamlit(model_path, is_local_path = is_local_path, hf = hf)
     else:
         inference.run()
 

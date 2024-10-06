@@ -13,7 +13,6 @@ hf = False if sys.argv[3] == "False" else True
 
 @st.cache_resource
 def load_model(model_path):
-    print(is_local_path, hf)
     if is_local_path:
         local_path = model_path
     elif hf:

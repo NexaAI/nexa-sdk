@@ -89,16 +89,19 @@ class NexaVLMInference:
     top_k (int): Top-k sampling parameter.
     top_p (float): Top-p sampling parameter
     """
-    def __init__(self, model_path, local_path=None, stop_words=None, **kwargs):
+    def __init__(self, model_path, local_path=None, projector_local_path=None, stop_words=None, **kwargs):
         self.params = DEFAULT_TEXT_GEN_PARAMS
         self.params.update(kwargs)
         self.model = None
         self.projector = None
         self.projector_path = NEXA_RUN_PROJECTOR_MAP.get(model_path, None)
         self.downloaded_path = local_path
-        self.projector_downloaded_path = None
+        self.projector_downloaded_path = projector_local_path
 
-        if self.downloaded_path is not None:
+        if self.downloaded_path is not None and self.projector_downloaded_path is not None:
+            # when running from local, both path should be provided
+            pass
+        elif self.downloaded_path is not None:
             if model_path in NEXA_RUN_MODEL_MAP_VLM:
                 self.projector_path = NEXA_RUN_PROJECTOR_MAP[model_path]
                 self.projector_downloaded_path, _ = pull_model(self.projector_path)
@@ -123,7 +126,7 @@ class NexaVLMInference:
             logging.error("VLM user model from hub is not supported yet.")
             exit(1)
 
-        if self.downloaded_path is None:
+        if self.downloaded_path is None or self.projector_downloaded_path is None:
             logging.error(
                 f"Model ({model_path}) is not applicable. Please refer to our docs for proper usage.",
                 exc_info=True,
@@ -327,14 +330,17 @@ class NexaVLMInference:
             stop=self.stop_words,
         )
 
-    def run_streamlit(self, model_path: str):
+    def run_streamlit(self, model_path: str, is_local_path = False, hf = False, projector_local_path = None):
+        """
+        Run the Streamlit UI.
+        """
         logging.info("Running Streamlit UI...")
 
         streamlit_script_path = (
             Path(os.path.abspath(__file__)).parent / "streamlit" / "streamlit_vlm.py"
         )
 
-        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path]
+        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, str(is_local_path), str(hf), str(projector_local_path)]
         sys.exit(stcli.main())
 
 
