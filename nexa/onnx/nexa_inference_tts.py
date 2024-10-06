@@ -111,7 +111,7 @@ class NexaTTSInference:
         file_path = os.path.join(output_path, file_name)
         sf.write(file_path, audio_data, sampling_rate)
 
-    def run_streamlit(self, model_path: str):
+    def run_streamlit(self, model_path: str, is_local_path = False):
         """
         Run the Streamlit UI.
         """
@@ -122,7 +122,7 @@ class NexaTTSInference:
             Path(__file__).resolve().parent / "streamlit" / "streamlit_tts.py"
         )
 
-        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path]
+        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, is_local_path]
         sys.exit(stcli.main())
 
 
