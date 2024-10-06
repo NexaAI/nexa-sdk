@@ -1,4 +1,5 @@
 import sys
+import os
 from threading import Thread
 
 import streamlit as st
@@ -8,11 +9,19 @@ from nexa.general import pull_model
 from nexa.onnx.nexa_inference_text import NexaTextInference
 
 default_model = sys.argv[1]
-
+is_local_path = sys.argv[2] if len(sys.argv) > 2 else False
 
 @st.cache_resource
 def load_model(model_path):
-    local_path, run_type = pull_model(model_path)
+    if is_local_path:
+        local_path = os.path.abspath(model_path)
+        if not os.path.isdir(local_path):
+            print("Error: For ONNX models, the provided path must be a directory.")
+            return
+        model_path = local_path
+    else:
+        local_path, run_type = pull_model(model_path)
+        
     nexa_model = NexaTextInference(model_path=model_path, local_path=local_path)
 
     if nexa_model.downloaded_onnx_folder is None:

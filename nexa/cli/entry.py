@@ -109,14 +109,21 @@ def run_onnx_inference(args):
     model_path = kwargs.pop("model_path")
     is_local_path = kwargs.pop("local_path", False)
     model_type = kwargs.pop("model_type", None)
+    
+    run_type = None
+    if model_type:
+        run_type = ModelType[model_type].value
 
+    local_path = None
     if is_local_path:
         if not model_type:
             print("Error: --model_type must be provided when using --local_path")
             return
-        run_type = ModelType[model_type].value
         local_path = os.path.abspath(model_path)
-        model_path = ""
+        if not os.path.isdir(local_path):
+            print("Error: For ONNX models, the provided path must be a directory.")
+            return
+        model_path = local_path
     else:
         from nexa.general import pull_model
         local_path, run_type = pull_model(model_path)
@@ -142,7 +149,7 @@ def run_onnx_inference(args):
         return
 
     if hasattr(args, 'streamlit') and args.streamlit:
-        inference.run_streamlit(model_path)
+        inference.run_streamlit(model_path, is_local_path=is_local_path)
     else:
         inference.run()
 
