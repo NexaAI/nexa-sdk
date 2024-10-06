@@ -48,7 +48,7 @@ def run_ggml_inference(args):
             from nexa.gguf.nexa_inference_image import NexaImageInference
             inference = NexaImageInference(model_path=model_path, local_path=local_path, **kwargs)
             if hasattr(args, 'streamlit') and args.streamlit:
-                inference.run_streamlit(model_path)
+                inference.run_streamlit(model_path, is_local_path = is_local_path, hf = hf)
             elif args.img2img:
                 inference.run_img2img()
             else:
