@@ -9,7 +9,7 @@ from nexa.general import pull_model
 from nexa.onnx.nexa_inference_text import NexaTextInference
 
 default_model = sys.argv[1]
-is_local_path = sys.argv[2] if len(sys.argv) > 2 else False
+is_local_path = False if sys.argv[2] == "False" else True
 
 @st.cache_resource
 def load_model(model_path):

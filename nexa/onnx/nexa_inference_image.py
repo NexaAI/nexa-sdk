@@ -166,7 +166,7 @@ class NexaImageInference:
             image.save(file_path)
             print(f"Image {i+1} saved to: {file_path}")
 
-    def run_streamlit(self, model_path: str):
+    def run_streamlit(self, model_path: str, is_local_path = False):
         """
         Run the Streamlit UI.
         """
@@ -177,7 +177,7 @@ class NexaImageInference:
             Path(__file__).resolve().parent / "streamlit" / "streamlit_image_chat.py"
         )
 
-        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path]
+        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, is_local_path]
         sys.exit(stcli.main())
 
 

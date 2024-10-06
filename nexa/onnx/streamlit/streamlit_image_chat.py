@@ -1,6 +1,6 @@
 import io
 import sys
-
+import os
 import numpy as np
 import streamlit as st
 from optimum.onnxruntime import ORTLatentConsistencyModelPipeline
@@ -8,11 +8,19 @@ from nexa.general import pull_model
 from nexa.onnx.nexa_inference_image import NexaImageInference
 
 default_model = sys.argv[1]
-
+is_local_path = False if sys.argv[2] == "False" else True
 
 @st.cache_resource
 def load_model(model_path):
-    local_path, run_type = pull_model(model_path)
+    if is_local_path:
+        local_path = os.path.abspath(model_path)
+        if not os.path.isdir(local_path):
+            print("Error: For ONNX models, the provided path must be a directory.")
+            return
+        model_path = local_path
+    else:
+        local_path, run_type = pull_model(model_path)
+        
     nexa_model = NexaImageInference(model_path=model_path, local_path=local_path)
 
     if nexa_model.download_onnx_folder is None:
