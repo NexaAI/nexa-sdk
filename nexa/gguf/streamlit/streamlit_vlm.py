@@ -8,12 +8,24 @@ from nexa.general import pull_model
 from nexa.gguf.nexa_inference_vlm import NexaVLMInference
 
 default_model = sys.argv[1]
+is_local_path = False if sys.argv[2] == "False" else True
+hf = False if sys.argv[3] == "False" else True
+projector_local_path = sys.argv[4] if len(sys.argv) > 4 else None
 
 
 @st.cache_resource
 def load_model(model_path):
-    local_path, run_type = pull_model(model_path)
-    nexa_model = NexaVLMInference(model_path=model_path, local_path=local_path)
+    if is_local_path:
+        local_path = model_path
+    elif hf:
+        local_path, _ = pull_model(model_path, hf=True)
+    else:
+        local_path, run_type = pull_model(model_path)
+        
+    if is_local_path:
+        nexa_model = NexaVLMInference(model_path=model_path, local_path=local_path, projector_local_path=projector_local_path)
+    else:
+        nexa_model = NexaVLMInference(model_path=model_path, local_path=local_path)
     return nexa_model
 
 
@@ -96,6 +108,7 @@ if generate_button:
         with spinner_placeholder:
             with st.spinner("Generating description..."):
                 with tempfile.NamedTemporaryFile() as image_path:
+                    full_path = None
                     if uploaded_file:
                         ext = uploaded_file.name.split(".")[-1]
                         full_path = f"{image_path.name}.{ext}"

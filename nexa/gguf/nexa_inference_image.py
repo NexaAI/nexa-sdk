@@ -294,7 +294,7 @@ class NexaImageInference:
             except Exception as e:
                 logging.error(f"Error during generation: {e}", exc_info=True)
 
-    def run_streamlit(self, model_path: str):
+    def run_streamlit(self, model_path: str, is_local_path = False, hf = False):
         """
         Run the Streamlit UI.
         """
@@ -306,7 +306,7 @@ class NexaImageInference:
             / "streamlit_image_chat.py"
         )
 
-        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path]
+        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, str(is_local_path), str(hf)]
         sys.exit(stcli.main())
 
 

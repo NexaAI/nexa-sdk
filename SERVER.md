@@ -8,6 +8,9 @@ usage: nexa server [-h] [--host HOST] [--port PORT] [--reload] model_path
 
 ### Options:
 
+- `-lp, --local_path`: Indicate that the model path provided is the local path, must be used with -mt
+- `-mt, --model_type`: Indicate the model running type, must be used with -lp or -hf, choose from [NLP, COMPUTER_VISION, MULTIMODAL, AUDIO]
+- `-hf, --huggingface`: Load model from Hugging Face Hub, must be used with -mt
 - `--host`: Host to bind the server to
 - `--port`: Port to bind the server to
 - `--reload`: Enable automatic reloading on code changes

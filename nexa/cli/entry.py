@@ -1,21 +1,74 @@
 import argparse
 import os
 from nexa import __version__
+from nexa.constants import ModelType
+
 
 def run_ggml_inference(args):
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")
+    is_local_path = kwargs.pop("local_path", False)
+    model_type = kwargs.pop("model_type", None)
+    hf = kwargs.pop('huggingface', False)
+    
+    run_type = None
+    if model_type:
+        run_type = ModelType[model_type].value
 
     if args.command == "server":
         from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
-        NexaServer(model_path, **kwargs)
+        NexaServer(
+            model_path_arg=model_path,
+            is_local_path_arg=is_local_path,
+            model_type_arg=run_type,
+            huggingface=hf,
+            **kwargs
+        )
         return
 
-    hf = kwargs.pop('huggingface', False)
     stop_words = kwargs.pop("stop_words", [])
 
-    from nexa.general import pull_model
-    local_path, run_type = pull_model(model_path, hf)
+    local_path = None
+    if is_local_path or hf:
+        if not model_type:
+            print("Error: --model_type must be provided when using --local_path or --huggingface")
+            return
+        if is_local_path:
+            local_path = os.path.abspath(model_path)
+            model_path = local_path
+            if run_type == "Multimodal":
+                if not os.path.isdir(local_path):
+                    print("Error: For Multimodal models with --local_path, the provided path must be a directory.")
+                    return
+                print(f"Files in {local_path}:")
+                files = os.listdir(local_path)
+                for i, file in enumerate(files):
+                    print(f"{i+1}. {file}")
+                
+                model_choice = int(input("Enter the index of the model gguf: ")) - 1
+                projector_choice = int(input("Enter the index of the projector gguf: ")) - 1
+                
+                if 0 <= model_choice < len(files) and 0 <= projector_choice < len(files):
+                    local_path = os.path.join(local_path, files[model_choice])
+                    model_path = local_path
+                    projector_local_path = os.path.join(os.path.dirname(local_path), files[projector_choice])
+                else:
+                    print("Invalid selection. Aborting.")
+                    return
+            elif run_type == "Audio":
+                if not os.path.isdir(local_path):
+                    print("Error: For Audio models with --local_path, the provided path must be a directory.")
+                    return
+        else:  # hf case
+            # TODO: remove this after adding support for Multimodal model in CLI
+            if run_type == "Multimodal" or run_type == "Audio":
+                print("Running multimodal model or audio model from Hugging Face is currently not supported in CLI mode. Please use SDK to run Multimodal model or Audio model.")
+                return
+            from nexa.general import pull_model
+            local_path, _ = pull_model(model_path, hf=True)
+    else: # Model Hub
+        from nexa.general import pull_model
+        local_path, run_type = pull_model(model_path)
 
     try:
         if run_type == "NLP":
@@ -25,7 +78,7 @@ def run_ggml_inference(args):
             from nexa.gguf.nexa_inference_image import NexaImageInference
             inference = NexaImageInference(model_path=model_path, local_path=local_path, **kwargs)
             if hasattr(args, 'streamlit') and args.streamlit:
-                inference.run_streamlit(model_path)
+                inference.run_streamlit(model_path, is_local_path=is_local_path, hf=hf)
             elif args.img2img:
                 inference.run_img2img()
             else:
@@ -33,7 +86,10 @@ def run_ggml_inference(args):
             return
         elif run_type == "Multimodal":
             from nexa.gguf.nexa_inference_vlm import NexaVLMInference
-            inference = NexaVLMInference(model_path=model_path, local_path=local_path, stop_words=stop_words, **kwargs)
+            if is_local_path:
+                inference = NexaVLMInference(model_path=model_path, local_path=local_path, projector_local_path=projector_local_path, stop_words=stop_words, **kwargs)
+            else:
+                inference = NexaVLMInference(model_path=model_path, local_path=local_path, stop_words=stop_words, **kwargs)
         elif run_type == "Audio":
             from nexa.gguf.nexa_inference_voice import NexaVoiceInference
             inference = NexaVoiceInference(model_path=model_path, local_path=local_path, **kwargs)
@@ -45,16 +101,36 @@ def run_ggml_inference(args):
         return
 
     if hasattr(args, 'streamlit') and args.streamlit:
-        inference.run_streamlit(model_path)
+        if run_type == "Multimodal":
+            inference.run_streamlit(model_path, is_local_path = is_local_path, hf = hf, projector_local_path = projector_local_path)
+        else:
+            inference.run_streamlit(model_path, is_local_path = is_local_path, hf = hf)
     else:
         inference.run()
 
 def run_onnx_inference(args):
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")
+    is_local_path = kwargs.pop("local_path", False)
+    model_type = kwargs.pop("model_type", None)
+    
+    run_type = None
+    if model_type:
+        run_type = ModelType[model_type].value
 
-    from nexa.general import pull_model
-    local_path, run_type = pull_model(model_path)
+    local_path = None
+    if is_local_path:
+        if not model_type:
+            print("Error: --model_type must be provided when using --local_path")
+            return
+        local_path = os.path.abspath(model_path)
+        if not os.path.isdir(local_path):
+            print("Error: For ONNX models, the provided path must be a directory.")
+            return
+        model_path = local_path
+    else:
+        from nexa.general import pull_model
+        local_path, run_type = pull_model(model_path)
 
     try:
         if run_type == "NLP":
@@ -77,7 +153,7 @@ def run_onnx_inference(args):
         return
 
     if hasattr(args, 'streamlit') and args.streamlit:
-        inference.run_streamlit(model_path)
+        inference.run_streamlit(model_path, is_local_path=is_local_path)
     else:
         inference.run()
 
@@ -121,6 +197,9 @@ def main():
     run_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
     run_parser.add_argument("-st", "--streamlit", action="store_true", help="Run the inference in Streamlit UI")
     run_parser.add_argument("-pf", "--profiling", action="store_true", help="Enable profiling logs for the inference process")
+    run_parser.add_argument("-lp", "--local_path", action="store_true", help="Indicate that the model path provided is the local path, must be used with -mt")
+    run_parser.add_argument("-mt", "--model_type", type=str, choices=[e.name for e in ModelType], help="Indicate the model running type, must be used with -lp or -hf")
+    run_parser.add_argument("-hf", "--huggingface", action="store_true", help="Load model from Hugging Face Hub, must be used with -mt")
 
     # Text generation/vlm arguments
     text_group = run_parser.add_argument_group('Text generation/VLM options')
@@ -130,7 +209,6 @@ def main():
     text_group.add_argument("-p", "--top_p", type=float, help="Top-p sampling parameter")
     text_group.add_argument("-sw", "--stop_words", nargs="*", help="List of stop words for early stopping")
     text_group.add_argument("--lora_path", type=str, help="Path to a LoRA file to apply to the model.")
-    text_group.add_argument("-hf", "--huggingface", action="store_true", help="Load model from Hugging Face Hub")
 
     # Image generation arguments
     image_group = run_parser.add_argument_group('Image generation options')
@@ -158,6 +236,8 @@ def main():
     onnx_parser = subparsers.add_parser("onnx", help="Run inference for various tasks using ONNX models.")
     onnx_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
     onnx_parser.add_argument("-st", "--streamlit", action="store_true", help="Run the inference in Streamlit UI")
+    onnx_parser.add_argument("-lp", "--local_path", action="store_true", help="Indicate that the model path provided is the local path")
+    onnx_parser.add_argument("-mt", "--model_type", type=str, choices=[e.name for e in ModelType], help="Indicate the model running type")
 
     # ONNX Text generation arguments
     onnx_text_group = onnx_parser.add_argument_group('Text generation options')
@@ -185,7 +265,10 @@ def main():
 
     # GGML server parser
     server_parser = subparsers.add_parser("server", help="Run the Nexa AI Text Generation Service")
-    server_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
+    server_parser.add_argument("model_path", type=str, nargs='?', help="Path or identifier for the model in Nexa Model Hub")
+    server_parser.add_argument("-lp", "--local_path", action="store_true", help="Indicate that the model path provided is the local path, must be used with -mt")
+    server_parser.add_argument("-mt", "--model_type", type=str, choices=[e.name for e in ModelType], help="Indicate the model running type, must be used with -lp or -hf")
+    server_parser.add_argument("-hf", "--huggingface", action="store_true", help="Load model from Hugging Face Hub, must be used with -mt")
     server_parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to bind the server to")
     server_parser.add_argument("--port", type=int, default=8000, help="Port to bind the server to")
     server_parser.add_argument("--reload", action="store_true", help="Enable automatic reloading on code changes")
@@ -217,8 +300,17 @@ def main():
     args = parser.parse_args()
 
     if args.command in ["run", "server"]:
+        if args.local_path and args.huggingface:
+            print("Error: --local_path and --huggingface flags cannot be used together")
+            return
+        if (args.local_path or args.huggingface) and not args.model_type:
+            print("Error: --model_type must be provided when using --local_path or --huggingface")
+            return
         run_ggml_inference(args)
     elif args.command == "onnx":
+        if args.local_path and not args.model_type:
+            print("Error: --model_type must be provided when using --local_path")
+            return
         run_onnx_inference(args)
     elif args.command == "eval":
         run_eval_tasks(args)

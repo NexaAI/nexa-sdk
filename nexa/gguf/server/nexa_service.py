@@ -48,6 +48,9 @@ chat_completion_system_prompt = [{"role": "system", "content": "You are a helpfu
 function_call_system_prompt = [{"role": "system", "content": "A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions. The assistant calls functions with appropriate input when necessary"}]
 model_path = None
 n_ctx = None
+is_local_path = False
+model_type = None
+is_huggingface = False
 
 # Request Classes
 class GenerationRequest(BaseModel):
@@ -124,9 +127,16 @@ class ImageGenerationRequest(BaseModel):
 
 # helper functions
 async def load_model():
-    global model, chat_format, completion_template, model_path, n_ctx
-    downloaded_path, run_type = pull_model(model_path)
-    if run_type == "NLP":
+    global model, chat_format, completion_template, model_path, n_ctx, is_local_path, model_type, is_huggingface
+    if is_local_path or is_huggingface:
+        if is_huggingface:
+            downloaded_path, _ = pull_model(model_path, hf=True)
+        else:
+            downloaded_path = model_path
+    else:
+        downloaded_path, model_type = pull_model(model_path)
+    
+    if model_type == "NLP":
         if model_path in NEXA_RUN_MODEL_MAP_FUNCTION_CALLING:
             chat_format = "chatml-function-calling"
             with suppress_stdout_stderr():
@@ -180,8 +190,18 @@ async def load_model():
                         n_ctx=n_ctx
                     )
                 logging.info(f"model loaded as {model}")
-                chat_format = model.metadata.get("tokenizer.chat_template", None)               
-    elif run_type == "Computer Vision":
+                chat_format = model.metadata.get("tokenizer.chat_template", None)
+            
+            if (
+                completion_template is None
+                and (
+                    chat_format := model.metadata.get("tokenizer.chat_template", None)
+                )
+                is not None
+            ):
+                chat_format = chat_format
+                logging.debug("Chat format detected")
+    elif model_type == "Computer Vision":
         with suppress_stdout_stderr():
             model = StableDiffusion(
                 model_path=downloaded_path,
@@ -191,11 +211,13 @@ async def load_model():
                 n_threads=multiprocessing.cpu_count(),
             )
         logging.info(f"model loaded as {model}")
-    elif run_type == "Audio":
+    elif model_type == "Multimodal":
+        raise ValueError("Multimodal model is currently not supported in server mode. Please use SDK to run Multimodal model.")
+    elif model_type == "Audio":
         with suppress_stdout_stderr():
             model = WhisperModel(
                 downloaded_path,
-                device="auto",
+                device="cpu", # only support cpu for now because cuDNN needs to be installed on user's machine
                 compute_type="default"
             )
         logging.info(f"model loaded as {model}")
@@ -208,12 +230,15 @@ async def nexa_run_text_generation(
     global model, chat_format, completion_template
     if model is None:
         raise ValueError("Model is not loaded. Please check the model path and try again.")
-
+    
     generated_text = ""
     logprobs_or_none = None  # init to store the logprobs if requested
 
     if chat_format:
-        messages = chat_completion_system_prompt + [{"role": "user", "content": prompt}]
+        if is_local_path or is_huggingface: # do not add system prompt if local path or huggingface
+            messages = [{"role": "user", "content": prompt}]
+        else:
+            messages = chat_completion_system_prompt + [{"role": "user", "content": prompt}]
 
         params = {
             'messages': messages,
@@ -324,10 +349,24 @@ def base64_encode_image(image_path):
         return base64.b64encode(image_file.read()).decode("utf-8")
 
 
-def run_nexa_ai_service(model_path_arg, **kwargs):
-    global model_path, n_ctx
-    model_path = model_path_arg or "gemma"
+def run_nexa_ai_service(model_path_arg=None, is_local_path_arg=False, model_type_arg=None, huggingface=False, **kwargs):
+    global model_path, n_ctx, is_local_path, model_type, is_huggingface
+    is_local_path = is_local_path_arg
+    is_huggingface = huggingface
+    if is_local_path_arg or huggingface:
+        if not model_path_arg:
+            raise ValueError("model_path must be provided when using --local_path or --huggingface")
+        if is_local_path_arg and not model_type_arg:
+            raise ValueError("--model_type must be provided when using --local_path")
+        model_path = os.path.abspath(model_path_arg) if is_local_path_arg else model_path_arg
+        model_type = model_type_arg
+    else:
+        model_path = model_path_arg or "gemma"
+        model_type = None
     os.environ["MODEL_PATH"] = model_path
+    os.environ["IS_LOCAL_PATH"] = str(is_local_path_arg)
+    os.environ["MODEL_TYPE"] = model_type if model_type else ""
+    os.environ["HUGGINGFACE"] = str(huggingface)
     n_ctx = kwargs.get("nctx", 2048)
     host = kwargs.get("host", "0.0.0.0")
     port = kwargs.get("port", 8000)
@@ -337,9 +376,11 @@ def run_nexa_ai_service(model_path_arg, **kwargs):
 # Endpoints
 @app.on_event("startup")
 async def startup_event():
-    global model_path
+    global model_path, is_local_path, model_type, is_huggingface
     model_path = os.getenv("MODEL_PATH", "gemma")
-    logging.info(f"Model Path: {model_path}")
+    is_local_path = os.getenv("IS_LOCAL_PATH", "False").lower() == "true"
+    is_huggingface = os.getenv("HUGGINGFACE", "False").lower() == "true"
+    model_type = os.getenv("MODEL_TYPE", "")
     await load_model()
 
 
@@ -560,5 +601,30 @@ if __name__ == "__main__":
         action="store_true",
         help="Enable automatic reloading on code changes",
     )
+    parser.add_argument(
+        "--local_path",
+        action="store_true",
+        help="Use a local model path instead of pulling from S3",
+    )
+    parser.add_argument(
+        "--model_type",
+        type=str,
+        choices=["NLP", "Computer Vision", "Audio"],
+        help="Type of the model (required when using --local_path)",
+    )
+    parser.add_argument(
+        "--huggingface",
+        action="store_true",
+        help="Use a Hugging Face model",
+    )
     args = parser.parse_args()
-    run_nexa_ai_service(args.model_path, nctx=args.nctx, host=args.host, port=args.port, reload=args.reload)
+    run_nexa_ai_service(
+        args.model_path,
+        is_local_path_arg=args.local_path,
+        model_type_arg=args.model_type,
+        huggingface=args.huggingface,
+        nctx=args.nctx,
+        host=args.host,
+        port=args.port,
+        reload=args.reload
+    )
