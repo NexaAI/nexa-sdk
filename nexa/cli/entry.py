@@ -55,6 +55,10 @@ def run_ggml_inference(args):
                 else:
                     print("Invalid selection. Aborting.")
                     return
+            elif run_type == "Audio":
+                if not os.path.isdir(local_path):
+                    print("Error: For Audio models with --local_path, the provided path must be a directory.")
+                    return
         else:  # hf case
             # TODO: remove this after adding support for Multimodal model in CLI
             if run_type == "Multimodal":

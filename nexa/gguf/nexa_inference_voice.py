@@ -201,7 +201,7 @@ class NexaVoiceInference:
         logging.info(f"Transcription saved to: {output_path}")
         return output_path
 
-    def run_streamlit(self, model_path: str):
+    def run_streamlit(self, model_path: str, is_local_path = False, hf = False):
         """
         Run the Streamlit UI.
         """
@@ -212,7 +212,7 @@ class NexaVoiceInference:
             Path(__file__).resolve().parent / "streamlit" / "streamlit_voice_chat.py"
         )
 
-        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path]
+        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, str(is_local_path), str(hf)]
         sys.exit(stcli.main())
 
 

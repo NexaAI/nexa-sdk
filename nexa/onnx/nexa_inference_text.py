@@ -181,7 +181,7 @@ class NexaTextInference:
             Path(__file__).resolve().parent / "streamlit" / "streamlit_text_chat.py"
         )
 
-        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, is_local_path]
+        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, str(is_local_path)]
         sys.exit(stcli.main())
 
 
