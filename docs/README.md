@@ -135,6 +135,13 @@ python -m nexa.gguf.server.nexa_service llama2-function-calling
 python -m nexa.cli.entry eval phi3 --tasks ifeval --limit 5
 python -m nexa.cli.entry eval phi3 --tasks math --limit 5
 python -m nexa.cli.entry eval phi3 --tasks mgsm_direct --limit 5
+python -m nexa.cli.entry eval phi3 --tasks do-not-answer --limit 5
+python -m nexa.cli.entry eval phi3 --tasks gpqa --limit 5
+python -m nexa.cli.entry eval phi3 --tasks mgsm --limit 5
+python -m nexa.cli.entry eval phi3 --tasks mmlu_pro --limit 5
+python -m nexa.cli.entry eval phi3 --tasks openai_humaneval --limit 5
+python -m nexa.cli.entry eval phi3 --tasks truthfulqa --limit 5
+
 ```
 
 ### Test CLI with GGML Files
