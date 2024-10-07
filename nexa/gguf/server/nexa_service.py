@@ -217,7 +217,7 @@ async def load_model():
         with suppress_stdout_stderr():
             model = WhisperModel(
                 downloaded_path,
-                device="auto",
+                device="cpu", # only support cpu for now because cuDNN needs to be installed on user's machine
                 compute_type="default"
             )
         logging.info(f"model loaded as {model}")
