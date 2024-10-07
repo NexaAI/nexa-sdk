@@ -1,1 +1,5 @@
-from .evaluator import nexa_evaluate
+from .nexa_eval import NexaEval
+
+__all__ = [
+    "NexaEval",
+]

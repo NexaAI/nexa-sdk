@@ -4,20 +4,21 @@ import time
 import requests
 import sys
 import json
+import socket
+import logging
 from datetime import datetime
 from pathlib import Path
+from contextlib import ExitStack
 from nexa.eval import evaluator
 from nexa.eval.nexa_task.task_manager import TaskManager
 from nexa.eval.utils import make_table, simple_parse_args_string, handle_non_serializable
 from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
 from nexa.constants import NEXA_MODEL_EVAL_RESULTS_PATH, NEXA_RUN_MODEL_MAP
 
-def print_message(level, message):
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"{timestamp} - {level} - {message}")
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class NexaEval:
-    def __init__(self, model_path: str, tasks: str, limit: float = None):
+    def __init__(self, model_path: str, tasks: str, limit: float = None, port: int = None, nctx: int = None):
         model_path = NEXA_RUN_MODEL_MAP.get(model_path, model_path)
         self.model_path = model_path
         
@@ -26,12 +27,15 @@ class NexaEval:
         self.limit = limit
         self.tasks = tasks
         self.server_process = None
-        self.server_url = "http://0.0.0.0:8300"
-        output_path = Path(NEXA_MODEL_EVAL_RESULTS_PATH) / self.model_name / self.model_tag / tasks.replace(',', '_')
+        self.nctx = nctx if nctx is not None else 4096
+        self.initial_port = port if port is not None else 8300
+        self.port = self.initial_port
+        self.server_url = f"http://0.0.0.0:{self.port}"
+        output_path = Path(NEXA_MODEL_EVAL_RESULTS_PATH) / self.model_name / self.model_tag / self.tasks.replace(',', '_')
         self.eval_args = {
-            "model": model_path,
-            "tasks": tasks,
-            "limit": limit,
+            "model": self.model_path,
+            "tasks": self.tasks,
+            "limit": self.limit,
             "model_args": f"base_url={self.server_url}/v1/completions",
             "hf_hub_log_args": "",
             "batch_size": 8,
@@ -40,15 +44,30 @@ class NexaEval:
             "verbosity": "INFO",
         }
 
+    def find_available_port(self):
+        while True:
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.bind(('0.0.0.0', self.port))
+                    return self.port
+            except socket.error:
+                logging.info(f"Port {self.port} is in use, trying {self.port + 1}")
+                self.port += 1
+
+    def update_urls(self):
+        self.server_url = f"http://0.0.0.0:{self.port}"
+        self.eval_args["model_args"] = f"base_url={self.server_url}/v1/completions"
 
     def start_server(self):
+        self.port = self.find_available_port()
+        self.update_urls()
         self.server_process = multiprocessing.Process(
             target=NexaServer,
             args=(self.model_path,),
-            kwargs={"host": "0.0.0.0", "port": 8300, "nctx": 4096},
+            kwargs={"host": "0.0.0.0", "port": self.port, "nctx": self.nctx},
         )
         self.server_process.start()
-        print("INFO", f"Started server process for model: {self.model_path}")
+        logging.info(f"Started server process for model: {self.model_path} on port {self.port} with context window {self.nctx}")
 
     def wait_for_server(self, timeout: int = 60) -> bool:
         start_time = time.time()
@@ -56,13 +75,12 @@ class NexaEval:
             try:
                 response = requests.get(f"{self.server_url}/")
                 if response.status_code == 200:
-                    print_message("INFO", "Server is ready")
+                    logging.info("Server is ready")
                     return True
             except requests.exceptions.ConnectionError:
                 pass
             time.sleep(1)
-        raise Exception("Server did not become ready within the specified timeout.")
-    
+        raise RuntimeError(f"Server did not become ready within the specified timeout of {timeout} seconds")
 
     def evaluate_model(self, args):
 
@@ -70,13 +88,13 @@ class NexaEval:
         task_manager = TaskManager(args.verbosity, include_path=args.include_path)
 
         if args.tasks is None:
-            print("ERROR", "Need to specify task to evaluate.")
+            logging.error("Need to specify task to evaluate.")
             sys.exit()
         else:
             task_list = args.tasks.split(",")
             task_names = task_manager.match_tasks(task_list)
         
-        print_message("INFO", f"Selected Tasks: {task_names}")
+        logging.info(f"Selected Tasks: {task_names}")
 
         from datasets.exceptions import DatasetNotFoundError
         try:
@@ -90,22 +108,22 @@ class NexaEval:
             )
         except ValueError as e:
             if "No tasks specified, or no tasks found" in str(e):
-                print_message("ERROR", f"Error: No valid tasks were found for evaluation. Specified tasks: {args.tasks}. Please verify the task names and try again.")
+                logging.error(f"Error: No valid tasks were found for evaluation. Specified tasks: {args.tasks}. Please verify the task names and try again.")
             else:
-                print_message("ERROR", f"An unexpected ValueError occurred: {e}")
+                logging.error(f"An unexpected ValueError occurred: {e}")
             return
         except DatasetNotFoundError as e:
-            print_message("ERROR", f"Error: {e}")
-            print_message("ERROR", "Run 'huggingface-cli login' to authenticate with the Hugging Face Hub.")
+            logging.error(f"Error: {e}")
+            logging.error("Run 'huggingface-cli login' to authenticate with the Hugging Face Hub.")
             return
         except RuntimeError as e:
             if "TensorFlow 2.0 or PyTorch should be installed" in str(e):
-                print_message("ERROR", "This task requires either TensorFlow or PyTorch, but neither is installed.")
-                print_message("ERROR", "To run this task, please install one of the following:")
-                print_message("ERROR", "- PyTorch: Visit https://pytorch.org/ for installation instructions.")
-                print_message("ERROR", "- TensorFlow: Visit https://www.tensorflow.org/install/ for installation instructions.")
+                logging.error("This task requires either TensorFlow or PyTorch, but neither is installed.")
+                logging.error("To run this task, please install one of the following:")
+                logging.error("- PyTorch: Visit https://pytorch.org/ for installation instructions.")
+                logging.error("- TensorFlow: Visit https://www.tensorflow.org/install/ for installation instructions.")
             else:
-                print_message("ERROR", f"An unexpected error occurred: {e}")
+                logging.error(f"An unexpected error occurred: {e}")
             return
         
         if results is not None:
@@ -122,7 +140,7 @@ class NexaEval:
 
             if args.output_path:
                 try:
-                    print_message("INFO", "Saving aggregated results")
+                    logging.info("Saving aggregated results")
 
                     dumped = json.dumps(
                         results,
@@ -140,10 +158,10 @@ class NexaEval:
                         f.write(dumped)
 
                 except Exception as e:
-                    print_message("WARNING", "Could not save aggregated results")
-                    print_message("INFO", repr(e))
+                    logging.warning("Could not save aggregated results")
+                    logging.info(repr(e))
             else:
-                print_message("INFO", "Output path not provided, skipping saving aggregated results")
+                logging.info("Output path not provided, skipping saving aggregated results")
 
             print(make_table(results))
             if "groups" in results:
@@ -151,22 +169,27 @@ class NexaEval:
     
 
     def run_evaluation(self):
-        try:
-            self.start_server()
-            if self.wait_for_server():
-                print_message("INFO", f"Starting evaluation for tasks: {self.tasks}")
-                args = argparse.Namespace(**self.eval_args)
-                self.evaluate_model(args)
-                print_message("INFO", "Evaluation completed")
-                print_message("INFO", f"Output file has been saved to {self.eval_args['output_path']}")
-        finally:
-            if self.server_process:
-                self.server_process.terminate()
-                self.server_process.join()
-                print_message("INFO", "Server process terminated")
+        with ExitStack() as stack:
+            try:
+                self.start_server()
+                stack.callback(self.stop_server)
+                if self.wait_for_server():
+                    logging.info(f"Starting evaluation for tasks: {self.tasks}")
+                    args = argparse.Namespace(**self.eval_args)
+                    self.evaluate_model(args)
+                    logging.info("Evaluation completed")
+                    logging.info(f"Output file has been saved to {self.eval_args['output_path']}")
+            except Exception as e:
+                logging.error(f"An error occurred during evaluation: {e}")
 
-def run_eval_inference(model_path: str, tasks: str):
-    evaluator = NexaEval(model_path, tasks)
+    def stop_server(self):
+        if self.server_process:
+            self.server_process.terminate()
+            self.server_process.join()
+            logging.info("Server process terminated")
+
+def run_eval_inference(model_path: str, tasks: str, limit: float = None, port: int = None, nctx: int = None):
+    evaluator = NexaEval(model_path, tasks, limit, port, nctx)
     evaluator.run_evaluation()
 
 if __name__ == "__main__":
@@ -174,6 +197,8 @@ if __name__ == "__main__":
     parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
     parser.add_argument("--tasks", type=str, help="Tasks to evaluate, comma-separated")
     parser.add_argument("--limit", type=float, help="Limit the number of examples per task. If <1, limit is a percentage of the total number of examples.", default=None)
+    parser.add_argument("--port", type=int, help="Initial port to bind the server to", default=8300)
+    parser.add_argument("--nctx", type=int, help="Length of context window", default=4096)
     
     args = parser.parse_args()
-    run_eval_inference(args.model_path, args.tasks, args.limit)
+    run_eval_inference(args.model_path, args.tasks, args.limit, args.port, args.nctx)
