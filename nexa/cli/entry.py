@@ -1,4 +1,5 @@
 import argparse
+import os
 from nexa import __version__
 
 def run_ggml_inference(args):
@@ -81,7 +82,15 @@ def run_onnx_inference(args):
         inference.run()
 
 def run_eval_tasks(args):
-    try: 
+    try:
+        if 'do-not-answer' in args.tasks:
+            if not os.getenv('OPENAI_API_KEY'):
+                print("Warning: The 'do-not-answer' task requires an OpenAI API key.")
+                print("Please set your API key in the terminal using the following command:")
+                print("export OPENAI_API_KEY=your_openai_api_key_here")
+                print("After setting the key, please try again")
+                return
+
         kwargs = {k: v for k, v in vars(args).items() if v is not None}
         model_path = kwargs.pop("model_path")
         
