@@ -1,4 +1,5 @@
 import argparse
+import os
 from nexa import __version__
 
 def run_ggml_inference(args):
@@ -79,6 +80,26 @@ def run_onnx_inference(args):
         inference.run_streamlit(model_path)
     else:
         inference.run()
+
+def run_eval_tasks(args):
+    try:
+        if 'do-not-answer' in args.tasks:
+            if not os.getenv('OPENAI_API_KEY'):
+                print("Warning: The 'do-not-answer' task requires an OpenAI API key.")
+                print("Please set your API key in the terminal using the following command:")
+                print("export OPENAI_API_KEY=your_openai_api_key_here")
+                print("After setting the key, please try again")
+                return
+
+        kwargs = {k: v for k, v in vars(args).items() if v is not None}
+        model_path = kwargs.pop("model_path")
+        
+        from nexa.eval.nexa_eval import NexaEval
+        evaluator = NexaEval(model_path, args.tasks, args.limit, args.port, args.nctx)
+        evaluator.run_evaluation()
+    except Exception as e:
+        print(f"Error running evaluation, please run: pip install nexaai[eval]")
+        return
 
 def main():
     parser = argparse.ArgumentParser(
@@ -164,7 +185,7 @@ def main():
 
     # GGML server parser
     server_parser = subparsers.add_parser("server", help="Run the Nexa AI Text Generation Service")
-    server_parser.add_argument("model_path", type=str, help="Path or identifier for the model in S3")
+    server_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
     server_parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to bind the server to")
     server_parser.add_argument("--port", type=int, default=8000, help="Port to bind the server to")
     server_parser.add_argument("--reload", action="store_true", help="Enable automatic reloading on code changes")
@@ -184,6 +205,14 @@ def main():
     subparsers.add_parser("whoami", help="Show current user information.")
     subparsers.add_parser("logout", help="Logout from Nexa API.")
 
+    # Benchmark Evaluation
+    eval_parser = subparsers.add_parser("eval", help="Evaluate models on specified tasks.")
+    eval_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
+    eval_parser.add_argument("--tasks", type=str, required=True, help="Tasks to evaluate the model on, separated by commas.")
+    eval_parser.add_argument("--limit", type=float, help="Limit the number of examples per task. If <1, limit is a percentage of the total number of examples.", default=None)
+    eval_parser.add_argument("--port", type=int, help="Port to bind the server to", default=8300)
+    eval_parser.add_argument("--nctx", type=int, help="Length of context window", default=4096)
+
 
     args = parser.parse_args()
 
@@ -191,6 +220,8 @@ def main():
         run_ggml_inference(args)
     elif args.command == "onnx":
         run_onnx_inference(args)
+    elif args.command == "eval":
+        run_eval_tasks(args)
     elif args.command == "pull":
         from nexa.general import pull_model
         hf = getattr(args, 'huggingface', False)

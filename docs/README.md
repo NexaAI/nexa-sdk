@@ -19,13 +19,16 @@ The Nexa SDK is a comprehensive toolkit for supporting **ONNX** and **GGML** mod
 - **Streamlit UI** for interactive model deployment and testing
 
 ## Installation
+
 ### install from PyPI
+
 ```bash
 pip install nexaai
 pip install nexaai[onnx] # if you need ONNX support
 ```
 
 ### build from source
+
 ```bash
 git clone --recursive https://github.com/NexaAI/nexa-sdk.git
 cd nexa-sdk
@@ -34,17 +37,22 @@ pip install -e .[onnx] # if you need ONNX support
 ```
 
 ## Publishing to PYPI
+
 Firstly build the wheel
+
 ```bash
 python -m build
 ```
+
 Then upload the wheel to PyPI
+
 ```bash
 pip install twine
 twine upload dist/*
 ```
 
 ### add a tag
+
 ```
 git tag
 git tag -d <version>
@@ -119,6 +127,21 @@ python -m nexa.cli.entry onnx tts ljspeech
 python -m nexa.gguf.server.nexa_service gemma
 python -m nexa.onnx.server.nexa_service gemma
 python -m nexa.gguf.server.nexa_service llama2-function-calling
+```
+
+### Test Eval
+
+```bash
+python -m nexa.cli.entry eval phi3 --tasks ifeval --limit 5
+python -m nexa.cli.entry eval phi3 --tasks math --limit 5
+python -m nexa.cli.entry eval phi3 --tasks mgsm_direct --limit 5
+python -m nexa.cli.entry eval phi3 --tasks do-not-answer --limit 5
+python -m nexa.cli.entry eval phi3 --tasks gpqa --limit 5
+python -m nexa.cli.entry eval phi3 --tasks mgsm --limit 5
+python -m nexa.cli.entry eval phi3 --tasks mmlu_pro --limit 5
+python -m nexa.cli.entry eval phi3 --tasks openai_humaneval --limit 5
+python -m nexa.cli.entry eval phi3 --tasks truthfulqa --limit 5
+
 ```
 
 ### Test CLI with GGML Files
