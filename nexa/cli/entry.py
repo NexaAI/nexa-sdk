@@ -61,8 +61,8 @@ def run_ggml_inference(args):
                     return
         else:  # hf case
             # TODO: remove this after adding support for Multimodal model in CLI
-            if run_type == "Multimodal":
-                print("Running multimodal model from Hugging Face is currently not supported in CLI mode. Please use SDK to run Multimodal model.")
+            if run_type == "Multimodal" or run_type == "Audio":
+                print("Running multimodal model or audio model from Hugging Face is currently not supported in CLI mode. Please use SDK to run Multimodal model or Audio model.")
                 return
             from nexa.general import pull_model
             local_path, _ = pull_model(model_path, hf=True)

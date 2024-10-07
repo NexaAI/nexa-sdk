@@ -124,7 +124,10 @@ def pull_model(model_path, hf = False):
 
         if result["success"]:
             add_model_to_list(model_path, result["local_path"], result["model_type"], result["run_type"])
-            print(f"Successfully pulled model {model_path} to {result['local_path']}, run_type: {result['run_type']}")
+            if hf:
+                print(f"Successfully pulled model {model_path} to {result['local_path']}")
+            else:
+                print(f"Successfully pulled model {model_path} to {result['local_path']}, run_type: {result['run_type']}")
             return result["local_path"], result["run_type"]
         else:
             print(f"Failed to pull model {model_path}")
