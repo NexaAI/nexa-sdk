@@ -379,11 +379,10 @@ def download_file_with_progress(
             raise Exception("Some chunks failed to download")
 
     except requests.exceptions.RequestException as e:
-        print(f"Error occurred while making the request: {e}")
+        raise Exception(f"Error occurred while making the request: {e}")
     except ValueError as e:
-        print(f"Error: {e}")
+        raise Exception(f"Error: {e}")
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
         # Clean up partial files
         for i in range(len(chunks)):
             chunk_file = f"{file_path}.part{i}"
@@ -391,6 +390,7 @@ def download_file_with_progress(
                 os.remove(chunk_file)
         if os.path.exists(file_path):
             os.remove(file_path)
+        raise Exception(f"An unexpected error occurred: {e}")
 
 
 def download_model_from_official(model_path, model_type, **kwargs):
