@@ -46,7 +46,7 @@ def run_ggml_inference(args):
                     print(f"{i+1}. {file}")
                 
                 model_choice = int(input("Enter the index of the model gguf: ")) - 1
-                projector_choice = int(input("Enter the number of the projector gguf: ")) - 1
+                projector_choice = int(input("Enter the index of the projector gguf: ")) - 1
                 
                 if 0 <= model_choice < len(files) and 0 <= projector_choice < len(files):
                     local_path = os.path.join(local_path, files[model_choice])
