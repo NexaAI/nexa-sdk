@@ -8,6 +8,7 @@ import concurrent.futures
 import time
 import os
 from tqdm import tqdm
+import platform
 
 from nexa.constants import (
     NEXA_API_URL,
@@ -105,7 +106,7 @@ def get_user_info(token):
         return None
 
 
-def pull_model(model_path, hf = False):
+def pull_model(model_path, hf = False, **kwargs):
     model_path = NEXA_RUN_MODEL_MAP.get(model_path, model_path)
 
     try:
@@ -118,9 +119,9 @@ def pull_model(model_path, hf = False):
                 return location, run_type
 
             if "/" in model_path:
-                result = pull_model_from_hub(model_path)
+                result = pull_model_from_hub(model_path, **kwargs)
             else:
-                result = pull_model_from_official(model_path)
+                result = pull_model_from_official(model_path, **kwargs)
 
         if result["success"]:
             add_model_to_list(model_path, result["local_path"], result["model_type"], result["run_type"])
@@ -137,7 +138,7 @@ def pull_model(model_path, hf = False):
         return None, "NLP"
 
 
-def pull_model_from_hub(model_path):
+def pull_model_from_hub(model_path, **kwargs):
     NEXA_MODELS_HUB_DIR.mkdir(parents=True, exist_ok=True)
 
     token = ""
@@ -177,7 +178,7 @@ def pull_model_from_hub(model_path):
     for file_path, presigned_link in presigned_links.items():
         try:
             download_path = NEXA_MODELS_HUB_DIR / file_path
-            download_file_with_progress(presigned_link, download_path, use_processes=True)
+            download_file_with_progress(presigned_link, download_path, **kwargs)
 
             if local_path is None:
                 if model_type == "onnx" or model_type == "bin":
@@ -199,7 +200,7 @@ def pull_model_from_hub(model_path):
     }
 
 
-def pull_model_from_official(model_path):
+def pull_model_from_official(model_path, **kwargs):
     NEXA_MODELS_HUB_OFFICIAL_DIR.mkdir(parents=True, exist_ok=True)
 
     if "onnx" in model_path:
@@ -211,7 +212,7 @@ def pull_model_from_official(model_path):
 
     run_type = get_run_type_from_model_path(model_path)
     run_type_str = run_type.value if isinstance(run_type, ModelType) else str(run_type)
-    success, location = download_model_from_official(model_path, model_type)
+    success, location = download_model_from_official(model_path, model_type, **kwargs)
     
     return {
         "success": success,
@@ -291,6 +292,21 @@ def download_chunk(url, start, end, output_file, chunk_number):
             if attempt == max_retries - 1:
                 raise
             time.sleep(2 ** attempt)  # Exponential backoff
+            
+            
+def default_use_processes():
+    """
+    Distinct operating systems may have different default behaviors for threading vs multiprocessing.
+    """
+    platform_name = platform.system()
+    if platform_name == "Linux":
+        return True
+    elif platform_name == "Windows":
+        return False
+    elif platform_name == "Darwin":
+        return False
+    else:
+        return False
 
 
 def download_file_with_progress(
@@ -298,7 +314,8 @@ def download_file_with_progress(
     file_path: Path,
     chunk_size: int = 40 * 1024 * 1024,
     max_workers: int = 20,
-    use_processes: bool = False
+    use_processes: bool = default_use_processes(),
+    **kwargs
 ):
     file_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -365,11 +382,10 @@ def download_file_with_progress(
             raise Exception("Some chunks failed to download")
 
     except requests.exceptions.RequestException as e:
-        print(f"Error occurred while making the request: {e}")
+        raise Exception(f"Error occurred while making the request: {e}")
     except ValueError as e:
-        print(f"Error: {e}")
+        raise Exception(f"Error: {e}")
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
         # Clean up partial files
         for i in range(len(chunks)):
             chunk_file = f"{file_path}.part{i}"
@@ -377,9 +393,10 @@ def download_file_with_progress(
                 os.remove(chunk_file)
         if os.path.exists(file_path):
             os.remove(file_path)
+        raise Exception(f"An unexpected error occurred: {e}")
 
 
-def download_model_from_official(model_path, model_type):
+def download_model_from_official(model_path, model_type, **kwargs):
     try:
         model_name, model_version = model_path.split(":")
         file_extension = ".zip" if model_type == "onnx" or model_type == "bin" else ".gguf"
@@ -391,7 +408,7 @@ def download_model_from_official(model_path, model_type):
         download_url = f"{NEXA_OFFICIAL_BUCKET}{filepath}"
 
         full_path.parent.mkdir(parents=True, exist_ok=True)
-        download_file_with_progress(download_url, full_path, use_processes=True)
+        download_file_with_progress(download_url, full_path, **kwargs)
 
         if model_type == "onnx" or model_type == "bin":
             unzipped_folder = full_path.parent / model_version

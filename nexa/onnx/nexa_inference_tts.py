@@ -47,7 +47,7 @@ class NexaTTSInference:
         self.downloaded_onnx_folder = local_path
 
         if self.downloaded_onnx_folder is None:
-            self.downloaded_onnx_folder, run_type = pull_model(self.model_path)
+            self.downloaded_onnx_folder, run_type = pull_model(self.model_path, **kwargs)
         
         if self.downloaded_onnx_folder is None:
             logging.error(

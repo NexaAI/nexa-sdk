@@ -11,7 +11,8 @@ positional arguments:
                         sub-command help
     run                 Run inference for various tasks using GGUF models.
     onnx                Run inference for various tasks using ONNX models.
-    server              Run the Nexa AI Text Generation Service
+    server              Run the Nexa AI Text Generation Service.
+    eval                Run the Nexa AI Evaluation Tasks.
     pull                Pull a model from official or hub.
     remove              Remove a model from local machine.
     clean               Clean up all model files.
@@ -259,6 +260,26 @@ options:
 
 ```
 nexa server llama2
+```
+
+### Run Model Evaluation
+
+Run evaluation using models on your local computer.
+```
+usage: nexa eval model_path [-h] [--tasks TASKS] [--limit LIMIT] 
+
+positional arguments:
+  model_path            Path or identifier for the model in Nexa Model Hub
+
+options:
+  -h, --help            show this help message and exit
+  --tasks TASKS         Tasks to evaluate, comma-separated
+  --limit LIMIT         Limit the number of examples per task. If <1, limit is a percentage of the total number of examples.
+```
+
+#### Examples
+```
+nexa eval phi3 --tasks ifeval --limit 0.5
 ```
 
 ### Model Path Format

@@ -253,6 +253,7 @@ Here's a brief overview of the main CLI commands:
 - `nexa run`: Run inference for various tasks using GGUF models.
 - `nexa onnx`: Run inference for various tasks using ONNX models.
 - `nexa server`: Run the Nexa AI Text Generation Service.
+- `nexa eval`: Run the Nexa AI Evaluation Tasks.
 - `nexa pull`: Pull a model from official or hub.
 - `nexa remove`: Remove a model from local machine.
 - `nexa clean`: Clean up all model files.
