@@ -101,10 +101,10 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   -pf, --profiling      Enable profiling logs for the inference process
-  -st, --streamlit      Run the inference in Streamlit UI
+  -st, --streamlit      Run the inference in Streamlit UI, can be used with -lp or -hf
   -lp, --local_path     Indicate that the model path provided is the local path, must be used with -mt
-  -mt, --model_type     Indicate the model running type, must be used with -lp
-  -hf, --huggingface    Load model from Hugging Face Hub
+  -mt, --model_type     Indicate the model running type, must be used with -lp or -hf, choose from [NLP, COMPUTER_VISION, MULTIMODAL, AUDIO]
+  -hf, --huggingface    Load model from Hugging Face Hub, must be used with -mt
 
 Text generation options:
   -t, --temperature TEMPERATURE
@@ -134,10 +134,10 @@ positional arguments:
 
 options:
   -h, --help            show this help message and exit
-  -st, --streamlit      Run the inference in Streamlit UI
+  -st, --streamlit      Run the inference in Streamlit UI, can be used with -lp or -hf
   -lp, --local_path     Indicate that the model path provided is the local path, must be used with -mt
-  -mt, --model_type     Indicate the model running type, must be used with -lp
-  -hf, --huggingface    Load model from Hugging Face Hub
+  -mt, --model_type     Indicate the model running type, must be used with -lp or -hf, choose from [NLP, COMPUTER_VISION, MULTIMODAL, AUDIO]
+  -hf, --huggingface    Load model from Hugging Face Hub, must be used with -mt
 
 Image generation options:
   -i2i, --img2img       Whether to run image-to-image generation
@@ -180,10 +180,10 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   -pf, --profiling      Enable profiling logs for the inference process
-  -st, --streamlit      Run the inference in Streamlit UI
+  -st, --streamlit      Run the inference in Streamlit UI, can be used with -lp or -hf
   -lp, --local_path     Indicate that the model path provided is the local path, must be used with -mt
-  -mt, --model_type     Indicate the model running type, must be used with -lp
-  -hf, --huggingface    Load model from Hugging Face Hub
+  -mt, --model_type     Indicate the model running type, must be used with -lp or -hf, choose from [NLP, COMPUTER_VISION, MULTIMODAL, AUDIO]
+  -hf, --huggingface    Load model from Hugging Face Hub, must be used with -mt
 
 VLM generation options:
   -t, --temperature TEMPERATURE
@@ -213,10 +213,10 @@ positional arguments:
 
 options:
   -h, --help            show this help message and exit
-  -st, --streamlit      Run the inference in Streamlit UI
+  -st, --streamlit      Run the inference in Streamlit UI, can be used with -lp or -hf
   -lp, --local_path     Indicate that the model path provided is the local path, must be used with -mt
-  -mt, --model_type     Indicate the model running type, must be used with -lp
-  -hf, --huggingface    Load model from Hugging Face Hub
+  -mt, --model_type     Indicate the model running type, must be used with -lp or -hf, choose from [NLP, COMPUTER_VISION, MULTIMODAL, AUDIO]
+  -hf, --huggingface    Load model from Hugging Face Hub, must be used with -mt
 
 Automatic Speech Recognition options:
   -b, --beam_size BEAM_SIZE
@@ -247,6 +247,9 @@ positional arguments:
 
 options:
   -h, --help   show this help message and exit
+  -lp, --local_path     Indicate that the model path provided is the local path, must be used with -mt
+  -mt, --model_type     Indicate the model running type, must be used with -lp or -hf, choose from [NLP, COMPUTER_VISION, MULTIMODAL, AUDIO]
+  -hf, --huggingface    Load model from Hugging Face Hub, must be used with -mt
   --host HOST  Host to bind the server to
   --port PORT  Port to bind the server to
   --reload     Enable automatic reloading on code changes
