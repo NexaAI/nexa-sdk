@@ -309,8 +309,8 @@ async def load_model():
             )
         logging.info(f"model loaded as {model}")
     else:
-        raise ValueError(f"Model {model_path} not found in Model Hub")
-
+        raise ValueError(f"Model {model_path} not found in Model Hub. If you are using local path, be sure to add --local_path and --model_type flags.")
+    
 def nexa_run_text_generation(
     prompt, temperature, stop_words, max_new_tokens, top_k, top_p, logprobs=None, top_logprobs=None, stream=False, is_chat_completion=True
 ) -> Dict[str, Any]:

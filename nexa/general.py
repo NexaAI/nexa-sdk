@@ -132,10 +132,10 @@ def pull_model(model_path, hf = False, **kwargs):
             return result["local_path"], result["run_type"]
         else:
             print(f"Failed to pull model {model_path}")
-            return None, "NLP"
+            return None, None
     except Exception as e:
         logging.error(f"An error occurred while pulling the model: {e}")
-        return None, "NLP"
+        return None, None
 
 
 def pull_model_from_hub(model_path, **kwargs):
