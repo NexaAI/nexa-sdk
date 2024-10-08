@@ -409,16 +409,28 @@ def _resp_async_generator(streamer):
 
 @app.post("/v1/completions", tags=["NLP"])
 async def generate_text(request: GenerationRequest):
-
     try:
-        result = nexa_run_text_generation(**request.dict())
+        generation_kwargs = request.dict()
 
-        return JSONResponse(content={
-            "choices": [{
-                "text": result["result"],
-                "logprobs": result.get("logprobs")
-            }]
-        })
+        if request.stream:
+            # Run the generation and stream the response
+            streamer = nexa_run_text_generation(**generation_kwargs)
+            return StreamingResponse(_resp_async_generator(streamer), media_type="application/x-ndjson")
+        else:
+            # Generate text synchronously and return the response
+            result = nexa_run_text_generation(**generation_kwargs)
+            return JSONResponse(content={
+                "id": str(uuid.uuid4()),
+                "object": "text_completion",
+                "created": int(time.time()),
+                "model": model_path,
+                "choices": [{
+                    "text": result["result"],
+                    "index": 0,
+                    "logprobs": result.get("logprobs"),
+                    "finish_reason": "stop"
+                }]
+            })
     except Exception as e:
         logging.error(f"Error in text generation: {e}")
         raise HTTPException(status_code=500, detail=str(e))
