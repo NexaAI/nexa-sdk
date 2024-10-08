@@ -4,7 +4,7 @@ import os
 import socket
 import time
 import uuid
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union, Literal
 import base64
 import multiprocessing
 from PIL import Image
@@ -13,7 +13,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Request, File, UploadFile, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, HttpUrl, AnyUrl
 import requests
 from io import BytesIO
 from PIL import Image
@@ -157,10 +157,15 @@ class ImageGenerationRequest(BaseModel):
     seed: int = 0
     negative_prompt: Optional[str] = ""
 
-class ContentItem(BaseModel):
-    type: str
-    text: Optional[str] = None
-    image_url: Optional[Dict[str, HttpUrl]] = None
+class TextContent(BaseModel):
+    type: Literal["text"] = "text"
+    text: str
+
+class ImageUrlContent(BaseModel):
+    type: Literal["image_url"] = "image_url"
+    image_url: Dict[str, Union[HttpUrl, str]]
+
+ContentItem = Union[TextContent, ImageUrlContent]
 
 class VLMMessage(BaseModel):
     role: str
@@ -178,22 +183,24 @@ class VLMRequest(BaseModel):
 # helper functions
 async def load_model():
     global model, chat_format, completion_template, model_path, n_ctx, is_local_path, model_type, is_huggingface, projector_path
-    if model_type == "Multimodal":
-        if is_local_path:
+    if is_local_path:
+        if model_type == "Multimodal":
             if not projector_path:
                 raise ValueError("Projector path must be provided when using local path for Multimodal models")
             downloaded_path = model_path
             projector_downloaded_path = projector_path
-        elif model_path in NEXA_RUN_MODEL_MAP_VLM:
+        else:
+            downloaded_path = model_path
+    elif is_huggingface:
+        # TODO: currently Multimodal models and Audio models are not supported for Hugging Face
+        if model_type == "Multimodal" or model_type == "Audio":
+            raise ValueError("Multimodal and Audio models are not supported for Hugging Face")
+        downloaded_path, _ = pull_model(model_path, hf=True)
+    else:
+        if model_path in NEXA_RUN_MODEL_MAP_VLM: # for Multimodal models
             downloaded_path, _ = pull_model(NEXA_RUN_MODEL_MAP_VLM[model_path])
             projector_downloaded_path, _ = pull_model(NEXA_RUN_PROJECTOR_MAP[model_path])
-        else:
-            raise ValueError(f"Unknown model path: {model_path}")
-    else:
-        if is_local_path:
-            downloaded_path = model_path
-        elif is_huggingface:
-            downloaded_path, _ = pull_model(model_path, hf=True)
+            model_type = "Multimodal"
         else:
             downloaded_path, model_type = pull_model(model_path)
     
@@ -702,21 +709,21 @@ def is_base64(s: str) -> bool:
     except Exception:
         return False
 
-def is_url(s: str) -> bool:
-    """Check if a string is a valid URL."""
+def is_url(s: Union[str, AnyUrl]) -> bool:
+    """Check if a string or AnyUrl object is a valid URL."""
+    if isinstance(s, AnyUrl):
+        return True
     try:
         result = urlparse(s)
         return all([result.scheme, result.netloc])
     except ValueError:
         return False
 
-def process_image_input(image_input: str) -> str:
+def process_image_input(image_input: Union[str, AnyUrl]) -> str:
     """Process image input, returning a data URI for both URL and base64 inputs."""
-    if is_url(image_input):
-        # It's a URL, fetch and convert to base64
-        return image_url_to_base64(image_input)
+    if isinstance(image_input, AnyUrl) or is_url(image_input):
+        return image_url_to_base64(str(image_input))
     elif is_base64(image_input):
-        # It's already base64, just add the data URI prefix if not present
         if image_input.startswith('data:image'):
             return image_input
         else:
@@ -743,11 +750,12 @@ async def vlm_inference(request: VLMRequest):
         for msg in request.messages:
             processed_content = []
             for item in msg.content:
-                if item.type == "text":
+                if isinstance(item, TextContent):
                     processed_content.append({"type": "text", "text": item.text})
-                elif item.type == "image_url":
+                elif isinstance(item, ImageUrlContent):
                     try:
-                        image_data_uri = process_image_input(item.image_url["url"])
+                        image_input = item.image_url["url"]
+                        image_data_uri = process_image_input(image_input)
                         processed_content.append({"type": "image_url", "image_url": {"url": image_data_uri}})
                     except ValueError as e:
                         raise HTTPException(status_code=400, detail=str(e))
