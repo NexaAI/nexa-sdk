@@ -487,10 +487,11 @@ def image_url_to_base64(image_url: str) -> str:
     return f"data:image/png;base64,{base64.b64encode(buffered.getvalue()).decode()}"
 
 
-def run_nexa_ai_service(model_path_arg=None, is_local_path_arg=False, model_type_arg=None, huggingface=False, **kwargs):
-    global model_path, n_ctx, is_local_path, model_type, is_huggingface
+def run_nexa_ai_service(model_path_arg=None, is_local_path_arg=False, model_type_arg=None, huggingface=False, projector_local_path_arg=None, **kwargs):
+    global model_path, n_ctx, is_local_path, model_type, is_huggingface, projector_path
     is_local_path = is_local_path_arg
     is_huggingface = huggingface
+    projector_path = projector_local_path_arg
     if is_local_path_arg or huggingface:
         if not model_path_arg:
             raise ValueError("model_path must be provided when using --local_path or --huggingface")
@@ -505,6 +506,7 @@ def run_nexa_ai_service(model_path_arg=None, is_local_path_arg=False, model_type
     os.environ["IS_LOCAL_PATH"] = str(is_local_path_arg)
     os.environ["MODEL_TYPE"] = model_type if model_type else ""
     os.environ["HUGGINGFACE"] = str(huggingface)
+    os.environ["PROJECTOR_PATH"] = projector_path if projector_path else ""
     n_ctx = kwargs.get("nctx", 2048)
     host = kwargs.get("host", "0.0.0.0")
     port = kwargs.get("port", 8000)
@@ -517,9 +519,9 @@ async def startup_event():
     global model_path, is_local_path, model_type, is_huggingface, projector_path
     model_path = os.getenv("MODEL_PATH", "gemma")
     is_local_path = os.getenv("IS_LOCAL_PATH", "False").lower() == "true"
-    model_type = os.getenv("MODEL_TYPE", "")
+    model_type = os.getenv("MODEL_TYPE", None)
     is_huggingface = os.getenv("HUGGINGFACE", "False").lower() == "true"
-    projector_path = os.getenv("PROJECTOR_PATH", "")
+    projector_path = os.getenv("PROJECTOR_PATH", None)
     await load_model()
 
 

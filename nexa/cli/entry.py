@@ -49,7 +49,7 @@ def run_ggml_inference(args):
             is_local_path_arg=is_local_path,
             model_type_arg=run_type,
             huggingface=hf,
-            projector_local_path=projector_local_path,
+            projector_local_path_arg=projector_local_path,
             **kwargs
         )
         return
