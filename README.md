@@ -21,7 +21,7 @@
 
 </div>
 
-Nexa SDK is a comprehensive toolkit for supporting **ONNX** and **GGML** models. It supports text generation, image generation, vision-language models (VLM), and text-to-speech (TTS) capabilities. Additionally, it offers an OpenAI-compatible API server with JSON schema mode for function calling and streaming support, and a user-friendly Streamlit UI. Users can run Nexa SDK in any device with Python environment, and GPU acceleration is supported.
+Nexa SDK is a comprehensive toolkit for supporting **ONNX** and **GGML** models. It supports text generation, image generation, vision-language models (VLM), and speech-to-text (ASR) capabilities. Additionally, it offers an OpenAI-compatible API server with JSON schema mode for function calling and streaming support, and a user-friendly Streamlit UI. Users can run Nexa SDK in any device with Python environment, and GPU acceleration is supported.
 
 ## Latest News 🔥
 * [2024/09] Nexa now has executables for easy installation: [Install Nexa SDK](https://nexaai.com/download-sdk)
@@ -38,40 +38,7 @@ Nexa SDK is a comprehensive toolkit for supporting **ONNX** and **GGML** models.
 
 Welcome to submit your requests through [issues](https://github.com/NexaAI/nexa-sdk/issues/new/choose), we ship weekly.
 
-## Features
-
-- **Model Support:**
-
-  - **ONNX & GGML models**
-  - **Conversion Engine**
-  - **Inference Engine**:
-    - **Text Generation**
-    - **Image Generation**
-    - **Vision-Language Models (VLM)**
-    - **Text-to-Speech (TTS)**
-
-Detailed API documentation is available [here](https://docs.nexaai.com/).
-
-- **Server:**
-  - OpenAI-compatible API
-  - JSON schema mode for function calling
-  - Streaming support
-- **Streamlit UI** for interactive model deployment and testing
-
-Below is our differentiation from other similar tools:
-
-| **Feature**                | **[Nexa SDK](https://github.com/NexaAI/nexa-sdk)** | **[ollama](https://github.com/ollama/ollama)** | **[Optimum](https://github.com/huggingface/optimum)** | **[LM Studio](https://github.com/lmstudio-ai)** |
-| -------------------------- | :------------------------------------------------: | :--------------------------------------------: | :---------------------------------------------------: | :---------------------------------------------: |
-| **GGML Support**           |                         ✅                         |                       ✅                       |                          ❌                           |                       ✅                        |
-| **ONNX Support**           |                         ✅                         |                       ❌                       |                          ✅                           |                       ❌                        |
-| **Text Generation**        |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
-| **Image Generation**       |                         ✅                         |                       ❌                       |                          ❌                           |                       ❌                        |
-| **Vision-Language Models** |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
-| **Text-to-Speech**         |                         ✅                         |                       ❌                       |                          ✅                           |                       ❌                        |
-| **Server Capability**      |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
-| **User Interface**         |                         ✅                         |                       ❌                       |                          ❌                           |                       ✅                        |
-
-## Installation
+## Installation - Executable
 
 ### macOS
 [Download](https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-macos-installer.pkg)
@@ -83,7 +50,7 @@ curl -fsSL https://public-storage.nexa4ai.com/install.sh | sh
 ### Windows
 Coming soon. Install with Python package below 👇
 
-## Python Package
+## Installation - Python Package
 
 We have released pre-built wheels for various Python versions, platforms, and backends for convenient installation on our [index page](https://nexaai.github.io/nexa-sdk/whl/).
 
@@ -190,8 +157,43 @@ Then you can build and install the package
 pip install -e .
 ```
 
-## Supported Models
+## Features
 
+- **Model Support:**
+
+  - **ONNX & GGML models**
+  - **Conversion Engine**
+  - **Inference Engine**:
+    - **Text Generation**
+    - **Image Generation**
+    - **Vision-Language Models (VLM)**
+    - **Speech-to-Text (ASR)**
+
+Detailed API documentation is available [here](https://docs.nexaai.com/).
+
+- **Server:**
+  - OpenAI-compatible API
+  - JSON schema mode for function calling
+  - Streaming support
+- **Streamlit UI** for interactive model deployment and testing
+
+Below is our differentiation from other similar tools:
+
+| **Feature**                | **[Nexa SDK](https://github.com/NexaAI/nexa-sdk)** | **[ollama](https://github.com/ollama/ollama)** | **[Optimum](https://github.com/huggingface/optimum)** | **[LM Studio](https://github.com/lmstudio-ai)** |
+| -------------------------- | :------------------------------------------------: | :--------------------------------------------: | :---------------------------------------------------: | :---------------------------------------------: |
+| **GGML Support**           |                         ✅                         |                       ✅                       |                          ❌                           |                       ✅                        |
+| **ONNX Support**           |                         ✅                         |                       ❌                       |                          ✅                           |                       ❌                        |
+| **Text Generation**        |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
+| **Image Generation**       |                         ✅                         |                       ❌                       |                          ❌                           |                       ❌                        |
+| **Vision-Language Models** |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
+| **Text-to-Speech**         |                         ✅                         |                       ❌                       |                          ✅                           |                       ❌                        |
+| **Server Capability**      |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
+| **User Interface**         |                         ✅                         |                       ❌                       |                          ❌                           |                       ✅                        |
+
+## Supported Models & Model Hub
+Our on-device model hub offers all types of quantized models (text, image, audio, multimodal) with filters for RAM, file size, Tasks, etc. to help you easily explore models with UI. Explore on-device models at [On-device Model Hub](https://model-hub.nexa4ai.com/)
+
+Some supported models:
 | Model                                                                                                   | Type            | Format    | Command                            |
 | ------------------------------------------------------------------------------------------------------- | --------------- | --------- | ---------------------------------- |
 | [octopus-v2](https://www.nexaai.com/NexaAI/Octopus-v2/gguf-q4_0/readme)                                 | NLP             | GGUF      | `nexa run octopus-v2`              |
