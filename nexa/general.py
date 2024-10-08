@@ -131,7 +131,7 @@ def pull_model(model_path, hf = False, **kwargs):
                 print(f"Successfully pulled model {model_path} to {result['local_path']}, run_type: {result['run_type']}")
             return result["local_path"], result["run_type"]
         else:
-            print(f"Failed to pull model {model_path}")
+            print(f"Failed to pull model {model_path}. If you are using local path, be sure to add --local_path and --model_type flags.")
             return None, None
     except Exception as e:
         logging.error(f"An error occurred while pulling the model: {e}")
