@@ -95,9 +95,19 @@ class GenerationRequest(BaseModel):
     top_logprobs: Optional[int] = 4
     stream: Optional[bool] = False
 
+class TextContent(BaseModel):
+    type: Literal["text"] = "text"
+    text: str
+
+class ImageUrlContent(BaseModel):
+    type: Literal["image_url"] = "image_url"
+    image_url: Dict[str, Union[HttpUrl, str]]
+
+ContentItem = Union[str, TextContent, ImageUrlContent]
+
 class Message(BaseModel):
     role: str
-    content: str
+    content: Union[str, List[ContentItem]]
 
 class ImageResponse(BaseModel):
     base64: str
@@ -112,6 +122,8 @@ class ChatCompletionRequest(BaseModel):
     stop_words: Optional[List[str]] = []
     logprobs: Optional[bool] = False
     top_logprobs: Optional[int] = 4
+    top_k: Optional[int] = 40
+    top_p: Optional[float] = 0.95
 
 class FunctionDefinitionRequestClass(BaseModel):
     type: str = "function"
@@ -156,29 +168,6 @@ class ImageGenerationRequest(BaseModel):
     sample_steps: int = 20
     seed: int = 0
     negative_prompt: Optional[str] = ""
-
-class TextContent(BaseModel):
-    type: Literal["text"] = "text"
-    text: str
-
-class ImageUrlContent(BaseModel):
-    type: Literal["image_url"] = "image_url"
-    image_url: Dict[str, Union[HttpUrl, str]]
-
-ContentItem = Union[TextContent, ImageUrlContent]
-
-class VLMMessage(BaseModel):
-    role: str
-    content: List[ContentItem]
-
-class VLMRequest(BaseModel):
-    model: str
-    messages: List[VLMMessage]
-    max_tokens: int = 300
-    temperature: float = 0.7
-    top_p: float = 0.95
-    top_k: int = 40
-    stream: bool = False
 
 # helper functions
 async def load_model():
@@ -460,6 +449,42 @@ async def nexa_run_image_generation(
 def base64_encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
+    
+def is_base64(s: str) -> bool:
+    """Check if a string is base64 encoded."""
+    try:
+        return base64.b64encode(base64.b64decode(s)).decode() == s
+    except Exception:
+        return False
+
+def is_url(s: Union[str, AnyUrl]) -> bool:
+    """Check if a string or AnyUrl object is a valid URL."""
+    if isinstance(s, AnyUrl):
+        return True
+    try:
+        result = urlparse(s)
+        return all([result.scheme, result.netloc])
+    except ValueError:
+        return False
+
+def process_image_input(image_input: Union[str, AnyUrl]) -> str:
+    """Process image input, returning a data URI for both URL and base64 inputs."""
+    if isinstance(image_input, AnyUrl) or is_url(image_input):
+        return image_url_to_base64(str(image_input))
+    elif is_base64(image_input):
+        if image_input.startswith('data:image'):
+            return image_input
+        else:
+            return f"data:image/png;base64,{image_input}"
+    else:
+        raise ValueError("Invalid image input. Must be a URL or base64 encoded image.")
+
+def image_url_to_base64(image_url: str) -> str:
+    response = requests.get(image_url)
+    img = Image.open(BytesIO(response.content))
+    buffered = BytesIO()
+    img.save(buffered, format="PNG")
+    return f"data:image/png;base64,{base64.b64encode(buffered.getvalue()).decode()}"
 
 
 def run_nexa_ai_service(model_path_arg=None, is_local_path_arg=False, model_type_arg=None, huggingface=False, **kwargs):
@@ -549,32 +574,70 @@ async def generate_text(request: GenerationRequest):
 @app.post("/v1/chat/completions", tags=["NLP"])
 async def chat_completions(request: ChatCompletionRequest):
     try:
-        generation_kwargs = GenerationRequest(
-            prompt="" if len(request.messages) == 0 else request.messages[-1].content,
-            temperature=request.temperature,
-            max_new_tokens=request.max_tokens,
-            stop_words=request.stop_words,
-            logprobs=request.logprobs,
-            top_logprobs=request.top_logprobs,
-            stream=request.stream
-        ).dict()
+        is_vlm = any(isinstance(msg.content, list) for msg in request.messages)
+        
+        if is_vlm:
+            # Process VLM request
+            processed_messages = []
+            for msg in request.messages:
+                if isinstance(msg.content, list):
+                    processed_content = []
+                    for item in msg.content:
+                        if isinstance(item, TextContent):
+                            processed_content.append({"type": "text", "text": item.text})
+                        elif isinstance(item, ImageUrlContent):
+                            try:
+                                image_input = item.image_url["url"]
+                                image_data_uri = process_image_input(image_input)
+                                processed_content.append({"type": "image_url", "image_url": {"url": image_data_uri}})
+                            except ValueError as e:
+                                raise HTTPException(status_code=400, detail=str(e))
+                    processed_messages.append({"role": msg.role, "content": processed_content})
+                else:
+                    processed_messages.append({"role": msg.role, "content": msg.content})
+                    
+            response = model.create_chat_completion(
+                messages=processed_messages,
+                temperature=request.temperature,
+                max_tokens=request.max_tokens,
+                top_k=request.top_k,
+                top_p=request.top_p,
+                stream=request.stream,
+            )
+        else:
+            # Process regular chat completion request
+            generation_kwargs = GenerationRequest(
+                prompt="" if len(request.messages) == 0 else request.messages[-1].content,
+                temperature=request.temperature,
+                max_new_tokens=request.max_tokens,
+                stop_words=request.stop_words,
+                logprobs=request.logprobs,
+                top_logprobs=request.top_logprobs,
+                stream=request.stream,
+                top_k=request.top_k,
+                top_p=request.top_p
+            ).dict()
+
+            if request.stream:
+                streamer = nexa_run_text_generation(is_chat_completion=True, **generation_kwargs)
+                return StreamingResponse(_resp_async_generator(streamer), media_type="application/x-ndjson")
+            else:
+                result = nexa_run_text_generation(is_chat_completion=True, **generation_kwargs)
+                return {
+                    "id": str(uuid.uuid4()),
+                    "object": "chat.completion",
+                    "created": time.time(),
+                    "choices": [{
+                        "message": Message(role="assistant", content=result["result"]),
+                        "logprobs": result["logprobs"] if "logprobs" in result else None,
+                    }],
+                }
 
         if request.stream:
-            # Run the generation and stream the response
-            streamer = nexa_run_text_generation(is_chat_completion=True, **generation_kwargs)
-            return StreamingResponse(_resp_async_generator(streamer), media_type="application/x-ndjson")
+            return StreamingResponse(_resp_async_generator(response), media_type="application/x-ndjson")
         else:
-            # Generate text synchronously and return the response
-            result = nexa_run_text_generation(is_chat_completion=True, **generation_kwargs)
-            return {
-                "id": str(uuid.uuid4()),
-                "object": "chat.completion",
-                "created": time.time(),
-                "choices": [{
-                    "message": Message(role="assistant", content=result["result"]),
-                    "logprobs": result["logprobs"] if "logprobs" in result else None,
-                }],
-            }
+            return response
+
     except Exception as e:
         logging.error(f"Error in chat completions: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -702,83 +765,6 @@ async def translate_audio(
     finally:
         os.unlink(temp_audio_path)
 
-def is_base64(s: str) -> bool:
-    """Check if a string is base64 encoded."""
-    try:
-        return base64.b64encode(base64.b64decode(s)).decode() == s
-    except Exception:
-        return False
-
-def is_url(s: Union[str, AnyUrl]) -> bool:
-    """Check if a string or AnyUrl object is a valid URL."""
-    if isinstance(s, AnyUrl):
-        return True
-    try:
-        result = urlparse(s)
-        return all([result.scheme, result.netloc])
-    except ValueError:
-        return False
-
-def process_image_input(image_input: Union[str, AnyUrl]) -> str:
-    """Process image input, returning a data URI for both URL and base64 inputs."""
-    if isinstance(image_input, AnyUrl) or is_url(image_input):
-        return image_url_to_base64(str(image_input))
-    elif is_base64(image_input):
-        if image_input.startswith('data:image'):
-            return image_input
-        else:
-            return f"data:image/png;base64,{image_input}"
-    else:
-        raise ValueError("Invalid image input. Must be a URL or base64 encoded image.")
-
-def image_url_to_base64(image_url: str) -> str:
-    response = requests.get(image_url)
-    img = Image.open(BytesIO(response.content))
-    buffered = BytesIO()
-    img.save(buffered, format="PNG")
-    return f"data:image/png;base64,{base64.b64encode(buffered.getvalue()).decode()}"
-
-@app.post("/v1/vlm", tags=["Multimodal"])
-async def vlm_inference(request: VLMRequest):
-    global model
-    if model is None or not hasattr(model, 'create_chat_completion'):
-        raise HTTPException(status_code=400, detail="VLM model is not loaded or doesn't support chat completion")
-
-    try:
-        # Process the messages and handle both URL and base64 image inputs
-        processed_messages = []
-        for msg in request.messages:
-            processed_content = []
-            for item in msg.content:
-                if isinstance(item, TextContent):
-                    processed_content.append({"type": "text", "text": item.text})
-                elif isinstance(item, ImageUrlContent):
-                    try:
-                        image_input = item.image_url["url"]
-                        image_data_uri = process_image_input(image_input)
-                        processed_content.append({"type": "image_url", "image_url": {"url": image_data_uri}})
-                    except ValueError as e:
-                        raise HTTPException(status_code=400, detail=str(e))
-            processed_messages.append({"role": msg.role, "content": processed_content})
-
-        # Create chat completion
-        response = model.create_chat_completion(
-            messages=processed_messages,
-            temperature=request.temperature,
-            max_tokens=request.max_tokens,
-            top_k=request.top_k,
-            top_p=request.top_p,
-            stream=request.stream,
-        )
-
-        if request.stream:
-            return StreamingResponse(_resp_async_generator(response), media_type="application/x-ndjson")
-        else:
-            return response
-
-    except Exception as e:
-        logging.error(f"Error in VLM inference: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
