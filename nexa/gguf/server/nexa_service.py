@@ -17,11 +17,18 @@ from pydantic import BaseModel
 
 from nexa.constants import (
     NEXA_RUN_CHAT_TEMPLATE_MAP,
+    NEXA_RUN_MODEL_MAP_VLM,
+    NEXA_RUN_PROJECTOR_MAP,
     NEXA_RUN_COMPLETION_TEMPLATE_MAP,
     NEXA_RUN_MODEL_PRECISION_MAP,
     NEXA_RUN_MODEL_MAP_FUNCTION_CALLING,
 )
 from nexa.gguf.lib_utils import is_gpu_available
+from nexa.gguf.llama.llama_chat_format import (
+    Llava15ChatHandler,
+    Llava16ChatHandler,
+    NanoLlavaChatHandler,
+)
 from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
 from nexa.general import pull_model
 from nexa.gguf.llama.llama import Llama
@@ -30,6 +37,24 @@ from faster_whisper import WhisperModel
 import argparse
 
 logging.basicConfig(level=logging.INFO)
+
+# HACK: This is moved from nexa.constants to avoid circular imports
+NEXA_PROJECTOR_HANDLER_MAP: dict[str, Llava15ChatHandler] = {
+    "nanollava": NanoLlavaChatHandler,
+    "nanoLLaVA:fp16": NanoLlavaChatHandler,
+    "llava-phi3": Llava15ChatHandler,
+    "llava-phi-3-mini:q4_0": Llava15ChatHandler,
+    "llava-phi-3-mini:fp16": Llava15ChatHandler,
+    "llava-llama3": Llava15ChatHandler,
+    "llava-llama-3-8b-v1.1:q4_0": Llava15ChatHandler,
+    "llava-llama-3-8b-v1.1:fp16": Llava15ChatHandler,
+    "llava1.6-mistral": Llava16ChatHandler,
+    "llava-v1.6-mistral-7b:q4_0": Llava16ChatHandler,
+    "llava-v1.6-mistral-7b:fp16": Llava16ChatHandler,
+    "llava1.6-vicuna": Llava16ChatHandler,
+    "llava-v1.6-vicuna-7b:q4_0": Llava16ChatHandler,
+    "llava-v1.6-vicuna-7b:fp16": Llava16ChatHandler,
+}
 
 app = FastAPI()
 app.add_middleware(
@@ -51,7 +76,7 @@ n_ctx = None
 is_local_path = False
 model_type = None
 is_huggingface = False
-
+projector_path = None
 # Request Classes
 class GenerationRequest(BaseModel):
     prompt: str = "Tell me a story"
@@ -128,14 +153,25 @@ class ImageGenerationRequest(BaseModel):
 
 # helper functions
 async def load_model():
-    global model, chat_format, completion_template, model_path, n_ctx, is_local_path, model_type, is_huggingface
-    if is_local_path or is_huggingface:
-        if is_huggingface:
+    global model, chat_format, completion_template, model_path, n_ctx, is_local_path, model_type, is_huggingface, projector_path
+    if model_type == "Multimodal":
+        if is_local_path:
+            if not projector_path:
+                raise ValueError("Projector path must be provided when using local path for Multimodal models")
+            downloaded_path = model_path
+            projector_downloaded_path = projector_path
+        elif model_path in NEXA_RUN_MODEL_MAP_VLM:
+            downloaded_path, _ = pull_model(NEXA_RUN_MODEL_MAP_VLM[model_path])
+            projector_downloaded_path, _ = pull_model(NEXA_RUN_PROJECTOR_MAP[model_path])
+        else:
+            raise ValueError(f"Unknown model path: {model_path}")
+    else:
+        if is_local_path:
+            downloaded_path = model_path
+        elif is_huggingface:
             downloaded_path, _ = pull_model(model_path, hf=True)
         else:
-            downloaded_path = model_path
-    else:
-        downloaded_path, model_type = pull_model(model_path)
+            downloaded_path, model_type = pull_model(model_path)
     
     if model_type == "NLP":
         if model_path in NEXA_RUN_MODEL_MAP_FUNCTION_CALLING:
@@ -213,7 +249,37 @@ async def load_model():
             )
         logging.info(f"model loaded as {model}")
     elif model_type == "Multimodal":
-        raise ValueError("Multimodal model is currently not supported in server mode. Please use SDK to run Multimodal model.")
+        with suppress_stdout_stderr():
+            projector_handler = NEXA_PROJECTOR_HANDLER_MAP.get(model_path, Llava15ChatHandler)
+            projector = (projector_handler(
+                clip_model_path=projector_downloaded_path, verbose=False
+            ) if projector_downloaded_path else None)
+            
+            chat_format = NEXA_RUN_CHAT_TEMPLATE_MAP.get(model_path, None)
+            try:
+                model = Llama(
+                    model_path=downloaded_path,
+                    chat_handler=projector,
+                    verbose=False,
+                    chat_format=chat_format,
+                    n_ctx=2048,
+                    n_gpu_layers=-1 if is_gpu_available() else 0,
+                )
+            except Exception as e:
+                logging.error(
+                    f"Failed to load model: {e}. Falling back to CPU.",
+                    exc_info=True,
+                )
+                model = Llama(
+                    model_path=downloaded_path,
+                    chat_handler=projector,
+                    verbose=False,
+                    chat_format=chat_format,
+                    n_ctx=2048,
+                    n_gpu_layers=0,  # hardcode to use CPU
+                )
+
+        logging.info(f"Model loaded as {model}")
     elif model_type == "Audio":
         with suppress_stdout_stderr():
             model = WhisperModel(
@@ -380,11 +446,12 @@ def run_nexa_ai_service(model_path_arg=None, is_local_path_arg=False, model_type
 # Endpoints
 @app.on_event("startup")
 async def startup_event():
-    global model_path, is_local_path, model_type, is_huggingface
+    global model_path, is_local_path, model_type, is_huggingface, projector_path
     model_path = os.getenv("MODEL_PATH", "gemma")
     is_local_path = os.getenv("IS_LOCAL_PATH", "False").lower() == "true"
-    is_huggingface = os.getenv("HUGGINGFACE", "False").lower() == "true"
     model_type = os.getenv("MODEL_TYPE", "")
+    is_huggingface = os.getenv("HUGGINGFACE", "False").lower() == "true"
+    projector_path = os.getenv("PROJECTOR_PATH", "")
     await load_model()
 
 
