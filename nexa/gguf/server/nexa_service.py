@@ -13,7 +13,13 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Request, File, UploadFile, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl
+import requests
+from io import BytesIO
+from PIL import Image
+import base64
+import re
+from urllib.parse import urlparse
 
 from nexa.constants import (
     NEXA_RUN_CHAT_TEMPLATE_MAP,
@@ -150,6 +156,24 @@ class ImageGenerationRequest(BaseModel):
     sample_steps: int = 20
     seed: int = 0
     negative_prompt: Optional[str] = ""
+
+class ContentItem(BaseModel):
+    type: str
+    text: Optional[str] = None
+    image_url: Optional[Dict[str, HttpUrl]] = None
+
+class VLMMessage(BaseModel):
+    role: str
+    content: List[ContentItem]
+
+class VLMRequest(BaseModel):
+    model: str
+    messages: List[VLMMessage]
+    max_tokens: int = 300
+    temperature: float = 0.7
+    top_p: float = 0.95
+    top_k: int = 40
+    stream: bool = False
 
 # helper functions
 async def load_model():
@@ -671,6 +695,83 @@ async def translate_audio(
     finally:
         os.unlink(temp_audio_path)
 
+def is_base64(s: str) -> bool:
+    """Check if a string is base64 encoded."""
+    try:
+        return base64.b64encode(base64.b64decode(s)).decode() == s
+    except Exception:
+        return False
+
+def is_url(s: str) -> bool:
+    """Check if a string is a valid URL."""
+    try:
+        result = urlparse(s)
+        return all([result.scheme, result.netloc])
+    except ValueError:
+        return False
+
+def process_image_input(image_input: str) -> str:
+    """Process image input, returning a data URI for both URL and base64 inputs."""
+    if is_url(image_input):
+        # It's a URL, fetch and convert to base64
+        return image_url_to_base64(image_input)
+    elif is_base64(image_input):
+        # It's already base64, just add the data URI prefix if not present
+        if image_input.startswith('data:image'):
+            return image_input
+        else:
+            return f"data:image/png;base64,{image_input}"
+    else:
+        raise ValueError("Invalid image input. Must be a URL or base64 encoded image.")
+
+def image_url_to_base64(image_url: str) -> str:
+    response = requests.get(image_url)
+    img = Image.open(BytesIO(response.content))
+    buffered = BytesIO()
+    img.save(buffered, format="PNG")
+    return f"data:image/png;base64,{base64.b64encode(buffered.getvalue()).decode()}"
+
+@app.post("/v1/vlm", tags=["Multimodal"])
+async def vlm_inference(request: VLMRequest):
+    global model
+    if model is None or not hasattr(model, 'create_chat_completion'):
+        raise HTTPException(status_code=400, detail="VLM model is not loaded or doesn't support chat completion")
+
+    try:
+        # Process the messages and handle both URL and base64 image inputs
+        processed_messages = []
+        for msg in request.messages:
+            processed_content = []
+            for item in msg.content:
+                if item.type == "text":
+                    processed_content.append({"type": "text", "text": item.text})
+                elif item.type == "image_url":
+                    try:
+                        image_data_uri = process_image_input(item.image_url["url"])
+                        processed_content.append({"type": "image_url", "image_url": {"url": image_data_uri}})
+                    except ValueError as e:
+                        raise HTTPException(status_code=400, detail=str(e))
+            processed_messages.append({"role": msg.role, "content": processed_content})
+
+        # Create chat completion
+        response = model.create_chat_completion(
+            messages=processed_messages,
+            temperature=request.temperature,
+            max_tokens=request.max_tokens,
+            top_k=request.top_k,
+            top_p=request.top_p,
+            stream=request.stream,
+        )
+
+        if request.stream:
+            return StreamingResponse(_resp_async_generator(response), media_type="application/x-ndjson")
+        else:
+            return response
+
+    except Exception as e:
+        logging.error(f"Error in VLM inference: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Run the Nexa AI Text Generation Service"
@@ -698,7 +799,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model_type",
         type=str,
-        choices=["NLP", "Computer Vision", "Audio"],
+        choices=["NLP", "Computer Vision", "Audio", "Multimodal"],
         help="Type of the model (required when using --local_path)",
     )
     parser.add_argument(
