@@ -97,6 +97,7 @@ class NexaTextInference:
     def _load_model(self):
         logging.debug(f"Loading model from {self.downloaded_path}, use_cuda_or_metal : {is_gpu_available()}")
         start_time = time.time()
+        print("context_maximum: ", self.params.get("context_maximum", 2048))
         with suppress_stdout_stderr():
             from nexa.gguf.llama.llama import Llama
             try:
@@ -105,7 +106,7 @@ class NexaTextInference:
                     model_path=self.downloaded_path,
                     verbose=self.profiling,
                     chat_format=self.chat_format,
-                    n_ctx=2048,
+                    n_ctx=self.params.get("context_maximum", 2048),
                     n_gpu_layers=-1 if is_gpu_available() else 0,
                     lora_path=self.params.get("lora_path", ""),
                 )
@@ -115,7 +116,7 @@ class NexaTextInference:
                     model_path=self.downloaded_path,
                     verbose=self.profiling,
                     chat_format=self.chat_format,
-                    n_ctx=2048,
+                    n_ctx=self.params.get("context_maximum", 2048),
                     n_gpu_layers=0,  # hardcode to use CPU
                     lora_path=self.params.get("lora_path", ""),
                 )
@@ -320,6 +321,13 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "-p", "--top_p", type=float, default=1.0, help="Top-p sampling parameter"
+    )
+    parser.add_argument(
+        "-cm",
+        "--context_maximum",
+        type=int,
+        default=2048,
+        help="Maximum context length of the model you're using"
     )
     parser.add_argument(
         "-sw",
