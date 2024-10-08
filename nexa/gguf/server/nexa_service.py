@@ -577,6 +577,8 @@ async def chat_completions(request: ChatCompletionRequest):
         is_vlm = any(isinstance(msg.content, list) for msg in request.messages)
         
         if is_vlm:
+            if model_type != "Multimodal":
+                raise HTTPException(status_code=400, detail="The model that is loaded is not a Multimodal model. Please use a Multimodal model (e.g. llava1.6-vicuna) for VLM.")
             # Process VLM request
             processed_messages = []
             for msg in request.messages:
@@ -637,6 +639,9 @@ async def chat_completions(request: ChatCompletionRequest):
             return StreamingResponse(_resp_async_generator(response), media_type="application/x-ndjson")
         else:
             return response
+    
+    except HTTPException as e:
+        raise e
 
     except Exception as e:
         logging.error(f"Error in chat completions: {e}")
