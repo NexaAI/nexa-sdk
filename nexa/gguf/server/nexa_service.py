@@ -341,7 +341,25 @@ def nexa_run_text_generation(
         streamer = model.create_completion(**params)
 
     if stream:
-        return streamer
+        def stream_with_logprobs():
+            for chunk in streamer:
+                if is_chat_completion:
+                    delta = chunk["choices"][0]["delta"]
+                    content = delta.get("content", "")
+                else:
+                    delta = chunk["choices"][0]["text"]
+                    content = delta
+
+                chunk_logprobs = None
+                if logprobs and "logprobs" in chunk["choices"][0]:
+                    chunk_logprobs = chunk["choices"][0]["logprobs"]
+
+                yield {
+                    "content": content,
+                    "logprobs": chunk_logprobs
+                }
+
+        return stream_with_logprobs()
     else:
         for chunk in streamer:
             if is_chat_completion:
