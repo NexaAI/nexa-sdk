@@ -21,7 +21,7 @@
 
 </div>
 
-Nexa SDK is a comprehensive toolkit for supporting **ONNX** and **GGML** models. It supports text generation, image generation, vision-language models (VLM), and speech-to-text (ASR) capabilities. Additionally, it offers an OpenAI-compatible API server with JSON schema mode for function calling and streaming support, and a user-friendly Streamlit UI. Users can run Nexa SDK in any device with Python environment, and GPU acceleration is supported.
+Nexa SDK is a comprehensive toolkit for supporting **ONNX** and **GGML** models. It supports text generation, image generation, vision-language models (VLM), and speech-to-text (ASR), and text-to-speech (TTS) capabilities. Additionally, it offers an OpenAI-compatible API server with JSON schema mode for function calling and streaming support, and a user-friendly Streamlit UI. Users can run Nexa SDK in any device with Python environment, and GPU acceleration is supported, including CUDA, Metal, and ROCm. An executable version is also available.
 
 ## Latest News 🔥
 * [2024/09] Nexa now has executables for easy installation: [Install Nexa SDK](https://nexaai.com/download-sdk)
