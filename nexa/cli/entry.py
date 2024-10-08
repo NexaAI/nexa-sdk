@@ -209,6 +209,7 @@ def main():
     text_group.add_argument("-p", "--top_p", type=float, help="Top-p sampling parameter")
     text_group.add_argument("-sw", "--stop_words", nargs="*", help="List of stop words for early stopping")
     text_group.add_argument("--lora_path", type=str, help="Path to a LoRA file to apply to the model.")
+    text_group.add_argument("-cm", "--context_maximum", type=int, default=2048, help="Maximum context length of the model you're using")
 
     # Image generation arguments
     image_group = run_parser.add_argument_group('Image generation options')
