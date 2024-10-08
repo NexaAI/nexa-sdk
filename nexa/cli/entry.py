@@ -16,6 +16,7 @@ def run_ggml_inference(args):
         run_type = ModelType[model_type].value
 
     def choose_file(local_path, file_type):
+        """ Helper function for Multimodal inference only: select the model and projector ggufs from the local_path. """
         print(f"Files in {local_path}:")
         files = os.listdir(local_path)
         for i, file in enumerate(files):
