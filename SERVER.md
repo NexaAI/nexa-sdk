@@ -41,7 +41,8 @@ Generates text based on a single prompt.
   "max_new_tokens": 128,
   "top_k": 50,
   "top_p": 1,
-  "stop_words": ["string"]
+  "stop_words": ["string"],
+  "stream": false
 }
 ```
 
