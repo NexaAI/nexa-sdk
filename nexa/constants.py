@@ -36,6 +36,14 @@ class ModelType(Enum):
     COMPUTER_VISION = "Computer Vision"
     AUDIO = "Audio"
     MULTIMODAL = "Multimodal"
+    
+
+class ServerModelType(Enum):
+    NLP = "NLP"
+    COMPUTER_VISION = "Computer Vision"
+    AUDIO = "Audio"
+    MULTIMODAL = "Multimodal"
+    TEXT_EMBEDDING = "Text Embedding"
 
 
 NEXA_RUN_MODEL_MAP_TEXT = {

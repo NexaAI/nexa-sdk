@@ -13,7 +13,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Request, File, UploadFile, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
-from pydantic import BaseModel, HttpUrl, AnyUrl
+from pydantic import BaseModel, HttpUrl, AnyUrl, Field
 import requests
 from io import BytesIO
 from PIL import Image
@@ -168,6 +168,10 @@ class ImageGenerationRequest(BaseModel):
     sample_steps: int = 20
     seed: int = 0
     negative_prompt: Optional[str] = ""
+
+# New request class for embeddings
+class EmbeddingRequest(BaseModel):
+    input: Union[str, List[str]] = Field(..., description="The input text to get embeddings for. Can be a string or an array of strings.")
 
 # helper functions
 async def load_model():
@@ -772,6 +776,32 @@ async def translate_audio(
     finally:
         os.unlink(temp_audio_path)
 
+@app.post("/v1/embeddings", tags=["Embedding"])
+async def create_embedding(request: EmbeddingRequest):
+    try:
+        if isinstance(request.input, list):
+            embeddings = [model.create_embedding(text) for text in request.input]
+        else:
+            embeddings = [model.create_embedding(request.input)]
+
+        return {
+            "object": "list",
+            "data": [
+                {
+                    "object": "embedding",
+                    "embedding": embedding,
+                    "index": i
+                } for i, embedding in enumerate(embeddings)
+            ],
+            "model": model_path,
+            "usage": {
+                "prompt_tokens": sum(len(text.split()) for text in (request.input if isinstance(request.input, list) else [request.input])),
+                "total_tokens": sum(len(text.split()) for text in (request.input if isinstance(request.input, list) else [request.input]))
+            }
+        }
+    except Exception as e:
+        logging.error(f"Error in embedding generation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
