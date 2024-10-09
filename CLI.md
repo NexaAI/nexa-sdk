@@ -117,8 +117,7 @@ Text generation options:
   -p, --top_p TOP_P     Top-p sampling parameter
   -sw, --stop_words [STOP_WORDS ...]
                         List of stop words for early stopping
-  -cm, --context_maximum CONTEXT_MAXIMUM
-                        Maximum context length of the model you're using
+  --nctx TEXT_CONTEXT   Length of context window
 ```
 
 ##### Example
@@ -198,8 +197,7 @@ VLM generation options:
   -p, --top_p TOP_P     Top-p sampling parameter
   -sw, --stop_words [STOP_WORDS ...]
                         List of stop words for early stopping
-  -cm, --context_maximum CONTEXT_MAXIMUM
-                        Maximum context length of the model you're using
+  --nctx TEXT_CONTEXT   Length of context window
 ```
 
 ##### Example
@@ -300,4 +298,4 @@ For `model_path` in nexa commands, it's better to follow the standard format to 
 
 - `gemma-2b:q4_0`
 - `Meta-Llama-3-8B-Instruct:onnx-cpu-int8`
-- `alanzhuly/Qwen2-1B-Instruct:q4_0`
+- `liuhaotian/llava-v1.6-vicuna-7b:gguf-q4_0`

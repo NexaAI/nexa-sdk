@@ -168,7 +168,7 @@ class NexaVLMInference:
                     chat_handler=self.projector,
                     verbose=False,
                     chat_format=self.chat_format,
-                    n_ctx=self.params.get("context_maximum", 2048),
+                    n_ctx=self.params.get("nctx", 2048),
                     n_gpu_layers=-1 if is_gpu_available() else 0,
                 )
             except Exception as e:
@@ -181,7 +181,7 @@ class NexaVLMInference:
                     chat_handler=self.projector,
                     verbose=False,
                     chat_format=self.chat_format,
-                    n_ctx=self.params.get("context_maximum", 2048),
+                    n_ctx=self.params.get("nctx", 2048),
                     n_gpu_layers=0,  # hardcode to use CPU
                 )
 
@@ -370,8 +370,7 @@ if __name__ == "__main__":
         "-p", "--top_p", type=float, default=1.0, help="Top-p sampling parameter"
     )
     parser.add_argument(
-        "-cm",
-        "--context_maximum",
+        "--nctx",
         type=int,
         default=2048,
         help="Maximum context length of the model you're using"
