@@ -217,6 +217,34 @@ def run_eval_tasks(args):
         print(f"Error running evaluation, please run: pip install nexaai[eval]")
         return
 
+def run_embedding_generation(args):
+    kwargs = {k: v for k, v in vars(args).items() if v is not None}
+    model_path = kwargs.pop("model_path")
+    prompt = kwargs.pop("prompt")
+    is_local_path = kwargs.pop("local_path", False)
+    hf = kwargs.pop('huggingface', False)
+
+    local_path = None
+    if is_local_path or hf:
+        if is_local_path:
+            local_path = os.path.abspath(model_path)
+            model_path = local_path
+        else:  # hf case
+            from nexa.general import pull_model
+            local_path, _ = pull_model(model_path, hf=True)
+    else:  # Model Hub
+        from nexa.general import pull_model
+        local_path, _ = pull_model(model_path)
+
+    try:
+        from nexa.gguf.nexa_inference_text import NexaTextInference
+        inference = NexaTextInference(model_path=model_path, local_path=local_path, embedding=True, **kwargs)
+        embedding = inference.create_embedding(prompt)
+        print(embedding)
+    except Exception as e:
+        print(f"Error generating embedding: {e}")
+        print("Please refer to our docs to install nexaai package: https://docs.nexaai.com/getting-started/installation")
+
 def main():
     parser = argparse.ArgumentParser(
         description="Nexa CLI tool for handling various model operations."
@@ -337,6 +365,12 @@ def main():
     eval_parser.add_argument("--port", type=int, help="Port to bind the server to", default=8300)
     eval_parser.add_argument("--nctx", type=int, help="Length of context window", default=4096)
 
+    # Embed command
+    embed_parser = subparsers.add_parser("embed", help="Generate embeddings for a given prompt.")
+    embed_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
+    embed_parser.add_argument("prompt", type=str, help="The prompt to generate an embedding for")
+    embed_parser.add_argument("-lp", "--local_path", action="store_true", help="Indicate that the model path provided is the local path")
+    embed_parser.add_argument("-hf", "--huggingface", action="store_true", help="Load model from Hugging Face Hub")
 
     args = parser.parse_args()
 
@@ -355,6 +389,8 @@ def main():
         run_onnx_inference(args)
     elif args.command == "eval":
         run_eval_tasks(args)
+    elif args.command == "embed":
+        run_embedding_generation(args)
     elif args.command == "pull":
         from nexa.general import pull_model
         hf = getattr(args, 'huggingface', False)
