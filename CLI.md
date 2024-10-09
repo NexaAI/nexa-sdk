@@ -1,6 +1,7 @@
 ## CLI Reference
 
 ### Overview
+
 ```
 usage: nexa [-h] [-V] {run,onnx,server,pull,remove,clean,list,login,whoami,logout} ...
 
@@ -116,6 +117,8 @@ Text generation options:
   -p, --top_p TOP_P     Top-p sampling parameter
   -sw, --stop_words [STOP_WORDS ...]
                         List of stop words for early stopping
+  -cm, --context_maximum CONTEXT_MAXIMUM
+                        Maximum context length of the model you're using
 ```
 
 ##### Example
@@ -195,6 +198,8 @@ VLM generation options:
   -p, --top_p TOP_P     Top-p sampling parameter
   -sw, --stop_words [STOP_WORDS ...]
                         List of stop words for early stopping
+  -cm, --context_maximum CONTEXT_MAXIMUM
+                        Maximum context length of the model you're using
 ```
 
 ##### Example
@@ -265,8 +270,9 @@ nexa server llama2
 ### Run Model Evaluation
 
 Run evaluation using models on your local computer.
+
 ```
-usage: nexa eval model_path [-h] [--tasks TASKS] [--limit LIMIT] 
+usage: nexa eval model_path [-h] [--tasks TASKS] [--limit LIMIT]
 
 positional arguments:
   model_path            Path or identifier for the model in Nexa Model Hub
@@ -278,6 +284,7 @@ options:
 ```
 
 #### Examples
+
 ```
 nexa eval phi3 --tasks ifeval --limit 0.5
 ```
