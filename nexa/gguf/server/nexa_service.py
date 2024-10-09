@@ -282,7 +282,7 @@ async def load_model():
                     chat_handler=projector,
                     verbose=False,
                     chat_format=chat_format,
-                    n_ctx=2048,
+                    n_ctx=n_ctx,
                     n_gpu_layers=-1 if is_gpu_available() else 0,
                 )
             except Exception as e:
@@ -295,7 +295,7 @@ async def load_model():
                     chat_handler=projector,
                     verbose=False,
                     chat_format=chat_format,
-                    n_ctx=2048,
+                    n_ctx=n_ctx,
                     n_gpu_layers=0,  # hardcode to use CPU
                 )
 
@@ -507,7 +507,8 @@ def run_nexa_ai_service(model_path_arg=None, is_local_path_arg=False, model_type
     os.environ["MODEL_TYPE"] = model_type if model_type else ""
     os.environ["HUGGINGFACE"] = str(huggingface)
     os.environ["PROJECTOR_PATH"] = projector_path if projector_path else ""
-    n_ctx = kwargs.get("nctx", 2048)
+    n_ctx = kwargs.get("context_maximum", 2048)
+    print("n_ctx: ", n_ctx)
     host = kwargs.get("host", "0.0.0.0")
     port = kwargs.get("port", 8000)
     reload = kwargs.get("reload", False)
