@@ -255,7 +255,7 @@ NEXA_STOP_WORDS_MAP = {"octopus-v2": ["<nexa_end>"], "octopus-v4": ["<nexa_end>"
 DEFAULT_TEXT_GEN_PARAMS = {
     "temperature": 0.7,
     "max_new_tokens": 2048,
-    "context_maximum": 2048,
+    "nctx": 2048,
     "top_k": 50,
     "top_p": 1.0,
 }

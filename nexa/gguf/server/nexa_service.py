@@ -282,7 +282,7 @@ async def load_model():
                     chat_handler=projector,
                     verbose=False,
                     chat_format=chat_format,
-                    n_ctx=2048,
+                    n_ctx=n_ctx,
                     n_gpu_layers=-1 if is_gpu_available() else 0,
                 )
             except Exception as e:
@@ -295,7 +295,7 @@ async def load_model():
                     chat_handler=projector,
                     verbose=False,
                     chat_format=chat_format,
-                    n_ctx=2048,
+                    n_ctx=n_ctx,
                     n_gpu_layers=0,  # hardcode to use CPU
                 )
 
