@@ -1,5 +1,24 @@
 cmake_minimum_required(VERSION 3.16)
+project(nexa_gguf)
 
+include(ExternalProject)
+
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_CXX_STANDARD 17)
+
+# Function to collect all user-defined options
+function(get_all_options output_var)
+    get_cmake_property(variables VARIABLES)
+    set(options)
+    foreach(var ${variables})
+        if(var MATCHES "^[A-Z]" AND NOT var MATCHES "^CMAKE_" AND NOT var MATCHES "^_")
+            list(APPEND options "-D${var}=${${var}}")
+        endif()
+    endforeach()
+    set(${output_var} ${options} PARENT_SCOPE)
+endfunction()
+
+# Create empty file if GGML_CUDA or GGML_METAL is ON
 if (GGML_CUDA OR GGML_METAL OR GGML_HIPBLAS OR GGML_VULKAN)
     set(SOURCE_EMPTY_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib/empty_file.txt")
     add_custom_command(
@@ -16,178 +35,125 @@ if (GGML_CUDA OR GGML_METAL OR GGML_HIPBLAS OR GGML_VULKAN)
     add_custom_target(create_empty_file ALL DEPENDS ${SOURCE_EMPTY_FILE_PATH} ${WHEEL_EMPTY_FILE_PATH})
 endif()
 
-# Project: stable_diffusion_cpp
-project(stable_diffusion_cpp)
-
-option(STABLE_DIFFUSION_BUILD "Build stable-diffusion.cpp shared library and install alongside python package" ON)
-
-if (STABLE_DIFFUSION_BUILD)
-    set(BUILD_SHARED_LIBS "ON")
-    option(SD_BUILD_SHARED_LIBS "" "ON")
-
-    # Building llama
-    if (APPLE AND NOT CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
-        # Need to disable these llama.cpp flags on Apple x86_64,
-        # otherwise users may encounter invalid instruction errors
-        set(GGML_AVX "Off" CACHE BOOL "ggml: enable AVX" FORCE)
-        set(GGML_AVX2 "Off" CACHE BOOL "ggml: enable AVX2" FORCE)
-        set(GGML_FMA "Off" CACHE BOOL "ggml: enable FMA" FORCE)
-        set(GGML_F16C "Off" CACHE BOOL "ggml: enable F16C" FORCE)
-    endif()
-
-    add_subdirectory(dependency/stable-diffusion.cpp)
-    install(
-        TARGETS stable-diffusion
-        LIBRARY DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
-        RUNTIME DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
-        ARCHIVE DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
-        FRAMEWORK DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
-        RESOURCE DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
-    )
-
-    message(STATUS "SKBUILD_PLATLIB_DIR: ${SKBUILD_PLATLIB_DIR}")
-    # Temporary fix for https://github.com/scikit-build/scikit-build-core/issues/374
-    install(
-        TARGETS stable-diffusion
-        LIBRARY DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
-        RUNTIME DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
-        ARCHIVE DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
-        FRAMEWORK DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
-        RESOURCE DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
-    )
-    # Workaround for Windows + CUDA
-    if (WIN32)
-        install(
-            FILES $<TARGET_RUNTIME_DLLS:stable-diffusion>
-            DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
-        )
-        install(
-            FILES $<TARGET_RUNTIME_DLLS:stable-diffusion>
-            DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
-        )
-    endif()
-endif()
-
-# Project: llama_cpp
-project(llama_cpp)
-
-option(LLAMA_BUILD "Build llama.cpp shared library and install alongside python package" ON)
-option(LLAVA_BUILD "Build llava shared library and install alongside python package" ON)
-
-function(llama_cpp_python_install_target target)
+# Function to set up common installation paths
+function(setup_install_paths target install_dir)
     install(
         TARGETS ${target}
-        LIBRARY DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
-        RUNTIME DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
-        ARCHIVE DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
-        FRAMEWORK DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
-        RESOURCE DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
+        LIBRARY DESTINATION ${install_dir}
+        RUNTIME DESTINATION ${install_dir}
+        ARCHIVE DESTINATION ${install_dir}
     )
-    install(
-        TARGETS ${target}
-        LIBRARY DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
-        RUNTIME DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
-        ARCHIVE DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
-        FRAMEWORK DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
-        RESOURCE DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
-    )
-    set_target_properties(${target} PROPERTIES
-        INSTALL_RPATH "$ORIGIN"
-        BUILD_WITH_INSTALL_RPATH TRUE
-    )
-    if(UNIX)
-        if(APPLE)
-            set_target_properties(${target} PROPERTIES
-                INSTALL_RPATH "@loader_path"
-                BUILD_WITH_INSTALL_RPATH TRUE
-            )
-        else()
-            set_target_properties(${target} PROPERTIES
-                INSTALL_RPATH "$ORIGIN"
-                BUILD_WITH_INSTALL_RPATH TRUE
-            )
-        endif()
-    endif()
 endfunction()
 
-if (LLAMA_BUILD)
-    set(BUILD_SHARED_LIBS "On")
+# Collect all user-defined options
+get_all_options(USER_DEFINED_OPTIONS)
 
-    set(CMAKE_SKIP_BUILD_RPATH FALSE)
+# stable_diffusion_cpp project
+option(STABLE_DIFFUSION_BUILD "Build stable-diffusion.cpp" ON)
+if(STABLE_DIFFUSION_BUILD)
+    ExternalProject_Add(stable_diffusion_project
+        SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dependency/stable-diffusion.cpp
+        BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build
+        CMAKE_ARGS
+            ${USER_DEFINED_OPTIONS}
+            -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_install
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+            -DCMAKE_CXX_STANDARD=17
+            -DSD_BUILD_SHARED_LIBS=ON
+            -DBUILD_SHARED_LIBS=ON
+            -DSD_METAL=${GGML_METAL}
+            -DSD_CUBLAS=${GGML_CUDA}
+        BUILD_ALWAYS 1
+        INSTALL_COMMAND
+            ${CMAKE_COMMAND} --build . --target install &&
+            ${CMAKE_COMMAND} -E copy_if_different
+                ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/libstable-diffusion${CMAKE_SHARED_LIBRARY_SUFFIX}
+                ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_install/lib/
+    )
+endif()
 
-    # When building, don't use the install RPATH already
-    # (but later on when installing)
-    set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+# llama_cpp project
+option(LLAMA_BUILD "Build llama.cpp" ON)
+if(LLAMA_BUILD)
+    set(LLAMA_CUDA ${GGML_CUDA})
+    set(LLAMA_METAL ${GGML_METAL})
+    
+    ExternalProject_Add(llama_project
+        SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dependency/llama.cpp
+        BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/llama_build
+        CMAKE_ARGS
+            ${USER_DEFINED_OPTIONS}
+            -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/llama_install
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+            -DCMAKE_CXX_STANDARD=17
+            -DLLAMA_CUDA=${LLAMA_CUDA}
+            -DLLAMA_METAL=${LLAMA_METAL}
+        BUILD_ALWAYS 1
+        INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
+    )
 
-    # Add the automatically determined parts of the RPATH
-    # which point to directories outside the build tree to the install RPATH
-    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-    set(CMAKE_SKIP_RPATH FALSE)
-
-    # Building llama
     if (APPLE AND NOT CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
-        # Need to disable these llama.cpp flags on Apple x86_64,
-        # otherwise users may encounter invalid instruction errors
-        set(GGML_AVX "Off" CACHE BOOL "ggml: enable AVX" FORCE)
-        set(GGML_AVX2 "Off" CACHE BOOL "ggml: enable AVX2" FORCE)
-        set(GGML_FMA "Off" CACHE BOOL "ggml: enable FMA" FORCE)
-        set(GGML_F16C "Off" CACHE BOOL "ggml: enable F16C" FORCE)
+        ExternalProject_Add_Step(llama_project disable_optimizations
+            COMMAND ${CMAKE_COMMAND} -E echo "Disabling optimizations for x86_64 Apple"
+            COMMAND ${CMAKE_COMMAND} -DGGML_AVX=Off -DGGML_AVX2=Off -DGGML_FMA=Off -DGGML_F16C=Off ${CMAKE_CURRENT_BINARY_DIR}/llama_build
+            DEPENDEES configure
+            DEPENDERS build
+        )
     endif()
 
     if (APPLE)
-        set(GGML_METAL_EMBED_LIBRARY "On" CACHE BOOL "llama: embed metal library" FORCE)
-    endif()
-
-    add_subdirectory(dependency/llama.cpp)
-    llama_cpp_python_install_target(llama)
-    llama_cpp_python_install_target(ggml_llama)
-
-    # Workaround for Windows + CUDA https://github.com/abetlen/llama-cpp-python/issues/563
-    if (WIN32)
-        install(
-            FILES $<TARGET_RUNTIME_DLLS:llama>
-            DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
+        ExternalProject_Add_Step(llama_project enable_metal_embed
+            COMMAND ${CMAKE_COMMAND} -E echo "Enabling Metal library embedding for Apple"
+            COMMAND ${CMAKE_COMMAND} -DGGML_METAL_EMBED_LIBRARY=On ${CMAKE_CURRENT_BINARY_DIR}/llama_build
+            DEPENDEES configure
+            DEPENDERS build
         )
-        install(
-            FILES $<TARGET_RUNTIME_DLLS:llama>
-            DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
-        )
-        install(
-            FILES $<TARGET_RUNTIME_DLLS:ggml_llama>
-            DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
-        )
-        install(
-            FILES $<TARGET_RUNTIME_DLLS:ggml_llama>
-            DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
-        )
-    endif()
-
-    if (LLAVA_BUILD)
-        if (LLAMA_CUBLAS OR LLAMA_CUDA)
-            add_compile_definitions(GGML_USE_CUBLAS)
-            add_compile_definitions(GGML_USE_CUDA)
-        endif()
-
-        if (LLAMA_METAL)
-            add_compile_definitions(GGML_USE_METAL)
-        endif()
-
-        add_subdirectory(dependency/llama.cpp/examples/llava)
-        set_target_properties(llava_shared PROPERTIES OUTPUT_NAME "llava")
-        if (WIN32)
-            set_target_properties(llava_shared PROPERTIES CUDA_ARCHITECTURES OFF)
-        endif()
-        llama_cpp_python_install_target(llava_shared)
-        if (WIN32)
-            install(
-                FILES $<TARGET_RUNTIME_DLLS:llava_shared>
-                DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
-            )
-            install(
-                FILES $<TARGET_RUNTIME_DLLS:llava_shared>
-                DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
-            )
-        endif()
     endif()
 endif()
 
+# bark_cpp project
+option(BARK_BUILD "Build bark.cpp" ON)
+if(BARK_BUILD)
+    ExternalProject_Add(bark_project
+        SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dependency/bark.cpp
+        BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/bark_build
+        CMAKE_ARGS
+            ${USER_DEFINED_OPTIONS}
+            -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/bark_install
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+            -DCMAKE_CXX_STANDARD=17
+            -DGGML_CUDA=${GGML_CUDA}
+            -DGGML_METAL=${GGML_METAL}
+            -DBUILD_SHARED_LIBS=ON
+            -DBARK_BUILD_EXAMPLES=OFF
+        BUILD_ALWAYS 1
+        INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
+    )
+endif()
+
+# Install the built libraries to the final destination
+install(
+    DIRECTORY
+        ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_install/lib/
+        ${CMAKE_CURRENT_BINARY_DIR}/llama_install/lib/
+        ${CMAKE_CURRENT_BINARY_DIR}/bark_install/lib/
+    DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
+    USE_SOURCE_PERMISSIONS
+    FILES_MATCHING
+        PATTERN "*.dll"
+        PATTERN "*.so"
+        PATTERN "*.dylib"
+)
+
+install(
+    DIRECTORY
+        ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_install/lib/
+        ${CMAKE_CURRENT_BINARY_DIR}/llama_install/lib/
+        ${CMAKE_CURRENT_BINARY_DIR}/bark_install/lib/
+    DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
+    USE_SOURCE_PERMISSIONS
+    FILES_MATCHING
+        PATTERN "*.dll"
+        PATTERN "*.so"
+        PATTERN "*.dylib"
+)
