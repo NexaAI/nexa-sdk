@@ -58,7 +58,7 @@ onnx = [
 eval = [
     "sympy",
     "openai",
-    "antlr4-python3-runtime>=4.11",
+    "antlr4-python3-runtime==4.11",
     "rouge_score",
     "evaluate",
     "pytablewriter",
