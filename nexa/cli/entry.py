@@ -15,13 +15,61 @@ def run_ggml_inference(args):
     if model_type:
         run_type = ModelType[model_type].value
 
+    def choose_files(local_path):
+        """ Helper function for Multimodal inference only: select the model and projector ggufs from the local_path. """
+        print(f"Files in {local_path}:")
+        files = os.listdir(local_path)
+        for i, file in enumerate(files):
+            print(f"{i+1}. {file}")
+        
+        while True:
+            try:
+                model_choice = int(input(">>> Enter the index of the model gguf: ")) - 1
+                if 0 <= model_choice < len(files):
+                    break
+                else:
+                    print("Invalid selection. Please enter a valid number.")
+            except ValueError:
+                print("Invalid input. Please enter a number.")
+        
+        while True:
+            try:
+                projector_choice = int(input(">>> Enter the index of the projector gguf: ")) - 1
+                if 0 <= projector_choice < len(files):
+                    break
+                else:
+                    print("Invalid selection. Please enter a valid number.")
+            except ValueError:
+                print("Invalid input. Please enter a number.")
+        
+        return os.path.join(local_path, files[model_choice]), os.path.join(local_path, files[projector_choice])
+
     if args.command == "server":
         from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
+        
+        projector_local_path = None
+        if run_type == "Multimodal" and is_local_path:
+            local_path = os.path.abspath(model_path)
+            if not os.path.isdir(local_path):
+                print("Error: For Multimodal models with --local_path, the provided path must be a directory.")
+                return
+            
+            model_path, projector_local_path = choose_files(local_path)
+            
+            if not model_path or not projector_local_path:
+                return
+        elif run_type == "Audio" and is_local_path:
+            local_path = os.path.abspath(model_path)
+            if not os.path.isdir(local_path):
+                print("Error: For Audio models with --local_path, the provided path must be a directory containing all related files.")
+                return
+
         NexaServer(
             model_path_arg=model_path,
             is_local_path_arg=is_local_path,
             model_type_arg=run_type,
             huggingface=hf,
+            projector_local_path_arg=projector_local_path,
             **kwargs
         )
         return
@@ -38,26 +86,18 @@ def run_ggml_inference(args):
             model_path = local_path
             if run_type == "Multimodal":
                 if not os.path.isdir(local_path):
-                    print("Error: For Multimodal models with --local_path, the provided path must be a directory.")
+                    print("Error: For Multimodal models with --local_path, the provided path must be a directory containing both model and projector ggufs.")
                     return
-                print(f"Files in {local_path}:")
-                files = os.listdir(local_path)
-                for i, file in enumerate(files):
-                    print(f"{i+1}. {file}")
                 
-                model_choice = int(input("Enter the index of the model gguf: ")) - 1
-                projector_choice = int(input("Enter the index of the projector gguf: ")) - 1
+                model_path, projector_local_path = choose_files(local_path)
                 
-                if 0 <= model_choice < len(files) and 0 <= projector_choice < len(files):
-                    local_path = os.path.join(local_path, files[model_choice])
-                    model_path = local_path
-                    projector_local_path = os.path.join(os.path.dirname(local_path), files[projector_choice])
-                else:
-                    print("Invalid selection. Aborting.")
+                if not model_path or not projector_local_path:
                     return
+                
+                local_path = model_path
             elif run_type == "Audio":
                 if not os.path.isdir(local_path):
-                    print("Error: For Audio models with --local_path, the provided path must be a directory.")
+                    print("Error: For Audio models with --local_path, the provided path must be a directory containing all related files.")
                     return
         else:  # hf case
             # TODO: remove this after adding support for Multimodal model in CLI

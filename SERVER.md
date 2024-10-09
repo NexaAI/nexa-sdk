@@ -22,14 +22,15 @@ nexa server gemma
 nexa server llama2-function-calling
 nexa server sd1-5
 nexa server faster-whipser-large
+nexa server ../models/llava-v1.6-vicuna-7b/ -lp -mt MULTIMODAL
 ```
 
 By default, `nexa server` will run gguf models. To run onnx models, simply add `onnx` after `nexa server`.
 
 ## API Endpoints
 
-
 ### 1. Text Generation: <code>/v1/completions</code>
+
 Generates text based on a single prompt.
 
 #### Request body:
@@ -54,12 +55,45 @@ Generates text based on a single prompt.
 }
 ```
 
-
 ### 2. Chat Completions: <code>/v1/chat/completions</code>
+
+Update: Now supports multimodal inputs when using Multimodal models.
 
 Handles chat completions with support for conversation history.
 
 #### Request body:
+
+Multimodal models (VLM):
+
+```json
+{
+  "model": "anything",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "What’s in this image?"
+        },
+        {
+          "type": "image_url",
+          "image_url": {
+            "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"
+          }
+        }
+      ]
+    }
+  ],
+  "max_tokens": 300,
+  "temperature": 0.7,
+  "top_p": 0.95,
+  "top_k": 40,
+  "stream": false
+}
+```
+
+Traditional NLP models:
 
 ```json
 {
@@ -93,7 +127,6 @@ Handles chat completions with support for conversation history.
   ]
 }
 ```
-
 
 ### 3. Function Calling: <code>/v1/function-calling</code>
 
@@ -198,7 +231,6 @@ Call the most appropriate function based on user's prompt.
 }
 ```
 
-
 ### 4. Text-to-Image: <code>/v1/txt2img</code>
 
 Generates images based on a single prompt.
@@ -231,7 +263,6 @@ Generates images based on a single prompt.
   ]
 }
 ```
-
 
 ### 5. Image-to-Image: <code>/v1/img2img</code>
 
@@ -266,7 +297,6 @@ Modifies existing images based on a single prompt.
 }
 ```
 
-
 ### 6. Audio Transcriptions: <code>/v1/audio/transcriptions</code>
 
 Transcribes audio files to text.
@@ -293,7 +323,6 @@ Transcribes audio files to text.
 }
 ```
 
-
 ### 7. Audio Translations: <code>/v1/audio/translations</code>
 
 Translates audio files to text in English.
@@ -318,4 +347,3 @@ Translates audio files to text in English.
   "text": " Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday"
 }
 ```
-
