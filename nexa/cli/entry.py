@@ -313,7 +313,7 @@ def main():
     server_parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to bind the server to")
     server_parser.add_argument("--port", type=int, default=8000, help="Port to bind the server to")
     server_parser.add_argument("--reload", action="store_true", help="Enable automatic reloading on code changes")
-    server_parser.add_argument("-cm", "--context_maximum", type=int, default=2048, help="Maximum context length of the model you're using")
+    server_parser.add_argument("--nctx", type=int, default=2048, help="Maximum context length of the model you're using")
 
     # Other commands
     pull_parser = subparsers.add_parser("pull", help="Pull a model from official or hub.")

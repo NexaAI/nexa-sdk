@@ -507,8 +507,7 @@ def run_nexa_ai_service(model_path_arg=None, is_local_path_arg=False, model_type
     os.environ["MODEL_TYPE"] = model_type if model_type else ""
     os.environ["HUGGINGFACE"] = str(huggingface)
     os.environ["PROJECTOR_PATH"] = projector_path if projector_path else ""
-    n_ctx = kwargs.get("context_maximum", 2048)
-    print("n_ctx: ", n_ctx)
+    n_ctx = kwargs.get("nctx", 2048)
     host = kwargs.get("host", "0.0.0.0")
     port = kwargs.get("port", 8000)
     reload = kwargs.get("reload", False)
