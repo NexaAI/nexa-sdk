@@ -78,22 +78,8 @@ class NexaTextInference:
                     "Failed to load model or tokenizer. Exiting.", exc_info=True
                 )
                 exit(1)
-
-    def create_embedding(
-        self,
-        input: Union[str, List[str]],
-    ):
-        """Embed a string.
-
-        Args:
-            input: The utf-8 encoded string or a list of string to embed.
-
-        Returns:
-            Formatted embedding response
-        """
-        return self.model.create_embedding(input)
     
-    def embed(
+    def create_embedding(
         self,
         input: Union[str, List[str]],
         normalize: bool = False,

@@ -249,8 +249,8 @@ def run_embedding_generation(args):
 
     try:
         from nexa.gguf.nexa_inference_text import NexaTextInference
-        inference = NexaTextInference(model_path=model_path, local_path=local_path, embedding=True, **kwargs)
-        embedding = inference.embed(prompt, normalize=normalize, truncate=not no_truncate)
+        inference = NexaTextInference(model_path=model_path, local_path=local_path, embedding=True)
+        embedding = inference.create_embedding(prompt, normalize=normalize, truncate=not no_truncate)
         print({"embedding": embedding})
     except Exception as e:
         print(f"Error generating embedding: {e}")
