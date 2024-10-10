@@ -1,6 +1,7 @@
 ## CLI Reference
 
 ### Overview
+
 ```
 usage: nexa [-h] [-V] {run,onnx,server,pull,remove,clean,list,login,whoami,logout} ...
 
@@ -116,6 +117,7 @@ Text generation options:
   -p, --top_p TOP_P     Top-p sampling parameter
   -sw, --stop_words [STOP_WORDS ...]
                         List of stop words for early stopping
+  --nctx TEXT_CONTEXT   Length of context window
 ```
 
 ##### Example
@@ -195,6 +197,7 @@ VLM generation options:
   -p, --top_p TOP_P     Top-p sampling parameter
   -sw, --stop_words [STOP_WORDS ...]
                         List of stop words for early stopping
+  --nctx TEXT_CONTEXT   Length of context window
 ```
 
 ##### Example
@@ -265,8 +268,9 @@ nexa server llama2
 ### Run Model Evaluation
 
 Run evaluation using models on your local computer.
+
 ```
-usage: nexa eval model_path [-h] [--tasks TASKS] [--limit LIMIT] 
+usage: nexa eval model_path [-h] [--tasks TASKS] [--limit LIMIT]
 
 positional arguments:
   model_path            Path or identifier for the model in Nexa Model Hub
@@ -278,6 +282,7 @@ options:
 ```
 
 #### Examples
+
 ```
 nexa eval phi3 --tasks ifeval --limit 0.5
 ```
@@ -293,4 +298,4 @@ For `model_path` in nexa commands, it's better to follow the standard format to 
 
 - `gemma-2b:q4_0`
 - `Meta-Llama-3-8B-Instruct:onnx-cpu-int8`
-- `alanzhuly/Qwen2-1B-Instruct:q4_0`
+- `liuhaotian/llava-v1.6-vicuna-7b:gguf-q4_0`

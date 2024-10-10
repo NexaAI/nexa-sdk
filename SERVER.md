@@ -14,6 +14,7 @@ usage: nexa server [-h] [--host HOST] [--port PORT] [--reload] model_path
 - `--host`: Host to bind the server to
 - `--port`: Port to bind the server to
 - `--reload`: Enable automatic reloading on code changes
+- `--nctx`: Maximum context length of the model you're using
 
 ### Example Commands:
 

@@ -249,7 +249,7 @@ def main():
     text_group.add_argument("-p", "--top_p", type=float, help="Top-p sampling parameter")
     text_group.add_argument("-sw", "--stop_words", nargs="*", help="List of stop words for early stopping")
     text_group.add_argument("--lora_path", type=str, help="Path to a LoRA file to apply to the model.")
-    text_group.add_argument("-cm", "--context_maximum", type=int, default=2048, help="Maximum context length of the model you're using")
+    text_group.add_argument("--nctx", type=int, default=2048, help="Maximum context length of the model you're using")
 
     # Image generation arguments
     image_group = run_parser.add_argument_group('Image generation options')
@@ -313,7 +313,7 @@ def main():
     server_parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to bind the server to")
     server_parser.add_argument("--port", type=int, default=8000, help="Port to bind the server to")
     server_parser.add_argument("--reload", action="store_true", help="Enable automatic reloading on code changes")
-    server_parser.add_argument("--nctx", type=int, default=2048, help="Length of context window")
+    server_parser.add_argument("--nctx", type=int, default=2048, help="Maximum context length of the model you're using")
 
     # Other commands
     pull_parser = subparsers.add_parser("pull", help="Pull a model from official or hub.")
