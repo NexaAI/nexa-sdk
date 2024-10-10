@@ -12,6 +12,7 @@ positional arguments:
                         sub-command help
     run                 Run inference for various tasks using GGUF models.
     onnx                Run inference for various tasks using ONNX models.
+    embed               Generate embeddings for text.
     server              Run the Nexa AI Text Generation Service.
     eval                Run the Nexa AI Evaluation Tasks.
     pull                Pull a model from official or hub.
@@ -261,7 +262,10 @@ options:
 #### Example
 
 ```
-nexa embed mxbai-embed-large "I love Nexa AI."
+nexa embed mxbai "I love Nexa AI."
+nexa embed nomic "I love Nexa AI." >> generated_embeddings.txt
+nexa embed nomic-embed-text-v1.5:fp16 "I love Nexa AI." 
+nexa embed sentence-transformers/all-MiniLM-L6-v2:gguf-fp16 "I love Nexa AI." >> generated_embeddings.txt
 ```
 
 ### Start Local Server
