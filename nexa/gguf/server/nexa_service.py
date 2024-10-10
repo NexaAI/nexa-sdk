@@ -172,6 +172,8 @@ class ImageGenerationRequest(BaseModel):
 # New request class for embeddings
 class EmbeddingRequest(BaseModel):
     input: Union[str, List[str]] = Field(..., description="The input text to get embeddings for. Can be a string or an array of strings.")
+    normalize: Optional[bool] = False
+    truncate: Optional[bool] = True
 
 # helper functions
 async def load_model():
@@ -786,23 +788,39 @@ async def translate_audio(
 async def create_embedding(request: EmbeddingRequest):
     try:
         if isinstance(request.input, list):
-            embeddings_results = [model.create_embedding(text) for text in request.input]
+            embeddings_results = [model.embed(text, normalize=request.normalize, truncate=request.truncate) for text in request.input]
         else:
-            embeddings_results = [model.create_embedding(request.input)]
+            embeddings_results = model.embed(request.input, normalize=request.normalize, truncate=request.truncate)
 
-        flattened_data = []
-        for i, result in enumerate(embeddings_results):
-            for item in result['data']:
-                item['index'] = i
-                flattened_data.append(item)
+        # Prepare the response data
+        if isinstance(request.input, list):
+            data = [
+                {
+                    "object": "embedding",
+                    "embedding": embedding,
+                    "index": i
+                } for i, embedding in enumerate(embeddings_results)
+            ]
+        else:
+            data = [
+                {
+                    "object": "embedding",
+                    "embedding": embeddings_results,
+                    "index": 0
+                }
+            ]
+
+        # Calculate token usage
+        input_texts = request.input if isinstance(request.input, list) else [request.input]
+        total_tokens = sum(len(text.split()) for text in input_texts)
 
         return {
             "object": "list",
-            "data": flattened_data,
+            "data": data,
             "model": model_path,
             "usage": {
-                "prompt_tokens": sum(len(text.split()) for text in (request.input if isinstance(request.input, list) else [request.input])),
-                "total_tokens": sum(len(text.split()) for text in (request.input if isinstance(request.input, list) else [request.input]))
+                "prompt_tokens": total_tokens,
+                "total_tokens": total_tokens
             }
         }
     except Exception as e:
