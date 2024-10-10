@@ -348,3 +348,43 @@ Translates audio files to text in English.
   "text": " Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday"
 }
 ```
+
+### 8. Generate Embeddings: <code>/v1/embeddings</code>
+
+Generate embeddings for a given text.
+
+#### Request body:
+
+```json
+{
+  "input": "I love Nexa AI.",
+  "normalize": false,
+  "truncate": true
+}
+```
+
+#### Example Response:
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "embedding",
+      "index": 0,
+      "embedding": [
+        -0.006929283495992422,
+        -0.005336422007530928,
+        ... (omitted for spacing)
+        -4.547132266452536e-05,
+        -0.024047505110502243
+      ],
+    }
+  ],
+  "model": "/home/ubuntu/models/embedding_models/mxbai-embed-large-q4_0.gguf",
+  "usage": {
+    "prompt_tokens": 5,
+    "total_tokens": 5
+  }
+}
+```

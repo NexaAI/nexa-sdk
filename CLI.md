@@ -12,6 +12,7 @@ positional arguments:
                         sub-command help
     run                 Run inference for various tasks using GGUF models.
     onnx                Run inference for various tasks using ONNX models.
+    embed               Generate embeddings for text.
     server              Run the Nexa AI Text Generation Service.
     eval                Run the Nexa AI Evaluation Tasks.
     pull                Pull a model from official or hub.
@@ -236,6 +237,35 @@ Automatic Speech Recognition options:
 
 ```
 nexa run faster-whisper-tiny
+```
+
+### Generate Embeddings
+
+#### Generate Text Embeddings
+
+```
+nexa embed MODEL_PATH
+usage: nexa embed [-h] [-lp] [-hf] [-n] [-nt] model_path prompt
+
+positional arguments:
+  model_path            Path or identifier for the model in Nexa Model Hub
+  prompt                Prompt to generate embeddings
+
+options:
+  -h, --help            show this help message and exit
+  -lp, --local_path     Indicate that the model path provided is the local path, must be used with -mt
+  -hf, --huggingface    Load model from Hugging Face Hub, must be used with -mt
+  -n, --normalize       Normalize the embeddings
+  -nt, --no_truncate    Not truncate the embeddings
+```
+
+#### Example
+
+```
+nexa embed mxbai "I love Nexa AI."
+nexa embed nomic "I love Nexa AI." >> generated_embeddings.txt
+nexa embed nomic-embed-text-v1.5:fp16 "I love Nexa AI." 
+nexa embed sentence-transformers/all-MiniLM-L6-v2:gguf-fp16 "I love Nexa AI." >> generated_embeddings.txt
 ```
 
 ### Start Local Server

@@ -4,6 +4,35 @@ from nexa import __version__
 from nexa.constants import ModelType
 
 
+def _choose_files(local_path):
+    """ Helper function for Multimodal inference only: select the model and projector ggufs from the local_path. """
+    print(f"Files in {local_path}:")
+    files = os.listdir(local_path)
+    for i, file in enumerate(files):
+        print(f"{i+1}. {file}")
+    
+    while True:
+        try:
+            model_choice = int(input(">>> Enter the index of the model gguf: ")) - 1
+            if 0 <= model_choice < len(files):
+                break
+            else:
+                print("Invalid selection. Please enter a valid number.")
+        except ValueError:
+            print("Invalid input. Please enter a number.")
+    
+    while True:
+        try:
+            projector_choice = int(input(">>> Enter the index of the projector gguf: ")) - 1
+            if 0 <= projector_choice < len(files):
+                break
+            else:
+                print("Invalid selection. Please enter a valid number.")
+        except ValueError:
+            print("Invalid input. Please enter a number.")
+    
+    return os.path.join(local_path, files[model_choice]), os.path.join(local_path, files[projector_choice])
+
 def run_ggml_inference(args):
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")
@@ -14,67 +43,6 @@ def run_ggml_inference(args):
     run_type = None
     if model_type:
         run_type = ModelType[model_type].value
-
-    def choose_files(local_path):
-        """ Helper function for Multimodal inference only: select the model and projector ggufs from the local_path. """
-        print(f"Files in {local_path}:")
-        files = os.listdir(local_path)
-        for i, file in enumerate(files):
-            print(f"{i+1}. {file}")
-        
-        while True:
-            try:
-                model_choice = int(input(">>> Enter the index of the model gguf: ")) - 1
-                if 0 <= model_choice < len(files):
-                    break
-                else:
-                    print("Invalid selection. Please enter a valid number.")
-            except ValueError:
-                print("Invalid input. Please enter a number.")
-        
-        while True:
-            try:
-                projector_choice = int(input(">>> Enter the index of the projector gguf: ")) - 1
-                if 0 <= projector_choice < len(files):
-                    break
-                else:
-                    print("Invalid selection. Please enter a valid number.")
-            except ValueError:
-                print("Invalid input. Please enter a number.")
-        
-        return os.path.join(local_path, files[model_choice]), os.path.join(local_path, files[projector_choice])
-
-    if args.command == "server":
-        from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
-        
-        projector_local_path = None
-        if run_type == "Multimodal" and is_local_path:
-            local_path = os.path.abspath(model_path)
-            if not os.path.isdir(local_path):
-                print("Error: For Multimodal models with --local_path, the provided path must be a directory.")
-                return
-            
-            model_path, projector_local_path = choose_files(local_path)
-            
-            if not model_path or not projector_local_path:
-                return
-        elif run_type == "Audio" and is_local_path:
-            local_path = os.path.abspath(model_path)
-            if not os.path.isdir(local_path):
-                print("Error: For Audio models with --local_path, the provided path must be a directory containing all related files.")
-                return
-
-        NexaServer(
-            model_path_arg=model_path,
-            is_local_path_arg=is_local_path,
-            model_type_arg=run_type,
-            huggingface=hf,
-            projector_local_path_arg=projector_local_path,
-            **kwargs
-        )
-        return
-
-    stop_words = kwargs.pop("stop_words", [])
 
     local_path = None
     if is_local_path or hf:
@@ -89,7 +57,7 @@ def run_ggml_inference(args):
                     print("Error: For Multimodal models with --local_path, the provided path must be a directory containing both model and projector ggufs.")
                     return
                 
-                model_path, projector_local_path = choose_files(local_path)
+                model_path, projector_local_path = _choose_files(local_path)
                 
                 if not model_path or not projector_local_path:
                     return
@@ -109,6 +77,8 @@ def run_ggml_inference(args):
     else: # Model Hub
         from nexa.general import pull_model
         local_path, run_type = pull_model(model_path)
+        
+    stop_words = kwargs.pop("stop_words", None)
 
     try:
         if run_type == "NLP":
@@ -147,6 +117,45 @@ def run_ggml_inference(args):
             inference.run_streamlit(model_path, is_local_path = is_local_path, hf = hf)
     else:
         inference.run()
+
+def run_ggml_server(args):
+    from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
+    
+    kwargs = {k: v for k, v in vars(args).items() if v is not None}
+    model_path = kwargs.pop("model_path")
+    is_local_path = kwargs.pop("local_path", False)
+    model_type = kwargs.pop("model_type", None)
+    hf = kwargs.pop('huggingface', False)
+    
+    run_type = None
+    if model_type:
+        run_type = ModelType[model_type].value
+
+    projector_local_path = None
+    if run_type == "Multimodal" and is_local_path:
+        local_path = os.path.abspath(model_path)
+        if not os.path.isdir(local_path):
+            print("Error: For Multimodal models with --local_path, the provided path must be a directory.")
+            return
+        
+        model_path, projector_local_path = _choose_files(local_path)
+        
+        if not model_path or not projector_local_path:
+            return
+    elif run_type == "Audio" and is_local_path:
+        local_path = os.path.abspath(model_path)
+        if not os.path.isdir(local_path):
+            print("Error: For Audio models with --local_path, the provided path must be a directory containing all related files.")
+            return
+
+    NexaServer(
+        model_path_arg=model_path,
+        is_local_path_arg=is_local_path,
+        model_type_arg=run_type,
+        huggingface=hf,
+        projector_local_path_arg=projector_local_path,
+        **kwargs
+    )
 
 def run_onnx_inference(args):
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
@@ -216,6 +225,36 @@ def run_eval_tasks(args):
     except Exception as e:
         print(f"Error running evaluation, please run: pip install nexaai[eval]")
         return
+
+def run_embedding_generation(args):
+    kwargs = {k: v for k, v in vars(args).items() if v is not None}
+    model_path = kwargs.pop("model_path")
+    prompt = kwargs.pop("prompt")
+    is_local_path = kwargs.pop("local_path", False)
+    hf = kwargs.pop('huggingface', False)
+    normalize = kwargs.pop('normalize', False)
+    no_truncate = kwargs.pop('no_truncate', False)
+
+    local_path = None
+    if is_local_path or hf:
+        if is_local_path:
+            local_path = os.path.abspath(model_path)
+            model_path = local_path
+        else:  # hf case
+            from nexa.general import pull_model
+            local_path, _ = pull_model(model_path, hf=True)
+    else:  # Model Hub
+        from nexa.general import pull_model
+        local_path, _ = pull_model(model_path)
+
+    try:
+        from nexa.gguf.nexa_inference_text import NexaTextInference
+        inference = NexaTextInference(model_path=model_path, local_path=local_path, embedding=True)
+        embedding = inference.create_embedding(prompt, normalize=normalize, truncate=not no_truncate)
+        print({"embedding": embedding})
+    except Exception as e:
+        print(f"Error generating embedding: {e}")
+        print("Please refer to our docs to install nexaai package: https://docs.nexaai.com/getting-started/installation")
 
 def main():
     parser = argparse.ArgumentParser(
@@ -337,10 +376,18 @@ def main():
     eval_parser.add_argument("--port", type=int, help="Port to bind the server to", default=8300)
     eval_parser.add_argument("--nctx", type=int, help="Length of context window", default=4096)
 
+    # Embed command
+    embed_parser = subparsers.add_parser("embed", help="Generate embeddings for a given prompt.")
+    embed_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
+    embed_parser.add_argument("prompt", type=str, help="The prompt to generate an embedding for")
+    embed_parser.add_argument("-lp", "--local_path", action="store_true", help="Indicate that the model path provided is the local path")
+    embed_parser.add_argument("-hf", "--huggingface", action="store_true", help="Load model from Hugging Face Hub")
+    embed_parser.add_argument("-n", "--normalize", action="store_true", help="Normalize the embeddings")
+    embed_parser.add_argument("-nt", "--no_truncate", action="store_true", help="Not truncate the embeddings")
 
     args = parser.parse_args()
 
-    if args.command in ["run", "server"]:
+    if args.command == "run":
         if args.local_path and args.huggingface:
             print("Error: --local_path and --huggingface flags cannot be used together")
             return
@@ -348,6 +395,14 @@ def main():
             print("Error: --model_type must be provided when using --local_path or --huggingface")
             return
         run_ggml_inference(args)
+    elif args.command == "server":
+        if args.local_path and args.huggingface:
+            print("Error: --local_path and --huggingface flags cannot be used together")
+            return
+        if (args.local_path or args.huggingface) and not args.model_type:
+            print("Error: --model_type must be provided when using --local_path or --huggingface")
+            return
+        run_ggml_server(args)
     elif args.command == "onnx":
         if args.local_path and not args.model_type:
             print("Error: --model_type must be provided when using --local_path")
@@ -355,6 +410,8 @@ def main():
         run_onnx_inference(args)
     elif args.command == "eval":
         run_eval_tasks(args)
+    elif args.command == "embed":
+        run_embedding_generation(args)
     elif args.command == "pull":
         from nexa.general import pull_model
         hf = getattr(args, 'huggingface', False)
