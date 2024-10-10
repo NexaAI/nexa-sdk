@@ -232,6 +232,8 @@ def run_embedding_generation(args):
     prompt = kwargs.pop("prompt")
     is_local_path = kwargs.pop("local_path", False)
     hf = kwargs.pop('huggingface', False)
+    normalize = kwargs.pop('normalize', False)
+    no_truncate = kwargs.pop('no_truncate', False)
 
     local_path = None
     if is_local_path or hf:
@@ -248,7 +250,7 @@ def run_embedding_generation(args):
     try:
         from nexa.gguf.nexa_inference_text import NexaTextInference
         inference = NexaTextInference(model_path=model_path, local_path=local_path, embedding=True, **kwargs)
-        embedding = inference.embed(prompt)
+        embedding = inference.embed(prompt, normalize=normalize, truncate=not no_truncate)
         print({"embedding": embedding})
     except Exception as e:
         print(f"Error generating embedding: {e}")
@@ -380,6 +382,8 @@ def main():
     embed_parser.add_argument("prompt", type=str, help="The prompt to generate an embedding for")
     embed_parser.add_argument("-lp", "--local_path", action="store_true", help="Indicate that the model path provided is the local path")
     embed_parser.add_argument("-hf", "--huggingface", action="store_true", help="Load model from Hugging Face Hub")
+    embed_parser.add_argument("-n", "--normalize", action="store_true", help="Normalize the embeddings")
+    embed_parser.add_argument("-nt", "--no_truncate", action="store_true", help="Not truncate the embeddings")
 
     args = parser.parse_args()
 
