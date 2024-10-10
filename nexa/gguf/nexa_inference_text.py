@@ -89,9 +89,27 @@ class NexaTextInference:
             input: The utf-8 encoded string or a list of string to embed.
 
         Returns:
-            A list of embeddings
+            Formatted embedding response
         """
         return self.model.create_embedding(input)
+    
+    def embed(
+        self,
+        input: Union[str, List[str]],
+        normalize: bool = False,
+        truncate: bool = True,
+    ):
+        """Embed a string.
+
+        Args:
+            input: The utf-8 encoded string or a list of string to embed.
+            normalize: Normalize the embeddings.
+            truncate: Truncate the embeddings.
+
+        Returns:
+            Embeddings or list of embeddings
+        """
+        return self.model.embed(input, normalize, truncate)
 
     @SpinningCursorAnimation()
     def _load_model(self):
