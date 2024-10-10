@@ -63,7 +63,12 @@ class NexaImageInference:
     profiling (bool): Enable profiling logs for the inference process.
     """
 
-    def __init__(self, model_path, local_path=None, **kwargs):
+    def __init__(self, model_path=None, local_path=None, **kwargs):
+        if model_path is None and local_path is None:
+            raise ValueError("Either model_path or local_path must be provided.")
+        if model_path and local_path:
+            logging.warning("Both model_path and local_path are provided. Using local_path.")
+        
         self.model_path = model_path
         self.downloaded_path = local_path
 

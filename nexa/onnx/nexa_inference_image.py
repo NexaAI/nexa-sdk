@@ -46,7 +46,12 @@ class NexaImageInference:
     random_seed (int): Random seed for image generation.
     streamlit (bool): Run the inference in Streamlit UI.
     """
-    def __init__(self, model_path, local_path=None, **kwargs):
+    def __init__(self, model_path=None, local_path=None, **kwargs):
+        if model_path is None and local_path is None:
+            raise ValueError("Either model_path or local_path must be provided.")
+        if model_path and local_path:
+            logging.warning("Both model_path and local_path are provided. Using local_path.")
+        
         self.model_path = NEXA_RUN_MODEL_MAP_ONNX.get(model_path, model_path)
         self.download_onnx_folder = local_path
         self.params = {
