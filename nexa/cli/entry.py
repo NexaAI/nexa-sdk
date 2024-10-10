@@ -1,7 +1,7 @@
 import argparse
 import os
 from nexa import __version__
-from nexa.constants import ModelType, ServerModelType
+from nexa.constants import ModelType
 
 
 def _choose_files(local_path):
@@ -129,7 +129,7 @@ def run_ggml_server(args):
     
     run_type = None
     if model_type:
-        run_type = ServerModelType[model_type].value
+        run_type = ModelType[model_type].value
 
     projector_local_path = None
     if run_type == "Multimodal" and is_local_path:
@@ -347,7 +347,7 @@ def main():
     server_parser = subparsers.add_parser("server", help="Run the Nexa AI Text Generation Service")
     server_parser.add_argument("model_path", type=str, nargs='?', help="Path or identifier for the model in Nexa Model Hub")
     server_parser.add_argument("-lp", "--local_path", action="store_true", help="Indicate that the model path provided is the local path, must be used with -mt")
-    server_parser.add_argument("-mt", "--model_type", type=str, choices=[e.name for e in ServerModelType], help="Indicate the model running type, must be used with -lp or -hf")
+    server_parser.add_argument("-mt", "--model_type", type=str, choices=[e.name for e in ModelType], help="Indicate the model running type, must be used with -lp or -hf")
     server_parser.add_argument("-hf", "--huggingface", action="store_true", help="Load model from Hugging Face Hub, must be used with -mt")
     server_parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to bind the server to")
     server_parser.add_argument("--port", type=int, default=8000, help="Port to bind the server to")
