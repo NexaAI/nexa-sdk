@@ -37,7 +37,7 @@ Key features include:
      ```zsh
      CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple --no-cache-dir
      ```
-   - For CUDA and AMD GPU support, refer to the [Nexa SDK Installation Guide](GitHub - NexaAI/nexa-sdk: Nexa SDK is a comprehensive toolkit for supporting ONNX and GGML models. I).
+   - For CUDA and AMD GPU support, refer to the [Nexa SDK Installation Guide](https://github.com/NexaAI/nexa-sdk?tab=readme-ov-file#installation).
 4. Install other dependencies:
    ```zsh
    pip install -r requirements.txt
