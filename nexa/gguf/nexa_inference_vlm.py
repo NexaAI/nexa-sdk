@@ -92,8 +92,6 @@ class NexaVLMInference:
     def __init__(self, model_path=None, local_path=None, projector_local_path=None, stop_words=None, **kwargs):
         if model_path is None and local_path is None:
             raise ValueError("Either model_path or local_path must be provided.")
-        if model_path and local_path:
-            logging.warning("Both model_path and local_path are provided. Using local_path.")
         
         self.params = DEFAULT_TEXT_GEN_PARAMS
         self.params.update(kwargs)
