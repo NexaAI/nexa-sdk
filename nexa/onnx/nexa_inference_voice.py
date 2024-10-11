@@ -32,7 +32,10 @@ class NexaVoiceInference:
     streamlit (bool): Run the inference in Streamlit UI.
     """
 
-    def __init__(self, model_path, local_path=None, **kwargs):
+    def __init__(self, model_path=None, local_path=None, **kwargs):
+        if model_path is None and local_path is None:
+            raise ValueError("Either model_path or local_path must be provided.")
+        
         self.model_path = NEXA_RUN_MODEL_MAP_ONNX.get(model_path, model_path)
         self.downloaded_onnx_folder = local_path
         self.params = {"output_dir": "transcriptions", "sampling_rate": 16000}

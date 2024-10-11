@@ -39,7 +39,10 @@ class NexaVoiceInference:
 
     """
 
-    def __init__(self, model_path, local_path=None, **kwargs):
+    def __init__(self, model_path=None, local_path=None, **kwargs):
+        if model_path is None and local_path is None:
+            raise ValueError("Either model_path or local_path must be provided.")
+        
         self.model_path = model_path
         self.downloaded_path = local_path
         self.params = DEFAULT_VOICE_GEN_PARAMS

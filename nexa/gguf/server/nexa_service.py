@@ -13,7 +13,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Request, File, UploadFile, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
-from pydantic import BaseModel, HttpUrl, AnyUrl
+from pydantic import BaseModel, HttpUrl, AnyUrl, Field
 import requests
 from io import BytesIO
 from PIL import Image
@@ -169,6 +169,12 @@ class ImageGenerationRequest(BaseModel):
     seed: int = 0
     negative_prompt: Optional[str] = ""
 
+# New request class for embeddings
+class EmbeddingRequest(BaseModel):
+    input: Union[str, List[str]] = Field(..., description="The input text to get embeddings for. Can be a string or an array of strings.")
+    normalize: Optional[bool] = False
+    truncate: Optional[bool] = True
+
 # helper functions
 async def load_model():
     global model, chat_format, completion_template, model_path, n_ctx, is_local_path, model_type, is_huggingface, projector_path
@@ -192,8 +198,10 @@ async def load_model():
             model_type = "Multimodal"
         else:
             downloaded_path, model_type = pull_model(model_path)
+            
+    print(f"model_type: {model_type}")
     
-    if model_type == "NLP":
+    if model_type == "NLP" or model_type == "Text Embedding":
         if model_path in NEXA_RUN_MODEL_MAP_FUNCTION_CALLING:
             chat_format = "chatml-function-calling"
             with suppress_stdout_stderr():
@@ -204,7 +212,8 @@ async def load_model():
                         chat_format=chat_format,
                         n_gpu_layers=-1 if is_gpu_available() else 0,
                         logits_all=True,
-                        n_ctx=n_ctx
+                        n_ctx=n_ctx,
+                        embedding=False
                     )
                 except Exception as e:
                     logging.error(
@@ -216,7 +225,8 @@ async def load_model():
                         chat_format=chat_format,
                         n_gpu_layers=0,  # hardcode to use CPU,
                         logits_all=True,
-                        n_ctx=n_ctx
+                        n_ctx=n_ctx,
+                        embedding=False
                     )
 
                 logging.info(f"model loaded as {model}")
@@ -232,7 +242,8 @@ async def load_model():
                         chat_format=chat_format,
                         n_gpu_layers=-1 if is_gpu_available() else 0,
                         logits_all=True,
-                        n_ctx=n_ctx
+                        n_ctx=n_ctx,
+                        embedding=model_type == "Text Embedding"
                     )
                 except Exception as e:
                     logging.error(
@@ -244,7 +255,8 @@ async def load_model():
                         chat_format=chat_format,
                         n_gpu_layers=0,  # hardcode to use CPU
                         logits_all=True,
-                        n_ctx=n_ctx
+                        n_ctx=n_ctx,
+                        embedding=model_type == "Text Embedding"
                     )
                 logging.info(f"model loaded as {model}")
                 chat_format = model.metadata.get("tokenizer.chat_template", None)
@@ -772,6 +784,48 @@ async def translate_audio(
     finally:
         os.unlink(temp_audio_path)
 
+@app.post("/v1/embeddings", tags=["Embedding"])
+async def create_embedding(request: EmbeddingRequest):
+    try:
+        if isinstance(request.input, list):
+            embeddings_results = [model.embed(text, normalize=request.normalize, truncate=request.truncate) for text in request.input]
+        else:
+            embeddings_results = model.embed(request.input, normalize=request.normalize, truncate=request.truncate)
+
+        # Prepare the response data
+        if isinstance(request.input, list):
+            data = [
+                {
+                    "object": "embedding",
+                    "embedding": embedding,
+                    "index": i
+                } for i, embedding in enumerate(embeddings_results)
+            ]
+        else:
+            data = [
+                {
+                    "object": "embedding",
+                    "embedding": embeddings_results,
+                    "index": 0
+                }
+            ]
+
+        # Calculate token usage
+        input_texts = request.input if isinstance(request.input, list) else [request.input]
+        total_tokens = sum(len(text.split()) for text in input_texts)
+
+        return {
+            "object": "list",
+            "data": data,
+            "model": model_path,
+            "usage": {
+                "prompt_tokens": total_tokens,
+                "total_tokens": total_tokens
+            }
+        }
+    except Exception as e:
+        logging.error(f"Error in embedding generation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

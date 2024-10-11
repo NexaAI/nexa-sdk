@@ -44,7 +44,10 @@ class NexaTextInference:
     top_k (int): Top-k sampling parameter.
     top_p (float): Top-p sampling parameter
     """
-    def __init__(self, model_path, local_path=None, stop_words=None, **kwargs):
+    def __init__(self, model_path=None, local_path=None, stop_words=None, **kwargs):
+        if model_path is None and local_path is None:
+            raise ValueError("Either model_path or local_path must be provided.")
+        
         self.params = DEFAULT_TEXT_GEN_PARAMS
         self.params.update(kwargs)
         self.model = None
@@ -66,7 +69,7 @@ class NexaTextInference:
             exit(1)
         self.profiling = kwargs.get("profiling", False)
 
-        model_name = model_path.split(":")[0].lower()
+        model_name = model_path.split(":")[0].lower() if model_path else None
         self.stop_words = (stop_words if stop_words else NEXA_STOP_WORDS_MAP.get(model_name, []))
         self.chat_format = NEXA_RUN_CHAT_TEMPLATE_MAP.get(model_name, None)
         self.completion_template = NEXA_RUN_COMPLETION_TEMPLATE_MAP.get(model_name, None)
@@ -78,20 +81,24 @@ class NexaTextInference:
                     "Failed to load model or tokenizer. Exiting.", exc_info=True
                 )
                 exit(1)
-
+    
     def create_embedding(
         self,
         input: Union[str, List[str]],
+        normalize: bool = False,
+        truncate: bool = True,
     ):
         """Embed a string.
 
         Args:
             input: The utf-8 encoded string or a list of string to embed.
+            normalize: Normalize the embeddings.
+            truncate: Truncate the embeddings.
 
         Returns:
-            A list of embeddings
+            Embeddings or list of embeddings
         """
-        return self.model.create_embedding(input)
+        return self.model.embed(input, normalize, truncate)
 
     @SpinningCursorAnimation()
     def _load_model(self):

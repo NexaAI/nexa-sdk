@@ -134,7 +134,7 @@ def pull_model(model_path, hf = False, **kwargs):
             print(f"Failed to pull model {model_path}. If you are using local path, be sure to add --local_path and --model_type flags.")
             return None, None
     except Exception as e:
-        logging.error(f"An error occurred while pulling the model: {e}")
+        logging.error(f"An error occurred while pulling the model: {e}. The model path provided ({model_path}) may not exist.")
         return None, None
 
 

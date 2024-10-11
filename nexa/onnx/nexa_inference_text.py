@@ -34,7 +34,10 @@ class NexaTextInference:
     top_p (float): Top-p sampling parameter
     """
 
-    def __init__(self, model_path, local_path=None, **kwargs):
+    def __init__(self, model_path=None, local_path=None, **kwargs):
+        if model_path is None and local_path is None:
+            raise ValueError("Either model_path or local_path must be provided.")
+        
         self.model_path = NEXA_RUN_MODEL_MAP_ONNX.get(model_path, model_path)
         self.params = {
             "temperature": 0.5,

@@ -12,6 +12,7 @@ positional arguments:
                         sub-command help
     run                 Run inference for various tasks using GGUF models.
     onnx                Run inference for various tasks using ONNX models.
+    embed               Generate embeddings for text.
     server              Run the Nexa AI Text Generation Service.
     eval                Run the Nexa AI Evaluation Tasks.
     pull                Pull a model from official or hub.
@@ -95,7 +96,7 @@ By default, `nexa` will run gguf models. To run onnx models, use `nexa onnx MODE
 
 ```
 nexa run MODEL_PATH
-usage: nexa run [-h] [-t TEMPERATURE] [-m MAX_NEW_TOKENS] [-k TOP_K] [-p TOP_P] [-sw [STOP_WORDS ...]] [-pf] [-st] model_path
+usage: nexa run [-h] [-t TEMPERATURE] [-m MAX_NEW_TOKENS] [-k TOP_K] [-p TOP_P] [-sw [STOP_WORDS ...]] [-pf] [-st] [-lp] [-mt {NLP, COMPUTER_VISION, MULTIMODAL, AUDIO}] [-hf] model_path
 
 positional arguments:
   model_path            Path or identifier for the model in Nexa Model Hub
@@ -130,7 +131,7 @@ nexa run llama2
 
 ```
 nexa run MODEL_PATH
-usage: nexa run [-h] [-i2i] [-ns NUM_INFERENCE_STEPS] [-np NUM_IMAGES_PER_PROMPT] [-H HEIGHT] [-W WIDTH] [-g GUIDANCE_SCALE] [-o OUTPUT] [-s RANDOM_SEED] [-st] model_path
+usage: nexa run [-h] [-i2i] [-ns NUM_INFERENCE_STEPS] [-np NUM_IMAGES_PER_PROMPT] [-H HEIGHT] [-W WIDTH] [-g GUIDANCE_SCALE] [-o OUTPUT] [-s RANDOM_SEED] [-st] [-lp] [-mt {NLP, COMPUTER_VISION, MULTIMODAL, AUDIO}] [-hf] model_path
 
 positional arguments:
   model_path            Path or identifier for the model in Nexa Model Hub
@@ -175,7 +176,7 @@ nexa run sd1-4
 
 ```
 nexa run MODEL_PATH
-usage: nexa run [-h] [-t TEMPERATURE] [-m MAX_NEW_TOKENS] [-k TOP_K] [-p TOP_P] [-sw [STOP_WORDS ...]] [-pf] [-st] model_path
+usage: nexa run [-h] [-t TEMPERATURE] [-m MAX_NEW_TOKENS] [-k TOP_K] [-p TOP_P] [-sw [STOP_WORDS ...]] [-pf] [-st] [-lp] [-mt {NLP, COMPUTER_VISION, MULTIMODAL, AUDIO}] [-hf] model_path
 
 positional arguments:
   model_path            Path or identifier for the model in Nexa Model Hub
@@ -210,7 +211,7 @@ nexa run nanollava
 
 ```
 nexa run MODEL_PATH
-usage: nexa run [-h] [-o OUTPUT_DIR] [-b BEAM_SIZE] [-l LANGUAGE] [--task TASK] [-t TEMPERATURE] [-c COMPUTE_TYPE] [-st] model_path
+usage: nexa run [-h] [-o OUTPUT_DIR] [-b BEAM_SIZE] [-l LANGUAGE] [--task TASK] [-t TEMPERATURE] [-c COMPUTE_TYPE] [-st] [-lp] [-mt {NLP, COMPUTER_VISION, MULTIMODAL, AUDIO}] [-hf] model_path
 
 positional arguments:
   model_path            Path or identifier for the model in Nexa Model Hub
@@ -238,13 +239,42 @@ Automatic Speech Recognition options:
 nexa run faster-whisper-tiny
 ```
 
+### Generate Embeddings
+
+#### Generate Text Embeddings
+
+```
+nexa embed MODEL_PATH
+usage: nexa embed [-h] [-lp] [-hf] [-n] [-nt] model_path prompt
+
+positional arguments:
+  model_path            Path or identifier for the model in Nexa Model Hub
+  prompt                Prompt to generate embeddings
+
+options:
+  -h, --help            show this help message and exit
+  -lp, --local_path     Indicate that the model path provided is the local path, must be used with -mt
+  -hf, --huggingface    Load model from Hugging Face Hub, must be used with -mt
+  -n, --normalize       Normalize the embeddings
+  -nt, --no_truncate    Not truncate the embeddings
+```
+
+#### Example
+
+```
+nexa embed mxbai "I love Nexa AI."
+nexa embed nomic "I love Nexa AI." >> generated_embeddings.txt
+nexa embed nomic-embed-text-v1.5:fp16 "I love Nexa AI."
+nexa embed sentence-transformers/all-MiniLM-L6-v2:gguf-fp16 "I love Nexa AI." >> generated_embeddings.txt
+```
+
 ### Start Local Server
 
 Start a local server using models on your local computer.
 
 ```
 nexa server MODEL_PATH
-usage: nexa server [-h] [--host HOST] [--port PORT] [--reload] model_path
+usage: nexa server [-h] [--host HOST] [--port PORT] [--reload] [-lp] [-mt {NLP, COMPUTER_VISION, MULTIMODAL, AUDIO}] [-hf] model_path
 
 positional arguments:
   model_path   Path or identifier for the model in S3
