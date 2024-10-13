@@ -4,6 +4,7 @@
 *.bin
 *.mp3
 *.wav
+*.png
 poetry.lock
 *.pdb
 *.ipynb
