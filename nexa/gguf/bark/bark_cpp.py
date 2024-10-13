@@ -1,14 +1,57 @@
 # auto-generated file
+import sys
+import os
 import ctypes
-from nexa.gguf.lib_utils import load_library
-from typing import Pointer
+import pathlib
+
+
+# Load the library
+def _load_shared_library(lib_base_name: str):
+    # Determine the file extension based on the platform
+    if sys.platform.startswith("linux"):
+        lib_ext = ".so"
+    elif sys.platform == "darwin":
+        lib_ext = ".dylib"
+    elif sys.platform == "win32":
+        lib_ext = ".dll"
+    else:
+        raise RuntimeError("Unsupported platform")
+
+    # Construct the paths to the possible shared library names
+    _base_path = pathlib.Path(__file__).parent.parent.resolve()
+    _lib_paths = [
+        _base_path / f"lib/lib{lib_base_name}{lib_ext}",
+        _base_path / f"lib/{lib_base_name}{lib_ext}",
+    ]
+
+    if "BARK_CPP_LIB" in os.environ:
+        lib_base_name = os.environ["BARK_CPP_LIB"]
+        _lib = pathlib.Path(lib_base_name)
+        _base_path = _lib.parent.resolve()
+        _lib_paths = [_lib.resolve()]
+
+    # Add the library directory to the DLL search path on Windows (if needed)
+    if sys.platform == "win32" and sys.version_info >= (3, 8):
+        os.add_dll_directory(str(_base_path))
+
+    # Try to load the shared library, handling potential errors
+    for _lib_path in _lib_paths:
+        if _lib_path.exists():
+            try:
+                return ctypes.CDLL(str(_lib_path))
+            except Exception as e:
+                raise RuntimeError(f"Failed to load shared library '{_lib_path}': {e}")
+
+    raise FileNotFoundError(
+        f"Shared library with base name '{lib_base_name}' not found"
+    )
 
 
 # Specify the base name of the shared library to load
 _lib_base_name = "bark"
 
 # Load the library
-_lib = load_library(_lib_base_name)
+_lib = _load_shared_library(_lib_base_name)
 
 
 
@@ -86,7 +129,7 @@ _lib.bark_generate_audio.argtypes = [bark_context_p, ctypes.c_char_p, ctypes.c_i
 _lib.bark_generate_audio.restype = ctypes.c_bool
 
 
-def bark_get_audio_data(bctx: bark_context_p) -> Pointer[ctypes.c_float]:
+def bark_get_audio_data(bctx: bark_context_p) -> ctypes.POINTER(ctypes.c_float):
     return _lib.bark_get_audio_data(bctx)
 
 _lib.bark_get_audio_data.argtypes = [bark_context_p]
