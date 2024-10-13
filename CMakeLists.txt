@@ -49,11 +49,19 @@ endfunction()
 get_all_options(USER_DEFINED_OPTIONS)
 
 if(APPLE)
-    set(CMAKE_INSTALL_RPATH "@loader_path;@loader_path/../lib")
+    set(CMAKE_INSTALL_RPATH "@loader_path")
 else()
-    set(CMAKE_INSTALL_RPATH "\$ORIGIN:\$ORIGIN/../lib")
+    set(CMAKE_INSTALL_RPATH "$ORIGIN")
 endif()
 
+# Define common CMake options
+set(COMMON_CMAKE_OPTIONS
+    -DCMAKE_BUILD_WITH_INSTALL_RPATH=TRUE
+    -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=TRUE
+    -DCMAKE_SKIP_BUILD_RPATH=FALSE
+    -DCMAKE_SKIP_RPATH=FALSE
+    -DCMAKE_INSTALL_RPATH=${CMAKE_INSTALL_RPATH}
+)
 
 # stable_diffusion_cpp project
 option(STABLE_DIFFUSION_BUILD "Build stable-diffusion.cpp" ON)
@@ -63,6 +71,7 @@ if(STABLE_DIFFUSION_BUILD)
         BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build
         CMAKE_ARGS
             ${USER_DEFINED_OPTIONS}
+            ${COMMON_CMAKE_OPTIONS}
             -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_install
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
             -DCMAKE_CXX_STANDARD=17
@@ -72,10 +81,14 @@ if(STABLE_DIFFUSION_BUILD)
             -DSD_CUBLAS=${GGML_CUDA}
         BUILD_ALWAYS 1
         INSTALL_COMMAND
-            ${CMAKE_COMMAND} --build . --target install &&
+            ${CMAKE_COMMAND} --build . --target install
+        COMMAND
             ${CMAKE_COMMAND} -E copy_if_different
-                ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/libstable-diffusion${CMAKE_SHARED_LIBRARY_SUFFIX}
-                ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_install/lib/
+            $<IF:$<PLATFORM_ID:Windows>,
+                ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/$<CONFIG>/stable-diffusion${CMAKE_SHARED_LIBRARY_SUFFIX},
+                ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/libstable-diffusion${CMAKE_SHARED_LIBRARY_SUFFIX}>
+            ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_install/lib/
+        LOG_INSTALL 1
     )
 endif()
 
@@ -90,16 +103,12 @@ if(LLAMA_BUILD)
         BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/llama_build
         CMAKE_ARGS
             ${USER_DEFINED_OPTIONS}
+            ${COMMON_CMAKE_OPTIONS}
             -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/llama_install
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
             -DCMAKE_CXX_STANDARD=17
             -DLLAMA_CUDA=${LLAMA_CUDA}
             -DLLAMA_METAL=${LLAMA_METAL}
-            -DCMAKE_BUILD_WITH_INSTALL_RPATH=TRUE
-            -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=TRUE
-            -DCMAKE_SKIP_BUILD_RPATH=FALSE
-            -DCMAKE_SKIP_RPATH=FALSE
-            -DCMAKE_INSTALL_RPATH=${CMAKE_INSTALL_RPATH}
         BUILD_ALWAYS 1
         INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
     )
@@ -131,7 +140,7 @@ if(BARK_BUILD)
         BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/bark_build
         CMAKE_ARGS
             ${USER_DEFINED_OPTIONS}
-            ${COMMON_RPATH_OPTIONS}
+            ${COMMON_CMAKE_OPTIONS}
             -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/bark_install
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
             -DCMAKE_CXX_STANDARD=17
@@ -139,11 +148,6 @@ if(BARK_BUILD)
             -DGGML_METAL=${GGML_METAL}
             -DBUILD_SHARED_LIBS=ON
             -DBARK_BUILD_EXAMPLES=OFF
-            -DCMAKE_BUILD_WITH_INSTALL_RPATH=TRUE
-            -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=TRUE
-            -DCMAKE_SKIP_BUILD_RPATH=FALSE
-            -DCMAKE_SKIP_RPATH=FALSE
-            -DCMAKE_INSTALL_RPATH=${CMAKE_INSTALL_RPATH}
         BUILD_ALWAYS 1
         INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
     )
