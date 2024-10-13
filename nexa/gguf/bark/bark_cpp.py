@@ -19,28 +19,23 @@ def _load_shared_library(lib_base_name: str):
 
     # Construct the paths to the possible shared library names
     _base_path = pathlib.Path(__file__).parent.parent.resolve()
-    _lib_paths = [
-        _base_path / f"lib/lib{lib_base_name}{lib_ext}",
-        _base_path / f"lib/{lib_base_name}{lib_ext}",
-    ]
+    _lib_path =  _base_path / f"lib/lib{lib_base_name}{lib_ext}"
 
     if "BARK_CPP_LIB" in os.environ:
         lib_base_name = os.environ["BARK_CPP_LIB"]
         _lib = pathlib.Path(lib_base_name)
         _base_path = _lib.parent.resolve()
-        _lib_paths = [_lib.resolve()]
+        _lib_path = _lib.resolve()
 
     # Add the library directory to the DLL search path on Windows (if needed)
     if sys.platform == "win32" and sys.version_info >= (3, 8):
         os.add_dll_directory(str(_base_path))
 
-    # Try to load the shared library, handling potential errors
-    for _lib_path in _lib_paths:
-        if _lib_path.exists():
-            try:
-                return ctypes.CDLL(str(_lib_path))
-            except Exception as e:
-                raise RuntimeError(f"Failed to load shared library '{_lib_path}': {e}")
+    if _lib_path.exists():
+        try:
+            return ctypes.CDLL(str(_lib_path))
+        except Exception as e:
+            raise RuntimeError(f"Failed to load shared library '{_lib_path}': {e}")
 
     raise FileNotFoundError(
         f"Shared library with base name '{lib_base_name}' not found"

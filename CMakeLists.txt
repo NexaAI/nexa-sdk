@@ -48,6 +48,12 @@ endfunction()
 # Collect all user-defined options
 get_all_options(USER_DEFINED_OPTIONS)
 
+if(APPLE)
+    set(CMAKE_INSTALL_RPATH "@loader_path;@loader_path/../lib")
+else()
+    set(CMAKE_INSTALL_RPATH "\$ORIGIN:\$ORIGIN/../lib")
+endif()
+
 
 # stable_diffusion_cpp project
 option(STABLE_DIFFUSION_BUILD "Build stable-diffusion.cpp" ON)
@@ -79,12 +85,6 @@ if(LLAMA_BUILD)
     set(LLAMA_CUDA ${GGML_CUDA})
     set(LLAMA_METAL ${GGML_METAL})
 
-    if(APPLE)
-        set(CMAKE_INSTALL_RPATH "@loader_path;@loader_path/../lib")
-    else()
-        set(CMAKE_INSTALL_RPATH "\$ORIGIN:\$ORIGIN/../lib")
-    endif()
-        
     ExternalProject_Add(llama_project
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dependency/llama.cpp
         BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/llama_build
@@ -95,7 +95,6 @@ if(LLAMA_BUILD)
             -DCMAKE_CXX_STANDARD=17
             -DLLAMA_CUDA=${LLAMA_CUDA}
             -DLLAMA_METAL=${LLAMA_METAL}
-            -DCMAKE_INSTALL_RPATH="${PLATFORM_RPATH}"
             -DCMAKE_BUILD_WITH_INSTALL_RPATH=TRUE
             -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=TRUE
             -DCMAKE_SKIP_BUILD_RPATH=FALSE
@@ -132,6 +131,7 @@ if(BARK_BUILD)
         BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/bark_build
         CMAKE_ARGS
             ${USER_DEFINED_OPTIONS}
+            ${COMMON_RPATH_OPTIONS}
             -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/bark_install
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
             -DCMAKE_CXX_STANDARD=17
@@ -139,6 +139,11 @@ if(BARK_BUILD)
             -DGGML_METAL=${GGML_METAL}
             -DBUILD_SHARED_LIBS=ON
             -DBARK_BUILD_EXAMPLES=OFF
+            -DCMAKE_BUILD_WITH_INSTALL_RPATH=TRUE
+            -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=TRUE
+            -DCMAKE_SKIP_BUILD_RPATH=FALSE
+            -DCMAKE_SKIP_RPATH=FALSE
+            -DCMAKE_INSTALL_RPATH=${CMAKE_INSTALL_RPATH}
         BUILD_ALWAYS 1
         INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
     )
@@ -170,20 +175,3 @@ install(
         PATTERN "*.so"
         PATTERN "*.dylib"
 )
-
-# Set RPATH for installed libraries
-if(UNIX)
-    if(APPLE)
-        set(CMAKE_INSTALL_RPATH "@loader_path")
-    else()
-        set(CMAKE_INSTALL_RPATH "$ORIGIN")
-    endif()
-    
-    file(GLOB_RECURSE INSTALLED_LIBRARIES 
-        "${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib/*.so"
-        "${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib/*.dylib")
-    
-    foreach(LIB ${INSTALLED_LIBRARIES})
-        file(RPATH_CHANGE FILE "${LIB}" OLD_RPATH "" NEW_RPATH "${CMAKE_INSTALL_RPATH}")
-    endforeach()
-endif()
