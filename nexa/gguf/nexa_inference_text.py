@@ -51,6 +51,7 @@ class NexaTextInference:
         self.params = DEFAULT_TEXT_GEN_PARAMS
         self.params.update(kwargs)
         self.model = None
+        self.device = None
 
         self.model_path = model_path
         self.downloaded_path = local_path
@@ -107,13 +108,19 @@ class NexaTextInference:
         with suppress_stdout_stderr():
             from nexa.gguf.llama.llama import Llama
             try:
+                self.device = self.params.get("device", "auto")
+                if self.device == "auto" or self.device == "gpu":
+                    n_gpu_layers = -1 if is_gpu_available() else 0
+                elif self.device == "cpu":
+                    n_gpu_layers = 0
+
                 self.model = Llama(
                     embedding=self.params.get("embedding", False),
                     model_path=self.downloaded_path,
                     verbose=self.profiling,
                     chat_format=self.chat_format,
                     n_ctx=self.params.get("nctx", 2048),
-                    n_gpu_layers=-1 if is_gpu_available() else 0,
+                    n_gpu_layers=n_gpu_layers,
                     lora_path=self.params.get("lora_path", ""),
                 )
             except Exception as e:
@@ -357,6 +364,14 @@ if __name__ == "__main__":
         "--lora_path",
         type=str,
         help="Path to a LoRA file to apply to the model.",
+    )
+    parser.add_argument(
+        "-d",
+        "--device",
+        type=str,
+        choices=["auto", "cpu", "gpu"],
+        default="auto",
+        help="Device to use for inference (auto, cpu, or gpu)",
     )
     args = parser.parse_args()
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
