@@ -28,8 +28,7 @@ class GGUFLM:
                 prompt = context
                 request = {
                     "prompt": prompt,
-                    "logprobs": True,
-                    "top_logprobs": self.logprobs,
+                    "logprobs": self.logprobs,
                     "temperature": self.temperature,
                 }
                 # print("request", request)
@@ -37,7 +36,7 @@ class GGUFLM:
                     prompt += continuation
                     request.update({"prompt": prompt, "max_tokens": 1, "echo": True})
                 if stop is not None:
-                    request["stop"] = stop
+                    request["stop_words"] = stop
                 response = requests.post(
                     f"{self.base_url}", json=request
                 )

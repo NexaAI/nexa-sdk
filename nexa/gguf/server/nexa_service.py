@@ -78,7 +78,7 @@ hostname = socket.gethostname()
 chat_completion_system_prompt = [{"role": "system", "content": "You are a helpful assistant"}]
 function_call_system_prompt = [{"role": "system", "content": "A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions. The assistant calls functions with appropriate input when necessary"}]
 model_path = None
-n_ctx = None
+n_ctx = None;
 is_local_path = False
 model_type = None
 is_huggingface = False
@@ -91,8 +91,7 @@ class GenerationRequest(BaseModel):
     top_k: int = 50
     top_p: float = 1.0
     stop_words: Optional[List[str]] = []
-    logprobs: Optional[bool] = False
-    top_logprobs: Optional[int] = 4
+    logprobs: Optional[int] = None
     stream: Optional[bool] = False
 
 class TextContent(BaseModel):
