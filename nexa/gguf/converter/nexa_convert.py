@@ -71,14 +71,12 @@ from nexa.gguf.llama.llama_cpp import (
     GGML_TYPE_COUNT,
 )
 from nexa.gguf.llama.llama_cpp import llama_model_quantize_params, llama_model_quantize
-from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
+# from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
 import os
 import logging
 import argparse
 from typing import Optional
-from tqdm import tqdm
-import io
-import sys
+from pathlib import Path
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -157,29 +155,11 @@ GGML_TYPES = {
     "q4_0_8_8": GGML_TYPE_Q4_0_8_8,
 }
 
-def capture_output(func):
-    def wrapper(*args, **kwargs):
-        original_stdout = sys.stdout
-        sys.stdout = io.StringIO()
-        try:
-            with suppress_stdout_stderr():
-                result = func(*args, **kwargs)
-            captured_output = sys.stdout.getvalue()
-        finally:
-            sys.stdout = original_stdout
-        return result, captured_output
-    return wrapper
-
-@capture_output
-def llama_model_quantize_wrapper(*args, **kwargs):
-    return llama_model_quantize(*args, **kwargs)
-
 def quantize_model(
     input_file: str,
     output_file: Optional[str] = None,
     ftype: str = "q4_0",
     nthread: int = 4,
-    verbose: bool = False,
     **kwargs
 ) -> None:
     """
@@ -235,30 +215,38 @@ def quantize_model(
     logger.info(f"Output file: {output_file}")
 
     try:
-        result, captured_output = llama_model_quantize_wrapper(
+        llama_model_quantize(
             input_file.encode("utf-8"),
             output_file.encode("utf-8"),
             params,
         )
-
-        if verbose:
-            print(captured_output)
-        else:
-            # Parse the captured output to extract necessary information
-            lines = captured_output.split('\n')
-            total_tensors = sum(int(line.split(':')[1].strip().split()[0]) for line in lines if 'type' in line)
-            
-            # Create a tqdm progress bar
-            with tqdm(total=total_tensors, unit='tensor') as pbar:
-                for line in lines:
-                    if '[' in line and ']' in line:
-                        pbar.update(1)
-                        pbar.set_description(f"Converting {line.split(']')[1].strip().split('-')[0].strip()}")
-
-        logger.info("Quantization completed successfully")
     except Exception as e:
         logger.error(f"Quantization failed: {str(e)}")
         raise
+    
+
+from nexa_gguf.convert_hf_to_gguf import nexa_convert_hf_to_gguf
+
+def convert_hf_to_quantized_gguf(input_hf_directory: str, output_file: str, ftype: str = "q4_0", **kwargs) -> None:
+    # Convert input paths to absolute paths
+    input_hf_directory = os.path.abspath(input_hf_directory)
+    output_file = os.path.abspath(output_file)
+
+    # Create tmp file path
+    tmp_dir = Path.home().absolute() / ".cache" / "nexa" / "tmp_models"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    tmp_file_name = f"{Path(input_hf_directory).name}-f16.gguf"
+    tmp_file_path = tmp_dir / tmp_file_name
+
+    # Convert HF model to GGUF
+    nexa_convert_hf_to_gguf(model=input_hf_directory, outfile=str(tmp_file_path.absolute()), **kwargs)
+
+    # Quantize GGUF model
+    quantize_model(str(tmp_file_path.absolute()), output_file, ftype, **kwargs)
+    
+
+
+
 
 def main():
     parser = argparse.ArgumentParser(description="Quantize a GGUF model file.")
@@ -298,4 +286,5 @@ def main():
         exit(1)
 
 if __name__ == "__main__":
-    main()
+    # main()
+    convert_hf_to_quantized_gguf("../models/octopus-v2", "../models/octopus-v2-q4_0.gguf", "q4_0")
