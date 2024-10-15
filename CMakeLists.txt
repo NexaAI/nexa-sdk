@@ -149,14 +149,7 @@ if(BARK_BUILD)
             -DBUILD_SHARED_LIBS=ON
             -DBARK_BUILD_EXAMPLES=OFF
         BUILD_ALWAYS 1
-        INSTALL_COMMAND
-            ${CMAKE_COMMAND} --build . --target install
-        COMMAND
-            ${CMAKE_COMMAND} -E copy_if_different
-            $<IF:$<PLATFORM_ID:Windows>,
-                ${CMAKE_CURRENT_BINARY_DIR}/bark_build/bin/$<CONFIG>/ggml${CMAKE_SHARED_LIBRARY_SUFFIX},
-                ${CMAKE_CURRENT_BINARY_DIR}/bark_build/lib/libggml${CMAKE_SHARED_LIBRARY_SUFFIX}>
-            ${CMAKE_CURRENT_BINARY_DIR}/bark_install/$<IF:$<PLATFORM_ID:Windows>,bin,lib>/
+        INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
     )
 endif()
 
@@ -164,9 +157,10 @@ endif()
 if(WIN32)
     install(
         DIRECTORY
-            ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_install/lib/
-            ${CMAKE_CURRENT_BINARY_DIR}/llama_install/bin/
-            ${CMAKE_CURRENT_BINARY_DIR}/bark_install/bin/
+            ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/Release/
+            ${CMAKE_CURRENT_BINARY_DIR}/llama_build/bin/Release/
+            ${CMAKE_CURRENT_BINARY_DIR}/bark_build/bin/Release/
+            ${CMAKE_CURRENT_BINARY_DIR}/bark_build/Release/
         DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
         USE_SOURCE_PERMISSIONS
         FILES_MATCHING
@@ -175,9 +169,10 @@ if(WIN32)
 
     install(
         DIRECTORY
-            ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_install/lib/
-            ${CMAKE_CURRENT_BINARY_DIR}/llama_install/bin/
-            ${CMAKE_CURRENT_BINARY_DIR}/bark_install/bin/
+            ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/Release/
+            ${CMAKE_CURRENT_BINARY_DIR}/llama_build/bin/Release/
+            ${CMAKE_CURRENT_BINARY_DIR}/bark_build/bin/Release/
+            ${CMAKE_CURRENT_BINARY_DIR}/bark_build/Release/
         DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
         USE_SOURCE_PERMISSIONS
         FILES_MATCHING
