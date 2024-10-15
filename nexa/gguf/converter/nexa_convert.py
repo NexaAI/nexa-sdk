@@ -77,6 +77,7 @@ import logging
 import argparse
 from typing import Optional
 from pathlib import Path
+import json
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -170,7 +171,6 @@ def quantize_model(
         output_file (Optional[str]): Path to the output quantized file. If None, a default path will be used.
         ftype (str): Quantization type (default: "q4_0").
         nthread (int): Number of threads to use for quantization (default: 4).
-        verbose (bool): Enable verbose output.
         **kwargs: Additional parameters for quantization:
             output_tensor_type (int): Output tensor type.
             token_embedding_type (int): Token embeddings tensor type.
@@ -227,35 +227,60 @@ def quantize_model(
 
 from nexa_gguf.convert_hf_to_gguf import nexa_convert_hf_to_gguf
 
-def convert_hf_to_quantized_gguf(input_hf_directory: str, output_file: str, ftype: str = "q4_0", **kwargs) -> None:
-    # Convert input paths to absolute paths
-    input_hf_directory = os.path.abspath(input_hf_directory)
+def convert_hf_to_quantized_gguf(input_path: str, output_file: str, ftype: str = "q4_0", **kwargs) -> None:
+    # Convert input path to absolute path
+    input_path = os.path.abspath(input_path)
     output_file = os.path.abspath(output_file)
 
-    # Create tmp file path
-    tmp_dir = Path.home().absolute() / ".cache" / "nexa" / "tmp_models"
-    tmp_dir.mkdir(parents=True, exist_ok=True)
-    tmp_file_name = f"{Path(input_hf_directory).name}-f16.gguf"
-    tmp_file_path = tmp_dir / tmp_file_name
+    if os.path.isdir(input_path):
+        if not os.path.exists(input_path):
+            logger.error(f"Input directory does not exist: {input_path}")
+            return
+        
+        safetensors_files = [f for f in os.listdir(input_path) if f.endswith('.safetensors')]
+        if safetensors_files:
+            # Create tmp file path
+            tmp_dir = Path.home().absolute() / ".cache" / "nexa" / "tmp_models"
+            tmp_dir.mkdir(parents=True, exist_ok=True)
+            tmp_file_name = f"{Path(input_path).name}-f16.gguf"
+            tmp_file_path = tmp_dir / tmp_file_name
 
-    # Convert HF model to GGUF
-    nexa_convert_hf_to_gguf(model=input_hf_directory, outfile=str(tmp_file_path.absolute()), **kwargs)
+            # Convert HF model to GGUF
+            nexa_convert_hf_to_gguf(model=input_path, outfile=str(tmp_file_path.absolute()), **kwargs)
 
-    # Quantize GGUF model
-    quantize_model(str(tmp_file_path.absolute()), output_file, ftype, **kwargs)
+            # Quantize GGUF model
+            quantize_model(str(tmp_file_path.absolute()), output_file, ftype, **kwargs)
+        else:
+            logger.error(f"No .safetensors files found in directory: {input_path}")
+    elif input_path.endswith('.gguf'):
+        # Directly call nexa_convert_hf_to_gguf with input_path
+        quantize_model(input_file=input_path, output_file=output_file, ftype=ftype, **kwargs)
+    else:
+        logger.error(f"Invalid input path: {input_path}. Must be a directory with .safetensors files or a .gguf file.")
     
 
 
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Quantize a GGUF model file.")
-    parser.add_argument("input_file", type=str, help="Path to the input GGUF file")
-    parser.add_argument("-o", "--output_file", type=str, help="Path to the output quantized file")
+    parser = argparse.ArgumentParser(description="Convert and quantize a Hugging Face model to GGUF format.")
+    parser.add_argument("input_path", type=str, help="Path to the input Hugging Face model directory or GGUF file")
+    parser.add_argument("-o", "--output_file", type=str, help="Path to the output quantized GGUF file")
     parser.add_argument("-f", "--ftype", type=str, default="q4_0", help="Quantization type (default: q4_0)")
     parser.add_argument("-t", "--nthread", type=int, default=4, help="Number of threads to use (default: 4)")
     
-    # Additional parameters matching llama_model_quantize_params
+    # Arguments for convert_hf_to_gguf
+    parser.add_argument("--bigendian", action="store_true", help="Use big endian format")
+    parser.add_argument("--use_temp_file", action="store_true", help="Use a temporary file during conversion")
+    parser.add_argument("--no_lazy", action="store_true", help="Disable lazy loading")
+    parser.add_argument("--metadata", type=json.loads, help="Additional metadata as JSON string")
+    parser.add_argument("--split_max_tensors", type=int, default=0, help="Maximum number of tensors per split")
+    parser.add_argument("--split_max_size", type=str, default="0", help="Maximum size per split")
+    parser.add_argument("--no_tensor_first_split", action="store_true", help="Disable tensor-first splitting")
+    parser.add_argument("--vocab_only", action="store_true", help="Only process vocabulary")
+    parser.add_argument("--dry_run", action="store_true", help="Perform a dry run without actual conversion")
+    
+    # Arguments for quantization
     parser.add_argument("--output_tensor_type", type=str, help="Output tensor type")
     parser.add_argument("--token_embedding_type", type=str, help="Token embedding type")
     parser.add_argument("--allow_requantize", action="store_true", help="Allow quantizing non-f32/f16 tensors")
@@ -263,14 +288,13 @@ def main():
     parser.add_argument("--only_copy", action="store_true", help="Only copy tensors (ignores ftype, allow_requantize, and quantize_output_tensor)")
     parser.add_argument("--pure", action="store_true", help="Quantize all tensors to the default type")
     parser.add_argument("--keep_split", action="store_true", help="Quantize to the same number of shards")
-    parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
 
     args = parser.parse_args()
 
     # Prepare kwargs for additional parameters
     kwargs = {
         k: v for k, v in vars(args).items()
-        if k not in ["input_file", "output_file", "ftype", "nthread", "verbose"] and v is not None
+        if k not in ["input_path", "output_file", "ftype"] and v is not None
     }
 
     # Convert string types to GGML types if specified
@@ -280,11 +304,10 @@ def main():
         kwargs["token_embedding_type"] = GGML_TYPES.get(args.token_embedding_type, GGML_TYPE_COUNT)
 
     try:
-        quantize_model(args.input_file, args.output_file, args.ftype, args.nthread, verbose=args.verbose, **kwargs)
+        convert_hf_to_quantized_gguf(args.input_path, args.output_file, args.ftype, **kwargs)
     except Exception as e:
-        logger.error(f"Error during quantization: {str(e)}")
+        logger.error(f"Error during conversion and quantization: {str(e)}")
         exit(1)
 
 if __name__ == "__main__":
-    # main()
-    convert_hf_to_quantized_gguf("../models/octopus-v2", "../models/octopus-v2-q4_0.gguf", "q4_0")
+    main()
