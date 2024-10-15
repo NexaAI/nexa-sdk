@@ -21,23 +21,24 @@ class GGUFLM:
         self._world_size = 1
 
     def gguf_completion(
-        self, context, continuation=None, stop=None, retries=3, delay=5, **kwargs
+        self, context, max_new_tokens = None, continuation=None, stop=None, retries=3, delay=5, **kwargs
     ):
         for _ in range(retries):
             try:
                 prompt = context
                 request = {
                     "prompt": prompt,
-                    "logprobs": True,
-                    "top_logprobs": self.logprobs,
+                    "logprobs": self.logprobs,
                     "temperature": self.temperature,
                 }
-                # print("request", request)
                 if continuation:
                     prompt += continuation
                     request.update({"prompt": prompt, "max_tokens": 1, "echo": True})
                 if stop is not None:
-                    request["stop"] = stop
+                    request["stop_words"] = stop
+                if max_new_tokens is not None:
+                    request["max_new_tokens"] = max_new_tokens
+                # print("request", request)
                 response = requests.post(
                     f"{self.base_url}", json=request
                 )
@@ -88,7 +89,8 @@ class GGUFLM:
             inp = request[0]
             request_args = request[1]
             until = request_args.get("until", ["</s>"])
-            response = self.gguf_completion(context=inp, stop=until)
+            max_new_tokens = request_args.get("max_gen_toks", None)
+            response = self.gguf_completion(context=inp, stop=until, max_new_tokens=max_new_tokens)
             if response and "choices" in response and response["choices"]:
                 choice = response["choices"][0]
                 if "text" in choice:
