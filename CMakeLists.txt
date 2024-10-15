@@ -149,33 +149,62 @@ if(BARK_BUILD)
             -DBUILD_SHARED_LIBS=ON
             -DBARK_BUILD_EXAMPLES=OFF
         BUILD_ALWAYS 1
-        INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
+        INSTALL_COMMAND
+            ${CMAKE_COMMAND} --build . --target install
+        COMMAND
+            ${CMAKE_COMMAND} -E copy_if_different
+            $<IF:$<PLATFORM_ID:Windows>,
+                ${CMAKE_CURRENT_BINARY_DIR}/bark_build/bin/$<CONFIG>/ggml${CMAKE_SHARED_LIBRARY_SUFFIX},
+                ${CMAKE_CURRENT_BINARY_DIR}/bark_build/lib/libggml${CMAKE_SHARED_LIBRARY_SUFFIX}>
+            ${CMAKE_CURRENT_BINARY_DIR}/bark_install/$<IF:$<PLATFORM_ID:Windows>,bin,lib>/
     )
 endif()
 
 # Install the built libraries to the final destination
-install(
-    DIRECTORY
-        ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_install/lib/
-        ${CMAKE_CURRENT_BINARY_DIR}/llama_install/lib/
-        ${CMAKE_CURRENT_BINARY_DIR}/bark_install/lib/
-    DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
-    USE_SOURCE_PERMISSIONS
-    FILES_MATCHING
-        PATTERN "*.dll"
-        PATTERN "*.so"
-        PATTERN "*.dylib"
-)
+if(WIN32)
+    install(
+        DIRECTORY
+            ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_install/lib/
+            ${CMAKE_CURRENT_BINARY_DIR}/llama_install/bin/
+            ${CMAKE_CURRENT_BINARY_DIR}/bark_install/bin/
+        DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
+        USE_SOURCE_PERMISSIONS
+        FILES_MATCHING
+            PATTERN "*.dll"
+    )
 
-install(
-    DIRECTORY
-        ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_install/lib/
-        ${CMAKE_CURRENT_BINARY_DIR}/llama_install/lib/
-        ${CMAKE_CURRENT_BINARY_DIR}/bark_install/lib/
-    DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
-    USE_SOURCE_PERMISSIONS
-    FILES_MATCHING
-        PATTERN "*.dll"
-        PATTERN "*.so"
-        PATTERN "*.dylib"
-)
+    install(
+        DIRECTORY
+            ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_install/lib/
+            ${CMAKE_CURRENT_BINARY_DIR}/llama_install/bin/
+            ${CMAKE_CURRENT_BINARY_DIR}/bark_install/bin/
+        DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
+        USE_SOURCE_PERMISSIONS
+        FILES_MATCHING
+            PATTERN "*.dll"
+    )
+else()
+    install(
+        DIRECTORY
+            ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_install/lib/
+            ${CMAKE_CURRENT_BINARY_DIR}/llama_install/lib/
+            ${CMAKE_CURRENT_BINARY_DIR}/bark_install/lib/
+        DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
+        USE_SOURCE_PERMISSIONS
+        FILES_MATCHING
+            PATTERN "*.so"
+            PATTERN "*.dylib"
+    )
+
+    install(
+        DIRECTORY
+            ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_install/lib/
+            ${CMAKE_CURRENT_BINARY_DIR}/llama_install/lib/
+            ${CMAKE_CURRENT_BINARY_DIR}/bark_install/lib/
+        DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
+        USE_SOURCE_PERMISSIONS
+        FILES_MATCHING
+            PATTERN "*.so"
+            PATTERN "*.dylib"
+    )
+endif()
