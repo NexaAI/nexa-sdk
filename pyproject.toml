@@ -65,6 +65,13 @@ eval = [
     "sacrebleu",
     "langdetect",
     "immutabledict",
+    "hydra-core",
+    "psutil",
+    "typing-extensions",
+    "flatten_dict",
+    "colorlog",
+    "pandas",
+    "rich",
 ]
 
 [project.urls]
