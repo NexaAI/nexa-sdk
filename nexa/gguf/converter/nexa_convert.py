@@ -106,6 +106,28 @@ def quantize_model(
     
 
 def convert_hf_to_quantized_gguf(input_path: str, output_file: str = None, ftype: str = "q4_0", convert_type: str = "f16", **kwargs) -> None:
+    """
+    Convert a model in safetensors format to a quantized GGUF file.
+
+    This function handles the conversion of Hugging Face models to GGUF format and subsequent quantization.
+    It can process both directories containing .safetensors files and existing .gguf files.
+
+    Args:
+        input_path (str): Path to the input Hugging Face model directory or GGUF file.
+        output_file (str, optional): Path to the output quantized GGUF file. If None, a default path will be used.
+        ftype (str, optional): Quantization type (default: "q4_0").
+        convert_type (str, optional): Conversion type for safetensors to GGUF (default: "f16").
+        **kwargs: Additional keyword arguments for the conversion and quantization process.
+
+    Raises:
+        FileNotFoundError: If the input directory or file does not exist.
+        ValueError: If the input path is invalid or no .safetensors files are found in the directory.
+
+    Note:
+        - For directory inputs, this function first converts the model to GGUF format, then quantizes it.
+        - For .gguf file inputs, it directly applies quantization.
+        - Temporary files are created and cleaned up during the process.
+    """
     # Convert input path to absolute path
     input_path = os.path.abspath(input_path)
     
