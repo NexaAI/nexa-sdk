@@ -46,7 +46,6 @@ class NexaEval:
             "tasks": self.tasks,
             "limit": self.limit,
             "model_args": f"base_url={self.server_url}/v1/completions",
-            "hf_hub_log_args": "",
             "batch_size": 8,
             "output_path": str(output_path),
             "include_path": None,

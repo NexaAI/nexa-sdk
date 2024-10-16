@@ -91,8 +91,7 @@ class GenerationRequest(BaseModel):
     top_k: int = 50
     top_p: float = 1.0
     stop_words: Optional[List[str]] = []
-    logprobs: Optional[bool] = False
-    top_logprobs: Optional[int] = 4
+    logprobs: Optional[int] = None
     stream: Optional[bool] = False
 
 class TextContent(BaseModel):
