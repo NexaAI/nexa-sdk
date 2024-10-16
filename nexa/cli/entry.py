@@ -2,6 +2,7 @@ import argparse
 import os
 from nexa import __version__
 from nexa.constants import ModelType
+import json
 
 
 def _choose_files(local_path):
@@ -256,6 +257,17 @@ def run_embedding_generation(args):
         print(f"Error generating embedding: {e}")
         print("Please refer to our docs to install nexaai package: https://docs.nexaai.com/getting-started/installation")
 
+def run_convert(args):
+    from nexa.gguf.converter.nexa_convert import convert_hf_to_quantized_gguf
+    kwargs = {k: v for k, v in vars(args).items() if v is not None and k not in ['input_path', 'ftype', 'output_file', 'convert_type']}
+    convert_hf_to_quantized_gguf(
+        args.input_path,
+        output_file=args.output_file,
+        ftype=args.ftype,
+        convert_type=args.convert_type,
+        **kwargs
+    )
+
 def main():
     parser = argparse.ArgumentParser(
         description="Nexa CLI tool for handling various model operations."
@@ -385,6 +397,36 @@ def main():
     embed_parser.add_argument("-n", "--normalize", action="store_true", help="Normalize the embeddings")
     embed_parser.add_argument("-nt", "--no_truncate", action="store_true", help="Not truncate the embeddings")
 
+    # Convert command
+    convert_parser = subparsers.add_parser("convert", help="Convert and quantize a Hugging Face model to GGUF format.")
+    convert_parser.add_argument("input_path", type=str, help="Path to the input Hugging Face model directory or GGUF file")
+    convert_parser.add_argument("ftype", nargs='?', type=str, default="q4_0", help="Quantization type (default: q4_0)")
+    convert_parser.add_argument("output_file", nargs='?', type=str, help="Path to the output quantized GGUF file")
+
+    convert_general = convert_parser.add_argument_group('General options')
+    convert_general.add_argument("-t", "--nthread", type=int, default=4, help="Number of threads to use (default: 4)")
+    convert_general.add_argument("--convert_type", type=str, default="f16", help="Conversion type for safetensors to GGUF (default: f16)")
+
+    convert_hf_parser = convert_parser.add_argument_group('Convert from safetensors options')
+    convert_hf_parser.add_argument("--bigendian", action="store_true", help="Use big endian format")
+    convert_hf_parser.add_argument("--use_temp_file", action="store_true", help="Use a temporary file during conversion")
+    convert_hf_parser.add_argument("--no_lazy", action="store_true", help="Disable lazy loading")
+    convert_hf_parser.add_argument("--metadata", type=json.loads, help="Additional metadata as JSON string")
+    convert_hf_parser.add_argument("--split_max_tensors", type=int, default=0, help="Maximum number of tensors per split")
+    convert_hf_parser.add_argument("--split_max_size", type=str, default="0", help="Maximum size per split")
+    convert_hf_parser.add_argument("--no_tensor_first_split", action="store_true", help="Disable tensor-first splitting")
+    convert_hf_parser.add_argument("--vocab_only", action="store_true", help="Only process vocabulary")
+    convert_hf_parser.add_argument("--dry_run", action="store_true", help="Perform a dry run without actual conversion")
+
+    quantization_parser = convert_parser.add_argument_group('Quantization options')
+    quantization_parser.add_argument("--output_tensor_type", type=str, help="Output tensor type")
+    quantization_parser.add_argument("--token_embedding_type", type=str, help="Token embedding type")
+    quantization_parser.add_argument("--allow_requantize", action="store_true", help="Allow quantizing non-f32/f16 tensors")
+    quantization_parser.add_argument("--quantize_output_tensor", action="store_true", help="Quantize output.weight")
+    quantization_parser.add_argument("--only_copy", action="store_true", help="Only copy tensors (ignores ftype, allow_requantize, and quantize_output_tensor)")
+    quantization_parser.add_argument("--pure", action="store_true", help="Quantize all tensors to the default type")
+    quantization_parser.add_argument("--keep_split", action="store_true", help="Quantize to the same number of shards")
+
     args = parser.parse_args()
 
     if args.command == "run":
@@ -416,6 +458,8 @@ def main():
         from nexa.general import pull_model
         hf = getattr(args, 'huggingface', False)
         pull_model(args.model_path, hf)
+    elif args.command == "convert":
+        run_convert(args)
     elif args.command == "remove":
         from nexa.general import remove_model
         remove_model(args.model_path)
