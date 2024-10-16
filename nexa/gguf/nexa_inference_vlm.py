@@ -100,6 +100,7 @@ class NexaVLMInference:
         self.projector_path = NEXA_RUN_PROJECTOR_MAP.get(model_path, None)
         self.downloaded_path = local_path
         self.projector_downloaded_path = projector_local_path
+        self.device = None
 
         if self.downloaded_path is not None and self.projector_downloaded_path is not None:
             # when running from local, both path should be provided
@@ -166,13 +167,20 @@ class NexaVLMInference:
             )
             try:
                 from nexa.gguf.llama.llama import Llama
+
+                self.device = self.params.get("device", "auto")
+                if self.device == "auto" or self.device == "gpu":
+                    n_gpu_layers = -1 if is_gpu_available() else 0
+                elif self.device == "cpu":
+                    n_gpu_layers = 0
+                
                 self.model = Llama(
                     model_path=self.downloaded_path,
                     chat_handler=self.projector,
                     verbose=False,
                     chat_format=self.chat_format,
                     n_ctx=self.params.get("nctx", 2048),
-                    n_gpu_layers=-1 if is_gpu_available() else 0,
+                    n_gpu_layers=n_gpu_layers,
                 )
             except Exception as e:
                 logging.error(
@@ -396,6 +404,14 @@ if __name__ == "__main__":
         "--streamlit",
         action="store_true",
         help="Run the inference in Streamlit UI",
+    )
+    parser.add_argument(
+        "-d",
+        "--device",
+        type=str,
+        choices=["auto", "cpu", "gpu"],
+        default="auto",
+        help="Device to use for inference (auto, cpu, or gpu)",
     )
     args = parser.parse_args()
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
