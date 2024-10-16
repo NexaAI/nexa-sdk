@@ -44,14 +44,14 @@ class NexaTextInference:
     top_k (int): Top-k sampling parameter.
     top_p (float): Top-p sampling parameter
     """
-    def __init__(self, model_path=None, local_path=None, stop_words=None, **kwargs):
+    def __init__(self, model_path=None, local_path=None, stop_words=None, device="auto", **kwargs):
         if model_path is None and local_path is None:
             raise ValueError("Either model_path or local_path must be provided.")
         
         self.params = DEFAULT_TEXT_GEN_PARAMS
         self.params.update(kwargs)
         self.model = None
-        self.device = None
+        self.device = device
 
         self.model_path = model_path
         self.downloaded_path = local_path
@@ -108,7 +108,6 @@ class NexaTextInference:
         with suppress_stdout_stderr():
             from nexa.gguf.llama.llama import Llama
             try:
-                self.device = self.params.get("device", "auto")
                 if self.device == "auto" or self.device == "gpu":
                     n_gpu_layers = -1 if is_gpu_available() else 0
                 elif self.device == "cpu":
@@ -377,8 +376,9 @@ if __name__ == "__main__":
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")
     stop_words = kwargs.pop("stop_words", [])
+    device = kwargs.pop("device", "auto")
 
-    inference = NexaTextInference(model_path, stop_words=stop_words, **kwargs)
+    inference = NexaTextInference(model_path, stop_words=stop_words, device=device, **kwargs)
     if args.streamlit:
         inference.run_streamlit(model_path)
     else:

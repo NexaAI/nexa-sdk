@@ -89,7 +89,7 @@ class NexaVLMInference:
     top_k (int): Top-k sampling parameter.
     top_p (float): Top-p sampling parameter
     """
-    def __init__(self, model_path=None, local_path=None, projector_local_path=None, stop_words=None, **kwargs):
+    def __init__(self, model_path=None, local_path=None, projector_local_path=None, stop_words=None, device="auto", **kwargs):
         if model_path is None and local_path is None:
             raise ValueError("Either model_path or local_path must be provided.")
         
@@ -100,7 +100,7 @@ class NexaVLMInference:
         self.projector_path = NEXA_RUN_PROJECTOR_MAP.get(model_path, None)
         self.downloaded_path = local_path
         self.projector_downloaded_path = projector_local_path
-        self.device = None
+        self.device = device
 
         if self.downloaded_path is not None and self.projector_downloaded_path is not None:
             # when running from local, both path should be provided
@@ -167,8 +167,6 @@ class NexaVLMInference:
             )
             try:
                 from nexa.gguf.llama.llama import Llama
-
-                self.device = self.params.get("device", "auto")
                 if self.device == "auto" or self.device == "gpu":
                     n_gpu_layers = -1 if is_gpu_available() else 0
                 elif self.device == "cpu":
@@ -417,7 +415,9 @@ if __name__ == "__main__":
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")
     stop_words = kwargs.pop("stop_words", [])
-    inference = NexaVLMInference(model_path, stop_words=stop_words, **kwargs)
+    device = kwargs.pop("device", "auto")
+
+    inference = NexaVLMInference(model_path, stop_words=stop_words, device=device, **kwargs)
     if args.streamlit:
         inference.run_streamlit(model_path)
     else:

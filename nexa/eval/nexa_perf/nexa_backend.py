@@ -122,7 +122,14 @@ class NexaBackend:
         """
         Load the model from the given model path (normally GGUF, GGML)
         """
-        nexa_model = NexaTextInference(model_path=self.config.model)
+        # TODO: add mps (apple metal) support, currently cant benchmark mps device accurately for energy
+        if self.config.device == "cuda" or self.config.device == "mps":
+            nexa_model = NexaTextInference(model_path=self.config.model, device="gpu", **self.config.model_kwargs)
+        elif self.config.device == "cpu":
+            nexa_model = NexaTextInference(model_path=self.config.model, device="cpu", **self.config.model_kwargs)
+        else:
+            raise ValueError(f"Invalid device: {self.config.device}")
+        
         self.pretrained_model = nexa_model.model
 
     def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> list[int]:

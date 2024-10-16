@@ -203,7 +203,7 @@ class NexaEval:
             memory=True,  
             energy=True,
             input_shapes={
-                "batch_size": 1,
+                "batch_size": 1,        # TODO: make it dynamic, hardcoded to 1 for now
                 "sequence_length": 256,
                 "vocab_size": 32000,
             },
