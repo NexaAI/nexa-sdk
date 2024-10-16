@@ -172,8 +172,8 @@ def quantize_model(
         ftype (str): Quantization type (default: "q4_0").
         nthread (int): Number of threads to use for quantization (default: 4).
         **kwargs: Additional parameters for quantization:
-            output_tensor_type (int): Output tensor type.
-            token_embedding_type (int): Token embeddings tensor type.
+            output_tensor_type (str): Output tensor type.
+            token_embedding_type (str): Token embeddings tensor type.
             allow_requantize (bool): Allow quantizing non-f32/f16 tensors.
             quantize_output_tensor (bool): Quantize output.weight.
             only_copy (bool): Only copy tensors - ftype, allow_requantize and quantize_output_tensor are ignored.
@@ -202,14 +202,35 @@ def quantize_model(
     # Set up quantization parameters
     params = llama_model_quantize_params()
     params.nthread = nthread
-    params.ftype = LLAMA_QUANTIZATION_TYPES.get(ftype, LLAMA_FTYPE_MOSTLY_Q4_0)
-    params.output_tensor_type = GGML_TYPE_COUNT
-    params.token_embedding_type = GGML_TYPE_COUNT
 
-    # Set additional parameters from kwargs
-    for key, value in kwargs.items():
-        if hasattr(params, key):
-            setattr(params, key, value)
+    # Handle ftype
+    if ftype in LLAMA_QUANTIZATION_TYPES:
+        params.ftype = LLAMA_QUANTIZATION_TYPES[ftype]
+    else:
+        logger.warning(f"Provided ftype '{ftype}' not found in LLAMA_QUANTIZATION_TYPES. Using default Q4_0.")
+        params.ftype = LLAMA_FTYPE_MOSTLY_Q4_0
+
+    # Handle output_tensor_type
+    output_tensor_type = kwargs.get('output_tensor_type', '')
+    if output_tensor_type:
+        if output_tensor_type in GGML_TYPES:
+            params.output_tensor_type = GGML_TYPES[output_tensor_type]
+        else:
+            logger.warning(f"Provided output_tensor_type '{output_tensor_type}' not found in GGML_TYPES. Using default COUNT.")
+            params.output_tensor_type = GGML_TYPE_COUNT
+    else:
+        params.output_tensor_type = GGML_TYPE_COUNT
+
+    # Handle token_embedding_type
+    token_embedding_type = kwargs.get('token_embedding_type', '')
+    if token_embedding_type:
+        if token_embedding_type in GGML_TYPES:
+            params.token_embedding_type = GGML_TYPES[token_embedding_type]
+        else:
+            logger.warning(f"Provided token_embedding_type '{token_embedding_type}' not found in GGML_TYPES. Using default COUNT.")
+            params.token_embedding_type = GGML_TYPE_COUNT
+    else:
+        params.token_embedding_type = GGML_TYPE_COUNT
 
     logger.info(f"Starting quantization of {input_file}")
     logger.info(f"Output file: {output_file}")
@@ -227,7 +248,7 @@ def quantize_model(
 
 from nexa_gguf.convert_hf_to_gguf import nexa_convert_hf_to_gguf
 
-def convert_hf_to_quantized_gguf(input_path: str, output_file: str, ftype: str = "q4_0", **kwargs) -> None:
+def convert_hf_to_quantized_gguf(input_path: str, output_file: str = None, ftype: str = "q4_0", **kwargs) -> None:
     # Convert input path to absolute path
     input_path = os.path.abspath(input_path)
     output_file = os.path.abspath(output_file)
