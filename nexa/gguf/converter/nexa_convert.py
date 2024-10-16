@@ -105,8 +105,6 @@ def quantize_model(
         raise
     
 
-from nexa_gguf.convert_hf_to_gguf import nexa_convert_hf_to_gguf
-
 def convert_hf_to_quantized_gguf(input_path: str, output_file: str = None, ftype: str = "q4_0", convert_type: str = "f16", **kwargs) -> None:
     # Convert input path to absolute path
     input_path = os.path.abspath(input_path)
@@ -133,6 +131,7 @@ def convert_hf_to_quantized_gguf(input_path: str, output_file: str = None, ftype
 
             try:
                 # Convert HF model to GGUF
+                from nexa_gguf.convert_hf_to_gguf import nexa_convert_hf_to_gguf
                 nexa_convert_hf_to_gguf(model=input_path, outfile=str(tmp_file_path.absolute()), outtype=convert_type, **kwargs)
 
                 # Quantize GGUF model
