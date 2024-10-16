@@ -105,7 +105,13 @@ def quantize_model(
         raise
     
 
-def convert_hf_to_quantized_gguf(input_path: str, output_file: str = None, ftype: str = "q4_0", convert_type: str = "f16", **kwargs) -> None:
+def convert_hf_to_quantized_gguf(
+    input_path: str, 
+    output_file: str = None, 
+    ftype: str = "q4_0", 
+    convert_type: str = "f16", 
+    **kwargs
+) -> None:
     """
     Convert a model in safetensors format to a quantized GGUF file.
 
