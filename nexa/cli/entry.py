@@ -258,15 +258,34 @@ def run_embedding_generation(args):
         print("Please refer to our docs to install nexaai package: https://docs.nexaai.com/getting-started/installation")
 
 def run_convert(args):
-    from nexa.gguf.converter.nexa_convert import convert_hf_to_quantized_gguf
+    input_path = args.input_path
+    
+    # Check if input_path is a valid directory
+    if not os.path.isdir(input_path):
+        from nexa.general import download_repo_from_hf
+        success, local_path = download_repo_from_hf(input_path)
+        
+        if success:
+            input_path = local_path
+        else:
+            print("Error: Failed to download the repository and the provided path is not a valid directory.")
+            return
+    
+    # Input_path here should be a valid directory
     kwargs = {k: v for k, v in vars(args).items() if v is not None and k not in ['input_path', 'ftype', 'output_file', 'convert_type']}
-    convert_hf_to_quantized_gguf(
-        args.input_path,
-        output_file=args.output_file,
-        ftype=args.ftype,
-        convert_type=args.convert_type,
-        **kwargs
-    )
+    
+    try:
+        from nexa.gguf.converter.nexa_convert import convert_hf_to_quantized_gguf
+        convert_hf_to_quantized_gguf(
+            input_path,
+            output_file=args.output_file,
+            ftype=args.ftype,
+            convert_type=args.convert_type,
+            **kwargs
+        )
+        print("Conversion completed successfully.")
+    except Exception as e:
+        print(f"Error during conversion: {e}")
 
 def main():
     parser = argparse.ArgumentParser(
