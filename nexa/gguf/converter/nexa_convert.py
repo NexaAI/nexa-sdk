@@ -248,10 +248,16 @@ def quantize_model(
 
 from nexa_gguf.convert_hf_to_gguf import nexa_convert_hf_to_gguf
 
-def convert_hf_to_quantized_gguf(input_path: str, output_file: str = None, ftype: str = "q4_0", **kwargs) -> None:
+def convert_hf_to_quantized_gguf(input_path: str, output_file: str = None, ftype: str = "q4_0", convert_type: str = "f16", **kwargs) -> None:
     # Convert input path to absolute path
     input_path = os.path.abspath(input_path)
-    output_file = os.path.abspath(output_file)
+    
+    # Set default output file if not provided
+    if not output_file:
+        input_name = os.path.basename(input_path)
+        output_file = os.path.abspath(f"./{input_name}-{ftype}.gguf")
+    else:
+        output_file = os.path.abspath(output_file)
 
     if os.path.isdir(input_path):
         if not os.path.exists(input_path):
@@ -263,34 +269,37 @@ def convert_hf_to_quantized_gguf(input_path: str, output_file: str = None, ftype
             # Create tmp file path
             tmp_dir = Path.home().absolute() / ".cache" / "nexa" / "tmp_models"
             tmp_dir.mkdir(parents=True, exist_ok=True)
-            tmp_file_name = f"{Path(input_path).name}-f16.gguf"
+            tmp_file_name = f"{Path(input_path).name}-{convert_type}.gguf"
             tmp_file_path = tmp_dir / tmp_file_name
 
-            # Convert HF model to GGUF
-            nexa_convert_hf_to_gguf(model=input_path, outfile=str(tmp_file_path.absolute()), **kwargs)
+            try:
+                # Convert HF model to GGUF
+                nexa_convert_hf_to_gguf(model=input_path, outfile=str(tmp_file_path.absolute()), outtype=convert_type, **kwargs)
 
-            # Quantize GGUF model
-            quantize_model(str(tmp_file_path.absolute()), output_file, ftype, **kwargs)
+                # Quantize GGUF model
+                quantize_model(str(tmp_file_path.absolute()), output_file, ftype, **kwargs)
+            finally:
+                # Delete the temporary file
+                if tmp_file_path.exists():
+                    tmp_file_path.unlink()
         else:
             logger.error(f"No .safetensors files found in directory: {input_path}")
     elif input_path.endswith('.gguf'):
-        # Directly call nexa_convert_hf_to_gguf with input_path
+        # Directly call quantize_model with input_path
         quantize_model(input_file=input_path, output_file=output_file, ftype=ftype, **kwargs)
     else:
         logger.error(f"Invalid input path: {input_path}. Must be a directory with .safetensors files or a .gguf file.")
     
 
-
-
-
 def main():
     parser = argparse.ArgumentParser(description="Convert and quantize a Hugging Face model to GGUF format.")
     parser.add_argument("input_path", type=str, help="Path to the input Hugging Face model directory or GGUF file")
-    parser.add_argument("-o", "--output_file", type=str, help="Path to the output quantized GGUF file")
-    parser.add_argument("-f", "--ftype", type=str, default="q4_0", help="Quantization type (default: q4_0)")
+    parser.add_argument("ftype", nargs='?', type=str, default="q4_0", help="Quantization type (default: q4_0)")
+    parser.add_argument("output_file", nargs='?', type=str, help="Path to the output quantized GGUF file")
     parser.add_argument("-t", "--nthread", type=int, default=4, help="Number of threads to use (default: 4)")
-    
+        
     # Arguments for convert_hf_to_gguf
+    parser.add_argument("--convert_type", type=str, default="f16", help="Conversion type for safetensors to GGUF (default: f16)")
     parser.add_argument("--bigendian", action="store_true", help="Use big endian format")
     parser.add_argument("--use_temp_file", action="store_true", help="Use a temporary file during conversion")
     parser.add_argument("--no_lazy", action="store_true", help="Disable lazy loading")
@@ -315,7 +324,7 @@ def main():
     # Prepare kwargs for additional parameters
     kwargs = {
         k: v for k, v in vars(args).items()
-        if k not in ["input_path", "output_file", "ftype"] and v is not None
+        if k not in ["input_path", "output_file", "ftype", "convert_type"] and v is not None
     }
 
     # Convert string types to GGML types if specified
@@ -325,7 +334,7 @@ def main():
         kwargs["token_embedding_type"] = GGML_TYPES.get(args.token_embedding_type, GGML_TYPE_COUNT)
 
     try:
-        convert_hf_to_quantized_gguf(args.input_path, args.output_file, args.ftype, **kwargs)
+        convert_hf_to_quantized_gguf(args.input_path, args.output_file, args.ftype, args.convert_type, **kwargs)
     except Exception as e:
         logger.error(f"Error during conversion and quantization: {str(e)}")
         exit(1)
