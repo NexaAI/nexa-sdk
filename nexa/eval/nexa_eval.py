@@ -11,14 +11,21 @@ from pathlib import Path
 from contextlib import ExitStack
 from nexa.eval import evaluator
 from nexa.eval.nexa_task.task_manager import TaskManager
-from nexa.eval.utils import make_table, simple_parse_args_string, handle_non_serializable
+from nexa.eval.utils import make_table, handle_non_serializable
 from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
 from nexa.constants import NEXA_MODEL_EVAL_RESULTS_PATH, NEXA_RUN_MODEL_MAP
+from nexa.eval.nexa_perf import (
+    Benchmark,
+    BenchmarkConfig,
+    InferenceConfig,
+    ProcessConfig,
+    NexaConfig,
+)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class NexaEval:
-    def __init__(self, model_path: str, tasks: str, limit: float = None, port: int = None, nctx: int = None):
+    def __init__(self, model_path: str, tasks: str = None, limit: float = None, port: int = None, nctx: int = None):
         model_path = NEXA_RUN_MODEL_MAP.get(model_path, model_path)
         self.model_path = model_path
         
@@ -31,7 +38,9 @@ class NexaEval:
         self.initial_port = port if port is not None else 8300
         self.port = self.initial_port
         self.server_url = f"http://0.0.0.0:{self.port}"
-        output_path = Path(NEXA_MODEL_EVAL_RESULTS_PATH) / self.model_name / self.model_tag / self.tasks.replace(',', '_')
+        output_path = Path(NEXA_MODEL_EVAL_RESULTS_PATH) / self.model_name / self.model_tag
+        if self.tasks:
+            output_path = output_path / self.tasks.replace(',', '_')
         self.eval_args = {
             "model": self.model_path,
             "tasks": self.tasks,
@@ -181,23 +190,62 @@ class NexaEval:
             except Exception as e:
                 logging.error(f"An error occurred during evaluation: {e}")
 
+    def run_perf_eval(self, device: str, new_tokens: int):
+        BENCHMARK_NAME = f"nexa_sdk_{self.model_path}"
+        launcher_config = ProcessConfig()
+        backend_config = NexaConfig(
+            device=device,
+            model=self.model_path,
+            task="text-generation",
+        )
+        scenario_config = InferenceConfig(
+            latency=True,
+            memory=True,  
+            energy=True,
+            input_shapes={
+                "batch_size": 1,        # TODO: make it dynamic, hardcoded to 1 for now
+                "sequence_length": 256,
+                "vocab_size": 32000,
+            },
+            generate_kwargs={
+                "max_new_tokens": new_tokens,
+                "min_new_tokens": new_tokens,
+            },
+        )
+        benchmark_config = BenchmarkConfig(
+            name=BENCHMARK_NAME,
+            launcher=launcher_config,
+            backend=backend_config,
+            scenario=scenario_config,
+        )
+
+        # Launch the benchmark with the specified configuration
+        benchmark_report = Benchmark.launch(benchmark_config)
+        benchmark_report.save_csv(f"benchmark_report_{self.model_path}.csv")
+
+
     def stop_server(self):
         if self.server_process:
             self.server_process.terminate()
             self.server_process.join()
             logging.info("Server process terminated")
 
-def run_eval_inference(model_path: str, tasks: str, limit: float = None, port: int = None, nctx: int = None):
+def run_eval_inference(model_path: str, tasks: str = None, limit: float = None, port: int = None, nctx: int = None, device: str = "cpu", new_tokens: int = 100):
     evaluator = NexaEval(model_path, tasks, limit, port, nctx)
-    evaluator.run_evaluation()
+    if not tasks:
+        evaluator.run_perf_eval(device, new_tokens)
+    else:
+        evaluator.run_evaluation()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run Nexa Model Evaluation")
     parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
-    parser.add_argument("--tasks", type=str, help="Tasks to evaluate, comma-separated")
+    parser.add_argument("--tasks", type=str, help="Tasks to evaluate, comma-separated", default=None)
     parser.add_argument("--limit", type=float, help="Limit the number of examples per task. If <1, limit is a percentage of the total number of examples.", default=None)
     parser.add_argument("--port", type=int, help="Initial port to bind the server to", default=8300)
     parser.add_argument("--nctx", type=int, help="Length of context window", default=4096)
-    
+    parser.add_argument("--device", type=str, help="Device to run the inference on, choose from 'cpu', 'cuda', 'mps'", default="cpu")
+    parser.add_argument("--new_tokens", type=int, help="Number of new tokens to evaluate", default=100)
+
     args = parser.parse_args()
-    run_eval_inference(args.model_path, args.tasks, args.limit, args.port, args.nctx)
+    run_eval_inference(args.model_path, args.tasks, args.limit, args.port, args.nctx, args.device, args.new_tokens)

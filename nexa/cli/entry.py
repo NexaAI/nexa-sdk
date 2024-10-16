@@ -208,7 +208,7 @@ def run_onnx_inference(args):
 
 def run_eval_tasks(args):
     try:
-        if 'do-not-answer' in args.tasks:
+        if args.tasks and 'do-not-answer' in args.tasks:
             if not os.getenv('OPENAI_API_KEY'):
                 print("Warning: The 'do-not-answer' task requires an OpenAI API key.")
                 print("Please set your API key in the terminal using the following command:")
@@ -221,9 +221,13 @@ def run_eval_tasks(args):
         
         from nexa.eval.nexa_eval import NexaEval
         evaluator = NexaEval(model_path, args.tasks, args.limit, args.port, args.nctx)
-        evaluator.run_evaluation()
+        if not args.tasks:
+            evaluator.run_perf_eval(args.device, args.new_tokens)
+        else:
+            evaluator.run_evaluation()
     except Exception as e:
-        print(f"Error running evaluation, please run: pip install nexaai[eval]")
+        print("Please run: pip install nexaai[eval]")
+        print(f"Error running evaluation: {e}")
         return
 
 def run_embedding_generation(args):
@@ -257,18 +261,8 @@ def run_embedding_generation(args):
         print("Please refer to our docs to install nexaai package: https://docs.nexaai.com/getting-started/installation")
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Nexa CLI tool for handling various model operations."
-    )
-
-    parser.add_argument(
-        "-V",
-        "--version",
-        action="version",
-        version=__version__,
-        help="Show the version of the Nexa SDK.",
-    )
-
+    parser = argparse.ArgumentParser(description="Nexa CLI tool for handling various model operations.")
+    parser.add_argument("-V", "--version", action="version", version=__version__, help="Show the version of the Nexa SDK.")
     subparsers = parser.add_subparsers(dest="command", help="sub-command help")
 
     # Run command
@@ -371,10 +365,18 @@ def main():
     # Benchmark Evaluation
     eval_parser = subparsers.add_parser("eval", help="Evaluate models on specified tasks.")
     eval_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
-    eval_parser.add_argument("--tasks", type=str, required=True, help="Tasks to evaluate the model on, separated by commas.")
-    eval_parser.add_argument("--limit", type=float, help="Limit the number of examples per task. If <1, limit is a percentage of the total number of examples.", default=None)
-    eval_parser.add_argument("--port", type=int, help="Port to bind the server to", default=8300)
-    eval_parser.add_argument("--nctx", type=int, help="Length of context window", default=4096)
+
+    # General evaluation options
+    general_eval_group = eval_parser.add_argument_group('General evaluation options')
+    general_eval_group.add_argument("--tasks", type=str, help="Tasks to evaluate the model on, separated by commas.")
+    general_eval_group.add_argument("--limit", type=float, help="Limit the number of examples per task. If <1, limit is a percentage of the total number of examples.", default=None)
+    general_eval_group.add_argument("--port", type=int, help="Port to bind the server to", default=8300)
+    general_eval_group.add_argument("--nctx", type=int, help="Length of context window", default=4096)
+
+    # Performance evaluation options
+    perf_eval_group = eval_parser.add_argument_group('Performance evaluation options')
+    perf_eval_group.add_argument("--device", type=str, help="Device to run performance evaluation on, choose from 'cpu', 'cuda', 'mps'", default="cpu")
+    perf_eval_group.add_argument("--new_tokens", type=int, help="Number of new tokens to evaluate", default=100)
 
     # Embed command
     embed_parser = subparsers.add_parser("embed", help="Generate embeddings for a given prompt.")
