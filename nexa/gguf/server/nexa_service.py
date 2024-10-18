@@ -519,7 +519,7 @@ def run_nexa_ai_service(model_path_arg=None, is_local_path_arg=False, model_type
     os.environ["HUGGINGFACE"] = str(huggingface)
     os.environ["PROJECTOR_PATH"] = projector_path if projector_path else ""
     n_ctx = kwargs.get("nctx", 2048)
-    host = kwargs.get("host", "0.0.0.0")
+    host = kwargs.get("host", "localhost")
     port = kwargs.get("port", 8000)
     reload = kwargs.get("reload", False)
     uvicorn.run(app, host=host, port=port, reload=reload)
@@ -835,7 +835,7 @@ if __name__ == "__main__":
         "--nctx", type=int, default=2048, help="Length of context window"
     )
     parser.add_argument(
-        "--host", type=str, default="0.0.0.0", help="Host to bind the server to"
+        "--host", type=str, default="localhost", help="Host to bind the server to"
     )
     parser.add_argument(
         "--port", type=int, default=8000, help="Port to bind the server to"
