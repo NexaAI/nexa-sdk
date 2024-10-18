@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class GGUFLM:
     def __init__(self, model_path=None, **kwargs):
         if model_path is None:
-            raise ValueError("Either model_path or local_path must be provided.")
+            raise ValueError("model_path must be provided.")
         self.model = NexaTextInference(model_path)
         self.logprobs = 10
         self.temperature = 0
@@ -37,8 +37,7 @@ class GGUFLM:
             result = self.model.create_completion(**params)
             return result
         except Exception as e:
-            # logger.error(f"Unexpected error occured: {e}")
-            print(f"Unexpected error occured: {e}")
+            logger.error(f"Unexpected error occured: {e}")
 
     def loglikelihood(self, requests, disable_tqdm: bool = False):
         if not requests:
