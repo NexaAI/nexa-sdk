@@ -148,7 +148,11 @@ GGML_TYPE_I32 = 26
 GGML_TYPE_I64 = 27
 GGML_TYPE_F64 = 28
 GGML_TYPE_IQ1_M = 29
-GGML_TYPE_COUNT = 30
+GGML_TYPE_BF16 = 30,
+GGML_TYPE_Q4_0_4_4 = 31
+GGML_TYPE_Q4_0_4_8 = 32
+GGML_TYPE_Q4_0_8_8 = 33
+GGML_TYPE_COUNT = 34
 
 # from ggml-backend.h
 # typedef bool (*ggml_backend_sched_eval_callback)(struct ggml_tensor * t, bool ask, void * user_data);
