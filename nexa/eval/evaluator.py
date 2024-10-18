@@ -141,7 +141,7 @@ def nexa_evaluate(
             requests[reqtype].append(instance)
 
     # Run LM on inputs, get all outputs
-    for reqtype, reqs in requests.items():
+    for reqtype, reqs in requests.items(): # TODO: probably change to multiprocessing
         eval_logger.info(f"Running {reqtype} requests")
         cloned_reqs = []
         for req in reqs:
