@@ -226,8 +226,8 @@ def run_eval_tasks(args):
         else:
             evaluator.run_evaluation()
     except Exception as e:
-        print("Please run: pip install nexaai[eval]")
         print(f"Error running evaluation: {e}")
+        print("Please run: pip install 'nexaai[eval]'")
         return
 
 def run_embedding_generation(args):
