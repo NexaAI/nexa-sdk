@@ -323,7 +323,7 @@ async def load_model():
         raise ValueError(f"Model {model_path} not found in Model Hub. If you are using local path, be sure to add --local_path and --model_type flags.")
     
 def nexa_run_text_generation(
-    prompt, temperature, stop_words, max_new_tokens, top_k, top_p, logprobs=None, top_logprobs=None, stream=False, is_chat_completion=True
+    prompt, temperature, stop_words, max_new_tokens, top_k, top_p, logprobs=None, stream=False, is_chat_completion=True
 ) -> Dict[str, Any]:
     global model, chat_format, completion_template
     if model is None:
@@ -346,8 +346,7 @@ def nexa_run_text_generation(
             'top_p': top_p,
             'stream': True,
             'stop': stop_words,
-            'logprobs': logprobs,
-            'top_logprobs': top_logprobs,
+            'logprobs': logprobs
         }
 
         streamer = model.create_chat_completion(**params)
@@ -366,7 +365,6 @@ def nexa_run_text_generation(
             'stream': True,
             'stop': stop_words,
             'logprobs': logprobs,
-            'top_logprobs': top_logprobs,
         }
 
         streamer = model.create_completion(**params)
