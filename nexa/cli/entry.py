@@ -343,7 +343,7 @@ def main():
     server_parser.add_argument("-lp", "--local_path", action="store_true", help="Indicate that the model path provided is the local path, must be used with -mt")
     server_parser.add_argument("-mt", "--model_type", type=str, choices=[e.name for e in ModelType], help="Indicate the model running type, must be used with -lp or -hf")
     server_parser.add_argument("-hf", "--huggingface", action="store_true", help="Load model from Hugging Face Hub, must be used with -mt")
-    server_parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to bind the server to")
+    server_parser.add_argument("--host", type=str, default="localhost", help="Host to bind the server to")
     server_parser.add_argument("--port", type=int, default=8000, help="Port to bind the server to")
     server_parser.add_argument("--reload", action="store_true", help="Enable automatic reloading on code changes")
     server_parser.add_argument("--nctx", type=int, default=2048, help="Maximum context length of the model you're using")

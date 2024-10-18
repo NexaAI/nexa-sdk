@@ -37,7 +37,7 @@ class NexaEval:
         self.nctx = nctx if nctx is not None else 4096
         self.initial_port = port if port is not None else 8300
         self.port = self.initial_port
-        self.server_url = f"http://0.0.0.0:{self.port}"
+        self.server_url = f"http://localhost:{self.port}"
         output_path = Path(NEXA_MODEL_EVAL_RESULTS_PATH) / self.model_name / self.model_tag
         if self.tasks:
             output_path = output_path / self.tasks.replace(',', '_')
@@ -56,14 +56,14 @@ class NexaEval:
         while True:
             try:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.bind(('0.0.0.0', self.port))
+                    s.bind(('localhost', self.port))
                     return self.port
             except socket.error:
                 logging.info(f"Port {self.port} is in use, trying {self.port + 1}")
                 self.port += 1
 
     def update_urls(self):
-        self.server_url = f"http://0.0.0.0:{self.port}"
+        self.server_url = f"http://localhost:{self.port}"
         self.eval_args["model_args"] = f"base_url={self.server_url}/v1/completions"
 
     def start_server(self):
@@ -72,7 +72,7 @@ class NexaEval:
         self.server_process = multiprocessing.Process(
             target=NexaServer,
             args=(self.model_path,),
-            kwargs={"host": "0.0.0.0", "port": self.port, "nctx": self.nctx},
+            kwargs={"host": "localhost", "port": self.port, "nctx": self.nctx},
         )
         self.server_process.start()
         logging.info(f"Started server process for model: {self.model_path} on port {self.port} with context window {self.nctx}")

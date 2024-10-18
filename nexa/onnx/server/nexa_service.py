@@ -204,7 +204,7 @@ def run_nexa_ai_service(model_path_arg, **kwargs):
     global model_path
     model_path = model_path_arg or "gemma"
     os.environ["MODEL_PATH"] = model_path
-    host = kwargs.get("host", "0.0.0.0")
+    host = kwargs.get("host", "localhost")
     port = kwargs.get("port", 8000)
     reload = kwargs.get("reload", False)
     uvicorn.run(app, host=host, port=port, reload=reload)
@@ -216,7 +216,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("model_path", type=str, nargs='?', default="gemma", help="Folder Path on Amazon S3")
     parser.add_argument(
-        "--host", type=str, default="0.0.0.0", help="Host to bind the server to"
+        "--host", type=str, default="localhost", help="Host to bind the server to"
     )
     parser.add_argument(
         "--port", type=int, default=8000, help="Port to bind the server to"
