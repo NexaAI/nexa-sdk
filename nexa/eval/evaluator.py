@@ -35,8 +35,7 @@ if TYPE_CHECKING:
     from nexa.eval.nexa_task.task import Task
 
 def nexa_evaluate(
-    model,
-    model_args: Optional[str] = None,
+    model_path,
     tasks: Optional[List[str]] = None,
     num_fewshot: Optional[int] = None,
     batch_size: Optional[Union[int, str]] = None,
@@ -50,11 +49,8 @@ def nexa_evaluate(
 ):
     """Instantiate and evaluate a model on a list of tasks.
 
-    :param model: Union[str, LM]
-        Name of model or LM object, see nexa.eval.models.get_model
-    :param model_args: Optional[str]
-        String for model class, see LM.create_from_arg_string.
-        Ignored if `model` argument is a LM object.
+    :param model_path: str
+        Path or identifier for the model in Nexa Model Hub
     :param tasks: list[str]
         List of task names or Task objects.
     :param num_fewshot: int
@@ -85,12 +81,7 @@ def nexa_evaluate(
     if not tasks:
         raise ValueError("No tasks specified, or no tasks found. Please verify the task names.")
 
-    lm = GGUFLM.create_from_arg_string(
-        model_args,
-        {
-            "batch_size": batch_size,
-        },
-    )
+    lm = GGUFLM(model_path)
 
     task_dict = get_task_dict(tasks, task_manager)
 
@@ -266,17 +257,8 @@ def nexa_evaluate(
             "samples": dict(samples),
         }
 
-        # Add model info to results
-        if isinstance(model, str):
-            model_name = model
-        elif hasattr(model, "config") and hasattr(model.config, "_name_or_path"):
-            model_name = model.config._name_or_path
-        else:
-            model_name = type(model).__name__
-
         results_dict["config"] = {
-            "model": model_name,
-            "model_args": model_args,
+            "model": model_path,
             "batch_size": batch_size,
             "limit": limit,
             "bootstrap_iters": bootstrap_iters,
