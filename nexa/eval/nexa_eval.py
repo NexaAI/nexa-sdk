@@ -25,7 +25,7 @@ from nexa.eval.nexa_perf import (
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class NexaEval:
-    def __init__(self, model_path: str, tasks: str = None, limit: float = None, port: int = None, nctx: int = None):
+    def __init__(self, model_path: str, tasks: str = None, limit: float = None, nctx: int = None, num_workers: int = None):
         model_path = NEXA_RUN_MODEL_MAP.get(model_path, model_path)
         self.model_path = model_path
         
@@ -33,6 +33,7 @@ class NexaEval:
         self.model_tag = model_path.split(":")[1].lower()
         self.limit = limit
         self.tasks = tasks
+        self.num_workers = num_workers if num_workers is not None else 1
         self.nctx = nctx if nctx is not None else 4096
         output_path = Path(NEXA_MODEL_EVAL_RESULTS_PATH) / self.model_name / self.model_tag
         if self.tasks:
@@ -41,7 +42,7 @@ class NexaEval:
             "model_path": self.model_path,
             "tasks": self.tasks,
             "limit": self.limit,
-            "batch_size": 8,
+            "num_workers": self.num_workers,
             "output_path": str(output_path),
             "include_path": None,
             "verbosity": "INFO",
@@ -66,8 +67,8 @@ class NexaEval:
             results = evaluator.nexa_evaluate(
                 model_path=args.model_path,
                 limit=args.limit,
+                num_workers=args.num_workers,
                 tasks=task_names,
-                batch_size=args.batch_size,
                 task_manager=task_manager
             )
         except ValueError as e:
@@ -190,6 +191,7 @@ if __name__ == "__main__":
     parser.add_argument("--tasks", type=str, help="Tasks to evaluate, comma-separated", default=None)
     parser.add_argument("--limit", type=float, help="Limit the number of examples per task. If <1, limit is a percentage of the total number of examples.", default=None)
     parser.add_argument("--nctx", type=int, help="Length of context window", default=4096)
+    parser.add_argument("--num_workers", type=int, help="Number of workers to run the inference", default=1)
     parser.add_argument("--device", type=str, help="Device to run the inference on, choose from 'cpu', 'cuda', 'mps'", default="cpu")
     parser.add_argument("--new_tokens", type=int, help="Number of new tokens to evaluate", default=100)
 

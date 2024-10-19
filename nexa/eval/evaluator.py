@@ -72,7 +72,6 @@ def nexa_evaluate(
     model_path,
     tasks: Optional[List[str]] = None,
     num_fewshot: Optional[int] = None,
-    batch_size: Optional[Union[int, str]] = None,
     limit: Optional[Union[int, float]] = None,
     bootstrap_iters: int = 100000,
     task_manager: Optional[TaskManager] = None,
@@ -323,8 +322,8 @@ def nexa_evaluate(
 
     results_dict["config"] = {
         "model": model_path,
-        "batch_size": batch_size,
         "limit": limit,
+        "num_workers": num_workers,
         "bootstrap_iters": bootstrap_iters,
         "random_seed": random_seed,
         "numpy_seed": numpy_random_seed,
