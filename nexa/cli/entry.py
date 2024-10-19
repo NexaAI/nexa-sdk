@@ -220,14 +220,14 @@ def run_eval_tasks(args):
         model_path = kwargs.pop("model_path")
         
         from nexa.eval.nexa_eval import NexaEval
-        evaluator = NexaEval(model_path, args.tasks, args.limit, args.port, args.nctx)
+        evaluator = NexaEval(model_path, args.tasks, args.limit, args.nctx)
         if not args.tasks:
             evaluator.run_perf_eval(args.device, args.new_tokens)
         else:
             evaluator.run_evaluation()
     except Exception as e:
-        print("Please run: pip install nexaai[eval]")
         print(f"Error running evaluation: {e}")
+        print("Please run: pip install 'nexaai[eval]'")
         return
 
 def run_embedding_generation(args):
@@ -370,7 +370,6 @@ def main():
     general_eval_group = eval_parser.add_argument_group('General evaluation options')
     general_eval_group.add_argument("--tasks", type=str, help="Tasks to evaluate the model on, separated by commas.")
     general_eval_group.add_argument("--limit", type=float, help="Limit the number of examples per task. If <1, limit is a percentage of the total number of examples.", default=None)
-    general_eval_group.add_argument("--port", type=int, help="Port to bind the server to", default=8300)
     general_eval_group.add_argument("--nctx", type=int, help="Length of context window", default=4096)
 
     # Performance evaluation options
