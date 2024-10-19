@@ -192,6 +192,9 @@ def nexa_evaluate(
                 pbar.update(1)
             except queue.Empty:
                 continue
+            except Exception:
+                continue
+            
         pbar.close()
 
         # Ensure all processes have finished
