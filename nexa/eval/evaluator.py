@@ -128,11 +128,7 @@ def nexa_evaluate(
     for task_output in eval_tasks:
         task: Task = task_output.task
         task_limit = get_sample_size(task, limit)
-        task.build_all_requests(
-            limit=task_limit,
-            rank=0,
-            world_size=1,
-        )
+        task.build_all_requests(limit=task_limit)
         for instance in task.instances:
             requests.extend([instance] * instance.repeats)
 
@@ -219,9 +215,7 @@ def nexa_evaluate(
         if not task.instances[0].filtered_resps:
             continue  # Skip if filtered_resps is empty
         for filter_key in task.instances[0].filtered_resps.keys():
-            doc_iterator = task.doc_iterator(
-                rank=0, limit=task_limit, world_size=1
-            )
+            doc_iterator = task.doc_iterator(limit=task_limit)
             for doc_id, doc in doc_iterator:
                 requests_list = instances_by_doc_id.get(doc_id, [])
                 if not requests_list:

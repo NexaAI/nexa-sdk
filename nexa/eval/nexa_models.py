@@ -15,8 +15,6 @@ class GGUFLM:
         self.model = NexaTextInference(model_path)
         self.logprobs = 10
         self.temperature = 0
-        self._rank = 0
-        self._world_size = 1
 
     def gguf_completion(
         self, context, max_tokens = None, continuation = None, stop=None
@@ -114,12 +112,4 @@ class GGUFLM:
                 break
 
         return continuation_logprobs, is_greedy
-
-    @property
-    def rank(self):
-        return self._rank
-
-    @property
-    def world_size(self):
-        return self._world_size
     
