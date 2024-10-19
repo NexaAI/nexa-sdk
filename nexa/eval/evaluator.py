@@ -64,8 +64,6 @@ def worker(task_queue, result_queue, stop_event, model_path):
         except queue.Empty:
             continue
         except Exception as e:
-            # Print error to stderr (will be suppressed)
-            print(f"Error processing request: {e}", file=sys.stderr)
             task_queue.task_done()
 
 def nexa_evaluate(
