@@ -83,11 +83,11 @@ if(STABLE_DIFFUSION_BUILD)
         INSTALL_COMMAND
             ${CMAKE_COMMAND} --build . --target install
         COMMAND
-            ${CMAKE_COMMAND} -E copy_if_different
-            $<IF:$<PLATFORM_ID:Windows>,
-                ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/$<CONFIG>/stable-diffusion${CMAKE_SHARED_LIBRARY_SUFFIX},
-                ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/libstable-diffusion${CMAKE_SHARED_LIBRARY_SUFFIX}>
-            ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_install/lib/
+        ${CMAKE_COMMAND} -E copy_if_different
+        $<IF:$<PLATFORM_ID:Windows>,
+            ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/$<CONFIG>/stable-diffusion${CMAKE_SHARED_LIBRARY_SUFFIX},
+            ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/libstable-diffusion${CMAKE_SHARED_LIBRARY_SUFFIX}>
+        ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_install/lib/
         LOG_INSTALL 1
     )
 endif()

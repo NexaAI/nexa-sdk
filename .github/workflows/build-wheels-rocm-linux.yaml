@@ -72,7 +72,7 @@ jobs:
 
       - name: Build Wheel
         run: |
-          export CMAKE_ARGS='-DGGML_HIPBLAS=ON'
+          export CMAKE_ARGS='-DGGML_HIPBLAS=ON -DBARK_BUILD=OFF'
 
           python -m build --wheel
 
