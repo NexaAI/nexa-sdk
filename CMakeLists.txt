@@ -35,6 +35,14 @@ if (GGML_CUDA OR GGML_METAL OR GGML_HIPBLAS OR GGML_VULKAN)
     add_custom_target(create_empty_file ALL DEPENDS ${SOURCE_EMPTY_FILE_PATH} ${WHEEL_EMPTY_FILE_PATH})
 endif()
 
+if(WIN32 AND GGML_CUDA)
+    set(BUILD_PARALLEL_LEVEL "2" CACHE STRING "Number of parallel jobs for MSBuild in CUDA compilation")
+    set(MSBUILD_ARGS "/m:${BUILD_PARALLEL_LEVEL}")
+else()
+    set(MSBUILD_ARGS "")
+endif()
+
+
 # Function to set up common installation paths
 function(setup_install_paths target install_dir)
     install(
@@ -80,8 +88,8 @@ if(STABLE_DIFFUSION_BUILD)
             -DSD_METAL=${GGML_METAL}
             -DSD_CUBLAS=${GGML_CUDA}
         BUILD_ALWAYS 1
-        INSTALL_COMMAND
-            ${CMAKE_COMMAND} --build . --target install
+        BUILD_COMMAND ${CMAKE_COMMAND} --build . --config Release -- ${MSBUILD_ARGS}
+        INSTALL_COMMAND ${CMAKE_COMMAND} --build . --config Release --target install
         LOG_INSTALL 1
     )
 endif()
@@ -109,7 +117,8 @@ if(LLAMA_BUILD)
             -DGGML_F16C=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
             -DGGML_METAL_EMBED_LIBRARY=$<IF:$<PLATFORM_ID:Darwin>,ON,OFF>
         BUILD_ALWAYS 1
-        INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
+        BUILD_COMMAND ${CMAKE_COMMAND} --build . --config Release -- ${MSBUILD_ARGS}
+        INSTALL_COMMAND ${CMAKE_COMMAND} --build . --config Release --target install
     )
 endif()
 
@@ -130,7 +139,8 @@ if(BARK_BUILD)
             -DBUILD_SHARED_LIBS=ON
             -DBARK_BUILD_EXAMPLES=OFF
         BUILD_ALWAYS 1
-        INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
+        BUILD_COMMAND ${CMAKE_COMMAND} --build . --config Release -- ${MSBUILD_ARGS}
+        INSTALL_COMMAND ${CMAKE_COMMAND} --build . --config Release --target install
     )
 endif()
 
