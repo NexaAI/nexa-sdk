@@ -103,27 +103,14 @@ if(LLAMA_BUILD)
             -DCMAKE_CXX_STANDARD=17
             -DLLAMA_CUDA=${LLAMA_CUDA}
             -DLLAMA_METAL=${LLAMA_METAL}
+            -DGGML_AVX=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
+            -DGGML_AVX2=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
+            -DGGML_FMA=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
+            -DGGML_F16C=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
+            -DGGML_METAL_EMBED_LIBRARY=$<IF:$<PLATFORM_ID:Darwin>,ON,OFF>
         BUILD_ALWAYS 1
         INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
     )
-
-    if (APPLE AND NOT CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
-        ExternalProject_Add_Step(llama_project disable_optimizations
-            COMMAND ${CMAKE_COMMAND} -E echo "Disabling optimizations for x86_64 Apple"
-            COMMAND ${CMAKE_COMMAND} -DGGML_AVX=Off -DGGML_AVX2=Off -DGGML_FMA=Off -DGGML_F16C=Off ${CMAKE_CURRENT_BINARY_DIR}/llama_build
-            DEPENDEES configure
-            DEPENDERS build
-        )
-    endif()
-
-    if (APPLE)
-        ExternalProject_Add_Step(llama_project enable_metal_embed
-            COMMAND ${CMAKE_COMMAND} -E echo "Enabling Metal library embedding for Apple"
-            COMMAND ${CMAKE_COMMAND} -DGGML_METAL_EMBED_LIBRARY=On ${CMAKE_CURRENT_BINARY_DIR}/llama_build
-            DEPENDEES configure
-            DEPENDERS build
-        )
-    endif()
 endif()
 
 # bark_cpp project
