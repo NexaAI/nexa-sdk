@@ -73,6 +73,7 @@ eval = [
     "colorlog",
     "pandas",
     "rich",
+    "codecarbon",
 ]
 
 [project.urls]
