@@ -89,7 +89,10 @@ class NexaVLMInference:
     top_k (int): Top-k sampling parameter.
     top_p (float): Top-p sampling parameter
     """
-    def __init__(self, model_path, local_path=None, projector_local_path=None, stop_words=None, **kwargs):
+    def __init__(self, model_path=None, local_path=None, projector_local_path=None, stop_words=None, device="auto", **kwargs):
+        if model_path is None and local_path is None:
+            raise ValueError("Either model_path or local_path must be provided.")
+        
         self.params = DEFAULT_TEXT_GEN_PARAMS.copy()
         self.params.update(kwargs)
         self.model = None
@@ -97,6 +100,7 @@ class NexaVLMInference:
         self.projector_path = NEXA_RUN_PROJECTOR_MAP.get(model_path, None)
         self.downloaded_path = local_path
         self.projector_downloaded_path = projector_local_path
+        self.device = device
 
         if self.downloaded_path is not None and self.projector_downloaded_path is not None:
             # when running from local, both path should be provided
@@ -163,13 +167,18 @@ class NexaVLMInference:
             )
             try:
                 from nexa.gguf.llama.llama import Llama
+                if self.device == "auto" or self.device == "gpu":
+                    n_gpu_layers = -1 if is_gpu_available() else 0
+                elif self.device == "cpu":
+                    n_gpu_layers = 0
+                
                 self.model = Llama(
                     model_path=self.downloaded_path,
                     chat_handler=self.projector,
                     verbose=False,
                     chat_format=self.chat_format,
-                    n_ctx=2048,
-                    n_gpu_layers=-1 if is_gpu_available() else 0,
+                    n_ctx=self.params.get("nctx", 2048),
+                    n_gpu_layers=n_gpu_layers,
                 )
             except Exception as e:
                 logging.error(
@@ -181,7 +190,7 @@ class NexaVLMInference:
                     chat_handler=self.projector,
                     verbose=False,
                     chat_format=self.chat_format,
-                    n_ctx=2048,
+                    n_ctx=self.params.get("nctx", 2048),
                     n_gpu_layers=0,  # hardcode to use CPU
                 )
 
@@ -370,6 +379,12 @@ if __name__ == "__main__":
         "-p", "--top_p", type=float, default=1.0, help="Top-p sampling parameter"
     )
     parser.add_argument(
+        "--nctx",
+        type=int,
+        default=2048,
+        help="Maximum context length of the model you're using"
+    )
+    parser.add_argument(
         "-sw",
         "--stop_words",
         nargs="*",
@@ -388,11 +403,21 @@ if __name__ == "__main__":
         action="store_true",
         help="Run the inference in Streamlit UI",
     )
+    parser.add_argument(
+        "-d",
+        "--device",
+        type=str,
+        choices=["auto", "cpu", "gpu"],
+        default="auto",
+        help="Device to use for inference (auto, cpu, or gpu)",
+    )
     args = parser.parse_args()
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")
     stop_words = kwargs.pop("stop_words", [])
-    inference = NexaVLMInference(model_path, stop_words=stop_words, **kwargs)
+    device = kwargs.pop("device", "auto")
+
+    inference = NexaVLMInference(model_path, stop_words=stop_words, device=device, **kwargs)
     if args.streamlit:
         inference.run_streamlit(model_path)
     else:

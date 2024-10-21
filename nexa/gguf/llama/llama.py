@@ -1045,7 +1045,7 @@ class Llama:
         top_p: float = 0.95,
         min_p: float = 0.05,
         typical_p: float = 1.0,
-        logprobs: Optional[bool] = None,
+        logprobs: Optional[int] = None,
         echo: bool = False,
         stop: Optional[Union[str, List[str]]] = [],
         frequency_penalty: float = 0.0,
@@ -1061,7 +1061,6 @@ class Llama:
         model: Optional[str] = None,
         stopping_criteria: Optional[StoppingCriteriaList] = None,
         logits_processor: Optional[LogitsProcessorList] = None,
-        top_logprobs: Optional[int] = None,
         grammar: Optional[LlamaGrammar] = None,
         logit_bias: Optional[Dict[str, float]] = None,
     ) -> Union[
@@ -1237,7 +1236,7 @@ class Llama:
             stopping_criteria=stopping_criteria,
             logits_processor=logits_processor,
             logprobs=logprobs,
-            top_logprobs=top_logprobs,
+            top_logprobs=logprobs,
             grammar=grammar,
         ):
             assert self._model.model is not None
@@ -1659,7 +1658,7 @@ class Llama:
         top_p: float = 0.95,
         min_p: float = 0.05,
         typical_p: float = 1.0,
-        logprobs: Optional[bool] = None,
+        logprobs: Optional[int] = None,
         echo: bool = False,
         stop: Optional[Union[str, List[str]]] = [],
         frequency_penalty: float = 0.0,
@@ -1677,7 +1676,6 @@ class Llama:
         logits_processor: Optional[LogitsProcessorList] = None,
         grammar: Optional[LlamaGrammar] = None,
         logit_bias: Optional[Dict[str, float]] = None,
-        top_logprobs: Optional[int] = None,
     ) -> Union[CreateCompletionResponse, Iterator[CreateCompletionStreamResponse]]:
         """Generate text from a prompt.
 
@@ -1757,7 +1755,7 @@ class Llama:
         top_p: float = 0.95,
         min_p: float = 0.05,
         typical_p: float = 1.0,
-        logprobs: Optional[bool] = None,
+        logprobs: Optional[int] = None,
         echo: bool = False,
         stop: Optional[Union[str, List[str]]] = [],
         frequency_penalty: float = 0.0,
