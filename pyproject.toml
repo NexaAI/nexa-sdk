@@ -128,7 +128,7 @@ cmake.args = [
     "-DCMAKE_BUILD_PARALLEL_LEVEL=16",
     "-DSTABLE_DIFFUSION_BUILD=ON",
     "-DLLAMA_BUILD=ON",
-    "-DBARK_BUILD=OFF"
+    "-DBARK_BUILD=ON"
 ]
 
 [tool.scikit-build.metadata.version]
