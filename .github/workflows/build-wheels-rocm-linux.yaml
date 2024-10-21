@@ -80,10 +80,10 @@ jobs:
           ROCM_VERSION=$(echo $ROCMVER | tr -d '.')
           echo "ROCM_VERSION=$ROCM_VERSION" >> $GITHUB_ENV
 
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
-          # Set tag_name to <tag>-rocm<rocm_version>
-          tag_name: ${{ github.ref_name }}-rocm${{ env.ROCM_VERSION }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # - uses: softprops/action-gh-release@v2
+      #   with:
+      #     files: dist/*
+      #     # Set tag_name to <tag>-rocm<rocm_version>
+      #     tag_name: ${{ github.ref_name }}-rocm${{ env.ROCM_VERSION }}
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
