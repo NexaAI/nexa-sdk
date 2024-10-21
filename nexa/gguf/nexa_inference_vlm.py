@@ -90,7 +90,7 @@ class NexaVLMInference:
     top_p (float): Top-p sampling parameter
     """
     def __init__(self, model_path, local_path=None, projector_local_path=None, stop_words=None, **kwargs):
-        self.params = DEFAULT_TEXT_GEN_PARAMS
+        self.params = DEFAULT_TEXT_GEN_PARAMS.copy()
         self.params.update(kwargs)
         self.model = None
         self.projector = None
