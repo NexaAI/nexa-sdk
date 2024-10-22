@@ -220,7 +220,7 @@ def run_eval_tasks(args):
         model_path = kwargs.pop("model_path")
         
         from nexa.eval.nexa_eval import NexaEval
-        evaluator = NexaEval(model_path, args.tasks, args.limit, args.nctx)
+        evaluator = NexaEval(model_path, args.tasks, args.limit, args.nctx, args.num_workers)
         if not args.tasks:
             evaluator.run_perf_eval(args.device, args.new_tokens)
         else:
@@ -370,6 +370,7 @@ def main():
     general_eval_group = eval_parser.add_argument_group('General evaluation options')
     general_eval_group.add_argument("--tasks", type=str, help="Tasks to evaluate the model on, separated by commas.")
     general_eval_group.add_argument("--limit", type=float, help="Limit the number of examples per task. If <1, limit is a percentage of the total number of examples.", default=None)
+    general_eval_group.add_argument("--num_workers", type=int, help="Number of workers to use for evaluation", default=1)
     general_eval_group.add_argument("--nctx", type=int, help="Length of context window", default=4096)
 
     # Performance evaluation options
