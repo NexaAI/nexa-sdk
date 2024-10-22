@@ -8,7 +8,6 @@ import json
 from nexa.gguf.llama.llama_cpp import GGML_TYPE_COUNT, LLAMA_FTYPE_MOSTLY_Q4_0
 from nexa.constants import LLAMA_QUANTIZATION_TYPES, GGML_TYPES
 from nexa.gguf.llama.llama_cpp import llama_model_quantize_params, llama_model_quantize
-# from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
