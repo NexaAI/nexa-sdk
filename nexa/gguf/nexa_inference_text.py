@@ -44,13 +44,14 @@ class NexaTextInference:
     top_k (int): Top-k sampling parameter.
     top_p (float): Top-p sampling parameter
     """
-    def __init__(self, model_path=None, local_path=None, stop_words=None, **kwargs):
+    def __init__(self, model_path=None, local_path=None, stop_words=None, device="auto", **kwargs):
         if model_path is None and local_path is None:
             raise ValueError("Either model_path or local_path must be provided.")
         
         self.params = DEFAULT_TEXT_GEN_PARAMS
         self.params.update(kwargs)
         self.model = None
+        self.device = device
 
         self.model_path = model_path
         self.downloaded_path = local_path
@@ -107,13 +108,18 @@ class NexaTextInference:
         with suppress_stdout_stderr():
             from nexa.gguf.llama.llama import Llama
             try:
+                if self.device == "auto" or self.device == "gpu":
+                    n_gpu_layers = -1 if is_gpu_available() else 0
+                elif self.device == "cpu":
+                    n_gpu_layers = 0
+
                 self.model = Llama(
                     embedding=self.params.get("embedding", False),
                     model_path=self.downloaded_path,
                     verbose=self.profiling,
                     chat_format=self.chat_format,
                     n_ctx=self.params.get("nctx", 2048),
-                    n_gpu_layers=-1 if is_gpu_available() else 0,
+                    n_gpu_layers=n_gpu_layers,
                     lora_path=self.params.get("lora_path", ""),
                 )
             except Exception as e:
@@ -199,7 +205,7 @@ class NexaTextInference:
                 logging.error(f"Error during generation: {e}", exc_info=True)
             print("\n")
 
-    def create_chat_completion(self, messages, temperature=0.7, max_tokens=2048, top_k=50, top_p=1.0, stream=False, stop=None, logprobs=None, top_logprobs=None):
+    def create_chat_completion(self, messages, **kwargs):
         """
         Used for SDK. Generate completion for a chat conversation.
 
@@ -215,12 +221,22 @@ class NexaTextInference:
         Returns:
             Iterator: Iterator for the completion.
         """
-        if logprobs and top_logprobs is None:
-            top_logprobs = 4
+        params = {
+            "temperature": self.params.get("temperature", 0.7),
+            "max_tokens": self.params.get("max_new_tokens", 2048),
+            "top_k": self.params.get("top_k", 50),
+            "top_p": self.params.get("top_p", 1.0),
+            "stop": self.stop_words,
+            "logprobs": self.logprobs,
+            "top_logprobs": self.top_logprobs
+        }
+        params.update(kwargs)
+        if params['logprobs'] and params['top_logprobs'] is None:
+            params['top_logprobs'] = 4
 
-        return self.model.create_chat_completion(messages=messages, temperature=temperature, max_tokens=max_tokens, top_k=top_k, top_p=top_p, stream=stream, stop=stop, logprobs=logprobs, top_logprobs=top_logprobs)
+        return self.model.create_chat_completion(messages=messages, **params)
 
-    def create_completion(self, prompt, temperature=0.7, max_tokens=2048, top_k=50, top_p=1.0, echo=False, stream=False, stop=None, logprobs=None, top_logprobs=None):
+    def create_completion(self, prompt, **kwargs):
         """
         Used for SDK. Generate completion for a given prompt.
 
@@ -237,10 +253,17 @@ class NexaTextInference:
         Returns:
             Iterator: Iterator for the completion.
         """
-        if logprobs and top_logprobs is None:
-            top_logprobs = 4
+        params = {
+            "temperature": self.params.get("temperature", 0.7),
+            "max_tokens": self.params.get("max_new_tokens", 2048),
+            "top_k": self.params.get("top_k", 50),
+            "top_p": self.params.get("top_p", 1.0),
+            "stop": self.stop_words,
+            "logprobs": self.logprobs
+        }
+        params.update(kwargs)
 
-        return self.model.create_completion(prompt=prompt, temperature=temperature, max_tokens=max_tokens, top_k=top_k, top_p=top_p, echo=echo, stream=stream, stop=stop, logprobs=logprobs, top_logprobs=top_logprobs)
+        return self.model.create_completion(prompt=prompt, **params)
 
 
     def _chat(self, user_input: str) -> Iterator:
@@ -273,7 +296,6 @@ class NexaTextInference:
             stream=True,
             stop=self.stop_words,
             logprobs=self.logprobs,
-            top_logprobs=self.top_logprobs,
         )
 
     def run_streamlit(self, model_path: str, is_local_path = False, hf = False):
@@ -358,12 +380,21 @@ if __name__ == "__main__":
         type=str,
         help="Path to a LoRA file to apply to the model.",
     )
+    parser.add_argument(
+        "-d",
+        "--device",
+        type=str,
+        choices=["auto", "cpu", "gpu"],
+        default="auto",
+        help="Device to use for inference (auto, cpu, or gpu)",
+    )
     args = parser.parse_args()
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")
     stop_words = kwargs.pop("stop_words", [])
+    device = kwargs.pop("device", "auto")
 
-    inference = NexaTextInference(model_path, stop_words=stop_words, **kwargs)
+    inference = NexaTextInference(model_path, stop_words=stop_words, device=device, **kwargs)
     if args.streamlit:
         inference.run_streamlit(model_path)
     else:

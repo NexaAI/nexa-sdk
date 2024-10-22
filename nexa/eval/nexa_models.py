@@ -2,53 +2,40 @@ from typing import Optional
 from nexa.eval import utils
 import logging
 import time
-import requests
-from requests.exceptions import RequestException
+from nexa.gguf.nexa_inference_text import NexaTextInference
 from tqdm import tqdm
     
 
 logger = logging.getLogger(__name__)
 
 class GGUFLM:
-    def __init__(self, base_url=None, max_length=2048, **kwargs):
-        super().__init__()
-        self.base_url = base_url
-        assert self.base_url, "must pass `base_url` to use GGUF LM!"
+    def __init__(self, model_path=None, **kwargs):
+        if model_path is None:
+            raise ValueError("model_path must be provided.")
+        self.model = NexaTextInference(model_path)
         self.logprobs = 10
-        self.temperature = 0.0
-        self.max_length = max_length
-        self._rank = 0
-        self._world_size = 1
+        self.temperature = 0
 
     def gguf_completion(
-        self, context, continuation=None, stop=None, retries=3, delay=5, **kwargs
+        self, context, max_tokens = None, continuation = None, stop=None
     ):
-        for _ in range(retries):
-            try:
-                prompt = context
-                request = {
-                    "prompt": prompt,
-                    "logprobs": True,
-                    "top_logprobs": self.logprobs,
-                    "temperature": self.temperature,
-                }
-                # print("request", request)
-                if continuation:
-                    prompt += continuation
-                    request.update({"prompt": prompt, "max_tokens": 1, "echo": True})
-                if stop is not None:
-                    request["stop"] = stop
-                response = requests.post(
-                    f"{self.base_url}", json=request
-                )
-                # print("response", response.json())
-                response.raise_for_status()
-                return response.json()
-            except RequestException as e:
-                logger.error(f"RequestException: {e}")
-                time.sleep(delay)  # wait before retrying
-        else:
-            raise Exception(f"Failed to get a valid response after {retries} retries.")
+        try:
+            prompt = context
+            params = {
+                "prompt": prompt,
+                "logprobs": self.logprobs,
+                "temperature": self.temperature,
+                "max_tokens": max_tokens
+            }
+            if continuation:
+                prompt += continuation
+                params.update({"prompt": prompt, "max_tokens": 1, "echo": True})
+            if stop is not None:
+                params["stop"] = stop
+            result = self.model.create_completion(**params)
+            return result
+        except Exception as e:
+            logger.error(f"Unexpected error occured: {e}")
 
     def loglikelihood(self, requests, disable_tqdm: bool = False):
         if not requests:
@@ -88,7 +75,8 @@ class GGUFLM:
             inp = request[0]
             request_args = request[1]
             until = request_args.get("until", ["</s>"])
-            response = self.gguf_completion(context=inp, stop=until)
+            max_tokens = request_args.get("max_gen_toks", None)
+            response = self.gguf_completion(context=inp, stop=until, max_tokens=max_tokens)
             if response and "choices" in response and response["choices"]:
                 choice = response["choices"][0]
                 if "text" in choice:
@@ -124,22 +112,4 @@ class GGUFLM:
                 break
 
         return continuation_logprobs, is_greedy
-
-    @property
-    def rank(self):
-        return self._rank
-
-    @property
-    def world_size(self):
-        return self._world_size
-
-    @classmethod
-    def create_from_arg_string(
-        cls, arg_string: str, additional_config: Optional[dict] = None
-    ):
-        additional_config = {} if additional_config is None else additional_config
-        args = utils.simple_parse_args_string(arg_string)
-        args2 = {k: v for k, v in additional_config.items() if v is not None}
-        return cls(**args, **args2)
-    
     

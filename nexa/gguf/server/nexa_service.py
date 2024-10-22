@@ -91,8 +91,7 @@ class GenerationRequest(BaseModel):
     top_k: int = 50
     top_p: float = 1.0
     stop_words: Optional[List[str]] = []
-    logprobs: Optional[bool] = False
-    top_logprobs: Optional[int] = 4
+    logprobs: Optional[int] = None
     stream: Optional[bool] = False
 
 class TextContent(BaseModel):
@@ -324,7 +323,7 @@ async def load_model():
         raise ValueError(f"Model {model_path} not found in Model Hub. If you are using local path, be sure to add --local_path and --model_type flags.")
     
 def nexa_run_text_generation(
-    prompt, temperature, stop_words, max_new_tokens, top_k, top_p, logprobs=None, top_logprobs=None, stream=False, is_chat_completion=True
+    prompt, temperature, stop_words, max_new_tokens, top_k, top_p, logprobs=None, stream=False, is_chat_completion=True
 ) -> Dict[str, Any]:
     global model, chat_format, completion_template
     if model is None:
@@ -347,8 +346,7 @@ def nexa_run_text_generation(
             'top_p': top_p,
             'stream': True,
             'stop': stop_words,
-            'logprobs': logprobs,
-            'top_logprobs': top_logprobs,
+            'logprobs': logprobs
         }
 
         streamer = model.create_chat_completion(**params)
@@ -367,7 +365,6 @@ def nexa_run_text_generation(
             'stream': True,
             'stop': stop_words,
             'logprobs': logprobs,
-            'top_logprobs': top_logprobs,
         }
 
         streamer = model.create_completion(**params)
@@ -520,7 +517,7 @@ def run_nexa_ai_service(model_path_arg=None, is_local_path_arg=False, model_type
     os.environ["HUGGINGFACE"] = str(huggingface)
     os.environ["PROJECTOR_PATH"] = projector_path if projector_path else ""
     n_ctx = kwargs.get("nctx", 2048)
-    host = kwargs.get("host", "0.0.0.0")
+    host = kwargs.get("host", "localhost")
     port = kwargs.get("port", 8000)
     reload = kwargs.get("reload", False)
     uvicorn.run(app, host=host, port=port, reload=reload)
@@ -836,7 +833,7 @@ if __name__ == "__main__":
         "--nctx", type=int, default=2048, help="Length of context window"
     )
     parser.add_argument(
-        "--host", type=str, default="0.0.0.0", help="Host to bind the server to"
+        "--host", type=str, default="localhost", help="Host to bind the server to"
     )
     parser.add_argument(
         "--port", type=int, default=8000, help="Port to bind the server to"
