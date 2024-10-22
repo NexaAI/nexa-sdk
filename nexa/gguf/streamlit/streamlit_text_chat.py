@@ -76,26 +76,33 @@ if model_path == "Local Model 📁":
         st.warning("Please enter a valid local model path to proceed.")
         st.stop()
     hub_model_name = None
+
 elif model_path == "Use Model From Nexa Model Hub 🔍":
     hub_model_name = st.sidebar.text_input("Enter model name from Nexa Model Hub")
-    if hub_model_name:
-        if hub_model_name.startswith("nexa run"):
-            hub_model_name = hub_model_name.split("nexa run")[-1].strip()
-        else:
-            hub_model_name = hub_model_name.strip()
+
+    # empty string check:
     if not hub_model_name:
         st.warning(f"""
             How to Explore and Run Models on Nexa Model Hub:
             \n1. Visit [Nexa Model Hub](https://nexaai.com/models).
-            \n2. Use the task filter to find models suitable for your use case (e.g., "uncensored").
-            \n3. Select your desired model (e.g., Sao10K/MN-BackyardAI-Party-12B-v1).
+            \n2. Use the task filters ("chat", "uncensored", etc.) to find models suitable for your use case.
+            \n3. Select your desired model and copy:
+            \n   - The model name (e.g., Sao10K/MN-BackyardAI-Party-12B-v1:gguf-q4_K_M), or
+            \n   - The nexa run command (e.g., nexa run Sao10K/MN-BackyardAI-Party-12B-v1:gguf-q4_K_M)
             \n4. Copy the Nexa run command (e.g., nexa run Sao10K/MN-BackyardAI-Party-12B-v1:gguf-q4_K_M).
-            \n5. Paste the command into the "Enter model name from Nexa Model Hub" field on the sidebar on the left.
+            \n5. Paste your selection into the "Enter model name from Nexa Model Hub" field on the sidebar on the left.
             \n6. Wait a few moments for the new model to download and load into the chat.
             \nNote: Different quantization options (like q4_K_M in the example) affect the model's performance and resource usage. Choose the option that best suits your hardware capabilities and performance requirements.
         """)
         st.stop()
+
+    # process the input after checking it's not empty:
+    if hub_model_name.startswith("nexa run"):
+        hub_model_name = hub_model_name.split("nexa run")[-1].strip()
+    else:
+        hub_model_name = hub_model_name.strip()
     local_model_path = None
+
 else:
     local_model_path = None
     hub_model_name = None
