@@ -24,38 +24,43 @@
 Nexa SDK is a comprehensive toolkit for supporting **ONNX** and **GGML** models. It supports text generation, image generation, vision-language models (VLM), and speech-to-text (ASR), and text-to-speech (TTS) capabilities. Additionally, it offers an OpenAI-compatible API server with JSON schema mode for function calling and streaming support, and a user-friendly Streamlit UI. Users can run Nexa SDK in any device with Python environment, and GPU acceleration is supported, including CUDA, Metal, and ROCm. An executable version is also available.
 
 ## Latest News 🔥
-* [2024/10] Support embedding model: `nexa embed <model_path> <prompt>`
-* [2024/10] Support pull and run supported Computer Vision models in GGUF format from HuggingFace: `nexa run -hf <model_id> -mt COMPUTER_VISION`
-* [2024/10] Support VLM in local server.
-* [2024/10] Added option to customize maximum context window for NLP and VLM models.
-* [2024/10] Support running model from user's local path
-* [2024/10] Added LoRA support for NLP models. 
-* [2024/10] Added support for whisper-large-v3-turbo: `nexa run faster-whisper-large-turbo`
-* [2024/10] Added support for AMD-Llama-135m: `nexa run AMD-Llama-135m:fp16`
-* [2024/09] Nexa now has executables for easy installation: [Install Nexa SDK](https://nexaai.com/download-sdk) ✨
-* [2024/09] Added support for Llama 3.2 models: `nexa run llama3.2`
-* [2024/09] Added support for Qwen2.5, Qwen2.5-coder and Qwen2.5-Math models: `nexa run qwen2.5`
-* [2024/09] Support pull and run NLP models in GGUF format from HuggingFace: `nexa run -hf <model_id> -mt NLP`
-* [2024/09] Added support for ROCm
-* [2024/09] Added support for Phi-3.5 models: `nexa run phi3.5`
-* [2024/09] Added support for OpenELM models: `nexa run openelm`
-* [2024/09] Introduced logits API support for more advanced model interactions
-* [2024/09] Added support for Flux models: `nexa run flux`
-* [2024/09] Added support for Stable Diffusion 3 model: `nexa run sd3`
-* [2024/09] Added support for Stable Diffusion 2.1 model: `nexa run sd2-1`
+
+- [2024/10] Support embedding model: `nexa embed <model_path> <prompt>`
+- [2024/10] Support pull and run supported Computer Vision models in GGUF format from HuggingFace: `nexa run -hf <model_id> -mt COMPUTER_VISION`
+- [2024/10] Support VLM in local server.
+- [2024/10] Added option to customize maximum context window for NLP and VLM models.
+- [2024/10] Support running model from user's local path
+- [2024/10] Added LoRA support for NLP models.
+- [2024/10] Added support for whisper-large-v3-turbo: `nexa run faster-whisper-large-turbo`
+- [2024/10] Added support for AMD-Llama-135m: `nexa run AMD-Llama-135m:fp16`
+- [2024/09] Nexa now has executables for easy installation: [Install Nexa SDK](https://nexaai.com/download-sdk) ✨
+- [2024/09] Added support for Llama 3.2 models: `nexa run llama3.2`
+- [2024/09] Added support for Qwen2.5, Qwen2.5-coder and Qwen2.5-Math models: `nexa run qwen2.5`
+- [2024/09] Support pull and run NLP models in GGUF format from HuggingFace: `nexa run -hf <model_id> -mt NLP`
+- [2024/09] Added support for ROCm
+- [2024/09] Added support for Phi-3.5 models: `nexa run phi3.5`
+- [2024/09] Added support for OpenELM models: `nexa run openelm`
+- [2024/09] Introduced logits API support for more advanced model interactions
+- [2024/09] Added support for Flux models: `nexa run flux`
+- [2024/09] Added support for Stable Diffusion 3 model: `nexa run sd3`
+- [2024/09] Added support for Stable Diffusion 2.1 model: `nexa run sd2-1`
 
 Welcome to submit your requests through [issues](https://github.com/NexaAI/nexa-sdk/issues/new/choose), we ship weekly.
 
 ## Installation - Executable
 
 ### macOS
+
 [Download](https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-macos-installer.pkg)
 
 ### Linux
+
 ```bash
-curl -fsSL https://public-storage.nexa4ai.com/install.sh | sh 
+curl -fsSL https://public-storage.nexa4ai.com/install.sh | sh
 ```
+
 ### Windows
+
 Coming soon. Install with Python package below 👇
 
 ## Installation - Python Package
@@ -65,7 +70,8 @@ We have released pre-built wheels for various Python versions, platforms, and ba
 > [!NOTE]
 >
 > 1. If you want to use <strong>ONNX model</strong>, just replace `pip install nexaai` with `pip install "nexaai[onnx]"` in provided commands.
-> 2. For Chinese developers, we recommend you to use <strong>Tsinghua Open Source Mirror</strong> as extra index url, just replace `--extra-index-url https://pypi.org/simple` with `--extra-index-url https://pypi.tuna.tsinghua.edu.cn/simple` in provided commands.
+> 2. If you want to convert and quantize huggingface models to GGUF models, just replace `pip install nexaai` with `pip install "nexaai[nexa-gguf]"`.
+> 3. For Chinese developers, we recommend you to use <strong>Tsinghua Open Source Mirror</strong> as extra index url, just replace `--extra-index-url https://pypi.org/simple` with `--extra-index-url https://pypi.tuna.tsinghua.edu.cn/simple` in provided commands.
 
 #### CPU
 
@@ -199,68 +205,69 @@ Below is our differentiation from other similar tools:
 | **User Interface**         |                         ✅                         |                       ❌                       |                          ❌                           |                       ✅                        |
 
 ## Supported Models & Model Hub
+
 Our on-device model hub offers all types of quantized models (text, image, audio, multimodal) with filters for RAM, file size, Tasks, etc. to help you easily explore models with UI. Explore on-device models at [On-device Model Hub](https://model-hub.nexa4ai.com/)
 
 Supported models (full list at [Model Hub](https://nexa.ai/models)):
-| Model                                                                                                   | Type            | Format    | Command                                |
+| Model | Type | Format | Command |
 | ------------------------------------------------------------------------------------------------------- | --------------- | --------- | -------------------------------------- |
-| [octopus-v2](https://www.nexaai.com/NexaAI/Octopus-v2/gguf-q4_0/readme)                                 | NLP             | GGUF      | `nexa run octopus-v2`                  |
-| [octopus-v4](https://www.nexaai.com/NexaAI/Octopus-v4/gguf-q4_0/readme)                                 | NLP             | GGUF      | `nexa run octopus-v4`                  |
-| [gpt2](https://nexaai.com/openai/gpt2/gguf-q4_0/readme)                                                 | NLP             | GGUF      | `nexa run gpt2`                        |
-| [tinyllama](https://www.nexaai.com/TinyLlama/TinyLlama-1.1B-Chat-v1.0/gguf-fp16/readme)                 | NLP             | GGUF      | `nexa run tinyllama`                   |
-| [llama2](https://www.nexaai.com/meta/Llama2-7b-chat/gguf-q4_0/readme)                                   | NLP             | GGUF/ONNX | `nexa run llama2`                      |
-| [llama2-uncensored](https://www.nexaai.com/georgesung/Llama2-7b-chat-uncensored/gguf-q4_0/readme)       | NLP             | GGUF      | `nexa run llama2-uncensored`           |
-| [llama2-function-calling](https://www.nexaai.com/Trelis/Llama2-7b-function-calling/gguf-q4_K_M/readme)  | NLP             | GGUF      | `nexa run llama2-function-calling`     |
-| [llama3](https://www.nexaai.com/meta/Llama3-8B-Instruct/gguf-q4_0/readme)                               | NLP             | GGUF/ONNX | `nexa run llama3`                      |
-| [llama3.1](https://www.nexaai.com/meta/Llama3.1-8B-Instruct/gguf-q4_0/readme)                           | NLP             | GGUF/ONNX | `nexa run llama3.1`                    |
-| [llama3.2](https://nexaai.com/meta/Llama3.2-3B-Instruct/gguf-q4_0/readme)                               | NLP             | GGUF      | `nexa run llama3.2`                    |
-| [llama3-uncensored](https://www.nexaai.com/Orenguteng/Llama3-8B-Lexi-Uncensored/gguf-q4_K_M/readme)     | NLP             | GGUF      | `nexa run llama3-uncensored`           |
-| [gemma](https://www.nexaai.com/google/gemma-1.1-2b-instruct/gguf-q4_0/readme)                           | NLP             | GGUF/ONNX | `nexa run gemma`                       |
-| [gemma2](https://www.nexaai.com/google/gemma-2-2b-instruct/gguf-q4_0/readme)                            | NLP             | GGUF      | `nexa run gemma2`                      |
-| [qwen1.5](https://www.nexaai.com/Qwen/Qwen1.5-7B-Instruct/gguf-q4_0/readme)                             | NLP             | GGUF      | `nexa run qwen1.5`                     |
-| [qwen2](https://www.nexaai.com/Qwen/Qwen2-1.5B-Instruct/gguf-q4_0/readme)                               | NLP             | GGUF/ONNX | `nexa run qwen2`                       |
-| [qwen2.5](https://www.nexaai.com/Qwen/Qwen2.5-1.5B-Instruct/gguf-q4_0/readme)                           | NLP             | GGUF      | `nexa run qwen2.5`                     |
-| [mathqwen](https://nexaai.com/Qwen/Qwen2.5-Math-1.5B-Instruct/gguf-q4_0/readme)                         | NLP             | GGUF      | `nexa run mathqwen`                    |
-| [codeqwen](https://www.nexaai.com/Qwen/CodeQwen1.5-7B-Instruct/gguf-q4_0/readme)                        | NLP             | GGUF      | `nexa run codeqwen`                    |
-| [mistral](https://www.nexaai.com/mistralai/Mistral-7B-Instruct-v0.3/gguf-q4_0/readme)                   | NLP             | GGUF/ONNX | `nexa run mistral`                     |
-| [dolphin-mistral](https://www.nexaai.com/CognitiveComputations/dolphin-2.8-mistral-7b/gguf-q4_0/readme) | NLP             | GGUF      | `nexa run dolphin-mistral`             |
-| [codegemma](https://www.nexaai.com/google/codegemma-2b/gguf-q4_0/readme)                                | NLP             | GGUF      | `nexa run codegemma`                   |
-| [codellama](https://www.nexaai.com/meta/CodeLlama-7b-Instruct/gguf-q2_K/readme)                         | NLP             | GGUF      | `nexa run codellama`                   |
-| [deepseek-coder](https://www.nexaai.com/DeepSeek/deepseek-coder-1.3b-instruct/gguf-q4_0/readme)         | NLP             | GGUF      | `nexa run deepseek-coder`              |
-| [phi2](https://www.nexaai.com/microsoft/Phi-2/gguf-q4_0/readme)                                         | NLP             | GGUF      | `nexa run phi2`                        |
-| [phi3](https://www.nexaai.com/microsoft/Phi-3-mini-128k-instruct/gguf-q4_0/readme)                      | NLP             | GGUF/ONNX | `nexa run phi3`                        |
-| [phi3.5](https://nexaai.com/microsoft/Phi-3.5-mini-instruct/gguf-q4_0/readme)                           | NLP             | GGUF      | `nexa run phi3.5`                      |
-| [openelm](https://nexaai.com/apple/OpenELM-3B/gguf-q4_K_M/readme)                                       | NLP             | GGUF      | `nexa run openelm`                     |
-| [AMD-Llama-135m](https://nexaai.com/amd/AMD-Llama-135m/gguf-fp16/readme)                                | NLP             | GGUF      | `nexa run AMD-Llama-135m:fp16`         |
-| [nanollava](https://www.nexaai.com/qnguyen3/nanoLLaVA/gguf-fp16/readme)                                 | Multimodal      | GGUF      | `nexa run nanollava`                   |
-| [llava-phi3](https://www.nexaai.com/xtuner/llava-phi-3-mini/gguf-q4_0/readme)                           | Multimodal      | GGUF      | `nexa run llava-phi3`                  |
-| [llava-llama3](https://www.nexaai.com/xtuner/llava-llama-3-8b-v1.1/gguf-q4_0/readme)                    | Multimodal      | GGUF      | `nexa run llava-llama3`                |
-| [llava1.6-mistral](https://www.nexaai.com/liuhaotian/llava-v1.6-mistral-7b/gguf-q4_0/readme)            | Multimodal      | GGUF      | `nexa run llava1.6-mistral`            |
-| [llava1.6-vicuna](https://www.nexaai.com/liuhaotian/llava-v1.6-vicuna-7b/gguf-q4_0/readme)              | Multimodal      | GGUF      | `nexa run llava1.6-vicuna`             |
-| [stable-diffusion-v1-4](https://www.nexaai.com/runwayml/stable-diffusion-v1-4/gguf-q4_0/readme)         | Computer Vision | GGUF      | `nexa run sd1-4`                       |
-| [stable-diffusion-v1-5](https://www.nexaai.com/runwayml/stable-diffusion-v1-5/gguf-q4_0/readme)         | Computer Vision | GGUF/ONNX | `nexa run sd1-5`                       |
-| [stable-diffusion-v2-1](https://nexaai.com/StabilityAI/stable-diffusion-v2-1/gguf-q4_0/readme)          | Computer Vision | GGUF      | `nexa run sd2-1`                       |
-| [stable-diffusion-3-medium](https://nexaai.com/StabilityAI/stable-diffusion-3-medium/gguf-q4_0/readme)  | Computer Vision | GGUF      | `nexa run sd3`                         |
-| [FLUX.1-schnell](https://nexaai.com/BlackForestLabs/FLUX.1-schnell/gguf-q4_0/readme)                    | Computer Vision | GGUF      | `nexa run flux`                        |
-| [lcm-dreamshaper](https://www.nexaai.com/SimianLuo/lcm-dreamshaper-v7/gguf-fp16/readme)                 | Computer Vision | GGUF/ONNX | `nexa run lcm-dreamshaper`             |
-| [hassaku-lcm](https://nexaai.com/stablediffusionapi/hassaku-hentai-model-v13-LCM/gguf-fp16/readme)      | Computer Vision | GGUF      | `nexa run hassaku-lcm`                 |
-| [anything-lcm](https://www.nexaai.com/Linaqruf/anything-v30-LCM/gguf-fp16/readme)                       | Computer Vision | GGUF      | `nexa run anything-lcm`                |
-| [faster-whisper-tiny](https://www.nexaai.com/Systran/faster-whisper-tiny/bin-cpu-fp16/readme)           | Audio           | BIN       | `nexa run faster-whisper-tiny`         |
-| [faster-whisper-small](https://www.nexaai.com/Systran/faster-whisper-small/bin-cpu-fp16/readme)         | Audio           | BIN       | `nexa run faster-whisper-small`        |
-| [faster-whisper-medium](https://www.nexaai.com/Systran/faster-whisper-medium/bin-cpu-fp16/readme)       | Audio           | BIN       | `nexa run faster-whisper-medium`       |
-| [faster-whisper-base](https://www.nexaai.com/Systran/faster-whisper-base/bin-cpu-fp16/readme)           | Audio           | BIN       | `nexa run faster-whisper-base`         |
-| [faster-whisper-large](https://www.nexaai.com/Systran/faster-whisper-large-v3/bin-cpu-fp16/readme)      | Audio           | BIN       | `nexa run faster-whisper-large`        |
-| [whisper-large-v3-turbo](https://nexaai.com/Systran/faster-whisper-large-v3-turbo/bin-cpu-fp16/readme)  | Audio           | BIN       | `nexa run faster-whisper-large-turbo`  |
-| [whisper-tiny.en](https://nexaai.com/openai/whisper-tiny.en/onnx-cpu-fp32/readme)                       | Audio           | ONNX      | `nexa run whisper-tiny.en`             |
-| [whisper-tiny](https://nexaai.com/openai/whisper-tiny/onnx-cpu-fp32/readme)                             | Audio           | ONNX      | `nexa run whisper-tiny`                |
-| [whisper-small.en](https://nexaai.com/openai/whisper-small.en/onnx-cpu-fp32/readme)                     | Audio           | ONNX      | `nexa run whisper-small.en`            |
-| [whisper-small](https://nexaai.com/openai/whisper-small/onnx-cpu-fp32/readme)                           | Audio           | ONNX      | `nexa run whisper-small`               |
-| [whisper-base.en](https://nexaai.com/openai/whisper-base.en/onnx-cpu-fp32/readme)                       | Audio           | ONNX      | `nexa run whisper-base.en`             |
-| [whisper-base](https://nexaai.com/openai/whisper-base/onnx-cpu-fp32/readme)                             | Audio           | ONNX      | `nexa run whisper-base`                |
-| [mxbai-embed-large-v1](https://nexa.ai/mixedbread-ai/mxbai-embed-large-v1/gguf-fp16/readme)             | Embedding       | GGUF      | `nexa embed mxbai`                     |
-| [nomic-embed-text-v1.5](https://nexa.ai/nomic-ai/nomic-embed-text-v1.5/gguf-fp16/readme)                | Embedding       | GGUF      | `nexa embed nomic`                     |
-| [all-MiniLM-L6-v2](https://nexa.ai/sentence-transformers/all-MiniLM-L6-v2/gguf-fp16/readme)             | Embedding       | GGUF      | `nexa embed all-MiniLM-L6-v2:fp16`     |
-| [all-MiniLM-L12-v2](https://nexa.ai/sentence-transformers/all-MiniLM-L12-v2/gguf-fp16/readme)           | Embedding       | GGUF      | `nexa embed all-MiniLM-L12-v2:fp16`    |
+| [octopus-v2](https://www.nexaai.com/NexaAI/Octopus-v2/gguf-q4_0/readme) | NLP | GGUF | `nexa run octopus-v2` |
+| [octopus-v4](https://www.nexaai.com/NexaAI/Octopus-v4/gguf-q4_0/readme) | NLP | GGUF | `nexa run octopus-v4` |
+| [gpt2](https://nexaai.com/openai/gpt2/gguf-q4_0/readme) | NLP | GGUF | `nexa run gpt2` |
+| [tinyllama](https://www.nexaai.com/TinyLlama/TinyLlama-1.1B-Chat-v1.0/gguf-fp16/readme) | NLP | GGUF | `nexa run tinyllama` |
+| [llama2](https://www.nexaai.com/meta/Llama2-7b-chat/gguf-q4_0/readme) | NLP | GGUF/ONNX | `nexa run llama2` |
+| [llama2-uncensored](https://www.nexaai.com/georgesung/Llama2-7b-chat-uncensored/gguf-q4_0/readme) | NLP | GGUF | `nexa run llama2-uncensored` |
+| [llama2-function-calling](https://www.nexaai.com/Trelis/Llama2-7b-function-calling/gguf-q4_K_M/readme) | NLP | GGUF | `nexa run llama2-function-calling` |
+| [llama3](https://www.nexaai.com/meta/Llama3-8B-Instruct/gguf-q4_0/readme) | NLP | GGUF/ONNX | `nexa run llama3` |
+| [llama3.1](https://www.nexaai.com/meta/Llama3.1-8B-Instruct/gguf-q4_0/readme) | NLP | GGUF/ONNX | `nexa run llama3.1` |
+| [llama3.2](https://nexaai.com/meta/Llama3.2-3B-Instruct/gguf-q4_0/readme) | NLP | GGUF | `nexa run llama3.2` |
+| [llama3-uncensored](https://www.nexaai.com/Orenguteng/Llama3-8B-Lexi-Uncensored/gguf-q4_K_M/readme) | NLP | GGUF | `nexa run llama3-uncensored` |
+| [gemma](https://www.nexaai.com/google/gemma-1.1-2b-instruct/gguf-q4_0/readme) | NLP | GGUF/ONNX | `nexa run gemma` |
+| [gemma2](https://www.nexaai.com/google/gemma-2-2b-instruct/gguf-q4_0/readme) | NLP | GGUF | `nexa run gemma2` |
+| [qwen1.5](https://www.nexaai.com/Qwen/Qwen1.5-7B-Instruct/gguf-q4_0/readme) | NLP | GGUF | `nexa run qwen1.5` |
+| [qwen2](https://www.nexaai.com/Qwen/Qwen2-1.5B-Instruct/gguf-q4_0/readme) | NLP | GGUF/ONNX | `nexa run qwen2` |
+| [qwen2.5](https://www.nexaai.com/Qwen/Qwen2.5-1.5B-Instruct/gguf-q4_0/readme) | NLP | GGUF | `nexa run qwen2.5` |
+| [mathqwen](https://nexaai.com/Qwen/Qwen2.5-Math-1.5B-Instruct/gguf-q4_0/readme) | NLP | GGUF | `nexa run mathqwen` |
+| [codeqwen](https://www.nexaai.com/Qwen/CodeQwen1.5-7B-Instruct/gguf-q4_0/readme) | NLP | GGUF | `nexa run codeqwen` |
+| [mistral](https://www.nexaai.com/mistralai/Mistral-7B-Instruct-v0.3/gguf-q4_0/readme) | NLP | GGUF/ONNX | `nexa run mistral` |
+| [dolphin-mistral](https://www.nexaai.com/CognitiveComputations/dolphin-2.8-mistral-7b/gguf-q4_0/readme) | NLP | GGUF | `nexa run dolphin-mistral` |
+| [codegemma](https://www.nexaai.com/google/codegemma-2b/gguf-q4_0/readme) | NLP | GGUF | `nexa run codegemma` |
+| [codellama](https://www.nexaai.com/meta/CodeLlama-7b-Instruct/gguf-q2_K/readme) | NLP | GGUF | `nexa run codellama` |
+| [deepseek-coder](https://www.nexaai.com/DeepSeek/deepseek-coder-1.3b-instruct/gguf-q4_0/readme) | NLP | GGUF | `nexa run deepseek-coder` |
+| [phi2](https://www.nexaai.com/microsoft/Phi-2/gguf-q4_0/readme) | NLP | GGUF | `nexa run phi2` |
+| [phi3](https://www.nexaai.com/microsoft/Phi-3-mini-128k-instruct/gguf-q4_0/readme) | NLP | GGUF/ONNX | `nexa run phi3` |
+| [phi3.5](https://nexaai.com/microsoft/Phi-3.5-mini-instruct/gguf-q4_0/readme) | NLP | GGUF | `nexa run phi3.5` |
+| [openelm](https://nexaai.com/apple/OpenELM-3B/gguf-q4_K_M/readme) | NLP | GGUF | `nexa run openelm` |
+| [AMD-Llama-135m](https://nexaai.com/amd/AMD-Llama-135m/gguf-fp16/readme) | NLP | GGUF | `nexa run AMD-Llama-135m:fp16` |
+| [nanollava](https://www.nexaai.com/qnguyen3/nanoLLaVA/gguf-fp16/readme) | Multimodal | GGUF | `nexa run nanollava` |
+| [llava-phi3](https://www.nexaai.com/xtuner/llava-phi-3-mini/gguf-q4_0/readme) | Multimodal | GGUF | `nexa run llava-phi3` |
+| [llava-llama3](https://www.nexaai.com/xtuner/llava-llama-3-8b-v1.1/gguf-q4_0/readme) | Multimodal | GGUF | `nexa run llava-llama3` |
+| [llava1.6-mistral](https://www.nexaai.com/liuhaotian/llava-v1.6-mistral-7b/gguf-q4_0/readme) | Multimodal | GGUF | `nexa run llava1.6-mistral` |
+| [llava1.6-vicuna](https://www.nexaai.com/liuhaotian/llava-v1.6-vicuna-7b/gguf-q4_0/readme) | Multimodal | GGUF | `nexa run llava1.6-vicuna` |
+| [stable-diffusion-v1-4](https://www.nexaai.com/runwayml/stable-diffusion-v1-4/gguf-q4_0/readme) | Computer Vision | GGUF | `nexa run sd1-4` |
+| [stable-diffusion-v1-5](https://www.nexaai.com/runwayml/stable-diffusion-v1-5/gguf-q4_0/readme) | Computer Vision | GGUF/ONNX | `nexa run sd1-5` |
+| [stable-diffusion-v2-1](https://nexaai.com/StabilityAI/stable-diffusion-v2-1/gguf-q4_0/readme) | Computer Vision | GGUF | `nexa run sd2-1` |
+| [stable-diffusion-3-medium](https://nexaai.com/StabilityAI/stable-diffusion-3-medium/gguf-q4_0/readme) | Computer Vision | GGUF | `nexa run sd3` |
+| [FLUX.1-schnell](https://nexaai.com/BlackForestLabs/FLUX.1-schnell/gguf-q4_0/readme) | Computer Vision | GGUF | `nexa run flux` |
+| [lcm-dreamshaper](https://www.nexaai.com/SimianLuo/lcm-dreamshaper-v7/gguf-fp16/readme) | Computer Vision | GGUF/ONNX | `nexa run lcm-dreamshaper` |
+| [hassaku-lcm](https://nexaai.com/stablediffusionapi/hassaku-hentai-model-v13-LCM/gguf-fp16/readme) | Computer Vision | GGUF | `nexa run hassaku-lcm` |
+| [anything-lcm](https://www.nexaai.com/Linaqruf/anything-v30-LCM/gguf-fp16/readme) | Computer Vision | GGUF | `nexa run anything-lcm` |
+| [faster-whisper-tiny](https://www.nexaai.com/Systran/faster-whisper-tiny/bin-cpu-fp16/readme) | Audio | BIN | `nexa run faster-whisper-tiny` |
+| [faster-whisper-small](https://www.nexaai.com/Systran/faster-whisper-small/bin-cpu-fp16/readme) | Audio | BIN | `nexa run faster-whisper-small` |
+| [faster-whisper-medium](https://www.nexaai.com/Systran/faster-whisper-medium/bin-cpu-fp16/readme) | Audio | BIN | `nexa run faster-whisper-medium` |
+| [faster-whisper-base](https://www.nexaai.com/Systran/faster-whisper-base/bin-cpu-fp16/readme) | Audio | BIN | `nexa run faster-whisper-base` |
+| [faster-whisper-large](https://www.nexaai.com/Systran/faster-whisper-large-v3/bin-cpu-fp16/readme) | Audio | BIN | `nexa run faster-whisper-large` |
+| [whisper-large-v3-turbo](https://nexaai.com/Systran/faster-whisper-large-v3-turbo/bin-cpu-fp16/readme) | Audio | BIN | `nexa run faster-whisper-large-turbo` |
+| [whisper-tiny.en](https://nexaai.com/openai/whisper-tiny.en/onnx-cpu-fp32/readme) | Audio | ONNX | `nexa run whisper-tiny.en` |
+| [whisper-tiny](https://nexaai.com/openai/whisper-tiny/onnx-cpu-fp32/readme) | Audio | ONNX | `nexa run whisper-tiny` |
+| [whisper-small.en](https://nexaai.com/openai/whisper-small.en/onnx-cpu-fp32/readme) | Audio | ONNX | `nexa run whisper-small.en` |
+| [whisper-small](https://nexaai.com/openai/whisper-small/onnx-cpu-fp32/readme) | Audio | ONNX | `nexa run whisper-small` |
+| [whisper-base.en](https://nexaai.com/openai/whisper-base.en/onnx-cpu-fp32/readme) | Audio | ONNX | `nexa run whisper-base.en` |
+| [whisper-base](https://nexaai.com/openai/whisper-base/onnx-cpu-fp32/readme) | Audio | ONNX | `nexa run whisper-base` |
+| [mxbai-embed-large-v1](https://nexa.ai/mixedbread-ai/mxbai-embed-large-v1/gguf-fp16/readme) | Embedding | GGUF | `nexa embed mxbai` |
+| [nomic-embed-text-v1.5](https://nexa.ai/nomic-ai/nomic-embed-text-v1.5/gguf-fp16/readme) | Embedding | GGUF | `nexa embed nomic` |
+| [all-MiniLM-L6-v2](https://nexa.ai/sentence-transformers/all-MiniLM-L6-v2/gguf-fp16/readme) | Embedding | GGUF | `nexa embed all-MiniLM-L6-v2:fp16` |
+| [all-MiniLM-L12-v2](https://nexa.ai/sentence-transformers/all-MiniLM-L12-v2/gguf-fp16/readme) | Embedding | GGUF | `nexa embed all-MiniLM-L12-v2:fp16` |
 
 ## CLI Reference
 
@@ -268,6 +275,7 @@ Here's a brief overview of the main CLI commands:
 
 - `nexa run`: Run inference for various tasks using GGUF models.
 - `nexa onnx`: Run inference for various tasks using ONNX models.
+- `nexa convert`: Convert and quantize huggingface models to GGUF models.
 - `nexa server`: Run the Nexa AI Text Generation Service.
 - `nexa eval`: Run the Nexa AI Evaluation Tasks.
 - `nexa pull`: Pull a model from official or hub.

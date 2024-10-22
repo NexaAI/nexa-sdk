@@ -386,7 +386,7 @@ def main():
     onnx_voice_group.add_argument("-o", "--output_dir", type=str, default="voice_output", help="Output directory for audio processing")
     onnx_voice_group.add_argument("-r", "--sampling_rate", type=int, default=16000, help="Sampling rate for audio processing")
     
-        # Embed command
+    # Embed command
     embed_parser = subparsers.add_parser("embed", help="Generate embeddings for a given prompt.")
     embed_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
     embed_parser.add_argument("prompt", type=str, help="The prompt to generate an embedding for")
@@ -399,13 +399,10 @@ def main():
     convert_parser = subparsers.add_parser("convert", help="Convert and quantize a Hugging Face model to GGUF format.")
     convert_parser.add_argument("input_path", type=str, help="Path to the input Hugging Face model directory or GGUF file")
     convert_parser.add_argument("ftype", nargs='?', type=str, default="q4_0", help="Quantization type (default: q4_0)")
-    convert_parser.add_argument("output_file", nargs='?', type=str, help="Path to the output quantized GGUF file")
-
-    convert_general = convert_parser.add_argument_group('General options')
-    convert_general.add_argument("-t", "--nthread", type=int, default=4, help="Number of threads to use (default: 4)")
-    convert_general.add_argument("--convert_type", type=str, default="f16", help="Conversion type for safetensors to GGUF (default: f16)")
+    convert_parser.add_argument("output_file", nargs='?', type=str, help="Path to the output quantized GGUF file")    
 
     convert_hf_parser = convert_parser.add_argument_group('Convert from safetensors options')
+    convert_hf_parser.add_argument("--convert_type", type=str, default="f16", help="Conversion type for safetensors to GGUF (default: f16)")
     convert_hf_parser.add_argument("--bigendian", action="store_true", help="Use big endian format")
     convert_hf_parser.add_argument("--use_temp_file", action="store_true", help="Use a temporary file during conversion")
     convert_hf_parser.add_argument("--no_lazy", action="store_true", help="Disable lazy loading")
@@ -417,6 +414,7 @@ def main():
     convert_hf_parser.add_argument("--dry_run", action="store_true", help="Perform a dry run without actual conversion")
 
     quantization_parser = convert_parser.add_argument_group('Quantization options')
+    quantization_parser.add_argument("--nthread", type=int, default=4, help="Number of threads to use (default: 4)")
     quantization_parser.add_argument("--output_tensor_type", type=str, help="Output tensor type")
     quantization_parser.add_argument("--token_embedding_type", type=str, help="Token embedding type")
     quantization_parser.add_argument("--allow_requantize", action="store_true", help="Allow quantizing non-f32/f16 tensors")

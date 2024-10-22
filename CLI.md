@@ -314,9 +314,17 @@ options:
 #### Example
 
 ```
+# Default quantization type (q4_0) and output file in current directory
 nexa convert meta-llama/Llama-3.2-1B-Instruct
-nexa convert meta-llama/Llama-3.2-1B-Instruct q4_0 llama3.2-1b-instruct-q4_0.gguf
+
+# Equivalent to:
+# nexa convert meta-llama/Llama-3.2-1B-Instruct q4_0 ./Llama-3.2-1B-Instruct-q4_0.gguf
+
+# Specifying quantization type and output file
+nexa convert meta-llama/Llama-3.2-1B-Instruct q6_k llama3.2-1b-instruct-q6_k.gguf
 ```
+
+Note: When not specified, the default quantization type is set to q4_0, and the output file will be created in the current directory with the name format: `<model_name>-q4_0.gguf`.
 
 ### Start Local Server
 
@@ -379,3 +387,7 @@ For `model_path` in nexa commands, it's better to follow the standard format to 
 - `gemma-2b:q4_0`
 - `Meta-Llama-3-8B-Instruct:onnx-cpu-int8`
 - `liuhaotian/llava-v1.6-vicuna-7b:gguf-q4_0`
+
+```
+</rewritten_chunk>
+```

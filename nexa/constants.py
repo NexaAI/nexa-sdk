@@ -478,6 +478,8 @@ from nexa.gguf.llama.llama_cpp import (
     GGML_TYPE_COUNT,
 )
 
+# From quantize.cpp
+# For mapping of general quantization options (ftypes)
 LLAMA_QUANTIZATION_TYPES = {
     "q4_0": LLAMA_FTYPE_MOSTLY_Q4_0,
     "q4_1": LLAMA_FTYPE_MOSTLY_Q4_1,
@@ -516,6 +518,8 @@ LLAMA_QUANTIZATION_TYPES = {
     "tq2_0": LLAMA_FTYPE_MOSTLY_TQ2_0,
 }
 
+# From ggml.h
+# For mapping of output_tensor_type and token_embedding_type only
 GGML_TYPES = {
     "f32": GGML_TYPE_F32,
     "f16": GGML_TYPE_F16,

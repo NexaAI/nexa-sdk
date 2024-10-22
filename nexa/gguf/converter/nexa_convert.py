@@ -185,12 +185,13 @@ def convert_hf_to_quantized_gguf(
 
 def main():
     parser = argparse.ArgumentParser(description="Convert and quantize a Hugging Face model to GGUF format.")
+    # nexa convert specific arguments
     parser.add_argument("input_path", type=str, help="Path to the input Hugging Face model directory or GGUF file")
     parser.add_argument("ftype", nargs='?', type=str, default="q4_0", help="Quantization type (default: q4_0)")
     parser.add_argument("output_file", nargs='?', type=str, help="Path to the output quantized GGUF file")
-    parser.add_argument("-t", "--nthread", type=int, default=4, help="Number of threads to use (default: 4)")
         
     # Arguments for convert_hf_to_gguf
+    # Reference: https://github.com/ggerganov/llama.cpp/blob/c8c07d658a6cefc5a50cfdf6be7d726503612303/convert_hf_to_gguf.py#L4284-L4344
     parser.add_argument("--convert_type", type=str, default="f16", help="Conversion type for safetensors to GGUF (default: f16)")
     parser.add_argument("--bigendian", action="store_true", help="Use big endian format")
     parser.add_argument("--use_temp_file", action="store_true", help="Use a temporary file during conversion")
@@ -203,6 +204,8 @@ def main():
     parser.add_argument("--dry_run", action="store_true", help="Perform a dry run without actual conversion")
     
     # Arguments for quantization
+    # Reference: https://github.com/ggerganov/llama.cpp/blob/c8c07d658a6cefc5a50cfdf6be7d726503612303/examples/quantize/quantize.cpp#L109-L133
+    parser.add_argument("--nthread", type=int, default=4, help="Number of threads to use (default: 4)")
     parser.add_argument("--output_tensor_type", type=str, help="Output tensor type")
     parser.add_argument("--token_embedding_type", type=str, help="Token embedding type")
     parser.add_argument("--allow_requantize", action="store_true", help="Allow quantizing non-f32/f16 tensors")
