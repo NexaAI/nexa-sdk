@@ -111,7 +111,7 @@ def convert_hf_to_quantized_gguf(
     ftype: str = "q4_0", 
     convert_type: str = "f16", 
     **kwargs
-) -> None:
+) -> Optional[str]:
     """
     Convert a model in safetensors format to a quantized GGUF file.
 
@@ -124,6 +124,9 @@ def convert_hf_to_quantized_gguf(
         ftype (str, optional): Quantization type (default: "q4_0").
         convert_type (str, optional): Conversion type for safetensors to GGUF (default: "f16").
         **kwargs: Additional keyword arguments for the conversion and quantization process.
+
+    Returns:
+        Optional[str]: Path to the output quantized GGUF file if successful, None otherwise.
 
     Raises:
         FileNotFoundError: If the input directory or file does not exist.
@@ -147,7 +150,7 @@ def convert_hf_to_quantized_gguf(
     if os.path.isdir(input_path):
         if not os.path.exists(input_path):
             logger.error(f"Input directory does not exist: {input_path}")
-            return
+            return None
         
         safetensors_files = [f for f in os.listdir(input_path) if f.endswith('.safetensors')]
         if safetensors_files:
@@ -164,17 +167,21 @@ def convert_hf_to_quantized_gguf(
 
                 # Quantize GGUF model
                 quantize_model(str(tmp_file_path.absolute()), output_file, ftype, **kwargs)
+                return output_file
             finally:
                 # Delete the temporary file
                 if tmp_file_path.exists():
                     tmp_file_path.unlink()
         else:
             logger.error(f"No .safetensors files found in directory: {input_path}")
+            return None
     elif input_path.endswith('.gguf'):
         # Directly call quantize_model with input_path
         quantize_model(input_file=input_path, output_file=output_file, ftype=ftype, **kwargs)
+        return output_file
     else:
         logger.error(f"Invalid input path: {input_path}. Must be a directory with .safetensors files or a .gguf file.")
+        return None
     
 
 def main():

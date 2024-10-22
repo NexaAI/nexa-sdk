@@ -280,14 +280,32 @@ def run_convert(args):
     
     try:
         from nexa.gguf.converter.nexa_convert import convert_hf_to_quantized_gguf
-        convert_hf_to_quantized_gguf(
+        converted_path = convert_hf_to_quantized_gguf(
             input_path,
             output_file=args.output_file,
             ftype=args.ftype,
             convert_type=args.convert_type,
             **kwargs
         )
-        print("Conversion completed successfully.")
+        if converted_path:
+            print(f"Conversion completed successfully. Output file: {converted_path}")
+            
+            # Ask user if they want to run the converted model
+            user_choice = input("Would you like to run the converted model? (y/N) (Currently only supports NLP): ").strip().lower()
+            if user_choice == 'y':
+                try:
+                    import subprocess
+                    command = f"nexa run {converted_path} -lp -mt NLP"
+                    print(f"Running command: {command}")
+                    subprocess.run(command.split(), check=True, text=True)
+                except subprocess.CalledProcessError as e:
+                    print("Error running the converted model.")
+                    print("Change model type with -mt to run the model correctly. Or refer to our docs: https://docs.nexa.ai/sdk/cli-reference")
+            else:
+                print("Exiting without running the model.")
+                return
+        else:
+            print("Conversion failed.")
     except Exception as e:
         print(f"Error during conversion: {e}")
 
