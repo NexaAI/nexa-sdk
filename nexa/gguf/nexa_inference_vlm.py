@@ -93,7 +93,7 @@ class NexaVLMInference:
         if model_path is None and local_path is None:
             raise ValueError("Either model_path or local_path must be provided.")
         
-        self.params = DEFAULT_TEXT_GEN_PARAMS
+        self.params = DEFAULT_TEXT_GEN_PARAMS.copy()
         self.params.update(kwargs)
         self.model = None
         self.projector = None

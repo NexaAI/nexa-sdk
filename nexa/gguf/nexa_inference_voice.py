@@ -45,7 +45,7 @@ class NexaVoiceInference:
         
         self.model_path = model_path
         self.downloaded_path = local_path
-        self.params = DEFAULT_VOICE_GEN_PARAMS
+        self.params = DEFAULT_VOICE_GEN_PARAMS.copy()
 
         if self.downloaded_path is None:
             self.downloaded_path, _ = pull_model(self.model_path, **kwargs)
