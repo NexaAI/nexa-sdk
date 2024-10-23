@@ -1,9 +1,6 @@
 name: Build Wheels (Vulkan) (Windows)
 
 on:
-  push:
-    branches:
-      - david/vulkan-sycl
   workflow_dispatch:
 
 permissions:
