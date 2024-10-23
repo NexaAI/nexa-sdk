@@ -429,6 +429,33 @@ def download_model_from_official(model_path, model_type, **kwargs):
     except Exception as e:
         print(f"An error occurred while downloading or processing the model: {e}")
         return False, None
+    
+def download_repo_from_hf(repo_id):
+    try:
+        from huggingface_hub import snapshot_download
+        from pathlib import Path
+    except ImportError:
+        print("The huggingface-hub package is required. Please install it with `pip install huggingface-hub`.")
+        return False, None
+    
+    # Define the local directory to save the model
+    local_dir = NEXA_MODELS_HUB_HF_DIR / Path(repo_id)
+    local_dir.mkdir(parents=True, exist_ok=True)
+    
+    try:
+        # Download the entire repository
+        repo_path = snapshot_download(
+            repo_id=repo_id,
+            local_dir=local_dir,
+            local_dir_use_symlinks=False,
+            revision="main"
+        )
+
+        print(f"Successfully downloaded repository '{repo_id}' to {repo_path}")
+        return True, repo_path
+    except Exception as e:
+        print(f"Failed to download the repository: {e}")
+        return False, None
 
 def download_gguf_from_hf(repo_id, filename):
     try:

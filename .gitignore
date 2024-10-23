@@ -87,3 +87,6 @@ build_*/
 
 # Other
 .cache/
+
+# tests
+quantization_test.py

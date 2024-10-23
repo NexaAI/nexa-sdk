@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-if (GGML_CUDA OR GGML_METAL)
+if (GGML_CUDA OR GGML_METAL OR GGML_HIPBLAS OR GGML_VULKAN)
     set(SOURCE_EMPTY_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib/empty_file.txt")
     add_custom_command(
         OUTPUT ${SOURCE_EMPTY_FILE_PATH}
