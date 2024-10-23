@@ -104,6 +104,8 @@ CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --
 
 #### GPU (CUDA)
 
+To install with CUDA support, make sure you have [CUDA Toolkit 12.0 or later](https://developer.nvidia.com/cuda-12-0-0-download-archive) installed.
+
 For **Linux**:
 
 ```bash
@@ -145,10 +147,34 @@ CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp" pip install nexaai
 
 #### GPU (ROCm)
 
+To install with ROCm support, make sure you have [ROCm 6.2.1 or later](https://rocm.docs.amd.com/projects/install-on-linux/en/docs-6.2.1/install/quick-start.html) installed.
+
 For **Linux**:
 
 ```bash
 CMAKE_ARGS="-DGGML_HIPBLAS=on" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/rocm621 --extra-index-url https://pypi.org/simple --no-cache-dir
+```
+
+#### GPU (Vulkan)
+
+To install with Vulkan support, make sure you have [Vulkan SDK 1.3.261.1 or later](https://vulkan.lunarg.com/sdk/home) installed.
+
+For **Windows PowerShell**:
+
+```bash
+$env:CMAKE_ARGS="-DGGML_VULKAN=on"; pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/vulkan --extra-index-url https://pypi.org/simple --no-cache-dir
+```
+
+For **Windows Command Prompt**:
+
+```bash
+set CMAKE_ARGS="-DGGML_VULKAN=on" & pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/vulkan --extra-index-url https://pypi.org/simple --no-cache-dir
+```
+
+For **Windows Git Bash**:
+
+```bash
+CMAKE_ARGS="-DGGML_VULKAN=on" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/vulkan --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 ### Local Build
