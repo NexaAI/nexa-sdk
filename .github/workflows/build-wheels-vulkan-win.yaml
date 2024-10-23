@@ -1,11 +1,10 @@
 name: Build Wheels (Vulkan) (Windows)
 
 on:
+  push:
+    branches:
+      - david/vulkan-sycl
   workflow_dispatch:
-    inputs:
-      tag_name:
-        description: 'Tag name for the release'
-        required: true
 
 permissions:
   contents: write
