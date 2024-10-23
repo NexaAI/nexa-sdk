@@ -75,17 +75,35 @@ jobs:
       - name: Install Build Dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install build wheel setuptools cmake
+          python -m pip install build wheel setuptools cmake ninja
+          # Install additional dependencies if needed
+          python -m pip install scikit-build
 
       - name: Build Wheel
         run: |
-          # Set environment variables for CMake and Vulkan
-          $env:CMAKE_ARGS="-DGGML_VULKAN=ON"
-          $env:VULKAN_SDK="C:\VulkanSDK\${{ env.VULKAN_VERSION }}"
-          $env:PATH="$env:VULKAN_SDK\Bin;$env:PATH"
+          try {
+            # Set environment variables for CMake and Vulkan
+            $env:CMAKE_ARGS="-DGGML_VULKAN=ON"
+            $env:VULKAN_SDK="C:\VulkanSDK\${{ env.VULKAN_VERSION }}"
+            $env:PATH="$env:VULKAN_SDK\Bin;$env:PATH"
 
-          # Build the wheel
-          python -m build --wheel
+            # Print CMake version and args for debugging
+            Write-Host "CMake version:"
+            cmake --version
+            Write-Host "CMake args: $env:CMAKE_ARGS"
+
+            # Build the wheel with verbose output
+            python -m build --wheel --verbose 2>&1 | Tee-Object -FilePath build_log.txt
+
+            if (-not (Test-Path dist/*.whl)) {
+              throw "Wheel file not found in dist directory"
+            }
+          } catch {
+            Write-Host "Build log content:"
+            Get-Content build_log.txt
+            Write-Error "Build failed: $_"
+            exit 1
+          }
 
       - name: Upload Wheel Artifact
         uses: actions/upload-artifact@v4
