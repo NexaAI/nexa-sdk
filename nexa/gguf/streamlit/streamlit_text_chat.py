@@ -9,12 +9,14 @@ is_local_path = False if sys.argv[2] == "False" else True
 hf = False if sys.argv[3] == "False" else True
 
 model_mapping = {
-    "llama3-uncensored": "llama3-uncensored",
     "Llama-3SOME-8B-v2": "TheDrummer/Llama-3SOME-8B-v2:gguf-q4_K_M",
     "Rocinante-12B-v1.1": "TheDrummer/Rocinante-12B-v1.1:gguf-q4_K_M",
 }
 
-model_options = list(model_mapping.keys()) + ["Use Model From Nexa Model Hub 🔍","Local Model 📁"]
+model_options = (
+    [default_model] if default_model not in model_mapping
+    else []
+) + list(model_mapping.keys()) + ["Use Model From Nexa Model Hub 🔍", "Local Model 📁"]
 
 @st.cache_resource
 def load_model(model_path):
@@ -62,7 +64,7 @@ st.title("Nexa AI Text Generation")
 st.caption("Powered by Nexa AI SDK🐙")
 
 st.sidebar.header("Model Configuration")
-model_path = st.sidebar.selectbox("Select a Model", model_options, index=model_options.index(default_model))
+model_path = st.sidebar.selectbox("Select a Model", model_options, index=0)
 
 # if not model_path:
 #     st.warning(
@@ -129,8 +131,10 @@ if (
             st.session_state.nexa_model = load_local_model(local_model_path)
         elif model_path == "Use Model From Nexa Model Hub 🔍" and hub_model_name:
             st.session_state.nexa_model = load_model(hub_model_name)
-        else:
+        elif model_path in model_mapping:
             st.session_state.nexa_model = load_model(model_mapping[model_path])
+        else:
+            st.session_state.nexa_model = load_model(model_path)
     st.session_state.messages = []
 
     if "intro_sent" in st.session_state:
