@@ -199,30 +199,51 @@ try:
 
     # model selection sidebar:
     st.sidebar.header("Model Configuration")
+
+    # Update the selectbox index based on the currently loaded model
+    if 'nexa_model' in st.session_state:
+        if st.session_state.current_hub_model:
+            # If we have a hub model loaded, select the hub option
+            current_index = st.session_state.model_options.index("Use Model From Nexa Model Hub 🔍")
+        elif st.session_state.current_local_path:
+            # If we have a local model loaded, select the local option
+            current_index = st.session_state.model_options.index("Local Model 📁")
+        elif st.session_state.current_model_path:
+            # If we have a listed model loaded, find its index
+            current_index = st.session_state.model_options.index(st.session_state.current_model_path)
+        else:
+            current_index = st.session_state.current_model_index
+    else:
+        current_index = st.session_state.current_model_index
+
     model_path = st.sidebar.selectbox(
         "Select a Model",
         st.session_state.model_options,
-        index=st.session_state.current_model_index,
+        index=current_index,
         key='model_selectbox'
     )
 
-    # update current model index when selection changes:
+    # Update current model index when selection changes:
     current_index = st.session_state.model_options.index(model_path)
     if current_index != st.session_state.current_model_index:
         st.session_state.current_model_index = current_index
-        # clear the current model to force reload:
+        # Clear the current model to force reload:
         if 'nexa_model' in st.session_state:
             del st.session_state.nexa_model
             st.session_state.messages = []
+            # Also clear other model path variables
+            st.session_state.current_model_path = None
+            st.session_state.current_local_path = None
+            st.session_state.current_hub_model = None
 
-    # handle model loading based on selection (use an NLP model from `nexa list`, a model from Nexa Model Hub, or a local model):
+    # handle model loading based on selection:
     if model_path == "Local Model 📁":
         local_model_path = st.sidebar.text_input("Enter local model path")
         if not local_model_path:
             st.warning("Please enter a valid local model path to proceed.")
             st.stop()
 
-        local_model_path = local_model_path.strip() # remove spaces at the beginning and at the end of the local model path input
+        local_model_path = local_model_path.strip()  # remove spaces
         if 'nexa_model' not in st.session_state or st.session_state.current_local_path != local_model_path:
             with st.spinner("Loading local model..."):
                 st.session_state.nexa_model = load_local_model(local_model_path)
