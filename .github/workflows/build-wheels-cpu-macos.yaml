@@ -49,20 +49,20 @@ jobs:
           name: wheels-macos-${{ matrix.os }}
           path: ./wheelhouse/*.whl
 
-  release:
-    name: Release
-    needs: [build_wheels_macos]
-    runs-on: ubuntu-latest
+  # release:
+  #   name: Release
+  #   needs: [build_wheels_macos]
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          merge-multiple: true
-          path: dist
+  #   steps:
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         merge-multiple: true
+  #         path: dist
 
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
-          tag_name: ${{ github.ref_name }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #     - uses: softprops/action-gh-release@v2
+  #       with:
+  #         files: dist/*
+  #         tag_name: ${{ github.ref_name }}
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
