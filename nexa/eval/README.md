@@ -60,7 +60,7 @@ options:
 
 - **Safety Tasks**
   - [`do-not-answer`](https://aclanthology.org/2024.findings-eacl.61): Adversarial question handling
-  - [`truthfulqa`](https://github.com/sylinrl/TruthfulQA): Model truthfulness evaluation
+  - [`truthfulqa`](https://arxiv.org/abs/2109.07958): Model truthfulness evaluation
 
 
 ## 💡 Why GGUF Models?
