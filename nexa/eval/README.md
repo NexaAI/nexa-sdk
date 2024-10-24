@@ -82,3 +82,6 @@ Benchmarking helps you:
 1. Verify accuracy retention after quantization
 2. Select the optimal model for your specific use case
 3. Make informed decisions about quantization levels
+
+## Acknowledgements
+Adapted From [Language Model Evaluation Harness](https://github.com/EleutherAI/lm-evaluation-harness).
