@@ -17,7 +17,7 @@ Supports Windows, Linux, and macOS.
 
 ## 🚀 Quick Start
 
-Choose a GGUF model from [Nexa Model Hub](https://example.com/model-hub) to benchmark. You can also upload your own GGUF models.
+Choose a GGUF model from [Nexa Model Hub](https://nexa.ai/models) to benchmark. You can also upload your own GGUF models.
 
 ```bash
 # Evaluate Llama3.2-1B Q4_K_M quantization with "ifeval" task
@@ -60,7 +60,7 @@ options:
 
 - **Safety Tasks**
   - [`do-not-answer`](https://aclanthology.org/2024.findings-eacl.61): Adversarial question handling
-  - [`truthfulqa`](github.com/sylinrl/TruthfulQA): Model truthfulness evaluation
+  - [`truthfulqa`](https://github.com/sylinrl/TruthfulQA): Model truthfulness evaluation
 
 
 ## 💡 Why GGUF Models?
