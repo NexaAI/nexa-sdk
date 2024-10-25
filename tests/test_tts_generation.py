@@ -9,7 +9,7 @@ def test_tts_generation():
     # Initialize the NexaTTSInference with a temporary output directory
     temp_output_dir = tempfile.mkdtemp()
     tts_inference = NexaTTSInference(
-        model_path="bark-small",
+        model_path="suno/bark-small",
         local_path=None,
         output_dir=temp_output_dir,
         n_threads=1,
