@@ -50,7 +50,7 @@ def is_arm64() -> bool:
     """Check if the architecture is ARM64."""
     return platform.machine().startswith("arm")
 
-
+# For prompt input based on the platform
 if sys.platform == "win32":
     import msvcrt
 else:
