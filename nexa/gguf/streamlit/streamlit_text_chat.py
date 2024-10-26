@@ -22,12 +22,12 @@ def parse_nexa_list_output() -> List[str]:
         pattern = r'\|\s*(.*?)\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|'
         matches = re.findall(pattern, result.stdout)
 
-        # filter for Run Type == NLP models and get their names:
+        # filter for NLP models and get their names:
         nlp_models = set()  # to avoid duplicates
         for match in matches:
             model_name = match[0].strip()
             run_type = match[2].strip()
-            if run_type == 'NLP' and not model_name.startswith('Model Name'):
+            if run_type == 'NLP' and not model_name.startswith('Model Name'):  # skip the header row of the `nexa list` output
                 nlp_models.add(model_name)
 
         return sorted(list(nlp_models))  # convert to sorted list for consistent ordering
@@ -44,13 +44,9 @@ def get_model_options() -> List[str]:
 
 def update_model_options():
     """Update the model options in session state and force a refresh."""
-    # refresh list of models:
     fresh_options = get_model_options()
+    st.session_state.model_options = fresh_options  # update session state with new options
 
-    # update session state with new options:
-    st.session_state.model_options = fresh_options
-
-    # if we have a current model path, ensure it's in the list:
     if hasattr(st.session_state, 'current_model_path') and st.session_state.current_model_path:
         if st.session_state.current_model_path in fresh_options:
             st.session_state.current_model_index = fresh_options.index(st.session_state.current_model_path)
@@ -89,7 +85,6 @@ def load_model(model_path: str, is_local: bool = False, is_hf: bool = False):
                 st.error(f"Unexpected error while pulling model: {str(e)}")
                 return None
 
-        # create the model:
         try:
             nexa_model = NexaTextInference(
                 model_path=model_path,
@@ -103,8 +98,8 @@ def load_model(model_path: str, is_local: bool = False, is_hf: bool = False):
             # reset the model index to include the new model:
             if model_path in st.session_state.model_options:
                 st.session_state.current_model_index = st.session_state.model_options.index(model_path)
-
             return nexa_model
+
         except Exception as e:
             st.error(f"Error initializing model: {str(e)}")
             return None
@@ -142,7 +137,7 @@ try:
     # get command line arguments with proper error handling:
     if len(sys.argv) < 4:
         st.error("Missing required command line arguments.")
-        sys.exit(1)
+        sys.exit(1)  # program terminated with an error
 
     default_model = sys.argv[1]
     is_local_path = sys.argv[2].lower() == "true"
@@ -178,7 +173,6 @@ try:
 
         if not is_local_path and not hf:
             try:
-                # try to load the model first:
                 with st.spinner(f"Loading model: {default_model}"):
                     st.session_state.nexa_model = load_model(default_model)
                     if st.session_state.nexa_model:
@@ -200,16 +194,16 @@ try:
     # model selection sidebar:
     st.sidebar.header("Model Configuration")
 
-    # Update the selectbox index based on the currently loaded model
+    # update the selectbox index based on the currently loaded model:
     if 'nexa_model' in st.session_state:
         if st.session_state.current_hub_model:
-            # If we have a hub model loaded, select the hub option
+            # if we have a hub model loaded, select the hub option:
             current_index = st.session_state.model_options.index("Use Model From Nexa Model Hub 🔍")
         elif st.session_state.current_local_path:
-            # If we have a local model loaded, select the local option
+            # if we have a local model loaded, select the local option:
             current_index = st.session_state.model_options.index("Local Model 📁")
         elif st.session_state.current_model_path:
-            # If we have a listed model loaded, find its index
+            # if we have a listed model loaded, find its index:
             current_index = st.session_state.model_options.index(st.session_state.current_model_path)
         else:
             current_index = st.session_state.current_model_index
@@ -223,15 +217,13 @@ try:
         key='model_selectbox'
     )
 
-    # Update current model index when selection changes:
+    # update current model index when selection changes:
     current_index = st.session_state.model_options.index(model_path)
     if current_index != st.session_state.current_model_index:
         st.session_state.current_model_index = current_index
-        # Clear the current model to force reload:
         if 'nexa_model' in st.session_state:
             del st.session_state.nexa_model
             st.session_state.messages = []
-            # Also clear other model path variables
             st.session_state.current_model_path = None
             st.session_state.current_local_path = None
             st.session_state.current_hub_model = None
@@ -250,17 +242,18 @@ try:
                 st.session_state.current_local_path = local_model_path
 
     elif model_path == "Use Model From Nexa Model Hub 🔍":
-        # pre-fill with default_model if it's a Nexa Hub model:
         initial_value = default_model if not is_local_path and not hf else ""
-        hub_model_name = st.sidebar.text_input("Enter model name from Nexa Model Hub",
-                                             value=initial_value)
+        hub_model_name = st.sidebar.text_input(
+            "Enter model name from Nexa Model Hub",
+            value=initial_value
+        )
 
         # empty string check:
         if not hub_model_name:
             st.warning(f"""
             How to add a model from Nexa Model Hub:
             \n1. Visit [Nexa Model Hub](https://nexaai.com/models)
-            \n2. Find a model using the task filters (chat, uncensored, etc.)
+            \n2. Find a NLP model using the task filters (chat, uncensored, etc.)
             \n3. Select your desired model and copy either:
             \n   - The full nexa run command (e.g., nexa run Sao10K/MN-BackyardAI-Party-12B-v1:gguf-q4_K_M), or
             \n   - Simply the model name (e.g., Sao10K/MN-BackyardAI-Party-12B-v1:gguf-q4_K_M)
