@@ -72,12 +72,20 @@ def light_text(placeholder):
     else:
         return HTML(f'<style color="#777777">{placeholder} (type "/exit" to quit)</style>')
 
+def strip_ansi(text):
+    """Remove ANSI escape codes from a string."""
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    return ansi_escape.sub('', text)
+
 def nexa_prompt(placeholder: str = "Send a message ...") -> str:
     """Display a prompt to the user and handle input."""
     if sys.platform == "win32":
         try:
+            hint = light_text(placeholder)
+            hint_length = len(strip_ansi(hint))
+            
             # Print the prompt with placeholder
-            print(f">>> {light_text(placeholder)}", end='', flush=True)
+            print(f">>> {hint}", end='', flush=True)
             
             # Move cursor back to the start of the line
             print('\r', end='', flush=True)
@@ -101,7 +109,7 @@ def nexa_prompt(placeholder: str = "Send a message ...") -> str:
                     print(char, end='', flush=True)
                 
                 if len(user_input) == 1:  # Clear hint after first character
-                    print('\r' + ' ' * (len(placeholder) + 7), end='', flush=True)
+                    print('\r' + ' ' * (hint_length + 4), end='', flush=True)
                     print(f'\r>>> {user_input}', end='', flush=True)
 
             print()  # New line after Enter
