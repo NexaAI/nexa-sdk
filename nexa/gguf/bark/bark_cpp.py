@@ -113,10 +113,10 @@ _lib.bark_context_default_params.restype = bark_context_params
 
 def bark_load_model(model_path: ctypes.c_char_p,
     params: bark_context_params,
-    seed: ctypes.c_void_p) -> bark_context_p:
+    seed: ctypes.c_uint32) -> bark_context_p:
     return _lib.bark_load_model(model_path, params, seed)
 
-_lib.bark_load_model.argtypes = [ctypes.c_char_p, bark_context_params, ctypes.c_void_p]
+_lib.bark_load_model.argtypes = [ctypes.c_char_p, bark_context_params, ctypes.c_uint32]
 _lib.bark_load_model.restype = bark_context_p
 
 

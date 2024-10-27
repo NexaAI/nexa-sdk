@@ -58,7 +58,7 @@ class NexaTTSInference:
             params.sample_rate = self.sampling_rate
             params.verbosity = self.verbosity
             c_model_path = ctypes.c_char_p(self.downloaded_path.encode('utf-8'))
-            c_seed = ctypes.c_void_p(self.seed)
+            c_seed = ctypes.c_uint32(self.seed)
             self.context = bark_cpp.bark_load_model(c_model_path, params, c_seed)
             if not self.context:
                 raise RuntimeError("Failed to load Bark model")
