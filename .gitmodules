@@ -13,3 +13,4 @@
 [submodule "dependency/bark.cpp"]
 	path = dependency/bark.cpp
 	url = https://github.com/NexaAI/bark.cpp.git
+	branch = main
