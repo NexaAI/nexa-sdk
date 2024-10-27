@@ -2,7 +2,7 @@ from nexa.gguf import NexaTTSInference
 
 def test_tts_generation():
     tts = NexaTTSInference(
-        model_path="suno/bark-small",
+        model_path="bark-small",
         local_path=None,
         n_threads=4,
         seed=42,
