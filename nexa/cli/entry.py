@@ -70,8 +70,8 @@ def run_ggml_inference(args):
                     return
         else:  # hf case
             # TODO: remove this after adding support for Multimodal model in CLI
-            if run_type == "Multimodal" or run_type == "Audio":
-                print("Running multimodal model or audio model from Hugging Face is currently not supported in CLI mode. Please use SDK to run Multimodal model or Audio model.")
+            if run_type == "Multimodal" or run_type == "Audio" or run_type == "TTS":
+                print("Running multimodal model or audio model from Hugging Face is currently not supported in CLI mode. Please use SDK to run Multimodal model or Audio model or TTS model.")
                 return
             from nexa.general import pull_model
             local_path, _ = pull_model(model_path, hf=True)
@@ -104,6 +104,9 @@ def run_ggml_inference(args):
         elif run_type == "Audio":
             from nexa.gguf.nexa_inference_voice import NexaVoiceInference
             inference = NexaVoiceInference(model_path=model_path, local_path=local_path, **kwargs)
+        elif run_type == "TTS":
+            from nexa.gguf.nexa_inference_tts import NexaTTSInference
+            inference = NexaTTSInference(model_path=model_path, local_path=local_path, **kwargs)
         else:
             print(f"Unknown task: {run_type}. Skipping inference.")
             return
@@ -350,10 +353,18 @@ def main():
 
     # ASR arguments
     asr_group = run_parser.add_argument_group('Automatic Speech Recognition options')
-    asr_group.add_argument("-b", "--beam_size", type=int, help="Beam size to use for transcription")
-    asr_group.add_argument("-l", "--language", type=str, help="Language code for audio (e.g., 'en' or 'fr')")
+    asr_group.add_argument("--beam_size", type=int, help="Beam size to use for transcription")
+    asr_group.add_argument("--language", type=str, help="Language code for audio (e.g., 'en' or 'fr')")
     asr_group.add_argument("--task", type=str, help="Task to execute (transcribe or translate)")
-    asr_group.add_argument("-c", "--compute_type", type=str, help="Type to use for computation")
+    asr_group.add_argument("--compute_type", type=str, help="Type to use for computation")
+
+    # TTS arguments
+    tts_group = run_parser.add_argument_group('Text-to-Speech options')
+    tts_group.add_argument("--output_dir", type=str, default="tts", help="Output directory for tts")
+    tts_group.add_argument("--sampling_rate", type=int, default=24000, help="Sampling rate for audio processing")
+    tts_group.add_argument("--n_threads", type=int, default=1, help="Number of threads to use for processing")
+    tts_group.add_argument("--seed", type=int, default=0, help="Seed for random number generation")
+    tts_group.add_argument("--verbosity", type=int, default=1, help="Verbosity level for the Bark model")
 
     # ONNX command
     onnx_parser = subparsers.add_parser("onnx", help="Run inference for various tasks using ONNX models.")
