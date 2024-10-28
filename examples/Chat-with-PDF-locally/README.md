@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This demo is a PDF chatbot that can answer both common questions and PDF specific questions and generate charts based on the PDF content. It uses a combination of a local LLM, a vector database, and a LoRA model for chart generation. It is built using Nexa SDK.
+This demo is a PDF chatbot that can answer PDF related questions and generate charts based on the response. It uses a combination of a embedding model, a vector database, a function calling model, two LLMs and two LoRA models for chart generation. It is built using Nexa SDK.
 
 ## Tech Stack
 
@@ -25,14 +25,14 @@ This demo is a PDF chatbot that can answer both common questions and PDF specifi
 
 Follow these steps to set up the project:
 
-### 1. Clone the Repository
+#### 1. Clone the Repository
 
 ```
 git clone https://github.com/Davidqian123/Chat-with-PDF-locally.git
 cd Chat-with-PDF-locally
 ```
 
-### 2. Create a New Conda Environment
+#### 2. Create a New Conda Environment
 Create and activate a new Conda environment to manage dependencies:
 
 ```
@@ -40,20 +40,26 @@ conda create --name pdf_chat python=3.10
 conda activate pdf_chat
 ```
 
-### 3. Install Requirements
+#### 3. Install Requirements
 install the necessary dependencies:
 
 ```
 pip install -r requirements.txt
 ```
 
-### 4. Install Nexa SDK
+#### 4. Install Nexa SDK
 
 Follow docs [nexa-sdk](https://github.com/NexaAI/nexa-sdk) to install Nexa SDK.
 
-### 5. Run Streamlit
+#### 5. Run Streamlit
 Run the application using Streamlit:
 
 ```
 streamlit run app.py
 ```
+
+## Resources
+- [NexaAI Model Hub](https://nexa.ai/models)
+- [Nexa-SDK](https://github.com/NexaAI/nexa-sdk)
+- [LangChain](https://docs.langchain.com/docs/)
+- [ChromaDB](https://docs.trychroma.com/getting-started)
