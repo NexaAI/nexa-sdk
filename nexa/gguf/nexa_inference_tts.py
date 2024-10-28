@@ -3,6 +3,9 @@ import ctypes
 import logging
 import numpy as np
 import time
+import threading
+import platform
+import functools
 from .bark import bark_cpp
 from nexa.general import pull_model
 
@@ -23,7 +26,8 @@ class NexaTTSInference:
         verbosity (int): Verbosity level for the Bark model. Defaults to 0.
     """
     
-    def __init__(self, model_path=None, local_path=None, n_threads=1, seed=0, sampling_rate=24000, verbosity=0, **kwargs):
+    def __init__(self, model_path=None, local_path=None, n_threads=1, seed=0, 
+                 sampling_rate=24000, verbosity=0, win_stack_size=16*1024*1024, **kwargs):
         if model_path is None and local_path is None:
             raise ValueError("Either model_path or local_path must be provided.")
             
@@ -33,6 +37,7 @@ class NexaTTSInference:
         self.seed = seed
         self.sampling_rate = sampling_rate
         self.verbosity = verbosity
+        self.win_stack_size = win_stack_size
         self.params = {
             "output_path": os.path.join(os.getcwd(), "tts"),
         }
@@ -51,6 +56,37 @@ class NexaTTSInference:
 
         self._load_model()
 
+
+    def _windows_operation(func):
+        """
+        Method decorator to ensure proper stack size for Windows operations.
+        Only affects Windows systems; on other platforms, calls the function directly.
+        Uses the instance's win_stack_size parameter.
+        """
+        @functools.wraps(func)
+        def wrapper(self, *args, **kwargs):
+            if platform.system() != 'Windows':
+                return func(self, *args, **kwargs)
+                
+            def threaded_func():
+                self._thread_result = func(self, *args, **kwargs)
+                
+            original_stack_size = threading.stack_size(self.win_stack_size)
+            thread = threading.Thread(target=threaded_func, name=f"BarkThread_{func.__name__}")
+            thread.start()
+            thread.join()
+            threading.stack_size(original_stack_size)
+            
+            if hasattr(self, '_thread_result'):
+                result = self._thread_result
+                delattr(self, '_thread_result')
+                return result
+            return None
+            
+        return wrapper
+
+
+    @_windows_operation
     def _load_model(self):
         logging.debug(f"Loading model from {self.downloaded_path}")
         try:
@@ -82,6 +118,7 @@ class NexaTTSInference:
                 logging.error(f"Error during audio generation: {e}", exc_info=True)
 
 
+    @_windows_operation
     def audio_generation(self, user_input):
         """
         Generate audio from the user input.
