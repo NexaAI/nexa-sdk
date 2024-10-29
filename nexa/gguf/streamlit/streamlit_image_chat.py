@@ -151,7 +151,7 @@ try:
     is_local_path = sys.argv[2].lower() == "true"
     hf = sys.argv[3].lower() == "true"
 
-    # UI setup
+    # UI setup:
     st.set_page_config(page_title="Nexa AI Image Generation", layout="wide")
     st.markdown(
         r"""
@@ -220,7 +220,7 @@ try:
         key='model_selectbox'
     )
 
-    # update current model index when selection changes
+    # update current model index when selection changes:
     current_index = st.session_state.model_options.index(model_path)
     if current_index != st.session_state.current_model_index:
         st.session_state.current_model_index = current_index
@@ -230,7 +230,7 @@ try:
             st.session_state.current_local_path = None
             st.session_state.current_hub_model = None
 
-    # handle model loading based on selection
+    # handle model loading based on selection:
     if model_path == "Local Model 📁":
         local_model_path = st.sidebar.text_input("Enter local model path")
         if not local_model_path:
