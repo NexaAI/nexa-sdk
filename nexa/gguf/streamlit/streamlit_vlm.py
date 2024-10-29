@@ -127,6 +127,7 @@ if 'initialized' not in st.session_state:
     st.session_state.model_options = get_model_options()
     st.session_state.current_model_path = default_model
     st.session_state.current_local_path = None
+    st.session_state.current_projector_path = projector_local_path
     st.session_state.current_hub_model = None
 
     # init with default model:
@@ -191,20 +192,30 @@ if selected_option == "Local Model 📁":
         "Enter local model path",
         value=st.session_state.current_local_path if hasattr(st.session_state, 'current_local_path') else ""
     )
+
+    projector_path = st.sidebar.text_input(
+        "Enter local projector path",
+        value=st.session_state.current_projector_path if hasattr(st.session_state, 'current_projector_path') else ""
+    )
+
     if not model_path:
         st.warning("Please enter a valid local model path to proceed.")
         st.stop()
 
-    if (not hasattr(st.session_state, 'current_local_path') or
-        st.session_state.current_local_path != model_path):
+    if not projector_path:
+        st.warning("Please enter a valid local projector path to proceed.")
+        st.stop()
+
+    if (not hasattr(st.session_state, 'current_local_path') or st.session_state.current_local_path != model_path or st.session_state.current_projector_path != projector_path):
         with st.spinner("Loading local model..."):
             st.session_state.nexa_model = load_model(
                 model_path,
                 is_local=True,
-                projector_path=projector_local_path
+                projector_path=projector_path
             )
             if st.session_state.nexa_model:
                 st.session_state.current_local_path = model_path
+                st.session_state.current_projector_path = projector_path
                 st.session_state.current_model_path = model_path
 
 elif selected_option == "Use Model From Nexa Model Hub 🔍":
