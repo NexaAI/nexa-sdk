@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This demo is a PDF chatbot that can answer PDF related questions and generate charts based on the response. It uses a combination of a embedding model, a vector database, a function calling model, two LLMs and two LoRA models for chart generation. It is built using Nexa SDK.
+This demo is a PDF chatbot that can answer PDF related questions and generate charts based on the response. It uses a combination of an embedding model, a vector database, a function calling model, two LLMs and two LoRA models for chart generation. It is built using Nexa SDK.
 
 ## Tech Stack
 
