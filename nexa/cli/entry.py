@@ -438,6 +438,7 @@ def main():
     pull_parser = subparsers.add_parser("pull", help="Pull a model from official or hub.")
     pull_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
     pull_parser.add_argument("-hf", "--huggingface", action="store_true", help="Pull model from Hugging Face Hub")
+    pull_parser.add_argument("-o", "--output_path", type=str, help="Custom output path for the pulled model")
 
     remove_parser = subparsers.add_parser("remove", help="Remove a model from local machine.")
     remove_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
@@ -493,8 +494,18 @@ def main():
         run_embedding_generation(args)
     elif args.command == "pull":
         from nexa.general import pull_model
+        import os
+
         hf = getattr(args, 'huggingface', False)
-        pull_model(args.model_path, hf)
+        local_download_path = None
+        
+        if args.output_path:
+            if not os.path.exists(args.output_path):
+                os.makedirs(args.output_path, exist_ok=True)
+                print(f"Created output directory: {args.output_path}")
+            local_download_path = os.path.abspath(args.output_path)
+            
+        pull_model(args.model_path, hf, local_download_path=local_download_path)
     elif args.command == "convert":
         run_convert(args)
     elif args.command == "remove":
