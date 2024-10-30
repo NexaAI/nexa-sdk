@@ -17,7 +17,7 @@ try:
     projector_local_path = sys.argv[4] if len(sys.argv) > 4 else None
 except IndexError:
     st.error("Missing required command line arguments.")
-    sys.exit(1)
+    sys.exit(1)  # program terminated with an error
 
 def parse_nexa_list_output() -> List[str]:
     """Parse the output of nexa list command to get local VLM models."""
@@ -84,7 +84,7 @@ def load_model(model_path, is_local=False, is_hf=False, projector_path=None):
             local_path, _ = pull_model(model_path, hf=True)
             nexa_model = NexaVLMInference(model_path=model_path, local_path=local_path)
         else:
-            # get the actual model name from the mapping:
+            # get the actual model name from the mapping if it exists:
             if model_path in NEXA_RUN_MODEL_MAP_VLM:
                 real_model_path = NEXA_RUN_MODEL_MAP_VLM[model_path]
                 local_path, run_type = pull_model(real_model_path)

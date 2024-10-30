@@ -19,7 +19,7 @@ DEFAULT_PARAMS = {
 }
 
 def parse_nexa_list_output() -> List[str]:
-    """Parse the output of nexa list command to get local Computer Vision models."""
+    """Parse the output of nexa list command to get local computer vision models."""
     try:
         result = subprocess.run(['nexa', 'list'], capture_output=True, text=True)
         pattern = r'\|\s*(.*?)\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|'
