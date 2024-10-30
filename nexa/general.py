@@ -125,7 +125,10 @@ def pull_model(model_path, hf = False, **kwargs):
                 result = pull_model_from_official(model_path, **kwargs)
 
         if result["success"]:
-            add_model_to_list(model_path, result["local_path"], result["model_type"], result["run_type"])
+            # Only add to model list if not using custom download path
+            if not kwargs.get('local_download_path'):
+                add_model_to_list(model_path, result["local_path"], result["model_type"], result["run_type"])
+            
             if hf:
                 print(f"Successfully pulled model {model_path} to {result['local_path']}")
             else:
