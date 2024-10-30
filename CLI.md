@@ -46,10 +46,13 @@ nexa pull MODEL_PATH
 usage: nexa pull [-h] model_path
 
 positional arguments:
-  model_path  Path or identifier for the model in Nexa Model Hub
+  model_path  Path or identifier for the model in Nexa Model Hub, or Hugging Face repo ID when using -hf flag
 
 options:
-  -h, --help  show this help message and exit
+  -h, --help            show this help message and exit
+  -hf, --huggingface    Pull model from Hugging Face Hub
+  -o, --output_path OUTPUT_PATH
+                        Custom output path for the pulled model
 ```
 
 #### Example
