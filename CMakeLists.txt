@@ -136,6 +136,34 @@ if(LLAMA_BUILD)
     )
 endif()
 
+# nexa_llama_cpp project
+# option(NEXA_LLAMA_BUILD "Build nexa-llama.cpp" ON)
+# if(NEXA_LLAMA_BUILD)
+#     set(LLAMA_CUDA ${GGML_CUDA})
+#     set(LLAMA_METAL ${GGML_METAL})
+
+#     ExternalProject_Add(nexa_llama_project
+#         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dependency/nexa_llama.cpp
+#         BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/nexa_llama_build
+#         CMAKE_ARGS
+#             ${USER_DEFINED_OPTIONS}
+#             ${COMMON_CMAKE_OPTIONS}
+#             -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/nexa_llama_install
+#             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+#             -DCMAKE_CXX_STANDARD=17
+#             -DLLAMA_CUDA=${LLAMA_CUDA}
+#             -DLLAMA_METAL=${LLAMA_METAL}
+#             -DGGML_AVX=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
+#             -DGGML_AVX2=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
+#             -DGGML_FMA=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
+#             -DGGML_F16C=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
+#             -DGGML_METAL_EMBED_LIBRARY=$<IF:$<PLATFORM_ID:Darwin>,ON,OFF>
+#         BUILD_ALWAYS 1
+#         BUILD_COMMAND ${CMAKE_COMMAND} --build . --config Release -- ${MSBUILD_ARGS}
+#         INSTALL_COMMAND ${CMAKE_COMMAND} --build . --config Release --target install
+#     )
+# endif()
+
 # bark_cpp project
 option(BARK_BUILD "Build bark.cpp" ON)
 if(BARK_BUILD)
@@ -164,6 +192,7 @@ if(WIN32)
         DIRECTORY
             ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/Release/
             ${CMAKE_CURRENT_BINARY_DIR}/llama_build/bin/Release/
+            # $(CMAKE_CURRENT_BINARY_DIR)/nexa_llama_build/bin/Release/
             ${CMAKE_CURRENT_BINARY_DIR}/bark_build/bin/Release/
             ${CMAKE_CURRENT_BINARY_DIR}/bark_build/Release/
         DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
@@ -176,6 +205,7 @@ if(WIN32)
         DIRECTORY
             ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/Release/
             ${CMAKE_CURRENT_BINARY_DIR}/llama_build/bin/Release/
+            # $(CMAKE_CURRENT_BINARY_DIR)/nexa_llama_build/bin/Release/
             ${CMAKE_CURRENT_BINARY_DIR}/bark_build/bin/Release/
             ${CMAKE_CURRENT_BINARY_DIR}/bark_build/Release/
         DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
@@ -188,6 +218,7 @@ else()
         DIRECTORY
             ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/
             ${CMAKE_CURRENT_BINARY_DIR}/llama_install/lib/
+            # $(CMAKE_CURRENT_BINARY_DIR)/nexa_llama_install/lib/
             ${CMAKE_CURRENT_BINARY_DIR}/bark_install/lib/
         DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
         USE_SOURCE_PERMISSIONS
@@ -200,6 +231,7 @@ else()
         DIRECTORY
             ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/
             ${CMAKE_CURRENT_BINARY_DIR}/llama_install/lib/
+            # $(CMAKE_CURRENT_BINARY_DIR)/nexa_llama_install/lib/
             ${CMAKE_CURRENT_BINARY_DIR}/bark_install/lib/
         DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
         USE_SOURCE_PERMISSIONS
