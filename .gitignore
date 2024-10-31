@@ -4,6 +4,7 @@
 *.bin
 *.mp3
 *.wav
+*.png
 poetry.lock
 *.pdb
 *.ipynb
@@ -87,3 +88,6 @@ build_*/
 
 # Other
 .cache/
+
+# tests
+quantization_test.py

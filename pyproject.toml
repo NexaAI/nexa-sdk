@@ -76,6 +76,10 @@ eval = [
     "codecarbon",
 ]
 
+convert = [
+    "nexa-gguf",
+]
+
 [project.urls]
 Homepage = "https://github.com/NexaAI/nexa-sdk"
 Issues = "https://github.com/NexaAI/nexa-sdk/issues"
@@ -96,6 +100,7 @@ wheel.packages = [
     "nexa.gguf.sd",
     "nexa.gguf.streamlit",
     "nexa.gguf.server",
+    "nexa.gguf.converter",
     "nexa.onnx",
     "nexa.onnx.streamlit",
     "nexa.onnx.server",
@@ -105,6 +110,7 @@ sdist.include = [
     "CMakeLists.txt",
     "dependency/llama.cpp/*",
     "dependency/stable-diffusion.cpp/*",
+    "dependency/bark.cpp/*",
 ]
 sdist.exclude = [
     ".github",
@@ -113,11 +119,17 @@ sdist.exclude = [
     "nexa.egg-info",
     "dependency/llama.cpp/build",
     "dependency/stable-diffusion.cpp/build",
+    "dependency/bark.cpp/build",
 ]
 build.verbose = true
 cmake.build-type = "Release"
 cmake.version = ">=3.16"
-cmake.args = ["-DCMAKE_BUILD_PARALLEL_LEVEL=16"]
+cmake.args = [
+    "-DCMAKE_BUILD_PARALLEL_LEVEL=16",
+    "-DSTABLE_DIFFUSION_BUILD=ON",
+    "-DLLAMA_BUILD=ON",
+    "-DBARK_BUILD=ON"
+]
 
 [tool.scikit-build.metadata.version]
 provider = "scikit_build_core.metadata.regex"

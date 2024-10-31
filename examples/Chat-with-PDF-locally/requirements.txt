@@ -1,0 +1,6 @@
+langchain
+langchain-community
+langchain_chroma
+pypdf
+streamlit
+matplotlib

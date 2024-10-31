@@ -9,6 +9,7 @@ import time
 import os
 from tqdm import tqdm
 import platform
+import tempfile
 
 from nexa.constants import (
     NEXA_API_URL,
@@ -111,7 +112,7 @@ def pull_model(model_path, hf = False, **kwargs):
 
     try:
         if hf == True:
-            result = pull_model_from_hf(model_path)
+            result = pull_model_from_hf(model_path, **kwargs)
         else: 
             if is_model_exists(model_path):
                 location, run_type = get_model_info(model_path)
@@ -124,7 +125,10 @@ def pull_model(model_path, hf = False, **kwargs):
                 result = pull_model_from_official(model_path, **kwargs)
 
         if result["success"]:
-            add_model_to_list(model_path, result["local_path"], result["model_type"], result["run_type"])
+            # Only add to model list if not using custom download path
+            if not kwargs.get('local_download_path'):
+                add_model_to_list(model_path, result["local_path"], result["model_type"], result["run_type"])
+            
             if hf:
                 print(f"Successfully pulled model {model_path} to {result['local_path']}")
             else:
@@ -140,6 +144,10 @@ def pull_model(model_path, hf = False, **kwargs):
 
 def pull_model_from_hub(model_path, **kwargs):
     NEXA_MODELS_HUB_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Get custom download path from kwargs if present
+    local_download_path = kwargs.get('local_download_path')
+    base_download_dir = Path(local_download_path) if local_download_path else NEXA_MODELS_HUB_DIR
 
     token = ""
     if Path(NEXA_TOKEN_PATH).exists():
@@ -177,7 +185,8 @@ def pull_model_from_hub(model_path, **kwargs):
 
     for file_path, presigned_link in presigned_links.items():
         try:
-            download_path = NEXA_MODELS_HUB_DIR / file_path
+            # Use custom download path if provided, otherwise use default
+            download_path = base_download_dir / file_path
             download_file_with_progress(presigned_link, download_path, **kwargs)
 
             if local_path is None:
@@ -221,9 +230,9 @@ def pull_model_from_official(model_path, **kwargs):
         "run_type": run_type_str
     }
 
-def pull_model_from_hf(repo_id):
+def pull_model_from_hf(repo_id, **kwargs):
     repo_id, filename = select_gguf_in_hf_repo(repo_id)
-    success, model_path = download_gguf_from_hf(repo_id, filename)
+    success, model_path = download_gguf_from_hf(repo_id, filename, **kwargs)
 
     # For beta version, we only support NLP gguf models
     return {
@@ -318,6 +327,9 @@ def download_file_with_progress(
     **kwargs
 ):
     file_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Create a temporary directory for chunks
+    temp_dir = Path(tempfile.mkdtemp())
 
     try:
         response = requests.head(url, timeout=30)
@@ -350,7 +362,7 @@ def download_file_with_progress(
         with executor_class(max_workers=max_workers) as executor:
             future_to_chunk = {
                 executor.submit(
-                    download_chunk, url, start, end, str(file_path), i
+                    download_chunk, url, start, end, str(temp_dir / file_path.name), i
                 ): (i, start, end)
                 for i, (start, end) in enumerate(chunks)
             }
@@ -369,31 +381,21 @@ def download_file_with_progress(
         if all(completed_chunks):
             with open(file_path, "wb") as final_file:
                 for i in range(len(chunks)):
-                    chunk_file = f"{file_path}.part{i}"
+                    chunk_file = temp_dir / f"{file_path.name}.part{i}"
                     with open(chunk_file, "rb") as part_file:
                         final_file.write(part_file.read())
-                    os.remove(chunk_file)
-            
-            end_time = time.time()
-            total_time = end_time - start_time
-            average_speed = file_size / total_time / (1024 * 1024)  # in MB/s
 
         else:
             raise Exception("Some chunks failed to download")
 
-    except requests.exceptions.RequestException as e:
-        raise Exception(f"Error occurred while making the request: {e}")
-    except ValueError as e:
-        raise Exception(f"Error: {e}")
     except Exception as e:
-        # Clean up partial files
-        for i in range(len(chunks)):
-            chunk_file = f"{file_path}.part{i}"
-            if os.path.exists(chunk_file):
-                os.remove(chunk_file)
+        # Clean up partial files and final file if it exists
         if os.path.exists(file_path):
             os.remove(file_path)
         raise Exception(f"An unexpected error occurred: {e}")
+    finally:
+        # Clean up temporary directory and all its contents
+        shutil.rmtree(temp_dir)
 
 
 def download_model_from_official(model_path, model_type, **kwargs):
@@ -401,11 +403,20 @@ def download_model_from_official(model_path, model_type, **kwargs):
         model_name, model_version = model_path.split(":")
         file_extension = ".zip" if model_type == "onnx" or model_type == "bin" else ".gguf"
         filename = f"{model_version}{file_extension}"
+        
+        # Get custom download path from kwargs if present
+        local_download_path = kwargs.get('local_download_path')
+        base_download_dir = Path(local_download_path) if local_download_path else NEXA_MODELS_HUB_OFFICIAL_DIR
 
-        filepath = f"{model_name}/{filename}"
+        # Use different filepath structure based on model type and download path
+        if model_type in ["onnx", "bin"] or not local_download_path:
+            filepath = f"{model_name}/{filename}"
+        else:
+            filepath = f"{model_name}-{filename}"
+
         print(f"Downloading {filepath}...")
-        full_path = NEXA_MODELS_HUB_OFFICIAL_DIR / filepath
-        download_url = f"{NEXA_OFFICIAL_BUCKET}{filepath}"
+        full_path = base_download_dir / filepath
+        download_url = f"{NEXA_OFFICIAL_BUCKET}{model_name}/{filename}"  # Keep original structure for download URL
 
         full_path.parent.mkdir(parents=True, exist_ok=True)
         download_file_with_progress(download_url, full_path, **kwargs)
@@ -429,17 +440,47 @@ def download_model_from_official(model_path, model_type, **kwargs):
     except Exception as e:
         print(f"An error occurred while downloading or processing the model: {e}")
         return False, None
+    
+def download_repo_from_hf(repo_id):
+    try:
+        from huggingface_hub import snapshot_download
+        from pathlib import Path
+    except ImportError:
+        print("The huggingface-hub package is required. Please install it with `pip install huggingface-hub`.")
+        return False, None
+    
+    # Define the local directory to save the model
+    local_dir = NEXA_MODELS_HUB_HF_DIR / Path(repo_id)
+    local_dir.mkdir(parents=True, exist_ok=True)
+    
+    try:
+        # Download the entire repository
+        repo_path = snapshot_download(
+            repo_id=repo_id,
+            local_dir=local_dir,
+            local_dir_use_symlinks=False,
+            revision="main"
+        )
 
-def download_gguf_from_hf(repo_id, filename):
+        print(f"Successfully downloaded repository '{repo_id}' to {repo_path}")
+        return True, repo_path
+    except Exception as e:
+        print(f"Failed to download the repository: {e}")
+        return False, None
+
+def download_gguf_from_hf(repo_id, filename, **kwargs):
     try:
         from huggingface_hub import hf_hub_download
         from pathlib import Path
+        import shutil
     except ImportError:
         print("The huggingface-hub package is required. Please install it with `pip install huggingface-hub`.")
         return None
 
-    # Define the local directory to save the model
-    local_dir = NEXA_MODELS_HUB_HF_DIR / Path(repo_id)
+    # Get custom download path from kwargs if present
+    local_download_path = kwargs.get('local_download_path')
+    base_download_dir = Path(local_download_path) if local_download_path else NEXA_MODELS_HUB_HF_DIR
+    local_dir = base_download_dir / Path(repo_id)
     local_dir.mkdir(parents=True, exist_ok=True)
 
     # Download the model
@@ -450,6 +491,17 @@ def download_gguf_from_hf(repo_id, filename):
             local_dir=local_dir,
             local_files_only=False,
         )
+        
+        # If using custom download path, move the file and cleanup
+        if local_download_path:
+            model_file = Path(model_path)
+            target_path = base_download_dir / filename
+            shutil.move(str(model_file), str(target_path))
+            # Get the organization directory (first part of repo_id)
+            org_dir = base_download_dir / repo_id.split('/')[0]
+            shutil.rmtree(org_dir)
+            return True, str(target_path)
+            
         return True, model_path
     except Exception as e:
         print(f"Failed to download the model: {e}")

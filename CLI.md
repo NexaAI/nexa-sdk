@@ -13,6 +13,7 @@ positional arguments:
     run                 Run inference for various tasks using GGUF models.
     onnx                Run inference for various tasks using ONNX models.
     embed               Generate embeddings for text.
+    convert             Convert and quantize a Hugging Face model to GGUF format.
     server              Run the Nexa AI Text Generation Service.
     eval                Run the Nexa AI Evaluation Tasks.
     pull                Pull a model from official or hub.
@@ -45,10 +46,13 @@ nexa pull MODEL_PATH
 usage: nexa pull [-h] model_path
 
 positional arguments:
-  model_path  Path or identifier for the model in Nexa Model Hub
+  model_path  Path or identifier for the model in Nexa Model Hub, or Hugging Face repo ID when using -hf flag
 
 options:
-  -h, --help  show this help message and exit
+  -h, --help            show this help message and exit
+  -hf, --huggingface    Pull model from Hugging Face Hub
+  -o, --output_path OUTPUT_PATH
+                        Custom output path for the pulled model
 ```
 
 #### Example
@@ -268,6 +272,63 @@ nexa embed nomic-embed-text-v1.5:fp16 "I love Nexa AI."
 nexa embed sentence-transformers/all-MiniLM-L6-v2:gguf-fp16 "I love Nexa AI." >> generated_embeddings.txt
 ```
 
+### Convert and quantize a Hugging Face Model to GGUF
+
+```
+nexa convert HF_MODEL_PATH [ftype] [output_file]
+usage: nexa convert [-h] [-t NTHREAD] [--convert_type CONVERT_TYPE] [--bigendian] [--use_temp_file] [--no_lazy]
+                    [--metadata METADATA] [--split_max_tensors SPLIT_MAX_TENSORS] [--split_max_size SPLIT_MAX_SIZE]
+                    [--no_tensor_first_split] [--vocab_only] [--dry_run] [--output_tensor_type OUTPUT_TENSOR_TYPE]
+                    [--token_embedding_type TOKEN_EMBEDDING_TYPE] [--allow_requantize] [--quantize_output_tensor]
+                    [--only_copy] [--pure] [--keep_split] input_path [ftype] [output_file]
+
+positional arguments:
+  input_path            Path to the input Hugging Face model directory or GGUF file
+  ftype                 Quantization type (default: q4_0)
+  output_file           Path to the output quantized GGUF file
+
+options:
+  -h, --help            show this help message and exit
+  -t, --nthread NTHREAD Number of threads to use (default: 4)
+  --convert_type CONVERT_TYPE
+                        Conversion type for safetensors to GGUF (default: f16)
+  --bigendian           Use big endian format
+  --use_temp_file       Use a temporary file during conversion
+  --no_lazy             Disable lazy loading
+  --metadata METADATA   Additional metadata as JSON string
+  --split_max_tensors SPLIT_MAX_TENSORS
+                        Maximum number of tensors per split
+  --split_max_size SPLIT_MAX_SIZE
+  --no_tensor_first_split
+                        Disable tensor-first splitting
+  --vocab_only          Only process vocabulary
+  --dry_run             Perform a dry run without actual conversion
+  --output_tensor_type  Output tensor type
+  --token_embedding_type
+                        Token embedding type
+  --allow_requantize    Allow quantizing non-f32/f16 tensors
+  --quantize_output_tensor
+                        Quantize output.weight
+  --only_copy           Only copy tensors (ignores ftype, allow_requantize, and quantize_output_tensor)
+  --pure                Quantize all tensors to the default type
+  --keep_split          Quantize to the same number of shards
+```
+
+#### Example
+
+```
+# Default quantization type (q4_0) and output file in current directory
+nexa convert meta-llama/Llama-3.2-1B-Instruct
+
+# Equivalent to:
+# nexa convert meta-llama/Llama-3.2-1B-Instruct q4_0 ./Llama-3.2-1B-Instruct-q4_0.gguf
+
+# Specifying quantization type and output file
+nexa convert meta-llama/Llama-3.2-1B-Instruct q6_k llama3.2-1b-instruct-q6_k.gguf
+```
+
+Note: When not specified, the default quantization type is set to q4_0, and the output file will be created in the current directory with the name format: `<model_name>-q4_0.gguf`.
+
 ### Start Local Server
 
 Start a local server using models on your local computer.
@@ -329,3 +390,7 @@ For `model_path` in nexa commands, it's better to follow the standard format to 
 - `gemma-2b:q4_0`
 - `Meta-Llama-3-8B-Instruct:onnx-cpu-int8`
 - `liuhaotian/llava-v1.6-vicuna-7b:gguf-q4_0`
+
+```
+</rewritten_chunk>
+```

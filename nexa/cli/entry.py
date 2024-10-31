@@ -2,6 +2,7 @@ import argparse
 import os
 from nexa import __version__
 from nexa.constants import ModelType
+import json
 
 
 def _choose_files(local_path):
@@ -69,8 +70,8 @@ def run_ggml_inference(args):
                     return
         else:  # hf case
             # TODO: remove this after adding support for Multimodal model in CLI
-            if run_type == "Multimodal" or run_type == "Audio":
-                print("Running multimodal model or audio model from Hugging Face is currently not supported in CLI mode. Please use SDK to run Multimodal model or Audio model.")
+            if run_type == "Multimodal" or run_type == "Audio" or run_type == "TTS":
+                print("Running multimodal model or audio model from Hugging Face is currently not supported in CLI mode. Please use SDK to run Multimodal model or Audio model or TTS model.")
                 return
             from nexa.general import pull_model
             local_path, _ = pull_model(model_path, hf=True)
@@ -103,6 +104,9 @@ def run_ggml_inference(args):
         elif run_type == "Audio":
             from nexa.gguf.nexa_inference_voice import NexaVoiceInference
             inference = NexaVoiceInference(model_path=model_path, local_path=local_path, **kwargs)
+        elif run_type == "TTS":
+            from nexa.gguf.nexa_inference_tts import NexaTTSInference
+            inference = NexaTTSInference(model_path=model_path, local_path=local_path, **kwargs)
         else:
             print(f"Unknown task: {run_type}. Skipping inference.")
             return
@@ -220,7 +224,7 @@ def run_eval_tasks(args):
         model_path = kwargs.pop("model_path")
         
         from nexa.eval.nexa_eval import NexaEval
-        evaluator = NexaEval(model_path, args.tasks, args.limit, args.nctx)
+        evaluator = NexaEval(model_path, args.tasks, args.limit, args.nctx, args.num_workers)
         if not args.tasks:
             evaluator.run_perf_eval(args.device, args.new_tokens)
         else:
@@ -259,6 +263,54 @@ def run_embedding_generation(args):
     except Exception as e:
         print(f"Error generating embedding: {e}")
         print("Please refer to our docs to install nexaai package: https://docs.nexaai.com/getting-started/installation")
+
+def run_convert(args):
+    input_path = args.input_path
+    
+    # Check if input_path is a valid directory
+    if not os.path.isdir(input_path):
+        from nexa.general import download_repo_from_hf
+        success, local_path = download_repo_from_hf(input_path)
+        
+        if success:
+            input_path = local_path
+        else:
+            print("Error: Failed to download the repository and the provided path is not a valid directory.")
+            return
+    
+    # Input_path here should be a valid directory
+    kwargs = {k: v for k, v in vars(args).items() if v is not None and k not in ['input_path', 'ftype', 'output_file', 'convert_type']}
+    
+    try:
+        from nexa.gguf.converter.nexa_convert import convert_hf_to_quantized_gguf
+        converted_path = convert_hf_to_quantized_gguf(
+            input_path,
+            output_file=args.output_file,
+            ftype=args.ftype,
+            convert_type=args.convert_type,
+            **kwargs
+        )
+        if converted_path:
+            print(f"Conversion completed successfully. Output file: {converted_path}")
+            
+            # Ask user if they want to run the converted model
+            user_choice = input("Would you like to run the converted model? (y/N) (Currently only supports NLP): ").strip().lower()
+            if user_choice == 'y':
+                try:
+                    import subprocess
+                    command = f"nexa run {converted_path} -lp -mt NLP"
+                    print(f"Running command: {command}")
+                    subprocess.run(command.split(), check=True, text=True)
+                except subprocess.CalledProcessError as e:
+                    print("Error running the converted model.")
+                    print("Change model type with -mt to run the model correctly. Or refer to our docs: https://docs.nexa.ai/sdk/cli-reference")
+            else:
+                print("Exiting without running the model.")
+                return
+        else:
+            print("Conversion failed.")
+    except Exception as e:
+        print(f"Error during conversion: {e}")
 
 def main():
     parser = argparse.ArgumentParser(description="Nexa CLI tool for handling various model operations.")
@@ -301,10 +353,18 @@ def main():
 
     # ASR arguments
     asr_group = run_parser.add_argument_group('Automatic Speech Recognition options')
-    asr_group.add_argument("-b", "--beam_size", type=int, help="Beam size to use for transcription")
-    asr_group.add_argument("-l", "--language", type=str, help="Language code for audio (e.g., 'en' or 'fr')")
+    asr_group.add_argument("--beam_size", type=int, help="Beam size to use for transcription")
+    asr_group.add_argument("--language", type=str, help="Language code for audio (e.g., 'en' or 'fr')")
     asr_group.add_argument("--task", type=str, help="Task to execute (transcribe or translate)")
-    asr_group.add_argument("-c", "--compute_type", type=str, help="Type to use for computation")
+    asr_group.add_argument("--compute_type", type=str, help="Type to use for computation")
+
+    # TTS arguments
+    tts_group = run_parser.add_argument_group('Text-to-Speech options')
+    tts_group.add_argument("--output_dir", type=str, default="tts", help="Output directory for tts")
+    tts_group.add_argument("--sampling_rate", type=int, default=24000, help="Sampling rate for audio processing")
+    tts_group.add_argument("--n_threads", type=int, default=1, help="Number of threads to use for processing")
+    tts_group.add_argument("--seed", type=int, default=0, help="Seed for random number generation")
+    tts_group.add_argument("--verbosity", type=int, default=1, help="Verbosity level for the Bark model")
 
     # ONNX command
     onnx_parser = subparsers.add_parser("onnx", help="Run inference for various tasks using ONNX models.")
@@ -336,6 +396,43 @@ def main():
     onnx_voice_group = onnx_parser.add_argument_group('Voice generation options')
     onnx_voice_group.add_argument("-o", "--output_dir", type=str, default="voice_output", help="Output directory for audio processing")
     onnx_voice_group.add_argument("-r", "--sampling_rate", type=int, default=16000, help="Sampling rate for audio processing")
+    
+    # Embed command
+    embed_parser = subparsers.add_parser("embed", help="Generate embeddings for a given prompt.")
+    embed_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
+    embed_parser.add_argument("prompt", type=str, help="The prompt to generate an embedding for")
+    embed_parser.add_argument("-lp", "--local_path", action="store_true", help="Indicate that the model path provided is the local path")
+    embed_parser.add_argument("-hf", "--huggingface", action="store_true", help="Load model from Hugging Face Hub")
+    embed_parser.add_argument("-n", "--normalize", action="store_true", help="Normalize the embeddings")
+    embed_parser.add_argument("-nt", "--no_truncate", action="store_true", help="Not truncate the embeddings")
+
+    # Convert command
+    convert_parser = subparsers.add_parser("convert", help="Convert and quantize a Hugging Face model to GGUF format.")
+    convert_parser.add_argument("input_path", type=str, help="Path to the input Hugging Face model directory or GGUF file")
+    convert_parser.add_argument("ftype", nargs='?', type=str, default="q4_0", help="Quantization type (default: q4_0)")
+    convert_parser.add_argument("output_file", nargs='?', type=str, help="Path to the output quantized GGUF file")    
+
+    convert_hf_parser = convert_parser.add_argument_group('Convert from safetensors options')
+    convert_hf_parser.add_argument("--convert_type", type=str, default="f16", help="Conversion type for safetensors to GGUF (default: f16)")
+    convert_hf_parser.add_argument("--bigendian", action="store_true", help="Use big endian format")
+    convert_hf_parser.add_argument("--use_temp_file", action="store_true", help="Use a temporary file during conversion")
+    convert_hf_parser.add_argument("--no_lazy", action="store_true", help="Disable lazy loading")
+    convert_hf_parser.add_argument("--metadata", type=json.loads, help="Additional metadata as JSON string")
+    convert_hf_parser.add_argument("--split_max_tensors", type=int, default=0, help="Maximum number of tensors per split")
+    convert_hf_parser.add_argument("--split_max_size", type=str, default="0", help="Maximum size per split")
+    convert_hf_parser.add_argument("--no_tensor_first_split", action="store_true", help="Disable tensor-first splitting")
+    convert_hf_parser.add_argument("--vocab_only", action="store_true", help="Only process vocabulary")
+    convert_hf_parser.add_argument("--dry_run", action="store_true", help="Perform a dry run without actual conversion")
+
+    quantization_parser = convert_parser.add_argument_group('Quantization options')
+    quantization_parser.add_argument("--nthread", type=int, default=4, help="Number of threads to use (default: 4)")
+    quantization_parser.add_argument("--output_tensor_type", type=str, help="Output tensor type")
+    quantization_parser.add_argument("--token_embedding_type", type=str, help="Token embedding type")
+    quantization_parser.add_argument("--allow_requantize", action="store_true", help="Allow quantizing non-f32/f16 tensors")
+    quantization_parser.add_argument("--quantize_output_tensor", action="store_true", help="Quantize output.weight")
+    quantization_parser.add_argument("--only_copy", action="store_true", help="Only copy tensors (ignores ftype, allow_requantize, and quantize_output_tensor)")
+    quantization_parser.add_argument("--pure", action="store_true", help="Quantize all tensors to the default type")
+    quantization_parser.add_argument("--keep_split", action="store_true", help="Quantize to the same number of shards")
 
     # GGML server parser
     server_parser = subparsers.add_parser("server", help="Run the Nexa AI Text Generation Service")
@@ -352,6 +449,7 @@ def main():
     pull_parser = subparsers.add_parser("pull", help="Pull a model from official or hub.")
     pull_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
     pull_parser.add_argument("-hf", "--huggingface", action="store_true", help="Pull model from Hugging Face Hub")
+    pull_parser.add_argument("-o", "--output_path", type=str, help="Custom output path for the pulled model")
 
     remove_parser = subparsers.add_parser("remove", help="Remove a model from local machine.")
     remove_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
@@ -370,21 +468,13 @@ def main():
     general_eval_group = eval_parser.add_argument_group('General evaluation options')
     general_eval_group.add_argument("--tasks", type=str, help="Tasks to evaluate the model on, separated by commas.")
     general_eval_group.add_argument("--limit", type=float, help="Limit the number of examples per task. If <1, limit is a percentage of the total number of examples.", default=None)
+    general_eval_group.add_argument("--num_workers", type=int, help="Number of workers to use for evaluation", default=1)
     general_eval_group.add_argument("--nctx", type=int, help="Length of context window", default=4096)
 
     # Performance evaluation options
     perf_eval_group = eval_parser.add_argument_group('Performance evaluation options')
     perf_eval_group.add_argument("--device", type=str, help="Device to run performance evaluation on, choose from 'cpu', 'cuda', 'mps'", default="cpu")
     perf_eval_group.add_argument("--new_tokens", type=int, help="Number of new tokens to evaluate", default=100)
-
-    # Embed command
-    embed_parser = subparsers.add_parser("embed", help="Generate embeddings for a given prompt.")
-    embed_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
-    embed_parser.add_argument("prompt", type=str, help="The prompt to generate an embedding for")
-    embed_parser.add_argument("-lp", "--local_path", action="store_true", help="Indicate that the model path provided is the local path")
-    embed_parser.add_argument("-hf", "--huggingface", action="store_true", help="Load model from Hugging Face Hub")
-    embed_parser.add_argument("-n", "--normalize", action="store_true", help="Normalize the embeddings")
-    embed_parser.add_argument("-nt", "--no_truncate", action="store_true", help="Not truncate the embeddings")
 
     args = parser.parse_args()
 
@@ -415,8 +505,20 @@ def main():
         run_embedding_generation(args)
     elif args.command == "pull":
         from nexa.general import pull_model
+        import os
+
         hf = getattr(args, 'huggingface', False)
-        pull_model(args.model_path, hf)
+        local_download_path = None
+        
+        if args.output_path:
+            if not os.path.exists(args.output_path):
+                os.makedirs(args.output_path, exist_ok=True)
+                print(f"Created output directory: {args.output_path}")
+            local_download_path = os.path.abspath(args.output_path)
+            
+        pull_model(args.model_path, hf, local_download_path=local_download_path)
+    elif args.command == "convert":
+        run_convert(args)
     elif args.command == "remove":
         from nexa.general import remove_model
         remove_model(args.model_path)
