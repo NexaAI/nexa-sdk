@@ -109,6 +109,7 @@ wheel.packages = [
 sdist.include = [
     "CMakeLists.txt",
     "dependency/llama.cpp/*",
+    "dependency/nexa_llama.cpp/*",
     "dependency/stable-diffusion.cpp/*",
     "dependency/bark.cpp/*",
 ]
@@ -118,6 +119,7 @@ sdist.exclude = [
     "dist",
     "nexa.egg-info",
     "dependency/llama.cpp/build",
+    "dependency/nexa_llama.cpp/build",
     "dependency/stable-diffusion.cpp/build",
     "dependency/bark.cpp/build",
 ]
@@ -128,6 +130,7 @@ cmake.args = [
     "-DCMAKE_BUILD_PARALLEL_LEVEL=16",
     "-DSTABLE_DIFFUSION_BUILD=ON",
     "-DLLAMA_BUILD=ON",
+    "-DNEXA_LLAMA_BUIL=ON",
     "-DBARK_BUILD=ON"
 ]
 
