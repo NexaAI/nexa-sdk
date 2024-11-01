@@ -6,7 +6,7 @@ let configuration = NexaSwift.Configuration(
     stopTokens: []
 )
 
-let model_path = "" // For Commandline, please add the local path here. 
+let model_path = "path/to/your/model" // For Commandline, please add the local path here. 
 let nexaSwift = try NexaSwift.NexaTextInference(modelPath: model_path, modelConfiguration: configuration)
 
 var streamMode = false

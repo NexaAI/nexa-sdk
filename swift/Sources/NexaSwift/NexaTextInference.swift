@@ -19,7 +19,7 @@ public class NexaTextInference {
             throw NSError(domain: "InvalidParameterError", code: 400, userInfo: [NSLocalizedDescriptionKey: "Either modelPath or localPath must be provided."])
         }
         self.model = try LlamaModel(path: modelPath, configuration: modelConfiguration)
-        self.modelPath = modelPath.lowercased()
+        self.modelPath = modelPath
         self.chatFormatterRegistry = .init()
     }
     
@@ -49,20 +49,26 @@ public class NexaTextInference {
 
     private func getFormatterForModel() -> ChatFormatter? {
         let modelArch = model.arch.lowercased()
+        let lowerModelPath = modelPath.lowercased()
 
         let modelType: ChatCompletionModel? = {
             switch modelArch {
             case _ where modelArch.contains("gemma"):
-                return .gemma
+                // For Gemma-based models, check the model path
+                if lowerModelPath.contains("octopus-v2") || lowerModelPath.contains("octopusv2") {
+                    return .octopusv2
+                } else {
+                    return .gemma
+                }
             case _ where modelArch.contains("qwen"):
                 return .qwen
             case _ where modelArch.contains("llama"):
                 // For Llama-based models, check the model path
-                if modelPath.contains("llama-2") || modelPath.contains("llama2") {
+                if lowerModelPath.contains("llama-2") || lowerModelPath.contains("llama2") {
                     return .llama
-                } else if modelPath.contains("llama-3") || modelPath.contains("llama3") {
+                } else if lowerModelPath.contains("llama-3") || lowerModelPath.contains("llama3") {
                     return .llama3
-                } else if modelPath.contains("mistral") {
+                } else if lowerModelPath.contains("mistral") {
                     return .mistral
                 } else {
                     // If can't determine specific version, default to Llama2

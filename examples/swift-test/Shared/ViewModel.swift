@@ -8,43 +8,50 @@ class ViewModel {
     let nexaSwift: NexaTextInference
     var result = ""
     var usingStream = true
+    private var messages: [ChatCompletionRequestMessage] = []
+    private let maxHistory = 1
     private var cancallable: Set<AnyCancellable> = []
     
     init() {
         let configuration = Configuration(maxNewToken: 128, stopTokens: ["<nexa_end>"])
-        let path = Bundle.main.path(forResource: "octopusv2_q4_0", ofType: "gguf") ?? ""
-        nexaSwift = (try? NexaTextInference(modelPath: path, modelConfiguration: configuration))!
-    }
-
-    func formatUserMessage(_ message: String) -> String {
-        let formatted = """
-        Below is the query from the users, please call the correct function and generate the parameters to call the function.
-        
-        Query: \(message)
-        
-        Response:
-        """
-        return formatted
+        let model_path = Bundle.main.path(forResource: "octopusv2_q4_0", ofType: "gguf") ?? ""
+        nexaSwift = (try? NexaTextInference(modelPath: model_path, modelConfiguration: configuration))!
     }
 
     func run(for userMessage: String) {
         result = ""
-        
-        let formattedUserMessage = formatUserMessage(userMessage)
+        let userMessageText = ChatCompletionRequestMessage.user(
+            ChatCompletionRequestUserMessage(content: .text(userMessage))
+        )
+
+        messages.append(userMessageText)
+        if messages.count > maxHistory * 2 {
+            messages.removeFirst(2)
+        }
 
         Task {
             switch usingStream {
             case true:
-                for try await value in await nexaSwift.createCompletionStream(for: formattedUserMessage) {
-                    print("Received content: \(value.choices[0].text)")   // DEBUG
-                    result += value.choices[0].text
+                for try await value in await nexaSwift.createChatCompletionStream(for: messages) {
+                    let delta = value.choices[0].delta.content ?? ""
+                    result += delta
                 }
             case false:
-                if let completionResponse = try? await nexaSwift.createCompletion(for: formattedUserMessage) {
-                    print("Received completion response: \(completionResponse.choices[0].text)")   // DEBUG
-                    result += completionResponse.choices[0].text
+                if let completionResponse = try? await nexaSwift.createChatCompletion(for: messages) {
+                    let content = completionResponse.choices[0].message.content ?? ""
+                    result += content
                 }
             }
+
+            // Add assistant's response to history
+            let assistantMessage = ChatCompletionRequestMessage.assistant(
+                ChatCompletionRequestAssistantMessage(
+                    content: result,
+                    toolCalls: nil,
+                    functionCall: nil
+                )
+            )
+            messages.append(assistantMessage)
         }
     }
 }
