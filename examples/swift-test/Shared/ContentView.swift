@@ -6,7 +6,7 @@ struct ContentView: View {
 
     var body: some View {
         VStack {
-            Text("Swift Llama Demo").font(.title)
+            Text("Nexa Swift Demo").font(.title)
             
             Toggle(isOn: $viewModel.usingStream) {
                 Text("Use Stream")
