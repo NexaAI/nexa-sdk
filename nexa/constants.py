@@ -108,6 +108,15 @@ NEXA_RUN_MODEL_MAP_VLM = {
     "llava-v1.6-vicuna-7b:fp16": "llava-v1.6-vicuna-7b:model-fp16",
 }
 
+NEXA_RUN_MODEL_MAP_AUDIO_LM = {
+    "qwen2audio": "Qwen2-Audio-7.8B-Instruct:q4_0",
+    "qwen2audio:fp16": "Qwen2-Audio-7.8B-Instruct:fp16",
+    "qwen2audio:q4_0": "Qwen2-Audio-7.8B-Instruct:q4_0",
+    "octoaudio": "Octo-omni-audio:fp16",
+    "octoaudio:fp16": "Octo-omni-audio:fp16",
+    "octoaudio:q4_0": "Octo-omni-audio:q4_0",
+}
+
 NEXA_RUN_MODEL_MAP_VOICE = {
     "whisper-large": "whisper-large:bin-large-v3",
     "whisper-tiny": "whisper-tiny:bin-tiny",
@@ -158,6 +167,15 @@ NEXA_RUN_PROJECTOR_MAP = {
     "llava1.6-vicuna": "llava-v1.6-vicuna-7b:projector-q4_0",
     "llava-v1.6-vicuna-7b:q4_0": "llava-v1.6-vicuna-7b:projector-q4_0",
     "llava-v1.6-vicuna-7b:fp16": "llava-v1.6-vicuna-7b:projector-fp16",
+}
+
+NEXA_RUN_AUDIO_LM_PROJECTOR_MAP = {
+    "qwen2audio": "Qwen2-Audio-7.8B-Instruct:projector-q4_0",
+    "qwen2audio:fp16": "Qwen2-Audio-7.8B-Instruct:projector-fp16",
+    "qwen2audio:q4_0": "Qwen2-Audio-7.8B-Instruct:projector-q4_0",
+    "octoaudio": "Octo-omni-audio:projector-fp16",
+    "octoaudio:fp16": "Octo-omni-audio:projector-fp16",
+    "octoaudio:q4_0": "Octo-omni-audio:projector-q4_0",
 }
 
 NEXA_RUN_T5XXL_MAP = {

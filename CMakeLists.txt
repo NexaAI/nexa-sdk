@@ -227,7 +227,7 @@ if(WIN32)
     install(
         DIRECTORY
             ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/Release/
-            # ${CMAKE_CURRENT_BINARY_DIR}/llama_build/bin/Release/
+            ${CMAKE_CURRENT_BINARY_DIR}/llama_build/bin/Release/
             ${CMAKE_CURRENT_BINARY_DIR}/nexa_llama_build/bin/Release/
             ${CMAKE_CURRENT_BINARY_DIR}/bark_build/bin/Release/
             ${CMAKE_CURRENT_BINARY_DIR}/bark_build/Release/
@@ -239,7 +239,7 @@ if(WIN32)
     install(
         DIRECTORY
             ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/Release/
-            # ${CMAKE_CURRENT_BINARY_DIR}/llama_build/bin/Release/
+            ${CMAKE_CURRENT_BINARY_DIR}/llama_build/bin/Release/
             ${CMAKE_CURRENT_BINARY_DIR}/nexa_llama_build/bin/Release/
             ${CMAKE_CURRENT_BINARY_DIR}/bark_build/bin/Release/
             ${CMAKE_CURRENT_BINARY_DIR}/bark_build/Release/
@@ -252,7 +252,7 @@ else()
     install(
         DIRECTORY
             ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/
-            # ${CMAKE_CURRENT_BINARY_DIR}/llama_install/lib/
+            ${CMAKE_CURRENT_BINARY_DIR}/llama_install/lib/
             ${CMAKE_CURRENT_BINARY_DIR}/nexa_llama_install/lib/
             ${CMAKE_CURRENT_BINARY_DIR}/bark_install/lib/
         DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
@@ -264,7 +264,7 @@ else()
     install(
         DIRECTORY
             ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/
-            # ${CMAKE_CURRENT_BINARY_DIR}/llama_install/lib/
+            ${CMAKE_CURRENT_BINARY_DIR}/llama_install/lib/
             ${CMAKE_CURRENT_BINARY_DIR}/nexa_llama_install/lib/
             ${CMAKE_CURRENT_BINARY_DIR}/bark_install/lib/
         DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
