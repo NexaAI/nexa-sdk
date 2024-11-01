@@ -21,9 +21,8 @@
 		4BB1E3E62BE646CF00F1D21A /* ViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B1334F52BE5C4AC0020AB8E /* ViewModel.swift */; };
 		4BEE1DB62BE70024001CE949 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BEE1DB52BE70024001CE949 /* main.swift */; };
 		4BEE1DBB2BE7003E001CE949 /* NexaSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 4BEE1DBA2BE7003E001CE949 /* NexaSwift */; };
-		932931422CD4CA5500B5A8D7 /* octopusv2_q4_0.gguf in CopyFiles */ = {isa = PBXBuildFile; fileRef = D3EA0DDC2CCC97B900EA9CA7 /* octopusv2_q4_0.gguf */; };
-		D3EA0DDF2CCC97B900EA9CA7 /* octopusv2_q4_0.gguf in Resources */ = {isa = PBXBuildFile; fileRef = D3EA0DDC2CCC97B900EA9CA7 /* octopusv2_q4_0.gguf */; };
-		D3EA0DE22CCC97B900EA9CA7 /* octopusv2_q4_0.gguf in Resources */ = {isa = PBXBuildFile; fileRef = D3EA0DDC2CCC97B900EA9CA7 /* octopusv2_q4_0.gguf */; };
+		D38D5E552CD54ED900EB536A /* octopusv2_q4_0.gguf in Resources */ = {isa = PBXBuildFile; fileRef = D38D5E542CD54ED900EB536A /* octopusv2_q4_0.gguf */; };
+		D38D5E562CD54ED900EB536A /* octopusv2_q4_0.gguf in Resources */ = {isa = PBXBuildFile; fileRef = D38D5E542CD54ED900EB536A /* octopusv2_q4_0.gguf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -33,7 +32,6 @@
 			dstPath = "";
 			dstSubfolderSpec = 16;
 			files = (
-				932931422CD4CA5500B5A8D7 /* octopusv2_q4_0.gguf in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -54,7 +52,7 @@
 		4B51A47B2BE7449700F65BFC /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		4BEE1DB32BE70024001CE949 /* TestApp-CLI */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "TestApp-CLI"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4BEE1DB52BE70024001CE949 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
-		D3EA0DDC2CCC97B900EA9CA7 /* octopusv2_q4_0.gguf */ = {isa = PBXFileReference; lastKnownFileType = file; path = octopusv2_q4_0.gguf; sourceTree = "<group>"; };
+		D38D5E542CD54ED900EB536A /* octopusv2_q4_0.gguf */ = {isa = PBXFileReference; lastKnownFileType = file; path = octopusv2_q4_0.gguf; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -129,7 +127,7 @@
 		4B10A3302BE5CD6600BEA6A1 /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				D3EA0DDC2CCC97B900EA9CA7 /* octopusv2_q4_0.gguf */,
+				D38D5E542CD54ED900EB536A /* octopusv2_q4_0.gguf */,
 			);
 			name = Models;
 			path = Shared/Models;
@@ -284,8 +282,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				4B1334FC2BE5C4AC0020AB8E /* Preview Assets.xcassets in Resources */,
+				D38D5E562CD54ED900EB536A /* octopusv2_q4_0.gguf in Resources */,
 				4B1334FA2BE5C4AC0020AB8E /* Assets.xcassets in Resources */,
-				D3EA0DDF2CCC97B900EA9CA7 /* octopusv2_q4_0.gguf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -294,8 +292,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				4B0B05812BE5C452002BC7AF /* Preview Assets.xcassets in Resources */,
+				D38D5E552CD54ED900EB536A /* octopusv2_q4_0.gguf in Resources */,
 				4B0B057E2BE5C452002BC7AF /* Assets.xcassets in Resources */,
-				D3EA0DE22CCC97B900EA9CA7 /* octopusv2_q4_0.gguf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -474,7 +472,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = test.tim.TestApp;
+				PRODUCT_BUNDLE_IDENTIFIER = test.nexaai.TestApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -504,7 +502,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = test.tim.TestApp;
+				PRODUCT_BUNDLE_IDENTIFIER = test.nexaai.TestApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -534,7 +532,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "test.tim.TestApp-Macos";
+				PRODUCT_BUNDLE_IDENTIFIER = "test.nexaai.TestApp-Macos";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -564,7 +562,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "test.tim.TestApp-Macos";
+				PRODUCT_BUNDLE_IDENTIFIER = "test.nexaai.TestApp-Macos";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -576,7 +574,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = H34TY7DNP5;
+				DEVELOPMENT_TEAM = 8235LVN3VW;
 				ENABLE_HARDENED_RUNTIME = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -589,7 +587,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = H34TY7DNP5;
+				DEVELOPMENT_TEAM = 8235LVN3VW;
 				ENABLE_HARDENED_RUNTIME = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";

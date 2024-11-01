@@ -6,7 +6,7 @@ let configuration = NexaSwift.Configuration(
     stopTokens: []
 )
 
-let model_path = Bundle.main.path(forResource: "octopusv2_q4_0", ofType: "gguf") ?? ""
+let model_path = "" // For Commandline, please add the local path here. 
 let nexaSwift = try NexaSwift.NexaTextInference(modelPath: model_path, modelConfiguration: configuration)
 
 var streamMode = false
