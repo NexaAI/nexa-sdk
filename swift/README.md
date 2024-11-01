@@ -8,7 +8,7 @@
 To add NexaSwift to your Swift project, add the following dependency in your `Package.swift` file:
 
 ```swift
-.package(url: "https://github.com/NexaAI/nexa-sdk/NexaSwift.git", .branch("main"))
+.package(url: "https://github.com/NexaAI/nexa-sdk.git", .branch("main"))
 ```
 
 ## Usage
