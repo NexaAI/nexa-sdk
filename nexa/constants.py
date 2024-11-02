@@ -109,12 +109,12 @@ NEXA_RUN_MODEL_MAP_VLM = {
 }
 
 NEXA_RUN_MODEL_MAP_AUDIO_LM = {
-    "qwen2audio": "Qwen2-Audio-7.8B-Instruct:q4_0",
-    "qwen2audio:fp16": "Qwen2-Audio-7.8B-Instruct:fp16",
-    "qwen2audio:q4_0": "Qwen2-Audio-7.8B-Instruct:q4_0",
-    "octoaudio": "Octo-omni-audio:fp16",
-    "octoaudio:fp16": "Octo-omni-audio:fp16",
-    "octoaudio:q4_0": "Octo-omni-audio:q4_0",
+    "qwen2audio": "Qwen2-Audio-7.8B-Instruct:model-q4_0",
+    "qwen2audio:fp16": "Qwen2-Audio-7.8B-Instruct:model-fp16",
+    "qwen2audio:q4_0": "Qwen2-Audio-7.8B-Instruct:model-q4_0",
+    "octoaudio": "Octo-omni-audio:model-fp16",
+    "octoaudio:fp16": "Octo-omni-audio:model-fp16",
+    "octoaudio:q4_0": "Octo-omni-audio:model-q4_0",
 }
 
 NEXA_RUN_MODEL_MAP_VOICE = {
@@ -409,6 +409,8 @@ NEXA_OFFICIAL_MODELS_TYPE = {
     "llava-v1.6-vicuna-7b": ModelType.MULTIMODAL,
     "llava-phi-3-mini": ModelType.MULTIMODAL,
     "llava-llama-3-8b-v1.1": ModelType.MULTIMODAL,
+    "octoaudio": ModelType.MULTIMODAL,
+    "qwen2audio": ModelType.MULTIMODAL,
     "faster-whisper-tiny.en": ModelType.AUDIO,
     "faster-whisper-tiny": ModelType.AUDIO,
     "faster-whisper-small.en": ModelType.AUDIO,
