@@ -32,7 +32,7 @@ pip install nexaai[onnx] # if you need ONNX support
 ```bash
 git clone --recursive https://github.com/NexaAI/nexa-sdk.git
 cd nexa-sdk
-pip install -e .
+pip install -e . --verbose # use --verbose for debugging
 pip install -e .[onnx] # if you need ONNX support
 ```
 
@@ -75,6 +75,8 @@ wget -O control_normal-fp16.safetensors https://huggingface.co/webui/ControlNet-
 wget -O controlnet_test.png https://huggingface.co/takuma104/controlnet_dev/resolve/main/gen_compare/control_images/converted/control_human_normal.png
 python -m nexa.gguf.nexa_inference_image sd1-5 --control_net_path control_normal-fp16.safetensors --control_image_path controlnet_test.png
 python -m nexa.gguf.nexa_inference_voice whisper-tiny
+python -m nexa.gguf.nexa_inference_audio_lm qwen2audio
+python -m nexa.gguf.nexa_inference_audio_lm octoaudio
 ```
 
 ### Test with Streamlit UI

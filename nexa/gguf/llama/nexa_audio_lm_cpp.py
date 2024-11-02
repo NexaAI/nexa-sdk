@@ -34,6 +34,7 @@ def _load_shared_library(lib_base_name: str):
 
     # Try to load the shared library, handling potential errors
     for _lib_path in _lib_paths:
+        print("Trying to load", _lib_path)
         if _lib_path.exists():
             try:
                 return ctypes.CDLL(str(_lib_path))
@@ -45,9 +46,9 @@ def _load_shared_library(lib_base_name: str):
     )
 
 # Load both libraries
-_lib_base_name = "hf-omni-audio-cli_shared"
+_lib_base_name = "nexa-omni-audio-lib"
 _lib_omni = _load_shared_library(_lib_base_name)
-_lib_base_name = "hf-qwen2-audio_shared"
+_lib_base_name = "nexa-qwen2-audio-lib"
 _lib_qwen2 = _load_shared_library(_lib_base_name)
 
 

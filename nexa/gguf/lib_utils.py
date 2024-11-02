@@ -64,6 +64,7 @@ def load_library(lib_base_name: str):
 
     # Try to load the shared library, handling potential errors
     for _lib_path in _lib_paths:
+        print("Trying to load", _lib_path)
         if _lib_path.exists():
             try:
                 return ctypes.CDLL(str(_lib_path), **cdll_args)  # type: ignore
