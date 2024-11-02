@@ -3,6 +3,9 @@ import os
 import sys
 import pathlib
 
+# make sure only below functions are exposed
+__all__ = ['context_default_params', 'init_context', 'process_full', 'free']
+
 # Load the library
 def _load_shared_library(lib_base_name: str):
     # Determine the file extension based on the platform
@@ -48,9 +51,9 @@ def _load_shared_library(lib_base_name: str):
 # Load both libraries
 _lib_base_name = "nexa-omni-audio-lib"
 _lib_omni = _load_shared_library(_lib_base_name)
-_lib_base_name = "nexa-qwen2-audio-lib"
+# _lib_base_name = "nexa-qwen2-audio-lib"
+# _lib_qwen2 = _load_shared_library(_lib_base_name)
 _lib_qwen2 = _load_shared_library(_lib_base_name)
-
 
 # struct omni_context_params
 # {

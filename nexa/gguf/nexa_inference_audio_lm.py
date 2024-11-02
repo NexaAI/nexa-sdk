@@ -13,7 +13,7 @@ from nexa.gguf.llama import nexa_audio_lm_cpp
 from nexa.general import pull_model
 
 def is_qwen(model_name):
-    if "qwen2" in model_name: # TEMPORARY SOLUTION : this hardcode can be risky
+    if "qwen" in model_name.lower(): # TEMPORARY SOLUTION : this hardcode can be risky
         return True
     return False
 
