@@ -31,7 +31,7 @@ pip install nexaai[onnx] # if you need ONNX support
 To build C++ only
 ```
 cmake -B build -S .
-cmake --build build --config Release
+cmake --build build --config Release -j32
 ```
 To build C++ and install python package from source, run the following commands:
 ```bash
