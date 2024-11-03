@@ -38,6 +38,7 @@ class ModelType(Enum):
     TTS = "TTS"
     MULTIMODAL = "Multimodal"
     TEXT_EMBEDDING = "Text Embedding"
+    AUDIOLM = "AudioLM"
 
 
 NEXA_RUN_MODEL_MAP_TEXT = {
@@ -409,8 +410,8 @@ NEXA_OFFICIAL_MODELS_TYPE = {
     "llava-v1.6-vicuna-7b": ModelType.MULTIMODAL,
     "llava-phi-3-mini": ModelType.MULTIMODAL,
     "llava-llama-3-8b-v1.1": ModelType.MULTIMODAL,
-    "octoaudio": ModelType.MULTIMODAL,
-    "qwen2audio": ModelType.MULTIMODAL,
+    "octoaudio": ModelType.AUDIOLM,
+    "qwen2audio": ModelType.AUDIOLM,
     "faster-whisper-tiny.en": ModelType.AUDIO,
     "faster-whisper-tiny": ModelType.AUDIO,
     "faster-whisper-small.en": ModelType.AUDIO,
