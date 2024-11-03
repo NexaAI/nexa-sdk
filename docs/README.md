@@ -191,9 +191,10 @@ nexa-cli onnx tts ljspeech
 Test individual modules with downloaded GGUF files:
 
 ```shell
-python  tests/verify_text_generation.py
+python tests/verify_text_generation.py
 python tests/verify_vlm.py
 python tests/verify_image_generation.py
+python tests/verify_tts_generation.py
 ```
 
 ## Notes
