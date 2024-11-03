@@ -38,7 +38,7 @@ def _load_shared_library(lib_base_name: str, base_path: Path = None):
         f"Shared library with base name '{lib_base_name}' not found"
     )
 
-def _get_lib(is_qwen: bool = False):
+def _get_lib(is_qwen: bool = True):
     # Specify the base name of the shared library to load
     _lib_base_name = "nexa-qwen2-audio-lib_shared" if is_qwen else "nexa-omni-audio-lib_shared"
     base_path = (
@@ -76,12 +76,12 @@ omni_context_params_p = ctypes.POINTER(omni_context_params)
 omni_context_p = ctypes.c_void_p
 
 # OMNI_AUDIO_API omni_context_params omni_context_default_params();
-def context_default_params(is_qwen: bool = False) -> omni_context_params:
+def context_default_params(is_qwen: bool = True) -> omni_context_params:
     _lib = _lib_qwen if is_qwen else _lib_omni
     return _lib.omni_context_default_params()
 
 # OMNI_AUDIO_API struct omni_context *omni_init_context(omni_context_params &params);
-def init_context(params: omni_context_params_p, is_qwen: bool = False) -> omni_context_p:  # type: ignore
+def init_context(params: omni_context_params_p, is_qwen: bool = True) -> omni_context_p:  # type: ignore
     _lib = _lib_qwen if is_qwen else _lib_omni
     return _lib.omni_init_context(params)
 
@@ -89,12 +89,12 @@ def init_context(params: omni_context_params_p, is_qwen: bool = False) -> omni_c
 #     struct omni_context *ctx_omni,
 #     omni_context_params &params
 # );
-def process_full(ctx: omni_context_p, params: omni_context_params_p, is_qwen: bool = False):  # type: ignore
+def process_full(ctx: omni_context_p, params: omni_context_params_p, is_qwen: bool = True):  # type: ignore
     _lib = _lib_qwen if is_qwen else _lib_omni
     return _lib.omni_process_full(ctx, params)
 
 # OMNI_AUDIO_API void omni_free(struct omni_context *ctx_omni);
-def free(ctx: omni_context_p, is_qwen: bool = False):
+def free(ctx: omni_context_p, is_qwen: bool = True):
     _lib = _lib_qwen if is_qwen else _lib_omni
     return _lib.omni_free(ctx)
 
