@@ -80,20 +80,10 @@ def context_default_params(is_qwen: bool = False) -> omni_context_params:
     _lib = _lib_qwen if is_qwen else _lib_omni
     return _lib.omni_context_default_params()
 
-# _lib_omni.omni_context_default_params.argtypes = []
-# _lib_qwen.omni_context_default_params.argtypes = []
-# _lib_omni.omni_context_default_params.restype = omni_context_params
-# _lib_qwen.omni_context_default_params.restype = omni_context_params
-
 # OMNI_AUDIO_API struct omni_context *omni_init_context(omni_context_params &params);
 def init_context(params: omni_context_params_p, is_qwen: bool = False) -> omni_context_p:  # type: ignore
     _lib = _lib_qwen if is_qwen else _lib_omni
     return _lib.omni_init_context(params)
-
-# _lib_omni.omni_init_context.argtypes = [omni_context_params_p]
-# _lib_qwen.omni_init_context.argtypes = [omni_context_params_p]
-# _lib_omni.omni_init_context.restype = omni_context_p
-# _lib_qwen.omni_init_context.restype = omni_context_p
 
 # OMNI_AUDIO_API void omni_process_full(
 #     struct omni_context *ctx_omni,
@@ -102,11 +92,6 @@ def init_context(params: omni_context_params_p, is_qwen: bool = False) -> omni_c
 def process_full(ctx: omni_context_p, params: omni_context_params_p, is_qwen: bool = False):  # type: ignore
     _lib = _lib_qwen if is_qwen else _lib_omni
     return _lib.omni_process_full(ctx, params)
-
-# _lib_omni.omni_process_full.argtypes = [omni_context_p, omni_context_params_p]
-# _lib_qwen.omni_process_full.argtypes = [omni_context_p, omni_context_params_p]
-# _lib_omni.omni_process_full.restype = None
-# _lib_qwen.omni_process_full.restype = None
 
 # OMNI_AUDIO_API void omni_free(struct omni_context *ctx_omni);
 def free(ctx: omni_context_p, is_qwen: bool = False):
