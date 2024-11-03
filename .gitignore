@@ -91,3 +91,12 @@ build_*/
 
 # tests
 quantization_test.py
+
+# Swift
+.swiftpm/
+UserInterfaceState.xcuserstate
+xcuserdata/
+*.xcworkspace/xcuserdata/
+*.playground/playground.xcworkspace/xcuserdata/
+*.generated.plist
+.build/

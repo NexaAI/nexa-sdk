@@ -330,6 +330,10 @@ For detailed information on CLI commands and usage, please refer to the [CLI Ref
 To start a local server using models on your local computer, you can use the `nexa server` command.
 For detailed information on server setup, API endpoints, and usage examples, please refer to the [Server Reference](SERVER.md) document.
 
+## Swift Package
+
+**[Swift SDK](https://github.com/NexaAI/nexa-sdk/tree/main/swift):** Provides a Swifty API, allowing Swift developers to easily integrate and use llama.cpp models in their projects.
+
 ## Acknowledgements
 
 We would like to thank the following projects:
