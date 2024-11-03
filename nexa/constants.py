@@ -339,6 +339,7 @@ DEFAULT_VOICE_GEN_PARAMS = {
     "compute_type": "default",
 }
 
+# key is the repo name on Nexa model hub
 NEXA_OFFICIAL_MODELS_TYPE = {
     "gemma-2b": ModelType.NLP,
     "Llama-2-7b-chat": ModelType.NLP,
@@ -410,8 +411,8 @@ NEXA_OFFICIAL_MODELS_TYPE = {
     "llava-v1.6-vicuna-7b": ModelType.MULTIMODAL,
     "llava-phi-3-mini": ModelType.MULTIMODAL,
     "llava-llama-3-8b-v1.1": ModelType.MULTIMODAL,
-    "omniaudio": ModelType.AUDIOLM,
-    "qwen2audio": ModelType.AUDIOLM,
+    "Octo-omni-audio": ModelType.AUDIOLM,
+    "Qwen2-Audio-7.8B-Instruct": ModelType.AUDIOLM,
     "faster-whisper-tiny.en": ModelType.AUDIO,
     "faster-whisper-tiny": ModelType.AUDIO,
     "faster-whisper-small.en": ModelType.AUDIO,
