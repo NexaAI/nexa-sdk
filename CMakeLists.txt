@@ -2,7 +2,19 @@ cmake_minimum_required(VERSION 3.16)
 project(nexa_gguf)
 
 include(ExternalProject)
-find_package(OpenMP REQUIRED) # Find OpenMP package which is needed for llama.cpp
+
+# makes OpenMP optional on macOS
+if(APPLE)
+    find_package(OpenMP QUIET)
+    if(NOT OpenMP_FOUND)
+        message(STATUS "OpenMP not found - OpenMP support will be disabled")
+        set(OpenMP_C_FLAGS "")
+        set(OpenMP_CXX_FLAGS "")
+        set(OpenMP_EXE_LINKER_FLAGS "")
+    endif()
+else()
+    find_package(OpenMP REQUIRED)
+endif()# Find OpenMP package which is needed for llama.cpp
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_STANDARD 17)
