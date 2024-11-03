@@ -113,9 +113,9 @@ NEXA_RUN_MODEL_MAP_AUDIO_LM = {
     "qwen2audio": "Qwen2-Audio-7.8B-Instruct:model-fp16",
     "qwen2audio:fp16": "Qwen2-Audio-7.8B-Instruct:model-fp16",
     "qwen2audio:q4_0": "Qwen2-Audio-7.8B-Instruct:model-q4_0",
-    "octoaudio": "Octo-omni-audio:model-fp16",
-    "octoaudio:fp16": "Octo-omni-audio:model-fp16",
-    "octoaudio:q4_0": "Octo-omni-audio:model-q4_0",
+    "omniaudio": "Octo-omni-audio:model-fp16",
+    "omniaudio:fp16": "Octo-omni-audio:model-fp16",
+    "omniaudio:q4_0": "Octo-omni-audio:model-q4_0",
 }
 
 NEXA_RUN_MODEL_MAP_VOICE = {
@@ -174,9 +174,9 @@ NEXA_RUN_AUDIO_LM_PROJECTOR_MAP = {
     "qwen2audio": "Qwen2-Audio-7.8B-Instruct:projector-fp16",
     "qwen2audio:fp16": "Qwen2-Audio-7.8B-Instruct:projector-fp16",
     "qwen2audio:q4_0": "Qwen2-Audio-7.8B-Instruct:projector-q4_0",
-    "octoaudio": "Octo-omni-audio:projector-fp16",
-    "octoaudio:fp16": "Octo-omni-audio:projector-fp16",
-    "octoaudio:q4_0": "Octo-omni-audio:projector-q4_0",
+    "omniaudio": "Octo-omni-audio:projector-fp16",
+    "omniaudio:fp16": "Octo-omni-audio:projector-fp16",
+    "omniaudio:q4_0": "Octo-omni-audio:projector-q4_0",
 }
 
 NEXA_RUN_T5XXL_MAP = {
@@ -410,7 +410,7 @@ NEXA_OFFICIAL_MODELS_TYPE = {
     "llava-v1.6-vicuna-7b": ModelType.MULTIMODAL,
     "llava-phi-3-mini": ModelType.MULTIMODAL,
     "llava-llama-3-8b-v1.1": ModelType.MULTIMODAL,
-    "octoaudio": ModelType.AUDIOLM,
+    "omniaudio": ModelType.AUDIOLM,
     "qwen2audio": ModelType.AUDIOLM,
     "faster-whisper-tiny.en": ModelType.AUDIO,
     "faster-whisper-tiny": ModelType.AUDIO,
