@@ -232,3 +232,9 @@ del /s /q *.dll # delete
 Get-ChildItem -Recurse -Filter *.dll  # in PowerShell
 dumpbin /dependents your_executable_or_dll.dll  # in Developer PowerShell for Visual Studio
 ```
+
+### Debug dynamic lib
+According to [isse](https://github.com/abetlen/llama-cpp-python/issues/1346), below can check the exported symbols on linux.
+```
+readelf -Ws --dyn-syms libllama.so
+```
