@@ -109,7 +109,7 @@ NEXA_RUN_MODEL_MAP_VLM = {
 }
 
 NEXA_RUN_MODEL_MAP_AUDIO_LM = {
-    "qwen2audio": "Qwen2-Audio-7.8B-Instruct:model-q4_0",
+    "qwen2audio": "Qwen2-Audio-7.8B-Instruct:model-fp16",
     "qwen2audio:fp16": "Qwen2-Audio-7.8B-Instruct:model-fp16",
     "qwen2audio:q4_0": "Qwen2-Audio-7.8B-Instruct:model-q4_0",
     "octoaudio": "Octo-omni-audio:model-fp16",
@@ -170,7 +170,7 @@ NEXA_RUN_PROJECTOR_MAP = {
 }
 
 NEXA_RUN_AUDIO_LM_PROJECTOR_MAP = {
-    "qwen2audio": "Qwen2-Audio-7.8B-Instruct:projector-q4_0",
+    "qwen2audio": "Qwen2-Audio-7.8B-Instruct:projector-fp16",
     "qwen2audio:fp16": "Qwen2-Audio-7.8B-Instruct:projector-fp16",
     "qwen2audio:q4_0": "Qwen2-Audio-7.8B-Instruct:projector-q4_0",
     "octoaudio": "Octo-omni-audio:projector-fp16",

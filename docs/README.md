@@ -28,7 +28,12 @@ pip install nexaai[onnx] # if you need ONNX support
 ```
 
 ### build from source
-
+To build C++ only
+```
+cmake -B build -S .
+cmake --build build --config Release
+```
+To build C++ and install python package from source, run the following commands:
 ```bash
 git clone --recursive https://github.com/NexaAI/nexa-sdk.git
 cd nexa-sdk

@@ -52,7 +52,6 @@ def _load_shared_library(lib_base_name: str):
 _lib_base_name = "nexa-omni-audio-lib"
 _lib_omni = _load_shared_library(_lib_base_name)
 # _lib_base_name = "nexa-qwen2-audio-lib"
-# _lib_qwen2 = _load_shared_library(_lib_base_name)
 _lib_qwen2 = _load_shared_library(_lib_base_name)
 
 # struct omni_context_params

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 project(nexa_gguf)
 
 include(ExternalProject)
-find_package(OpenMP REQUIRED)
+find_package(OpenMP REQUIRED) # Find OpenMP package which is needed for llama.cpp
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_STANDARD 17)
@@ -56,7 +56,6 @@ endfunction()
 
 # Collect all user-defined options
 get_all_options(USER_DEFINED_OPTIONS)
-message(STATUS "USER_DEFINED_OPTIONS: ${USER_DEFINED_OPTIONS}")
 
 if(APPLE)
     set(CMAKE_INSTALL_RPATH "@loader_path")
@@ -90,7 +89,6 @@ endif()
 # stable_diffusion_cpp project
 option(STABLE_DIFFUSION_BUILD "Build stable-diffusion.cpp" ON)
 if(STABLE_DIFFUSION_BUILD)
-    message(STATUS "Configuring stable-diffusion.cpp build...")
     ExternalProject_Add(stable_diffusion_project
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dependency/stable-diffusion.cpp
         BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build
@@ -107,63 +105,12 @@ if(STABLE_DIFFUSION_BUILD)
         BUILD_ALWAYS 1
         BUILD_COMMAND ${CMAKE_COMMAND} --build . --config Release -- ${MSBUILD_ARGS}
         INSTALL_COMMAND ${CMAKE_COMMAND} --build . --config Release --target install
-        LOG_CONFIGURE 1
-        LOG_BUILD 1
-        LOG_INSTALL 1
     )
-endif()
-
-
-# nexa_llama_cpp project
-option(NEXA_LLAMA_BUILD "Build nexa-llama.cpp" ON)
-if(NEXA_LLAMA_BUILD)
-    set(LLAMA_CUDA ${GGML_CUDA})
-    set(LLAMA_METAL ${GGML_METAL})
-
-    ExternalProject_Add(nexa_llama_project
-        SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dependency/nexa_llama.cpp
-        BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/nexa_llama_build
-        CMAKE_ARGS
-            ${USER_DEFINED_OPTIONS}
-            ${COMMON_CMAKE_OPTIONS}
-            -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/nexa_llama_install
-            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-            -DCMAKE_CXX_STANDARD=17
-            -DLLAMA_CUDA=${LLAMA_CUDA}
-            -DLLAMA_METAL=${LLAMA_METAL}
-            -DCMAKE_C_FLAGS=${OpenMP_C_FLAGS}
-            -DCMAKE_CXX_FLAGS=${OpenMP_CXX_FLAGS}
-            -DCMAKE_EXE_LINKER_FLAGS=${OpenMP_EXE_LINKER_FLAGS}
-            -DGGML_AVX=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
-            -DGGML_AVX2=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
-            -DGGML_FMA=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
-            -DGGML_F16C=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
-            -DGGML_METAL_EMBED_LIBRARY=$<IF:$<PLATFORM_ID:Darwin>,ON,OFF>
-            -DLLAMA_BUILD_INFO=OFF
-        BUILD_ALWAYS 1
-        BUILD_COMMAND ${CMAKE_COMMAND} --build . --config Release -- ${MSBUILD_ARGS}
-        INSTALL_COMMAND ${CMAKE_COMMAND} --build . --config Release --target install
-        LOG_CONFIGURE 1
-        LOG_BUILD 1
-        LOG_INSTALL 1
-        LOG_OUTPUT_ON_FAILURE 1
-    )
-
-    # Add a custom target to copy build logs to a permanent location
-    add_custom_command(TARGET nexa_llama_project POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/build_logs
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_CURRENT_BINARY_DIR}/nexa_llama_project-prefix/src/nexa_llama_project-stamp/nexa_llama_project-*.log
-        ${CMAKE_CURRENT_SOURCE_DIR}/build_logs/
-    COMMENT "Copying nexa_llama build logs to permanent location"
-    )
-
 endif()
 
 # llama_cpp project
 option(LLAMA_BUILD "Build llama.cpp" ON)
 if(LLAMA_BUILD)
-    message(STATUS "Configuring llama.cpp build...")
     set(LLAMA_CUDA ${GGML_CUDA})
     set(LLAMA_METAL ${GGML_METAL})
 
@@ -176,6 +123,7 @@ if(LLAMA_BUILD)
             -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/llama_install
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
             -DCMAKE_CXX_STANDARD=17
+            -DBUILD_SHARED_LIBS=ON
             -DLLAMA_CUDA=${LLAMA_CUDA}
             -DLLAMA_METAL=${LLAMA_METAL}
             -DCMAKE_C_FLAGS=${OpenMP_C_FLAGS}
@@ -189,16 +137,12 @@ if(LLAMA_BUILD)
         BUILD_ALWAYS 1
         BUILD_COMMAND ${CMAKE_COMMAND} --build . --config Release -- ${MSBUILD_ARGS}
         INSTALL_COMMAND ${CMAKE_COMMAND} --build . --config Release --target install
-        LOG_CONFIGURE 1
-        LOG_BUILD 1
-        LOG_INSTALL 1
     )
 endif()
 
 # bark_cpp project
 option(BARK_BUILD "Build bark.cpp" ON)
 if(BARK_BUILD)
-    message(STATUS "Configuring bark.cpp build...")
     ExternalProject_Add(bark_project
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dependency/bark.cpp
         BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/bark_build
@@ -215,21 +159,15 @@ if(BARK_BUILD)
         BUILD_ALWAYS 1
         BUILD_COMMAND ${CMAKE_COMMAND} --build . --config Release -- ${MSBUILD_ARGS}
         INSTALL_COMMAND ${CMAKE_COMMAND} --build . --config Release --target install
-        LOG_CONFIGURE 1
-        LOG_BUILD 1
-        LOG_INSTALL 1
-        LOG_OUTPUT_ON_FAILURE 1
     )
 endif()
 
 # Install the built libraries to the final destination
-message(STATUS "Installing built libraries to final destination...")
 if(WIN32)
     install(
         DIRECTORY
             ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/Release/
             ${CMAKE_CURRENT_BINARY_DIR}/llama_build/bin/Release/
-            ${CMAKE_CURRENT_BINARY_DIR}/nexa_llama_build/bin/Release/
             ${CMAKE_CURRENT_BINARY_DIR}/bark_build/bin/Release/
             ${CMAKE_CURRENT_BINARY_DIR}/bark_build/Release/
         DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
@@ -237,11 +175,11 @@ if(WIN32)
         FILES_MATCHING
             PATTERN "*.dll"
     )
+
     install(
         DIRECTORY
             ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/Release/
             ${CMAKE_CURRENT_BINARY_DIR}/llama_build/bin/Release/
-            ${CMAKE_CURRENT_BINARY_DIR}/nexa_llama_build/bin/Release/
             ${CMAKE_CURRENT_BINARY_DIR}/bark_build/bin/Release/
             ${CMAKE_CURRENT_BINARY_DIR}/bark_build/Release/
         DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
@@ -254,7 +192,6 @@ else()
         DIRECTORY
             ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/
             ${CMAKE_CURRENT_BINARY_DIR}/llama_install/lib/
-            ${CMAKE_CURRENT_BINARY_DIR}/nexa_llama_install/lib/
             ${CMAKE_CURRENT_BINARY_DIR}/bark_install/lib/
         DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib
         USE_SOURCE_PERMISSIONS
@@ -262,11 +199,11 @@ else()
             PATTERN "*.so"
             PATTERN "*.dylib"
     )
+
     install(
         DIRECTORY
             ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/
             ${CMAKE_CURRENT_BINARY_DIR}/llama_install/lib/
-            ${CMAKE_CURRENT_BINARY_DIR}/nexa_llama_install/lib/
             ${CMAKE_CURRENT_BINARY_DIR}/bark_install/lib/
         DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib
         USE_SOURCE_PERMISSIONS
