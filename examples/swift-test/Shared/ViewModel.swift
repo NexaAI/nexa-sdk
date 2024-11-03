@@ -13,8 +13,8 @@ class ViewModel {
     private var cancallable: Set<AnyCancellable> = []
     
     init() {
-        let configuration = Configuration(maxNewToken: 128, stopTokens: ["<nexa_end>"])
-        let model_path = Bundle.main.path(forResource: "octopusv2_q4_0", ofType: "gguf") ?? ""
+        let configuration = Configuration(maxNewToken: 128, stopTokens: [])
+        let model_path = Bundle.main.path(forResource: "llama3_2_3b_q4_K_M", ofType: "gguf") ?? ""
         nexaSwift = (try? NexaTextInference(modelPath: model_path, modelConfiguration: configuration))!
     }
 

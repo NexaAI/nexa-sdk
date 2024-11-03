@@ -297,7 +297,7 @@ class Llama3Formatter: ChatFormatter {
         "assistant": "<|start_header_id|>assistant<|end_header_id|>\n\n"
     ]
  
-    private let separator = "<|eot_id|>"
+    private let separator = "<|eot_id|>\n"
 
     func format(messages: [ChatCompletionRequestMessage]) -> ChatFormatterResponse {
         var formattedMessages = mapRoles(messages: messages)
