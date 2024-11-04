@@ -71,17 +71,16 @@ jobs:
       if: runner.os == 'Windows'
       shell: msys2 {0}
       run: |
-        export PATH="/c/Python${{ matrix.python-version }}/:/c/Python${{ matrix.python-version }}/Scripts:$PATH"
-        python -m pip install -e .
-      env:
-        CMAKE_ARGS: "-DCMAKE_CXX_FLAGS=-fopenmp"
+        export PATH="/c/hostedtoolcache/windows/Python/${{ matrix.python-version }}.11/x64:/c/hostedtoolcache/windows/Python/${{ matrix.python-version }}.11/x64/Scripts:$PATH"
+        CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp"
+        /c/hostedtoolcache/windows/Python/${{ matrix.python-version }}.11/x64/python.exe -m pip install -e .
 
     - name: Build (macOS)
       if: runner.os == 'macOS'
       run: |
+        CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp"
         python -m pip install -e .
-      env:
-        CMAKE_ARGS: "-DCMAKE_CXX_FLAGS=-fopenmp"
+      shell: bash
 
     - name: Run tests
       run: |
