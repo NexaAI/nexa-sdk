@@ -148,11 +148,11 @@ if(LLAMA_BUILD)
     set(LLAMA_METAL ${GGML_METAL})
 
     if(WIN32)
-    # Add Windows-specific definitions and flags for llama.cpp
-    list(APPEND USER_DEFINED_OPTIONS
-        "-DLLAMA_DISABLE_CXXABI=ON"    # Disable cxxabi.h dependency
-        "-DLLAMA_NATIVE=OFF"           # Disable native CPU optimizations on Windows
-    )
+        # Add Windows-specific definitions and flags for llama.cpp
+        list(APPEND COMMON_CMAKE_OPTIONS
+            -DLLAMA_DISABLE_CXXABI=ON    # Disable cxxabi.h dependency
+            -DLLAMA_NATIVE=OFF           # Disable native CPU optimizations on Windows
+        )
     endif()
 
     ExternalProject_Add(llama_project
