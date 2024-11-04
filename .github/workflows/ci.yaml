@@ -71,15 +71,17 @@ jobs:
       if: runner.os == 'Windows'
       shell: msys2 {0}
       run: |
-        CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp"
+        export PATH="/c/Python${{ matrix.python-version }}/:/c/Python${{ matrix.python-version }}/Scripts:$PATH"
         python -m pip install -e .
+      env:
+        CMAKE_ARGS: "-DCMAKE_CXX_FLAGS=-fopenmp"
 
     - name: Build (macOS)
       if: runner.os == 'macOS'
       run: |
-        CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp"
         python -m pip install -e .
-      shell: bash
+      env:
+        CMAKE_ARGS: "-DCMAKE_CXX_FLAGS=-fopenmp"
 
     - name: Run tests
       run: |
