@@ -13,7 +13,6 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     strategy:
-      fail-fast: false  # This allows all matrix jobs to complete even if one fails
       matrix:
         os: [macos-latest, windows-latest]
         python-version: ["3.10"]
@@ -44,36 +43,21 @@ jobs:
         python -m pip install build pytest
       shell: bash
 
-    - name: Install CMake (macOS)
-      if: runner.os == 'macOS'
+    - name: Install CMake (if needed)
+      if: runner.os == 'macOS' || runner.os == 'Windows'
       run: |
-        brew install cmake
+        if [[ "$RUNNER_OS" == "Windows" ]]; then
+          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' || exit 1
+        elif [[ "$RUNNER_OS" == "macOS" ]]; then
+          brew install cmake
+        fi
       shell: bash
-
-    - name: Install CMake (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
-      shell: bash
-
-    - name: Setup MinGW (Windows)
-      if: runner.os == 'Windows'
-      uses: msys2/setup-msys2@v2
-      with:
-        msystem: MINGW64
-        update: true
-        install: >-
-          mingw-w64-x86_64-gcc
-          mingw-w64-x86_64-cmake
-          mingw-w64-x86_64-make
 
     - name: Build DLL (Windows)
       if: runner.os == 'Windows'
-      shell: msys2 {0}
       run: |
-        export PATH="/c/hostedtoolcache/windows/Python/${{ matrix.python-version }}.11/x64:/c/hostedtoolcache/windows/Python/${{ matrix.python-version }}.11/x64/Scripts:$PATH"
-        CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp"
-        /c/hostedtoolcache/windows/Python/${{ matrix.python-version }}.11/x64/python.exe -m pip install -e .
+        python -m pip install -e .
+      shell: bash
 
     - name: Build (macOS)
       if: runner.os == 'macOS'
