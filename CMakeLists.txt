@@ -3,8 +3,20 @@ project(nexa_gguf)
 
 include(ExternalProject)
 
-# makes OpenMP optional on macOS
-if(APPLE)
+# Platform-specific settings
+if(WIN32)
+    # Windows-specific settings
+    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+    # OpenMP is optional on Windows
+    find_package(OpenMP QUIET)
+    if(NOT OpenMP_FOUND)
+        message(STATUS "OpenMP not found - OpenMP support will be disabled")
+        set(OpenMP_C_FLAGS "")
+        set(OpenMP_CXX_FLAGS "")
+        set(OpenMP_EXE_LINKER_FLAGS "")
+    endif()
+elseif(APPLE)
+    # macOS-specific settings
     find_package(OpenMP QUIET)
     if(NOT OpenMP_FOUND)
         message(STATUS "OpenMP not found - OpenMP support will be disabled")
@@ -13,11 +25,20 @@ if(APPLE)
         set(OpenMP_EXE_LINKER_FLAGS "")
     endif()
 else()
+    # Linux and other Unix systems
     find_package(OpenMP REQUIRED)
-endif()# Find OpenMP package which is needed for llama.cpp
+endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_STANDARD 17)
+
+# Windows-specific configurations
+if(WIN32)
+    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+    add_definitions(-DNOMINMAX)
+    add_definitions(-D_WIN32_WINNT=0x0A00)  # Target Windows 10 or later
+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+endif()
 
 # Function to collect all user-defined options
 function(get_all_options output_var)
@@ -125,6 +146,14 @@ option(LLAMA_BUILD "Build llama.cpp" ON)
 if(LLAMA_BUILD)
     set(LLAMA_CUDA ${GGML_CUDA})
     set(LLAMA_METAL ${GGML_METAL})
+
+    if(WIN32)
+    # Add Windows-specific definitions and flags for llama.cpp
+    list(APPEND USER_DEFINED_OPTIONS
+        "-DLLAMA_DISABLE_CXXABI=ON"    # Disable cxxabi.h dependency
+        "-DLLAMA_NATIVE=OFF"           # Disable native CPU optimizations on Windows
+    )
+    endif()
 
     ExternalProject_Add(llama_project
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dependency/llama.cpp
