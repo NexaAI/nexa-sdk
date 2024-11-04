@@ -6,7 +6,7 @@ from pathlib import Path
 import json
 
 from nexa.gguf.llama.llama_cpp import GGML_TYPE_COUNT, LLAMA_FTYPE_MOSTLY_Q4_0
-from nexa.constants import LLAMA_QUANTIZATION_TYPES, GGML_TYPES
+from nexa.gguf.converter.constants import LLAMA_QUANTIZATION_TYPES, GGML_TYPES
 from nexa.gguf.llama.llama_cpp import llama_model_quantize_params, llama_model_quantize
 
 # Set up logging
