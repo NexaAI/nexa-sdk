@@ -7,16 +7,21 @@ from PIL import Image
 import streamlit as st
 from nexa.general import pull_model
 from nexa.gguf.nexa_inference_image import NexaImageInference
+from nexa.constants import (
+    DEFAULT_IMG_GEN_PARAMS,
+    DEFAULT_IMG_GEN_PARAMS_LCM,
+    DEFAULT_IMG_GEN_PARAMS_TURBO,
+)
 import io
 
-# init:
-DEFAULT_PARAMS = {
-    "num_inference_steps": 50,
-    "height": 512,
-    "width": 512,
-    "guidance_scale": 7.5,
-    "random_seed": 42
-}
+def get_default_params(model_path: str) -> dict:
+    """Get default parameters based on model type."""
+    if "lcm-dreamshaper" in model_path or "flux" in model_path:
+        return DEFAULT_IMG_GEN_PARAMS_LCM.copy()  # fast LCM models: 4 steps @ 1.0 guidance
+    elif "sdxl-turbo" in model_path:
+        return DEFAULT_IMG_GEN_PARAMS_TURBO.copy()  # sdxl-turbo: 5 steps @ 5.0 guidance
+    else:
+        return DEFAULT_IMG_GEN_PARAMS.copy()  # standard SD models: 20 steps @ 7.5 guidance
 
 def parse_nexa_list_output() -> List[str]:
     """Parse the output of nexa list command to get local computer vision models."""
@@ -288,35 +293,54 @@ try:
     if 'nexa_model' in st.session_state and st.session_state.nexa_model:
         st.sidebar.header("Generation Parameters")
 
+        model_to_check = (st.session_state.current_hub_model if st.session_state.current_hub_model else st.session_state.current_local_path if st.session_state.current_local_path else st.session_state.current_model_path)
+
+        # get model specific defaults:
+        default_params = get_default_params(model_to_check)
+
+        # adjust step range based on model type:
+        max_steps = 100
+        if "lcm-dreamshaper" in model_to_check or "flux" in model_to_check:
+            max_steps = 8  # 4-8 steps
+        elif "sdxl-turbo" in model_to_check:
+            max_steps = 10  # 5-10 steps
+
+        # adjust guidance scale range based on model type:
+        max_guidance = 20.0
+        if "lcm-dreamshaper" in model_to_check or "flux" in model_to_check:
+            max_guidance = 2.0  # 1.0-2.0
+        elif "sdxl-turbo" in model_to_check:
+            max_guidance = 10.0  # 5.0-10.0
+
         num_inference_steps = st.sidebar.slider(
             "Number of Inference Steps",
             1,
-            100,
-            st.session_state.nexa_model.params.get("num_inference_steps", DEFAULT_PARAMS["num_inference_steps"])
+            max_steps,
+            default_params["num_inference_steps"]
         )
         height = st.sidebar.slider(
             "Height",
             64,
             1024,
-            st.session_state.nexa_model.params.get("height", DEFAULT_PARAMS["height"])
+            default_params["height"]
         )
         width = st.sidebar.slider(
             "Width",
             64,
             1024,
-            st.session_state.nexa_model.params.get("width", DEFAULT_PARAMS["width"])
+            default_params["width"]
         )
         guidance_scale = st.sidebar.slider(
             "Guidance Scale",
             0.0,
-            20.0,
-            st.session_state.nexa_model.params.get("guidance_scale", DEFAULT_PARAMS["guidance_scale"])
+            max_guidance,
+            default_params["guidance_scale"]
         )
         random_seed = st.sidebar.slider(
             "Random Seed",
             0,
             10000,
-            st.session_state.nexa_model.params.get("random_seed", DEFAULT_PARAMS["random_seed"])
+            default_params["random_seed"]
         )
 
         st.session_state.nexa_model.params.update({
