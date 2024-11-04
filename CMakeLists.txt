@@ -5,39 +5,22 @@ include(ExternalProject)
 
 # Platform-specific settings
 if(WIN32)
-    # Windows-specific settings
-    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+    add_definitions(-D_CRT_SECURE_NO_WARNINGS -DNOMINMAX)
     # OpenMP is optional on Windows
     find_package(OpenMP QUIET)
-    if(NOT OpenMP_FOUND)
-        message(STATUS "OpenMP not found - OpenMP support will be disabled")
-        set(OpenMP_C_FLAGS "")
-        set(OpenMP_CXX_FLAGS "")
-        set(OpenMP_EXE_LINKER_FLAGS "")
-    endif()
 elseif(APPLE)
-    # macOS-specific settings
     find_package(OpenMP QUIET)
-    if(NOT OpenMP_FOUND)
-        message(STATUS "OpenMP not found - OpenMP support will be disabled")
-        set(OpenMP_C_FLAGS "")
-        set(OpenMP_CXX_FLAGS "")
-        set(OpenMP_EXE_LINKER_FLAGS "")
-    endif()
 else()
     # Linux and other Unix systems
     find_package(OpenMP REQUIRED)
 endif()
 
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(CMAKE_CXX_STANDARD 17)
-
-# Windows-specific configurations
-if(WIN32)
-    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-    add_definitions(-DNOMINMAX)
-    add_definitions(-D_WIN32_WINNT=0x0A00)  # Target Windows 10 or later
-    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+# Set OpenMP flags if not found (Windows/Mac)
+if(NOT OpenMP_FOUND)
+    message(STATUS "OpenMP not found - OpenMP support will be disabled")
+    set(OpenMP_C_FLAGS "")
+    set(OpenMP_CXX_FLAGS "")
+    set(OpenMP_EXE_LINKER_FLAGS "")
 endif()
 
 # Function to collect all user-defined options
