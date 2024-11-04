@@ -80,6 +80,7 @@ class bark_context_params(ctypes.Structure):
         ("verbosity", ctypes.c_int),
         ("temp", ctypes.c_float),
         ("fine_temp", ctypes.c_float),
+        ("n_gpu_layers", ctypes.c_int32),
         ("min_eos_p", ctypes.c_float),
         ("sliding_window_size", ctypes.c_int32),
         ("max_coarse_history", ctypes.c_int32),

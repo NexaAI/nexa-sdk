@@ -7,7 +7,9 @@ import threading
 import platform
 import functools
 from .bark import bark_cpp
+
 from nexa.general import pull_model
+from nexa.gguf.lib_utils import is_gpu_available
 
 class NexaTTSInference:
     """
@@ -27,7 +29,8 @@ class NexaTTSInference:
     """
     
     def __init__(self, model_path=None, local_path=None, n_threads=1, seed=0, 
-                 sampling_rate=24000, verbosity=0, win_stack_size=16*1024*1024, **kwargs):
+                 sampling_rate=24000, verbosity=0, win_stack_size=16*1024*1024,
+                 device="auto", n_gpu_layers=4, **kwargs):
         if model_path is None and local_path is None:
             raise ValueError("Either model_path or local_path must be provided.")
             
@@ -38,6 +41,8 @@ class NexaTTSInference:
         self.sampling_rate = sampling_rate
         self.verbosity = verbosity
         self.win_stack_size = win_stack_size
+        self.device = device
+        self.n_gpu_layers = n_gpu_layers
         self.params = {
             "output_path": os.path.join(os.getcwd(), "tts"),
         }
@@ -93,9 +98,29 @@ class NexaTTSInference:
             params = bark_cpp.bark_context_default_params()
             params.sample_rate = self.sampling_rate
             params.verbosity = self.verbosity
+
+            # Use configured n_gpu_layers when device is auto/gpu and GPU is available
+            if self.device == "auto" or self.device == "gpu":
+                if is_gpu_available():
+                    params.n_gpu_layers = self.n_gpu_layers
+                    logging.info(f"Using GPU acceleration with {self.n_gpu_layers} layers")
+                else:
+                    params.n_gpu_layers = 0
+                    logging.info("GPU not available, falling back to CPU")
+            else:
+                params.n_gpu_layers = 0
+                logging.info("Using CPU mode")
+
             c_model_path = ctypes.c_char_p(self.downloaded_path.encode('utf-8'))
             c_seed = ctypes.c_uint32(self.seed)
-            self.context = bark_cpp.bark_load_model(c_model_path, params, c_seed)
+            
+            try:
+                self.context = bark_cpp.bark_load_model(c_model_path, params, c_seed)
+            except Exception as e:
+                logging.error(f"Failed to load model with GPU. Falling back to CPU: {e}")
+                params.n_gpu_layers = 0
+                self.context = bark_cpp.bark_load_model(c_model_path, params, c_seed)
+
             if not self.context:
                 raise RuntimeError("Failed to load Bark model")
             logging.debug("Model loaded successfully")
