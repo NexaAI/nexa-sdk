@@ -10,4 +10,5 @@ __all__ = [
     "NexaVLMInference",
     "NexaVoiceInference",
     "NexaTTSInference",
+    "NexaAudioLMInference"
 ]

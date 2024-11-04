@@ -28,11 +28,16 @@ pip install nexaai[onnx] # if you need ONNX support
 ```
 
 ### build from source
-
+To build C++ only
+```
+cmake -B build -S .
+cmake --build build --config Release -j32
+```
+To build C++ and install python package from source, run the following commands:
 ```bash
 git clone --recursive https://github.com/NexaAI/nexa-sdk.git
 cd nexa-sdk
-pip install -e .
+pip install -e . --verbose # use --verbose for debugging
 pip install -e .[onnx] # if you need ONNX support
 ```
 
@@ -75,6 +80,8 @@ wget -O control_normal-fp16.safetensors https://huggingface.co/webui/ControlNet-
 wget -O controlnet_test.png https://huggingface.co/takuma104/controlnet_dev/resolve/main/gen_compare/control_images/converted/control_human_normal.png
 python -m nexa.gguf.nexa_inference_image sd1-5 --control_net_path control_normal-fp16.safetensors --control_image_path controlnet_test.png
 python -m nexa.gguf.nexa_inference_voice whisper-tiny
+python -m nexa.gguf.nexa_inference_audio_lm qwen2audio
+python -m nexa.gguf.nexa_inference_audio_lm octoaudio
 ```
 
 ### Test with Streamlit UI
@@ -223,4 +230,10 @@ dir /s /b *.dll
 del /s /q *.dll # delete
 Get-ChildItem -Recurse -Filter *.dll  # in PowerShell
 dumpbin /dependents your_executable_or_dll.dll  # in Developer PowerShell for Visual Studio
+```
+
+### Debug dynamic lib
+According to [isse](https://github.com/abetlen/llama-cpp-python/issues/1346), below can check the exported symbols on linux.
+```
+readelf -Ws --dyn-syms libllama.so
 ```

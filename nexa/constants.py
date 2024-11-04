@@ -38,6 +38,7 @@ class ModelType(Enum):
     TTS = "TTS"
     MULTIMODAL = "Multimodal"
     TEXT_EMBEDDING = "Text Embedding"
+    AUDIOLM = "AudioLM"
 
 
 NEXA_RUN_MODEL_MAP_TEXT = {
@@ -108,6 +109,15 @@ NEXA_RUN_MODEL_MAP_VLM = {
     "llava-v1.6-vicuna-7b:fp16": "llava-v1.6-vicuna-7b:model-fp16",
 }
 
+NEXA_RUN_MODEL_MAP_AUDIO_LM = {
+    "qwen2audio": "Qwen2-Audio-7.8B-Instruct:model-fp16",
+    "qwen2audio:fp16": "Qwen2-Audio-7.8B-Instruct:model-fp16",
+    "qwen2audio:q4_0": "Qwen2-Audio-7.8B-Instruct:model-q4_0",
+    "omniaudio": "Octo-omni-audio:model-fp16",
+    "omniaudio:fp16": "Octo-omni-audio:model-fp16",
+    "omniaudio:q4_0": "Octo-omni-audio:model-q4_0",
+}
+
 NEXA_RUN_MODEL_MAP_VOICE = {
     "whisper-large": "whisper-large:bin-large-v3",
     "whisper-tiny": "whisper-tiny:bin-tiny",
@@ -160,6 +170,15 @@ NEXA_RUN_PROJECTOR_MAP = {
     "llava-v1.6-vicuna-7b:fp16": "llava-v1.6-vicuna-7b:projector-fp16",
 }
 
+NEXA_RUN_AUDIO_LM_PROJECTOR_MAP = {
+    "qwen2audio": "Qwen2-Audio-7.8B-Instruct:projector-fp16",
+    "qwen2audio:fp16": "Qwen2-Audio-7.8B-Instruct:projector-fp16",
+    "qwen2audio:q4_0": "Qwen2-Audio-7.8B-Instruct:projector-q4_0",
+    "omniaudio": "Octo-omni-audio:projector-fp16",
+    "omniaudio:fp16": "Octo-omni-audio:projector-fp16",
+    "omniaudio:q4_0": "Octo-omni-audio:projector-q4_0",
+}
+
 NEXA_RUN_T5XXL_MAP = {
     "flux": "FLUX.1-schnell:t5xxl-q4_0",
     "FLUX.1-schnell:q4_0": "FLUX.1-schnell:t5xxl-q4_0",
@@ -207,6 +226,7 @@ NEXA_RUN_MODEL_MAP_TEXT_EMBEDDING = {
 NEXA_RUN_MODEL_MAP = {
     **NEXA_RUN_MODEL_MAP_TEXT,
     **NEXA_RUN_MODEL_MAP_VLM,
+    **NEXA_RUN_MODEL_MAP_AUDIO_LM,
     **NEXA_RUN_MODEL_MAP_IMAGE,
     **NEXA_RUN_MODEL_MAP_VOICE,
     **NEXA_RUN_MODEL_MAP_TTS,
@@ -319,6 +339,7 @@ DEFAULT_VOICE_GEN_PARAMS = {
     "compute_type": "default",
 }
 
+# key is the repo name on Nexa model hub
 NEXA_OFFICIAL_MODELS_TYPE = {
     "gemma-2b": ModelType.NLP,
     "Llama-2-7b-chat": ModelType.NLP,
@@ -390,6 +411,8 @@ NEXA_OFFICIAL_MODELS_TYPE = {
     "llava-v1.6-vicuna-7b": ModelType.MULTIMODAL,
     "llava-phi-3-mini": ModelType.MULTIMODAL,
     "llava-llama-3-8b-v1.1": ModelType.MULTIMODAL,
+    "Octo-omni-audio": ModelType.AUDIOLM,
+    "Qwen2-Audio-7.8B-Instruct": ModelType.AUDIOLM,
     "faster-whisper-tiny.en": ModelType.AUDIO,
     "faster-whisper-tiny": ModelType.AUDIO,
     "faster-whisper-small.en": ModelType.AUDIO,
