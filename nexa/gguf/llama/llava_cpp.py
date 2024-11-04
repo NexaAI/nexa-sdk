@@ -33,7 +33,7 @@ import nexa.gguf.llama.llama_cpp as llama_cpp
 from nexa.gguf.lib_utils import load_library
 
 # Specify the base name of the shared library to load
-_libllava_base_name = "llava"
+_libllava_base_name = "llava_shared"
 
 # Load the library
 _libllava = load_library(_libllava_base_name)
