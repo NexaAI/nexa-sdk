@@ -150,9 +150,13 @@ if(LLAMA_BUILD)
     if(WIN32)
         # Add Windows-specific definitions and flags for llama.cpp
         list(APPEND COMMON_CMAKE_OPTIONS
-            -DLLAMA_DISABLE_CXXABI=ON    # Disable cxxabi.h dependency
+            -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON
             -DLLAMA_NATIVE=OFF           # Disable native CPU optimizations on Windows
+            -DLLAMA_DISABLE_CXXABI=ON    # Disable cxxabi.h dependency
         )
+
+        # Add compile definition for all targets
+        add_compile_definitions(LLAMA_DISABLE_CXXABI)
     endif()
 
     ExternalProject_Add(llama_project
