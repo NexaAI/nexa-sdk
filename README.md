@@ -249,8 +249,16 @@ Our on-device model hub offers all types of quantized models (text, image, audio
 Supported models (full list at [Model Hub](https://nexa.ai/models)):
 | Model | Type | Format | Command |
 | ------------------------------------------------------------------------------------------------------- | --------------- | --------- | -------------------------------------- |
+| [omniaudio](https://nexa.ai/NexaAI/Octo-omni-audio/gguf-q4_0/readme) | AudioLM | GGUF | `nexa run omniaudio` |
+| [qwen2audio](https://www.nexaai.com/qnguyen3/nanoLLaVA/gguf-fp16/readme) | AudioLM | GGUF | `nexa run qwen2audio` |
 | [octopus-v2](https://www.nexaai.com/NexaAI/Octopus-v2/gguf-q4_0/readme) | NLP | GGUF | `nexa run octopus-v2` |
-| [octopus-v4](https://www.nexaai.com/NexaAI/Octopus-v4/gguf-q4_0/readme) | NLP | GGUF | `nexa run octopus-v4` |
+| [octo-net](https://www.nexaai.com/NexaAI/Octo-net/gguf-q4_0/readme) | NLP | GGUF | `nexa run octo-net` |
+| [omnivision](https://nexa.ai/NexaAI/Octo-omni-vision/gguf-fp16/readme) | Multimodal | GGUF | `nexa run omnivision` |
+| [nanollava](https://www.nexaai.com/qnguyen3/nanoLLaVA/gguf-fp16/readme) | Multimodal | GGUF | `nexa run nanollava` |
+| [llava-phi3](https://www.nexaai.com/xtuner/llava-phi-3-mini/gguf-q4_0/readme) | Multimodal | GGUF | `nexa run llava-phi3` |
+| [llava-llama3](https://www.nexaai.com/xtuner/llava-llama-3-8b-v1.1/gguf-q4_0/readme) | Multimodal | GGUF | `nexa run llava-llama3` |
+| [llava1.6-mistral](https://www.nexaai.com/liuhaotian/llava-v1.6-mistral-7b/gguf-q4_0/readme) | Multimodal | GGUF | `nexa run llava1.6-mistral` |
+| [llava1.6-vicuna](https://www.nexaai.com/liuhaotian/llava-v1.6-vicuna-7b/gguf-q4_0/readme) | Multimodal | GGUF | `nexa run llava1.6-vicuna` |
 | [gpt2](https://nexaai.com/openai/gpt2/gguf-q4_0/readme) | NLP | GGUF | `nexa run gpt2` |
 | [tinyllama](https://www.nexaai.com/TinyLlama/TinyLlama-1.1B-Chat-v1.0/gguf-fp16/readme) | NLP | GGUF | `nexa run tinyllama` |
 | [llama2](https://www.nexaai.com/meta/Llama2-7b-chat/gguf-q4_0/readme) | NLP | GGUF/ONNX | `nexa run llama2` |
@@ -277,11 +285,6 @@ Supported models (full list at [Model Hub](https://nexa.ai/models)):
 | [phi3.5](https://nexaai.com/microsoft/Phi-3.5-mini-instruct/gguf-q4_0/readme) | NLP | GGUF | `nexa run phi3.5` |
 | [openelm](https://nexaai.com/apple/OpenELM-3B/gguf-q4_K_M/readme) | NLP | GGUF | `nexa run openelm` |
 | [AMD-Llama-135m](https://nexaai.com/amd/AMD-Llama-135m/gguf-fp16/readme) | NLP | GGUF | `nexa run AMD-Llama-135m:fp16` |
-| [nanollava](https://www.nexaai.com/qnguyen3/nanoLLaVA/gguf-fp16/readme) | Multimodal | GGUF | `nexa run nanollava` |
-| [llava-phi3](https://www.nexaai.com/xtuner/llava-phi-3-mini/gguf-q4_0/readme) | Multimodal | GGUF | `nexa run llava-phi3` |
-| [llava-llama3](https://www.nexaai.com/xtuner/llava-llama-3-8b-v1.1/gguf-q4_0/readme) | Multimodal | GGUF | `nexa run llava-llama3` |
-| [llava1.6-mistral](https://www.nexaai.com/liuhaotian/llava-v1.6-mistral-7b/gguf-q4_0/readme) | Multimodal | GGUF | `nexa run llava1.6-mistral` |
-| [llava1.6-vicuna](https://www.nexaai.com/liuhaotian/llava-v1.6-vicuna-7b/gguf-q4_0/readme) | Multimodal | GGUF | `nexa run llava1.6-vicuna` |
 | [stable-diffusion-v1-4](https://www.nexaai.com/runwayml/stable-diffusion-v1-4/gguf-q4_0/readme) | Computer Vision | GGUF | `nexa run sd1-4` |
 | [stable-diffusion-v1-5](https://www.nexaai.com/runwayml/stable-diffusion-v1-5/gguf-q4_0/readme) | Computer Vision | GGUF/ONNX | `nexa run sd1-5` |
 | [stable-diffusion-v2-1](https://nexaai.com/StabilityAI/stable-diffusion-v2-1/gguf-q4_0/readme) | Computer Vision | GGUF | `nexa run sd2-1` |
