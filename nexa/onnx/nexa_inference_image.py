@@ -64,10 +64,8 @@ class NexaImageInference:
         self.params.update(kwargs)
         self.pipeline = None
 
-    def run(self):
-
         if self.download_onnx_folder is None:
-            self.download_onnx_folder, run_type = pull_model(self.model_path, **kwargs)
+            self.download_onnx_folder, _ = pull_model(self.model_path, **kwargs)
 
         if self.download_onnx_folder is None:
             logging.error(
@@ -76,17 +74,19 @@ class NexaImageInference:
             )
             exit(1)
 
-        self._load_model(self.download_onnx_folder)
+        self._load_model()
+
+    def run(self):
         self._dialogue_mode()
 
     @SpinningCursorAnimation()
-    def _load_model(self, model_path):
+    def _load_model(self):
         """
         Load the model from the given model path using the appropriate pipeline.
         """
-        logging.debug(f"Loading model from {model_path}")
+        logging.debug(f"Loading model from {self.download_onnx_folder}")
         try:
-            model_index_path = os.path.join(model_path, "model_index.json")
+            model_index_path = os.path.join(self.download_onnx_folder, "model_index.json")
             with open(model_index_path, "r") as index_file:
                 model_index = json.load(index_file)
 
@@ -96,7 +96,7 @@ class NexaImageInference:
             PipelineClass = ORT_PIPELINES_MAPPING.get(
                 pipeline_class_name, ORTStableDiffusionPipeline
             )
-            self.pipeline = PipelineClass.from_pretrained(model_path)
+            self.pipeline = PipelineClass.from_pretrained(self.download_onnx_folder)
             logging.debug(f"Model loaded successfully using {pipeline_class_name}")
         except Exception as e:
             logging.error(f"Error loading model: {e}")
