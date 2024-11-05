@@ -74,6 +74,7 @@ python -m nexa.gguf.nexa_inference_text gemma
 python -m nexa.gguf.nexa_inference_text octopusv2 --stop_words "<nexa_end>"
 wget https://assets-c4akfrf5b4d3f4b7.z01.azurefd.net/assets/2024/04/BMDataViz_661fb89f3845e.png -O test.png
 python -m nexa.gguf.nexa_inference_vlm nanollava
+python -m nexa.gguf.nexa_inference_vlm_omni omnivision
 python -m nexa.gguf.nexa_inference_image sd1-4
 python -m nexa.gguf.nexa_inference_image sd1-4 --img2img
 wget -O control_normal-fp16.safetensors https://huggingface.co/webui/ControlNet-modules-safetensors/resolve/main/control_normal-fp16.safetensors
@@ -81,7 +82,7 @@ wget -O controlnet_test.png https://huggingface.co/takuma104/controlnet_dev/reso
 python -m nexa.gguf.nexa_inference_image sd1-5 --control_net_path control_normal-fp16.safetensors --control_image_path controlnet_test.png
 python -m nexa.gguf.nexa_inference_voice whisper-tiny
 python -m nexa.gguf.nexa_inference_audio_lm qwen2audio
-python -m nexa.gguf.nexa_inference_audio_lm octoaudio
+python -m nexa.gguf.nexa_inference_audio_lm omniaudio
 ```
 
 ### Test with Streamlit UI

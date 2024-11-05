@@ -170,6 +170,18 @@ NEXA_RUN_PROJECTOR_MAP = {
     "llava-v1.6-vicuna-7b:fp16": "llava-v1.6-vicuna-7b:projector-fp16",
 }
 
+NEXA_RUN_OMNI_VLM_PROJECTOR_MAP = {
+    "omnivision": "Octo-omni-vision:projector-fp16",
+    "omnivision:fp16": "Octo-omni-vision:projector-fp16",
+    "omnivision:q4_0": "Octo-omni-vision:projector-q4_0",
+}
+
+NEXA_RUN_OMNI_VLM_MAP = {
+    "omnivision": "Octo-omni-vision:model-fp16",
+    "omnivision:fp16": "Octo-omni-vision:model-fp16",
+    "omnivision:q4_0": "Octo-omni-vision:model-q4_0",
+}
+
 NEXA_RUN_AUDIO_LM_PROJECTOR_MAP = {
     "qwen2audio": "Qwen2-Audio-7.8B-Instruct:projector-fp16",
     "qwen2audio:fp16": "Qwen2-Audio-7.8B-Instruct:projector-fp16",
@@ -406,6 +418,7 @@ NEXA_OFFICIAL_MODELS_TYPE = {
     "anything-v30-LCM": ModelType.COMPUTER_VISION,
     "FLUX.1-schnell": ModelType.COMPUTER_VISION,
     "Phi-3-vision-128k-instruct": ModelType.MULTIMODAL,
+    "omnivision": ModelType.MULTIMODAL,
     "nanoLLaVA": ModelType.MULTIMODAL,
     "llava-v1.6-mistral-7b": ModelType.MULTIMODAL,
     "llava-v1.6-vicuna-7b": ModelType.MULTIMODAL,

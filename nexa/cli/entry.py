@@ -98,9 +98,19 @@ def run_ggml_inference(args):
         elif run_type == "Multimodal":
             from nexa.gguf.nexa_inference_vlm import NexaVLMInference
             if is_local_path:
-                inference = NexaVLMInference(model_path=model_path, local_path=local_path, projector_local_path=projector_local_path, stop_words=stop_words, **kwargs)
+                if "omni" in local_path:
+                    from nexa.gguf.nexa_inference_vlm_omni import NexaOmniVlmInference
+                    inference = NexaOmniVlmInference(model_path=model_path, local_path=local_path, projector_local_path=projector_local_path, stop_words=stop_words, **kwargs)
+                else:
+                    from nexa.gguf.nexa_inference_vlm import NexaVLMInference
+                    inference = NexaVLMInference(model_path=model_path, local_path=local_path, projector_local_path=projector_local_path, stop_words=stop_words, **kwargs)
             else:
-                inference = NexaVLMInference(model_path=model_path, local_path=local_path, stop_words=stop_words, **kwargs)
+                if "omni" in local_path:
+                    from nexa.gguf.nexa_inference_vlm_omni import NexaOmniVlmInference
+                    inference = NexaOmniVlmInference(model_path=model_path, local_path=local_path, projector_local_path=projector_local_path, stop_words=stop_words, **kwargs)
+                else:
+                    from nexa.gguf.nexa_inference_vlm import NexaVLMInference
+                    inference = NexaVLMInference(model_path=model_path, local_path=local_path, stop_words=stop_words, **kwargs)
         elif run_type == "Audio":
             from nexa.gguf.nexa_inference_voice import NexaVoiceInference
             inference = NexaVoiceInference(model_path=model_path, local_path=local_path, **kwargs)
