@@ -5,7 +5,7 @@
 [submodule "dependency/llama.cpp"]
 	path = dependency/llama.cpp
 	url = https://github.com/NexaAI/llama.cpp.git
-	branch = master-release-audio-lm
+	branch = master-release
 [submodule "nexa/eval/benchmark_tasks"]
 	path = nexa/eval/benchmark_tasks
 	url = https://github.com/NexaAI/benchmark-tasks.git
