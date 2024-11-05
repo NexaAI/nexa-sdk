@@ -24,7 +24,8 @@ Nexa SDK is a comprehensive toolkit for supporting **ONNX** and **GGML** models.
 <video src="https://user-images.githubusercontent.com/assets/375570dc-0e7a-4a99-840d-c1ef6502e5aa.mp4" autoplay muted loop playsinline style="max-width: 100%;"></video>
 
 ## Latest News 🔥
-
+- [2024/11] Support Nexa AI's own vision language model (0.9B parameters): `nexa run omnivision` and audio language model (2.9B): `nexa run omniaudio`
+- [2024/11] Support audio language model: `nexa run qwen2audio`, **we are the first open-source toolkit to support audio language model with GGML tensor library.**
 - [2024/10] Support embedding model: `nexa embed <model_path> <prompt>`
 - [2024/10] Support pull and run supported Computer Vision models in GGUF format from HuggingFace: `nexa run -hf <model_id> -mt COMPUTER_VISION`
 - [2024/10] Support VLM in local server.

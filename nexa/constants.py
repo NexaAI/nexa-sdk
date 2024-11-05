@@ -238,6 +238,7 @@ NEXA_RUN_MODEL_MAP_TEXT_EMBEDDING = {
 NEXA_RUN_MODEL_MAP = {
     **NEXA_RUN_MODEL_MAP_TEXT,
     **NEXA_RUN_MODEL_MAP_VLM,
+    **NEXA_RUN_OMNI_VLM_MAP,
     **NEXA_RUN_MODEL_MAP_AUDIO_LM,
     **NEXA_RUN_MODEL_MAP_IMAGE,
     **NEXA_RUN_MODEL_MAP_VOICE,
@@ -351,7 +352,9 @@ DEFAULT_VOICE_GEN_PARAMS = {
     "compute_type": "default",
 }
 
-# key is the repo name on Nexa model hub
+# key is the repo name on Nexa model hub, NOT model abbreviation
+# For example : https://nexa.ai/NexaAI/Octo-omni-vision/gguf-fp16/readme
+# We need to register key : Octo-omni-vision
 NEXA_OFFICIAL_MODELS_TYPE = {
     "gemma-2b": ModelType.NLP,
     "Llama-2-7b-chat": ModelType.NLP,
@@ -418,7 +421,7 @@ NEXA_OFFICIAL_MODELS_TYPE = {
     "anything-v30-LCM": ModelType.COMPUTER_VISION,
     "FLUX.1-schnell": ModelType.COMPUTER_VISION,
     "Phi-3-vision-128k-instruct": ModelType.MULTIMODAL,
-    "omnivision": ModelType.MULTIMODAL,
+    "Octo-omni-vision": ModelType.MULTIMODAL,
     "nanoLLaVA": ModelType.MULTIMODAL,
     "llava-v1.6-mistral-7b": ModelType.MULTIMODAL,
     "llava-v1.6-vicuna-7b": ModelType.MULTIMODAL,
