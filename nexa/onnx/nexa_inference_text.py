@@ -53,9 +53,21 @@ class NexaTextInference:
         self.downloaded_onnx_folder = local_path
         self.timings = kwargs.get("timings", False)
         self.device = "cpu"
+        
+        if self.downloaded_onnx_folder is None:
+            self.downloaded_onnx_folder, _ = pull_model(self.model_path, **kwargs)
+
+        if self.downloaded_onnx_folder is None:
+            logging.error(
+                f"Model ({model_path}) is not applicable. Please refer to our docs for proper usage.",
+                exc_info=True,
+            )
+            exit(1)
+
+        self._load_model_and_tokenizer()
 
     @SpinningCursorAnimation()
-    def _load_model_and_tokenizer(self) -> Tuple[Any, Any, Any, bool]:
+    def _load_model_and_tokenizer(self):
         logging.debug(f"Loading model from {self.downloaded_onnx_folder}")
         start_time = time.time()
         self.tokenizer = AutoTokenizer.from_pretrained(self.downloaded_onnx_folder)
@@ -148,18 +160,6 @@ class NexaTextInference:
         if self.params.get("streamlit"):
             self.run_streamlit()
         else:
-            if self.downloaded_onnx_folder is None:
-                self.downloaded_onnx_folder, run_type = pull_model(self.model_path, **kwargs)
-
-            if self.downloaded_onnx_folder is None:
-                logging.error(
-                    f"Model ({model_path}) is not applicable. Please refer to our docs for proper usage.",
-                    exc_info=True,
-                )
-                exit(1)
-            
-            self._load_model_and_tokenizer()
-
             if self.model is None or self.tokenizer is None or self.streamer is None:
                 logging.error(
                     "Failed to load model or tokenizer. Exiting.", exc_info=True

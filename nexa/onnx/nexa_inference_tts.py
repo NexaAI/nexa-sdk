@@ -50,8 +50,8 @@ class NexaTTSInference:
         self.downloaded_onnx_folder = local_path
 
         if self.downloaded_onnx_folder is None:
-            self.downloaded_onnx_folder, run_type = pull_model(self.model_path, **kwargs)
-        
+            self.downloaded_onnx_folder, _ = pull_model(self.model_path, **kwargs)
+
         if self.downloaded_onnx_folder is None:
             logging.error(
                 f"Model ({model_path}) is not applicable. Please refer to our docs for proper usage.",
@@ -69,12 +69,10 @@ class NexaTTSInference:
         logging.debug(f"Loading model from {self.downloaded_onnx_folder}")
         try:
             self.tokenizer = TTSTokenizer(self.config["token"]["list"])
-            print(self.tokenizer)
             self.model = onnxruntime.InferenceSession(
                 os.path.join(self.downloaded_onnx_folder, "model.onnx"),
                 providers=["CPUExecutionProvider"],
             )
-            print(self.model)
             logging.debug("Model and tokenizer loaded successfully")
         except Exception as e:
             logging.error(f"Error loading model or tokenizer: {e}")

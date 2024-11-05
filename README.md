@@ -340,4 +340,5 @@ We would like to thank the following projects:
 
 - [llama.cpp](https://github.com/ggerganov/llama.cpp)
 - [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)
+- [bark.cpp](https://github.com/PABannier/bark.cpp)
 - [optimum](https://github.com/huggingface/optimum)
