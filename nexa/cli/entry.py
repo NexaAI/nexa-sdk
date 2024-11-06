@@ -46,6 +46,8 @@ def run_ggml_inference(args):
         run_type = ModelType[model_type].value
 
     local_path = None
+    projector_local_path = None
+    
     if is_local_path or hf:
         if not model_type:
             print("Error: --model_type must be provided when using --local_path or --huggingface")
