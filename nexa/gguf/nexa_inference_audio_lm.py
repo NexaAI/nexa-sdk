@@ -151,9 +151,10 @@ class NexaAudioLMInference:
                 self.ctx_params.file = ctypes.c_char_p(audio_path.encode("utf-8"))
                 self.ctx_params.prompt = ctypes.c_char_p(user_input.encode("utf-8"))
 
-                audio_lm_cpp.process_full(
+                response = audio_lm_cpp.process_full(
                     self.context, ctypes.byref(self.ctx_params), is_qwen=self.is_qwen
-                )
+                ).decode("utf-8")
+                print(response)
 
             except KeyboardInterrupt:
                 print("\nExiting...")
