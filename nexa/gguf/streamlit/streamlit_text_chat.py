@@ -5,55 +5,20 @@ from typing import Iterator, List
 import streamlit as st
 from nexa.general import pull_model
 from nexa.gguf.nexa_inference_text import NexaTextInference
+from nexa.utils import (
+    get_model_options,
+    update_model_options,
+)
+from nexa.constants import (
+    DEFAULT_TEXT_GEN_PARAMS,
+    NEXA_RUN_MODEL_MAP_TEXT,
+)
+
+specified_run_type = 'NLP'
+model_map = NEXA_RUN_MODEL_MAP_TEXT
 
 # init:
-DEFAULT_PARAMS = {
-    "temperature": 0.9,
-    "max_new_tokens": 256,
-    "top_k": 50,
-    "top_p": 1.0,
-    "nctx": 2048
-}
-
-def parse_nexa_list_output() -> List[str]:
-    """Parse the output of nexa list command to get local NLP models."""
-    try:
-        result = subprocess.run(['nexa', 'list'], capture_output=True, text=True)
-        pattern = r'\|\s*(.*?)\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|'
-        matches = re.findall(pattern, result.stdout)
-
-        # filter for NLP models and get their names:
-        nlp_models = set()  # to avoid duplicates
-        for match in matches:
-            model_name = match[0].strip()
-            run_type = match[2].strip()
-            if run_type == 'NLP' and not model_name.startswith('Model Name'):  # skip the header row of the `nexa list` output
-                nlp_models.add(model_name)
-
-        return sorted(list(nlp_models))  # convert to sorted list for consistent ordering
-    except Exception as e:
-        st.error(f"Error parsing nexa list output: {str(e)}")
-        return []
-
-def get_model_options() -> List[str]:
-    """Get list of model options from nexa list."""
-    models = parse_nexa_list_output()
-    # add special options at the end of the dropdown menu:
-    models.extend(["Use Model From Nexa Model Hub 🔍", "Local Model 📁"])
-    return models
-
-def update_model_options():
-    """Update the model options in session state and force a refresh."""
-    fresh_options = get_model_options()
-    st.session_state.model_options = fresh_options  # update session state with new options
-
-    if hasattr(st.session_state, 'current_model_path') and st.session_state.current_model_path:
-        if st.session_state.current_model_path in fresh_options:
-            st.session_state.current_model_index = fresh_options.index(st.session_state.current_model_path)
-        else:
-            # if current model not in list, reset to Model Hub option:
-            hub_index = fresh_options.index("Use Model From Nexa Model Hub 🔍")
-            st.session_state.current_model_index = hub_index
+DEFAULT_PARAMS = DEFAULT_TEXT_GEN_PARAMS.copy()
 
 @st.cache_resource(show_spinner=False)
 def load_model(model_path: str, is_local: bool = False, is_hf: bool = False):
@@ -66,7 +31,7 @@ def load_model(model_path: str, is_local: bool = False, is_hf: bool = False):
         elif is_hf:
             try:
                 local_path, _ = pull_model(model_path, hf=True)
-                update_model_options()  # update options after successful pull
+                update_model_options(specified_run_type, model_map)  # update options after successful pull
             except Exception as e:
                 st.error(f"Error pulling HuggingFace model: {str(e)}")
                 return None
@@ -77,7 +42,7 @@ def load_model(model_path: str, is_local: bool = False, is_hf: bool = False):
                 if not local_path or not run_type:
                     st.error(f"Failed to pull model {model_path} from Nexa Model Hub")
                     return None
-                update_model_options()  # update options after successful pull
+                update_model_options(specified_run_type, model_map)  # update options after successful pull
             except ValueError as e:
                 st.error(f"Error pulling model from Nexa Model Hub: {str(e)}")
                 return None
@@ -93,7 +58,7 @@ def load_model(model_path: str, is_local: bool = False, is_hf: bool = False):
             )
 
             # force refresh of model options after successful load:
-            update_model_options()
+            update_model_options(specified_run_type, model_map)
 
             # reset the model index to include the new model:
             if model_path in st.session_state.model_options:
@@ -118,7 +83,7 @@ def load_local_model(local_path: str):
             local_path=local_path,
             **DEFAULT_PARAMS
         )
-        update_model_options()  # update options after successful local model load
+        update_model_options(specified_run_type, model_map)  # update options after successful local model load
         return nexa_model
     except Exception as e:
         st.error(f"Error loading local model: {str(e)}")
@@ -160,9 +125,9 @@ try:
 
     # force refresh model options on every page load:
     if 'model_options' not in st.session_state:
-        st.session_state.model_options = get_model_options()
+        st.session_state.model_options = get_model_options(specified_run_type, model_map)
     else:
-        update_model_options()
+        update_model_options(specified_run_type, model_map)
 
     # init session state variables:
     if 'initialized' not in st.session_state:
