@@ -109,7 +109,7 @@ for lib in [_lib_omni, _lib_qwen]:
 
     # Configure process_full
     lib.omni_process_full.argtypes = [omni_context_p, omni_context_params_p]
-    lib.omni_process_full.restype = None
+    lib.omni_process_full.restype = ctypes.c_char_p
 
     # Configure free
     lib.omni_free.argtypes = [omni_context_p]
