@@ -5,8 +5,97 @@ import threading
 import time
 from functools import partial, wraps
 from importlib.metadata import PackageNotFoundError, distribution
+from typing import Dict, List
+import json
+import logging
+import streamlit as st
+from nexa.constants import (
+    EXIT_COMMANDS,
+    EXIT_REMINDER,
+    NEXA_MODEL_LIST_PATH,
+)
 
-from nexa.constants import EXIT_COMMANDS, EXIT_REMINDER
+
+def get_available_models() -> Dict[str, dict]:
+    """Get list of available computer vision (cv) models from the model list JSON file."""
+    # check whether the model list file exists:
+    if not NEXA_MODEL_LIST_PATH.exists():
+        st.error("Model list file not found")
+        return {}  # empty dict
+
+    try:
+        # read model list from the JSON file:
+        with open(NEXA_MODEL_LIST_PATH, "r") as f:
+            available_models = json.load(f)
+            return available_models
+
+    except json.JSONDecodeError as e:
+        logging.error(f"Invalid JSON in model list file: {e}")
+        return {}
+    except Exception as e:
+        logging.error(f"Error loading available models: {e}")
+        return {}
+
+
+def filter_available_models(
+    models: Dict[str, dict],
+    specified_run_type: str,
+    model_map: Dict[str, str]
+) -> List[str]:
+    """Filter available models by run type and apply model mapping."""
+    if not models:
+        return []
+
+    filtered_models = set()  # to avoid duplicates
+
+    for model_name, model_info in models.items():
+        # skip if run_type doesn't match:
+        if model_info.get('run_type') != specified_run_type:
+            continue
+
+        if model_name in model_map.values():
+            # find short form from mapping:
+            for short_name, full_name in model_map.items():
+                if full_name == model_name:
+                    filtered_models.add(short_name)
+                    break
+        else:
+            filtered_models.add(model_name)
+
+    return sorted(list(filtered_models))
+
+
+def get_model_options(
+    specified_run_type: str,
+    model_map: Dict[str, str]
+) -> List[str]:
+    """Get list of model options including special options."""
+    available_models = get_available_models()
+    models_list = filter_available_models(available_models, specified_run_type, model_map)
+    # add special options at the end of the dropdown menu:
+    models_list.extend(["Use Model From Nexa Model Hub 🔍", "Local Model 📁"])
+    return models_list
+
+
+def update_model_options(
+    specified_run_type: str,
+    model_map: Dict[str, str]
+) -> None:
+    """Update the model options in session state and force a refresh."""
+    try:
+        fresh_options = get_model_options(specified_run_type, model_map)
+        st.session_state.model_options = fresh_options  # update session state with new options
+
+        if hasattr(st.session_state, 'current_model_path') and st.session_state.current_model_path:
+            if st.session_state.current_model_path in fresh_options:
+                st.session_state.current_model_index = fresh_options.index(st.session_state.current_model_path)
+            else:
+                # if current model not in list, reset to Model Hub option:
+                hub_index = fresh_options.index("Use Model From Nexa Model Hub 🔍")
+                st.session_state.current_model_index = hub_index
+
+    except Exception as e:
+        logging.error(f"Error updating model options: {e}")
 
 
 def is_package_installed(package_name: str) -> bool:
@@ -84,14 +173,14 @@ def nexa_prompt(placeholder: str = "Send a message ...") -> str:
         try:
             hint = light_text(placeholder)
             hint_length = len(strip_ansi(hint))
-            
+
             # Print the prompt with placeholder
             print(f">>> {hint}", end='', flush=True)
-            
+
             # Move cursor back to the start of the line
             print('\r', end='', flush=True)
             print(">>> ", end='', flush=True)
-            
+
             user_input = ""
             while True:
                 char = msvcrt.getch().decode()
@@ -108,7 +197,7 @@ def nexa_prompt(placeholder: str = "Send a message ...") -> str:
                 else:
                     user_input += char
                     print(char, end='', flush=True)
-                
+
                 if len(user_input) == 1:  # Clear hint after first character
                     print('\r' + ' ' * (hint_length + 4), end='', flush=True)
                     print(f'\r>>> {user_input}', end='', flush=True)
