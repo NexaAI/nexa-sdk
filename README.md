@@ -59,6 +59,17 @@ Welcome to submit your requests through [issues](https://github.com/NexaAI/nexa-
 curl -fsSL https://public-storage.nexa4ai.com/install.sh | sh
 ```
 
+<details>
+<summary><strong>FAQ: cannot use executable with nexaai python package already installed</strong></summary>
+
+Try using `nexa-exe` instead:
+
+```bash
+nexa-exe <command>
+```
+
+</details>
+
 ### Windows
 
 Coming soon. Install with Python package below 👇

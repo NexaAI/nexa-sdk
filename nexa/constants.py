@@ -35,6 +35,7 @@ class ModelType(Enum):
     NLP = "NLP"
     COMPUTER_VISION = "Computer Vision"
     AUDIO = "Audio"
+    TTS = "TTS"
     MULTIMODAL = "Multimodal"
     TEXT_EMBEDDING = "Text Embedding"
 
@@ -122,6 +123,11 @@ NEXA_RUN_MODEL_MAP_VOICE = {
     "faster-whisper-large-turbo": "faster-whisper-large-v3-turbo:bin-cpu-fp16",
 }
 
+NEXA_RUN_MODEL_MAP_TTS = {
+    "bark": "bark:fp16",
+    "bark-small": "bark-small:fp16",
+}
+
 NEXA_RUN_MODEL_MAP_FUNCTION_CALLING = {
     "llama2-function-calling": "Llama2-7b-function-calling:q4_K_M",
     "Llama2-7b-function-calling:fp16": "Llama2-7b-function-calling:fp16",
@@ -203,6 +209,7 @@ NEXA_RUN_MODEL_MAP = {
     **NEXA_RUN_MODEL_MAP_VLM,
     **NEXA_RUN_MODEL_MAP_IMAGE,
     **NEXA_RUN_MODEL_MAP_VOICE,
+    **NEXA_RUN_MODEL_MAP_TTS,
     **NEXA_RUN_MODEL_MAP_FUNCTION_CALLING,
     **NEXA_RUN_MODEL_MAP_FLUX,
     **NEXA_RUN_MODEL_MAP_TEXT_EMBEDDING,
@@ -399,6 +406,8 @@ NEXA_OFFICIAL_MODELS_TYPE = {
     "whisper-small": ModelType.AUDIO,
     "whisper-base.en": ModelType.AUDIO,
     "whisper-base": ModelType.AUDIO,
+    "bark": ModelType.TTS,
+    "bark-small": ModelType.TTS,
     "mxbai-embed-large-v1": ModelType.TEXT_EMBEDDING,
     "nomic-embed-text-v1.5": ModelType.TEXT_EMBEDDING,
     "all-MiniLM-L6-v2": ModelType.TEXT_EMBEDDING,

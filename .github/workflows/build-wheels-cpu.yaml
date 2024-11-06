@@ -60,6 +60,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: "recursive"
+      - uses: GuillaumeFalourd/setup-windows10-sdk-action@v2
 
       # Used to host cibuildwheel
       - uses: actions/setup-python@v5
@@ -81,6 +82,7 @@ jobs:
           CIBW_BUILD_FRONTEND: "build"
           CIBW_BUILD: "cp37-* cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
           CMAKE_BUILD_PARALLEL_LEVEL: 16
+          CIBW_ENVIRONMENT_WINDOWS: 'CMAKE_ARGS="-DCMAKE_SYSTEM_VERSION=10.0.18362.0 -DCMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION=10.0.18362.0"'
         with:
           package-dir: .
           output-dir: wheelhouse
