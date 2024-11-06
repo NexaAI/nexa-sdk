@@ -2,7 +2,7 @@ import ctypes
 import logging
 import os
 from pathlib import Path
-
+from nexa.utils import SpinningCursorAnimation, nexa_prompt
 from nexa.constants import (
     DEFAULT_TEXT_GEN_PARAMS,
     NEXA_RUN_MODEL_MAP_AUDIO_LM,
@@ -114,6 +114,7 @@ class NexaAudioLMInference:
         with suppress_stdout_stderr():
             self._load_model()
 
+    @SpinningCursorAnimation()
     def _load_model(self):
         try:
             self.ctx_params.model = ctypes.c_char_p(
@@ -140,12 +141,12 @@ class NexaAudioLMInference:
         while True:
             try:
                 while True:
-                    audio_path = input("Audio Path (required): ")
+                    audio_path = nexa_prompt("Enter the path to your audio file (required): ")
                     if os.path.exists(audio_path):
                         break
                     print(f"'{audio_path}' is not a valid audio path. Please try again.")
 
-                user_input = input("Enter text (leave empty if no prompt): ")
+                user_input = nexa_prompt("Enter text (leave empty if no prompt): ")
 
                 self.ctx_params.file = ctypes.c_char_p(audio_path.encode("utf-8"))
                 self.ctx_params.prompt = ctypes.c_char_p(user_input.encode("utf-8"))

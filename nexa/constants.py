@@ -111,11 +111,11 @@ NEXA_RUN_MODEL_MAP_VLM = {
 
 NEXA_RUN_MODEL_MAP_AUDIO_LM = {
     "qwen2audio": "Qwen2-Audio-7.8B-Instruct:model-q4_0",
-    "qwen2audio:fp16": "Qwen2-Audio-7.8B-Instruct:model-fp16",
-    "qwen2audio:q4_0": "Qwen2-Audio-7.8B-Instruct:model-q4_0",
+    "Qwen2-Audio-7.8B-Instruct:fp16": "Qwen2-Audio-7.8B-Instruct:model-fp16",
+    "Qwen2-Audio-7.8B-Instruct:q4_0": "Qwen2-Audio-7.8B-Instruct:model-q4_0",
     "omniaudio": "Octo-omni-audio:model-fp16",
-    "omniaudio:fp16": "Octo-omni-audio:model-fp16",
-    "omniaudio:q4_0": "Octo-omni-audio:model-q4_0",
+    "Octo-omni-audio:fp16": "Octo-omni-audio:model-fp16",
+    "Octo-omni-audio:q4_0": "Octo-omni-audio:model-q4_0",
 }
 
 NEXA_RUN_MODEL_MAP_VOICE = {
@@ -172,23 +172,23 @@ NEXA_RUN_PROJECTOR_MAP = {
 
 NEXA_RUN_OMNI_VLM_PROJECTOR_MAP = {
     "omnivision": "Octo-omni-vision:projector-fp16",
-    "omnivision:fp16": "Octo-omni-vision:projector-fp16",
-    "omnivision:q4_0": "Octo-omni-vision:projector-q4_0",
+    "Octo-omni-vision:fp16": "Octo-omni-vision:projector-fp16",
+    "Octo-omni-vision:q4_0": "Octo-omni-vision:projector-q4_0",
 }
 
 NEXA_RUN_OMNI_VLM_MAP = {
     "omnivision": "Octo-omni-vision:model-fp16",
-    "omnivision:fp16": "Octo-omni-vision:model-fp16",
-    "omnivision:q4_0": "Octo-omni-vision:model-q4_0",
+    "Octo-omni-vision:fp16": "Octo-omni-vision:model-fp16",
+    "Octo-omni-vision:q4_0": "Octo-omni-vision:model-q4_0",
 }
 
 NEXA_RUN_AUDIO_LM_PROJECTOR_MAP = {
     "qwen2audio": "Qwen2-Audio-7.8B-Instruct:projector-q4_0",
-    "qwen2audio:fp16": "Qwen2-Audio-7.8B-Instruct:projector-fp16",
-    "qwen2audio:q4_0": "Qwen2-Audio-7.8B-Instruct:projector-q4_0",
+    "Qwen2-Audio-7.8B-Instruct:fp16": "Qwen2-Audio-7.8B-Instruct:projector-fp16",
+    "Qwen2-Audio-7.8B-Instruct:q4_0": "Qwen2-Audio-7.8B-Instruct:projector-q4_0",
     "omniaudio": "Octo-omni-audio:projector-fp16",
-    "omniaudio:fp16": "Octo-omni-audio:projector-fp16",
-    "omniaudio:q4_0": "Octo-omni-audio:projector-q4_0",
+    "Octo-omni-audio:fp16": "Octo-omni-audio:projector-fp16",
+    "Octo-omni-audio:q4_0": "Octo-omni-audio:projector-q4_0",
 }
 
 NEXA_RUN_T5XXL_MAP = {

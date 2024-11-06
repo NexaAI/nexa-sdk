@@ -3,7 +3,7 @@ import ctypes
 import logging
 import os
 from pathlib import Path
-
+from nexa.utils import nexa_prompt, SpinningCursorAnimation
 from nexa.constants import (
     DEFAULT_TEXT_GEN_PARAMS,
     NEXA_RUN_OMNI_VLM_PROJECTOR_MAP,
@@ -84,6 +84,7 @@ class NexaOmniVlmInference:
         with suppress_stdout_stderr():
             self._load_model()
 
+    @SpinningCursorAnimation()
     def _load_model(self):
         try:
             self.ctx_params_model = ctypes.c_char_p(
@@ -100,10 +101,11 @@ class NexaOmniVlmInference:
     def run(self):
         while True:
             try:
-                image_path = input("Image Path: ")
+                image_path = nexa_prompt("Image Path (required): ")
                 if not os.path.exists(image_path):
                     print(f"Image path: {image_path} not found, running omni VLM without image input.")
-                user_input = input("Enter text: ")
+
+                user_input = nexa_prompt()
                 image_path = ctypes.c_char_p(image_path.encode("utf-8"))
                 user_input = ctypes.c_char_p(user_input.encode("utf-8"))
                 omni_vlm_cpp.omnivlm_inference(user_input, image_path)
@@ -111,9 +113,9 @@ class NexaOmniVlmInference:
             except KeyboardInterrupt:
                 print("\nExiting...")
                 break
-
             except Exception as e:
                 logging.error(f"\nError during audio generation: {e}", exc_info=True)
+            print("\n")
 
     def __del__(self):
         omni_vlm_cpp.omnivlm_free()
