@@ -9,7 +9,14 @@ import streamlit as st
 from st_audiorec import st_audiorec
 from nexa.general import pull_model
 from nexa.gguf.nexa_inference_voice import NexaVoiceInference
+from nexa.utils import (
+    get_model_options,
+    update_model_options,
+)
 from nexa.constants import NEXA_RUN_MODEL_MAP_VOICE
+
+specified_run_type = 'Audio'
+model_map = NEXA_RUN_MODEL_MAP_VOICE
 
 # init from command line args:
 try:
@@ -19,55 +26,6 @@ try:
 except IndexError:
     st.error("Missing required command line arguments.")
     sys.exit(1)  # terminate with an error
-
-def parse_nexa_list_output() -> List[str]:
-    """Parse the output of nexa list command to get local audio models."""
-    try:
-        result = subprocess.run(['nexa', 'list'], capture_output=True, text=True)
-        pattern = r'\|\s*(.*?)\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|'
-        matches = re.findall(pattern, result.stdout)
-
-        # filter for audio models and get their names:
-        audio_models = set()  # to avoid duplicates
-        for match in matches:
-            model_name = match[0].strip()
-            run_type = match[2].strip()
-
-            # skip the header row of the `nexa list` output & filter for Audio type models:
-            if (run_type == 'Audio' and not model_name.startswith('Model Name')):
-                if model_name in NEXA_RUN_MODEL_MAP_VOICE.values():
-                    # if it's a full model name, find its short form:
-                    for short_name, full_name in NEXA_RUN_MODEL_MAP_VOICE.items():
-                        if full_name == model_name:
-                            audio_models.add(short_name)
-                            break
-                else:
-                    audio_models.add(model_name)
-
-        return sorted(list(audio_models))  # convert to sorted list for consistent ordering
-    except Exception as e:
-        st.error(f"Error parsing nexa list output: {e}")
-        return []
-
-def get_model_options() -> List[str]:
-    """Get list of model options from nexa list."""
-    models = parse_nexa_list_output()
-    # add special options at the end of the dropdown menu:
-    models.extend(["Use Model From Nexa Model Hub 🔍", "Local Model 📁"])
-    return models
-
-def update_model_options():
-    """Update the model options in session state and force a refresh."""
-    fresh_options = get_model_options()
-    st.session_state.model_options = fresh_options  # update session state with new options
-
-    if hasattr(st.session_state, 'current_model_path') and st.session_state.current_model_path:
-        if st.session_state.current_model_path in fresh_options:
-            st.session_state.current_model_index = fresh_options.index(st.session_state.current_model_path)
-        else:
-            # if current model not in list, reset to Model Hub option:
-            hub_index = fresh_options.index("Use Model From Nexa Model Hub 🔍")
-            st.session_state.current_model_index = hub_index
 
 @st.cache_resource(show_spinner=False)
 def load_model(model_path, is_local=False, is_hf=False):
@@ -125,13 +83,13 @@ st.caption("Powered by Nexa AI SDK🐙")
 
 # force refresh model options on every page load:
 if 'model_options' not in st.session_state:
-    st.session_state.model_options = get_model_options()
+    st.session_state.model_options = get_model_options(specified_run_type, model_map)
 else:
-    update_model_options()
+    update_model_options(specified_run_type, model_map)
 
 # init session state variables:
 if 'initialized' not in st.session_state:
-    st.session_state.model_options = get_model_options()
+    st.session_state.model_options = get_model_options(specified_run_type, model_map)
     st.session_state.current_model_path = default_model
     st.session_state.current_local_path = None
     st.session_state.current_hub_model = None
