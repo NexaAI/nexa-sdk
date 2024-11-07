@@ -50,7 +50,7 @@ def filter_available_models(
 
     for model_name, model_info in models.items():
         # skip if run_type doesn't match:
-        if model_info.get('run_type') != specified_run_type:
+        if model_info.get('run_type') != specified_run_type or 'projector' in model_name:
             continue
 
         if model_name in model_map.values():

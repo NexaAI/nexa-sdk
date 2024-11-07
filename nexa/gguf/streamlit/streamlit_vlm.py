@@ -7,7 +7,14 @@ import streamlit as st
 from PIL import Image
 from nexa.general import pull_model
 from nexa.gguf.nexa_inference_vlm import NexaVLMInference
+from nexa.utils import (
+    get_model_options,
+    update_model_options,
+)
 from nexa.constants import NEXA_RUN_MODEL_MAP_VLM
+
+specified_run_type = 'Multimodal'
+model_map = NEXA_RUN_MODEL_MAP_VLM
 
 # init from command line args:
 try:
@@ -17,57 +24,7 @@ try:
     projector_local_path = sys.argv[4] if len(sys.argv) > 4 else None
 except IndexError:
     st.error("Missing required command line arguments.")
-    sys.exit(1)  # program terminated with an error
-
-def parse_nexa_list_output() -> List[str]:
-    """Parse the output of nexa list command to get local VLM models."""
-    try:
-        result = subprocess.run(['nexa', 'list'], capture_output=True, text=True)
-        pattern = r'\|\s*(.*?)\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|'
-        matches = re.findall(pattern, result.stdout)
-
-        # filter for VLM models and get their names:
-        vlm_models = set()  # to avoid duplicates
-        for match in matches:
-            model_name = match[0].strip()
-            run_type = match[2].strip()
-            # skip projector files and header row:
-            if (run_type == 'Multimodal' and
-                not model_name.startswith('Model Name') and
-                'projector' not in model_name):
-                if model_name in NEXA_RUN_MODEL_MAP_VLM.values():
-                    # if it's a full model name, find its short form:
-                    for short_name, full_name in NEXA_RUN_MODEL_MAP_VLM.items():
-                        if full_name == model_name:
-                            vlm_models.add(short_name)
-                            break
-                else:
-                    vlm_models.add(model_name)
-
-        return sorted(list(vlm_models))  # convert to sorted list for consistent ordering
-    except Exception as e:
-        st.error(f"Error parsing nexa list output: {str(e)}")
-        return []
-
-def get_model_options() -> List[str]:
-    """Get list of model options from nexa list."""
-    models = parse_nexa_list_output()
-    # add special options at the end of the dropdown menu:
-    models.extend(["Use Model From Nexa Model Hub 🔍", "Local Model 📁"])
-    return models
-
-def update_model_options():
-    """Update the model options in session state and force a refresh."""
-    fresh_options = get_model_options()
-    st.session_state.model_options = fresh_options  # update session state with new options
-
-    if hasattr(st.session_state, 'current_model_path') and st.session_state.current_model_path:
-        if st.session_state.current_model_path in fresh_options:
-            st.session_state.current_model_index = fresh_options.index(st.session_state.current_model_path)
-        else:
-            # if current model not in list, reset to Model Hub option:
-            hub_index = fresh_options.index("Use Model From Nexa Model Hub 🔍")
-            st.session_state.current_model_index = hub_index
+    sys.exit(1)  # terminate with an error
 
 @st.cache_resource(show_spinner=False)
 def load_model(model_path, is_local=False, is_hf=False, projector_path=None):
@@ -118,13 +75,13 @@ st.caption("Powered by Nexa AI SDK🐙")
 
 # force refresh model options on every page load:
 if 'model_options' not in st.session_state:
-    st.session_state.model_options = get_model_options()
+    st.session_state.model_options = get_model_options(specified_run_type, model_map)
 else:
-    update_model_options()
+    update_model_options(specified_run_type, model_map)
 
 # init session state variables:
 if 'initialized' not in st.session_state:
-    st.session_state.model_options = get_model_options()
+    st.session_state.model_options = get_model_options(specified_run_type, model_map)
     st.session_state.current_model_path = default_model
     st.session_state.current_local_path = None
     st.session_state.current_projector_path = projector_local_path

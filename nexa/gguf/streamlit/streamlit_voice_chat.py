@@ -18,7 +18,7 @@ try:
     hf = sys.argv[3].lower() == "true"
 except IndexError:
     st.error("Missing required command line arguments.")
-    sys.exit(1)  # program terminated with an error
+    sys.exit(1)  # terminate with an error
 
 def parse_nexa_list_output() -> List[str]:
     """Parse the output of nexa list command to get local audio models."""
