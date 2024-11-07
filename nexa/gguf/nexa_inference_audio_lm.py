@@ -291,10 +291,20 @@ if __name__ == "__main__":
         default="auto",
         help="Device to use for inference (auto, cpu, or gpu)",
     )
+    parser.add_argument(
+        "-st",
+        "--streamlit",
+        action="store_true",
+        help="Run the inference in Streamlit UI",
+    )
+
     args = parser.parse_args()
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")
     device = kwargs.pop("device", "auto")
 
     inference = NexaAudioLMInference(model_path, device=device, **kwargs)
-    inference.run()
+    if args.streamlit:
+        inference.run_streamlit(model_path)
+    else:
+        inference.run()
