@@ -8,7 +8,6 @@ from st_audiorec import st_audiorec
 
 from nexa.general import pull_model
 from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
-from nexa.constants import NEXA_RUN_MODEL_MAP_AUDIO_LM
 
 default_model = sys.argv[1]
 is_local_path = False if sys.argv[2] == "False" else True

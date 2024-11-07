@@ -71,9 +71,7 @@ response_placeholder = st.empty()
 image_placeholder = st.empty()
 
 if uploaded_file:
-    image_placeholder.image(
-        uploaded_file, caption="Uploaded Image", use_column_width=True
-    )
+    image_placeholder.image(uploaded_file, caption="Uploaded Image")
 
 if generate_button:
     if not user_input and not uploaded_file:
