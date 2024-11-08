@@ -174,12 +174,20 @@ NEXA_RUN_OMNI_VLM_PROJECTOR_MAP = {
     "omnivision": "Octo-omni-vision:projector-fp16",
     "Octo-omni-vision:fp16": "Octo-omni-vision:projector-fp16",
     "Octo-omni-vision:q4_0": "Octo-omni-vision:projector-q4_0",
+    "omnivision-v2": "Octo-omni-vision-v2:projector-fp16",
+    "Octo-omni-vision-v2:fp16": "Octo-omni-vision-v2:projector-fp16",
+    "omnivision-v2-ocr": "Octo-omni-vision-v2-ocr:projector-fp16",
+    "Octo-omni-vision-v2-ocr:fp16": "Octo-omni-vision-v2-ocr:projector-fp16",
 }
 
 NEXA_RUN_OMNI_VLM_MAP = {
     "omnivision": "Octo-omni-vision:model-fp16",
     "Octo-omni-vision:fp16": "Octo-omni-vision:model-fp16",
     "Octo-omni-vision:q4_0": "Octo-omni-vision:model-q4_0",
+    "omnivision-v2": "Octo-omni-vision-v2:model-fp16",
+    "Octo-omni-vision-v2:fp16": "Octo-omni-vision-v2:model-fp16",
+    "omnivision-v2-ocr": "Octo-omni-vision-v2-ocr:model-fp16",
+    "Octo-omni-vision-v2-ocr:fp16": "Octo-omni-vision-v2-ocr:model-fp16",
 }
 
 NEXA_RUN_AUDIO_LM_PROJECTOR_MAP = {

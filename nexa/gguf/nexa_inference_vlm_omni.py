@@ -7,7 +7,6 @@ from pathlib import Path
 from streamlit.web import cli as stcli
 from nexa.utils import nexa_prompt, SpinningCursorAnimation
 from nexa.constants import (
-    DEFAULT_TEXT_GEN_PARAMS,
     NEXA_RUN_OMNI_VLM_PROJECTOR_MAP,
     NEXA_RUN_OMNI_VLM_MAP
 )
@@ -32,8 +31,6 @@ class NexaOmniVlmInference:
         if model_path is None and local_path is None:
             raise ValueError("Either model_path or local_path must be provided.")
 
-        self.params = DEFAULT_TEXT_GEN_PARAMS.copy()
-        self.params.update(kwargs)
         self.model = None
         self.projector = None
         self.projector_path = NEXA_RUN_OMNI_VLM_PROJECTOR_MAP.get(model_path, None)
@@ -41,30 +38,26 @@ class NexaOmniVlmInference:
         self.projector_downloaded_path = projector_local_path
         self.device = device
         self.context = None
+        self.omni_vlm_version = None
         if self.device == "auto" or self.device == "gpu":
             self.n_gpu_layers = -1 if is_gpu_available() else 0
         else:
             self.n_gpu_layers = 0
 
-        if (
-            self.downloaded_path is not None
-            and self.projector_downloaded_path is not None
-        ):
+        if self.downloaded_path is not None and self.projector_downloaded_path is not None:
             # when running from local, both path should be provided
-            pass
+            self.omni_vlm_version = self._determine_vlm_version(str(self.downloaded_path))
         elif self.downloaded_path is not None:
             if model_path in NEXA_RUN_OMNI_VLM_MAP:
                 self.projector_path = NEXA_RUN_OMNI_VLM_PROJECTOR_MAP[model_path]
-                self.projector_downloaded_path, _ = pull_model(
-                    self.projector_path, **kwargs
-                )
+                self.projector_downloaded_path, _ = pull_model(self.projector_path, **kwargs)
+                self.omni_vlm_version = self._determine_vlm_version(model_path)
         elif model_path in NEXA_RUN_OMNI_VLM_MAP:
             self.model_path = NEXA_RUN_OMNI_VLM_MAP[model_path]
             self.projector_path = NEXA_RUN_OMNI_VLM_PROJECTOR_MAP[model_path]
             self.downloaded_path, _ = pull_model(self.model_path, **kwargs)
-            self.projector_downloaded_path, _ = pull_model(
-                self.projector_path, **kwargs
-            )
+            self.projector_downloaded_path, _ = pull_model(self.projector_path, **kwargs)
+            self.omni_vlm_version = self._determine_vlm_version(model_path)
         elif Path(model_path).parent.exists():
             local_dir = Path(model_path).parent
             model_name = Path(model_path).name
@@ -80,22 +73,33 @@ class NexaOmniVlmInference:
                     "Make sure to name them as 'model-<tag>.gguf' and 'projector-<tag>.gguf'."
                 )
                 exit(1)
+            self.omni_vlm_version = self._determine_vlm_version(model_path)
         else:
             logging.error("VLM user model from hub is not supported yet.")
             exit(1)
+        
+        # Override version if specified in kwargs
+        if 'omni_vlm_version' in kwargs:
+            self.omni_vlm_version = kwargs.get('omni_vlm_version')
+            
         with suppress_stdout_stderr():
             self._load_model()
 
+    def _determine_vlm_version(self, path_str: str) -> str:
+        """Helper function to determine VLM version from path string."""
+        if 'v2-ocr' in path_str:
+            return "vlm-81-ocr"
+        elif 'v2' in path_str:
+            return "vlm-81-instruct"
+        return "nano-vlm-instruct"
+    
     @SpinningCursorAnimation()
     def _load_model(self):
         try:
-            self.ctx_params_model = ctypes.c_char_p(
-                self.downloaded_path.encode("utf-8")
-            )
-            self.ctx_params_mmproj = ctypes.c_char_p(
-                self.projector_downloaded_path.encode("utf-8")
-            )
-            omni_vlm_cpp.omnivlm_init(self.ctx_params_model, self.ctx_params_mmproj, self.omni_vlm_version)
+            self.ctx_params_model = ctypes.c_char_p(self.downloaded_path.encode("utf-8"))
+            self.ctx_params_mmproj = ctypes.c_char_p(self.projector_downloaded_path.encode("utf-8"))
+            self.ctx_params_omni_vlm_version = ctypes.c_char_p(self.omni_vlm_version.encode("utf-8"))
+            omni_vlm_cpp.omnivlm_init(self.ctx_params_model, self.ctx_params_mmproj, self.ctx_params_omni_vlm_version)
         except Exception as e:
             logging.error(f"Error loading model: {e}")
             raise
@@ -169,6 +173,13 @@ if __name__ == "__main__":
         "--streamlit",
         action="store_true",
         help="Run the inference in Streamlit UI",
+    )
+    parser.add_argument(
+        "--omni_vlm_version",
+        type=str,
+        choices=["vlm-81-ocr", "vlm-81-instruct", "nano-vlm-instruct"],
+        default="vlm-81-instruct",
+        help="omni-vlm-version to use",
     )
 
     args = parser.parse_args()
