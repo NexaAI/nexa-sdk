@@ -95,7 +95,7 @@ class NexaOmniVlmInference:
             self.ctx_params_mmproj = ctypes.c_char_p(
                 self.projector_downloaded_path.encode("utf-8")
             )
-            omni_vlm_cpp.omnivlm_init(self.ctx_params_model, self.ctx_params_mmproj)
+            omni_vlm_cpp.omnivlm_init(self.ctx_params_model, self.ctx_params_mmproj, self.omni_vlm_version)
         except Exception as e:
             logging.error(f"Error loading model: {e}")
             raise

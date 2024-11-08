@@ -55,11 +55,11 @@ _lib = _get_lib()
 omni_char_p = ctypes.c_char_p
 
 
-def omnivlm_init(llm_model_path: omni_char_p, mmproj_model_path: omni_char_p):
-    return _lib.omnivlm_init(llm_model_path, mmproj_model_path)
+def omnivlm_init(llm_model_path: omni_char_p, mmproj_model_path: omni_char_p, vlm_version: omni_char_p):
+    return _lib.omnivlm_init(llm_model_path, mmproj_model_path, vlm_version)
 
 
-_lib.omnivlm_init.argtypes = [omni_char_p, omni_char_p]
+_lib.omnivlm_init.argtypes = [omni_char_p, omni_char_p, omni_char_p]
 _lib.omnivlm_init.restype = None
 
 
