@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @State private var viewModel = ViewModel()
     @State private var prompt = ""
+    @FocusState private var isInputActive: Bool
 
     var body: some View {
         VStack {
@@ -21,6 +22,18 @@ struct ContentView: View {
                     guard !prompt.isEmpty else { return }
                     viewModel.run(for: prompt)
                 }
+                .focused($isInputActive)
+            
+            Button(action: {
+                guard !prompt.isEmpty else { return }
+                viewModel.run(for: prompt)
+                isInputActive = false
+            }) {
+                Text("Send")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .padding(.bottom)
             
             ScrollView {
                 Text(viewModel.result)
