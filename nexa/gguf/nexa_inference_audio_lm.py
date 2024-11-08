@@ -1,7 +1,12 @@
 import ctypes
 import logging
 import os
+import sys
+import librosa
+import tempfile
+import soundfile as sf
 from pathlib import Path
+from streamlit.web import cli as stcli
 from nexa.utils import SpinningCursorAnimation, nexa_prompt
 from nexa.constants import (
     DEFAULT_TEXT_GEN_PARAMS,
@@ -12,7 +17,6 @@ from nexa.gguf.lib_utils import is_gpu_available
 from nexa.gguf.llama import audio_lm_cpp
 from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
 from nexa.general import pull_model
-
 
 def is_qwen(model_name):
     if "qwen" in model_name.lower():  # TEMPORARY SOLUTION : this hardcode can be risky
@@ -60,6 +64,8 @@ class NexaAudioLMInference:
         self.projector_downloaded_path = projector_local_path
         self.device = device
         self.context = None
+        self.temp_file = None
+
         if self.device == "auto" or self.device == "gpu":
             self.n_gpu_layers = -1 if is_gpu_available() else 0
         else:
@@ -138,30 +144,84 @@ class NexaAudioLMInference:
             raise
 
     def run(self):
-        while True:
-            try:
-                while True:
-                    audio_path = nexa_prompt("Enter the path to your audio file (required): ")
-                    if os.path.exists(audio_path):
-                        break
-                    print(f"'{audio_path}' is not a valid audio path. Please try again.")
-
+        """
+        Run the audio language model inference loop.
+        """
+        try:
+            while True:
+                audio_path = self._get_valid_audio_path()
                 user_input = nexa_prompt("Enter text (leave empty if no prompt): ")
-
-                self.ctx_params.file = ctypes.c_char_p(audio_path.encode("utf-8"))
-                self.ctx_params.prompt = ctypes.c_char_p(user_input.encode("utf-8"))
-
-                response = audio_lm_cpp.process_full(
-                    self.context, ctypes.byref(self.ctx_params), is_qwen=self.is_qwen
-                ).decode("utf-8")
+                
+                response = self.inference(audio_path, user_input)
                 print(response)
 
-            except KeyboardInterrupt:
-                print("\nExiting...")
-                break
+        except KeyboardInterrupt:
+            print("\nExiting...")
+        except Exception as e:
+            logging.error(f"\nError during audio generation: {e}", exc_info=True)
+        finally:
+            self.cleanup()
 
-            except Exception as e:
-                logging.error(f"\nError during audio generation: {e}", exc_info=True)
+    def _get_valid_audio_path(self) -> str:
+        """
+        Helper method to get a valid audio file path from user
+        """
+        while True:
+            audio_path = nexa_prompt("Enter the path to your audio file (required): ")
+            if os.path.exists(audio_path):
+                # Check if it's a supported audio format
+                if any(audio_path.lower().endswith(ext) for ext in ['.wav', '.mp3', '.m4a', '.flac', '.ogg']):
+                    return audio_path
+                print(f"Unsupported audio format. Please use WAV, MP3, M4A, FLAC, or OGG files.")
+            else:
+                print(f"'{audio_path}' is not a valid audio path. Please try again.")
+
+    def inference(self, audio_path: str, prompt: str = "") -> str:
+        """
+        Perform a single inference with the audio language model.
+        """
+        if not os.path.exists(audio_path):
+            raise FileNotFoundError(f"Audio file not found: {audio_path}")
+
+        try:
+            # Ensure audio is at 16kHz before processing
+            audio_path = self._ensure_16khz(audio_path)
+
+            self.ctx_params.file = ctypes.c_char_p(audio_path.encode("utf-8"))
+            self.ctx_params.prompt = ctypes.c_char_p(prompt.encode("utf-8"))
+
+            response = audio_lm_cpp.process_full(
+                self.context, ctypes.byref(self.ctx_params), is_qwen=self.is_qwen
+            )
+            return response
+        except Exception as e:
+            raise RuntimeError(f"Error during inference: {str(e)}")
+        finally:
+            if self.temp_file:
+                try:
+                    self.temp_file.close()
+                    if os.path.exists(self.temp_file.name):
+                        os.unlink(self.temp_file.name)
+                except:
+                    pass
+                self.temp_file = None
+
+    def cleanup(self):
+        """
+        Explicitly cleanup resources
+        """
+        if self.context:
+            audio_lm_cpp.free(self.context, is_qwen=self.is_qwen)
+            self.context = None
+        
+        if self.temp_file:
+            try:
+                self.temp_file.close()
+                if os.path.exists(self.temp_file.name):
+                    os.unlink(self.temp_file.name)
+            except:
+                pass
+            self.temp_file = None
 
     def __del__(self):
         """
@@ -170,6 +230,47 @@ class NexaAudioLMInference:
         if self.context:
             audio_lm_cpp.free(self.context, is_qwen=self.is_qwen)
 
+    def _ensure_16khz(self, audio_path: str) -> str:
+        """
+        Check if audio is 16kHz, resample if necessary.
+        Supports various audio formats (mp3, wav, m4a, etc.)
+        """
+        try:
+            y, sr = librosa.load(audio_path, sr=None)
+    
+            if sr == 16000:
+                return audio_path
+            
+            # Resample to 16kHz
+            print(f"Resampling audio from {sr} to 16000")
+            y_resampled = librosa.resample(y=y, orig_sr=sr, target_sr=16000)
+            self.temp_file = tempfile.NamedTemporaryFile(
+                suffix='.wav',
+                delete=False
+            )
+            sf.write(
+                self.temp_file.name, 
+                y_resampled, 
+                16000,
+                subtype='PCM_16'
+            )
+            return self.temp_file.name
+
+        except Exception as e:
+            raise RuntimeError(f"Error processing audio file: {str(e)}")
+
+    def run_streamlit(self, model_path: str, is_local_path = False, hf = False, projector_local_path = None):
+        """
+        Run the Streamlit UI.
+        """
+        logging.info("Running Streamlit UI...")
+
+        streamlit_script_path = (
+            Path(os.path.abspath(__file__)).parent / "streamlit" / "streamlit_audio_lm.py"
+        )
+
+        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, str(is_local_path), str(hf), str(projector_local_path)]
+        sys.exit(stcli.main())
 
 if __name__ == "__main__":
     import argparse
@@ -190,10 +291,20 @@ if __name__ == "__main__":
         default="auto",
         help="Device to use for inference (auto, cpu, or gpu)",
     )
+    parser.add_argument(
+        "-st",
+        "--streamlit",
+        action="store_true",
+        help="Run the inference in Streamlit UI",
+    )
+
     args = parser.parse_args()
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")
     device = kwargs.pop("device", "auto")
 
     inference = NexaAudioLMInference(model_path, device=device, **kwargs)
-    inference.run()
+    if args.streamlit:
+        inference.run_streamlit(model_path)
+    else:
+        inference.run()
