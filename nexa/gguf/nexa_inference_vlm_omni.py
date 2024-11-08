@@ -2,7 +2,9 @@
 import ctypes
 import logging
 import os
+import sys
 from pathlib import Path
+from streamlit.web import cli as stcli
 from nexa.utils import nexa_prompt, SpinningCursorAnimation
 from nexa.constants import (
     DEFAULT_TEXT_GEN_PARAMS,
@@ -104,12 +106,9 @@ class NexaOmniVlmInference:
                 image_path = nexa_prompt("Image Path (required): ")
                 if not os.path.exists(image_path):
                     print(f"Image path: {image_path} not found, running omni VLM without image input.")
-
                 user_input = nexa_prompt()
-                image_path = ctypes.c_char_p(image_path.encode("utf-8"))
-                user_input = ctypes.c_char_p(user_input.encode("utf-8"))
-                omni_vlm_cpp.omnivlm_inference(user_input, image_path)
-
+                response = self.inference(user_input, image_path)
+                print(f"\nResponse: {response}")
             except KeyboardInterrupt:
                 print("\nExiting...")
                 break
@@ -117,8 +116,33 @@ class NexaOmniVlmInference:
                 logging.error(f"\nError during audio generation: {e}", exc_info=True)
             print("\n")
 
+    def inference(self, prompt: str, image_path: str):
+        with suppress_stdout_stderr():
+            prompt = ctypes.c_char_p(prompt.encode("utf-8"))
+            image_path = ctypes.c_char_p(image_path.encode("utf-8"))
+            response = omni_vlm_cpp.omnivlm_inference(prompt, image_path)
+            
+            decoded_response = response.decode('utf-8')
+            if '<|im_start|>assistant' in decoded_response:
+                decoded_response = decoded_response.replace('<|im_start|>assistant', '').strip()
+                
+            return decoded_response
+
     def __del__(self):
         omni_vlm_cpp.omnivlm_free()
+
+    def run_streamlit(self, model_path: str, is_local_path = False, hf = False, projector_local_path = None):
+        """
+        Run the Streamlit UI.
+        """
+        logging.info("Running Streamlit UI...")
+
+        streamlit_script_path = (
+            Path(os.path.abspath(__file__)).parent / "streamlit" / "streamlit_vlm_omni.py"
+        )
+
+        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, str(is_local_path), str(hf), str(projector_local_path)]
+        sys.exit(stcli.main())
 
 
 if __name__ == "__main__":
@@ -140,10 +164,20 @@ if __name__ == "__main__":
         default="auto",
         help="Device to use for inference (auto, cpu, or gpu)",
     )
+    parser.add_argument(
+        "-st",
+        "--streamlit",
+        action="store_true",
+        help="Run the inference in Streamlit UI",
+    )
+
     args = parser.parse_args()
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")
     device = kwargs.pop("device", "auto")
 
     inference = NexaOmniVlmInference(model_path, device=device, **kwargs)
-    inference.run()
+    if args.streamlit:
+        inference.run_streamlit(model_path)
+    else:
+        inference.run()
