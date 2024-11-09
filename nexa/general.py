@@ -126,6 +126,7 @@ def pull_model(model_path, hf = False, **kwargs):
 
         if result["success"]:
             # Only add to model list if not using custom download path
+            model_path = model_path if not hf else f"{model_path}:{result['local_path'].split('/')[-1]}"
             if not kwargs.get('local_download_path'):
                 add_model_to_list(model_path, result["local_path"], result["model_type"], result["run_type"])
             
@@ -571,7 +572,7 @@ def list_models():
                 headers, 
                 tablefmt="pretty", 
                 colalign=("left", "left", "left", "left"),
-                maxcolwidths=[50, 15, 20, 90]
+                maxcolwidths=[150, 15, 20, 90]
             )
         )
     except Exception as e:
