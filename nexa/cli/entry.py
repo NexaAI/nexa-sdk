@@ -397,7 +397,11 @@ def run_convert(args):
                 _run_converted_model(converted_path, model_type)
             else:
                 print("Exiting without running the model.")
-                return
+            
+            print(f"\nConverted model stored at {converted_path}")
+            running_command = f"nexa run {converted_path.split('/')[-1]}"\
+                if store_choice == 'y' else f"nexa run {converted_path} -lp -mt {model_type}"
+            print(f"\nYou can run the converted model with command: {running_command}")
         else:
             print("Conversion failed.")
     except Exception as e:
