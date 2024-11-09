@@ -83,6 +83,10 @@ def run_ggml_inference(args):
     stop_words = kwargs.pop("stop_words", None)
 
     try:
+        if (is_local_path or hf) and not model_type:
+            print("No model type specified. Running with default model type: NLP")
+            print("You can specify a different model type using the -mt flag")
+            
         if run_type == "NLP":
             from nexa.gguf.nexa_inference_text import NexaTextInference
             inference = NexaTextInference(model_path=model_path, local_path=local_path, stop_words=stop_words, **kwargs)
@@ -210,6 +214,10 @@ def run_onnx_inference(args):
         local_path, run_type = pull_model(model_path)
 
     try:
+        if is_local_path and not model_type:
+            print("No model type specified. Running with default model type: NLP")
+            print("You can specify a different model type using the -mt flag")
+            
         if run_type == "NLP":
             from nexa.onnx.nexa_inference_text import NexaTextInference as NexaTextOnnxInference
             inference = NexaTextOnnxInference(model_path=model_path, local_path=local_path, **kwargs)
