@@ -567,7 +567,11 @@ def list_models():
 
         print(
             tabulate(
-                table, headers, tablefmt="pretty", colalign=("left", "left", "left", "left")
+                table, 
+                headers, 
+                tablefmt="pretty", 
+                colalign=("left", "left", "left", "left"),
+                maxcolwidths=[50, 15, 20, 90]
             )
         )
     except Exception as e:
