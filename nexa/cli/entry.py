@@ -133,10 +133,6 @@ def run_ggml_inference(args):
         print(f"Please refer to our docs to install nexaai package: https://docs.nexaai.com/getting-started/installation ")
         return
 
-    if (is_local_path or hf) and not model_type:
-        print("No model type specified. Running with default model type: NLP")
-        print("You can specify a different model type using the -mt flag")
-
     if hasattr(args, 'streamlit') and args.streamlit:
         if run_type == "Multimodal" or run_type == "AudioLM":
             inference.run_streamlit(model_path, is_local_path=is_local_path, hf=hf, projector_local_path=projector_local_path)
@@ -237,10 +233,6 @@ def run_onnx_inference(args):
         print(f"Error running onnx inference: {e}")
         print(f"Please refer to our docs to install nexaai[onnx] package: https://docs.nexaai.com/getting-started/installation ")
         return
-
-    if is_local_path and not model_type:
-        print("No model type specified. Running with default model type: NLP")
-        print("You can specify a different model type using the -mt flag")
 
     if hasattr(args, 'streamlit') and args.streamlit:
         inference.run_streamlit(model_path, is_local_path=is_local_path)
