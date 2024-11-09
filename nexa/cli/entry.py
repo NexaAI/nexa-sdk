@@ -46,6 +46,8 @@ def run_ggml_inference(args):
         run_type = ModelType[model_type].value
 
     local_path = None
+    projector_local_path = None
+    
     if is_local_path or hf:
         if not model_type:
             print("Error: --model_type must be provided when using --local_path or --huggingface")
@@ -53,7 +55,7 @@ def run_ggml_inference(args):
         if is_local_path:
             local_path = os.path.abspath(model_path)
             model_path = local_path
-            if run_type == "Multimodal":
+            if run_type == "Multimodal" or run_type == "AudioLM":
                 if not os.path.isdir(local_path):
                     print("Error: For Multimodal models with --local_path, the provided path must be a directory containing both model and projector ggufs.")
                     return
@@ -71,7 +73,7 @@ def run_ggml_inference(args):
         else:  # hf case
             # TODO: remove this after adding support for Multimodal model in CLI
             if run_type == "Multimodal" or run_type == "Audio" or run_type == "TTS":
-                print("Running multimodal model or audio model from Hugging Face is currently not supported in CLI mode. Please use SDK to run Multimodal model or Audio model or TTS model.")
+                print("Running multimodal model or audio model or TTS model from Hugging Face is currently not supported in CLI mode. Please use SDK to run Multimodal model or Audio model or TTS model.")
                 return
             from nexa.general import pull_model
             local_path, _ = pull_model(model_path, hf=True)
@@ -96,7 +98,6 @@ def run_ggml_inference(args):
                 inference.run_txt2img()
             return
         elif run_type == "Multimodal":
-            print("debug run_type", run_type, "is_local_path", is_local_path)
             if is_local_path:
                 if "omni" in local_path:
                     from nexa.gguf.nexa_inference_vlm_omni import NexaOmniVlmInference
@@ -105,7 +106,6 @@ def run_ggml_inference(args):
                     from nexa.gguf.nexa_inference_vlm import NexaVLMInference
                     inference = NexaVLMInference(model_path=model_path, local_path=local_path, projector_local_path=projector_local_path, stop_words=stop_words, **kwargs)
             else:
-                print("debug: local_path", local_path)
                 if "omni" in local_path:
                     from nexa.gguf.nexa_inference_vlm_omni import NexaOmniVlmInference
                     inference = NexaOmniVlmInference(model_path=model_path, local_path=local_path, **kwargs)
@@ -125,11 +125,12 @@ def run_ggml_inference(args):
             print(f"Unknown task: {run_type}. Skipping inference.")
             return
     except Exception as e:
-        print(f"Error {e}, please refer to our docs to install nexaai package: https://docs.nexaai.com/getting-started/installation ")
+        print(f"Error running ggml inference: {e}")
+        print(f"Please refer to our docs to install nexaai package: https://docs.nexaai.com/getting-started/installation ")
         return
 
     if hasattr(args, 'streamlit') and args.streamlit:
-        if run_type == "Multimodal":
+        if run_type == "Multimodal" or run_type == "AudioLM":
             inference.run_streamlit(model_path, is_local_path = is_local_path, hf = hf, projector_local_path = projector_local_path)
         else:
             inference.run_streamlit(model_path, is_local_path = is_local_path, hf = hf)
@@ -216,7 +217,8 @@ def run_onnx_inference(args):
             print(f"Unknown task: {run_type}. Skipping inference.")
             return
     except Exception as e:
-        print(f"Error loading ONNX models, please refer to our docs to install nexaai[onnx] package: https://docs.nexaai.com/getting-started/installation ")
+        print(f"Error running onnx inference: {e}")
+        print(f"Please refer to our docs to install nexaai[onnx] package: https://docs.nexaai.com/getting-started/installation ")
         return
 
     if hasattr(args, 'streamlit') and args.streamlit:
