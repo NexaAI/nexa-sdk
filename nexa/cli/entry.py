@@ -75,7 +75,7 @@ def run_ggml_inference(args):
                 print("Running multimodal model or audio model or TTS model from Hugging Face is currently not supported in CLI mode. Please use SDK to run Multimodal model or Audio model or TTS model.")
                 return
             from nexa.general import pull_model
-            local_path, _ = pull_model(model_path, hf=True)
+            local_path, _ = pull_model(model_path, hf=True, run_type=run_type)
     else: # Model Hub
         from nexa.general import pull_model
         local_path, run_type = pull_model(model_path)
@@ -279,7 +279,7 @@ def run_embedding_generation(args):
             model_path = local_path
         else:  # hf case
             from nexa.general import pull_model
-            local_path, _ = pull_model(model_path, hf=True)
+            local_path, _ = pull_model(model_path, hf=True, run_type="Text Embedding")
     else:  # Model Hub
         from nexa.general import pull_model
         local_path, _ = pull_model(model_path)
