@@ -31,7 +31,7 @@ options:
 
 ### List Local Models
 
-List all models on your local computer.
+List all models on your local computer. You can use `nexa run <model_name>` to run any model shown in the list.
 
 ```
 nexa list
@@ -95,6 +95,8 @@ nexa clean
 Run a model on your local computer. If the model file is not yet downloaded, it will be automatically fetched first.
 
 By default, `nexa` will run gguf models. To run onnx models, use `nexa onnx MODEL_PATH`
+
+You can run any model shown in `nexa list` command.
 
 #### Run Text-Generation Model
 
