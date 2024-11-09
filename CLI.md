@@ -276,6 +276,10 @@ nexa embed sentence-transformers/all-MiniLM-L6-v2:gguf-fp16 "I love Nexa AI." >>
 
 ### Convert and quantize a Hugging Face Model to GGUF
 
+Additional package `nexa-gguf` is required to run this command.
+
+You can install it by `pip install "nexaai[convert]"` or `pip install nexa-gguf`.
+
 ```
 nexa convert HF_MODEL_PATH [ftype] [output_file]
 usage: nexa convert [-h] [-t NTHREAD] [--convert_type CONVERT_TYPE] [--bigendian] [--use_temp_file] [--no_lazy]
