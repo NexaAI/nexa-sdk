@@ -293,7 +293,71 @@ def run_embedding_generation(args):
         print(f"Error generating embedding: {e}")
         print("Please refer to our docs to install nexaai package: https://docs.nexaai.com/getting-started/installation")
 
+def _select_model_type():
+    """Helper function to get model type selection from user."""
+    print("\nSelect model type:")
+    print("1. NLP (text generation)")
+    print("2. COMPUTER_VISION (image generation)")
+    
+    while True:
+        try:
+            choice = int(input("\nSelect model type (enter number): "))
+            if choice == 1:
+                return "NLP"
+            elif choice == 2:
+                return "COMPUTER_VISION"
+            print("Invalid selection. Please try again.")
+        except ValueError:
+            print("Please enter a valid number.")
+
+def _select_quantization_type():
+    """Helper function to get quantization type selection from user."""
+    from nexa.gguf.converter.constants import LLAMA_QUANTIZATION_TYPES
+    print("\nAvailable quantization types:")
+    for i, qt in enumerate(LLAMA_QUANTIZATION_TYPES.keys(), 1):
+        print(f"{i}. {qt}")
+    
+    while True:
+        try:
+            choice = int(input("\nSelect quantization type (enter number): ")) - 1
+            if 0 <= choice < len(LLAMA_QUANTIZATION_TYPES):
+                return list(LLAMA_QUANTIZATION_TYPES.keys())[choice]
+            print("Invalid selection. Please try again.")
+        except ValueError:
+            print("Please enter a valid number.")
+
+def _store_in_nexa_list(converted_path, model_type):
+    """Helper function to store converted model in nexa list."""
+    import shutil
+    from nexa.general import add_model_to_list
+    from nexa.gguf.converter.constants import NEXA_MODELS_HUB_CONVERTED_DIR
+    
+    # Create the converted directory if it doesn't exist
+    os.makedirs(NEXA_MODELS_HUB_CONVERTED_DIR, exist_ok=True)
+    
+    # Copy the file to the converted directory
+    nexa_list_path = os.path.join(NEXA_MODELS_HUB_CONVERTED_DIR, os.path.basename(converted_path))
+    shutil.copy2(converted_path, nexa_list_path)
+    
+    # Add the new path to the model list
+    add_model_to_list(os.path.basename(converted_path), nexa_list_path, "gguf", model_type)
+
+def _run_converted_model(converted_path, model_type):
+    """Helper function to run the converted model."""
+    try:
+        import subprocess
+        command = f"nexa run {converted_path} -lp -mt {model_type}"
+        print(f"Running command: {command}")
+        subprocess.run(command.split(), check=True, text=True)
+    except subprocess.CalledProcessError as e:
+        print("Error running the converted model.")
+        print("Change model type with -mt to run the model correctly. Or refer to our docs: https://docs.nexa.ai/sdk/cli-reference")
+
 def run_convert(args):
+    # Get model type and quantization type
+    model_type = _select_model_type()
+    ftype = args.ftype or _select_quantization_type()
+    
     input_path = args.input_path
     
     # Check if input_path is a valid directory
@@ -315,24 +379,22 @@ def run_convert(args):
         converted_path = convert_hf_to_quantized_gguf(
             input_path,
             output_file=args.output_file,
-            ftype=args.ftype,
+            ftype=ftype,
             convert_type=args.convert_type,
             **kwargs
         )
         if converted_path:
-            print(f"Conversion completed successfully. Output file: {converted_path}")
+            print(f"\nConversion completed successfully. Output file: {converted_path}")
             
-            # Ask user if they want to run the converted model
-            user_choice = input("Would you like to run the converted model? (y/N) (Currently only supports NLP): ").strip().lower()
-            if user_choice == 'y':
-                try:
-                    import subprocess
-                    command = f"nexa run {converted_path} -lp -mt NLP"
-                    print(f"Running command: {command}")
-                    subprocess.run(command.split(), check=True, text=True)
-                except subprocess.CalledProcessError as e:
-                    print("Error running the converted model.")
-                    print("Change model type with -mt to run the model correctly. Or refer to our docs: https://docs.nexa.ai/sdk/cli-reference")
+            # Ask if user wants to store in nexa list
+            store_choice = input("\nWould you like to store this model in nexa list so you can run it with `nexa run <model_name>` anywhere and anytime? (y/N): ").strip().lower()
+            if store_choice == 'y':
+                _store_in_nexa_list(converted_path, model_type)
+            
+            # Ask if user wants to run the model
+            run_choice = input("\nWould you like to run the converted model? (y/N): ").strip().lower()
+            if run_choice == 'y':
+                _run_converted_model(converted_path, model_type)
             else:
                 print("Exiting without running the model.")
                 return
@@ -438,7 +500,7 @@ def main():
     # Convert command
     convert_parser = subparsers.add_parser("convert", help="Convert and quantize a Hugging Face model to GGUF format.")
     convert_parser.add_argument("input_path", type=str, help="Path to the input Hugging Face model directory or GGUF file")
-    convert_parser.add_argument("ftype", nargs='?', type=str, default="q4_0", help="Quantization type (default: q4_0)")
+    convert_parser.add_argument("ftype", nargs='?', type=str, help="Quantization type")
     convert_parser.add_argument("output_file", nargs='?', type=str, help="Path to the output quantized GGUF file")    
 
     convert_hf_parser = convert_parser.add_argument_group('Convert from safetensors options')
