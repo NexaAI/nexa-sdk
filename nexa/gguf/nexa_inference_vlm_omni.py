@@ -1,4 +1,3 @@
-
 import ctypes
 import logging
 import os
@@ -81,9 +80,10 @@ class NexaOmniVlmInference:
         # Override version if specified in kwargs
         if 'omni_vlm_version' in kwargs:
             self.omni_vlm_version = kwargs.get('omni_vlm_version')
+        print(f"Using omni-vlm-version: {self.omni_vlm_version}")
             
-        with suppress_stdout_stderr():
-            self._load_model()
+        # with suppress_stdout_stderr():
+        self._load_model()
 
     def _determine_vlm_version(self, path_str: str) -> str:
         """Helper function to determine VLM version from path string."""
@@ -110,7 +110,8 @@ class NexaOmniVlmInference:
                 image_path = nexa_prompt("Image Path (required): ")
                 if not os.path.exists(image_path):
                     print(f"Image path: {image_path} not found, running omni VLM without image input.")
-                user_input = nexa_prompt()
+                # Skip user input for OCR version
+                user_input = "" if self.omni_vlm_version == "vlm-81-ocr" else nexa_prompt()
                 response = self.inference(user_input, image_path)
                 print(f"\nResponse: {response}")
             except KeyboardInterrupt:
@@ -127,8 +128,8 @@ class NexaOmniVlmInference:
             response = omni_vlm_cpp.omnivlm_inference(prompt, image_path)
             
             decoded_response = response.decode('utf-8')
-            if '<|im_start|>assistant' in decoded_response:
-                decoded_response = decoded_response.replace('<|im_start|>assistant', '').strip()
+            # if '<|im_start|>assistant' in decoded_response:
+            #     decoded_response = decoded_response.replace('<|im_start|>assistant', '').strip()
                 
             return decoded_response
 
