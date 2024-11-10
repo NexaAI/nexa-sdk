@@ -31,7 +31,7 @@ options:
 
 ### List Local Models
 
-List all models on your local computer.
+List all models on your local computer. You can use `nexa run <model_name>` to run any model shown in the list.
 
 ```
 nexa list
@@ -96,6 +96,8 @@ Run a model on your local computer. If the model file is not yet downloaded, it 
 
 By default, `nexa` will run gguf models. To run onnx models, use `nexa onnx MODEL_PATH`
 
+You can run any model shown in `nexa list` command.
+
 #### Run Text-Generation Model
 
 ```
@@ -109,9 +111,9 @@ options:
   -h, --help            show this help message and exit
   -pf, --profiling      Enable profiling logs for the inference process
   -st, --streamlit      Run the inference in Streamlit UI, can be used with -lp or -hf
-  -lp, --local_path     Indicate that the model path provided is the local path, must be used with -mt
+  -lp, --local_path     Indicate that the model path provided is the local path
   -mt, --model_type     Indicate the model running type, must be used with -lp or -hf, choose from [NLP, COMPUTER_VISION, MULTIMODAL, AUDIO]
-  -hf, --huggingface    Load model from Hugging Face Hub, must be used with -mt
+  -hf, --huggingface    Load model from Hugging Face Hub
 
 Text generation options:
   -t, --temperature TEMPERATURE
@@ -143,9 +145,9 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   -st, --streamlit      Run the inference in Streamlit UI, can be used with -lp or -hf
-  -lp, --local_path     Indicate that the model path provided is the local path, must be used with -mt
+  -lp, --local_path     Indicate that the model path provided is the local path
   -mt, --model_type     Indicate the model running type, must be used with -lp or -hf, choose from [NLP, COMPUTER_VISION, MULTIMODAL, AUDIO]
-  -hf, --huggingface    Load model from Hugging Face Hub, must be used with -mt
+  -hf, --huggingface    Load model from Hugging Face Hub
 
 Image generation options:
   -i2i, --img2img       Whether to run image-to-image generation
@@ -189,9 +191,9 @@ options:
   -h, --help            show this help message and exit
   -pf, --profiling      Enable profiling logs for the inference process
   -st, --streamlit      Run the inference in Streamlit UI, can be used with -lp or -hf
-  -lp, --local_path     Indicate that the model path provided is the local path, must be used with -mt
+  -lp, --local_path     Indicate that the model path provided is the local path
   -mt, --model_type     Indicate the model running type, must be used with -lp or -hf, choose from [NLP, COMPUTER_VISION, MULTIMODAL, AUDIO]
-  -hf, --huggingface    Load model from Hugging Face Hub, must be used with -mt
+  -hf, --huggingface    Load model from Hugging Face Hub
 
 VLM generation options:
   -t, --temperature TEMPERATURE
@@ -223,9 +225,9 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   -st, --streamlit      Run the inference in Streamlit UI, can be used with -lp or -hf
-  -lp, --local_path     Indicate that the model path provided is the local path, must be used with -mt
+  -lp, --local_path     Indicate that the model path provided is the local path
   -mt, --model_type     Indicate the model running type, must be used with -lp or -hf, choose from [NLP, COMPUTER_VISION, MULTIMODAL, AUDIO]
-  -hf, --huggingface    Load model from Hugging Face Hub, must be used with -mt
+  -hf, --huggingface    Load model from Hugging Face Hub
 
 Automatic Speech Recognition options:
   -b, --beam_size BEAM_SIZE
@@ -257,8 +259,8 @@ positional arguments:
 
 options:
   -h, --help            show this help message and exit
-  -lp, --local_path     Indicate that the model path provided is the local path, must be used with -mt
-  -hf, --huggingface    Load model from Hugging Face Hub, must be used with -mt
+  -lp, --local_path     Indicate that the model path provided is the local path
+  -hf, --huggingface    Load model from Hugging Face Hub
   -n, --normalize       Normalize the embeddings
   -nt, --no_truncate    Not truncate the embeddings
 ```
@@ -273,6 +275,10 @@ nexa embed sentence-transformers/all-MiniLM-L6-v2:gguf-fp16 "I love Nexa AI." >>
 ```
 
 ### Convert and quantize a Hugging Face Model to GGUF
+
+Additional package `nexa-gguf` is required to run this command.
+
+You can install it by `pip install "nexaai[convert]"` or `pip install nexa-gguf`.
 
 ```
 nexa convert HF_MODEL_PATH [ftype] [output_file]
@@ -342,9 +348,9 @@ positional arguments:
 
 options:
   -h, --help   show this help message and exit
-  -lp, --local_path     Indicate that the model path provided is the local path, must be used with -mt
+  -lp, --local_path     Indicate that the model path provided is the local path
   -mt, --model_type     Indicate the model running type, must be used with -lp or -hf, choose from [NLP, COMPUTER_VISION, MULTIMODAL, AUDIO]
-  -hf, --huggingface    Load model from Hugging Face Hub, must be used with -mt
+  -hf, --huggingface    Load model from Hugging Face Hub
   --host HOST  Host to bind the server to
   --port PORT  Port to bind the server to
   --reload     Enable automatic reloading on code changes
