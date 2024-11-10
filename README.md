@@ -4,7 +4,7 @@
 
 [![MacOS][MacOS-image]][release-url] [![Linux][Linux-image]][release-url] [![Windows][Windows-image]][release-url]
 
-[![GitHub Release](https://img.shields.io/github/v/release/NexaAI/nexa-sdk)](https://github.com/NexaAI/nexa-sdk/releases/latest) [![Build workflow](https://img.shields.io/github/actions/workflow/status/NexaAI/nexa-sdk/ci.yaml?label=CI&logo=github)](https://github.com/NexaAI/nexa-sdk/actions/workflows/ci.yaml?query=branch%3Amain) ![GitHub License](https://img.shields.io/github/license/NexaAI/nexa-sdk) 
+[![GitHub Release](https://img.shields.io/github/v/release/NexaAI/nexa-sdk)](https://github.com/NexaAI/nexa-sdk/releases/latest) [![Build workflow](https://img.shields.io/github/actions/workflow/status/NexaAI/nexa-sdk/ci.yaml?label=CI&logo=github)](https://github.com/NexaAI/nexa-sdk/actions/workflows/ci.yaml?query=branch%3Amain) ![GitHub License](https://img.shields.io/github/license/NexaAI/nexa-sdk)
 
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FNexaAI%2Fnexa-sdk%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/NexaAI/nexa-sdk) [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FNexaAI%2Fnexa-sdk%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/NexaAI/nexa-sdk)
 
@@ -26,6 +26,7 @@ Nexa SDK is a comprehensive toolkit for supporting **ONNX** and **GGML** models.
 <video src="https://user-images.githubusercontent.com/assets/375570dc-0e7a-4a99-840d-c1ef6502e5aa.mp4" autoplay muted loop playsinline style="max-width: 100%;"></video>
 
 ## Latest News 🔥
+
 - [2024/11] Support Nexa AI's own vision language model (0.9B parameters): `nexa run omnivision` and audio language model (2.9B): `nexa run omniaudio`
 - [2024/11] Support audio language model: `nexa run qwen2audio`, **we are the first open-source toolkit to support audio language model with GGML tensor library.**
 - [2024/10] Support embedding model: `nexa embed <model_path> <prompt>`
@@ -84,8 +85,9 @@ We have released pre-built wheels for various Python versions, platforms, and ba
 > [!NOTE]
 >
 > 1. If you want to use <strong>ONNX model</strong>, just replace `pip install nexaai` with `pip install "nexaai[onnx]"` in provided commands.
-> 2. If you want to convert and quantize huggingface models to GGUF models, just replace `pip install nexaai` with `pip install "nexaai[nexa-gguf]"`.
-> 3. For Chinese developers, we recommend you to use <strong>Tsinghua Open Source Mirror</strong> as extra index url, just replace `--extra-index-url https://pypi.org/simple` with `--extra-index-url https://pypi.tuna.tsinghua.edu.cn/simple` in provided commands.
+> 2. If you want to <strong>run benchmark evaluation</strong>, just replace `pip install nexaai` with `pip install "nexaai[eval]"` in provided commands.
+> 3. If you want to <strong>convert and quantize huggingface models to GGUF models</strong>, just replace `pip install nexaai` with `pip install "nexaai[nexa-gguf]"` in provided commands.
+> 4. For Chinese developers, we recommend you to use <strong>Tsinghua Open Source Mirror</strong> as extra index url, just replace `--extra-index-url https://pypi.org/simple` with `--extra-index-url https://pypi.tuna.tsinghua.edu.cn/simple` in provided commands.
 
 #### CPU
 
