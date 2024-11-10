@@ -126,6 +126,7 @@ def pull_model(model_path, hf = False, **kwargs):
 
         if result["success"]:
             # Only add to model list if not using custom download path
+            model_path = model_path if not hf else f"{model_path}:{result['local_path'].split('/')[-1]}"
             if not kwargs.get('local_download_path'):
                 add_model_to_list(model_path, result["local_path"], result["model_type"], result["run_type"])
             
@@ -230,7 +231,7 @@ def pull_model_from_official(model_path, **kwargs):
         "run_type": run_type_str
     }
 
-def pull_model_from_hf(repo_id, **kwargs):
+def pull_model_from_hf(repo_id, run_type = "NLP", **kwargs):
     repo_id, filename = select_gguf_in_hf_repo(repo_id)
     success, model_path = download_gguf_from_hf(repo_id, filename, **kwargs)
 
@@ -239,7 +240,7 @@ def pull_model_from_hf(repo_id, **kwargs):
         "success": success,
         "local_path": model_path,
         "model_type": "gguf",
-        "run_type": "NLP" # Just for compatibility, hf model type will be passed from outsice
+        "run_type": run_type
     }
 
 
@@ -567,7 +568,11 @@ def list_models():
 
         print(
             tabulate(
-                table, headers, tablefmt="pretty", colalign=("left", "left", "left", "left")
+                table, 
+                headers, 
+                tablefmt="pretty", 
+                colalign=("left", "left", "left", "left"),
+                maxcolwidths=[150, 15, 20, 90]
             )
         )
     except Exception as e:

@@ -194,6 +194,7 @@ NEXA_RUN_OMNI_VLM_MAP = {
 NEXA_RUN_AUDIO_LM_PROJECTOR_MAP = {
     "qwen2audio": "Qwen2-Audio-7.8B-Instruct:projector-q4_0",
     "Qwen2-Audio-7.8B-Instruct:fp16": "Qwen2-Audio-7.8B-Instruct:projector-fp16",
+    "Qwen2-Audio-7.8B-Instruct:q8_0": "Qwen2-Audio-7.8B-Instruct:projector-q8_0",
     "Qwen2-Audio-7.8B-Instruct:q4_0": "Qwen2-Audio-7.8B-Instruct:projector-q4_0",
     "Qwen2-Audio-7.8B-Instruct:q8_0": "Qwen2-Audio-7.8B-Instruct:projector-q8_0",
     "omniaudio": "Octo-omni-audio:projector-fp16",
