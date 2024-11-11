@@ -360,17 +360,24 @@ def run_convert(args):
     
     input_path = args.input_path
     
-    # Check if input_path is a valid directory
-    if not os.path.isdir(input_path):
+    # Check input path conditions
+    if os.path.isdir(input_path):
+        # Valid directory, proceed as is
+        pass
+    elif os.path.isfile(input_path) and input_path.endswith('.gguf'):
+        # Valid GGUF file, proceed as is
+        pass
+    else:
+        # Try downloading from HF if path isn't a valid local directory/file
         from nexa.general import download_repo_from_hf
         success, local_path = download_repo_from_hf(input_path)
         
         if success:
             input_path = local_path
         else:
-            print("Error: Failed to download the repository and the provided path is not a valid directory.")
+            print("Error: Input path must be either a directory, a .gguf file, or a valid Hugging Face model identifier.")
             return
-    
+
     # Input_path here should be a valid directory
     kwargs = {k: v for k, v in vars(args).items() if v is not None and k not in ['input_path', 'ftype', 'output_file', 'convert_type']}
     
