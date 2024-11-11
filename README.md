@@ -1,31 +1,26 @@
-<div align="center">
+
+<img alt="" height="200px" src="./assets/nexa.jpeg">
 
 <h1>Nexa SDK - Local On-Device Inference Framework</h1>
-
-[On-device Model Hub](https://nexa.ai/models) | [Documentation](https://docs.nexaai.com/) | [Discord](https://discord.gg/thRu2HaK4D)
-
-Read about what's new in our [Blogs](https://nexa.ai/blogs). Follow us on [X](https://x.com/nexa_ai) to get updates.
-
-<div align="center">
- <img alt="ollama" height="200px" src="./assets/nexa.jpeg">
-</div>
-
-All-in-one local on-device inference framework.
 
 [release-url]: https://github.com/NexaAI/nexa-sdk/releases
 [Windows-image]: https://img.shields.io/badge/windows-0078D4?logo=windows
 [MacOS-image]: https://img.shields.io/badge/-MacOS-black?logo=apple
 [Linux-image]: https://img.shields.io/badge/-Linux-333?logo=ubuntu
 
-[![MacOS][MacOS-image]][release-url] [![Linux][Linux-image]][release-url] [![Windows][Windows-image]][release-url] [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FNexaAI%2Fnexa-sdk%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/NexaAI/nexa-sdk)
+[![MacOS][MacOS-image]][release-url] [![Linux][Linux-image]][release-url] [![Windows][Windows-image]][release-url] [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FNexaAI%2Fnexa-sdk%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/NexaAI/nexa-sdk) [![Build workflow](https://img.shields.io/github/actions/workflow/status/NexaAI/nexa-sdk/ci.yaml?label=CI&logo=github)](https://github.com/NexaAI/nexa-sdk/actions/workflows/ci.yaml?query=branch%3Amain) ![GitHub License](https://img.shields.io/github/license/NexaAI/nexa-sdk) [![GitHub Release](https://img.shields.io/github/v/release/NexaAI/nexa-sdk)](https://github.com/NexaAI/nexa-sdk/releases/latest)
 
-[![GitHub Release](https://img.shields.io/github/v/release/NexaAI/nexa-sdk)](https://github.com/NexaAI/nexa-sdk/releases/latest) [![Build workflow](https://img.shields.io/github/actions/workflow/status/NexaAI/nexa-sdk/ci.yaml?label=CI&logo=github)](https://github.com/NexaAI/nexa-sdk/actions/workflows/ci.yaml?query=branch%3Amain) ![GitHub License](https://img.shields.io/github/license/NexaAI/nexa-sdk)
+[**On-Device Model Hub**](https://nexa.ai/models) | [**Documentation**](https://docs.nexa.ai/) | [**Discord**](https://discord.gg/thRu2HaK4D) | [**Blogs**](https://nexa.ai/blogs) for News | [**X**](https://x.com/nexa_ai) for Updates
 
-<!-- ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/nexaai) ![PyPI - Downloads](https://img.shields.io/pypi/dm/nexaai?color=orange) -->
 
-</div>
+**Nexa SDK** is a local on-device inference framework for **ONNX** and **GGML** models, supporting text generation, image generation, vision-language models (VLM), audio-language models, speech-to-text (ASR), and text-to-speech (TTS) capabilities. Installable via Python Package or executable installer.
 
-Nexa SDK is a comprehensive toolkit for supporting **ONNX** and **GGML** models. It supports text generation, image generation, vision-language models (VLM), and speech-to-text (ASR), and text-to-speech (TTS) capabilities. Additionally, it offers an OpenAI-compatible API server with JSON schema mode for function calling and streaming support, and a user-friendly Streamlit UI. Users can run Nexa SDK in any device with Python environment, and GPU acceleration is supported, including CUDA, Metal, and ROCm. An executable version is also available.
+### Features
+
+- **Device Support:** CPU, GPU (CUDA, Metal, ROCm), iOS
+- **Server:** OpenAI-compatible API, JSON schema for function calling, streaming support
+- **Local UI:** Streamlit for interactive model deployment and testing
+
 
 <video src="https://user-images.githubusercontent.com/assets/375570dc-0e7a-4a99-840d-c1ef6502e5aa.mp4" autoplay muted loop playsinline style="max-width: 100%;"></video>
 
@@ -191,25 +186,7 @@ Then you can build and install the package
 pip install -e .
 ```
 
-## Features
-
-- **Model Support:**
-
-  - **ONNX & GGML models**
-  - **Conversion Engine**
-  - **Inference Engine**:
-    - **Text Generation**
-    - **Image Generation**
-    - **Vision-Language Models (VLM)**
-    - **Speech-to-Text (ASR)**
-
-Detailed API documentation is available [here](https://docs.nexaai.com/).
-
-- **Server:**
-  - OpenAI-compatible API
-  - JSON schema mode for function calling
-  - Streaming support
-- **Streamlit UI** for interactive model deployment and testing
+## Differentiation
 
 Below is our differentiation from other similar tools:
 
