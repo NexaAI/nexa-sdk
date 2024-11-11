@@ -133,12 +133,12 @@ class NexaAudioLMInference:
                 0x7FFFFFFF if self.n_gpu_layers == -1 else self.n_gpu_layers
             )  # 0x7FFFFFFF is INT32 max, will be auto set to all layers
 
-            self.context = audio_lm_cpp.init_context(
-                ctypes.byref(self.ctx_params), is_qwen=self.is_qwen
-            )
-            if not self.context:
-                raise RuntimeError("Failed to load audio language model")
-            logging.debug("Model loaded successfully")
+            # self.context = audio_lm_cpp.init_context(
+            #     ctypes.byref(self.ctx_params), is_qwen=self.is_qwen
+            # )
+            # if not self.context:
+            #     raise RuntimeError("Failed to load audio language model")
+            # logging.debug("Model loaded successfully")
         except Exception as e:
             logging.error(f"Error loading model: {e}")
             raise
@@ -189,6 +189,13 @@ class NexaAudioLMInference:
 
             self.ctx_params.file = ctypes.c_char_p(audio_path.encode("utf-8"))
             self.ctx_params.prompt = ctypes.c_char_p(prompt.encode("utf-8"))
+
+            self.context = audio_lm_cpp.init_context(
+                ctypes.byref(self.ctx_params), is_qwen=self.is_qwen
+            )
+            if not self.context:
+                raise RuntimeError("Failed to load audio language model")
+            logging.debug("Model loaded successfully")
 
             response = audio_lm_cpp.process_full(
                 self.context, ctypes.byref(self.ctx_params), is_qwen=self.is_qwen
