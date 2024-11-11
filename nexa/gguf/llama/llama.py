@@ -2108,6 +2108,62 @@ class Llama:
     def close(self) -> None:
         """Explicitly free the model from memory."""
         self._stack.close()
+        
+    def unload_lora(self):
+        """Unload the LoRA adapter while keeping the base model in memory."""
+        if self._lora_adapter is not None:
+            llama_cpp.llama_lora_adapter_clear(self._ctx.ctx)
+            llama_cpp.llama_lora_adapter_free(self._lora_adapter)
+            self._lora_adapter = None
+            self.lora_path = None
+            self.lora_scale = 1.0
+        
+    def reload_lora(self, lora_path: str, lora_scale: float = 1.0):
+        """Reload a LoRA adapter from the given path.
+        
+        Args:
+            lora_path: Path to the LoRA adapter file
+            lora_scale: Scale to apply to the LoRA adapter (default: 1.0)
+            
+        Raises:
+            RuntimeError: If initialization or setting of the LoRA adapter fails
+        """
+        # First unload any existing LoRA adapter
+        if self._lora_adapter is not None:
+            self.unload_lora()
+        
+        # Initialize new LoRA adapter
+        assert self._model.model is not None
+        self._lora_adapter = llama_cpp.llama_lora_adapter_init(
+            self._model.model,
+            lora_path.encode("utf-8"),
+        )
+        if self._lora_adapter is None:
+            raise RuntimeError(
+                f"Failed to initialize LoRA adapter from lora path: {lora_path}"
+            )
+        
+        def free_lora_adapter():
+            if self._lora_adapter is None:
+                return
+            llama_cpp.llama_lora_adapter_free(self._lora_adapter)
+            self._lora_adapter = None
+            
+        self._stack.callback(free_lora_adapter)
+        
+        # Apply the LoRA adapter
+        assert self._ctx.ctx is not None
+        if llama_cpp.llama_lora_adapter_set(
+            self._ctx.ctx, self._lora_adapter, lora_scale
+        ):
+            # Clean up on failure
+            self.unload_lora()
+            raise RuntimeError(
+                f"Failed to set LoRA adapter from lora path: {lora_path}"
+            )
+        
+        self.lora_path = lora_path
+        self.lora_scale = lora_scale
 
     def __del__(self) -> None:
         self.close()

@@ -297,6 +297,12 @@ class NexaTextInference:
             stop=self.stop_words,
             logprobs=self.logprobs,
         )
+        
+    def unload_lora(self):
+        self.model.unload_lora()
+        
+    def reload_lora(self, lora_path: str, lora_scale: float = 1.0):
+        self.model.reload_lora(lora_path, lora_scale)
 
     def run_streamlit(self, model_path: str, is_local_path = False, hf = False):
         """
