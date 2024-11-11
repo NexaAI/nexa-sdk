@@ -37,7 +37,7 @@ class NexaOmniVlmInference:
         self.projector_downloaded_path = projector_local_path
         self.device = device
         self.context = None
-        self.omni_vlm_version = None
+        self.omni_vlm_version = "vlm-81-instruct"
         if self.device == "auto" or self.device == "gpu":
             self.n_gpu_layers = -1 if is_gpu_available() else 0
         else:
@@ -82,16 +82,16 @@ class NexaOmniVlmInference:
             self.omni_vlm_version = kwargs.get('omni_vlm_version')
         print(f"Using omni-vlm-version: {self.omni_vlm_version}")
             
-        # with suppress_stdout_stderr():
-        self._load_model()
+        with suppress_stdout_stderr():
+            self._load_model()
 
     def _determine_vlm_version(self, path_str: str) -> str:
         """Helper function to determine VLM version from path string."""
-        if 'v2-ocr' in path_str:
+        if 'ocr' in path_str:
             return "vlm-81-ocr"
-        elif 'v2' in path_str:
-            return "vlm-81-instruct"
-        return "nano-vlm-instruct"
+        elif 'preview' in path_str:
+            return "nano-vlm-instruct"
+        return "vlm-81-instruct"
     
     @SpinningCursorAnimation()
     def _load_model(self):
@@ -128,8 +128,8 @@ class NexaOmniVlmInference:
             response = omni_vlm_cpp.omnivlm_inference(prompt, image_path)
             
             decoded_response = response.decode('utf-8')
-            # if '<|im_start|>assistant' in decoded_response:
-            #     decoded_response = decoded_response.replace('<|im_start|>assistant', '').strip()
+            if '<|im_start|>assistant' in decoded_response:
+                decoded_response = decoded_response.replace('<|im_start|>assistant', '').strip()
                 
             return decoded_response
 
