@@ -1,55 +1,33 @@
 <div align="center">
 
-<h1>Nexa SDK</h1>
+<h1>Nexa SDK - Local On-Device Inference Framework</h1>
 
-[![MacOS][MacOS-image]][release-url] [![Linux][Linux-image]][release-url] [![Windows][Windows-image]][release-url]
+[On-device Model Hub](https://nexa.ai/models) | [Documentation](https://docs.nexaai.com/) | [Discord](https://discord.gg/thRu2HaK4D)
 
-[![GitHub Release](https://img.shields.io/github/v/release/NexaAI/nexa-sdk)](https://github.com/NexaAI/nexa-sdk/releases/latest) [![Build workflow](https://img.shields.io/github/actions/workflow/status/NexaAI/nexa-sdk/ci.yaml?label=CI&logo=github)](https://github.com/NexaAI/nexa-sdk/actions/workflows/ci.yaml?query=branch%3Amain) ![GitHub License](https://img.shields.io/github/license/NexaAI/nexa-sdk)
+Read about what's new in our [Blogs](https://nexa.ai/blogs). Follow us on [X](https://x.com/nexa_ai) to get updates.
 
-[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FNexaAI%2Fnexa-sdk%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/NexaAI/nexa-sdk) [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FNexaAI%2Fnexa-sdk%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/NexaAI/nexa-sdk)
+<div align="center">
+ <img alt="ollama" height="200px" src="./assets/nexa.jpeg">
+</div>
 
-<!-- ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/nexaai) ![PyPI - Downloads](https://img.shields.io/pypi/dm/nexaai?color=orange) -->
-
-[![Discord](https://dcbadge.limes.pink/api/server/thRu2HaK4D?style=flat&compact=true)](https://discord.gg/thRu2HaK4D)
-
-[On-device Model Hub](https://model-hub.nexa4ai.com/) / [Nexa SDK Documentation](https://docs.nexaai.com/)
+All-in-one local on-device inference framework.
 
 [release-url]: https://github.com/NexaAI/nexa-sdk/releases
 [Windows-image]: https://img.shields.io/badge/windows-0078D4?logo=windows
 [MacOS-image]: https://img.shields.io/badge/-MacOS-black?logo=apple
 [Linux-image]: https://img.shields.io/badge/-Linux-333?logo=ubuntu
 
+[![MacOS][MacOS-image]][release-url] [![Linux][Linux-image]][release-url] [![Windows][Windows-image]][release-url] [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FNexaAI%2Fnexa-sdk%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/NexaAI/nexa-sdk)
+
+[![GitHub Release](https://img.shields.io/github/v/release/NexaAI/nexa-sdk)](https://github.com/NexaAI/nexa-sdk/releases/latest) [![Build workflow](https://img.shields.io/github/actions/workflow/status/NexaAI/nexa-sdk/ci.yaml?label=CI&logo=github)](https://github.com/NexaAI/nexa-sdk/actions/workflows/ci.yaml?query=branch%3Amain) ![GitHub License](https://img.shields.io/github/license/NexaAI/nexa-sdk)
+
+<!-- ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/nexaai) ![PyPI - Downloads](https://img.shields.io/pypi/dm/nexaai?color=orange) -->
+
 </div>
 
 Nexa SDK is a comprehensive toolkit for supporting **ONNX** and **GGML** models. It supports text generation, image generation, vision-language models (VLM), and speech-to-text (ASR), and text-to-speech (TTS) capabilities. Additionally, it offers an OpenAI-compatible API server with JSON schema mode for function calling and streaming support, and a user-friendly Streamlit UI. Users can run Nexa SDK in any device with Python environment, and GPU acceleration is supported, including CUDA, Metal, and ROCm. An executable version is also available.
 
 <video src="https://user-images.githubusercontent.com/assets/375570dc-0e7a-4a99-840d-c1ef6502e5aa.mp4" autoplay muted loop playsinline style="max-width: 100%;"></video>
-
-## Latest News 🔥
-
-- [2024/11] Support Nexa AI's own vision language model (0.9B parameters): `nexa run omnivision` and audio language model (2.9B): `nexa run omniaudio`
-- [2024/11] Support audio language model: `nexa run qwen2audio`, **we are the first open-source toolkit to support audio language model with GGML tensor library.**
-- [2024/10] Support embedding model: `nexa embed <model_path> <prompt>`
-- [2024/10] Support pull and run supported Computer Vision models in GGUF format from HuggingFace: `nexa run -hf <model_id> -mt COMPUTER_VISION`
-- [2024/10] Support VLM in local server.
-- [2024/10] Added option to customize maximum context window for NLP and VLM models.
-- [2024/10] Support running model from user's local path
-- [2024/10] Added LoRA support for NLP models.
-- [2024/10] Added support for whisper-large-v3-turbo: `nexa run faster-whisper-large-turbo`
-- [2024/10] Added support for AMD-Llama-135m: `nexa run AMD-Llama-135m:fp16`
-- [2024/09] Nexa now has executables for easy installation: [Install Nexa SDK](https://nexaai.com/download-sdk) ✨
-- [2024/09] Added support for Llama 3.2 models: `nexa run llama3.2`
-- [2024/09] Added support for Qwen2.5, Qwen2.5-coder and Qwen2.5-Math models: `nexa run qwen2.5`
-- [2024/09] Support pull and run NLP models in GGUF format from HuggingFace: `nexa run -hf <model_id> -mt NLP`
-- [2024/09] Added support for ROCm
-- [2024/09] Added support for Phi-3.5 models: `nexa run phi3.5`
-- [2024/09] Added support for OpenELM models: `nexa run openelm`
-- [2024/09] Introduced logits API support for more advanced model interactions
-- [2024/09] Added support for Flux models: `nexa run flux`
-- [2024/09] Added support for Stable Diffusion 3 model: `nexa run sd3`
-- [2024/09] Added support for Stable Diffusion 2.1 model: `nexa run sd2-1`
-
-Welcome to submit your requests through [issues](https://github.com/NexaAI/nexa-sdk/issues/new/choose), we ship weekly.
 
 ## Installation - Executable
 
@@ -313,6 +291,15 @@ Supported models (full list at [Model Hub](https://nexa.ai/models)):
 | [nomic-embed-text-v1.5](https://nexa.ai/nomic-ai/nomic-embed-text-v1.5/gguf-fp16/readme) | Embedding | GGUF | `nexa embed nomic` |
 | [all-MiniLM-L6-v2](https://nexa.ai/sentence-transformers/all-MiniLM-L6-v2/gguf-fp16/readme) | Embedding | GGUF | `nexa embed all-MiniLM-L6-v2:fp16` |
 | [all-MiniLM-L12-v2](https://nexa.ai/sentence-transformers/all-MiniLM-L12-v2/gguf-fp16/readme) | Embedding | GGUF | `nexa embed all-MiniLM-L12-v2:fp16` |
+
+## Latest News 🔥
+
+- [2024/11] Support Nexa AI's own vision language model (0.9B parameters): `nexa run omnivision` and audio language model (2.9B): `nexa run omniaudio`
+- [2024/11] Support audio language model: `nexa run qwen2audio`, **we are the first open-source toolkit to support audio language model with GGML tensor library.**
+- [2024/10] Support embedding model: `nexa embed <model_path> <prompt>`
+- [2024/10] Support pull and run supported Computer Vision models in GGUF format from HuggingFace: `nexa run -hf <model_id> -mt COMPUTER_VISION`
+
+Welcome to submit your requests through [issues](https://github.com/NexaAI/nexa-sdk/issues/new/choose), we ship weekly.
 
 ## CLI Reference
 
