@@ -142,6 +142,8 @@ def convert_hf_to_quantized_gguf(
     # Set default output file if not provided
     if not output_file:
         input_name = os.path.basename(input_path)
+        if input_path.endswith('.gguf'):
+            input_name = os.path.splitext(input_name)[0]  # Remove .gguf extension
         output_file = os.path.abspath(f"./{input_name}-{ftype}.gguf")
     else:
         output_file = os.path.abspath(output_file)
