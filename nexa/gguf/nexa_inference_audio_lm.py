@@ -151,8 +151,8 @@ class NexaAudioLMInference:
             while True:
                 audio_path = self._get_valid_audio_path()
                 user_input = nexa_prompt("Enter text (leave empty if no prompt): ")
-                
-                response = self.inference(audio_path, user_input)
+                with suppress_stdout_stderr():
+                    response = self.inference(audio_path, user_input)
                 print(response)
 
         except KeyboardInterrupt:
