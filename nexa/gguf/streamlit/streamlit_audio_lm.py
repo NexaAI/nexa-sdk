@@ -37,18 +37,22 @@ def load_model(model_path):
     return nexa_model
 
 def process_audio(nexa_model, audio_file, prompt=""):
+    # Save the uploaded audio data to a temporary file
     audio_data = audio_file.getvalue()
     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio:
         temp_audio.write(audio_data)
         temp_audio_path = temp_audio.name
 
     try:
+        # Use the model's inference method directly
         response = nexa_model.inference(temp_audio_path, prompt)
         return response.decode("utf-8") if isinstance(response, bytes) else response
+
     except Exception as e:
         st.error(f"Error during audio processing: {e}")
         return None
     finally:
+        # Clean up the temporary audio file
         if os.path.exists(temp_audio_path):
             os.unlink(temp_audio_path)
 
