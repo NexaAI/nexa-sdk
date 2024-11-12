@@ -7,7 +7,7 @@ def test_tts_generation():
         n_threads=4,
         seed=42,
         sampling_rate=24000,
-        verbosity=1
+        verbosity=2
     )
     
     # Generate audio from prompt
