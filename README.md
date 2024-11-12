@@ -1,4 +1,3 @@
-
 <video src="https://user-images.githubusercontent.com/assets/375570dc-0e7a-4a99-840d-c1ef6502e5aa.mp4" autoplay muted loop playsinline style="max-width: 100%;"></video>
 
 <h1>Nexa SDK - Local On-Device Inference Framework</h1>
@@ -11,7 +10,6 @@
 [![MacOS][MacOS-image]][release-url] [![Linux][Linux-image]][release-url] [![Windows][Windows-image]][release-url] [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FNexaAI%2Fnexa-sdk%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/NexaAI/nexa-sdk) [![Build workflow](https://img.shields.io/github/actions/workflow/status/NexaAI/nexa-sdk/ci.yaml?label=CI&logo=github)](https://github.com/NexaAI/nexa-sdk/actions/workflows/ci.yaml?query=branch%3Amain) ![GitHub License](https://img.shields.io/github/license/NexaAI/nexa-sdk) [![GitHub Release](https://img.shields.io/github/v/release/NexaAI/nexa-sdk)](https://github.com/NexaAI/nexa-sdk/releases/latest)
 
 [**On-Device Model Hub**](https://nexa.ai/models) | [**Documentation**](https://docs.nexa.ai/) | [**Discord**](https://discord.gg/thRu2HaK4D) | [**Blogs**](https://nexa.ai/blogs) | [**X (Twitter)**](https://x.com/nexa_ai)
-
 
 **Nexa SDK** is a local on-device inference framework for ONNX and GGML models, supporting text generation, image generation, vision-language models (VLM), audio-language models, speech-to-text (ASR), and text-to-speech (TTS) capabilities. Installable via Python Package or Executable Installer.
 
@@ -32,24 +30,27 @@
 Welcome to submit your requests through [issues](https://github.com/NexaAI/nexa-sdk/issues/new/choose), we ship weekly.
 
 ## Install Option 1: Executable Installer
+
 <p>
-    <a href="https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-macos-installer.pkg">
+    <a href="https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-sdk-0.0.9.1-macos-installer.pkg">
         <img src="./assets/mac.png" style="height: 1em; width: auto" /> <strong> macOS Installer </strong>
     </a>
 </p>
 
 <p>
-    <a href="https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-sdk-windows-setup.exe">
+    <a href="https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-sdk-0.0.9.1-windows-setup.exe">
         <img src="./assets/windows.png" style="height: 1em; width: auto" /> <strong>Windows Installer</strong>
     </a>
 </p>
 
-<strong> <img src="./assets/linux.png" style="height: 1em; width: auto" />  Linux Installer </strong>
+<strong> <img src="./assets/linux.png" style="height: 1em; width: auto" /> Linux Installer </strong>
 
 ```bash
 curl -fsSL https://public-storage.nexa4ai.com/install.sh | sh
 ```
+
 Currently, executable installer does not support local UI. For local UI, please install using python package below.
+
 <details>
 <summary><strong>FAQ: cannot use executable with nexaai python package already installed</strong></summary>
 
@@ -60,7 +61,6 @@ nexa-exe <command>
 ```
 
 </details>
-
 
 ## Install Option 2: Python Package
 
@@ -100,7 +100,6 @@ CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --
 
 <details> <summary><strong style="font-size: 1.2em;">Nvidia GPU (CUDA)</strong></summary>
 
-
 To install with CUDA support, make sure you have [CUDA Toolkit 12.0 or later](https://developer.nvidia.com/cuda-12-0-0-download-archive) installed.
 
 For **Linux**:
@@ -126,7 +125,6 @@ For **Windows Git Bash**:
 ```bash
 CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
-
 
 <details>
 <summary><strong>FAQ: Building Issues for llava</strong></summary>
@@ -158,7 +156,6 @@ CMAKE_ARGS="-DGGML_HIPBLAS=on" pip install nexaai --prefer-binary --index-url ht
 </details>
 
 <details> <summary><strong style="font-size: 1.2em;">GPU (Vulkan)</strong></summary>
-
 
 To install with Vulkan support, make sure you have [Vulkan SDK 1.3.261.1 or later](https://vulkan.lunarg.com/sdk/home) installed.
 
@@ -267,6 +264,7 @@ Supported model examples (full list at [Model Hub](https://nexa.ai/models)):
 > 4. For Chinese developers, we recommend you to use <strong>Tsinghua Open Source Mirror</strong> as extra index url, just replace `--extra-index-url https://pypi.org/simple` with `--extra-index-url https://pypi.tuna.tsinghua.edu.cn/simple` in provided commands.
 
 ### CLI Reference
+
 Here's a brief overview of the main CLI commands:
 
 - `nexa run`: Run inference for various tasks using GGUF models.
