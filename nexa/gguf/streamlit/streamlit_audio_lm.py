@@ -9,6 +9,10 @@ from st_audiorec import st_audiorec
 from nexa.general import pull_model
 from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
 
+# Initialize session state
+if "has_result" not in st.session_state:
+    st.session_state.has_result = False
+
 default_model = sys.argv[1]
 is_local_path = False if sys.argv[2] == "False" else True
 hf = False if sys.argv[3] == "False" else True
@@ -49,7 +53,11 @@ def process_audio(nexa_model, audio_file, prompt=""):
         if os.path.exists(temp_audio_path):
             os.unlink(temp_audio_path)
 
-st.title("Nexa AI AudioLM Generation")
+def start_new_session():
+    st.session_state.has_result = False
+    st.rerun()
+
+st.markdown("# Qwen2 Audio Powered by Nexa SK [![Nexa SDK](https://img.shields.io/badge/SDK-Nexa-blue)](https://github.com/NexaAI/nexa-sdk)")
 st.caption("Powered by Nexa AI SDK🐙")
 
 # Sidebar configuration
@@ -81,10 +89,16 @@ if uploaded_file is not None:
     if st.button("Process Audio"):
         with st.spinner("Processing audio..."):
             response = process_audio(st.session_state.nexa_model, uploaded_file, prompt)
+            if response:
+                st.session_state.has_result = True
 
         if response:
             st.subheader("Model Response:")
             st.write(response)
+            if st.session_state.has_result:
+                if st.button("Start new", key="start_new_upload"):
+                    start_new_session()
+                st.write("Start new conversation to try next prompt")
         else:
             st.error("Processing failed. Please try again with a different audio file.")
 
@@ -93,13 +107,19 @@ st.subheader("Option 2: Record Audio")
 wav_audio_data = st_audiorec()
 
 if wav_audio_data:
-    if st.button("Process Recorded Audio"):
+    if st.button("Process Audio"):
         with st.spinner("Processing audio..."):
             response = process_audio(st.session_state.nexa_model, io.BytesIO(wav_audio_data), prompt)
+            if response:
+                st.session_state.has_result = True
 
         if response:
             st.subheader("Model Response:")
             st.write(response)
+            if st.session_state.has_result:
+                if st.button("Start new", key="start_new_record"):
+                    start_new_session()
+                st.write("Start new conversation to try next prompt")
         else:
             st.error("Processing failed. Please try recording again.")
 else:
