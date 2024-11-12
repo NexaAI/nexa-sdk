@@ -46,7 +46,7 @@ def process_audio(nexa_model, audio_file, prompt=""):
     try:
         # Use the model's inference method directly
         response = nexa_model.inference(temp_audio_path, prompt)
-        return response.decode("utf-8") if isinstance(response, bytes) else response
+        return response
 
     except Exception as e:
         st.error(f"Error during audio processing: {e}")
