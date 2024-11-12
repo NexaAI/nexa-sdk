@@ -1,5 +1,5 @@
 
-<img alt="" height="200px" src="./assets/nexa.jpeg">
+<video src="https://user-images.githubusercontent.com/assets/375570dc-0e7a-4a99-840d-c1ef6502e5aa.mp4" autoplay muted loop playsinline style="max-width: 100%;"></video>
 
 <h1>Nexa SDK - Local On-Device Inference Framework</h1>
 
@@ -21,8 +21,6 @@
 - **Server:** OpenAI-compatible API, JSON schema for function calling, streaming support
 - **Local UI:** Streamlit for interactive model deployment and testing
 
-
-<video src="https://user-images.githubusercontent.com/assets/375570dc-0e7a-4a99-840d-c1ef6502e5aa.mp4" autoplay muted loop playsinline style="max-width: 100%;"></video>
 
 ## Installation - Executable
 
