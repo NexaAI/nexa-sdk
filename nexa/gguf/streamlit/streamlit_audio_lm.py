@@ -57,7 +57,7 @@ def start_new_session():
     st.session_state.has_result = False
     st.rerun()
 
-st.markdown("# Qwen2 Audio Powered by Nexa SK [![Nexa SDK](https://img.shields.io/badge/SDK-Nexa-blue)](https://github.com/NexaAI/nexa-sdk)")
+st.markdown("# Nexa AI AudioLM Generation [![Nexa SDK](https://img.shields.io/badge/SDK-Nexa-blue)](https://github.com/NexaAI/nexa-sdk)")
 st.caption("Powered by Nexa AI SDK🐙")
 
 # Sidebar configuration
