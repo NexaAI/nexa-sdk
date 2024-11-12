@@ -153,7 +153,8 @@ class NexaAudioLMInference:
                 user_input = nexa_prompt("Enter text (leave empty if no prompt): ")
                 with suppress_stdout_stderr():
                     response = self.inference(audio_path, user_input)
-                print(response)
+                response = response.decode("utf-8") if isinstance(response, bytes) else response
+                print(f"{response}")
 
         except KeyboardInterrupt:
             print("\nExiting...")
