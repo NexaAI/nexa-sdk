@@ -153,7 +153,6 @@ class NexaAudioLMInference:
                 user_input = nexa_prompt("Enter text (leave empty if no prompt): ")
                 with suppress_stdout_stderr():
                     response = self.inference(audio_path, user_input)
-                response = response.decode("utf-8") if isinstance(response, bytes) else response
                 print(f"{response}")
 
         except KeyboardInterrupt:
@@ -201,7 +200,7 @@ class NexaAudioLMInference:
             response = audio_lm_cpp.process_full(
                 self.context, ctypes.byref(self.ctx_params), is_qwen=self.is_qwen
             )
-            return response
+            return response.decode("utf-8") if isinstance(response, bytes) else response
         except Exception as e:
             raise RuntimeError(f"Error during inference: {str(e)}")
         finally:
