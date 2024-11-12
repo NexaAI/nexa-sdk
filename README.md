@@ -13,22 +13,29 @@
 [**On-Device Model Hub**](https://nexa.ai/models) | [**Documentation**](https://docs.nexa.ai/) | [**Discord**](https://discord.gg/thRu2HaK4D) | [**Blogs**](https://nexa.ai/blogs) | [**X (Twitter)**](https://x.com/nexa_ai)
 
 
-**Nexa SDK** is a local on-device inference framework for **ONNX** and **GGML** models, supporting text generation, image generation, vision-language models (VLM), audio-language models, speech-to-text (ASR), and text-to-speech (TTS) capabilities. Installable via **Python Package** or **Executable Installer**.
+**Nexa SDK** is a local on-device inference framework for ONNX and GGML models, supporting text generation, image generation, vision-language models (VLM), audio-language models, speech-to-text (ASR), and text-to-speech (TTS) capabilities. Installable via Python Package or Executable Installer.
 
 ### Features
 
 - **Device Support:** CPU, GPU (CUDA, Metal, ROCm), iOS
-- **Server:** OpenAI-compatible API, JSON schema for function calling, streaming support
+- **Server:** OpenAI-compatible API, JSON schema for function calling and streaming support
 - **Local UI:** Streamlit for interactive model deployment and testing
 
 
-## Installation - Executable
+## Installation (Executable)
+<p>
+    <a href="https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-macos-installer.pkg">
+        <img src="./assets/mac.png" style="height: 1em; width: auto" /> <strong> macOS Installer </strong>
+    </a>
+</p>
 
-### macOS
+<p>
+    <a href="https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-sdk-windows-setup.exe">
+        <img src="./assets/windows.png" style="height: 1em; width: auto" /> <strong>Windows Installer</strong>
+    </a>
+</p>
 
-[Download](https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-macos-installer.pkg)
-
-### Linux
+<strong> <img src="./assets/linux.png" style="height: 1em; width: auto" />  Linux Installer </strong>
 
 ```bash
 curl -fsSL https://public-storage.nexa4ai.com/install.sh | sh
@@ -45,9 +52,6 @@ nexa-exe <command>
 
 </details>
 
-### Windows
-
-Coming soon. Install with Python package below 👇
 
 ## Installation - Python Package
 
@@ -57,16 +61,16 @@ We have released pre-built wheels for various Python versions, platforms, and ba
 >
 > 1. If you want to use <strong>ONNX model</strong>, just replace `pip install nexaai` with `pip install "nexaai[onnx]"` in provided commands.
 > 2. If you want to <strong>run benchmark evaluation</strong>, just replace `pip install nexaai` with `pip install "nexaai[eval]"` in provided commands.
-> 3. If you want to <strong>convert and quantize huggingface models to GGUF models</strong>, just replace `pip install nexaai` with `pip install "nexaai[nexa-gguf]"` in provided commands.
+> 3. If you want to <strong>convert and quantize huggingface models to GGUF models</strong>, just replace `pip install nexaai` with `pip install "nexaai[convert]"` in provided commands.
 > 4. For Chinese developers, we recommend you to use <strong>Tsinghua Open Source Mirror</strong> as extra index url, just replace `--extra-index-url https://pypi.org/simple` with `--extra-index-url https://pypi.tuna.tsinghua.edu.cn/simple` in provided commands.
 
-#### CPU
+### CPU
 
 ```bash
 pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cpu --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
-#### GPU (Metal)
+### Apple GPU (Metal)
 
 For the GPU version supporting **Metal (macOS)**:
 
@@ -89,7 +93,7 @@ CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --
 
 </details>
 
-#### GPU (CUDA)
+### Nvidia GPU (CUDA)
 
 To install with CUDA support, make sure you have [CUDA Toolkit 12.0 or later](https://developer.nvidia.com/cuda-12-0-0-download-archive) installed.
 
@@ -104,6 +108,7 @@ For **Windows PowerShell**:
 ```bash
 $env:CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON"; pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
+<details> <summary><strong>Other Windows Installation Options</strong></summary>
 
 For **Windows Command Prompt**:
 
@@ -116,6 +121,7 @@ For **Windows Git Bash**:
 ```bash
 CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
+</details>
 
 <details>
 <summary><strong>FAQ: Building Issues for llava</strong></summary>
@@ -132,7 +138,7 @@ CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp" pip install nexaai
 
 </details>
 
-#### GPU (ROCm)
+### AMD GPU (ROCm)
 
 To install with ROCm support, make sure you have [ROCm 6.2.1 or later](https://rocm.docs.amd.com/projects/install-on-linux/en/docs-6.2.1/install/quick-start.html) installed.
 
@@ -142,7 +148,7 @@ For **Linux**:
 CMAKE_ARGS="-DGGML_HIPBLAS=on" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/rocm621 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
-#### GPU (Vulkan)
+### GPU (Vulkan)
 
 To install with Vulkan support, make sure you have [Vulkan SDK 1.3.261.1 or later](https://vulkan.lunarg.com/sdk/home) installed.
 
@@ -151,6 +157,7 @@ For **Windows PowerShell**:
 ```bash
 $env:CMAKE_ARGS="-DGGML_VULKAN=on"; pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/vulkan --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
+<details> <summary><strong>Other Windows Installation Options</strong></summary>
 
 For **Windows Command Prompt**:
 
@@ -163,6 +170,8 @@ For **Windows Git Bash**:
 ```bash
 CMAKE_ARGS="-DGGML_VULKAN=on" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/vulkan --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
+
+</details>
 
 ### Local Build
 
