@@ -13,7 +13,7 @@
 [**On-Device Model Hub**](https://nexa.ai/models) | [**Documentation**](https://docs.nexa.ai/) | [**Discord**](https://discord.gg/thRu2HaK4D) | [**Blogs**](https://nexa.ai/blogs) | [**X (Twitter)**](https://x.com/nexa_ai)
 
 
-**Nexa SDK** is a local on-device inference framework for **ONNX** and **GGML** models, supporting text generation, image generation, vision-language models (VLM), audio-language models, speech-to-text (ASR), and text-to-speech (TTS) capabilities. Installable via Python Package or executable installer.
+**Nexa SDK** is a local on-device inference framework for **ONNX** and **GGML** models, supporting text generation, image generation, vision-language models (VLM), audio-language models, speech-to-text (ASR), and text-to-speech (TTS) capabilities. Installable via **Python Package** or **Executable Installer**.
 
 ### Features
 
