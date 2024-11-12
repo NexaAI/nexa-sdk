@@ -223,7 +223,7 @@ Below is our differentiation from other similar tools:
 
 Our on-device model hub offers all types of quantized models (text, image, audio, multimodal) with filters for RAM, file size, Tasks, etc. to help you easily explore models with UI. Explore on-device models at [On-device Model Hub](https://model-hub.nexa4ai.com/)
 
-Supported models (full list at [Model Hub](https://nexa.ai/models)):
+Supported model examples (full list at [Model Hub](https://nexa.ai/models)):
 | Model | Type | Format | Command |
 | ------------------------------------------------------------------------------------------------------- | --------------- | --------- | -------------------------------------- |
 | [omniaudio](https://nexa.ai/NexaAI/Octo-omni-audio/gguf-q4_0/readme) | AudioLM | GGUF | `nexa run omniaudio` |
