@@ -135,6 +135,8 @@ if(STABLE_DIFFUSION_BUILD)
             -DBUILD_SHARED_LIBS=ON
             -DSD_METAL=${GGML_METAL}
             -DSD_CUBLAS=${GGML_CUDA}
+            -DSD_HIPBLAS=${GGML_HIPBLAS}
+            -DSD_VULKAN=${GGML_VULKAN}
         BUILD_ALWAYS 1
         BUILD_COMMAND ${CMAKE_COMMAND} --build . --config Release -- ${MSBUILD_ARGS}
         INSTALL_COMMAND ${CMAKE_COMMAND} --build . --config Release --target install
@@ -188,6 +190,10 @@ endif()
 # bark_cpp project
 option(BARK_BUILD "Build bark.cpp" ON)
 if(BARK_BUILD)
+    # Filter out HIPBLAS and Vulkan options for bark.cpp since it doesn't support them
+    set(BARK_CMAKE_OPTIONS ${USER_DEFINED_OPTIONS})
+    list(FILTER BARK_CMAKE_OPTIONS EXCLUDE REGEX "GGML_HIPBLAS|GGML_VULKAN")
+    
     ExternalProject_Add(bark_project
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dependency/bark.cpp
         BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/bark_build
