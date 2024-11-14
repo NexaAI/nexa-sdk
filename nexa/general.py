@@ -127,7 +127,7 @@ def pull_model(model_path, hf = False, **kwargs):
         if result["success"]:
             # Only add to model list if not using custom download path
             model_path = model_path if not hf else f"{model_path}:{result['local_path'].split('/')[-1]}"
-            if not kwargs.get('local_download_path'):
+            if not kwargs.get('local_download_path') and 'projector' not in model_path.lower():
                 add_model_to_list(model_path, result["local_path"], result["model_type"], result["run_type"])
             
             if hf:
@@ -559,9 +559,15 @@ def list_models():
         with open(NEXA_MODEL_LIST_PATH, "r") as f:
             model_list = json.load(f)
 
+        filtered_list = {
+            model_name: model_info 
+            for model_name, model_info in model_list.items() 
+            if not model_name.split(':')[1].startswith('projector')  
+        }
+
         table = [
             (model_name, model_info["type"], model_info["run_type"], model_info["location"])
-            for model_name, model_info in model_list.items()
+            for model_name, model_info in filtered_list.items()
         ]
         headers = ["Model Name", "Type", "Run Type", "Location"]
         from tabulate import tabulate
@@ -577,7 +583,6 @@ def list_models():
         )
     except Exception as e:
         print(f"An error occurred while listing the models: {e}")
-
 
 def remove_model(model_path):
     model_path = NEXA_RUN_MODEL_MAP.get(model_path, model_path)
@@ -607,6 +612,18 @@ def remove_model(model_path):
             print(f"Deleted model directory: {model_path}")
         else:
             print(f"Warning: Model location not found: {model_path}")
+
+        # Delete projectors
+        projector_keys = [k for k in model_list.keys() if 'projector' in k]
+        for key in projector_keys:
+            projector_info = model_list.pop(key)
+            projector_location = Path(projector_info['location'])
+            if projector_location.exists():
+                if projector_location.is_file():
+                    projector_location.unlink()
+                else:
+                    shutil.rmtree(projector_location)
+                print(f"Deleted projector: {projector_location}")
 
         # Update the model list file
         with open(NEXA_MODEL_LIST_PATH, "w") as f:
