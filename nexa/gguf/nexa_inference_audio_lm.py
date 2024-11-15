@@ -154,13 +154,14 @@ class NexaAudioLMInference:
                 with suppress_stdout_stderr():
                     response = self.inference(audio_path, user_input)
                 print(f"{response}")
+                self.cleanup()
 
         except KeyboardInterrupt:
             print("\nExiting...")
         except Exception as e:
             logging.error(f"\nError during audio generation: {e}", exc_info=True)
-        finally:
-            self.cleanup()
+        # finally:
+        #     self.cleanup()
 
     def _get_valid_audio_path(self) -> str:
         """
@@ -230,12 +231,12 @@ class NexaAudioLMInference:
                 pass
             self.temp_file = None
 
-    def __del__(self):
-        """
-        Destructor to free the Bark context when the instance is deleted.
-        """
-        if self.context:
-            audio_lm_cpp.free(self.context, is_qwen=self.is_qwen)
+    # def __del__(self):
+    #     """
+    #     Destructor to free the Bark context when the instance is deleted.
+    #     """
+    #     if self.context:
+    #         audio_lm_cpp.free(self.context, is_qwen=self.is_qwen)
 
     def _ensure_16khz(self, audio_path: str) -> str:
         """
