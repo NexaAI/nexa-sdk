@@ -105,6 +105,8 @@ class NexaOmniVlmInference:
             raise
         
     def run(self):
+        from nexa.gguf.llama._utils_spinner import start_spinner, stop_spinner
+        
         while True:
             try:
                 image_path = nexa_prompt("Image Path (required): ")
@@ -112,7 +114,16 @@ class NexaOmniVlmInference:
                     print(f"Image path: {image_path} not found, running omni VLM without image input.")
                 # Skip user input for OCR version
                 user_input = "" if self.omni_vlm_version == "vlm-81-ocr" else nexa_prompt()
+
+                stop_event, spinner_thread = start_spinner(
+                style="default", 
+                message=""  
+                )
+
                 response = self.inference(user_input, image_path)
+
+                stop_spinner(stop_event, spinner_thread)
+
                 print(f"\nResponse: {response}")
             except KeyboardInterrupt:
                 print("\nExiting...")

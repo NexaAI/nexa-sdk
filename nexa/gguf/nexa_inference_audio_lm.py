@@ -147,12 +147,24 @@ class NexaAudioLMInference:
         """
         Run the audio language model inference loop.
         """
+        from nexa.gguf.llama._utils_spinner import start_spinner, stop_spinner
+
         try:
             while True:
                 audio_path = self._get_valid_audio_path()
                 user_input = nexa_prompt("Enter text (leave empty if no prompt): ")
-                with suppress_stdout_stderr():
-                    response = self.inference(audio_path, user_input)
+            
+                stop_event, spinner_thread = start_spinner(
+                style="default", 
+                message=""  
+                )
+            
+                try:
+                    with suppress_stdout_stderr():
+                        response = self.inference(audio_path, user_input)
+                finally:
+                    stop_spinner(stop_event, spinner_thread)
+            
                 print(f"{response}")
 
         except KeyboardInterrupt:

@@ -81,10 +81,21 @@ class NexaVoiceInference:
         logging.debug("Model loaded successfully")
 
     def run(self):
+        from nexa.gguf.llama._utils_spinner import start_spinner, stop_spinner
+
         while True:
             try:
                 audio_path = nexa_prompt("Enter the path to your audio file: ")
+
+                stop_event, spinner_thread = start_spinner(
+                style="default", 
+                message=""  
+                )
+            
                 self._transcribe_audio(audio_path)
+
+                stop_spinner(stop_event, spinner_thread)
+                
             except KeyboardInterrupt:
                 print(EXIT_REMINDER)
             except Exception as e:
