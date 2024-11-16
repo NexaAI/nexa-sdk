@@ -130,12 +130,23 @@ class NexaTTSInference:
 
 
     def run(self):
+        from nexa.gguf.llama._utils_spinner import start_spinner, stop_spinner
+
         while True:
             try:
                 user_input = input("Enter text to generate audio: ")
+
+                stop_event, spinner_thread = start_spinner(
+                style="default", 
+                message=""  
+                )
+
                 audio_data = self.audio_generation(user_input)
+               
                 self._save_audio(audio_data, self.sampling_rate, self.params["output_path"])
                 logging.info(f"Audio saved to {self.params['output_path']}")                
+            
+                stop_spinner(stop_event, spinner_thread)
             except KeyboardInterrupt:
                 print("Exiting...")
                 break
