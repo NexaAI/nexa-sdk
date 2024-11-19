@@ -80,6 +80,11 @@ convert = [
     "nexa-gguf",
 ]
 
+transformers = [
+    "transformers",
+    "torch",
+]
+
 [project.urls]
 Homepage = "https://github.com/NexaAI/nexa-sdk"
 Issues = "https://github.com/NexaAI/nexa-sdk/issues"
@@ -105,6 +110,7 @@ wheel.packages = [
     "nexa.onnx.streamlit",
     "nexa.onnx.server",
     "nexa.eval",
+    "nexa.transformers",
 ]
 sdist.include = [
     "CMakeLists.txt",
