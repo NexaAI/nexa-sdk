@@ -83,6 +83,7 @@ convert = [
 transformers = [
     "transformers",
     "torch",
+    "pillow"
 ]
 
 [project.urls]
