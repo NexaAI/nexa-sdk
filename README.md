@@ -254,18 +254,25 @@ Supported model examples (full list at [Model Hub](https://nexa.ai/models)):
 | [all-MiniLM-L12-v2](https://nexa.ai/sentence-transformers/all-MiniLM-L12-v2/gguf-fp16/readme) | Embedding | GGUF | `nexa embed all-MiniLM-L12-v2:fp16` |
 | [bark-small](https://nexa.ai/suno/bark-small/gguf-fp16/readme) | Text-to-Speech | GGUF | `nexa run bark-small:fp16` |
 
-## Run Models from 🤗 HuggingFace 
-You can pull, convert (to .gguf), quantize and run [llama.cpp supported](https://github.com/ggerganov/llama.cpp#description) text generation models from HF with Nexa SDK.
+## Run Models from 🤗 HuggingFace or 🤖 ModelScope
+You can pull, convert (to .gguf), quantize and run [llama.cpp supported](https://github.com/ggerganov/llama.cpp#description) text generation models from HF or MS with Nexa SDK.
 ### Run .gguf File
-Use `nexa run -hf <hf-model-id>` to run models with provided .gguf files:
+Use `nexa run -hf <hf-model-id>` or `nexa run -ms <ms-model-id>` to run models with provided .gguf files:
 ```bash
 nexa run -hf Qwen/Qwen2.5-Coder-7B-Instruct-GGUF
 ```
+```bash
+nexa run -ms Qwen/Qwen2.5-Coder-7B-Instruct-GGUF
+```
 > **Note:** You will be prompted to select a single .gguf file. If your desired quantization version has multiple split files (like fp16-00001-of-00004), please use Nexa's conversion tool (see below) to convert and quantize the model locally.
 ### Convert .safetensors Files
-Install [Nexa Python package](https://github.com/NexaAI/nexa-sdk?tab=readme-ov-file#install-option-2-python-package), and install Nexa conversion tool with `pip install "nexaai[convert]"`, then convert models with `nexa convert <hf-model-id>`:
+Install [Nexa Python package](https://github.com/NexaAI/nexa-sdk?tab=readme-ov-file#install-option-2-python-package), and install Nexa conversion tool with `pip install "nexaai[convert]"`, then convert models from huggingface with `nexa convert <hf-model-id>`:
 ```bash
 nexa convert HuggingFaceTB/SmolLM2-135M-Instruct
+```
+Or you can convert models from ModelScope with `nexa convert -ms <ms-model-id>`:
+```bash
+nexa convert -ms Qwen/Qwen2.5-7B-Instruct
 ```
 > **Note:** Check our [leaderboard](https://nexa.ai/leaderboard) for performance benchmarks of different quantized versions of mainstream language models and [HuggingFace docs](https://huggingface.co/docs/optimum/en/concept_guides/quantization) to learn about quantization options.
 

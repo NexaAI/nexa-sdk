@@ -18,6 +18,7 @@ from nexa.constants import (
     NEXA_MODELS_HUB_DIR,
     NEXA_MODELS_HUB_OFFICIAL_DIR,
     NEXA_MODELS_HUB_HF_DIR,
+    NEXA_MODELS_HUB_MS_DIR,
     NEXA_OFFICIAL_BUCKET,
     NEXA_RUN_MODEL_MAP,
     NEXA_TOKEN_PATH,
@@ -107,12 +108,14 @@ def get_user_info(token):
         return None
 
 
-def pull_model(model_path, hf = False, **kwargs):
+def pull_model(model_path, hf = False, ms = False, **kwargs):
     model_path = NEXA_RUN_MODEL_MAP.get(model_path, model_path)
 
     try:
         if hf == True:
             result = pull_model_from_hf(model_path, **kwargs)
+        elif ms == True:
+            result = pull_model_from_ms(model_path, **kwargs)
         else: 
             if is_model_exists(model_path):
                 location, run_type = get_model_info(model_path)
@@ -126,11 +129,11 @@ def pull_model(model_path, hf = False, **kwargs):
 
         if result["success"]:
             # Only add to model list if not using custom download path
-            model_path = model_path if not hf else f"{model_path}:{result['local_path'].split('/')[-1]}"
+            model_path = model_path if not (hf or ms) else f"{model_path}:{result['local_path'].split('/')[-1]}"
             if not kwargs.get('local_download_path'):
                 add_model_to_list(model_path, result["local_path"], result["model_type"], result["run_type"])
             
-            if hf:
+            if hf or ms:
                 print(f"Successfully pulled model {model_path} to {result['local_path']}")
             else:
                 print(f"Successfully pulled model {model_path} to {result['local_path']}, run_type: {result['run_type']}")
@@ -232,8 +235,21 @@ def pull_model_from_official(model_path, **kwargs):
     }
 
 def pull_model_from_hf(repo_id, run_type = "NLP", **kwargs):
-    repo_id, filename = select_gguf_in_hf_repo(repo_id)
+    repo_id, filename = select_gguf_from_repo(repo_id, 'huggingface')
     success, model_path = download_gguf_from_hf(repo_id, filename, **kwargs)
+
+    # For beta version, we only support NLP gguf models
+    return {
+        "success": success,
+        "local_path": model_path,
+        "model_type": "gguf",
+        "run_type": run_type
+    }
+
+
+def pull_model_from_ms(repo_id, run_type = "NLP", **kwargs):
+    repo_id, filename = select_gguf_from_repo(repo_id, 'modelscope')
+    success, model_path = download_gguf_from_ms(repo_id, filename, **kwargs)
 
     # For beta version, we only support NLP gguf models
     return {
@@ -469,6 +485,32 @@ def download_repo_from_hf(repo_id):
         print(f"Failed to download the repository: {e}")
         return False, None
 
+def download_repo_from_ms(repo_id):
+    try:
+        from modelscope import snapshot_download
+        from pathlib import Path
+    except ImportError:
+        print("The modelscope package is required. Please install it with `pip install modelscope`.")
+        return False, None
+    
+    # Define the local directory to save the model
+    local_dir = NEXA_MODELS_HUB_MS_DIR / Path(repo_id)
+    local_dir.mkdir(parents=True, exist_ok=True)
+    
+    try:
+        # Download the entire repository
+        repo_path = snapshot_download(
+            model_id=repo_id,
+            local_dir=local_dir,
+            revision="master"
+        )
+
+        print(f"Successfully downloaded repository '{repo_id}' to {repo_path}")
+        return True, repo_path
+    except Exception as e:
+        print(f"Failed to download the repository: {e}")
+        return False, None
+
 def download_gguf_from_hf(repo_id, filename, **kwargs):
     try:
         from huggingface_hub import hf_hub_download
@@ -503,6 +545,44 @@ def download_gguf_from_hf(repo_id, filename, **kwargs):
             shutil.rmtree(org_dir)
             return True, str(target_path)
             
+        return True, model_path
+    except Exception as e:
+        print(f"Failed to download the model: {e}")
+        return False, None
+
+def download_gguf_from_ms(repo_id, filename, **kwargs):
+    from pathlib import Path
+    import shutil
+    try:
+        from modelscope.hub.file_download import model_file_download
+    except ImportError:
+        print("The modelscope package is required. Please install it with `pip install modelscope`.")
+        return None
+
+    # Get custom download path from kwargs if present
+    local_download_path = kwargs.get('local_download_path')
+    base_download_dir = Path(local_download_path) if local_download_path else NEXA_MODELS_HUB_MS_DIR
+    local_dir = base_download_dir / Path(repo_id)
+    local_dir.mkdir(parents=True, exist_ok=True)
+
+    # Download the model
+    try:
+        model_path = model_file_download(
+            model_id=repo_id,
+            file_path=filename,
+            local_dir=local_dir,
+            local_files_only=False,
+        )
+        # If using custom download path, move the file and cleanup
+        if local_download_path:
+            model_file = Path(model_path)
+            target_path = base_download_dir / filename
+            shutil.move(str(model_file), str(target_path))
+            # Get the organization directory (first part of repo_id)
+            org_dir = base_download_dir / repo_id.split('/')[0]
+            shutil.rmtree(org_dir)
+            return True, str(target_path)
+
         return True, model_path
     except Exception as e:
         print(f"Failed to download the model: {e}")
@@ -660,42 +740,60 @@ def clean():
     except Exception as e:
         print(f"An error occurred while cleaning the directory: {e}")
 
-def select_gguf_in_hf_repo(repo_id: str) -> Tuple[str, str]:
+def select_gguf_from_repo(repo_id: str, model_hub: str) -> Tuple[str, str]:
     """
-    Lists all files ending with .gguf in the given Hugging Face repository,
+    Lists all files ending with .gguf in the given (HuggingFace or ModelScope) repository,
     prompts the user to select one, and returns the repo_id and the selected filename.
 
     Args:
-        repo_id (str): The Hugging Face repository ID.
+        repo_id (str): The repository ID.
+        model_hub (str): huggingface or modelscope
 
     Returns:
         Tuple[str, str]: A tuple containing the repo_id and the selected filename.
     """
-    try:
-        from huggingface_hub import HfFileSystem
-        from huggingface_hub.utils import validate_repo_id
-        from pathlib import Path
-    except ImportError:
-        print("The huggingface-hub package is required. Please install it with `pip install huggingface-hub`.")
-        exit(1)
+    if model_hub == 'huggingface':
+        try:
+            from huggingface_hub import HfFileSystem
+            from huggingface_hub.utils import validate_repo_id
+            from pathlib import Path
+        except ImportError:
+            print("The huggingface-hub package is required. Please install it with `pip install huggingface-hub`.")
+            exit(1)
 
-    validate_repo_id(repo_id)
-    hffs = HfFileSystem()
+        validate_repo_id(repo_id)
+        hffs = HfFileSystem()
 
-    try:
-        files = [
-            file["name"] if isinstance(file, dict) else file
-            for file in hffs.ls(repo_id, recursive=True)
-        ]
-    except Exception as e:
-        print(f"Error accessing repository '{repo_id}'. Please make sure you have access to the Hugging Face repository first.")
-        exit(1)
+        try:
+            files = [
+                file["name"] if isinstance(file, dict) else file
+                for file in hffs.ls(repo_id, recursive=True)
+            ]
+        except Exception as e:
+            print(f"Error accessing repository '{repo_id}'. Please make sure you have access to the Hugging Face repository first.")
+            exit(1)
 
-    # Remove the repo prefix from files
-    file_list = []
-    for file in files:
-        rel_path = Path(file).relative_to(repo_id)
-        file_list.append(str(rel_path))
+        # Remove the repo prefix from files
+        file_list = []
+        for file in files:
+            rel_path = Path(file).relative_to(repo_id)
+            file_list.append(str(rel_path))
+    elif model_hub == 'modelscope':
+        try:
+            from modelscope.hub.api import HubApi
+        except ImportError:
+            print("The modelscope package is required. Please install it with `pip install modelscope`.")
+            exit(1)
+
+        try:
+            ms_api = HubApi()
+            infos = ms_api.get_model_files(repo_id, recursive=True)
+            file_list = [info['Path'] for info in infos]
+        except Exception as e:
+            print(f"Error accessing repository '{repo_id}'. Please make sure you have access to the ModelScope repository first.")
+            exit(1)
+    else:
+        raise ValueError("Invalid model hub specified. Supported model hub are 'huggingface' and 'modelscope")
 
     # Filter for files ending with .gguf
     gguf_files = [file for file in file_list if file.endswith('.gguf')]
