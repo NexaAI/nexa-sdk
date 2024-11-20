@@ -24,8 +24,8 @@
 - Support Nexa AI's own vision language model (0.9B parameters): `nexa run omnivision` and audio language model (2.9B): `nexa run omniaudio`
 - Support audio language model: `nexa run qwen2audio`, **we are the first open-source toolkit to support audio language model with GGML tensor library.**
 - Support embedding model: `nexa embed <model_path> <prompt>`
-- Support pull and run supported Computer Vision models in GGUF format from HuggingFace: `nexa run -hf <model_id> -mt COMPUTER_VISION`
-- Support pull and run NLP models in GGUF format from HuggingFace: `nexa run -hf <model_id> -mt NLP`
+- Support pull and run supported Computer Vision models in GGUF format from HuggingFace or ModelScope: `nexa run -hf <hf_model_id> -mt COMPUTER_VISION` or `nexa run -ms <ms_model_id> -mt COMPUTER_VISION`
+- Support pull and run NLP models in GGUF format from HuggingFace or ModelScope: `nexa run -hf <hf_model_id> -mt NLP` or `nexa run -ms <ms_model_id> -mt NLP`
 
 Welcome to submit your requests through [issues](https://github.com/NexaAI/nexa-sdk/issues/new/choose), we ship weekly.
 
