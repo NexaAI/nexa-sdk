@@ -12,7 +12,7 @@ To add Nexa to your Android project, follow these steps:
 - Add dependency to your build.gradle file:
 
 ```
-implementation(file("libs/com.nexa.arr"))
+implementation files("libs/com.nexa.aar")
 ```
 
 ## Usage
