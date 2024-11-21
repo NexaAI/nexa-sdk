@@ -212,9 +212,11 @@ Below is our differentiation from other similar tools:
 | **Text Generation**        |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
 | **Image Generation**       |                         ✅                         |                       ❌                       |                          ❌                           |                       ❌                        |
 | **Vision-Language Models** |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
+| **Audio-Language Models** |                         ✅                         |                       ❌                       |                          ❌                           |                       ❌                        |
 | **Text-to-Speech**         |                         ✅                         |                       ❌                       |                          ✅                           |                       ❌                        |
 | **Server Capability**      |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
 | **User Interface**         |                         ✅                         |                       ❌                       |                          ❌                           |                       ✅                        |
+| **Executable Installation**         |                         ✅                         |                       ✅                       |                          ❌                           |                       ✅                        |
 
 ## Supported Models & Model Hub
 
