@@ -88,6 +88,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
-          tag_name: ${{ github.ref_name }}-vulkan${{ env.VULKAN_VERSION }}
+          tag_name: ${{ github.ref_name }}-vulkan
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
