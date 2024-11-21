@@ -188,7 +188,8 @@ if(LLAMA_BUILD)
 endif()
 
 # bark_cpp project
-option(BARK_BUILD "Build bark.cpp" ON)
+# Temporarily disabled since version v0.0.9.3
+option(BARK_BUILD "Build bark.cpp" OFF)
 if(BARK_BUILD)
     # Filter out HIPBLAS and Vulkan options for bark.cpp since it doesn't support them
     set(BARK_CMAKE_OPTIONS ${USER_DEFINED_OPTIONS})
