@@ -208,6 +208,10 @@ if(BARK_BUILD)
             -DGGML_METAL=OFF
             -DBUILD_SHARED_LIBS=ON
             -DBARK_BUILD_EXAMPLES=OFF
+            -DGGML_AVX=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
+            -DGGML_AVX2=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
+            -DGGML_FMA=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
+            -DGGML_F16C=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
         BUILD_ALWAYS 1
         BUILD_COMMAND ${CMAKE_COMMAND} --build . --config Release -- ${MSBUILD_ARGS}
         INSTALL_COMMAND ${CMAKE_COMMAND} --build . --config Release --target install
