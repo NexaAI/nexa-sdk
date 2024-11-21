@@ -61,6 +61,7 @@ twine upload dist/*
 ```
 git tag
 git tag -d <version>
+git push origin --delete <version>
 git tag <version>
 git push origin <version>
 ```
