@@ -40,17 +40,18 @@ def run_ggml_inference(args):
     is_local_path = kwargs.pop("local_path", False)
     model_type = kwargs.pop("model_type", None)
     hf = kwargs.pop('huggingface', False)
+    ms = kwargs.pop('modelscope', False)
     
     run_type = None
     if model_type:
         run_type = ModelType[model_type].value
-    elif is_local_path or hf:
+    elif is_local_path or hf or ms:
         run_type = ModelType["NLP"].value
 
     local_path = None
     projector_local_path = None
     
-    if is_local_path or hf:
+    if is_local_path or hf or ms:
         if is_local_path:
             local_path = os.path.abspath(model_path)
             model_path = local_path
@@ -69,13 +70,13 @@ def run_ggml_inference(args):
                 if not os.path.isdir(local_path):
                     print("Error: For Audio models with --local_path, the provided path must be a directory containing all related files.")
                     return
-        else:  # hf case
+        else:  # hf or ms case
             # TODO: remove this after adding support for Multimodal model in CLI
             if run_type == "Multimodal" or run_type == "Audio" or run_type == "TTS":
                 print("Running multimodal model or audio model or TTS model from Hugging Face is currently not supported in CLI mode. Please use SDK to run Multimodal model or Audio model or TTS model.")
                 return
             from nexa.general import pull_model
-            local_path, _ = pull_model(model_path, hf=True, run_type=run_type)
+            local_path, _ = pull_model(model_path, hf=hf, ms=ms, run_type=run_type)
     else: # Model Hub
         from nexa.general import pull_model
         local_path, run_type = pull_model(model_path)
@@ -83,7 +84,7 @@ def run_ggml_inference(args):
     stop_words = kwargs.pop("stop_words", None)
 
     try:
-        if (is_local_path or hf) and not model_type:
+        if (is_local_path or hf or ms) and not model_type:
             print("No model type specified. Running with default model type: NLP")
             print("You can specify a different model type using the -mt flag")
             
@@ -119,8 +120,10 @@ def run_ggml_inference(args):
             from nexa.gguf.nexa_inference_voice import NexaVoiceInference
             inference = NexaVoiceInference(model_path=model_path, local_path=local_path, **kwargs)
         elif run_type == "TTS":
-            from nexa.gguf.nexa_inference_tts import NexaTTSInference
-            inference = NexaTTSInference(model_path=model_path, local_path=local_path, **kwargs)
+            # # Temporarily disabled since version v0.0.9.3
+            raise NotImplementedError("TTS model is not supported in CLI mode.")
+            # from nexa.gguf.nexa_inference_tts import NexaTTSInference
+            # inference = NexaTTSInference(model_path=model_path, local_path=local_path, **kwargs)
         elif run_type == "AudioLM":
             from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
             inference = NexaAudioLMInference(model_path=model_path, local_path=local_path, **kwargs)
@@ -149,11 +152,12 @@ def run_ggml_server(args):
     is_local_path = kwargs.pop("local_path", False)
     model_type = kwargs.pop("model_type", None)
     hf = kwargs.pop('huggingface', False)
+    ms = kwargs.pop('modelscope', False)
     
     run_type = None
     if model_type:
         run_type = ModelType[model_type].value
-    elif is_local_path or hf:
+    elif is_local_path or hf or ms:
         run_type = ModelType["NLP"].value
 
     projector_local_path = None
@@ -173,7 +177,7 @@ def run_ggml_server(args):
             print("Error: For Audio models with --local_path, the provided path must be a directory containing all related files.")
             return
 
-    if (is_local_path or hf) and not model_type:
+    if (is_local_path or hf or ms) and not model_type:
         print("No model type specified. Running with default model type: NLP")
         print("You can specify a different model type using the -mt flag")
 
@@ -182,6 +186,7 @@ def run_ggml_server(args):
         is_local_path_arg=is_local_path,
         model_type_arg=run_type,
         huggingface=hf,
+        modelscope=ms,
         projector_local_path_arg=projector_local_path,
         **kwargs
     )
@@ -269,17 +274,18 @@ def run_embedding_generation(args):
     prompt = kwargs.pop("prompt")
     is_local_path = kwargs.pop("local_path", False)
     hf = kwargs.pop('huggingface', False)
+    ms = kwargs.pop('modelscope', False)
     normalize = kwargs.pop('normalize', False)
     no_truncate = kwargs.pop('no_truncate', False)
 
     local_path = None
-    if is_local_path or hf:
+    if is_local_path or hf or ms:
         if is_local_path:
             local_path = os.path.abspath(model_path)
             model_path = local_path
-        else:  # hf case
+        else:  # hf or ms case
             from nexa.general import pull_model
-            local_path, _ = pull_model(model_path, hf=True, run_type="Text Embedding")
+            local_path, _ = pull_model(model_path, hf=hf, ms=ms, run_type="Text Embedding")
     else:  # Model Hub
         from nexa.general import pull_model
         local_path, _ = pull_model(model_path)
@@ -368,9 +374,13 @@ def run_convert(args):
         # Valid GGUF file, proceed as is
         pass
     else:
-        # Try downloading from HF if path isn't a valid local directory/file
-        from nexa.general import download_repo_from_hf
-        success, local_path = download_repo_from_hf(input_path)
+        # Try downloading from HF or MS if path isn't a valid local directory/file
+        if args.modelscope:
+            from nexa.general import download_repo_from_ms
+            success, local_path = download_repo_from_ms(input_path)
+        else:
+            from nexa.general import download_repo_from_hf
+            success, local_path = download_repo_from_hf(input_path)
         
         if success:
             input_path = local_path
@@ -427,6 +437,7 @@ def main():
     run_parser.add_argument("-lp", "--local_path", action="store_true", help="Indicate that the model path provided is the local path")
     run_parser.add_argument("-mt", "--model_type", type=str, choices=[e.name for e in ModelType], help="Indicate the model running type (default: NLP)")
     run_parser.add_argument("-hf", "--huggingface", action="store_true", help="Load model from Hugging Face Hub")
+    run_parser.add_argument("-ms", "--modelscope", action="store_true", help="Load model from ModelScope Hub")
 
     # Text generation/vlm arguments
     text_group = run_parser.add_argument_group('Text generation/VLM options')
@@ -505,6 +516,7 @@ def main():
     embed_parser.add_argument("prompt", type=str, help="The prompt to generate an embedding for")
     embed_parser.add_argument("-lp", "--local_path", action="store_true", help="Indicate that the model path provided is the local path")
     embed_parser.add_argument("-hf", "--huggingface", action="store_true", help="Load model from Hugging Face Hub")
+    embed_parser.add_argument("-ms", "--modelscope", action="store_true", help="Load model from ModelScope Hub")
     embed_parser.add_argument("-n", "--normalize", action="store_true", help="Normalize the embeddings")
     embed_parser.add_argument("-nt", "--no_truncate", action="store_true", help="Not truncate the embeddings")
 
@@ -525,6 +537,7 @@ def main():
     convert_hf_parser.add_argument("--no_tensor_first_split", action="store_true", help="Disable tensor-first splitting")
     convert_hf_parser.add_argument("--vocab_only", action="store_true", help="Only process vocabulary")
     convert_hf_parser.add_argument("--dry_run", action="store_true", help="Perform a dry run without actual conversion")
+    convert_hf_parser.add_argument("-ms", "--modelscope", action="store_true", help="Download model from ModelScope Hub")
 
     quantization_parser = convert_parser.add_argument_group('Quantization options')
     quantization_parser.add_argument("--nthread", type=int, default=4, help="Number of threads to use (default: 4)")
@@ -540,8 +553,9 @@ def main():
     server_parser = subparsers.add_parser("server", help="Run the Nexa AI Text Generation Service")
     server_parser.add_argument("model_path", type=str, nargs='?', help="Path or identifier for the model in Nexa Model Hub")
     server_parser.add_argument("-lp", "--local_path", action="store_true", help="Indicate that the model path provided is the local path")
-    server_parser.add_argument("-mt", "--model_type", type=str, choices=[e.name for e in ModelType], help="Indicate the model running type, must be used with -lp or -hf")
+    server_parser.add_argument("-mt", "--model_type", type=str, choices=[e.name for e in ModelType], help="Indicate the model running type, must be used with -lp, -hf or -ms")
     server_parser.add_argument("-hf", "--huggingface", action="store_true", help="Load model from Hugging Face Hub")
+    server_parser.add_argument("-ms", "--modelscope", action="store_true", help="Load model from ModelScope Hub")
     server_parser.add_argument("--host", type=str, default="localhost", help="Host to bind the server to")
     server_parser.add_argument("--port", type=int, default=8000, help="Port to bind the server to")
     server_parser.add_argument("--reload", action="store_true", help="Enable automatic reloading on code changes")
@@ -551,6 +565,7 @@ def main():
     pull_parser = subparsers.add_parser("pull", help="Pull a model from official or hub.")
     pull_parser.add_argument("model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
     pull_parser.add_argument("-hf", "--huggingface", action="store_true", help="Pull model from Hugging Face Hub")
+    pull_parser.add_argument("-ms", "--modelscope", action="store_true", help="Pull model from ModelScope Hub")
     pull_parser.add_argument("-o", "--output_path", type=str, help="Custom output path for the pulled model")
 
     remove_parser = subparsers.add_parser("remove", help="Remove a model from local machine.")
@@ -584,10 +599,22 @@ def main():
         if args.local_path and args.huggingface:
             print("Error: --local_path and --huggingface flags cannot be used together")
             return
+        if args.local_path and args.modelscope:
+            print("Error: --local_path and --modelscope flags cannot be used together")
+            return
+        if args.huggingface and args.modelscope:
+            print("Error: --huggingface and --modelscope flags cannot be used together")
+            return
         run_ggml_inference(args)
     elif args.command == "server":
         if args.local_path and args.huggingface:
             print("Error: --local_path and --huggingface flags cannot be used together")
+            return
+        if args.local_path and args.modelscope:
+            print("Error: --local_path and --modelscope flags cannot be used together")
+            return
+        if args.huggingface and args.modelscope:
+            print("Error: --huggingface and --modelscope flags cannot be used together")
             return
         run_ggml_server(args)
     elif args.command == "onnx":
@@ -601,6 +628,7 @@ def main():
         import os
 
         hf = getattr(args, 'huggingface', False)
+        ms = getattr(args, 'modelscope', False)
         local_download_path = None
         
         if args.output_path:
@@ -608,8 +636,7 @@ def main():
                 os.makedirs(args.output_path, exist_ok=True)
                 print(f"Created output directory: {args.output_path}")
             local_download_path = os.path.abspath(args.output_path)
-            
-        pull_model(args.model_path, hf, local_download_path=local_download_path)
+        pull_model(args.model_path, hf, ms, local_download_path=local_download_path)
     elif args.command == "convert":
         run_convert(args)
     elif args.command == "remove":
