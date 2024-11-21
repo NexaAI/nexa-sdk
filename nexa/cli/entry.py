@@ -120,8 +120,10 @@ def run_ggml_inference(args):
             from nexa.gguf.nexa_inference_voice import NexaVoiceInference
             inference = NexaVoiceInference(model_path=model_path, local_path=local_path, **kwargs)
         elif run_type == "TTS":
-            from nexa.gguf.nexa_inference_tts import NexaTTSInference
-            inference = NexaTTSInference(model_path=model_path, local_path=local_path, **kwargs)
+            # # Temporarily disabled since version v0.0.9.3
+            raise NotImplementedError("TTS model is not supported in CLI mode.")
+            # from nexa.gguf.nexa_inference_tts import NexaTTSInference
+            # inference = NexaTTSInference(model_path=model_path, local_path=local_path, **kwargs)
         elif run_type == "AudioLM":
             from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
             inference = NexaAudioLMInference(model_path=model_path, local_path=local_path, **kwargs)
