@@ -64,12 +64,12 @@ nexa-exe <command>
 
 ## Install Option 2: Python Package
 
-We have released pre-built wheels for various Python versions, platforms, and backends for convenient installation on our [index page](https://nexaai.github.io/nexa-sdk/whl/).
+We have released pre-built wheels for various Python versions, platforms, and backends for convenient installation on our [index page](https://github.nexa.ai/whl/).
 
 <details> <summary><strong style="font-size: 1.2em;">CPU</strong></summary>
 
 ```bash
-pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cpu --extra-index-url https://pypi.org/simple --no-cache-dir
+pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/cpu --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 </details>
@@ -79,7 +79,7 @@ pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk
 For the GPU version supporting **Metal (macOS)**:
 
 ```bash
-CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple --no-cache-dir
+CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/metal --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 <details>
@@ -92,7 +92,7 @@ wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge
 bash Miniforge3-MacOSX-arm64.sh
 conda create -n nexasdk python=3.10
 conda activate nexasdk
-CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple --no-cache-dir
+CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/metal --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 </details>
@@ -105,25 +105,25 @@ To install with CUDA support, make sure you have [CUDA Toolkit 12.0 or later](ht
 For **Linux**:
 
 ```bash
-CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 For **Windows PowerShell**:
 
 ```bash
-$env:CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON"; pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+$env:CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON"; pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 For **Windows Command Prompt**:
 
 ```bash
-set CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" & pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+set CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" & pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 For **Windows Git Bash**:
 
 ```bash
-CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 <details>
@@ -150,7 +150,7 @@ To install with ROCm support, make sure you have [ROCm 6.2.1 or later](https://r
 For **Linux**:
 
 ```bash
-CMAKE_ARGS="-DGGML_HIPBLAS=on" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/rocm621 --extra-index-url https://pypi.org/simple --no-cache-dir
+CMAKE_ARGS="-DGGML_HIPBLAS=on" pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/rocm621 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 </details>
@@ -162,19 +162,19 @@ To install with Vulkan support, make sure you have [Vulkan SDK 1.3.261.1 or late
 For **Windows PowerShell**:
 
 ```bash
-$env:CMAKE_ARGS="-DGGML_VULKAN=on"; pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/vulkan --extra-index-url https://pypi.org/simple --no-cache-dir
+$env:CMAKE_ARGS="-DGGML_VULKAN=on"; pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/vulkan --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 For **Windows Command Prompt**:
 
 ```bash
-set CMAKE_ARGS="-DGGML_VULKAN=on" & pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/vulkan --extra-index-url https://pypi.org/simple --no-cache-dir
+set CMAKE_ARGS="-DGGML_VULKAN=on" & pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/vulkan --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 For **Windows Git Bash**:
 
 ```bash
-CMAKE_ARGS="-DGGML_VULKAN=on" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/vulkan --extra-index-url https://pypi.org/simple --no-cache-dir
+CMAKE_ARGS="-DGGML_VULKAN=on" pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/vulkan --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 </details>
