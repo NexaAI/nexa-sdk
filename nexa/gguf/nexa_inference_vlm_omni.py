@@ -149,9 +149,6 @@ class NexaOmniVlmInference:
 
     def inference(self, prompt: str, image_path: str):
         with suppress_stdout_stderr():
-            if prompt and prompt[0].islower():
-                prompt = prompt[0].upper() + prompt[1:]
-                
             prompt = ctypes.c_char_p(prompt.encode("utf-8"))
             image_path = ctypes.c_char_p(image_path.encode("utf-8"))
             response = omni_vlm_cpp.omnivlm_inference(prompt, image_path)
