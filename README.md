@@ -20,6 +20,7 @@
 - **Local UI:** Streamlit for interactive model deployment and testing
 
 ## Latest News 🔥
+
 - Support Nexa AI's own vision language model (0.9B parameters): `nexa run omnivision` and audio language model (2.9B parameters): `nexa run omniaudio`
 - Support audio language model: `nexa run qwen2audio`, **we are the first open-source toolkit to support audio language model with GGML tensor library.**
 - Support iOS Swift binding for local inference on **iOS mobile** devices.
@@ -32,13 +33,13 @@ Welcome to submit your requests through [issues](https://github.com/NexaAI/nexa-
 ## Install Option 1: Executable Installer
 
 <p>
-    <a href="https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-sdk-0.0.9.2-macos-installer.pkg">
+    <a href="https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-sdk-0.0.9.4-macos-installer.pkg">
         <img src="./assets/mac.png" style="height: 1em; width: auto" /> <strong> macOS Installer </strong>
     </a>
 </p>
 
 <p>
-    <a href="https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-sdk-0.0.9.2-windows-setup.exe">
+    <a href="https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-sdk-0.0.9.4-windows-setup.exe">
         <img src="./assets/windows.png" style="height: 1em; width: auto" /> <strong>Windows Installer</strong>
     </a>
 </p>
@@ -205,18 +206,18 @@ pip install -e .
 
 Below is our differentiation from other similar tools:
 
-| **Feature**                | **[Nexa SDK](https://github.com/NexaAI/nexa-sdk)** | **[ollama](https://github.com/ollama/ollama)** | **[Optimum](https://github.com/huggingface/optimum)** | **[LM Studio](https://github.com/lmstudio-ai)** |
-| -------------------------- | :------------------------------------------------: | :--------------------------------------------: | :---------------------------------------------------: | :---------------------------------------------: |
-| **GGML Support**           |                         ✅                         |                       ✅                       |                          ❌                           |                       ✅                        |
-| **ONNX Support**           |                         ✅                         |                       ❌                       |                          ✅                           |                       ❌                        |
-| **Text Generation**        |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
-| **Image Generation**       |                         ✅                         |                       ❌                       |                          ❌                           |                       ❌                        |
-| **Vision-Language Models** |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
-| **Audio-Language Models** |                         ✅                         |                       ❌                       |                          ❌                           |                       ❌                        |
-| **Text-to-Speech**         |                         ✅                         |                       ❌                       |                          ✅                           |                       ❌                        |
-| **Server Capability**      |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
-| **User Interface**         |                         ✅                         |                       ❌                       |                          ❌                           |                       ✅                        |
-| **Executable Installation**         |                         ✅                         |                       ✅                       |                          ❌                           |                       ✅                        |
+| **Feature**                 | **[Nexa SDK](https://github.com/NexaAI/nexa-sdk)** | **[ollama](https://github.com/ollama/ollama)** | **[Optimum](https://github.com/huggingface/optimum)** | **[LM Studio](https://github.com/lmstudio-ai)** |
+| --------------------------- | :------------------------------------------------: | :--------------------------------------------: | :---------------------------------------------------: | :---------------------------------------------: |
+| **GGML Support**            |                         ✅                         |                       ✅                       |                          ❌                           |                       ✅                        |
+| **ONNX Support**            |                         ✅                         |                       ❌                       |                          ✅                           |                       ❌                        |
+| **Text Generation**         |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
+| **Image Generation**        |                         ✅                         |                       ❌                       |                          ❌                           |                       ❌                        |
+| **Vision-Language Models**  |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
+| **Audio-Language Models**   |                         ✅                         |                       ❌                       |                          ❌                           |                       ❌                        |
+| **Text-to-Speech**          |                         ✅                         |                       ❌                       |                          ✅                           |                       ❌                        |
+| **Server Capability**       |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
+| **User Interface**          |                         ✅                         |                       ❌                       |                          ❌                           |                       ✅                        |
+| **Executable Installation** |                         ✅                         |                       ✅                       |                          ❌                           |                       ✅                        |
 
 ## Supported Models & Model Hub
 
@@ -257,25 +258,37 @@ Supported model examples (full list at [Model Hub](https://nexa.ai/models)):
 | [bark-small](https://nexa.ai/suno/bark-small/gguf-fp16/readme) | Text-to-Speech | GGUF | `nexa run bark-small:fp16` |
 
 ## Run Models from 🤗 HuggingFace or 🤖 ModelScope
+
 You can pull, convert (to .gguf), quantize and run [llama.cpp supported](https://github.com/ggerganov/llama.cpp#description) text generation models from HF or MS with Nexa SDK.
+
 ### Run .gguf File
+
 Use `nexa run -hf <hf-model-id>` or `nexa run -ms <ms-model-id>` to run models with provided .gguf files:
+
 ```bash
 nexa run -hf Qwen/Qwen2.5-Coder-7B-Instruct-GGUF
 ```
+
 ```bash
 nexa run -ms Qwen/Qwen2.5-Coder-7B-Instruct-GGUF
 ```
+
 > **Note:** You will be prompted to select a single .gguf file. If your desired quantization version has multiple split files (like fp16-00001-of-00004), please use Nexa's conversion tool (see below) to convert and quantize the model locally.
+
 ### Convert .safetensors Files
+
 Install [Nexa Python package](https://github.com/NexaAI/nexa-sdk?tab=readme-ov-file#install-option-2-python-package), and install Nexa conversion tool with `pip install "nexaai[convert]"`, then convert models from huggingface with `nexa convert <hf-model-id>`:
+
 ```bash
 nexa convert HuggingFaceTB/SmolLM2-135M-Instruct
 ```
+
 Or you can convert models from ModelScope with `nexa convert -ms <ms-model-id>`:
+
 ```bash
 nexa convert -ms Qwen/Qwen2.5-7B-Instruct
 ```
+
 > **Note:** Check our [leaderboard](https://nexa.ai/leaderboard) for performance benchmarks of different quantized versions of mainstream language models and [HuggingFace docs](https://huggingface.co/docs/optimum/en/concept_guides/quantization) to learn about quantization options.
 
 📋 You can view downloaded and converted models with `nexa list`
