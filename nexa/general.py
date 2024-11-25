@@ -338,7 +338,7 @@ def default_use_processes():
 def download_file_with_progress(
     url: str,
     file_path: Path,
-    chunk_size: int = 40 * 1024 * 1024,
+    chunk_size: int = 5 * 1024 * 1024,
     max_workers: int = 20,
     use_processes: bool = default_use_processes(),
     **kwargs
@@ -396,12 +396,25 @@ def download_file_with_progress(
         progress_bar.close()
 
         if all(completed_chunks):
+            # Create a new progress bar for combining chunks
+            combine_progress = tqdm(
+                total=file_size,
+                unit='B',
+                unit_scale=True,
+                desc="Verifying download",
+                unit_divisor=1024
+            )
+            
+            buffer_size = 1 * 1024 * 1024  # 1MB buffer
+            
             with open(file_path, "wb") as final_file:
                 for i in range(len(chunks)):
                     chunk_file = temp_dir / f"{file_path.name}.part{i}"
                     with open(chunk_file, "rb") as part_file:
-                        final_file.write(part_file.read())
-
+                        shutil.copyfileobj(part_file, final_file, buffer_size)
+                        combine_progress.update(os.path.getsize(chunk_file))
+            
+            combine_progress.close()
         else:
             raise Exception("Some chunks failed to download")
 
@@ -598,10 +611,11 @@ def is_model_exists(model_name):
     # For AudioLM and Multimodal models, should check the file location instead of model name
     if ":" in model_name:
         model_path_with_slash = model_name.replace(":", "/")
+        model_path_with_backslash = model_name.replace(":", "\\")
         
-        # Check if model_prefix/model_suffix exists in any location path
+        # Check if model_prefix/model_suffix or model_prefix\model_suffix exists in any location path
         for model_key, model_info in model_list.items():
-            if model_path_with_slash in model_info["location"]:
+            if model_path_with_slash in model_info["location"] or model_path_with_backslash in model_info["location"]:
                 return model_key
 
     return model_name in model_list
@@ -648,10 +662,11 @@ def get_model_info(model_name):
     # If not found and model_name contains ":", try path-based lookup
     if ":" in model_name:
         model_path_with_slash = model_name.replace(":", "/")
+        model_path_with_backslash = model_name.replace(":", "\\")
         
-        # Check if model_prefix/model_suffix exists in any location path
+        # Check if model_prefix/model_suffix or model_prefix\model_suffix exists in any location path
         for model_key, model_info in model_list.items():
-            if model_path_with_slash in model_info["location"]:
+            if model_path_with_slash in model_info["location"] or model_path_with_backslash in model_info["location"]:
                 return model_info["location"], model_info["run_type"]
 
     return None, None
@@ -701,35 +716,67 @@ def remove_model(model_path):
         with open(NEXA_MODEL_LIST_PATH, "r") as f:
             model_list = json.load(f)
 
+        # First try direct lookup
         if model_path not in model_list:
-            print(f"Model {model_path} not found.")
-            return
+            # If not found and model_path contains ":", try path-based lookup
+            if ":" in model_path:
+                model_path_with_slash = model_path.replace(":", "/")
+                model_path_with_backslash = model_path.replace(":", "\\")
+                
+                # Find matching model key
+                matching_key = None
+                for model_key, model_info in model_list.items():
+                    if model_path_with_slash in model_info["location"] or model_path_with_backslash in model_info["location"]:
+                        matching_key = model_key
+                        break
+                
+                if matching_key:
+                    model_path = matching_key
+                else:
+                    print(f"Model {model_path} not found.")
+                    return
+            else:
+                print(f"Model {model_path} not found.")
+                return
 
         model_info = model_list.pop(model_path)
         model_location = model_info['location']
         model_path = Path(model_location)
 
         # Delete the model files
+        model_deleted = False
         if model_path.is_file():
             model_path.unlink()
             print(f"Deleted model file: {model_path}")
+            model_deleted = True
         elif model_path.is_dir():
             shutil.rmtree(model_path)
             print(f"Deleted model directory: {model_path}")
+            model_deleted = True
         else:
             print(f"Warning: Model location not found: {model_path}")
 
-        # Delete projectors
-        projector_keys = [k for k in model_list.keys() if 'projector' in k]
-        for key in projector_keys:
-            projector_info = model_list.pop(key)
-            projector_location = Path(projector_info['location'])
-            if projector_location.exists():
-                if projector_location.is_file():
-                    projector_location.unlink()
-                else:
-                    shutil.rmtree(projector_location)
-                print(f"Deleted projector: {projector_location}")
+        # Delete projectors only if model was successfully deleted
+        if model_deleted:
+            parent_dir = model_path.parent
+            gguf_files = list(parent_dir.glob("*.gguf"))
+            
+            # Only proceed if there's exactly one .gguf file in the directory
+            if len(gguf_files) == 1:
+                projector_keys = [
+                    k for k in model_list.keys() 
+                    if 'projector' in k and str(parent_dir) in model_list[k]['location']
+                ]
+                
+                for key in projector_keys:
+                    projector_info = model_list.pop(key)
+                    projector_location = Path(projector_info['location'])
+                    if projector_location.exists():
+                        if projector_location.is_file():
+                            projector_location.unlink()
+                        else:
+                            shutil.rmtree(projector_location)
+                        print(f"Deleted projector: {projector_location}")
 
         # Update the model list file
         with open(NEXA_MODEL_LIST_PATH, "w") as f:

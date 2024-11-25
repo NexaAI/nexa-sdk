@@ -137,8 +137,8 @@ class NexaTTSInference:
                 user_input = input("Enter text to generate audio: ")
 
                 stop_event, spinner_thread = start_spinner(
-                style="default", 
-                message=""  
+                    style="default",
+                    message=""
                 )
 
                 audio_data = self.audio_generation(user_input)
