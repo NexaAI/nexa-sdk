@@ -1,3 +1,5 @@
+# For similar spinner animation implementation, refer to: nexa/utils.py
+
 import sys
 import threading
 import time
