@@ -1,0 +1,61 @@
+name: Build Android AAR
+
+on:
+  push:
+    branches:
+      - main
+      - android-sdk
+  pull_request:
+
+jobs:
+  build:
+    name: Build AAR
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Cache Gradle packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.gradle/caches
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
+    - name: Navigate to android Directory and Build AAR
+      run: |
+        echo "Navigating to the example directory..."
+        cd android
+        echo "Starting Gradle build process in $(pwd)..."
+        ./gradlew assembleRelease --stacktrace --info
+      shell: bash
+
+    - name: Rename and upload AAR
+      run: |
+        echo "Navigating to the android directory to find AAR output..."
+        cd android
+        mkdir -p ../artifacts
+        AAR_PATH=$(find ./llama/build/outputs/aar -type f -name "*.aar" | head -n 1)
+        if [ -z "$AAR_PATH" ]; then
+          echo "No AAR file found. Build might have failed."
+          exit 1
+        fi
+        BRANCH_NAME=${{ github.ref_name }}
+        CUSTOM_NAME="com-nexa-${BRANCH_NAME}-${{ github.run_number }}.aar"
+        echo "Found AAR at $AAR_PATH, renaming to $CUSTOM_NAME..."
+        mv "$AAR_PATH" "../artifacts/$CUSTOM_NAME"
+      shell: bash
+
+    - name: Upload AAR as an artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: custom-aar-${{ github.ref_name }}-${{ github.run_number }}
+        path: artifacts/
