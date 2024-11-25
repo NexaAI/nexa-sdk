@@ -7,6 +7,7 @@ import streamlit as st
 from st_audiorec import st_audiorec
 
 from nexa.general import pull_model
+from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
 from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
 
 # Initialize session state
@@ -45,7 +46,8 @@ def process_audio(nexa_model, audio_file, prompt=""):
 
     try:
         # Use the model's inference method directly
-        response = nexa_model.inference(temp_audio_path, prompt)
+        with suppress_stdout_stderr():
+            response = nexa_model.inference(temp_audio_path, prompt)
         return response
 
     except Exception as e:
