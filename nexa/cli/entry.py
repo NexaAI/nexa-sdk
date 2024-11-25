@@ -332,7 +332,7 @@ def _select_quantization_type():
         except ValueError:
             print("Please enter a valid number.")
 
-def _store_in_nexa_list(converted_path, model_type):
+def _store_in_nexa_list(converted_path, model_type, input_name, output_ftype):
     """Helper function to store converted model in nexa list."""
     import shutil
     from nexa.general import add_model_to_list
@@ -346,7 +346,8 @@ def _store_in_nexa_list(converted_path, model_type):
     shutil.copy2(converted_path, nexa_list_path)
     
     # Add the new path to the model list
-    add_model_to_list(os.path.basename(converted_path), nexa_list_path, "gguf", model_type)
+    nexa_model_name = f"{input_name}:{output_ftype}"
+    add_model_to_list(nexa_model_name, nexa_list_path, "gguf", model_type)
 
 def _run_converted_model(converted_path, model_type):
     """Helper function to run the converted model."""
@@ -393,7 +394,7 @@ def run_convert(args):
     
     try:
         from nexa.gguf.converter.nexa_convert import convert_hf_to_quantized_gguf
-        converted_path = convert_hf_to_quantized_gguf(
+        converted_path, input_name, output_ftype = convert_hf_to_quantized_gguf(
             input_path,
             output_file=args.output_file,
             ftype=ftype,
@@ -406,7 +407,7 @@ def run_convert(args):
             # Ask if user wants to store in nexa list
             store_choice = input("\nWould you like to store this model in nexa list so you can run it with `nexa run <model_name>` anywhere and anytime? (y/N): ").strip().lower()
             if store_choice == 'y':
-                _store_in_nexa_list(converted_path, model_type)
+                _store_in_nexa_list(converted_path, model_type, input_name, output_ftype)
             
             # Ask if user wants to run the model
             run_choice = input("\nWould you like to run the converted model? (y/N): ").strip().lower()
@@ -416,7 +417,8 @@ def run_convert(args):
                 print("Exiting without running the model.")
             
             print(f"\nConverted model stored at {converted_path}")
-            running_command = f"nexa run {converted_path.split('/')[-1]}"\
+            nexa_model_name = f"{input_name}:{output_ftype}"
+            running_command = f"nexa run {nexa_model_name}"\
                 if store_choice == 'y' else f"nexa run {converted_path} -lp -mt {model_type}"
             print(f"\nYou can run the converted model with command: {running_command}")
         else:
