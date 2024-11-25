@@ -147,13 +147,23 @@ class NexaAudioLMInference:
         """
         Run the audio language model inference loop.
         """
+        from nexa.gguf.llama._utils_spinner import start_spinner, stop_spinner
+        
         try:
             while True:
                 audio_path = self._get_valid_audio_path()
                 user_input = nexa_prompt("Enter text (leave empty if no prompt): ")
+                
+                stop_event, spinner_thread = start_spinner(
+                    style="default", 
+                    message=""
+                )
             
-                with suppress_stdout_stderr():
-                    response = self.inference(audio_path, user_input)
+                try:
+                    with suppress_stdout_stderr():
+                        response = self.inference(audio_path, user_input)
+                finally:
+                    stop_spinner(stop_event, spinner_thread)
             
                 print(f"{response}")
                 self.cleanup()
@@ -162,8 +172,6 @@ class NexaAudioLMInference:
             print("\nExiting...")
         except Exception as e:
             logging.error(f"\nError during audio generation: {e}", exc_info=True)
-        # finally:
-        #     self.cleanup()
 
     def _get_valid_audio_path(self) -> str:
         """
@@ -179,7 +187,7 @@ class NexaAudioLMInference:
             else:
                 print(f"'{audio_path}' is not a valid audio path. Please try again.")
 
-    @SpinningCursorAnimation()
+    # @SpinningCursorAnimation()
     def inference(self, audio_path: str, prompt: str = "") -> str:
         """
         Perform a single inference with the audio language model.

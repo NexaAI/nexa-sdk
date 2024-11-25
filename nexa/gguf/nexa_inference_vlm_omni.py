@@ -131,8 +131,8 @@ class NexaOmniVlmInference:
                 user_input = "" if self.omni_vlm_version == "vlm-81-ocr" else nexa_prompt()
 
                 stop_event, spinner_thread = start_spinner(
-                style="default", 
-                message=""  
+                    style="default",
+                    message=""
                 )
 
                 response = self.inference(user_input, image_path)

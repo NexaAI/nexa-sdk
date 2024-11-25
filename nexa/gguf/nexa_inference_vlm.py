@@ -242,8 +242,8 @@ class NexaVLMInference:
                     continue
 
                 stop_event, spinner_thread = start_spinner(
-                style="default", 
-                message=""  
+                    style="default",
+                    message=""
                 )
 
                 output = self._chat(user_input, image_path)

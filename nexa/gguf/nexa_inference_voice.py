@@ -88,8 +88,8 @@ class NexaVoiceInference:
                 audio_path = nexa_prompt("Enter the path to your audio file: ")
 
                 stop_event, spinner_thread = start_spinner(
-                style="default", 
-                message=""  
+                    style="default",
+                    message=""
                 )
             
                 self._transcribe_audio(audio_path)

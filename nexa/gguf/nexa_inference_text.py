@@ -163,8 +163,8 @@ class NexaTextInference:
                 generation_start_time = time.time()
 
                 stop_event, spinner_thread = start_spinner(
-                style="default", 
-                message=""  
+                    style="default",
+                    message=""
                 )
 
                 if self.chat_format:
