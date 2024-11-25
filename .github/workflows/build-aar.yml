@@ -43,6 +43,7 @@ jobs:
         echo "Navigating to the android directory to find AAR output..."
         cd android/llama.android
         mkdir -p ../artifacts
+        ls -ld ../artifacts || echo "Artifacts directory does not exist."
         AAR_PATH=$(find ./llama/build/outputs/aar -type f -name "*.aar" | head -n 1)
         if [ -z "$AAR_PATH" ]; then
           echo "No AAR file found. Build might have failed."
