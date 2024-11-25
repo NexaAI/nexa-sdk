@@ -598,10 +598,11 @@ def is_model_exists(model_name):
     # For AudioLM and Multimodal models, should check the file location instead of model name
     if ":" in model_name:
         model_path_with_slash = model_name.replace(":", "/")
+        model_path_with_backslash = model_name.replace(":", "\\")
         
-        # Check if model_prefix/model_suffix exists in any location path
+        # Check if model_prefix/model_suffix or model_prefix\model_suffix exists in any location path
         for model_key, model_info in model_list.items():
-            if model_path_with_slash in model_info["location"]:
+            if model_path_with_slash in model_info["location"] or model_path_with_backslash in model_info["location"]:
                 return model_key
 
     return model_name in model_list
@@ -648,10 +649,11 @@ def get_model_info(model_name):
     # If not found and model_name contains ":", try path-based lookup
     if ":" in model_name:
         model_path_with_slash = model_name.replace(":", "/")
+        model_path_with_backslash = model_name.replace(":", "\\")
         
-        # Check if model_prefix/model_suffix exists in any location path
+        # Check if model_prefix/model_suffix or model_prefix\model_suffix exists in any location path
         for model_key, model_info in model_list.items():
-            if model_path_with_slash in model_info["location"]:
+            if model_path_with_slash in model_info["location"] or model_path_with_backslash in model_info["location"]:
                 return model_info["location"], model_info["run_type"]
 
     return None, None
