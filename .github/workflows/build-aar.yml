@@ -60,3 +60,44 @@ jobs:
       with:
         name: custom-aar-${{ github.ref_name }}-${{ github.run_number }}
         path: android/artifacts/
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && contains(github.ref, 'main')
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Download Artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: custom-aar-${{ github.ref_name }}-${{ github.run_number }}
+        path: release-artifacts
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ github.run_number }}
+        release_name: "Release v${{ github.run_number }}"
+        body: |
+          This is an automated release containing the latest AAR build.
+          - **Branch:** ${{ github.ref_name }}
+          - **Build Number:** ${{ github.run_number }}
+        draft: false
+        prerelease: false
+
+    - name: Upload AAR to Release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: release-artifacts/com-nexa-${{ github.ref_name }}-${{ github.run_number }}.aar
+        asset_name: com-nexa-${{ github.ref_name }}-${{ github.run_number }}.aar
+        asset_content_type: application/java-archive
