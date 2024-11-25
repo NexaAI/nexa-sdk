@@ -594,6 +594,15 @@ def is_model_exists(model_name):
 
     with open(NEXA_MODEL_LIST_PATH, "r") as f:
         model_list = json.load(f)
+        
+    # For AudioLM and Multimodal models, should check the file location instead of model name
+    if ":" in model_name:
+        model_path_with_slash = model_name.replace(":", "/")
+        
+        # Check if model_prefix/model_suffix exists in any location path
+        for model_key, model_info in model_list.items():
+            if model_path_with_slash in model_info["location"]:
+                return model_key
 
     return model_name in model_list
 
@@ -606,6 +615,13 @@ def add_model_to_list(model_name, model_location, model_type, run_type):
             model_list = json.load(f)
     else:
         model_list = {}
+    
+    # For AudioLM and Multimodal models, should remove the "model-" prefix from the tag name
+    if run_type == "AudioLM" or run_type == "Multimodal":
+        tag_name = model_name.split(":")[1]
+        if tag_name.startswith("model-"):
+            tag_name = tag_name[6:]
+            model_name = f"{model_name.split(':')[0]}:{tag_name}"
 
     model_list[model_name] = {
         "type": model_type,
@@ -624,11 +640,21 @@ def get_model_info(model_name):
     with open(NEXA_MODEL_LIST_PATH, "r") as f:
         model_list = json.load(f)
 
+    # First try direct lookup
     model_data = model_list.get(model_name, {})
-    location = model_data.get("location")
-    run_type = model_data.get("run_type")
+    if model_data:
+        return model_data.get("location"), model_data.get("run_type")
 
-    return location, run_type
+    # If not found and model_name contains ":", try path-based lookup
+    if ":" in model_name:
+        model_path_with_slash = model_name.replace(":", "/")
+        
+        # Check if model_prefix/model_suffix exists in any location path
+        for model_key, model_info in model_list.items():
+            if model_path_with_slash in model_info["location"]:
+                return model_info["location"], model_info["run_type"]
+
+    return None, None
 
 
 def list_models():
