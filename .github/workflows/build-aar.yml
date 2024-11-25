@@ -59,4 +59,4 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: custom-aar-${{ github.ref_name }}-${{ github.run_number }}
-        path: artifacts/
+        path: android/artifacts/
