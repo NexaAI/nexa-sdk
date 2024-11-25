@@ -21,8 +21,9 @@
 
 ## Latest News 🔥
 
-- Support Nexa AI's own vision language model (0.9B parameters): `nexa run omnivision` and audio language model (2.9B): `nexa run omniaudio`
+- Support Nexa AI's own vision language model (0.9B parameters): `nexa run omnivision` and audio language model (2.9B parameters): `nexa run omniaudio`
 - Support audio language model: `nexa run qwen2audio`, **we are the first open-source toolkit to support audio language model with GGML tensor library.**
+- Support iOS Swift binding for local inference on **iOS mobile** devices.
 - Support embedding model: `nexa embed <model_path> <prompt>`
 - Support pull and run supported Computer Vision models in GGUF format from HuggingFace or ModelScope: `nexa run -hf <hf_model_id> -mt COMPUTER_VISION` or `nexa run -ms <ms_model_id> -mt COMPUTER_VISION`
 - Support pull and run NLP models in GGUF format from HuggingFace or ModelScope: `nexa run -hf <hf_model_id> -mt NLP` or `nexa run -ms <ms_model_id> -mt NLP`
@@ -32,13 +33,13 @@ Welcome to submit your requests through [issues](https://github.com/NexaAI/nexa-
 ## Install Option 1: Executable Installer
 
 <p>
-    <a href="https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-sdk-0.0.9.2-macos-installer.pkg">
+    <a href="https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-sdk-0.0.9.4-macos-installer.pkg">
         <img src="./assets/mac.png" style="height: 1em; width: auto" /> <strong> macOS Installer </strong>
     </a>
 </p>
 
 <p>
-    <a href="https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-sdk-0.0.9.2-windows-setup.exe">
+    <a href="https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-sdk-0.0.9.4-windows-setup.exe">
         <img src="./assets/windows.png" style="height: 1em; width: auto" /> <strong>Windows Installer</strong>
     </a>
 </p>
@@ -64,12 +65,12 @@ nexa-exe <command>
 
 ## Install Option 2: Python Package
 
-We have released pre-built wheels for various Python versions, platforms, and backends for convenient installation on our [index page](https://nexaai.github.io/nexa-sdk/whl/).
+We have released pre-built wheels for various Python versions, platforms, and backends for convenient installation on our [index page](https://github.nexa.ai/whl/).
 
 <details> <summary><strong style="font-size: 1.2em;">CPU</strong></summary>
 
 ```bash
-pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cpu --extra-index-url https://pypi.org/simple --no-cache-dir
+pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/cpu --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 </details>
@@ -79,7 +80,7 @@ pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk
 For the GPU version supporting **Metal (macOS)**:
 
 ```bash
-CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple --no-cache-dir
+CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/metal --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 <details>
@@ -92,7 +93,7 @@ wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge
 bash Miniforge3-MacOSX-arm64.sh
 conda create -n nexasdk python=3.10
 conda activate nexasdk
-CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple --no-cache-dir
+CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/metal --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 </details>
@@ -105,25 +106,25 @@ To install with CUDA support, make sure you have [CUDA Toolkit 12.0 or later](ht
 For **Linux**:
 
 ```bash
-CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 For **Windows PowerShell**:
 
 ```bash
-$env:CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON"; pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+$env:CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON"; pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 For **Windows Command Prompt**:
 
 ```bash
-set CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" & pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+set CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" & pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 For **Windows Git Bash**:
 
 ```bash
-CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 <details>
@@ -150,7 +151,7 @@ To install with ROCm support, make sure you have [ROCm 6.2.1 or later](https://r
 For **Linux**:
 
 ```bash
-CMAKE_ARGS="-DGGML_HIPBLAS=on" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/rocm621 --extra-index-url https://pypi.org/simple --no-cache-dir
+CMAKE_ARGS="-DGGML_HIPBLAS=on" pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/rocm621 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 </details>
@@ -162,19 +163,19 @@ To install with Vulkan support, make sure you have [Vulkan SDK 1.3.261.1 or late
 For **Windows PowerShell**:
 
 ```bash
-$env:CMAKE_ARGS="-DGGML_VULKAN=on"; pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/vulkan --extra-index-url https://pypi.org/simple --no-cache-dir
+$env:CMAKE_ARGS="-DGGML_VULKAN=on"; pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/vulkan --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 For **Windows Command Prompt**:
 
 ```bash
-set CMAKE_ARGS="-DGGML_VULKAN=on" & pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/vulkan --extra-index-url https://pypi.org/simple --no-cache-dir
+set CMAKE_ARGS="-DGGML_VULKAN=on" & pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/vulkan --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 For **Windows Git Bash**:
 
 ```bash
-CMAKE_ARGS="-DGGML_VULKAN=on" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/vulkan --extra-index-url https://pypi.org/simple --no-cache-dir
+CMAKE_ARGS="-DGGML_VULKAN=on" pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/vulkan --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 </details>
@@ -205,16 +206,18 @@ pip install -e .
 
 Below is our differentiation from other similar tools:
 
-| **Feature**                | **[Nexa SDK](https://github.com/NexaAI/nexa-sdk)** | **[ollama](https://github.com/ollama/ollama)** | **[Optimum](https://github.com/huggingface/optimum)** | **[LM Studio](https://github.com/lmstudio-ai)** |
-| -------------------------- | :------------------------------------------------: | :--------------------------------------------: | :---------------------------------------------------: | :---------------------------------------------: |
-| **GGML Support**           |                         ✅                         |                       ✅                       |                          ❌                           |                       ✅                        |
-| **ONNX Support**           |                         ✅                         |                       ❌                       |                          ✅                           |                       ❌                        |
-| **Text Generation**        |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
-| **Image Generation**       |                         ✅                         |                       ❌                       |                          ❌                           |                       ❌                        |
-| **Vision-Language Models** |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
-| **Text-to-Speech**         |                         ✅                         |                       ❌                       |                          ✅                           |                       ❌                        |
-| **Server Capability**      |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
-| **User Interface**         |                         ✅                         |                       ❌                       |                          ❌                           |                       ✅                        |
+| **Feature**                 | **[Nexa SDK](https://github.com/NexaAI/nexa-sdk)** | **[ollama](https://github.com/ollama/ollama)** | **[Optimum](https://github.com/huggingface/optimum)** | **[LM Studio](https://github.com/lmstudio-ai)** |
+| --------------------------- | :------------------------------------------------: | :--------------------------------------------: | :---------------------------------------------------: | :---------------------------------------------: |
+| **GGML Support**            |                         ✅                         |                       ✅                       |                          ❌                           |                       ✅                        |
+| **ONNX Support**            |                         ✅                         |                       ❌                       |                          ✅                           |                       ❌                        |
+| **Text Generation**         |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
+| **Image Generation**        |                         ✅                         |                       ❌                       |                          ❌                           |                       ❌                        |
+| **Vision-Language Models**  |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
+| **Audio-Language Models**   |                         ✅                         |                       ❌                       |                          ❌                           |                       ❌                        |
+| **Text-to-Speech**          |                         ✅                         |                       ❌                       |                          ✅                           |                       ❌                        |
+| **Server Capability**       |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
+| **User Interface**          |                         ✅                         |                       ❌                       |                          ❌                           |                       ✅                        |
+| **Executable Installation** |                         ✅                         |                       ✅                       |                          ❌                           |                       ✅                        |
 
 ## Supported Models & Model Hub
 
@@ -223,11 +226,11 @@ Our on-device model hub offers all types of quantized models (text, image, audio
 Supported model examples (full list at [Model Hub](https://nexa.ai/models)):
 | Model | Type | Format | Command |
 | ------------------------------------------------------------------------------------------------------- | --------------- | --------- | -------------------------------------- |
-| [omniaudio](https://nexa.ai/NexaAI/Octo-omni-audio/gguf-q4_0/readme) | AudioLM | GGUF | `nexa run omniaudio` |
+| [omniaudio](https://nexa.ai/NexaAI/omniaudio/gguf-q4_0/readme) | AudioLM | GGUF | `nexa run omniaudio` |
 | [qwen2audio](https://www.nexaai.com/qnguyen3/nanoLLaVA/gguf-fp16/readme) | AudioLM | GGUF | `nexa run qwen2audio` |
 | [octopus-v2](https://www.nexaai.com/NexaAI/Octopus-v2/gguf-q4_0/readme) | Function Call | GGUF | `nexa run octopus-v2` |
 | [octo-net](https://www.nexaai.com/NexaAI/Octo-net/gguf-q4_0/readme) | Text | GGUF | `nexa run octo-net` |
-| [omnivision](https://nexa.ai/NexaAI/Octo-omni-vision/gguf-fp16/readme) | Multimodal | GGUF | `nexa run omnivision` |
+| [omnivision](https://nexa.ai/NexaAI/omnivision/gguf-fp16/readme) | Multimodal | GGUF | `nexa run omnivision` |
 | [nanollava](https://www.nexaai.com/qnguyen3/nanoLLaVA/gguf-fp16/readme) | Multimodal | GGUF | `nexa run nanollava` |
 | [llava-phi3](https://www.nexaai.com/xtuner/llava-phi-3-mini/gguf-q4_0/readme) | Multimodal | GGUF | `nexa run llava-phi3` |
 | [llava-llama3](https://www.nexaai.com/xtuner/llava-llama-3-8b-v1.1/gguf-q4_0/readme) | Multimodal | GGUF | `nexa run llava-llama3` |
@@ -255,25 +258,37 @@ Supported model examples (full list at [Model Hub](https://nexa.ai/models)):
 | [bark-small](https://nexa.ai/suno/bark-small/gguf-fp16/readme) | Text-to-Speech | GGUF | `nexa run bark-small:fp16` |
 
 ## Run Models from 🤗 HuggingFace or 🤖 ModelScope
+
 You can pull, convert (to .gguf), quantize and run [llama.cpp supported](https://github.com/ggerganov/llama.cpp#description) text generation models from HF or MS with Nexa SDK.
+
 ### Run .gguf File
+
 Use `nexa run -hf <hf-model-id>` or `nexa run -ms <ms-model-id>` to run models with provided .gguf files:
+
 ```bash
 nexa run -hf Qwen/Qwen2.5-Coder-7B-Instruct-GGUF
 ```
+
 ```bash
 nexa run -ms Qwen/Qwen2.5-Coder-7B-Instruct-GGUF
 ```
+
 > **Note:** You will be prompted to select a single .gguf file. If your desired quantization version has multiple split files (like fp16-00001-of-00004), please use Nexa's conversion tool (see below) to convert and quantize the model locally.
+
 ### Convert .safetensors Files
+
 Install [Nexa Python package](https://github.com/NexaAI/nexa-sdk?tab=readme-ov-file#install-option-2-python-package), and install Nexa conversion tool with `pip install "nexaai[convert]"`, then convert models from huggingface with `nexa convert <hf-model-id>`:
+
 ```bash
 nexa convert HuggingFaceTB/SmolLM2-135M-Instruct
 ```
+
 Or you can convert models from ModelScope with `nexa convert -ms <ms-model-id>`:
+
 ```bash
 nexa convert -ms Qwen/Qwen2.5-7B-Instruct
 ```
+
 > **Note:** Check our [leaderboard](https://nexa.ai/leaderboard) for performance benchmarks of different quantized versions of mainstream language models and [HuggingFace docs](https://huggingface.co/docs/optimum/en/concept_guides/quantization) to learn about quantization options.
 
 📋 You can view downloaded and converted models with `nexa list`
