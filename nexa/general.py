@@ -642,7 +642,7 @@ def list_models():
         filtered_list = {
             model_name: model_info 
             for model_name, model_info in model_list.items() 
-            if not model_name.split(':')[1].startswith('projector')  
+            if ':' not in model_name or not model_name.split(':')[1].startswith('projector')
         }
 
         table = [
