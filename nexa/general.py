@@ -338,7 +338,7 @@ def default_use_processes():
 def download_file_with_progress(
     url: str,
     file_path: Path,
-    chunk_size: int = 40 * 1024 * 1024,
+    chunk_size: int = 5 * 1024 * 1024,
     max_workers: int = 20,
     use_processes: bool = default_use_processes(),
     **kwargs
@@ -401,17 +401,18 @@ def download_file_with_progress(
                 total=file_size,
                 unit='B',
                 unit_scale=True,
-                desc="Combining chunks",
+                desc="Verifying download",
                 unit_divisor=1024
             )
+            
+            buffer_size = 1 * 1024 * 1024  # 1MB buffer
             
             with open(file_path, "wb") as final_file:
                 for i in range(len(chunks)):
                     chunk_file = temp_dir / f"{file_path.name}.part{i}"
                     with open(chunk_file, "rb") as part_file:
-                        chunk_data = part_file.read()
-                        final_file.write(chunk_data)
-                        combine_progress.update(len(chunk_data))
+                        shutil.copyfileobj(part_file, final_file, buffer_size)
+                        combine_progress.update(os.path.getsize(chunk_file))
             
             combine_progress.close()
         else:
