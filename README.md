@@ -50,8 +50,6 @@ Welcome to submit your requests through [issues](https://github.com/NexaAI/nexa-
 curl -fsSL https://public-storage.nexa4ai.com/install.sh | sh
 ```
 
-Currently, executable installer does not support local UI. For local UI, please install using python package below.
-
 <details>
 <summary><strong>FAQ: cannot use executable with nexaai python package already installed</strong></summary>
 
