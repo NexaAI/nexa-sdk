@@ -227,7 +227,7 @@ Supported model examples (full list at [Model Hub](https://nexa.ai/models)):
 | Model | Type | Format | Command |
 | ------------------------------------------------------------------------------------------------------- | --------------- | --------- | -------------------------------------- |
 | [omniaudio](https://nexa.ai/NexaAI/omniaudio/gguf-q4_0/readme) | AudioLM | GGUF | `nexa run omniaudio` |
-| [qwen2audio](https://www.nexaai.com/qnguyen3/nanoLLaVA/gguf-fp16/readme) | AudioLM | GGUF | `nexa run qwen2audio` |
+| [qwen2audio](https://nexa.ai/Qwen/Qwen2-Audio-7.8B-Instruct/gguf-q4_K_M/readme) | AudioLM | GGUF | `nexa run qwen2audio` |
 | [octopus-v2](https://www.nexaai.com/NexaAI/Octopus-v2/gguf-q4_0/readme) | Function Call | GGUF | `nexa run octopus-v2` |
 | [octo-net](https://www.nexaai.com/NexaAI/Octo-net/gguf-q4_0/readme) | Text | GGUF | `nexa run octo-net` |
 | [omnivision](https://nexa.ai/NexaAI/omnivision/gguf-fp16/readme) | Multimodal | GGUF | `nexa run omnivision` |
