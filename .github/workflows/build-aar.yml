@@ -11,6 +11,7 @@ jobs:
   build:
     name: Build AAR
     runs-on: ubuntu-latest
+    if: github.event_name == 'push'
 
     steps:
     - name: Checkout code
