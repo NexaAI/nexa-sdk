@@ -17,24 +17,24 @@ FetchContent_MakeAvailable(json)
 # Declare llama.cpp repository
 FetchContent_Declare(
         llama
-        GIT_REPOSITORY https://github.com/NexaAI/ggml-project-apollo.git
-        GIT_TAG main
-        SOURCE_SUBDIR llama.cpp_74d73dc
+        GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
+        GIT_TAG master
+        # SOURCE_SUBDIR llama.cpp_74d73dc
 )
 
 # Declare llama.cpp repository
 FetchContent_Declare(
         llava
-        GIT_REPOSITORY https://github.com/NexaAI/ggml-project-apollo.git
-        GIT_TAG main
-        SOURCE_SUBDIR llama.cpp_74d73dc/examples/llava
+        GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
+        GIT_TAG master
+        SOURCE_SUBDIR examples/llava
 )
 
 FetchContent_Declare(
         omni_vlm
-        GIT_REPOSITORY https://github.com/NexaAI/ggml-project-apollo.git
-        GIT_TAG main
-        SOURCE_SUBDIR llama.cpp_74d73dc/examples/omni-vlm
+        GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
+        GIT_TAG master
+        SOURCE_SUBDIR examples/omni-vlm
 )
 
 # Make the content available
