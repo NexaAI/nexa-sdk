@@ -17,28 +17,34 @@ FetchContent_MakeAvailable(json)
 # Declare llama.cpp repository
 FetchContent_Declare(
         llama
-#        GIT_REPOSITORY https://github.com/ggerganov/llama.cpp
-        GIT_REPOSITORY https://github.com/NexaAI/llama.cpp
+        GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
         GIT_TAG master
+        # SOURCE_SUBDIR llama.cpp_74d73dc
 )
 
-# Declare llava repository (if needed)
+# Declare llama.cpp repository
 FetchContent_Declare(
         llava
-#        GIT_REPOSITORY https://github.com/ggerganov/llama.cpp
-        GIT_REPOSITORY https://github.com/NexaAI/llama.cpp
+        GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
         GIT_TAG master
         SOURCE_SUBDIR examples/llava
 )
 
+FetchContent_Declare(
+        omni_vlm
+        GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
+        GIT_TAG master
+        SOURCE_SUBDIR examples/omni-vlm
+)
+
 # Make the content available
-FetchContent_MakeAvailable(llama llava)
+FetchContent_MakeAvailable(llama llava omni_vlm)
 
 # Create the main library
 add_library(${CMAKE_PROJECT_NAME} SHARED
         llama-android.cpp
-        llava-android.cpp
         common.cpp
+        llava-android.cpp
 )
 
 
@@ -51,3 +57,22 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         log
         llava
 )
+
+
+add_library(omni-android SHARED
+        llama-android.cpp
+        common.cpp
+        omni-android.cpp
+)
+
+
+# Link the required libraries
+target_link_libraries(omni-android
+        nlohmann_json
+        llama
+        common
+        android
+        log
+        omni_vlm
+)
+

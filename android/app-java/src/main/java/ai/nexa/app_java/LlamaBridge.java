@@ -1,7 +1,7 @@
 package ai.nexa.app_java;
 
 import android.content.Context;
-import com.nexa.NexaVlmInference;
+import com.nexa.NexaOmniVlmInference;
 import android.util.Log;
 
 import java.io.IOException;
@@ -29,7 +29,7 @@ public class LlamaBridge {
     private final MessageHandler messageHandler;
     private final VlmModelManager modelManager;
     private final ImagePathHelper imagePathHelper;
-    private NexaVlmInference nexaVlmInference;
+    private NexaOmniVlmInference nexaVlmInference;
     private boolean isModelLoaded = false;
 
     private final KotlinFlowHelper flowHelper = new KotlinFlowHelper();
@@ -73,7 +73,7 @@ public class LlamaBridge {
                 Log.d(TAG, "Loading projector from: " + projectorPath);
 
                 // Create with default values for optional parameters
-                nexaVlmInference = new NexaVlmInference(
+                nexaVlmInference = new NexaOmniVlmInference(
                         modelPath,            // modelPath
                         projectorPath,        // projectorPath
                         "",                   // imagePath (empty string as default)
