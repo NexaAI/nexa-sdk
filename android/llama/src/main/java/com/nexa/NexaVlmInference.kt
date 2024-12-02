@@ -142,28 +142,36 @@ class NexaVlmInference(
         resetGeneration()
         updateParams(stopWords, temperature, maxNewTokens, topK, topP)
 
-        val imagePathToUse = imagePath ?: this@NexaVlmInference.imagePath
-        llavaCtxPointer = llava_init_context(paramsPointer, modelPointer)
-        embedImagePointer = load_image(llavaCtxPointer, paramsPointer, imagePathToUse)
-        nPastPointer = llava_eval(llavaCtxPointer, paramsPointer, embedImagePointer, prompt)
-        samplerPointer = llava_sampler_init(llavaCtxPointer, paramsPointer)
-        cachedTokenPointer = cached_token_init()
+//        val thread = Thread {
 
-        try {
-            while (true) {
-                val sampledText = llava_sample(llavaCtxPointer, samplerPointer, nPastPointer, cachedTokenPointer)
-                generatedTokenNum += 1
-                generatedText += sampledText
-                if(shouldStop()){
-                    break
+            val imagePathToUse = imagePath ?: this@NexaVlmInference.imagePath
+            llavaCtxPointer = llava_init_context(paramsPointer, modelPointer)
+            embedImagePointer = load_image(llavaCtxPointer, paramsPointer, imagePathToUse)
+            nPastPointer = llava_eval(llavaCtxPointer, paramsPointer, embedImagePointer, prompt)
+            samplerPointer = llava_sampler_init(llavaCtxPointer, paramsPointer)
+            cachedTokenPointer = cached_token_init()
+
+            try {
+                while (true) {
+                    val sampledText = llava_sample(llavaCtxPointer, samplerPointer, nPastPointer, cachedTokenPointer)
+                    generatedTokenNum += 1
+                    generatedText += sampledText
+                    if(shouldStop()){
+                        break
+                    }
+                    emit(sampledText)
+                    print(sampledText)
                 }
-                emit(sampledText)
+            } finally {
+                // Clean up resources and reset generation state
+                cleanupResources()
+                resetGeneration()
             }
-        } finally {
-            // Clean up resources and reset generation state
-            cleanupResources()
-            resetGeneration()
-        }
+
+            println("This is a new thread!")
+            // Your thread logic here
+//        }
+//        thread.start()
     }.flowOn(Dispatchers.IO)
 
     private fun cleanupResources() {

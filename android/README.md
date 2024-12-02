@@ -52,3 +52,8 @@ Open the [android test project](./app-java) folder in Android Studio and run the
 ## Download Models
 
 You can download models from the [Nexa AI ModelHub](https://nexa.ai/models).
+
+## How to estimate power usage
+
+- ```adb shell dumpsys batterystats --reset```
+- ```adb shell dumpsys batterystats > batterystats.txt```

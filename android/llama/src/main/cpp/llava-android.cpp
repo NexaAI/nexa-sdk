@@ -5,9 +5,13 @@
 #include <string>
 #include <unistd.h>
 #include "llama.h"
-#include "common.h"
+//#include "common.h"
 #include "llava-cli.cpp"
 #include <nlohmann/json.hpp>
+#include <jni.h>
+#include <string>
+#include <iostream>
+#include <thread>
 
 #define TAG "llava-android.cpp"
 #define LOGi(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
@@ -15,22 +19,45 @@
 
 extern bool is_valid_utf8(const char* str);
 
-std::string jstring2str(JNIEnv* env, jstring jstr) {
-    if (!jstr) {
-        return "";
+extern std::string jstring2str(JNIEnv* env, jstring jstr);
+
+
+// 用于捕获输出的函数
+void redirect_output_to_logcat(const char* tag, int fd) {
+    char buffer[1024];
+    while (true) {
+        ssize_t count = read(fd, buffer, sizeof(buffer) - 1);
+        if (count <= 0) break;
+        buffer[count] = '\0';
+        __android_log_print(ANDROID_LOG_DEBUG, tag, "%s", buffer);
     }
-    const char* str = env->GetStringUTFChars(jstr, nullptr);
-    if (!str) {
-        return "";
-    }
-    std::string ret(str);
-    env->ReleaseStringUTFChars(jstr, str);
-    return ret;
 }
 
-#include <jni.h>
-#include <string>
-#include <iostream>
+// 初始化重定向
+void setup_redirect_stdout_stderr() {
+    int stdout_pipe[2];
+    int stderr_pipe[2];
+
+    pipe(stdout_pipe);
+    pipe(stderr_pipe);
+
+    // 重定向 stdout
+    dup2(stdout_pipe[1], STDOUT_FILENO);
+    close(stdout_pipe[1]);
+    std::thread(redirect_output_to_logcat, "STDOUT", stdout_pipe[0]).detach();
+
+    // 重定向 stderr
+    dup2(stderr_pipe[1], STDERR_FILENO);
+    close(stderr_pipe[1]);
+    std::thread(redirect_output_to_logcat, "STDERR", stderr_pipe[0]).detach();
+}
+
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
+    setup_redirect_stdout_stderr();
+    return JNI_VERSION_1_6;
+}
+
+
 
 // Helper function to throw a Java exception from JNI
 void throwJavaException(JNIEnv* env, const char* className, const std::string& message) {
@@ -65,10 +92,10 @@ Java_com_nexa_NexaVlmInference_init_1params(JNIEnv *env, jobject /* this */, jst
         const char* model_chars = env->GetStringUTFChars(jmodel, nullptr);
         const char* mmproj_chars = env->GetStringUTFChars(jmmproj, nullptr);
 
-        const char* argv = "omni-wrapper-py";
+        const char* argv = "-t 1";
         char* nc_argv = const_cast<char*>(argv);
-        gpt_params* params = new gpt_params();
-        gpt_params_parse(1, &nc_argv, *params);
+        common_params* params = new common_params();
+        common_params_parse(0, &nc_argv, *params, LLAMA_EXAMPLE_LLAVA, print_usage);
 
         params->model = std::string(model_chars);
         params->mmproj = std::string(mmproj_chars);
@@ -94,7 +121,7 @@ Java_com_nexa_NexaVlmInference_init_1params(JNIEnv *env, jobject /* this */, jst
 extern "C" JNIEXPORT jlong JNICALL
 Java_com_nexa_NexaVlmInference_load_1model(JNIEnv *env, jobject /* this */, jlong jparams) {
     try {
-        const auto params = reinterpret_cast<gpt_params*>(jparams);
+        const auto params = reinterpret_cast<common_params*>(jparams);
 
         auto* model = llava_init(params);
         if (model == nullptr) {
@@ -122,10 +149,12 @@ Java_com_nexa_NexaVlmInference_update_1params(JNIEnv *env, jobject /* this */, j
     int32_t top_k = (int32_t) jtopK;
     float top_p = (float) jtopP;
     float temp = (float) jtemp;
-    const auto params = reinterpret_cast<gpt_params*>(jparams);
+    const auto params = reinterpret_cast<common_params*>(jparams);
     params->sparams.top_k = top_k;
     params->sparams.top_p = top_p;
     params->sparams.temp = temp;
+
+
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -139,7 +168,7 @@ Java_com_nexa_NexaVlmInference_free_1model(JNIEnv *env, jobject /* this */, jlon
 extern "C" JNIEXPORT jlong JNICALL
 Java_com_nexa_NexaVlmInference_llava_1init_1context(JNIEnv *env, jobject /* this */, jlong jparams, jlong jmodel) {
     try {
-        const auto params = reinterpret_cast<gpt_params*>(jparams);
+        const auto params = reinterpret_cast<common_params*>(jparams);
 
         const auto llava_model = reinterpret_cast<llama_model*>(jmodel);
         auto* ctx_llava = llava_init_context(params, llava_model);
@@ -217,7 +246,7 @@ Java_com_nexa_NexaVlmInference_llava_1image_1embed_1free(JNIEnv *env, jobject /*
 extern "C" JNIEXPORT jlong JNICALL
 Java_com_nexa_NexaVlmInference_load_1image(JNIEnv *env, jobject /* this */, jlong llava_ctx_pointer, jlong jparams, jstring imagePath) {
     try {
-        auto* params = reinterpret_cast<gpt_params*>(jparams);
+        auto* params = reinterpret_cast<common_params*>(jparams);
         auto* ctx_llava = reinterpret_cast<llava_context *>(llava_ctx_pointer);
 
         std::string image_str = jstring2str(env, imagePath);
@@ -245,7 +274,7 @@ extern "C" JNIEXPORT jlong JNICALL
 Java_com_nexa_NexaVlmInference_llava_1eval(JNIEnv *env, jobject /* this */, jlong llava_ctx_pointer, jlong jparams,  jlong llava_image_embed_pointer, jstring jprompt) {
 
     try {
-        auto* params = reinterpret_cast<gpt_params*>(jparams);
+        auto* params = reinterpret_cast<common_params*>(jparams);
         auto* image_embed = reinterpret_cast<llava_image_embed *>(llava_image_embed_pointer);
         auto* ctx_llava = reinterpret_cast<llava_context *>(llava_ctx_pointer);
 
@@ -282,9 +311,9 @@ extern "C" JNIEXPORT jlong JNICALL
 Java_com_nexa_NexaVlmInference_llava_1sampler_1init(JNIEnv *env, jobject /* this */, jlong llava_ctx_pointer, jlong jparams) {
 
     try {
-        auto* params = reinterpret_cast<gpt_params*>(jparams);
+        auto* params = reinterpret_cast<common_params*>(jparams);
         auto* ctx_llava = reinterpret_cast<llava_context *>(llava_ctx_pointer);
-        struct llama_sampling_context * smpl = llama_sampling_init(params->sparams);
+        struct common_sampler * smpl = common_sampler_init(ctx_llava->model,params->sparams);
 
         if (smpl == nullptr) {
             throwJavaException(env, "java/lang/RuntimeException", "Failed to initialize llava ctx");
@@ -308,7 +337,7 @@ Java_com_nexa_NexaVlmInference_llava_1sampler_1init(JNIEnv *env, jobject /* this
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_nexa_NexaVlmInference_llava_1sample(JNIEnv *env, jobject /* this */, jlong llava_ctx_pointer, jlong sampler, jlong jnpast, jlong jcached_tokens) {
-    auto* smpl = reinterpret_cast<llama_sampling_context*>(sampler);
+    auto* smpl = reinterpret_cast<common_sampler*>(sampler);
     auto* ctx_llava = reinterpret_cast<llava_context*>(llava_ctx_pointer);
     auto* cached_tokens = reinterpret_cast<std::string*>(jcached_tokens);
     auto* n_past = reinterpret_cast<int*>(jnpast);
@@ -327,8 +356,8 @@ Java_com_nexa_NexaVlmInference_llava_1sample(JNIEnv *env, jobject /* this */, jl
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_nexa_NexaVlmInference_llava_1sample_1free(JNIEnv *env, jobject /* this */, jlong sampler) {
-    auto* smpl = reinterpret_cast<llama_sampling_context*>(sampler);
-    llama_sampling_free(smpl);
+    auto* smpl = reinterpret_cast<common_sampler*>(sampler);
+    common_sampler_free(smpl);
 }
 
 
