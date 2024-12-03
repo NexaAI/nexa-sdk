@@ -1,54 +1,71 @@
-# Sets the minimum CMake version required for this project.
+# 设置 CMake 最小版本和构建类型
 cmake_minimum_required(VERSION 3.22.1)
-set(CMAKE_BUILD_TYPE  Release)
-# Declares the project name
+set(CMAKE_BUILD_TYPE Release)
+
 project("llama-android")
 
-# Enable FetchContent module
 include(FetchContent)
+
+set(SOURCE_BASE_DIR /Users/liute/Desktop/nexa-repo/llama.cpp)
 
 FetchContent_Declare(
         json
         GIT_REPOSITORY https://github.com/nlohmann/json
-        GIT_TAG        v3.11.3
+        GIT_TAG v3.11.3
 )
-FetchContent_MakeAvailable(json)
 
-# Declare llama.cpp repository
+##### from local #####
 FetchContent_Declare(
         llama
-        GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
-        GIT_TAG master
-        # SOURCE_SUBDIR llama.cpp_74d73dc
+        SOURCE_DIR ${SOURCE_BASE_DIR}
 )
-
-# Declare llama.cpp repository
 FetchContent_Declare(
         llava
-        GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
-        GIT_TAG master
-        SOURCE_SUBDIR examples/llava
+        SOURCE_DIR ${SOURCE_BASE_DIR}/examples/llava
 )
-
 FetchContent_Declare(
         omni_vlm
-        GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
-        GIT_TAG master
-        SOURCE_SUBDIR examples/omni-vlm
+        SOURCE_DIR ${SOURCE_BASE_DIR}/examples/omni-vlm
+)
+FetchContent_Declare(
+        omni_audio
+        SOURCE_DIR ${SOURCE_BASE_DIR}/examples/nexa-omni-audio
 )
 
-# Make the content available
-FetchContent_MakeAvailable(llama llava omni_vlm)
+##### from remote #####
+#
+#FetchContent_Declare(
+#        llama
+#        GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
+#        GIT_TAG master
+#)
+#
+#FetchContent_Declare(
+#        llava
+#        GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
+#        GIT_TAG master
+#        SOURCE_SUBDIR examples/llava
+#)
+#FetchContent_Declare(
+#        omni_vlm
+#        GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
+#        GIT_TAG master
+#        SOURCE_SUBDIR examples/omni-vlm
+#)
+#FetchContent_Declare(
+#        omni_audio
+#        GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
+#        GIT_TAG T/dev
+#        SOURCE_SUBDIR examples/nexa-omni-audio
+#)
 
-# Create the main library
+FetchContent_MakeAvailable(json llama llava omni_vlm omni_audio)
+
 add_library(${CMAKE_PROJECT_NAME} SHARED
         llama-android.cpp
         common.cpp
         llava-android.cpp
 )
-
-
-# Link the required libraries
 target_link_libraries(${CMAKE_PROJECT_NAME}
         nlohmann_json
         llama
@@ -59,14 +76,11 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 )
 
 
+##### vision  #####
 add_library(omni-android SHARED
-        llama-android.cpp
         common.cpp
         omni-android.cpp
 )
-
-
-# Link the required libraries
 target_link_libraries(omni-android
         nlohmann_json
         llama
@@ -74,5 +88,20 @@ target_link_libraries(omni-android
         android
         log
         omni_vlm
+)
+
+
+##### audio  #####
+add_library(audio-android SHARED
+        audio-android.cpp
+        common.cpp
+)
+target_link_libraries(audio-android
+        nlohmann_json
+        llama
+        common
+        omni_audio
+        android
+        log
 )
 
