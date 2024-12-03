@@ -10,11 +10,14 @@ import java.io.IOException;
 public class VlmModelManager {
     private static final String TAG = "LlamaBridge";
     private static final String MODELS_DIR = "models";
-//    private static final String MODEL_TEXT_FILENAME = "nanollava-text-model-q4_0.gguf";
-//    private static final String MODEL_MMPROJ_FILENAME = "nanollava-mmproj-f16.gguf";
 
+    // For nanollava
+//    private static final String MODEL_TEXT_FILENAME = "nanollava-model-q8_0.gguf";
+//    private static final String MODEL_MMPROJ_FILENAME = "nanollava-projector-fp16.gguf";
+//
+    // For  Omnivision
     private static final String MODEL_TEXT_FILENAME = "model-q8_0.gguf";
-    private static final String MODEL_MMPROJ_FILENAME = "projector-q8_0.gguf";
+    private static final String MODEL_MMPROJ_FILENAME = "projector-fp16.gguf";
 
 //    private static final String MODEL_TEXT_FILENAME = "nano-vlm-instruct-llm-F16.gguf";
 //    private static final String MODEL_MMPROJ_FILENAME = "nano-vlm-instruct-mmproj-F16.gguf";
