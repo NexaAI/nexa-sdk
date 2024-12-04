@@ -23,7 +23,7 @@ class NexaOmniVlmInference(
     private var generatedTokenNum: Int = 0
     private var generatedText: String = ""
     private var isModelLoaded: Boolean = false
-    private var type:String = "vlm-81-ocr"
+    private var type:String = "vlm-81-instruct"
 
     private external fun init(model: String, proj: String, type: String)
     private external fun sampler_free(sampler:Long)
