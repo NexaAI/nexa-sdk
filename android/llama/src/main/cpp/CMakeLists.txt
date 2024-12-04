@@ -18,7 +18,7 @@ FetchContent_MakeAvailable(json)
 FetchContent_Declare(
         llama
         GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
-        GIT_TAG master
+        GIT_TAG release
         # SOURCE_SUBDIR llama.cpp_74d73dc
 )
 
@@ -26,14 +26,14 @@ FetchContent_Declare(
 FetchContent_Declare(
         llava
         GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
-        GIT_TAG master
+        GIT_TAG release
         SOURCE_SUBDIR examples/llava
 )
 
 FetchContent_Declare(
         omni_vlm
         GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
-        GIT_TAG master
+        GIT_TAG release
         SOURCE_SUBDIR examples/omni-vlm
 )
 
