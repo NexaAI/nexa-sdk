@@ -54,3 +54,24 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
     setup_redirect_stdout_stderr();
     return JNI_VERSION_1_6;
 }
+
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_nexa_NexaAudioInference_init_1params(JNIEnv *env, jobject /* this */) {
+    const char* argv = "-t 1";
+    char* nc_argv = const_cast<char*>(argv);
+    omni_context_params* ctx_params = new omni_context_params();
+    omni_context_params_parse(argc, argv, ctx_params)
+
+    return reinterpret_cast<jlong>(ctx_params);
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_nexa_NexaAudioInference_init_1params(JNIEnv *env, jobject /* this */) {
+    const char* argv = "-t 1";
+    char* nc_argv = const_cast<char*>(argv);
+    omni_context_params* ctx_params = new omni_context_params();
+    omni_context_params_parse(argc, argv, ctx_params)
+
+    return reinterpret_cast<jlong>(ctx_params);
+}
