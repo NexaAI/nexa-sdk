@@ -1,4 +1,3 @@
-# 设置 CMake 最小版本和构建类型
 cmake_minimum_required(VERSION 3.22.1)
 set(CMAKE_BUILD_TYPE Release)
 
@@ -6,14 +5,13 @@ project("llama-android")
 
 include(FetchContent)
 
-set(SOURCE_BASE_DIR /Users/liute/Desktop/nexa-repo/llama.cpp)
-
 FetchContent_Declare(
         json
         GIT_REPOSITORY https://github.com/nlohmann/json
         GIT_TAG v3.11.3
 )
 
+set(SOURCE_BASE_DIR ~/Desktop/nexa-repo/llama.cpp)
 ##### from local #####
 FetchContent_Declare(
         llama
