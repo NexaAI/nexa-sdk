@@ -11,51 +11,51 @@ FetchContent_Declare(
         GIT_TAG v3.11.3
 )
 
-set(SOURCE_BASE_DIR ~/Desktop/nexa-repo/llama.cpp)
+# set(SOURCE_BASE_DIR /nexa-ai/llama.cpp)
 ##### from local #####
-FetchContent_Declare(
-        llama
-        SOURCE_DIR ${SOURCE_BASE_DIR}
-)
-FetchContent_Declare(
-        llava
-        SOURCE_DIR ${SOURCE_BASE_DIR}/examples/llava
-)
-FetchContent_Declare(
-        omni_vlm
-        SOURCE_DIR ${SOURCE_BASE_DIR}/examples/omni-vlm
-)
-FetchContent_Declare(
-        omni_audio
-        SOURCE_DIR ${SOURCE_BASE_DIR}/examples/nexa-omni-audio
-)
+# FetchContent_Declare(
+#         llama
+#         SOURCE_DIR ${SOURCE_BASE_DIR}
+# )
+# FetchContent_Declare(
+#         llava
+#         SOURCE_DIR ${SOURCE_BASE_DIR}/examples/llava
+# )
+# FetchContent_Declare(
+#         omni_vlm
+#         SOURCE_DIR ${SOURCE_BASE_DIR}/examples/omni-vlm
+# )
+# FetchContent_Declare(
+#         omni_audio
+#         SOURCE_DIR ${SOURCE_BASE_DIR}/examples/nexa-omni-audio
+# )
 
 ##### from remote #####
-#
-#FetchContent_Declare(
-#        llama
-#        GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
-#        GIT_TAG master
-#)
-#
-#FetchContent_Declare(
-#        llava
-#        GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
-#        GIT_TAG master
-#        SOURCE_SUBDIR examples/llava
-#)
-#FetchContent_Declare(
-#        omni_vlm
-#        GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
-#        GIT_TAG master
-#        SOURCE_SUBDIR examples/omni-vlm
-#)
-#FetchContent_Declare(
-#        omni_audio
-#        GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
-#        GIT_TAG T/dev
-#        SOURCE_SUBDIR examples/nexa-omni-audio
-#)
+
+FetchContent_Declare(
+       llama
+       GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
+       GIT_TAG master
+)
+
+FetchContent_Declare(
+       llava
+       GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
+       GIT_TAG master
+       SOURCE_SUBDIR examples/llava
+)
+FetchContent_Declare(
+       omni_vlm
+       GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
+       GIT_TAG master
+       SOURCE_SUBDIR examples/omni-vlm
+)
+FetchContent_Declare(
+       omni_audio
+       GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
+       GIT_TAG T/dev
+       SOURCE_SUBDIR examples/nexa-omni-audio
+)
 
 FetchContent_MakeAvailable(json llama llava omni_vlm omni_audio)
 
