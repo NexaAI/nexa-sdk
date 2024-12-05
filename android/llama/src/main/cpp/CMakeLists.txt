@@ -37,7 +37,6 @@ FetchContent_Declare(
        GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
        GIT_TAG master
 )
-
 FetchContent_Declare(
        llava
        GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git

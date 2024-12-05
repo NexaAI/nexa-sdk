@@ -14,7 +14,7 @@ public class VlmModelManager {
     // For nanollava
 //    private static final String MODEL_TEXT_FILENAME = "nanollava-model-q8_0.gguf";
 //    private static final String MODEL_MMPROJ_FILENAME = "nanollava-projector-fp16.gguf";
-//
+
     // For  Omnivision
     private static final String MODEL_TEXT_FILENAME = "model-q8_0.gguf";
     private static final String MODEL_MMPROJ_FILENAME = "projector-fp16.gguf";
