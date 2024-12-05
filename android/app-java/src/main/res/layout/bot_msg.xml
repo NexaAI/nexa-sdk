@@ -15,7 +15,7 @@
         android:layout_height="wrap_content"
         android:minHeight="35dp"
         android:background="@color/black"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:padding="5dp">
 
         <TextView
@@ -29,6 +29,15 @@
             android:text="Bot message"
             android:textSize="16sp"
             android:textColor="@color/white" />
+
+        <TextView
+            android:id="@+id/idTVMetrics"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="5dp"
+            android:layout_marginTop="4dp"
+            android:textSize="12sp"
+            android:textColor="#808080" />
 
     </LinearLayout>
 
