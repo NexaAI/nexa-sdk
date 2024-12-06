@@ -18,6 +18,7 @@ from nexa.constants import (
     NEXA_MODELS_HUB_DIR,
     NEXA_MODELS_HUB_OFFICIAL_DIR,
     NEXA_MODELS_HUB_HF_DIR,
+    NEXA_MODELS_HUB_MS_DIR,
     NEXA_OFFICIAL_BUCKET,
     NEXA_RUN_MODEL_MAP,
     NEXA_TOKEN_PATH,
@@ -107,12 +108,14 @@ def get_user_info(token):
         return None
 
 
-def pull_model(model_path, hf = False, **kwargs):
+def pull_model(model_path, hf = False, ms = False, **kwargs):
     model_path = NEXA_RUN_MODEL_MAP.get(model_path, model_path)
 
     try:
         if hf == True:
             result = pull_model_from_hf(model_path, **kwargs)
+        elif ms == True:
+            result = pull_model_from_ms(model_path, **kwargs)
         else: 
             if is_model_exists(model_path):
                 location, run_type = get_model_info(model_path)
@@ -126,10 +129,11 @@ def pull_model(model_path, hf = False, **kwargs):
 
         if result["success"]:
             # Only add to model list if not using custom download path
+            model_path = model_path if not (hf or ms) else f"{model_path}:{result['local_path'].split('/')[-1]}"
             if not kwargs.get('local_download_path'):
                 add_model_to_list(model_path, result["local_path"], result["model_type"], result["run_type"])
             
-            if hf:
+            if hf or ms:
                 print(f"Successfully pulled model {model_path} to {result['local_path']}")
             else:
                 print(f"Successfully pulled model {model_path} to {result['local_path']}, run_type: {result['run_type']}")
@@ -230,8 +234,8 @@ def pull_model_from_official(model_path, **kwargs):
         "run_type": run_type_str
     }
 
-def pull_model_from_hf(repo_id, **kwargs):
-    repo_id, filename = select_gguf_in_hf_repo(repo_id)
+def pull_model_from_hf(repo_id, run_type = "NLP", **kwargs):
+    repo_id, filename = select_gguf_from_repo(repo_id, 'huggingface')
     success, model_path = download_gguf_from_hf(repo_id, filename, **kwargs)
 
     # For beta version, we only support NLP gguf models
@@ -239,7 +243,20 @@ def pull_model_from_hf(repo_id, **kwargs):
         "success": success,
         "local_path": model_path,
         "model_type": "gguf",
-        "run_type": "NLP" # Just for compatibility, hf model type will be passed from outsice
+        "run_type": run_type
+    }
+
+
+def pull_model_from_ms(repo_id, run_type = "NLP", **kwargs):
+    repo_id, filename = select_gguf_from_repo(repo_id, 'modelscope')
+    success, model_path = download_gguf_from_ms(repo_id, filename, **kwargs)
+
+    # For beta version, we only support NLP gguf models
+    return {
+        "success": success,
+        "local_path": model_path,
+        "model_type": "gguf",
+        "run_type": run_type
     }
 
 
@@ -321,7 +338,7 @@ def default_use_processes():
 def download_file_with_progress(
     url: str,
     file_path: Path,
-    chunk_size: int = 40 * 1024 * 1024,
+    chunk_size: int = 5 * 1024 * 1024,
     max_workers: int = 20,
     use_processes: bool = default_use_processes(),
     **kwargs
@@ -379,12 +396,25 @@ def download_file_with_progress(
         progress_bar.close()
 
         if all(completed_chunks):
+            # Create a new progress bar for combining chunks
+            combine_progress = tqdm(
+                total=file_size,
+                unit='B',
+                unit_scale=True,
+                desc="Verifying download",
+                unit_divisor=1024
+            )
+            
+            buffer_size = 1 * 1024 * 1024  # 1MB buffer
+            
             with open(file_path, "wb") as final_file:
                 for i in range(len(chunks)):
                     chunk_file = temp_dir / f"{file_path.name}.part{i}"
                     with open(chunk_file, "rb") as part_file:
-                        final_file.write(part_file.read())
-
+                        shutil.copyfileobj(part_file, final_file, buffer_size)
+                        combine_progress.update(os.path.getsize(chunk_file))
+            
+            combine_progress.close()
         else:
             raise Exception("Some chunks failed to download")
 
@@ -468,6 +498,32 @@ def download_repo_from_hf(repo_id):
         print(f"Failed to download the repository: {e}")
         return False, None
 
+def download_repo_from_ms(repo_id):
+    try:
+        from modelscope import snapshot_download
+        from pathlib import Path
+    except ImportError:
+        print("The modelscope package is required. Please install it with `pip install modelscope`.")
+        return False, None
+    
+    # Define the local directory to save the model
+    local_dir = NEXA_MODELS_HUB_MS_DIR / Path(repo_id)
+    local_dir.mkdir(parents=True, exist_ok=True)
+    
+    try:
+        # Download the entire repository
+        repo_path = snapshot_download(
+            model_id=repo_id,
+            local_dir=local_dir,
+            revision="master"
+        )
+
+        print(f"Successfully downloaded repository '{repo_id}' to {repo_path}")
+        return True, repo_path
+    except Exception as e:
+        print(f"Failed to download the repository: {e}")
+        return False, None
+
 def download_gguf_from_hf(repo_id, filename, **kwargs):
     try:
         from huggingface_hub import hf_hub_download
@@ -507,12 +563,60 @@ def download_gguf_from_hf(repo_id, filename, **kwargs):
         print(f"Failed to download the model: {e}")
         return False, None
 
+def download_gguf_from_ms(repo_id, filename, **kwargs):
+    from pathlib import Path
+    import shutil
+    try:
+        from modelscope.hub.file_download import model_file_download
+    except ImportError:
+        print("The modelscope package is required. Please install it with `pip install modelscope`.")
+        return None
+
+    # Get custom download path from kwargs if present
+    local_download_path = kwargs.get('local_download_path')
+    base_download_dir = Path(local_download_path) if local_download_path else NEXA_MODELS_HUB_MS_DIR
+    local_dir = base_download_dir / Path(repo_id)
+    local_dir.mkdir(parents=True, exist_ok=True)
+
+    # Download the model
+    try:
+        model_path = model_file_download(
+            model_id=repo_id,
+            file_path=filename,
+            local_dir=local_dir,
+            local_files_only=False,
+        )
+        # If using custom download path, move the file and cleanup
+        if local_download_path:
+            model_file = Path(model_path)
+            target_path = base_download_dir / filename
+            shutil.move(str(model_file), str(target_path))
+            # Get the organization directory (first part of repo_id)
+            org_dir = base_download_dir / repo_id.split('/')[0]
+            shutil.rmtree(org_dir)
+            return True, str(target_path)
+
+        return True, model_path
+    except Exception as e:
+        print(f"Failed to download the model: {e}")
+        return False, None
+
 def is_model_exists(model_name):
     if not NEXA_MODEL_LIST_PATH.exists():
         return False
 
     with open(NEXA_MODEL_LIST_PATH, "r") as f:
         model_list = json.load(f)
+        
+    # For AudioLM and Multimodal models, should check the file location instead of model name
+    if ":" in model_name:
+        model_path_with_slash = model_name.replace(":", "/")
+        model_path_with_backslash = model_name.replace(":", "\\")
+        
+        # Check if model_prefix/model_suffix or model_prefix\model_suffix exists in any location path
+        for model_key, model_info in model_list.items():
+            if model_path_with_slash in model_info["location"] or model_path_with_backslash in model_info["location"]:
+                return model_key
 
     return model_name in model_list
 
@@ -525,6 +629,13 @@ def add_model_to_list(model_name, model_location, model_type, run_type):
             model_list = json.load(f)
     else:
         model_list = {}
+    
+    # For AudioLM and Multimodal models, should remove the "model-" prefix from the tag name
+    if run_type == "AudioLM" or run_type == "Multimodal":
+        tag_name = model_name.split(":")[1]
+        if tag_name.startswith("model-"):
+            tag_name = tag_name[6:]
+            model_name = f"{model_name.split(':')[0]}:{tag_name}"
 
     model_list[model_name] = {
         "type": model_type,
@@ -543,11 +654,22 @@ def get_model_info(model_name):
     with open(NEXA_MODEL_LIST_PATH, "r") as f:
         model_list = json.load(f)
 
+    # First try direct lookup
     model_data = model_list.get(model_name, {})
-    location = model_data.get("location")
-    run_type = model_data.get("run_type")
+    if model_data:
+        return model_data.get("location"), model_data.get("run_type")
 
-    return location, run_type
+    # If not found and model_name contains ":", try path-based lookup
+    if ":" in model_name:
+        model_path_with_slash = model_name.replace(":", "/")
+        model_path_with_backslash = model_name.replace(":", "\\")
+        
+        # Check if model_prefix/model_suffix or model_prefix\model_suffix exists in any location path
+        for model_key, model_info in model_list.items():
+            if model_path_with_slash in model_info["location"] or model_path_with_backslash in model_info["location"]:
+                return model_info["location"], model_info["run_type"]
+
+    return None, None
 
 
 def list_models():
@@ -558,21 +680,30 @@ def list_models():
         with open(NEXA_MODEL_LIST_PATH, "r") as f:
             model_list = json.load(f)
 
+        filtered_list = {
+            model_name: model_info 
+            for model_name, model_info in model_list.items() 
+            if ':' not in model_name or not model_name.split(':')[1].startswith('projector')
+        }
+
         table = [
             (model_name, model_info["type"], model_info["run_type"], model_info["location"])
-            for model_name, model_info in model_list.items()
+            for model_name, model_info in filtered_list.items()
         ]
         headers = ["Model Name", "Type", "Run Type", "Location"]
         from tabulate import tabulate
 
         print(
             tabulate(
-                table, headers, tablefmt="pretty", colalign=("left", "left", "left", "left")
+                table, 
+                headers, 
+                tablefmt="pretty", 
+                colalign=("left", "left", "left", "left"),
+                maxcolwidths=[150, 15, 20, 90]
             )
         )
     except Exception as e:
         print(f"An error occurred while listing the models: {e}")
-
 
 def remove_model(model_path):
     model_path = NEXA_RUN_MODEL_MAP.get(model_path, model_path)
@@ -585,23 +716,67 @@ def remove_model(model_path):
         with open(NEXA_MODEL_LIST_PATH, "r") as f:
             model_list = json.load(f)
 
+        # First try direct lookup
         if model_path not in model_list:
-            print(f"Model {model_path} not found.")
-            return
+            # If not found and model_path contains ":", try path-based lookup
+            if ":" in model_path:
+                model_path_with_slash = model_path.replace(":", "/")
+                model_path_with_backslash = model_path.replace(":", "\\")
+                
+                # Find matching model key
+                matching_key = None
+                for model_key, model_info in model_list.items():
+                    if model_path_with_slash in model_info["location"] or model_path_with_backslash in model_info["location"]:
+                        matching_key = model_key
+                        break
+                
+                if matching_key:
+                    model_path = matching_key
+                else:
+                    print(f"Model {model_path} not found.")
+                    return
+            else:
+                print(f"Model {model_path} not found.")
+                return
 
         model_info = model_list.pop(model_path)
         model_location = model_info['location']
         model_path = Path(model_location)
 
         # Delete the model files
+        model_deleted = False
         if model_path.is_file():
             model_path.unlink()
             print(f"Deleted model file: {model_path}")
+            model_deleted = True
         elif model_path.is_dir():
             shutil.rmtree(model_path)
             print(f"Deleted model directory: {model_path}")
+            model_deleted = True
         else:
             print(f"Warning: Model location not found: {model_path}")
+
+        # Delete projectors only if model was successfully deleted
+        if model_deleted:
+            parent_dir = model_path.parent
+            gguf_files = list(parent_dir.glob("*.gguf"))
+            
+            # Only proceed if there's exactly one .gguf file in the directory
+            if len(gguf_files) == 1:
+                projector_keys = [
+                    k for k in model_list.keys() 
+                    if 'projector' in k and str(parent_dir) in model_list[k]['location']
+                ]
+                
+                for key in projector_keys:
+                    projector_info = model_list.pop(key)
+                    projector_location = Path(projector_info['location'])
+                    if projector_location.exists():
+                        if projector_location.is_file():
+                            projector_location.unlink()
+                        else:
+                            shutil.rmtree(projector_location)
+                        print(f"Deleted projector: {projector_location}")
 
         # Update the model list file
         with open(NEXA_MODEL_LIST_PATH, "w") as f:
@@ -638,42 +813,60 @@ def clean():
     except Exception as e:
         print(f"An error occurred while cleaning the directory: {e}")
 
-def select_gguf_in_hf_repo(repo_id: str) -> Tuple[str, str]:
+def select_gguf_from_repo(repo_id: str, model_hub: str) -> Tuple[str, str]:
     """
-    Lists all files ending with .gguf in the given Hugging Face repository,
+    Lists all files ending with .gguf in the given (HuggingFace or ModelScope) repository,
     prompts the user to select one, and returns the repo_id and the selected filename.
 
     Args:
-        repo_id (str): The Hugging Face repository ID.
+        repo_id (str): The repository ID.
+        model_hub (str): huggingface or modelscope
 
     Returns:
         Tuple[str, str]: A tuple containing the repo_id and the selected filename.
     """
-    try:
-        from huggingface_hub import HfFileSystem
-        from huggingface_hub.utils import validate_repo_id
-        from pathlib import Path
-    except ImportError:
-        print("The huggingface-hub package is required. Please install it with `pip install huggingface-hub`.")
-        exit(1)
+    if model_hub == 'huggingface':
+        try:
+            from huggingface_hub import HfFileSystem
+            from huggingface_hub.utils import validate_repo_id
+            from pathlib import Path
+        except ImportError:
+            print("The huggingface-hub package is required. Please install it with `pip install huggingface-hub`.")
+            exit(1)
 
-    validate_repo_id(repo_id)
-    hffs = HfFileSystem()
+        validate_repo_id(repo_id)
+        hffs = HfFileSystem()
 
-    try:
-        files = [
-            file["name"] if isinstance(file, dict) else file
-            for file in hffs.ls(repo_id, recursive=True)
-        ]
-    except Exception as e:
-        print(f"Error accessing repository '{repo_id}'. Please make sure you have access to the Hugging Face repository first.")
-        exit(1)
+        try:
+            files = [
+                file["name"] if isinstance(file, dict) else file
+                for file in hffs.ls(repo_id, recursive=True)
+            ]
+        except Exception as e:
+            print(f"Error accessing repository '{repo_id}'. Please make sure you have access to the Hugging Face repository first.")
+            exit(1)
 
-    # Remove the repo prefix from files
-    file_list = []
-    for file in files:
-        rel_path = Path(file).relative_to(repo_id)
-        file_list.append(str(rel_path))
+        # Remove the repo prefix from files
+        file_list = []
+        for file in files:
+            rel_path = Path(file).relative_to(repo_id)
+            file_list.append(str(rel_path))
+    elif model_hub == 'modelscope':
+        try:
+            from modelscope.hub.api import HubApi
+        except ImportError:
+            print("The modelscope package is required. Please install it with `pip install modelscope`.")
+            exit(1)
+
+        try:
+            ms_api = HubApi()
+            infos = ms_api.get_model_files(repo_id, recursive=True)
+            file_list = [info['Path'] for info in infos]
+        except Exception as e:
+            print(f"Error accessing repository '{repo_id}'. Please make sure you have access to the ModelScope repository first.")
+            exit(1)
+    else:
+        raise ValueError("Invalid model hub specified. Supported model hub are 'huggingface' and 'modelscope")
 
     # Filter for files ending with .gguf
     gguf_files = [file for file in file_list if file.endswith('.gguf')]

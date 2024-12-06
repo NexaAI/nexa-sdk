@@ -152,6 +152,8 @@ class NexaTextInference:
         """
         CLI interactive session. Not for SDK.
         """
+        from nexa.gguf.llama._utils_spinner import start_spinner, stop_spinner
+
         while True:
             generated_text = ""
             try:
@@ -160,9 +162,16 @@ class NexaTextInference:
 
                 generation_start_time = time.time()
 
+                stop_event, spinner_thread = start_spinner(
+                    style="default",
+                    message=""
+                )
+
                 if self.chat_format:
                     output = self._chat(user_input)
                     first_token = True
+                    stop_spinner(stop_event, spinner_thread) 
+
                     for chunk in output:
                         if first_token:
                             decoding_start_time = time.time()
@@ -179,6 +188,8 @@ class NexaTextInference:
                 else:
                     output = self._complete(user_input)
                     first_token = True
+                    stop_spinner(stop_event, spinner_thread) 
+
                     for chunk in output:
                         if first_token:
                             decoding_start_time = time.time()
@@ -297,6 +308,12 @@ class NexaTextInference:
             stop=self.stop_words,
             logprobs=self.logprobs,
         )
+        
+    def unload_lora(self):
+        self.model.unload_lora()
+        
+    def reload_lora(self, lora_path: str, lora_scale: float = 1.0):
+        self.model.reload_lora(lora_path, lora_scale)
 
     def run_streamlit(self, model_path: str, is_local_path = False, hf = False):
         """

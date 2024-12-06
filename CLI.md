@@ -31,7 +31,7 @@ options:
 
 ### List Local Models
 
-List all models on your local computer.
+List all models on your local computer. You can use `nexa run <model_name>` to run any model shown in the list.
 
 ```
 nexa list
@@ -46,11 +46,12 @@ nexa pull MODEL_PATH
 usage: nexa pull [-h] model_path
 
 positional arguments:
-  model_path  Path or identifier for the model in Nexa Model Hub, or Hugging Face repo ID when using -hf flag
+  model_path  Path or identifier for the model in Nexa Model Hub, Hugging Face repo ID when using -hf flag, or ModelScope model ID when using -ms flag
 
 options:
   -h, --help            show this help message and exit
   -hf, --huggingface    Pull model from Hugging Face Hub
+  -ms, --modelscope     Pull model from ModelScope Hub
   -o, --output_path OUTPUT_PATH
                         Custom output path for the pulled model
 ```
@@ -96,11 +97,13 @@ Run a model on your local computer. If the model file is not yet downloaded, it 
 
 By default, `nexa` will run gguf models. To run onnx models, use `nexa onnx MODEL_PATH`
 
+You can run any model shown in `nexa list` command.
+
 #### Run Text-Generation Model
 
 ```
 nexa run MODEL_PATH
-usage: nexa run [-h] [-t TEMPERATURE] [-m MAX_NEW_TOKENS] [-k TOP_K] [-p TOP_P] [-sw [STOP_WORDS ...]] [-pf] [-st] [-lp] [-mt {NLP, COMPUTER_VISION, MULTIMODAL, AUDIO}] [-hf] model_path
+usage: nexa run [-h] [-t TEMPERATURE] [-m MAX_NEW_TOKENS] [-k TOP_K] [-p TOP_P] [-sw [STOP_WORDS ...]] [-pf] [-st] [-lp] [-mt {NLP, COMPUTER_VISION, MULTIMODAL, AUDIO}] [-hf] [-ms] model_path
 
 positional arguments:
   model_path            Path or identifier for the model in Nexa Model Hub
@@ -109,9 +112,10 @@ options:
   -h, --help            show this help message and exit
   -pf, --profiling      Enable profiling logs for the inference process
   -st, --streamlit      Run the inference in Streamlit UI, can be used with -lp or -hf
-  -lp, --local_path     Indicate that the model path provided is the local path, must be used with -mt
-  -mt, --model_type     Indicate the model running type, must be used with -lp or -hf, choose from [NLP, COMPUTER_VISION, MULTIMODAL, AUDIO]
-  -hf, --huggingface    Load model from Hugging Face Hub, must be used with -mt
+  -lp, --local_path     Indicate that the model path provided is the local path
+  -mt, --model_type     Indicate the model running type, must be used with -lp or -hf or -ms, choose from [NLP, COMPUTER_VISION, MULTIMODAL, AUDIO]
+  -hf, --huggingface    Load model from Hugging Face Hub
+  -ms, --modelscope     Load model from ModelScope Hub
 
 Text generation options:
   -t, --temperature TEMPERATURE
@@ -135,7 +139,7 @@ nexa run llama2
 
 ```
 nexa run MODEL_PATH
-usage: nexa run [-h] [-i2i] [-ns NUM_INFERENCE_STEPS] [-np NUM_IMAGES_PER_PROMPT] [-H HEIGHT] [-W WIDTH] [-g GUIDANCE_SCALE] [-o OUTPUT] [-s RANDOM_SEED] [-st] [-lp] [-mt {NLP, COMPUTER_VISION, MULTIMODAL, AUDIO}] [-hf] model_path
+usage: nexa run [-h] [-i2i] [-ns NUM_INFERENCE_STEPS] [-np NUM_IMAGES_PER_PROMPT] [-H HEIGHT] [-W WIDTH] [-g GUIDANCE_SCALE] [-o OUTPUT] [-s RANDOM_SEED] [-st] [-lp] [-mt {NLP, COMPUTER_VISION, MULTIMODAL, AUDIO}] [-hf] [-ms] model_path
 
 positional arguments:
   model_path            Path or identifier for the model in Nexa Model Hub
@@ -143,9 +147,10 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   -st, --streamlit      Run the inference in Streamlit UI, can be used with -lp or -hf
-  -lp, --local_path     Indicate that the model path provided is the local path, must be used with -mt
-  -mt, --model_type     Indicate the model running type, must be used with -lp or -hf, choose from [NLP, COMPUTER_VISION, MULTIMODAL, AUDIO]
-  -hf, --huggingface    Load model from Hugging Face Hub, must be used with -mt
+  -lp, --local_path     Indicate that the model path provided is the local path
+  -mt, --model_type     Indicate the model running type, must be used with -lp or -hf or -ms, choose from [NLP, COMPUTER_VISION, MULTIMODAL, AUDIO]
+  -hf, --huggingface    Load model from Hugging Face Hub
+  -ms, --modelscope     Load model from ModelScope Hub
 
 Image generation options:
   -i2i, --img2img       Whether to run image-to-image generation
@@ -180,7 +185,7 @@ nexa run sd1-4
 
 ```
 nexa run MODEL_PATH
-usage: nexa run [-h] [-t TEMPERATURE] [-m MAX_NEW_TOKENS] [-k TOP_K] [-p TOP_P] [-sw [STOP_WORDS ...]] [-pf] [-st] [-lp] [-mt {NLP, COMPUTER_VISION, MULTIMODAL, AUDIO}] [-hf] model_path
+usage: nexa run [-h] [-t TEMPERATURE] [-m MAX_NEW_TOKENS] [-k TOP_K] [-p TOP_P] [-sw [STOP_WORDS ...]] [-pf] [-st] [-lp] [-mt {NLP, COMPUTER_VISION, MULTIMODAL, AUDIO}] [-hf] [-ms] model_path
 
 positional arguments:
   model_path            Path or identifier for the model in Nexa Model Hub
@@ -189,9 +194,10 @@ options:
   -h, --help            show this help message and exit
   -pf, --profiling      Enable profiling logs for the inference process
   -st, --streamlit      Run the inference in Streamlit UI, can be used with -lp or -hf
-  -lp, --local_path     Indicate that the model path provided is the local path, must be used with -mt
-  -mt, --model_type     Indicate the model running type, must be used with -lp or -hf, choose from [NLP, COMPUTER_VISION, MULTIMODAL, AUDIO]
-  -hf, --huggingface    Load model from Hugging Face Hub, must be used with -mt
+  -lp, --local_path     Indicate that the model path provided is the local path
+  -mt, --model_type     Indicate the model running type, must be used with -lp or -hf or -ms, choose from [NLP, COMPUTER_VISION, MULTIMODAL, AUDIO]
+  -hf, --huggingface    Load model from Hugging Face Hub
+  -ms, --modelscope     Load model from ModelScope Hub
 
 VLM generation options:
   -t, --temperature TEMPERATURE
@@ -215,7 +221,7 @@ nexa run nanollava
 
 ```
 nexa run MODEL_PATH
-usage: nexa run [-h] [-o OUTPUT_DIR] [-b BEAM_SIZE] [-l LANGUAGE] [--task TASK] [-t TEMPERATURE] [-c COMPUTE_TYPE] [-st] [-lp] [-mt {NLP, COMPUTER_VISION, MULTIMODAL, AUDIO}] [-hf] model_path
+usage: nexa run [-h] [-o OUTPUT_DIR] [-b BEAM_SIZE] [-l LANGUAGE] [--task TASK] [-t TEMPERATURE] [-c COMPUTE_TYPE] [-st] [-lp] [-mt {NLP, COMPUTER_VISION, MULTIMODAL, AUDIO}] [-hf] [-ms] model_path
 
 positional arguments:
   model_path            Path or identifier for the model in Nexa Model Hub
@@ -223,9 +229,10 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   -st, --streamlit      Run the inference in Streamlit UI, can be used with -lp or -hf
-  -lp, --local_path     Indicate that the model path provided is the local path, must be used with -mt
-  -mt, --model_type     Indicate the model running type, must be used with -lp or -hf, choose from [NLP, COMPUTER_VISION, MULTIMODAL, AUDIO]
-  -hf, --huggingface    Load model from Hugging Face Hub, must be used with -mt
+  -lp, --local_path     Indicate that the model path provided is the local path
+  -mt, --model_type     Indicate the model running type, must be used with -lp or -hf or -ms, choose from [NLP, COMPUTER_VISION, MULTIMODAL, AUDIO]
+  -hf, --huggingface    Load model from Hugging Face Hub
+  -ms, --modelscope     Load model from ModelScope Hub
 
 Automatic Speech Recognition options:
   -b, --beam_size BEAM_SIZE
@@ -249,7 +256,7 @@ nexa run faster-whisper-tiny
 
 ```
 nexa embed MODEL_PATH
-usage: nexa embed [-h] [-lp] [-hf] [-n] [-nt] model_path prompt
+usage: nexa embed [-h] [-lp] [-hf] [-ms] [-n] [-nt] model_path prompt
 
 positional arguments:
   model_path            Path or identifier for the model in Nexa Model Hub
@@ -257,8 +264,9 @@ positional arguments:
 
 options:
   -h, --help            show this help message and exit
-  -lp, --local_path     Indicate that the model path provided is the local path, must be used with -mt
-  -hf, --huggingface    Load model from Hugging Face Hub, must be used with -mt
+  -lp, --local_path     Indicate that the model path provided is the local path
+  -hf, --huggingface    Load model from Hugging Face Hub
+  -ms, --modelscope     Load model from ModelScope Hub
   -n, --normalize       Normalize the embeddings
   -nt, --no_truncate    Not truncate the embeddings
 ```
@@ -273,6 +281,10 @@ nexa embed sentence-transformers/all-MiniLM-L6-v2:gguf-fp16 "I love Nexa AI." >>
 ```
 
 ### Convert and quantize a Hugging Face Model to GGUF
+
+Additional package `nexa-gguf` is required to run this command.
+
+You can install it by `pip install "nexaai[convert]"` or `pip install nexa-gguf`.
 
 ```
 nexa convert HF_MODEL_PATH [ftype] [output_file]
@@ -312,6 +324,7 @@ options:
   --only_copy           Only copy tensors (ignores ftype, allow_requantize, and quantize_output_tensor)
   --pure                Quantize all tensors to the default type
   --keep_split          Quantize to the same number of shards
+  -ms --modelscope      Load model from ModelScope Hub
 ```
 
 #### Example
@@ -335,16 +348,17 @@ Start a local server using models on your local computer.
 
 ```
 nexa server MODEL_PATH
-usage: nexa server [-h] [--host HOST] [--port PORT] [--reload] [-lp] [-mt {NLP, COMPUTER_VISION, MULTIMODAL, AUDIO}] [-hf] model_path
+usage: nexa server [-h] [--host HOST] [--port PORT] [--reload] [-lp] [-mt {NLP, COMPUTER_VISION, MULTIMODAL, AUDIO}] [-hf] [-ms] model_path
 
 positional arguments:
   model_path   Path or identifier for the model in S3
 
 options:
   -h, --help   show this help message and exit
-  -lp, --local_path     Indicate that the model path provided is the local path, must be used with -mt
-  -mt, --model_type     Indicate the model running type, must be used with -lp or -hf, choose from [NLP, COMPUTER_VISION, MULTIMODAL, AUDIO]
-  -hf, --huggingface    Load model from Hugging Face Hub, must be used with -mt
+  -lp, --local_path     Indicate that the model path provided is the local path
+  -mt, --model_type     Indicate the model running type, must be used with -lp or -hf or -ms, choose from [NLP, COMPUTER_VISION, MULTIMODAL, AUDIO]
+  -hf, --huggingface    Load model from Hugging Face Hub
+  -ms, --modelscope     Load model from ModelScope Hub
   --host HOST  Host to bind the server to
   --port PORT  Port to bind the server to
   --reload     Enable automatic reloading on code changes

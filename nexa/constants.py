@@ -9,6 +9,7 @@ NEXA_MODELS_HUB_DIR = NEXA_CACHE_ROOT / "hub"
 NEXA_MODEL_EVAL_RESULTS_PATH = NEXA_CACHE_ROOT / "eval"
 NEXA_MODELS_HUB_OFFICIAL_DIR = NEXA_MODELS_HUB_DIR / "official"
 NEXA_MODELS_HUB_HF_DIR = NEXA_MODELS_HUB_DIR / "huggingface"
+NEXA_MODELS_HUB_MS_DIR = NEXA_MODELS_HUB_DIR / "modelscope"
 NEXA_MODEL_LIST_PATH = NEXA_MODELS_HUB_DIR / "model_list.json"
 
 # URLs and buckets
@@ -38,6 +39,7 @@ class ModelType(Enum):
     TTS = "TTS"
     MULTIMODAL = "Multimodal"
     TEXT_EMBEDDING = "Text Embedding"
+    AUDIOLM = "AudioLM"
 
 
 NEXA_RUN_MODEL_MAP_TEXT = {
@@ -57,7 +59,7 @@ NEXA_RUN_MODEL_MAP_TEXT = {
     "mistral": "Mistral-7B-Instruct-v0.3:q4_0",
     "codegemma": "codegemma-2b:q4_0",
     "codellama": "CodeLlama-7b-Instruct:q4_0",
-    "codeqwen": "Qwen2.5-Coder-1.5B-Instruct:q4_0",
+    "codeqwen": "Qwen2.5-Coder-3B-Instruct:q4_0",
     "mathqwen": "Qwen2.5-Math-1.5B-Instruct:q4_0",
     "deepseek-coder": "deepseek-coder-1.3b-instruct:q4_0",
     "dolphin-mistral": "dolphin-2.8-mistral-7b:q4_0",
@@ -106,6 +108,28 @@ NEXA_RUN_MODEL_MAP_VLM = {
     "llava1.6-vicuna": "llava-v1.6-vicuna-7b:model-q4_0",
     "llava-v1.6-vicuna-7b:q4_0": "llava-v1.6-vicuna-7b:model-q4_0",
     "llava-v1.6-vicuna-7b:fp16": "llava-v1.6-vicuna-7b:model-fp16",
+}
+
+NEXA_RUN_MODEL_MAP_AUDIO_LM = {
+    "qwen2audio": "Qwen2-Audio-7.8B-Instruct:model-q4_K_M",
+    "Qwen2-Audio-7.8B-Instruct:q2_K": "Qwen2-Audio-7.8B-Instruct:model-q2_K",
+    "Qwen2-Audio-7.8B-Instruct:q3_K_L": "Qwen2-Audio-7.8B-Instruct:model-q3_K_L",
+    "Qwen2-Audio-7.8B-Instruct:q3_K_M": "Qwen2-Audio-7.8B-Instruct:model-q3_K_M",
+    "Qwen2-Audio-7.8B-Instruct:q3_K_S": "Qwen2-Audio-7.8B-Instruct:model-q3_K_S",
+    "Qwen2-Audio-7.8B-Instruct:q4_0": "Qwen2-Audio-7.8B-Instruct:model-q4_0",
+    "Qwen2-Audio-7.8B-Instruct:q4_1": "Qwen2-Audio-7.8B-Instruct:model-q4_1",
+    "Qwen2-Audio-7.8B-Instruct:q4_K_M": "Qwen2-Audio-7.8B-Instruct:model-q4_K_M",
+    "Qwen2-Audio-7.8B-Instruct:q4_K_S": "Qwen2-Audio-7.8B-Instruct:model-q4_K_S",
+    "Qwen2-Audio-7.8B-Instruct:q5_0": "Qwen2-Audio-7.8B-Instruct:model-q5_0",
+    "Qwen2-Audio-7.8B-Instruct:q5_1": "Qwen2-Audio-7.8B-Instruct:model-q5_1",
+    "Qwen2-Audio-7.8B-Instruct:q5_K_M": "Qwen2-Audio-7.8B-Instruct:model-q5_K_M",
+    "Qwen2-Audio-7.8B-Instruct:q5_K_S": "Qwen2-Audio-7.8B-Instruct:model-q5_K_S",
+    "Qwen2-Audio-7.8B-Instruct:q6_K": "Qwen2-Audio-7.8B-Instruct:model-q6_K",
+    "Qwen2-Audio-7.8B-Instruct:q8_0": "Qwen2-Audio-7.8B-Instruct:model-q8_0",
+    "Qwen2-Audio-7.8B-Instruct:fp16": "Qwen2-Audio-7.8B-Instruct:model-fp16",
+    "omniaudio": "omniaudio:model-fp16",
+    "omniaudio:fp16": "omniaudio:model-fp16",
+    "omniaudio:q4_0": "omniaudio:model-q4_0",
 }
 
 NEXA_RUN_MODEL_MAP_VOICE = {
@@ -160,6 +184,48 @@ NEXA_RUN_PROJECTOR_MAP = {
     "llava-v1.6-vicuna-7b:fp16": "llava-v1.6-vicuna-7b:projector-fp16",
 }
 
+NEXA_RUN_OMNI_VLM_PROJECTOR_MAP = {
+    "omnivision-preview": "omnivision-preview:projector-fp16",
+    "omnivision-preview:fp16": "omnivision-preview:projector-fp16",
+    "omnivision-preview:q4_0": "omnivision-preview:projector-q4_0",
+    "omniVLM": "omniVLM:projector-fp16",
+    "omniVLM:fp16": "omniVLM:projector-fp16",
+    "omnivision-ocr": "omnivision-ocr:projector-fp16",
+    "omnivision-ocr:fp16": "omnivision-ocr:projector-fp16",
+}
+
+NEXA_RUN_OMNI_VLM_MAP = {
+    "omnivision-preview": "omnivision-preview:model-fp16",
+    "omnivision-preview:fp16": "omnivision-preview:model-fp16",
+    "omnivision-preview:q4_0": "omnivision-preview:model-q4_0",
+    "omniVLM": "omniVLM:model-fp16",
+    "omniVLM:fp16": "omniVLM:model-fp16",
+    "omnivision-ocr": "omnivision-ocr:model-fp16",
+    "omnivision-ocr:fp16": "omnivision-ocr:model-fp16",
+}
+
+NEXA_RUN_AUDIO_LM_PROJECTOR_MAP = {
+    "qwen2audio": "Qwen2-Audio-7.8B-Instruct:projector-q4_K_M",
+    "Qwen2-Audio-7.8B-Instruct:q2_K": "Qwen2-Audio-7.8B-Instruct:projector-q2_K",
+    "Qwen2-Audio-7.8B-Instruct:q3_K_L": "Qwen2-Audio-7.8B-Instruct:projector-q3_K_L",
+    "Qwen2-Audio-7.8B-Instruct:q3_K_M": "Qwen2-Audio-7.8B-Instruct:projector-q3_K_M",
+    "Qwen2-Audio-7.8B-Instruct:q3_K_S": "Qwen2-Audio-7.8B-Instruct:projector-q3_K_S",
+    "Qwen2-Audio-7.8B-Instruct:q4_0": "Qwen2-Audio-7.8B-Instruct:projector-q4_0",
+    "Qwen2-Audio-7.8B-Instruct:q4_1": "Qwen2-Audio-7.8B-Instruct:projector-q4_1",
+    "Qwen2-Audio-7.8B-Instruct:q4_K_M": "Qwen2-Audio-7.8B-Instruct:projector-q4_K_M",
+    "Qwen2-Audio-7.8B-Instruct:q4_K_S": "Qwen2-Audio-7.8B-Instruct:projector-q4_K_S",
+    "Qwen2-Audio-7.8B-Instruct:q5_0": "Qwen2-Audio-7.8B-Instruct:projector-q5_0",
+    "Qwen2-Audio-7.8B-Instruct:q5_1": "Qwen2-Audio-7.8B-Instruct:projector-q5_1",
+    "Qwen2-Audio-7.8B-Instruct:q5_K_M": "Qwen2-Audio-7.8B-Instruct:projector-q5_K_M",
+    "Qwen2-Audio-7.8B-Instruct:q5_K_S": "Qwen2-Audio-7.8B-Instruct:projector-q5_K_S",
+    "Qwen2-Audio-7.8B-Instruct:q6_K": "Qwen2-Audio-7.8B-Instruct:projector-q6_K",
+    "Qwen2-Audio-7.8B-Instruct:q8_0": "Qwen2-Audio-7.8B-Instruct:projector-q8_0",
+    "Qwen2-Audio-7.8B-Instruct:fp16": "Qwen2-Audio-7.8B-Instruct:projector-fp16",
+    "omniaudio": "omniaudio:projector-fp16",
+    "omniaudio:fp16": "omniaudio:projector-fp16",
+    "omniaudio:q4_0": "omniaudio:projector-q4_0",
+}
+
 NEXA_RUN_T5XXL_MAP = {
     "flux": "FLUX.1-schnell:t5xxl-q4_0",
     "FLUX.1-schnell:q4_0": "FLUX.1-schnell:t5xxl-q4_0",
@@ -207,6 +273,8 @@ NEXA_RUN_MODEL_MAP_TEXT_EMBEDDING = {
 NEXA_RUN_MODEL_MAP = {
     **NEXA_RUN_MODEL_MAP_TEXT,
     **NEXA_RUN_MODEL_MAP_VLM,
+    **NEXA_RUN_OMNI_VLM_MAP,
+    **NEXA_RUN_MODEL_MAP_AUDIO_LM,
     **NEXA_RUN_MODEL_MAP_IMAGE,
     **NEXA_RUN_MODEL_MAP_VOICE,
     **NEXA_RUN_MODEL_MAP_TTS,
@@ -244,7 +312,9 @@ NEXA_RUN_CHAT_TEMPLATE_MAP = {
     "qwen2.5-1.5b-instruct": "qwen",
     "qwen2.5-3b-instruct": "qwen",
     "qwen2.5-7b-instruct": "qwen",
+    "qwen2.5-coder-0.5b-instruct": "qwen",
     "qwen2.5-coder-1.5b-instruct": "qwen",
+    "qwen2.5-coder-3b-instruct": "qwen",
     "qwen2.5-coder-7b-instruct": "qwen",
     "qwen2.5-math-1.5b-instruct": "qwen",
     "qwen2.5-math-7b-instruct": "qwen",
@@ -319,6 +389,9 @@ DEFAULT_VOICE_GEN_PARAMS = {
     "compute_type": "default",
 }
 
+# key is the repo name on Nexa model hub, NOT model abbreviation
+# For example : https://nexa.ai/NexaAI/Octo-omni-vision/gguf-fp16/readme
+# We need to register key : Octo-omni-vision
 NEXA_OFFICIAL_MODELS_TYPE = {
     "gemma-2b": ModelType.NLP,
     "Llama-2-7b-chat": ModelType.NLP,
@@ -347,7 +420,9 @@ NEXA_OFFICIAL_MODELS_TYPE = {
     "Qwen2.5-0.5B-Instruct": ModelType.NLP,
     "Qwen2.5-1.5B-Instruct": ModelType.NLP,
     "Qwen2.5-3B-Instruct": ModelType.NLP,
+    "Qwen2.5-Coder-0.5B-Instruct": ModelType.NLP,
     "Qwen2.5-Coder-1.5B-Instruct": ModelType.NLP,
+    "Qwen2.5-Coder-3B-Instruct": ModelType.NLP,
     "Qwen2.5-Coder-7B-Instruct": ModelType.NLP,
     "Qwen2.5-Math-1.5B-Instruct": ModelType.NLP,
     "Qwen2.5-Math-7B-Instruct": ModelType.NLP,
@@ -385,11 +460,16 @@ NEXA_OFFICIAL_MODELS_TYPE = {
     "anything-v30-LCM": ModelType.COMPUTER_VISION,
     "FLUX.1-schnell": ModelType.COMPUTER_VISION,
     "Phi-3-vision-128k-instruct": ModelType.MULTIMODAL,
+    "omnivision-preview": ModelType.MULTIMODAL,
+    "omniVLM": ModelType.MULTIMODAL,
+    "omnivision-ocr": ModelType.MULTIMODAL,
     "nanoLLaVA": ModelType.MULTIMODAL,
     "llava-v1.6-mistral-7b": ModelType.MULTIMODAL,
     "llava-v1.6-vicuna-7b": ModelType.MULTIMODAL,
     "llava-phi-3-mini": ModelType.MULTIMODAL,
     "llava-llama-3-8b-v1.1": ModelType.MULTIMODAL,
+    "omniaudio": ModelType.AUDIOLM,
+    "Qwen2-Audio-7.8B-Instruct": ModelType.AUDIOLM,
     "faster-whisper-tiny.en": ModelType.AUDIO,
     "faster-whisper-tiny": ModelType.AUDIO,
     "faster-whisper-small.en": ModelType.AUDIO,
@@ -412,154 +492,4 @@ NEXA_OFFICIAL_MODELS_TYPE = {
     "nomic-embed-text-v1.5": ModelType.TEXT_EMBEDDING,
     "all-MiniLM-L6-v2": ModelType.TEXT_EMBEDDING,
     "all-MiniLM-L12-v2": ModelType.TEXT_EMBEDDING,
-}
-
-from nexa.gguf.llama.llama_cpp import (
-    LLAMA_FTYPE_ALL_F32,
-    LLAMA_FTYPE_MOSTLY_F16,
-    LLAMA_FTYPE_MOSTLY_Q4_0,
-    LLAMA_FTYPE_MOSTLY_Q4_1,
-    LLAMA_FTYPE_MOSTLY_Q8_0,
-    LLAMA_FTYPE_MOSTLY_Q5_0,
-    LLAMA_FTYPE_MOSTLY_Q5_1,
-    LLAMA_FTYPE_MOSTLY_Q2_K,
-    LLAMA_FTYPE_MOSTLY_Q3_K_S,
-    LLAMA_FTYPE_MOSTLY_Q3_K_M,
-    LLAMA_FTYPE_MOSTLY_Q3_K_L,
-    LLAMA_FTYPE_MOSTLY_Q4_K_S,
-    LLAMA_FTYPE_MOSTLY_Q4_K_M,
-    LLAMA_FTYPE_MOSTLY_Q5_K_S,
-    LLAMA_FTYPE_MOSTLY_Q5_K_M,
-    LLAMA_FTYPE_MOSTLY_Q6_K,
-    LLAMA_FTYPE_MOSTLY_IQ2_XXS,
-    LLAMA_FTYPE_MOSTLY_IQ2_XS,
-    LLAMA_FTYPE_MOSTLY_Q2_K_S,
-    LLAMA_FTYPE_MOSTLY_IQ3_XS,
-    LLAMA_FTYPE_MOSTLY_IQ3_XXS,
-    LLAMA_FTYPE_MOSTLY_IQ1_S,
-    LLAMA_FTYPE_MOSTLY_IQ4_NL,
-    LLAMA_FTYPE_MOSTLY_IQ3_S,
-    LLAMA_FTYPE_MOSTLY_IQ3_M,
-    LLAMA_FTYPE_MOSTLY_IQ2_S,
-    LLAMA_FTYPE_MOSTLY_IQ2_M,
-    LLAMA_FTYPE_MOSTLY_IQ4_XS,
-    LLAMA_FTYPE_MOSTLY_IQ1_M,
-    LLAMA_FTYPE_MOSTLY_BF16,
-    LLAMA_FTYPE_MOSTLY_Q4_0_4_4,
-    LLAMA_FTYPE_MOSTLY_Q4_0_4_8,
-    LLAMA_FTYPE_MOSTLY_Q4_0_8_8,
-    LLAMA_FTYPE_MOSTLY_TQ1_0,
-    LLAMA_FTYPE_MOSTLY_TQ2_0,
-)
-from nexa.gguf.llama.llama_cpp import (
-    GGML_TYPE_F32,
-    GGML_TYPE_F16,
-    GGML_TYPE_Q4_0,
-    GGML_TYPE_Q4_1,
-    GGML_TYPE_Q5_0,
-    GGML_TYPE_Q5_1,
-    GGML_TYPE_Q8_0,
-    GGML_TYPE_Q8_1,
-    GGML_TYPE_Q2_K,
-    GGML_TYPE_Q3_K,
-    GGML_TYPE_Q4_K,
-    GGML_TYPE_Q5_K,
-    GGML_TYPE_Q6_K,
-    GGML_TYPE_Q8_K,
-    GGML_TYPE_IQ2_XXS,
-    GGML_TYPE_IQ2_XS,
-    GGML_TYPE_IQ3_XXS,
-    GGML_TYPE_IQ1_S,
-    GGML_TYPE_IQ4_NL,
-    GGML_TYPE_IQ3_S,
-    GGML_TYPE_IQ2_S,
-    GGML_TYPE_IQ4_XS,
-    GGML_TYPE_I8,
-    GGML_TYPE_I16,
-    GGML_TYPE_I32,
-    GGML_TYPE_I64,
-    GGML_TYPE_F64,
-    GGML_TYPE_IQ1_M,
-    GGML_TYPE_BF16,
-    GGML_TYPE_Q4_0_4_4,
-    GGML_TYPE_Q4_0_4_8,
-    GGML_TYPE_Q4_0_8_8,
-    GGML_TYPE_COUNT,
-)
-
-# From quantize.cpp
-# For mapping of general quantization options (ftypes)
-LLAMA_QUANTIZATION_TYPES = {
-    "q4_0": LLAMA_FTYPE_MOSTLY_Q4_0,
-    "q4_1": LLAMA_FTYPE_MOSTLY_Q4_1,
-    "q5_0": LLAMA_FTYPE_MOSTLY_Q5_0,
-    "q5_1": LLAMA_FTYPE_MOSTLY_Q5_1,
-    "q8_0": LLAMA_FTYPE_MOSTLY_Q8_0,
-    "q2_k": LLAMA_FTYPE_MOSTLY_Q2_K,
-    "q3_k_s": LLAMA_FTYPE_MOSTLY_Q3_K_S,
-    "q3_k_m": LLAMA_FTYPE_MOSTLY_Q3_K_M,
-    "q3_k_l": LLAMA_FTYPE_MOSTLY_Q3_K_L,
-    "q4_k_s": LLAMA_FTYPE_MOSTLY_Q4_K_S,
-    "q4_k_m": LLAMA_FTYPE_MOSTLY_Q4_K_M,
-    "q5_k_s": LLAMA_FTYPE_MOSTLY_Q5_K_S,
-    "q5_k_m": LLAMA_FTYPE_MOSTLY_Q5_K_M,
-    "q6_k": LLAMA_FTYPE_MOSTLY_Q6_K,
-    "iq2_xxs": LLAMA_FTYPE_MOSTLY_IQ2_XXS,
-    "iq2_xs": LLAMA_FTYPE_MOSTLY_IQ2_XS,
-    "q2_k_s": LLAMA_FTYPE_MOSTLY_Q2_K_S,
-    "iq3_xs": LLAMA_FTYPE_MOSTLY_IQ3_XS,
-    "iq3_xxs": LLAMA_FTYPE_MOSTLY_IQ3_XXS,
-    "iq1_s": LLAMA_FTYPE_MOSTLY_IQ1_S,
-    "iq4_nl": LLAMA_FTYPE_MOSTLY_IQ4_NL,
-    "iq3_s": LLAMA_FTYPE_MOSTLY_IQ3_S,
-    "iq3_m": LLAMA_FTYPE_MOSTLY_IQ3_M,
-    "iq2_s": LLAMA_FTYPE_MOSTLY_IQ2_S,
-    "iq2_m": LLAMA_FTYPE_MOSTLY_IQ2_M,
-    "iq4_xs": LLAMA_FTYPE_MOSTLY_IQ4_XS,
-    "iq1_m": LLAMA_FTYPE_MOSTLY_IQ1_M,
-    "f16": LLAMA_FTYPE_MOSTLY_F16,
-    "f32": LLAMA_FTYPE_ALL_F32,
-    "bf16": LLAMA_FTYPE_MOSTLY_BF16,
-    "q4_0_4_4": LLAMA_FTYPE_MOSTLY_Q4_0_4_4,
-    "q4_0_4_8": LLAMA_FTYPE_MOSTLY_Q4_0_4_8,
-    "q4_0_8_8": LLAMA_FTYPE_MOSTLY_Q4_0_8_8,
-    "tq1_0": LLAMA_FTYPE_MOSTLY_TQ1_0,
-    "tq2_0": LLAMA_FTYPE_MOSTLY_TQ2_0,
-}
-
-# From ggml.h
-# For mapping of output_tensor_type and token_embedding_type only
-GGML_TYPES = {
-    "f32": GGML_TYPE_F32,
-    "f16": GGML_TYPE_F16,
-    "q4_0": GGML_TYPE_Q4_0,
-    "q4_1": GGML_TYPE_Q4_1,
-    "q5_0": GGML_TYPE_Q5_0,
-    "q5_1": GGML_TYPE_Q5_1,
-    "q8_0": GGML_TYPE_Q8_0,
-    "q8_1": GGML_TYPE_Q8_1,
-    "q2_k": GGML_TYPE_Q2_K,
-    "q3_k": GGML_TYPE_Q3_K,
-    "q4_k": GGML_TYPE_Q4_K,
-    "q5_k": GGML_TYPE_Q5_K,
-    "q6_k": GGML_TYPE_Q6_K,
-    "q8_k": GGML_TYPE_Q8_K,
-    "iq2_xxs": GGML_TYPE_IQ2_XXS,
-    "iq2_xs": GGML_TYPE_IQ2_XS,
-    "iq3_xxs": GGML_TYPE_IQ3_XXS,
-    "iq1_s": GGML_TYPE_IQ1_S,
-    "iq4_nl": GGML_TYPE_IQ4_NL,
-    "iq3_s": GGML_TYPE_IQ3_S,
-    "iq2_s": GGML_TYPE_IQ2_S,
-    "iq4_xs": GGML_TYPE_IQ4_XS,
-    "i8": GGML_TYPE_I8,
-    "i16": GGML_TYPE_I16,
-    "i32": GGML_TYPE_I32,
-    "i64": GGML_TYPE_I64,
-    "f64": GGML_TYPE_F64,
-    "iq1_m": GGML_TYPE_IQ1_M,
-    "bf16": GGML_TYPE_BF16,
-    "q4_0_4_4": GGML_TYPE_Q4_0_4_4,
-    "q4_0_4_8": GGML_TYPE_Q4_0_4_8,
-    "q4_0_8_8": GGML_TYPE_Q4_0_8_8,
 }

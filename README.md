@@ -1,59 +1,50 @@
-<div align="center">
+<video src="https://user-images.githubusercontent.com/assets/375570dc-0e7a-4a99-840d-c1ef6502e5aa.mp4" autoplay muted loop playsinline style="max-width: 100%;"></video>
 
-<h1>Nexa SDK</h1>
-
-[![MacOS][MacOS-image]][release-url] [![Linux][Linux-image]][release-url] [![Windows][Windows-image]][release-url]
-
-[![GitHub Release](https://img.shields.io/github/v/release/NexaAI/nexa-sdk)](https://github.com/NexaAI/nexa-sdk/releases/latest) [![Build workflow](https://img.shields.io/github/actions/workflow/status/NexaAI/nexa-sdk/ci.yaml?label=CI&logo=github)](https://github.com/NexaAI/nexa-sdk/actions/workflows/ci.yaml?query=branch%3Amain) ![GitHub License](https://img.shields.io/github/license/NexaAI/nexa-sdk)
-
-<!-- ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/nexaai) ![PyPI - Downloads](https://img.shields.io/pypi/dm/nexaai?color=orange) -->
-
-[![Discord](https://dcbadge.limes.pink/api/server/thRu2HaK4D?style=flat&compact=true)](https://discord.gg/thRu2HaK4D)
-
-[On-device Model Hub](https://model-hub.nexa4ai.com/) / [Nexa SDK Documentation](https://docs.nexaai.com/)
+<h1>Nexa SDK - Local On-Device Inference Framework</h1>
 
 [release-url]: https://github.com/NexaAI/nexa-sdk/releases
 [Windows-image]: https://img.shields.io/badge/windows-0078D4?logo=windows
 [MacOS-image]: https://img.shields.io/badge/-MacOS-black?logo=apple
 [Linux-image]: https://img.shields.io/badge/-Linux-333?logo=ubuntu
 
-</div>
+[![MacOS][MacOS-image]][release-url] [![Linux][Linux-image]][release-url] [![Windows][Windows-image]][release-url] [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FNexaAI%2Fnexa-sdk%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/NexaAI/nexa-sdk) [![Build workflow](https://img.shields.io/github/actions/workflow/status/NexaAI/nexa-sdk/ci.yaml?label=CI&logo=github)](https://github.com/NexaAI/nexa-sdk/actions/workflows/ci.yaml?query=branch%3Amain) ![GitHub License](https://img.shields.io/github/license/NexaAI/nexa-sdk) [![GitHub Release](https://img.shields.io/github/v/release/NexaAI/nexa-sdk)](https://github.com/NexaAI/nexa-sdk/releases/latest)
 
-Nexa SDK is a comprehensive toolkit for supporting **ONNX** and **GGML** models. It supports text generation, image generation, vision-language models (VLM), and speech-to-text (ASR), and text-to-speech (TTS) capabilities. Additionally, it offers an OpenAI-compatible API server with JSON schema mode for function calling and streaming support, and a user-friendly Streamlit UI. Users can run Nexa SDK in any device with Python environment, and GPU acceleration is supported, including CUDA, Metal, and ROCm. An executable version is also available.
+[**On-Device Model Hub**](https://nexa.ai/models) | [**Documentation**](https://docs.nexa.ai/) | [**Discord**](https://discord.gg/thRu2HaK4D) | [**Blogs**](https://nexa.ai/blogs) | [**X (Twitter)**](https://x.com/nexa_ai)
 
-<video src="https://user-images.githubusercontent.com/assets/375570dc-0e7a-4a99-840d-c1ef6502e5aa.mp4" autoplay muted loop playsinline style="max-width: 100%;"></video>
+**Nexa SDK** is a local on-device inference framework for ONNX and GGML models, supporting text generation, image generation, vision-language models (VLM), audio-language models, speech-to-text (ASR), and text-to-speech (TTS) capabilities. Installable via Python Package or Executable Installer.
+
+### Features
+
+- **Device Support:** CPU, GPU (CUDA, Metal, ROCm), iOS
+- **Server:** OpenAI-compatible API, JSON schema for function calling and streaming support
+- **Local UI:** Streamlit for interactive model deployment and testing
 
 ## Latest News 🔥
 
-- [2024/10] Support embedding model: `nexa embed <model_path> <prompt>`
-- [2024/10] Support pull and run supported Computer Vision models in GGUF format from HuggingFace: `nexa run -hf <model_id> -mt COMPUTER_VISION`
-- [2024/10] Support VLM in local server.
-- [2024/10] Added option to customize maximum context window for NLP and VLM models.
-- [2024/10] Support running model from user's local path
-- [2024/10] Added LoRA support for NLP models.
-- [2024/10] Added support for whisper-large-v3-turbo: `nexa run faster-whisper-large-turbo`
-- [2024/10] Added support for AMD-Llama-135m: `nexa run AMD-Llama-135m:fp16`
-- [2024/09] Nexa now has executables for easy installation: [Install Nexa SDK](https://nexaai.com/download-sdk) ✨
-- [2024/09] Added support for Llama 3.2 models: `nexa run llama3.2`
-- [2024/09] Added support for Qwen2.5, Qwen2.5-coder and Qwen2.5-Math models: `nexa run qwen2.5`
-- [2024/09] Support pull and run NLP models in GGUF format from HuggingFace: `nexa run -hf <model_id> -mt NLP`
-- [2024/09] Added support for ROCm
-- [2024/09] Added support for Phi-3.5 models: `nexa run phi3.5`
-- [2024/09] Added support for OpenELM models: `nexa run openelm`
-- [2024/09] Introduced logits API support for more advanced model interactions
-- [2024/09] Added support for Flux models: `nexa run flux`
-- [2024/09] Added support for Stable Diffusion 3 model: `nexa run sd3`
-- [2024/09] Added support for Stable Diffusion 2.1 model: `nexa run sd2-1`
+- Support Nexa AI's own vision language model (0.9B parameters): `nexa run omniVLM` and audio language model (2.9B parameters): `nexa run omniaudio`
+- Support audio language model: `nexa run qwen2audio`, **we are the first open-source toolkit to support audio language model with GGML tensor library.**
+- Support iOS Swift binding for local inference on **iOS mobile** devices.
+- Support embedding model: `nexa embed <model_path> <prompt>`
+- Support pull and run supported Computer Vision models in GGUF format from HuggingFace or ModelScope: `nexa run -hf <hf_model_id> -mt COMPUTER_VISION` or `nexa run -ms <ms_model_id> -mt COMPUTER_VISION`
+- Support pull and run NLP models in GGUF format from HuggingFace or ModelScope: `nexa run -hf <hf_model_id> -mt NLP` or `nexa run -ms <ms_model_id> -mt NLP`
 
 Welcome to submit your requests through [issues](https://github.com/NexaAI/nexa-sdk/issues/new/choose), we ship weekly.
 
-## Installation - Executable
+## Install Option 1: Executable Installer
 
-### macOS
+<p>
+    <a href="https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-sdk-0.0.9.5-macos-installer.pkg">
+        <img src="./assets/mac.png" style="height: 1em; width: auto" /> <strong> macOS Installer </strong>
+    </a>
+</p>
 
-[Download](https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-macos-installer.pkg)
+<p>
+    <a href="https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-sdk-0.0.9.5-windows-setup.exe">
+        <img src="./assets/windows.png" style="height: 1em; width: auto" /> <strong>Windows Installer</strong>
+    </a>
+</p>
 
-### Linux
+<strong> <img src="./assets/linux.png" style="height: 1em; width: auto" /> Linux Installer </strong>
 
 ```bash
 curl -fsSL https://public-storage.nexa4ai.com/install.sh | sh
@@ -70,32 +61,24 @@ nexa-exe <command>
 
 </details>
 
-### Windows
+## Install Option 2: Python Package
 
-Coming soon. Install with Python package below 👇
+We have released pre-built wheels for various Python versions, platforms, and backends for convenient installation on our [index page](https://github.nexa.ai/whl/).
 
-## Installation - Python Package
-
-We have released pre-built wheels for various Python versions, platforms, and backends for convenient installation on our [index page](https://nexaai.github.io/nexa-sdk/whl/).
-
-> [!NOTE]
->
-> 1. If you want to use <strong>ONNX model</strong>, just replace `pip install nexaai` with `pip install "nexaai[onnx]"` in provided commands.
-> 2. If you want to convert and quantize huggingface models to GGUF models, just replace `pip install nexaai` with `pip install "nexaai[nexa-gguf]"`.
-> 3. For Chinese developers, we recommend you to use <strong>Tsinghua Open Source Mirror</strong> as extra index url, just replace `--extra-index-url https://pypi.org/simple` with `--extra-index-url https://pypi.tuna.tsinghua.edu.cn/simple` in provided commands.
-
-#### CPU
+<details> <summary><strong style="font-size: 1.2em;">CPU</strong></summary>
 
 ```bash
-pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cpu --extra-index-url https://pypi.org/simple --no-cache-dir
+pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/cpu --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
-#### GPU (Metal)
+</details>
+
+<details> <summary><strong style="font-size: 1.2em;">Apple GPU (Metal)</strong></summary>
 
 For the GPU version supporting **Metal (macOS)**:
 
 ```bash
-CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple --no-cache-dir
+CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/metal --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 <details>
@@ -108,37 +91,38 @@ wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge
 bash Miniforge3-MacOSX-arm64.sh
 conda create -n nexasdk python=3.10
 conda activate nexasdk
-CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/metal --extra-index-url https://pypi.org/simple --no-cache-dir
+CMAKE_ARGS="-DGGML_METAL=ON -DSD_METAL=ON" pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/metal --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 </details>
+</details>
 
-#### GPU (CUDA)
+<details> <summary><strong style="font-size: 1.2em;">Nvidia GPU (CUDA)</strong></summary>
 
 To install with CUDA support, make sure you have [CUDA Toolkit 12.0 or later](https://developer.nvidia.com/cuda-12-0-0-download-archive) installed.
 
 For **Linux**:
 
 ```bash
-CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 For **Windows PowerShell**:
 
 ```bash
-$env:CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON"; pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+$env:CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON"; pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 For **Windows Command Prompt**:
 
 ```bash
-set CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" & pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+set CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" & pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 For **Windows Git Bash**:
 
 ```bash
-CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 <details>
@@ -156,39 +140,45 @@ CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp" pip install nexaai
 
 </details>
 
-#### GPU (ROCm)
+</details>
+
+<details> <summary><strong style="font-size: 1.2em;">AMD GPU (ROCm)</strong></summary>
 
 To install with ROCm support, make sure you have [ROCm 6.2.1 or later](https://rocm.docs.amd.com/projects/install-on-linux/en/docs-6.2.1/install/quick-start.html) installed.
 
 For **Linux**:
 
 ```bash
-CMAKE_ARGS="-DGGML_HIPBLAS=on" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/rocm621 --extra-index-url https://pypi.org/simple --no-cache-dir
+CMAKE_ARGS="-DGGML_HIPBLAS=on" pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/rocm621 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
-#### GPU (Vulkan)
+</details>
+
+<details> <summary><strong style="font-size: 1.2em;">GPU (Vulkan)</strong></summary>
 
 To install with Vulkan support, make sure you have [Vulkan SDK 1.3.261.1 or later](https://vulkan.lunarg.com/sdk/home) installed.
 
 For **Windows PowerShell**:
 
 ```bash
-$env:CMAKE_ARGS="-DGGML_VULKAN=on"; pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/vulkan --extra-index-url https://pypi.org/simple --no-cache-dir
+$env:CMAKE_ARGS="-DGGML_VULKAN=on"; pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/vulkan --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 For **Windows Command Prompt**:
 
 ```bash
-set CMAKE_ARGS="-DGGML_VULKAN=on" & pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/vulkan --extra-index-url https://pypi.org/simple --no-cache-dir
+set CMAKE_ARGS="-DGGML_VULKAN=on" & pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/vulkan --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 For **Windows Git Bash**:
 
 ```bash
-CMAKE_ARGS="-DGGML_VULKAN=on" pip install nexaai --prefer-binary --index-url https://nexaai.github.io/nexa-sdk/whl/vulkan --extra-index-url https://pypi.org/simple --no-cache-dir
+CMAKE_ARGS="-DGGML_VULKAN=on" pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/vulkan --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
-### Local Build
+</details>
+
+<details> <summary><strong style="font-size: 1.2em;">Local Build</strong></summary>
 
 How to clone this repo
 
@@ -208,105 +198,109 @@ Then you can build and install the package
 pip install -e .
 ```
 
-## Features
+</details>
 
-- **Model Support:**
-
-  - **ONNX & GGML models**
-  - **Conversion Engine**
-  - **Inference Engine**:
-    - **Text Generation**
-    - **Image Generation**
-    - **Vision-Language Models (VLM)**
-    - **Speech-to-Text (ASR)**
-
-Detailed API documentation is available [here](https://docs.nexaai.com/).
-
-- **Server:**
-  - OpenAI-compatible API
-  - JSON schema mode for function calling
-  - Streaming support
-- **Streamlit UI** for interactive model deployment and testing
+## Differentiation
 
 Below is our differentiation from other similar tools:
 
-| **Feature**                | **[Nexa SDK](https://github.com/NexaAI/nexa-sdk)** | **[ollama](https://github.com/ollama/ollama)** | **[Optimum](https://github.com/huggingface/optimum)** | **[LM Studio](https://github.com/lmstudio-ai)** |
-| -------------------------- | :------------------------------------------------: | :--------------------------------------------: | :---------------------------------------------------: | :---------------------------------------------: |
-| **GGML Support**           |                         ✅                         |                       ✅                       |                          ❌                           |                       ✅                        |
-| **ONNX Support**           |                         ✅                         |                       ❌                       |                          ✅                           |                       ❌                        |
-| **Text Generation**        |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
-| **Image Generation**       |                         ✅                         |                       ❌                       |                          ❌                           |                       ❌                        |
-| **Vision-Language Models** |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
-| **Text-to-Speech**         |                         ✅                         |                       ❌                       |                          ✅                           |                       ❌                        |
-| **Server Capability**      |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
-| **User Interface**         |                         ✅                         |                       ❌                       |                          ❌                           |                       ✅                        |
+| **Feature**                 | **[Nexa SDK](https://github.com/NexaAI/nexa-sdk)** | **[ollama](https://github.com/ollama/ollama)** | **[Optimum](https://github.com/huggingface/optimum)** | **[LM Studio](https://github.com/lmstudio-ai)** |
+| --------------------------- | :------------------------------------------------: | :--------------------------------------------: | :---------------------------------------------------: | :---------------------------------------------: |
+| **GGML Support**            |                         ✅                         |                       ✅                       |                          ❌                           |                       ✅                        |
+| **ONNX Support**            |                         ✅                         |                       ❌                       |                          ✅                           |                       ❌                        |
+| **Text Generation**         |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
+| **Image Generation**        |                         ✅                         |                       ❌                       |                          ❌                           |                       ❌                        |
+| **Vision-Language Models**  |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
+| **Audio-Language Models**   |                         ✅                         |                       ❌                       |                          ❌                           |                       ❌                        |
+| **Text-to-Speech**          |                         ✅                         |                       ❌                       |                          ✅                           |                       ❌                        |
+| **Server Capability**       |                         ✅                         |                       ✅                       |                          ✅                           |                       ✅                        |
+| **User Interface**          |                         ✅                         |                       ❌                       |                          ❌                           |                       ✅                        |
+| **Executable Installation** |                         ✅                         |                       ✅                       |                          ❌                           |                       ✅                        |
 
 ## Supported Models & Model Hub
 
 Our on-device model hub offers all types of quantized models (text, image, audio, multimodal) with filters for RAM, file size, Tasks, etc. to help you easily explore models with UI. Explore on-device models at [On-device Model Hub](https://model-hub.nexa4ai.com/)
 
-Supported models (full list at [Model Hub](https://nexa.ai/models)):
+Supported model examples (full list at [Model Hub](https://nexa.ai/models)):
 | Model | Type | Format | Command |
 | ------------------------------------------------------------------------------------------------------- | --------------- | --------- | -------------------------------------- |
-| [octopus-v2](https://www.nexaai.com/NexaAI/Octopus-v2/gguf-q4_0/readme) | NLP | GGUF | `nexa run octopus-v2` |
-| [octopus-v4](https://www.nexaai.com/NexaAI/Octopus-v4/gguf-q4_0/readme) | NLP | GGUF | `nexa run octopus-v4` |
-| [gpt2](https://nexaai.com/openai/gpt2/gguf-q4_0/readme) | NLP | GGUF | `nexa run gpt2` |
-| [tinyllama](https://www.nexaai.com/TinyLlama/TinyLlama-1.1B-Chat-v1.0/gguf-fp16/readme) | NLP | GGUF | `nexa run tinyllama` |
-| [llama2](https://www.nexaai.com/meta/Llama2-7b-chat/gguf-q4_0/readme) | NLP | GGUF/ONNX | `nexa run llama2` |
-| [llama2-uncensored](https://www.nexaai.com/georgesung/Llama2-7b-chat-uncensored/gguf-q4_0/readme) | NLP | GGUF | `nexa run llama2-uncensored` |
-| [llama2-function-calling](https://www.nexaai.com/Trelis/Llama2-7b-function-calling/gguf-q4_K_M/readme) | NLP | GGUF | `nexa run llama2-function-calling` |
-| [llama3](https://www.nexaai.com/meta/Llama3-8B-Instruct/gguf-q4_0/readme) | NLP | GGUF/ONNX | `nexa run llama3` |
-| [llama3.1](https://www.nexaai.com/meta/Llama3.1-8B-Instruct/gguf-q4_0/readme) | NLP | GGUF/ONNX | `nexa run llama3.1` |
-| [llama3.2](https://nexaai.com/meta/Llama3.2-3B-Instruct/gguf-q4_0/readme) | NLP | GGUF | `nexa run llama3.2` |
-| [llama3-uncensored](https://www.nexaai.com/Orenguteng/Llama3-8B-Lexi-Uncensored/gguf-q4_K_M/readme) | NLP | GGUF | `nexa run llama3-uncensored` |
-| [gemma](https://www.nexaai.com/google/gemma-1.1-2b-instruct/gguf-q4_0/readme) | NLP | GGUF/ONNX | `nexa run gemma` |
-| [gemma2](https://www.nexaai.com/google/gemma-2-2b-instruct/gguf-q4_0/readme) | NLP | GGUF | `nexa run gemma2` |
-| [qwen1.5](https://www.nexaai.com/Qwen/Qwen1.5-7B-Instruct/gguf-q4_0/readme) | NLP | GGUF | `nexa run qwen1.5` |
-| [qwen2](https://www.nexaai.com/Qwen/Qwen2-1.5B-Instruct/gguf-q4_0/readme) | NLP | GGUF/ONNX | `nexa run qwen2` |
-| [qwen2.5](https://www.nexaai.com/Qwen/Qwen2.5-1.5B-Instruct/gguf-q4_0/readme) | NLP | GGUF | `nexa run qwen2.5` |
-| [mathqwen](https://nexaai.com/Qwen/Qwen2.5-Math-1.5B-Instruct/gguf-q4_0/readme) | NLP | GGUF | `nexa run mathqwen` |
-| [codeqwen](https://www.nexaai.com/Qwen/CodeQwen1.5-7B-Instruct/gguf-q4_0/readme) | NLP | GGUF | `nexa run codeqwen` |
-| [mistral](https://www.nexaai.com/mistralai/Mistral-7B-Instruct-v0.3/gguf-q4_0/readme) | NLP | GGUF/ONNX | `nexa run mistral` |
-| [dolphin-mistral](https://www.nexaai.com/CognitiveComputations/dolphin-2.8-mistral-7b/gguf-q4_0/readme) | NLP | GGUF | `nexa run dolphin-mistral` |
-| [codegemma](https://www.nexaai.com/google/codegemma-2b/gguf-q4_0/readme) | NLP | GGUF | `nexa run codegemma` |
-| [codellama](https://www.nexaai.com/meta/CodeLlama-7b-Instruct/gguf-q2_K/readme) | NLP | GGUF | `nexa run codellama` |
-| [deepseek-coder](https://www.nexaai.com/DeepSeek/deepseek-coder-1.3b-instruct/gguf-q4_0/readme) | NLP | GGUF | `nexa run deepseek-coder` |
-| [phi2](https://www.nexaai.com/microsoft/Phi-2/gguf-q4_0/readme) | NLP | GGUF | `nexa run phi2` |
-| [phi3](https://www.nexaai.com/microsoft/Phi-3-mini-128k-instruct/gguf-q4_0/readme) | NLP | GGUF/ONNX | `nexa run phi3` |
-| [phi3.5](https://nexaai.com/microsoft/Phi-3.5-mini-instruct/gguf-q4_0/readme) | NLP | GGUF | `nexa run phi3.5` |
-| [openelm](https://nexaai.com/apple/OpenELM-3B/gguf-q4_K_M/readme) | NLP | GGUF | `nexa run openelm` |
-| [AMD-Llama-135m](https://nexaai.com/amd/AMD-Llama-135m/gguf-fp16/readme) | NLP | GGUF | `nexa run AMD-Llama-135m:fp16` |
+| [omniaudio](https://nexa.ai/NexaAI/omniaudio/gguf-q4_0/readme) | AudioLM | GGUF | `nexa run omniaudio` |
+| [qwen2audio](https://nexa.ai/Qwen/Qwen2-Audio-7.8B-Instruct/gguf-q4_K_M/readme) | AudioLM | GGUF | `nexa run qwen2audio` |
+| [octopus-v2](https://www.nexaai.com/NexaAI/Octopus-v2/gguf-q4_0/readme) | Function Call | GGUF | `nexa run octopus-v2` |
+| [octo-net](https://www.nexaai.com/NexaAI/Octo-net/gguf-q4_0/readme) | Text | GGUF | `nexa run octo-net` |
+| [omniVLM](https://nexa.ai/NexaAI/omniVLM/gguf-fp16/readme) | Multimodal | GGUF | `nexa run omniVLM` |
 | [nanollava](https://www.nexaai.com/qnguyen3/nanoLLaVA/gguf-fp16/readme) | Multimodal | GGUF | `nexa run nanollava` |
 | [llava-phi3](https://www.nexaai.com/xtuner/llava-phi-3-mini/gguf-q4_0/readme) | Multimodal | GGUF | `nexa run llava-phi3` |
 | [llava-llama3](https://www.nexaai.com/xtuner/llava-llama-3-8b-v1.1/gguf-q4_0/readme) | Multimodal | GGUF | `nexa run llava-llama3` |
 | [llava1.6-mistral](https://www.nexaai.com/liuhaotian/llava-v1.6-mistral-7b/gguf-q4_0/readme) | Multimodal | GGUF | `nexa run llava1.6-mistral` |
 | [llava1.6-vicuna](https://www.nexaai.com/liuhaotian/llava-v1.6-vicuna-7b/gguf-q4_0/readme) | Multimodal | GGUF | `nexa run llava1.6-vicuna` |
-| [stable-diffusion-v1-4](https://www.nexaai.com/runwayml/stable-diffusion-v1-4/gguf-q4_0/readme) | Computer Vision | GGUF | `nexa run sd1-4` |
-| [stable-diffusion-v1-5](https://www.nexaai.com/runwayml/stable-diffusion-v1-5/gguf-q4_0/readme) | Computer Vision | GGUF/ONNX | `nexa run sd1-5` |
-| [stable-diffusion-v2-1](https://nexaai.com/StabilityAI/stable-diffusion-v2-1/gguf-q4_0/readme) | Computer Vision | GGUF | `nexa run sd2-1` |
-| [stable-diffusion-3-medium](https://nexaai.com/StabilityAI/stable-diffusion-3-medium/gguf-q4_0/readme) | Computer Vision | GGUF | `nexa run sd3` |
-| [FLUX.1-schnell](https://nexaai.com/BlackForestLabs/FLUX.1-schnell/gguf-q4_0/readme) | Computer Vision | GGUF | `nexa run flux` |
-| [lcm-dreamshaper](https://www.nexaai.com/SimianLuo/lcm-dreamshaper-v7/gguf-fp16/readme) | Computer Vision | GGUF/ONNX | `nexa run lcm-dreamshaper` |
-| [hassaku-lcm](https://nexaai.com/stablediffusionapi/hassaku-hentai-model-v13-LCM/gguf-fp16/readme) | Computer Vision | GGUF | `nexa run hassaku-lcm` |
-| [anything-lcm](https://www.nexaai.com/Linaqruf/anything-v30-LCM/gguf-fp16/readme) | Computer Vision | GGUF | `nexa run anything-lcm` |
-| [faster-whisper-tiny](https://www.nexaai.com/Systran/faster-whisper-tiny/bin-cpu-fp16/readme) | Audio | BIN | `nexa run faster-whisper-tiny` |
-| [faster-whisper-small](https://www.nexaai.com/Systran/faster-whisper-small/bin-cpu-fp16/readme) | Audio | BIN | `nexa run faster-whisper-small` |
-| [faster-whisper-medium](https://www.nexaai.com/Systran/faster-whisper-medium/bin-cpu-fp16/readme) | Audio | BIN | `nexa run faster-whisper-medium` |
-| [faster-whisper-base](https://www.nexaai.com/Systran/faster-whisper-base/bin-cpu-fp16/readme) | Audio | BIN | `nexa run faster-whisper-base` |
-| [faster-whisper-large](https://www.nexaai.com/Systran/faster-whisper-large-v3/bin-cpu-fp16/readme) | Audio | BIN | `nexa run faster-whisper-large` |
-| [whisper-large-v3-turbo](https://nexaai.com/Systran/faster-whisper-large-v3-turbo/bin-cpu-fp16/readme) | Audio | BIN | `nexa run faster-whisper-large-turbo` |
-| [whisper-tiny.en](https://nexaai.com/openai/whisper-tiny.en/onnx-cpu-fp32/readme) | Audio | ONNX | `nexa run whisper-tiny.en` |
-| [whisper-tiny](https://nexaai.com/openai/whisper-tiny/onnx-cpu-fp32/readme) | Audio | ONNX | `nexa run whisper-tiny` |
-| [whisper-small.en](https://nexaai.com/openai/whisper-small.en/onnx-cpu-fp32/readme) | Audio | ONNX | `nexa run whisper-small.en` |
-| [whisper-small](https://nexaai.com/openai/whisper-small/onnx-cpu-fp32/readme) | Audio | ONNX | `nexa run whisper-small` |
-| [whisper-base.en](https://nexaai.com/openai/whisper-base.en/onnx-cpu-fp32/readme) | Audio | ONNX | `nexa run whisper-base.en` |
-| [whisper-base](https://nexaai.com/openai/whisper-base/onnx-cpu-fp32/readme) | Audio | ONNX | `nexa run whisper-base` |
+| [llama3.2](https://nexaai.com/meta/Llama3.2-3B-Instruct/gguf-q4_0/readme) | Text | GGUF | `nexa run llama3.2` |
+| [llama3-uncensored](https://www.nexaai.com/Orenguteng/Llama3-8B-Lexi-Uncensored/gguf-q4_K_M/readme) | Text | GGUF | `nexa run llama3-uncensored` |
+| [gemma2](https://www.nexaai.com/google/gemma-2-2b-instruct/gguf-q4_0/readme) | Text | GGUF | `nexa run gemma2` |
+| [qwen2.5](https://www.nexaai.com/Qwen/Qwen2.5-1.5B-Instruct/gguf-q4_0/readme) | Text | GGUF | `nexa run qwen2.5` |
+| [mathqwen](https://nexaai.com/Qwen/Qwen2.5-Math-1.5B-Instruct/gguf-q4_0/readme) | Text | GGUF | `nexa run mathqwen` |
+| [codeqwen](https://www.nexaai.com/Qwen/CodeQwen1.5-7B-Instruct/gguf-q4_0/readme) | Text | GGUF | `nexa run codeqwen` |
+| [mistral](https://www.nexaai.com/mistralai/Mistral-7B-Instruct-v0.3/gguf-q4_0/readme) | Text | GGUF/ONNX | `nexa run mistral` |
+| [deepseek-coder](https://www.nexaai.com/DeepSeek/deepseek-coder-1.3b-instruct/gguf-q4_0/readme) | Text | GGUF | `nexa run deepseek-coder` |
+| [phi3.5](https://nexaai.com/microsoft/Phi-3.5-mini-instruct/gguf-q4_0/readme) | Text | GGUF | `nexa run phi3.5` |
+| [openelm](https://nexaai.com/apple/OpenELM-3B/gguf-q4_K_M/readme) | Text | GGUF | `nexa run openelm` |
+| [stable-diffusion-v2-1](https://nexaai.com/StabilityAI/stable-diffusion-v2-1/gguf-q4_0/readme) | Image Generation | GGUF | `nexa run sd2-1` |
+| [stable-diffusion-3-medium](https://nexaai.com/StabilityAI/stable-diffusion-3-medium/gguf-q4_0/readme) | Image Generation | GGUF | `nexa run sd3` |
+| [FLUX.1-schnell](https://nexaai.com/BlackForestLabs/FLUX.1-schnell/gguf-q4_0/readme) | Image Generation | GGUF | `nexa run flux` |
+| [lcm-dreamshaper](https://www.nexaai.com/SimianLuo/lcm-dreamshaper-v7/gguf-fp16/readme) | Image Generation | GGUF/ONNX | `nexa run lcm-dreamshaper` |
+| [whisper-large-v3-turbo](https://nexaai.com/Systran/faster-whisper-large-v3-turbo/bin-cpu-fp16/readme) | Speech-to-Text | BIN | `nexa run faster-whisper-large-turbo` |
+| [whisper-tiny.en](https://nexaai.com/openai/whisper-tiny.en/onnx-cpu-fp32/readme) | Speech-to-Text | ONNX | `nexa run whisper-tiny.en` |
 | [mxbai-embed-large-v1](https://nexa.ai/mixedbread-ai/mxbai-embed-large-v1/gguf-fp16/readme) | Embedding | GGUF | `nexa embed mxbai` |
 | [nomic-embed-text-v1.5](https://nexa.ai/nomic-ai/nomic-embed-text-v1.5/gguf-fp16/readme) | Embedding | GGUF | `nexa embed nomic` |
-| [all-MiniLM-L6-v2](https://nexa.ai/sentence-transformers/all-MiniLM-L6-v2/gguf-fp16/readme) | Embedding | GGUF | `nexa embed all-MiniLM-L6-v2:fp16` |
 | [all-MiniLM-L12-v2](https://nexa.ai/sentence-transformers/all-MiniLM-L12-v2/gguf-fp16/readme) | Embedding | GGUF | `nexa embed all-MiniLM-L12-v2:fp16` |
+| [bark-small](https://nexa.ai/suno/bark-small/gguf-fp16/readme) | Text-to-Speech | GGUF | `nexa run bark-small:fp16` |
 
-## CLI Reference
+## Run Models from 🤗 HuggingFace or 🤖 ModelScope
+
+You can pull, convert (to .gguf), quantize and run [llama.cpp supported](https://github.com/ggerganov/llama.cpp#description) text generation models from HF or MS with Nexa SDK.
+
+### Run .gguf File
+
+Use `nexa run -hf <hf-model-id>` or `nexa run -ms <ms-model-id>` to run models with provided .gguf files:
+
+```bash
+nexa run -hf Qwen/Qwen2.5-Coder-7B-Instruct-GGUF
+```
+
+```bash
+nexa run -ms Qwen/Qwen2.5-Coder-7B-Instruct-GGUF
+```
+
+> **Note:** You will be prompted to select a single .gguf file. If your desired quantization version has multiple split files (like fp16-00001-of-00004), please use Nexa's conversion tool (see below) to convert and quantize the model locally.
+
+### Convert .safetensors Files
+
+Install [Nexa Python package](https://github.com/NexaAI/nexa-sdk?tab=readme-ov-file#install-option-2-python-package), and install Nexa conversion tool with `pip install "nexaai[convert]"`, then convert models from huggingface with `nexa convert <hf-model-id>`:
+
+```bash
+nexa convert HuggingFaceTB/SmolLM2-135M-Instruct
+```
+
+Or you can convert models from ModelScope with `nexa convert -ms <ms-model-id>`:
+
+```bash
+nexa convert -ms Qwen/Qwen2.5-7B-Instruct
+```
+
+> **Note:** Check our [leaderboard](https://nexa.ai/leaderboard) for performance benchmarks of different quantized versions of mainstream language models and [HuggingFace docs](https://huggingface.co/docs/optimum/en/concept_guides/quantization) to learn about quantization options.
+
+📋 You can view downloaded and converted models with `nexa list`
+
+## Documentation
+
+> [!NOTE]
+>
+> 1. If you want to use <strong>ONNX model</strong>, just replace `pip install nexaai` with `pip install "nexaai[onnx]"` in provided commands.
+> 2. If you want to <strong>run benchmark evaluation</strong>, just replace `pip install nexaai` with `pip install "nexaai[eval]"` in provided commands.
+> 3. If you want to <strong>convert and quantize huggingface models to GGUF models</strong>, just replace `pip install nexaai` with `pip install "nexaai[convert]"` in provided commands.
+> 4. For Chinese developers, we recommend you to use <strong>Tsinghua Open Source Mirror</strong> as extra index url, just replace `--extra-index-url https://pypi.org/simple` with `--extra-index-url https://pypi.tuna.tsinghua.edu.cn/simple` in provided commands.
+
+### CLI Reference
 
 Here's a brief overview of the main CLI commands:
 
@@ -325,10 +319,16 @@ Here's a brief overview of the main CLI commands:
 
 For detailed information on CLI commands and usage, please refer to the [CLI Reference](CLI.md) document.
 
-## Start Local Server
+### Start Local Server
 
 To start a local server using models on your local computer, you can use the `nexa server` command.
 For detailed information on server setup, API endpoints, and usage examples, please refer to the [Server Reference](SERVER.md) document.
+
+### Swift Package
+
+**[Swift SDK](https://github.com/NexaAI/nexa-sdk/tree/main/swift):** Provides a Swifty API, allowing Swift developers to easily integrate and use llama.cpp models in their projects.
+
+[**More Docs**](https://docs.nexa.ai/)
 
 ## Acknowledgements
 
@@ -336,4 +336,5 @@ We would like to thank the following projects:
 
 - [llama.cpp](https://github.com/ggerganov/llama.cpp)
 - [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)
+- [bark.cpp](https://github.com/PABannier/bark.cpp)
 - [optimum](https://github.com/huggingface/optimum)

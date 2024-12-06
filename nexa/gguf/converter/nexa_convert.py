@@ -6,7 +6,7 @@ from pathlib import Path
 import json
 
 from nexa.gguf.llama.llama_cpp import GGML_TYPE_COUNT, LLAMA_FTYPE_MOSTLY_Q4_0
-from nexa.constants import LLAMA_QUANTIZATION_TYPES, GGML_TYPES
+from nexa.gguf.converter.constants import LLAMA_QUANTIZATION_TYPES, GGML_TYPES
 from nexa.gguf.llama.llama_cpp import llama_model_quantize_params, llama_model_quantize
 
 # Set up logging
@@ -110,7 +110,7 @@ def convert_hf_to_quantized_gguf(
     ftype: str = "q4_0", 
     convert_type: str = "f16", 
     **kwargs
-) -> Optional[str]:
+) -> Optional[tuple[str, str, str]]:
     """
     Convert a model in safetensors format to a quantized GGUF file.
 
@@ -118,14 +118,14 @@ def convert_hf_to_quantized_gguf(
     It can process both directories containing .safetensors files and existing .gguf files.
 
     Args:
-        input_path (str): Path to the input Hugging Face model directory or GGUF file.
+        input_path (str): Path in the local file system to the input Hugging Face model directory or GGUF file.
         output_file (str, optional): Path to the output quantized GGUF file. If None, a default path will be used.
         ftype (str, optional): Quantization type (default: "q4_0").
         convert_type (str, optional): Conversion type for safetensors to GGUF (default: "f16").
         **kwargs: Additional keyword arguments for the conversion and quantization process.
 
     Returns:
-        Optional[str]: Path to the output quantized GGUF file if successful, None otherwise.
+        Optional[tuple[str, str, str]]: Tuple of (output_file_path, input_name, ftype) if successful, None otherwise.
 
     Raises:
         FileNotFoundError: If the input directory or file does not exist.
@@ -139,9 +139,13 @@ def convert_hf_to_quantized_gguf(
     # Convert input path to absolute path
     input_path = os.path.abspath(input_path)
     
+    # Get input name early
+    input_name = os.path.basename(input_path)
+    if input_path.endswith('.gguf'):
+        input_name = os.path.splitext(input_name)[0]  # Remove .gguf extension
+    
     # Set default output file if not provided
     if not output_file:
-        input_name = os.path.basename(input_path)
         output_file = os.path.abspath(f"./{input_name}-{ftype}.gguf")
     else:
         output_file = os.path.abspath(output_file)
@@ -166,7 +170,7 @@ def convert_hf_to_quantized_gguf(
 
                 # Quantize GGUF model
                 quantize_model(str(tmp_file_path.absolute()), output_file, ftype, **kwargs)
-                return output_file
+                return output_file, input_name, ftype
             finally:
                 # Delete the temporary file
                 if tmp_file_path.exists():
@@ -177,7 +181,7 @@ def convert_hf_to_quantized_gguf(
     elif input_path.endswith('.gguf'):
         # Directly call quantize_model with input_path
         quantize_model(input_file=input_path, output_file=output_file, ftype=ftype, **kwargs)
-        return output_file
+        return output_file, input_name, ftype
     else:
         logger.error(f"Invalid input path: {input_path}. Must be a directory with .safetensors files or a .gguf file.")
         return None

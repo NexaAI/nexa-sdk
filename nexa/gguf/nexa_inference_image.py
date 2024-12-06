@@ -203,12 +203,20 @@ class NexaImageInference:
         return images
 
     def run_txt2img(self):
+        from nexa.gguf.llama._utils_spinner import start_spinner, stop_spinner
+
         while True:
             try:
                 prompt = nexa_prompt("Enter your prompt: ")
                 negative_prompt = nexa_prompt(
                     "Enter your negative prompt (press Enter to skip): "
                 )
+
+                stop_event, spinner_thread = start_spinner(
+                    style="default",
+                    message=""
+                )
+
                 try:
                     images = self.txt2img(
                         prompt,
@@ -225,6 +233,9 @@ class NexaImageInference:
                         self._save_images(images)
                 except Exception as e:
                     logging.error(f"Error during text to image generation: {e}")
+                finally:
+                    stop_spinner(stop_event, spinner_thread)
+
             except KeyboardInterrupt:
                 print(EXIT_REMINDER)
             except Exception as e:
@@ -270,6 +281,8 @@ class NexaImageInference:
         return images
 
     def run_img2img(self):
+        from nexa.gguf.llama._utils_spinner import start_spinner, stop_spinner
+
         while True:
             try:
                 image_path = nexa_prompt("Enter the path to your image: ")
@@ -277,6 +290,12 @@ class NexaImageInference:
                 negative_prompt = nexa_prompt(
                     "Enter your negative prompt (press Enter to skip): "
                 )
+
+                stop_event, spinner_thread = start_spinner(
+                    style="default",
+                    message=""
+                )
+
                 images = self.img2img(
                     image_path,
                     prompt,
@@ -292,6 +311,9 @@ class NexaImageInference:
 
                 if images:
                     self._save_images(images)
+                
+                stop_spinner(stop_event, spinner_thread)
+
             except KeyboardInterrupt:
                 print(EXIT_REMINDER)
             except Exception as e:

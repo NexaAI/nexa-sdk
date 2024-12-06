@@ -82,6 +82,7 @@ n_ctx = None
 is_local_path = False
 model_type = None
 is_huggingface = False
+is_modelscope = False
 projector_path = None
 # Request Classes
 class GenerationRequest(BaseModel):
@@ -176,7 +177,7 @@ class EmbeddingRequest(BaseModel):
 
 # helper functions
 async def load_model():
-    global model, chat_format, completion_template, model_path, n_ctx, is_local_path, model_type, is_huggingface, projector_path
+    global model, chat_format, completion_template, model_path, n_ctx, is_local_path, model_type, is_huggingface, is_modelscope, projector_path
     if is_local_path:
         if model_type == "Multimodal":
             if not projector_path:
@@ -185,11 +186,11 @@ async def load_model():
             projector_downloaded_path = projector_path
         else:
             downloaded_path = model_path
-    elif is_huggingface:
+    elif is_huggingface or is_modelscope:
         # TODO: currently Multimodal models and Audio models are not supported for Hugging Face
         if model_type == "Multimodal" or model_type == "Audio":
             raise ValueError("Multimodal and Audio models are not supported for Hugging Face")
-        downloaded_path, _ = pull_model(model_path, hf=True)
+        downloaded_path, _ = pull_model(model_path, hf=is_huggingface, ms=is_modelscope)
     else:
         if model_path in NEXA_RUN_MODEL_MAP_VLM: # for Multimodal models
             downloaded_path, _ = pull_model(NEXA_RUN_MODEL_MAP_VLM[model_path])
@@ -333,7 +334,7 @@ def nexa_run_text_generation(
     logprobs_or_none = None
 
     if is_chat_completion:
-        if is_local_path or is_huggingface: # do not add system prompt if local path or huggingface
+        if is_local_path or is_huggingface or is_modelscope: # do not add system prompt if local path or huggingface or modelscope
             messages = [{"role": "user", "content": prompt}]
         else:
             messages = chat_completion_system_prompt + [{"role": "user", "content": prompt}]
@@ -496,14 +497,15 @@ def image_url_to_base64(image_url: str) -> str:
     return f"data:image/png;base64,{base64.b64encode(buffered.getvalue()).decode()}"
 
 
-def run_nexa_ai_service(model_path_arg=None, is_local_path_arg=False, model_type_arg=None, huggingface=False, projector_local_path_arg=None, **kwargs):
-    global model_path, n_ctx, is_local_path, model_type, is_huggingface, projector_path
+def run_nexa_ai_service(model_path_arg=None, is_local_path_arg=False, model_type_arg=None, huggingface=False, modelscope=False, projector_local_path_arg=None, **kwargs):
+    global model_path, n_ctx, is_local_path, model_type, is_huggingface, is_modelscope, projector_path
     is_local_path = is_local_path_arg
     is_huggingface = huggingface
+    is_modelscope = modelscope
     projector_path = projector_local_path_arg
-    if is_local_path_arg or huggingface:
+    if is_local_path_arg or huggingface or modelscope:
         if not model_path_arg:
-            raise ValueError("model_path must be provided when using --local_path or --huggingface")
+            raise ValueError("model_path must be provided when using --local_path or --huggingface or --modelscope")
         if is_local_path_arg and not model_type_arg:
             raise ValueError("--model_type must be provided when using --local_path")
         model_path = os.path.abspath(model_path_arg) if is_local_path_arg else model_path_arg
@@ -515,6 +517,7 @@ def run_nexa_ai_service(model_path_arg=None, is_local_path_arg=False, model_type
     os.environ["IS_LOCAL_PATH"] = str(is_local_path_arg)
     os.environ["MODEL_TYPE"] = model_type if model_type else ""
     os.environ["HUGGINGFACE"] = str(huggingface)
+    os.environ["MODELSCOPE"] = str(modelscope)
     os.environ["PROJECTOR_PATH"] = projector_path if projector_path else ""
     n_ctx = kwargs.get("nctx", 2048)
     host = kwargs.get("host", "localhost")
@@ -525,11 +528,12 @@ def run_nexa_ai_service(model_path_arg=None, is_local_path_arg=False, model_type
 # Endpoints
 @app.on_event("startup")
 async def startup_event():
-    global model_path, is_local_path, model_type, is_huggingface, projector_path
+    global model_path, is_local_path, model_type, is_huggingface, is_modelscope, projector_path
     model_path = os.getenv("MODEL_PATH", "gemma")
     is_local_path = os.getenv("IS_LOCAL_PATH", "False").lower() == "true"
     model_type = os.getenv("MODEL_TYPE", None)
     is_huggingface = os.getenv("HUGGINGFACE", "False").lower() == "true"
+    is_modelscope = os.getenv("MODELSCOPE", "False").lower() == "true"
     projector_path = os.getenv("PROJECTOR_PATH", None)
     await load_model()
 
@@ -859,12 +863,18 @@ if __name__ == "__main__":
         action="store_true",
         help="Use a Hugging Face model",
     )
+    parser.add_argument(
+        "--modelscope",
+        action="store_true",
+        help="Use a ModelScope model",
+    )
     args = parser.parse_args()
     run_nexa_ai_service(
         args.model_path,
         is_local_path_arg=args.local_path,
         model_type_arg=args.model_type,
         huggingface=args.huggingface,
+        modelscope=args.modelscope,
         nctx=args.nctx,
         host=args.host,
         port=args.port,

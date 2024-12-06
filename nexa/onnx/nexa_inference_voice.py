@@ -43,9 +43,8 @@ class NexaVoiceInference:
         self.model = None
         self.processor = None
 
-    def run(self):
         if self.downloaded_onnx_folder is None:
-            self.downloaded_onnx_folder, run_type = pull_model(self.model_path, **kwargs)
+            self.downloaded_onnx_folder, _ = pull_model(self.model_path, **kwargs)
 
         if self.downloaded_onnx_folder is None:
             logging.error(
@@ -54,14 +53,16 @@ class NexaVoiceInference:
             )
             exit(1)
 
-        self._load_model(self.downloaded_onnx_folder)
+        self._load_model()
+
+    def run(self):
         self._dialogue_mode()
 
-    def _load_model(self, model_path):
-        logging.debug(f"Loading model from {model_path}")
+    def _load_model(self):
+        logging.debug(f"Loading model from {self.downloaded_onnx_folder}")
         try:
-            self.processor = AutoProcessor.from_pretrained(model_path)
-            self.model = ORTModelForSpeechSeq2Seq.from_pretrained(model_path)
+            self.processor = AutoProcessor.from_pretrained(self.downloaded_onnx_folder)
+            self.model = ORTModelForSpeechSeq2Seq.from_pretrained(self.downloaded_onnx_folder)
             logging.debug("Model and processor loaded successfully")
         except Exception as e:
             logging.error(f"Error loading model or processor: {e}")

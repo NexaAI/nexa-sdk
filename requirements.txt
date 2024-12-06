@@ -19,6 +19,7 @@ pydantic
 pillow
 python-multipart
 huggingface_hub
+modelscope
 
 # For onnx
 optimum[onnxruntime]  # for CPU version

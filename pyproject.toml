@@ -1,5 +1,5 @@
 [build-system]
-requires = ["scikit-build-core"]
+requires = ["scikit-build-core", "setuptools>=64.0"]
 build-backend = "scikit_build_core.build"
 
 [project]
@@ -22,6 +22,7 @@ dependencies = [
     "pydantic",
     "pillow",
     "huggingface_hub",
+    "modelscope",
     "prompt_toolkit",
     "tqdm",                     # Shared dependencies
     "tabulate",
@@ -105,6 +106,7 @@ wheel.packages = [
     "nexa.onnx.streamlit",
     "nexa.onnx.server",
     "nexa.eval",
+    "nexa.transformers",
 ]
 sdist.include = [
     "CMakeLists.txt",

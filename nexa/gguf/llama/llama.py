@@ -31,6 +31,7 @@ from pathlib import Path
 
 from nexa.gguf.llama.llama_types import *
 from nexa.gguf.llama.llama_grammar import LlamaGrammar
+from nexa.gguf.llama.llama_cache import BaseLlamaCache
 from nexa.gguf.llama.llama_tokenizer import BaseLlamaTokenizer, LlamaTokenizer
 import nexa.gguf.llama.llama_cpp as llama_cpp
 import nexa.gguf.llama.llama_chat_format as llama_chat_format
@@ -350,6 +351,8 @@ class Llama:
         # Sampling Params
         self.last_n_tokens_size = last_n_tokens_size
 
+        self.cache: Optional[BaseLlamaCache] = None
+
         self.lora_base = lora_base
         self.lora_scale = lora_scale
         self.lora_path = lora_path
@@ -596,6 +599,14 @@ class Llama:
             The detokenized string.
         """
         return self.tokenizer_.detokenize(tokens, prev_tokens=prev_tokens, special=special)
+    
+    def set_cache(self, cache: Optional[BaseLlamaCache]):
+        """Set the cache.
+
+        Args:
+            cache: The cache to set.
+        """
+        self.cache = cache
 
     def set_seed(self, seed: int):
         """Set the random seed.
@@ -1211,6 +1222,23 @@ class Llama:
             raise ValueError(
                 "logprobs is not supported for models created with logits_all=False"
             )
+        
+        if self.cache:
+            try:
+                cache_item = self.cache[prompt_tokens]
+                cache_prefix_len = Llama.longest_token_prefix(
+                    cache_item.input_ids.tolist(), prompt_tokens
+                )
+                eval_prefix_len = Llama.longest_token_prefix(
+                    self._input_ids.tolist(), prompt_tokens
+                )
+                if cache_prefix_len > eval_prefix_len:
+                    self.load_state(cache_item)
+                    if self.verbose:
+                        print("Llama._create_completion: cache hit", file=sys.stderr)
+            except KeyError:
+                if self.verbose:
+                    print("Llama._create_completion: cache miss", file=sys.stderr)
 
         if seed is not None:
             self._ctx.set_rng_seed(seed)
@@ -1552,7 +1580,18 @@ class Llama:
                     }
                 ],
             }
+            if self.cache:
+                if self.verbose:
+                    print("Llama._create_completion: cache save", file=sys.stderr)
+                self.cache[prompt_tokens + completion_tokens] = self.save_state()
+                if self.verbose:
+                    print("Llama._create_completion: cache saved", file=sys.stderr)
             return
+
+        if self.cache:
+            if self.verbose:
+                print("Llama._create_completion: cache save", file=sys.stderr)
+            self.cache[prompt_tokens + completion_tokens] = self.save_state()
 
         text_str = text.decode("utf-8", errors="ignore")
 
@@ -2108,6 +2147,62 @@ class Llama:
     def close(self) -> None:
         """Explicitly free the model from memory."""
         self._stack.close()
+        
+    def unload_lora(self):
+        """Unload the LoRA adapter while keeping the base model in memory."""
+        if self._lora_adapter is not None:
+            llama_cpp.llama_lora_adapter_clear(self._ctx.ctx)
+            llama_cpp.llama_lora_adapter_free(self._lora_adapter)
+            self._lora_adapter = None
+            self.lora_path = None
+            self.lora_scale = 1.0
+        
+    def reload_lora(self, lora_path: str, lora_scale: float = 1.0):
+        """Reload a LoRA adapter from the given path.
+        
+        Args:
+            lora_path: Path to the LoRA adapter file
+            lora_scale: Scale to apply to the LoRA adapter (default: 1.0)
+            
+        Raises:
+            RuntimeError: If initialization or setting of the LoRA adapter fails
+        """
+        # First unload any existing LoRA adapter
+        if self._lora_adapter is not None:
+            self.unload_lora()
+        
+        # Initialize new LoRA adapter
+        assert self._model.model is not None
+        self._lora_adapter = llama_cpp.llama_lora_adapter_init(
+            self._model.model,
+            lora_path.encode("utf-8"),
+        )
+        if self._lora_adapter is None:
+            raise RuntimeError(
+                f"Failed to initialize LoRA adapter from lora path: {lora_path}"
+            )
+        
+        def free_lora_adapter():
+            if self._lora_adapter is None:
+                return
+            llama_cpp.llama_lora_adapter_free(self._lora_adapter)
+            self._lora_adapter = None
+            
+        self._stack.callback(free_lora_adapter)
+        
+        # Apply the LoRA adapter
+        assert self._ctx.ctx is not None
+        if llama_cpp.llama_lora_adapter_set(
+            self._ctx.ctx, self._lora_adapter, lora_scale
+        ):
+            # Clean up on failure
+            self.unload_lora()
+            raise RuntimeError(
+                f"Failed to set LoRA adapter from lora path: {lora_path}"
+            )
+        
+        self.lora_path = lora_path
+        self.lora_scale = lora_scale
 
     def __del__(self) -> None:
         self.close()

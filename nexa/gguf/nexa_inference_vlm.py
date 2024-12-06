@@ -221,6 +221,8 @@ class NexaVLMInference:
         return self.model.embed(input, normalize, truncate, return_count)
 
     def run(self):
+        from nexa.gguf.llama._utils_spinner import start_spinner, stop_spinner
+
         # I just use completion, no conversation history
         while True:
             try:
@@ -239,14 +241,22 @@ class NexaVLMInference:
                     print("Please provide an image or text input.")
                     continue
 
+                stop_event, spinner_thread = start_spinner(
+                    style="default",
+                    message=""
+                )
+
                 output = self._chat(user_input, image_path)
+                stop_spinner(stop_event, spinner_thread)
+
                 for chunk in output:
                     delta = chunk["choices"][0]["delta"]
                     if "role" in delta:
                         print(delta["role"], end=": ", flush=True)
                     elif "content" in delta:
                         print(delta["content"], end="", flush=True)
-                        generated_text += delta["content"]
+                        generated_text += delta["content"]            
+
             except KeyboardInterrupt:
                 pass
             except Exception as e:
