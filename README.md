@@ -21,7 +21,7 @@
 
 ## Latest News 🔥
 
-- Support Nexa AI's own vision language model (0.9B parameters): `nexa run omnivision` and audio language model (2.9B parameters): `nexa run omniaudio`
+- Support Nexa AI's own vision language model (0.9B parameters): `nexa run omniVLM` and audio language model (2.9B parameters): `nexa run omniaudio`
 - Support audio language model: `nexa run qwen2audio`, **we are the first open-source toolkit to support audio language model with GGML tensor library.**
 - Support iOS Swift binding for local inference on **iOS mobile** devices.
 - Support embedding model: `nexa embed <model_path> <prompt>`
@@ -228,7 +228,7 @@ Supported model examples (full list at [Model Hub](https://nexa.ai/models)):
 | [qwen2audio](https://nexa.ai/Qwen/Qwen2-Audio-7.8B-Instruct/gguf-q4_K_M/readme) | AudioLM | GGUF | `nexa run qwen2audio` |
 | [octopus-v2](https://www.nexaai.com/NexaAI/Octopus-v2/gguf-q4_0/readme) | Function Call | GGUF | `nexa run octopus-v2` |
 | [octo-net](https://www.nexaai.com/NexaAI/Octo-net/gguf-q4_0/readme) | Text | GGUF | `nexa run octo-net` |
-| [omnivision](https://nexa.ai/NexaAI/omnivision/gguf-fp16/readme) | Multimodal | GGUF | `nexa run omnivision` |
+| [omniVLM](https://nexa.ai/NexaAI/omniVLM/gguf-fp16/readme) | Multimodal | GGUF | `nexa run omniVLM` |
 | [nanollava](https://www.nexaai.com/qnguyen3/nanoLLaVA/gguf-fp16/readme) | Multimodal | GGUF | `nexa run nanollava` |
 | [llava-phi3](https://www.nexaai.com/xtuner/llava-phi-3-mini/gguf-q4_0/readme) | Multimodal | GGUF | `nexa run llava-phi3` |
 | [llava-llama3](https://www.nexaai.com/xtuner/llava-llama-3-8b-v1.1/gguf-q4_0/readme) | Multimodal | GGUF | `nexa run llava-llama3` |
