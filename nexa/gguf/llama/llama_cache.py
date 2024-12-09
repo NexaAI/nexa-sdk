@@ -9,7 +9,7 @@ from collections import OrderedDict
 
 import diskcache
 
-import nexa.gguf.llama as llama_cpp
+import nexa.gguf.llama.llama
 
 from nexa.gguf.llama.llama_types import *
 
@@ -52,9 +52,9 @@ class LlamaRAMCache(BaseLlamaCache):
     def __init__(self, capacity_bytes: int = (2 << 30)):
         super().__init__(capacity_bytes)
         self.capacity_bytes = capacity_bytes
-        self.cache_state: OrderedDict[Tuple[int, ...], "llama_cpp.llama.LlamaState"] = (
-            OrderedDict()
-        )
+        self.cache_state: OrderedDict[
+            Tuple[int, ...], "llama_cpp.llama.LlamaState"
+        ] = OrderedDict()
 
     @property
     def cache_size(self):
