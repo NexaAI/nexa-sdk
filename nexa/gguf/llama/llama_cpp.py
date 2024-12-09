@@ -12,13 +12,14 @@ from typing import (
     TYPE_CHECKING,
 )
 
-from typing_extensions import (
+from nexa.gguf.llama._ctypes_extensions import (
+    load_shared_library,
     byref,
     ctypes_function_for_shared_library,
 )
 
 if TYPE_CHECKING:
-    from typing_extensions import (
+    from nexa.gguf.llama._ctypes_extensions import (
         CtypesCData,
         CtypesArray,
         CtypesPointer,
@@ -28,13 +29,14 @@ if TYPE_CHECKING:
         CtypesFuncPointer,
     )
 
-from nexa.gguf.lib_utils import load_library
-from nexa.gguf.llama._ctypes_extensions import ctypes_function_for_shared_library
 
 # Specify the base name of the shared library to load
 _lib_base_name = "llama"
+# _override_base_path = os.environ.get("LLAMA_CPP_LIB_PATH")
+_override_base_path = 'D:/repo/nexa-ai/llama-cpp-python/llama_cpp/lib'
+_base_path = pathlib.Path(os.path.abspath(os.path.dirname(__file__))) / "lib" if _override_base_path is None else pathlib.Path(_override_base_path)
 # Load the library
-_lib = load_library(_lib_base_name)
+_lib = load_shared_library(_lib_base_name, _base_path)
 
 ctypes_function = ctypes_function_for_shared_library(_lib)
 

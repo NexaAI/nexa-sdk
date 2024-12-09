@@ -7,7 +7,7 @@ import streamlit as st
 from st_audiorec import st_audiorec
 
 from nexa.general import pull_model
-from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
+from nexa.gguf.llama._utils import suppress_stdout_stderr
 from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
 
 # Initialize session state

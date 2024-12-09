@@ -17,7 +17,8 @@ def is_gpu_available():
 # Load the library
 def load_library(lib_base_name: str):
     # Construct the paths to the possible shared library names
-    _base_path = pathlib.Path(os.path.abspath(os.path.dirname(__file__))) / "lib"
+    # _base_path = pathlib.Path(os.path.abspath(os.path.dirname(__file__))) / "lib"
+    _base_path = pathlib.Path('D:/repo/nexa-ai/llama-cpp-python/llama_cpp/lib')
     # Searching for the library in the current directory under the name "libllama" (default name
     # for llamacpp) and "llama" (default name for this repo)
     _lib_paths: List[pathlib.Path] = []

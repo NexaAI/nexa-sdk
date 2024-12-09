@@ -7,7 +7,7 @@ from typing import (
     Any,
 )
 
-import llama_cpp
+import nexa.gguf.llama
 from nexa.gguf.llama.llama_types import List
 
 

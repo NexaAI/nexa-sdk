@@ -35,7 +35,7 @@ from nexa.gguf.llama.llama_chat_format import (
     Llava16ChatHandler,
     NanoLlavaChatHandler,
 )
-from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
+from nexa.gguf.llama._utils import suppress_stdout_stderr
 from nexa.general import pull_model
 from nexa.gguf.llama.llama import Llama
 from nexa.gguf.sd.stable_diffusion import StableDiffusion

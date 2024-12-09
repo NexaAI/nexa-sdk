@@ -25,7 +25,7 @@ from nexa.gguf.llama.llama_chat_format import (
     NanoLlavaChatHandler,
 )
 from nexa.utils import SpinningCursorAnimation, nexa_prompt
-from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
+from nexa.gguf.llama._utils import suppress_stdout_stderr
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"

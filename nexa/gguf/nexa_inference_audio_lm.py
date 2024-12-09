@@ -15,7 +15,7 @@ from nexa.constants import (
 )
 from nexa.gguf.lib_utils import is_gpu_available
 from nexa.gguf.llama import audio_lm_cpp
-from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
+from nexa.gguf.llama._utils import suppress_stdout_stderr
 from nexa.general import pull_model
 
 def is_qwen(model_name):

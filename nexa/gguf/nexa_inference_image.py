@@ -15,7 +15,7 @@ from nexa.constants import (
     NEXA_RUN_T5XXL_MAP,
 )
 from nexa.utils import SpinningCursorAnimation, nexa_prompt
-from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
+from nexa.gguf.llama._utils import suppress_stdout_stderr
 
 from streamlit.web import cli as stcli
 from nexa.general import pull_model

@@ -11,7 +11,7 @@ from nexa.constants import (
 )
 from nexa.gguf.lib_utils import is_gpu_available
 from nexa.gguf.llama import omni_vlm_cpp
-from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
+from nexa.gguf.llama._utils import suppress_stdout_stderr
 from nexa.general import pull_model
 
 class NexaOmniVlmInference:
