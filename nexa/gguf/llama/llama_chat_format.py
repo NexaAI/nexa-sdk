@@ -32,8 +32,8 @@ import nexa.gguf.llama.llama as llama
 import nexa.gguf.llama.llama_types as llama_types
 import nexa.gguf.llama.llama_grammar as llama_grammar
 
-from nexa.gguf.llama._logger import logger
-from nexa.gguf.llama._utils import suppress_stdout_stderr, Singleton
+from nexa.gguf.llama._logger_transformers import logger
+from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr, Singleton
 
 ### Common Chat Templates and Special Tokens ###
 

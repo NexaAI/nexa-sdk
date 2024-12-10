@@ -11,7 +11,7 @@ from nexa.constants import (
 )
 from nexa.general import pull_model
 from nexa.utils import nexa_prompt, SpinningCursorAnimation
-from nexa.gguf.llama._utils import suppress_stdout_stderr
+from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
 
 
 logging.basicConfig(level=logging.INFO)

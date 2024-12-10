@@ -47,9 +47,9 @@ from nexa.gguf.llama.llama_speculative import LlamaDraftModel
 import numpy as np
 import numpy.typing as npt
 
-import nexa.gguf.llama._internals as internals
-from nexa.gguf.llama._logger import set_verbose
-from nexa.gguf.llama._utils import suppress_stdout_stderr
+import nexa.gguf.llama._internals_transformers as internals
+from nexa.gguf.llama._logger_transformers import set_verbose
+from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
 
 
 class Llama:
