@@ -127,10 +127,13 @@ build.verbose = true
 cmake.build-type = "Release"
 cmake.version = ">=3.16"
 cmake.args = [
+    "-DCMAKE_BUILD_TYPE=Release",
     "-DCMAKE_BUILD_PARALLEL_LEVEL=16",
     "-DSTABLE_DIFFUSION_BUILD=ON",
     "-DLLAMA_BUILD=ON",
-    "-DBARK_BUILD=ON"
+    "-DBARK_BUILD=ON",
+    "-DBUILD_SHARED_LIBS=ON",
+    "-DLLAMA_BUILD_TESTS=OFF"
 ]
 
 [tool.scikit-build.metadata.version]
