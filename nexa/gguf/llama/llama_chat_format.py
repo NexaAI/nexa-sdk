@@ -2667,7 +2667,7 @@ class Llava15ChatHandler:
     )
 
     def __init__(self, clip_model_path: str, verbose: bool = True):
-        import llama_cpp.llava_cpp as llava_cpp
+        import nexa.gguf.llama.llava_cpp as llava_cpp
 
         self.clip_model_path = clip_model_path
         self.verbose = verbose

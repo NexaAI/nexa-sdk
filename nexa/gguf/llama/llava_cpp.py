@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
 
 # Specify the base name of the shared library to load
-_libllava_base_name = "llava"
+_libllava_base_name = "llava_shared"
 # Load the library
 _libllava = load_library(_libllava_base_name)
 
