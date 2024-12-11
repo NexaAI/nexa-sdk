@@ -40,7 +40,7 @@ def _load_shared_library(lib_base_name: str, base_path: Path = None):
 
 def _get_lib(is_qwen: bool = True):
     # Specify the base name of the shared library to load
-    _lib_base_name = "nexa-qwen2-audio-lib_shared" if is_qwen else "nexa-omni-audio-lib_shared"
+    _lib_base_name = "nexa-qwen2-audio-lib_shared" if is_qwen else "omni_audio_shared"
     base_path = (
         Path(__file__).parent.parent.parent.parent.resolve()
         / "nexa"
