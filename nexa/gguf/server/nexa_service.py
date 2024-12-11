@@ -87,10 +87,10 @@ projector_path = None
 # Request Classes
 class GenerationRequest(BaseModel):
     prompt: str = "Tell me a story"
-    temperature: float = 1.0
+    temperature: float = 0.8
     max_new_tokens: int = 128
-    top_k: int = 50
-    top_p: float = 1.0
+    top_k: int = 40
+    top_p: float = 0.95
     stop_words: Optional[List[str]] = []
     logprobs: Optional[int] = None
     stream: Optional[bool] = False
@@ -101,7 +101,10 @@ class TextContent(BaseModel):
 
 class ImageUrlContent(BaseModel):
     type: Literal["image_url"] = "image_url"
-    image_url: Dict[str, Union[HttpUrl, str]]
+    image_url: Dict[str, Union[HttpUrl, str, None]] = Field(
+        default={"url": None, "path": None},
+        description="Either url or path must be provided"
+    )
 
 ContentItem = Union[str, TextContent, ImageUrlContent]
 
@@ -117,11 +120,28 @@ class ChatCompletionRequest(BaseModel):
     messages: List[Message] = [
         {"role": "user", "content": "Tell me a story"}]
     max_tokens: Optional[int] = 128
-    temperature: Optional[float] = 0.1
+    temperature: Optional[float] = 0.2
     stream: Optional[bool] = False
     stop_words: Optional[List[str]] = []
     logprobs: Optional[bool] = False
     top_logprobs: Optional[int] = 4
+    top_k: Optional[int] = 40
+    top_p: Optional[float] = 0.95
+
+class VLMChatCompletionRequest(BaseModel):
+    messages: List[Message] = [
+        {"role": "user", "content": [
+                {"type": "text", "text": "What’s in this image?"},
+                {"type": "image_url", "image_url": {
+                    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"
+                }}
+            ]
+        }
+    ]
+    max_tokens: Optional[int] = 128
+    temperature: Optional[float] = 0.2
+    stream: Optional[bool] = False
+    stop_words: Optional[List[str]] = []
     top_k: Optional[int] = 40
     top_p: Optional[float] = 0.95
 
@@ -477,17 +497,20 @@ def is_url(s: Union[str, AnyUrl]) -> bool:
     except ValueError:
         return False
 
-def process_image_input(image_input: Union[str, AnyUrl]) -> str:
-    """Process image input, returning a data URI for both URL and base64 inputs."""
-    if isinstance(image_input, AnyUrl) or is_url(image_input):
-        return image_url_to_base64(str(image_input))
-    elif is_base64(image_input):
-        if image_input.startswith('data:image'):
-            return image_input
-        else:
-            return f"data:image/png;base64,{image_input}"
+def process_image_input(image_data: Dict[str, Union[HttpUrl, str, None]]) -> str:
+    """Process image input from either URL or file path, returning a data URI."""
+    url = image_data.get("url")
+    path = image_data.get("path")
+    if url:
+        if isinstance(url, str) and (url.startswith('data:image') or is_base64(url)):
+            return url if url.startswith('data:image') else f"data:image/png;base64,{url}"
+        return image_url_to_base64(str(url))
+    elif path:
+        if not os.path.exists(path):
+            raise ValueError(f"Image file not found: {path}")
+        return image_path_to_base64(path)
     else:
-        raise ValueError("Invalid image input. Must be a URL or base64 encoded image.")
+        raise ValueError("Either 'url' or 'path' must be provided in image_url")
 
 def image_url_to_base64(image_url: str) -> str:
     response = requests.get(image_url)
@@ -495,6 +518,13 @@ def image_url_to_base64(image_url: str) -> str:
     buffered = BytesIO()
     img.save(buffered, format="PNG")
     return f"data:image/png;base64,{base64.b64encode(buffered.getvalue()).decode()}"
+
+def image_path_to_base64(file_path):
+    if file_path and os.path.exists(file_path):
+        with open(file_path, "rb") as img_file:
+            base64_data = base64.b64encode(img_file.read()).decode("utf-8")
+            return f"data:image/png;base64,{base64_data}"
+    return None
 
 
 def run_nexa_ai_service(model_path_arg=None, is_local_path_arg=False, model_type_arg=None, huggingface=False, modelscope=False, projector_local_path_arg=None, **kwargs):
@@ -587,79 +617,96 @@ async def generate_text(request: GenerationRequest):
 
 
 @app.post("/v1/chat/completions", tags=["NLP"])
-async def chat_completions(request: ChatCompletionRequest):
+async def text_chat_completions(request: ChatCompletionRequest):
+    """Endpoint for text-only chat completions using NLP models"""
     try:
-        is_vlm = any(isinstance(msg.content, list) for msg in request.messages)
-        
-        if is_vlm:
-            if model_type != "Multimodal":
-                raise HTTPException(status_code=400, detail="The model that is loaded is not a Multimodal model. Please use a Multimodal model (e.g. llava1.6-vicuna) for VLM.")
-            # Process VLM request
-            processed_messages = []
-            for msg in request.messages:
-                if isinstance(msg.content, list):
-                    processed_content = []
-                    for item in msg.content:
-                        if isinstance(item, TextContent):
-                            processed_content.append({"type": "text", "text": item.text})
-                        elif isinstance(item, ImageUrlContent):
-                            try:
-                                image_input = item.image_url["url"]
-                                image_data_uri = process_image_input(image_input)
-                                processed_content.append({"type": "image_url", "image_url": {"url": image_data_uri}})
-                            except ValueError as e:
-                                raise HTTPException(status_code=400, detail=str(e))
-                    processed_messages.append({"role": msg.role, "content": processed_content})
-                else:
-                    processed_messages.append({"role": msg.role, "content": msg.content})
-                    
-            response = model.create_chat_completion(
-                messages=processed_messages,
-                temperature=request.temperature,
-                max_tokens=request.max_tokens,
-                top_k=request.top_k,
-                top_p=request.top_p,
-                stream=request.stream,
+        if model_type != "NLP":
+            raise HTTPException(
+                status_code=400,
+                detail="The model that is loaded is not an NLP model. Please use an NLP model for text chat completion."
             )
-        else:
-            # Process regular chat completion request
-            generation_kwargs = GenerationRequest(
-                prompt="" if len(request.messages) == 0 else request.messages[-1].content,
-                temperature=request.temperature,
-                max_new_tokens=request.max_tokens,
-                stop_words=request.stop_words,
-                logprobs=request.logprobs,
-                top_logprobs=request.top_logprobs,
-                stream=request.stream,
-                top_k=request.top_k,
-                top_p=request.top_p
-            ).dict()
 
-            if request.stream:
-                streamer = nexa_run_text_generation(is_chat_completion=True, **generation_kwargs)
-                return StreamingResponse(_resp_async_generator(streamer), media_type="application/x-ndjson")
-            else:
-                result = nexa_run_text_generation(is_chat_completion=True, **generation_kwargs)
-                return {
-                    "id": str(uuid.uuid4()),
-                    "object": "chat.completion",
-                    "created": time.time(),
-                    "choices": [{
-                        "message": Message(role="assistant", content=result["result"]),
-                        "logprobs": result["logprobs"] if "logprobs" in result else None,
-                    }],
-                }
+        generation_kwargs = GenerationRequest(
+            prompt="" if len(request.messages) == 0 else request.messages[-1].content,
+            temperature=request.temperature,
+            max_new_tokens=request.max_tokens,
+            stop_words=request.stop_words,
+            logprobs=request.logprobs,
+            top_logprobs=request.top_logprobs,
+            stream=request.stream,
+            top_k=request.top_k,
+            top_p=request.top_p
+        ).dict()
 
         if request.stream:
-            return StreamingResponse(_resp_async_generator(response), media_type="application/x-ndjson")
-        else:
-            return response
-    
+            streamer = nexa_run_text_generation(is_chat_completion=True, **generation_kwargs)
+            return StreamingResponse(_resp_async_generator(streamer), media_type="application/x-ndjson")
+        
+        result = nexa_run_text_generation(is_chat_completion=True, **generation_kwargs)
+        return {
+            "id": str(uuid.uuid4()),
+            "object": "chat.completion",
+            "created": time.time(),
+            "choices": [{
+                "message": Message(role="assistant", content=result["result"]),
+                "logprobs": result["logprobs"] if "logprobs" in result else None,
+            }],
+        }
+
     except HTTPException as e:
         raise e
-
     except Exception as e:
-        logging.error(f"Error in chat completions: {e}")
+        logging.error(f"Error in text chat completions: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/v1/vlm/chat/completions", tags=["Multimodal"])
+async def multimodal_chat_completions(request: VLMChatCompletionRequest):
+    """Endpoint for multimodal chat completions using VLM models"""
+    try:
+        if model_type != "Multimodal":
+            raise HTTPException(
+                status_code=400,
+                detail="The model that is loaded is not a Multimodal model. Please use a Multimodal model (e.g. nanollava) for VLM."
+            )
+
+        processed_messages = []
+        for msg in request.messages:
+            if isinstance(msg.content, list):
+                processed_content = []
+                for item in msg.content:
+                    if isinstance(item, TextContent):
+                        processed_content.append({"type": "text", "text": item.text})
+                    elif isinstance(item, ImageUrlContent):
+                        try:
+                            image_data_uri = process_image_input(item.image_url)
+                            processed_content.append({
+                                "type": "image_url",
+                                "image_url": {"url": image_data_uri}
+                            })
+                        except ValueError as e:
+                            raise HTTPException(status_code=400, detail=str(e))
+                processed_messages.append({"role": msg.role, "content": processed_content})
+            else:
+                processed_messages.append({"role": msg.role, "content": msg.content})
+                
+        response = model.create_chat_completion(
+            messages=processed_messages,
+            max_tokens=request.max_tokens,
+            temperature=request.temperature,
+            top_k=request.top_k,
+            top_p=request.top_p,
+            stream=request.stream,
+            stop=request.stop_words,
+        )
+        
+        if request.stream:
+            return StreamingResponse(_resp_async_generator(response), media_type="application/x-ndjson")
+        return response
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logging.error(f"Error in multimodal chat completions: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
