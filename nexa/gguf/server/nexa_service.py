@@ -18,7 +18,6 @@ import requests
 from io import BytesIO
 from PIL import Image
 import base64
-import re
 from urllib.parse import urlparse
 
 from nexa.constants import (
@@ -194,6 +193,17 @@ class EmbeddingRequest(BaseModel):
     input: Union[str, List[str]] = Field(..., description="The input text to get embeddings for. Can be a string or an array of strings.")
     normalize: Optional[bool] = False
     truncate: Optional[bool] = True
+
+class LoadModelRequest(BaseModel):
+    model_path: str = "gemma"
+    model_type: Optional[str] = None
+    is_local_path: bool = False
+    is_huggingface: bool = False 
+    is_modelscope: bool = False
+    projector_path: Optional[str] = None
+
+class DownloadModelRequest(BaseModel):
+    model_path: str = "gemma"
 
 # helper functions
 async def load_model():
@@ -543,28 +553,16 @@ def run_nexa_ai_service(model_path_arg=None, is_local_path_arg=False, model_type
     else:
         model_path = model_path_arg or "gemma"
         model_type = None
-    os.environ["MODEL_PATH"] = model_path
-    os.environ["IS_LOCAL_PATH"] = str(is_local_path_arg)
-    os.environ["MODEL_TYPE"] = model_type if model_type else ""
-    os.environ["HUGGINGFACE"] = str(huggingface)
-    os.environ["MODELSCOPE"] = str(modelscope)
-    os.environ["PROJECTOR_PATH"] = projector_path if projector_path else ""
     n_ctx = kwargs.get("nctx", 2048)
     host = kwargs.get("host", "localhost")
     port = kwargs.get("port", 8000)
     reload = kwargs.get("reload", False)
+
     uvicorn.run(app, host=host, port=port, reload=reload)
 
 # Endpoints
 @app.on_event("startup")
 async def startup_event():
-    global model_path, is_local_path, model_type, is_huggingface, is_modelscope, projector_path
-    model_path = os.getenv("MODEL_PATH", "gemma")
-    is_local_path = os.getenv("IS_LOCAL_PATH", "False").lower() == "true"
-    model_type = os.getenv("MODEL_TYPE", None)
-    is_huggingface = os.getenv("HUGGINGFACE", "False").lower() == "true"
-    is_modelscope = os.getenv("MODELSCOPE", "False").lower() == "true"
-    projector_path = os.getenv("PROJECTOR_PATH", None)
     await load_model()
 
 
@@ -586,6 +584,66 @@ def _resp_async_generator(streamer):
         }
         yield f"data: {json.dumps(chunk)}\n\n"
     yield "data: [DONE]\n\n"
+
+@app.post("/v1/download_model", tags=["Model"])
+async def download_model(request: DownloadModelRequest):
+    """Download a model from the model hub"""
+    try:
+        if request.model_path in NEXA_RUN_MODEL_MAP_VLM:  # for Multimodal models
+            downloaded_path, _ = pull_model(NEXA_RUN_MODEL_MAP_VLM[request.model_path])
+            projector_downloaded_path, _ = pull_model(NEXA_RUN_PROJECTOR_MAP[request.model_path])
+            return {
+                "status": "success",
+                "message": "Successfully downloaded multimodal model and projector",
+                "model_local_path": downloaded_path,
+                "projector_local_path": projector_downloaded_path,
+                "model_type": "Multimodal"
+            }
+        else:
+            downloaded_path, model_type = pull_model(request.model_path)
+            return {
+                "status": "success",
+                "message": "Successfully downloaded model",
+                "model_local_path": downloaded_path,
+                "model_type": model_type
+            }
+
+    except Exception as e:
+        logging.error(f"Error downloading model: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to download model: {str(e)}"
+        )
+
+@app.post("/v1/load_model", tags=["Model"])
+async def load_different_model(request: LoadModelRequest):
+    """Load a different model while maintaining the global model state"""
+    try:
+        global model_path, is_local_path, model_type, is_huggingface, is_modelscope, projector_path
+        
+        # Update global variables with new configuration
+        model_path = request.model_path
+        is_local_path = request.is_local_path
+        model_type = request.model_type
+        is_huggingface = request.is_huggingface
+        is_modelscope = request.is_modelscope
+        projector_path = request.projector_path
+
+        # Load the new model
+        await load_model()
+
+        return {
+            "status": "success",
+            "message": f"Successfully loaded model: {model_path}",
+            "model_type": model_type
+        }
+
+    except Exception as e:
+        logging.error(f"Error loading model: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to load model: {str(e)}"
+        )
 
 @app.post("/v1/completions", tags=["NLP"])
 async def generate_text(request: GenerationRequest):
