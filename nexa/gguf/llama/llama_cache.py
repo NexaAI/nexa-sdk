@@ -9,7 +9,7 @@ from collections import OrderedDict
 
 import diskcache
 
-import nexa.gguf.llama as llama_cpp
+import nexa.gguf.llama.llama
 
 from nexa.gguf.llama.llama_types import *
 
@@ -32,7 +32,7 @@ class BaseLlamaCache(ABC):
         pass
 
     @abstractmethod
-    def __getitem__(self, key: Sequence[int]) -> "llama_cpp.llama.LlamaState":
+    def __getitem__(self, key: Sequence[int]) -> "nexa.gguf.llama.LlamaState":
         raise NotImplementedError
 
     @abstractmethod
@@ -41,7 +41,7 @@ class BaseLlamaCache(ABC):
 
     @abstractmethod
     def __setitem__(
-        self, key: Sequence[int], value: "llama_cpp.llama.LlamaState"
+        self, key: Sequence[int], value: "nexa.gguf.llama.LlamaState"
     ) -> None:
         raise NotImplementedError
 
@@ -52,9 +52,9 @@ class LlamaRAMCache(BaseLlamaCache):
     def __init__(self, capacity_bytes: int = (2 << 30)):
         super().__init__(capacity_bytes)
         self.capacity_bytes = capacity_bytes
-        self.cache_state: OrderedDict[Tuple[int, ...], "llama_cpp.llama.LlamaState"] = (
-            OrderedDict()
-        )
+        self.cache_state: OrderedDict[
+            Tuple[int, ...], "nexa.gguf.llama.LlamaState"
+        ] = OrderedDict()
 
     @property
     def cache_size(self):
@@ -67,7 +67,7 @@ class LlamaRAMCache(BaseLlamaCache):
         min_len = 0
         min_key = None
         keys = (
-            (k, llama_cpp.llama.Llama.longest_token_prefix(k, key))
+            (k, nexa.gguf.llama.Llama.longest_token_prefix(k, key))
             for k in self.cache_state.keys()
         )
         for k, prefix_len in keys:
@@ -76,7 +76,7 @@ class LlamaRAMCache(BaseLlamaCache):
                 min_key = k
         return min_key
 
-    def __getitem__(self, key: Sequence[int]) -> "llama_cpp.llama.LlamaState":
+    def __getitem__(self, key: Sequence[int]) -> "nexa.gguf.llama.LlamaState":
         key = tuple(key)
         _key = self._find_longest_prefix_key(key)
         if _key is None:
@@ -88,7 +88,7 @@ class LlamaRAMCache(BaseLlamaCache):
     def __contains__(self, key: Sequence[int]) -> bool:
         return self._find_longest_prefix_key(tuple(key)) is not None
 
-    def __setitem__(self, key: Sequence[int], value: "llama_cpp.llama.LlamaState"):
+    def __setitem__(self, key: Sequence[int], value: "nexa.gguf.llama.LlamaState"):
         key = tuple(key)
         if key in self.cache_state:
             del self.cache_state[key]
@@ -121,18 +121,18 @@ class LlamaDiskCache(BaseLlamaCache):
         min_len = 0
         min_key: Optional[Tuple[int, ...]] = None
         for k in self.cache.iterkeys():  # type: ignore
-            prefix_len = llama_cpp.llama.Llama.longest_token_prefix(k, key)
+            prefix_len = nexa.gguf.llama.Llama.longest_token_prefix(k, key)
             if prefix_len > min_len:
                 min_len = prefix_len
                 min_key = k  # type: ignore
         return min_key
 
-    def __getitem__(self, key: Sequence[int]) -> "llama_cpp.llama.LlamaState":
+    def __getitem__(self, key: Sequence[int]) -> "nexa.gguf.llama.LlamaState":
         key = tuple(key)
         _key = self._find_longest_prefix_key(key)
         if _key is None:
             raise KeyError("Key not found")
-        value: "llama_cpp.llama.LlamaState" = self.cache.pop(_key)  # type: ignore
+        value: "nexa.gguf.llama.LlamaState" = self.cache.pop(_key)  # type: ignore
         # NOTE: This puts an integer as key in cache, which breaks,
         # Llama.longest_token_prefix(k, key) above since k is not a tuple of ints/tokens
         # self.cache.push(_key, side="front")  # type: ignore
@@ -141,7 +141,7 @@ class LlamaDiskCache(BaseLlamaCache):
     def __contains__(self, key: Sequence[int]) -> bool:
         return self._find_longest_prefix_key(tuple(key)) is not None
 
-    def __setitem__(self, key: Sequence[int], value: "llama_cpp.llama.LlamaState"):
+    def __setitem__(self, key: Sequence[int], value: "nexa.gguf.llama.LlamaState"):
         print("LlamaDiskCache.__setitem__: called", file=sys.stderr)
         key = tuple(key)
         if key in self.cache:

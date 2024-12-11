@@ -17,7 +17,7 @@ class suppress_stdout_stderr(object):
     sys = sys
     os = os
 
-    def __init__(self, disable: bool = False):
+    def __init__(self, disable: bool = True):
         self.disable = disable
 
     # Oddly enough this works better than the contextlib version
