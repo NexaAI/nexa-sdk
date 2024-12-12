@@ -197,9 +197,9 @@ class EmbeddingRequest(BaseModel):
 
 class LoadModelRequest(BaseModel):
     model_path: str = "llama3.2"
-    model_type: Optional[str] = None, 
+    model_type: Optional[str] = None
     is_local_path: Optional[bool] = False
-    is_huggingface: Optional[bool] = False 
+    is_huggingface: Optional[bool] = False
     is_modelscope: Optional[bool] = False
     local_projector_path: Optional[str] = None
 
