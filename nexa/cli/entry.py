@@ -125,8 +125,12 @@ def run_ggml_inference(args):
             # from nexa.gguf.nexa_inference_tts import NexaTTSInference
             # inference = NexaTTSInference(model_path=model_path, local_path=local_path, **kwargs)
         elif run_type == "AudioLM":
-            from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
-            inference = NexaAudioLMInference(model_path=model_path, local_path=local_path, **kwargs)
+            if is_local_path:
+                from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
+                inference = NexaAudioLMInference(model_path=model_path, local_path=local_path, projector_local_path=projector_local_path, **kwargs)
+            else:
+                from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
+                inference = NexaAudioLMInference(model_path=model_path, local_path=local_path, **kwargs)
         else:
             print(f"Unknown task: {run_type}. Skipping inference.")
             return
