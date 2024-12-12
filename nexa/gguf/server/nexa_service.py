@@ -197,11 +197,11 @@ class EmbeddingRequest(BaseModel):
 
 class LoadModelRequest(BaseModel):
     model_path: str = "llama3.2"
-    model_type: Optional[str] = None
-    is_local_path: bool = False
-    is_huggingface: bool = False 
-    is_modelscope: bool = False
-    projector_path: Optional[str] = None
+    model_type: Optional[str] = None, 
+    is_local_path: Optional[bool] = False
+    is_huggingface: Optional[bool] = False 
+    is_modelscope: Optional[bool] = False
+    local_projector_path: Optional[str] = None
 
     model_config = {
         "protected_namespaces": ()
@@ -608,6 +608,7 @@ async def download_model(request: DownloadModelRequest):
             return {
                 "status": "success",
                 "message": "Successfully downloaded multimodal model and projector",
+                "model_path": request.model_path,
                 "model_local_path": downloaded_path,
                 "projector_local_path": projector_downloaded_path,
                 "model_type": "Multimodal"
@@ -617,6 +618,7 @@ async def download_model(request: DownloadModelRequest):
             return {
                 "status": "success",
                 "message": "Successfully downloaded model",
+                "model_path": request.model_path,
                 "model_local_path": downloaded_path,
                 "model_type": model_type
             }
@@ -640,7 +642,7 @@ async def load_different_model(request: LoadModelRequest):
         model_type = request.model_type
         is_huggingface = request.is_huggingface
         is_modelscope = request.is_modelscope
-        projector_path = request.projector_path
+        projector_path = request.local_projector_path
 
         # Load the new model
         await load_model()
