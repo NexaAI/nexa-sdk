@@ -40,7 +40,7 @@ class NexaOmniVlmInference:
         else:
             self.n_gpu_layers = 0
 
-        # Handle direct model file paths (e.g., omnivision:model-fp16)
+        # Handle direct model file paths (e.g., omniVLM:model-fp16)
         if model_path and ':model-' in model_path:
             base_name = model_path.split(':')[0]
             model_type = model_path.split('model-')[1]
