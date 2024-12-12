@@ -27,6 +27,7 @@ from nexa.constants import (
     NEXA_RUN_COMPLETION_TEMPLATE_MAP,
     NEXA_RUN_MODEL_PRECISION_MAP,
     NEXA_RUN_MODEL_MAP_FUNCTION_CALLING,
+    NEXA_MODEL_LIST_PATH
 )
 from nexa.gguf.lib_utils import is_gpu_available
 from nexa.gguf.llama.llama_chat_format import (
@@ -644,6 +645,20 @@ async def load_different_model(request: LoadModelRequest):
             status_code=500, 
             detail=f"Failed to load model: {str(e)}"
         )
+
+@app.get("/v1/list_models", tags=["Model"])
+async def list_models():
+    """List all models available in the model hub"""
+    try:
+        if NEXA_MODEL_LIST_PATH.exists():
+            with open(NEXA_MODEL_LIST_PATH, "r") as f:
+                model_list = json.load(f)
+        else:
+            model_list = {}
+        return JSONResponse(content=model_list)
+    except Exception as e:
+        logging.error(f"Error listing models: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/v1/completions", tags=["NLP"])
 async def generate_text(request: GenerationRequest):
