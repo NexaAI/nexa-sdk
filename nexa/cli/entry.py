@@ -148,7 +148,7 @@ def run_ggml_server(args):
     from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
     
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
-    model_path = kwargs.pop("model_path")
+    model_path = kwargs.pop("model_path", None)
     is_local_path = kwargs.pop("local_path", False)
     model_type = kwargs.pop("model_type", None)
     hf = kwargs.pop('huggingface', False)
@@ -552,8 +552,8 @@ def main():
     quantization_parser.add_argument("--keep_split", action="store_true", help="Quantize to the same number of shards")
 
     # GGML server parser
-    server_parser = subparsers.add_parser("server", help="Run the Nexa AI Text Generation Service")
-    server_parser.add_argument("model_path", type=str, nargs='?', help="Path or identifier for the model in Nexa Model Hub")
+    server_parser = subparsers.add_parser("server", help="Run the Nexa AI local service")
+    server_parser.add_argument("--model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
     server_parser.add_argument("-lp", "--local_path", action="store_true", help="Indicate that the model path provided is the local path")
     server_parser.add_argument("-mt", "--model_type", type=str, choices=[e.name for e in ModelType], help="Indicate the model running type, must be used with -lp, -hf or -ms")
     server_parser.add_argument("-hf", "--huggingface", action="store_true", help="Load model from Hugging Face Hub")

@@ -196,15 +196,23 @@ class EmbeddingRequest(BaseModel):
     truncate: Optional[bool] = True
 
 class LoadModelRequest(BaseModel):
-    model_path: str = "gemma"
+    model_path: str = "llama3.2"
     model_type: Optional[str] = None
     is_local_path: bool = False
     is_huggingface: bool = False 
     is_modelscope: bool = False
     projector_path: Optional[str] = None
 
+    model_config = {
+        "protected_namespaces": ()
+    }
+
 class DownloadModelRequest(BaseModel):
-    model_path: str = "gemma"
+    model_path: str = "llama3.2"
+
+    model_config = {
+        "protected_namespaces": ()
+    }
 
 # helper functions
 async def load_model():
@@ -552,7 +560,7 @@ def run_nexa_ai_service(model_path_arg=None, is_local_path_arg=False, model_type
         model_path = os.path.abspath(model_path_arg) if is_local_path_arg else model_path_arg
         model_type = model_type_arg
     else:
-        model_path = model_path_arg or "gemma"
+        model_path = model_path_arg
         model_type = None
     n_ctx = kwargs.get("nctx", 2048)
     host = kwargs.get("host", "localhost")
@@ -564,7 +572,11 @@ def run_nexa_ai_service(model_path_arg=None, is_local_path_arg=False, model_type
 # Endpoints
 @app.on_event("startup")
 async def startup_event():
-    await load_model()
+    global model_path
+    if model_path:
+        await load_model()
+    else:
+        logging.info("No model path provided. Server started without loading a model.")
 
 
 @app.get("/", response_class=HTMLResponse, tags=["Root"])
@@ -663,8 +675,12 @@ async def list_models():
 @app.post("/v1/completions", tags=["NLP"])
 async def generate_text(request: GenerationRequest):
     try:
+        if model_type != "NLP":
+            raise HTTPException(
+                status_code=400,
+                detail="The model that is loaded is not an NLP model. Please use an NLP model for text generation."
+            )
         generation_kwargs = request.dict()
-
         if request.stream:
             # Run the generation and stream the response
             streamer = nexa_run_text_generation(is_chat_completion=False, **generation_kwargs)
@@ -786,6 +802,11 @@ async def multimodal_chat_completions(request: VLMChatCompletionRequest):
 @app.post("/v1/function-calling", tags=["NLP"])
 async def function_call(request: FunctionCallRequest):
     try:
+        if model_type != "NLP":
+            raise HTTPException(
+                status_code=400,
+                detail="The model that is loaded is not an NLP model. Please use an NLP model for function calling."
+            )
         messages = function_call_system_prompt + [
             {"role": msg.role, "content": msg.content} for msg in request.messages
         ]
@@ -807,8 +828,12 @@ async def function_call(request: FunctionCallRequest):
 @app.post("/v1/txt2img", tags=["Computer Vision"])
 async def txt2img(request: ImageGenerationRequest):
     try:
+        if model_type != "Computer Vision":
+            raise HTTPException(
+                status_code=400,
+                detail="The model that is loaded is not a Computer Vision model. Please use a Computer Vision model for image generation."
+            )
         generation_kwargs = request.dict()
-
         generated_images = await nexa_run_image_generation(**generation_kwargs)
 
         resp = {"created": time.time(), "data": []}
@@ -831,6 +856,11 @@ async def txt2img(request: ImageGenerationRequest):
 @app.post("/v1/img2img", tags=["Computer Vision"])
 async def img2img(request: ImageGenerationRequest):
     try:
+        if model_type != "Computer Vision":
+            raise HTTPException(
+                status_code=400,
+                detail="The model that is loaded is not a Computer Vision model. Please use a Computer Vision model for image generation."
+            )
         generation_kwargs = request.dict()
 
         generated_images = await nexa_run_image_generation(**generation_kwargs)
@@ -861,6 +891,11 @@ async def transcribe_audio(
 ):
 
     try:
+        if model_type != "Audio":
+            raise HTTPException(
+                status_code=400,
+                detail="The model that is loaded is not an Audio model. Please use an Audio model for audio transcription."
+            )
         with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_audio:
             temp_audio.write(await file.read())
             temp_audio_path = temp_audio.name
@@ -887,6 +922,11 @@ async def translate_audio(
     temperature: Optional[float] = Query(0.0, description="Temperature for sampling"),
 ):
     try:
+        if model_type != "Audio":
+            raise HTTPException(
+                status_code=400,
+                detail="The model that is loaded is not an Audio model. Please use an Audio model for audio translation."
+            )
         with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_audio:
             temp_audio.write(await file.read())
             temp_audio_path = temp_audio.name
@@ -908,6 +948,11 @@ async def translate_audio(
 @app.post("/v1/embeddings", tags=["Embedding"])
 async def create_embedding(request: EmbeddingRequest):
     try:
+        if model_type != "Text Embedding":
+            raise HTTPException(
+                status_code=400,
+                detail="The model that is loaded is not a Text Embedding model. Please use a Text Embedding model for embedding generation."
+            )
         if isinstance(request.input, list):
             embeddings_results = [model.embed(text, normalize=request.normalize, truncate=request.truncate) for text in request.input]
         else:
@@ -952,7 +997,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Run the Nexa AI Text Generation Service"
     )
-    parser.add_argument("model_path", type=str, nargs='?', default="gemma", help="Folder Path on Amazon S3")
+    parser.add_argument(
+        "--model_path", type=str, help="Path or identifier for the model in Nexa Model Hub"
+    )
     parser.add_argument(
         "--nctx", type=int, default=2048, help="Length of context window"
     )
@@ -990,7 +1037,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     run_nexa_ai_service(
-        args.model_path,
+        model_path_arg=args.model_path,
         is_local_path_arg=args.local_path,
         model_type_arg=args.model_type,
         huggingface=args.huggingface,
