@@ -2,8 +2,8 @@ import ctypes
 import logging
 import os
 import sys
+import time
 import librosa
-import tempfile
 import soundfile as sf
 from pathlib import Path
 from streamlit.web import cli as stcli
@@ -215,15 +215,6 @@ class NexaAudioLMInference:
             return response.decode("utf-8") if isinstance(response, bytes) else response
         except Exception as e:
             raise RuntimeError(f"Error during inference: {str(e)}")
-        finally:
-            if self.temp_file:
-                try:
-                    self.temp_file.close()
-                    if os.path.exists(self.temp_file.name):
-                        os.unlink(self.temp_file.name)
-                except:
-                    pass
-                self.temp_file = None
 
     def cleanup(self):
         """
@@ -233,14 +224,12 @@ class NexaAudioLMInference:
             audio_lm_cpp.free(self.context, is_qwen=self.is_qwen)
             self.context = None
         
-        if self.temp_file:
+        if self.temp_file and os.path.exists(self.temp_file):
             try:
-                self.temp_file.close()
-                if os.path.exists(self.temp_file.name):
-                    os.unlink(self.temp_file.name)
-            except:
-                pass
-            self.temp_file = None
+                os.remove(self.temp_file)
+                self.temp_file = None
+            except Exception as e:
+                logging.warning(f"Failed to remove temporary file {self.temp_file}: {e}")
 
     # def __del__(self):
     #     """
@@ -255,25 +244,38 @@ class NexaAudioLMInference:
         Supports various audio formats (mp3, wav, m4a, etc.)
         """
         try:
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            
+            # Create tmp directory if it doesn't exist
+            tmp_dir = os.path.join(base_dir, 'tmp')
+            os.makedirs(tmp_dir, exist_ok=True)
+
+            # Load audio file
             y, sr = librosa.load(audio_path, sr=None)
-    
+
             if sr == 16000:
                 return audio_path
             
             # Resample to 16kHz
             print(f"Resampling audio from {sr} to 16000")
             y_resampled = librosa.resample(y=y, orig_sr=sr, target_sr=16000)
-            self.temp_file = tempfile.NamedTemporaryFile(
-                suffix='.wav',
-                delete=False
-            )
+
+            # Create a unique filename in the tmp directory
+            original_name = os.path.splitext(os.path.basename(audio_path))[0]
+            tmp_filename = f"resampled_{original_name}_16khz_{int(time.time())}.wav"
+            tmp_path = os.path.join(tmp_dir, tmp_filename)
+            
+            # Save the resampled audio
             sf.write(
-                self.temp_file.name, 
+                tmp_path, 
                 y_resampled, 
                 16000,
                 subtype='PCM_16'
             )
-            return self.temp_file.name
+            
+            # Store the path for cleanup
+            self.temp_file = tmp_path
+            return tmp_path
 
         except Exception as e:
             raise RuntimeError(f"Error processing audio file: {str(e)}")
