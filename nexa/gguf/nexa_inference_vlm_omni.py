@@ -127,7 +127,8 @@ class NexaOmniVlmInference:
             try:
                 image_path = nexa_prompt("Image Path (required): ")
                 if not os.path.exists(image_path):
-                    print(f"Image path: {image_path} not found, running omni VLM without image input.")
+                    print(f"Image path: {image_path} not found, exiting...")
+                    exit(1)
                 # Skip user input for OCR version
                 user_input = "" if self.omni_vlm_version == "vlm-81-ocr" else nexa_prompt()
 
@@ -135,13 +136,14 @@ class NexaOmniVlmInference:
                     style="default",
                     message=""
                 )
-
-                # response = self.inference(user_input, image_path)
-                response = self.inference_streaming(user_input, image_path)
-
-                stop_spinner(stop_event, spinner_thread)
-
-                print(f"\nResponse: {response}")
+                first_chunk = True
+                for chunk in self.inference_streaming(user_input, image_path):
+                    if first_chunk:
+                        stop_spinner(stop_event, spinner_thread)
+                        first_chunk = False
+                        if chunk == '\n':
+                            chunk = ''
+                    print(chunk, end='', flush=True)
 
             except KeyboardInterrupt:
                 print("\nExiting...")
@@ -163,19 +165,18 @@ class NexaOmniVlmInference:
             return decoded_response
 
     def inference_streaming(self, prompt: str, image_path: str):
-        response = ""
         with suppress_stdout_stderr():
             prompt = ctypes.c_char_p(prompt.encode("utf-8"))
             image_path = ctypes.c_char_p(image_path.encode("utf-8"))
             oss = omni_vlm_cpp.omnivlm_inference_streaming(prompt, image_path)
-            
-            res = 0
-            while res >= 0:
-                res = omni_vlm_cpp.sample(oss)
-                res_str = omni_vlm_cpp.get_str(oss).decode('utf-8')
-                print(res_str, flush=True)
-                response += res_str
-        return response
+
+        res = 0
+        while res >= 0:
+            res = omni_vlm_cpp.sample(oss)
+            res_str = omni_vlm_cpp.get_str(oss).decode('utf-8')
+            if '<|im_start|>' in res_str or '</s>' in res_str:
+                continue
+            yield res_str
 
     def __del__(self):
         omni_vlm_cpp.omnivlm_free()
