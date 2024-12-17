@@ -995,8 +995,8 @@ async def process_audio(
         if 'temp_audio_path' in locals() and os.path.exists(temp_audio_path):
             os.unlink(temp_audio_path)
 
-@app.post("/v1/audio/transcriptions_stream", tags=["Audio"])
-async def transcribe_stream_audio(
+@app.post("/v1/audio/processing_stream", tags=["Audio"])
+async def processing_stream_audio(
     file: UploadFile = File(...),
     task: str = Query("transcribe",
         description="Task to perform on the audio. Options are: 'transcribe' or 'translate'.",
