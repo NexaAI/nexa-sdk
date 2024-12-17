@@ -1,3 +1,4 @@
+import time
 import ctypes
 import logging
 import os
@@ -162,7 +163,7 @@ class NexaOmniVlmInference:
             return decoded_response
 
     def inference_streaming(self, prompt: str, image_path: str):
-        response = []
+        response = ""
         with suppress_stdout_stderr():
             prompt = ctypes.c_char_p(prompt.encode("utf-8"))
             image_path = ctypes.c_char_p(image_path.encode("utf-8"))
@@ -171,7 +172,9 @@ class NexaOmniVlmInference:
             res = 0
             while res >= 0:
                 res = omni_vlm_cpp.sample(oss)
-                response.append(res)
+                res_str = omni_vlm_cpp.get_str(oss).decode('utf-8')
+                print(res_str, flush=True)
+                response += res_str
         return response
 
     def __del__(self):

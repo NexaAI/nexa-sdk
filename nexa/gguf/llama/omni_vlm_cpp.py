@@ -87,6 +87,14 @@ _lib.sample.argtypes = [ctypes.c_void_p]
 _lib.sample.restype = ctypes.c_int32
 
 
+def get_str(omni_vlm_streaming: ctypes.c_void_p):
+    return _lib.get_str(omni_vlm_streaming)
+
+
+_lib.get_str.argtypes = [ctypes.c_void_p]
+_lib.get_str.restype = ctypes.c_char_p
+
+
 def omnivlm_free():
     return _lib.omnivlm_free()
 
