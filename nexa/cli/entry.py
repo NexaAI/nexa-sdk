@@ -272,6 +272,15 @@ def run_eval_tasks(args):
         print("Please run: pip install 'nexaai[eval]'")
         return
 
+def run_siglip_server(args):
+    from nexa.siglip.nexa_siglip_server import run_nexa_ai_siglip_service
+    run_nexa_ai_siglip_service(
+        image_dir=args.image_dir,
+        host=args.host,
+        port=args.port,
+        reload=args.reload
+    )
+
 def run_embedding_generation(args):
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")
@@ -599,6 +608,13 @@ def main():
     perf_eval_group.add_argument("--device", type=str, help="Device to run performance evaluation on, choose from 'cpu', 'cuda', 'mps'", default="cpu")
     perf_eval_group.add_argument("--new_tokens", type=int, help="Number of new tokens to evaluate", default=100)
 
+    # Siglip Server
+    siglip_parser = subparsers.add_parser("siglip", help="Run the Nexa AI SigLIP Service")
+    siglip_parser.add_argument("--image_dir", type=str, help="Directory of images to load")
+    siglip_parser.add_argument("--host", type=str, default="localhost", help="Host to bind the server to")
+    siglip_parser.add_argument("--port", type=int, default=8100, help="Port to bind the server to")
+    siglip_parser.add_argument("--reload", action="store_true", help="Enable automatic reloading on code changes")
+
     args = parser.parse_args()
 
     if args.command == "run":
@@ -627,6 +643,8 @@ def main():
         run_onnx_inference(args)
     elif args.command == "eval":
         run_eval_tasks(args)
+    elif args.command == "siglip":
+        run_siglip_server(args)
     elif args.command == "embed":
         run_embedding_generation(args)
     elif args.command == "pull":
