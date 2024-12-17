@@ -71,6 +71,22 @@ _lib.omnivlm_inference.argtypes = [omni_char_p, omni_char_p]
 _lib.omnivlm_inference.restype = omni_char_p
 
 
+def omnivlm_inference_streaming(prompt: omni_char_p, image_path: omni_char_p):
+    return _lib.omnivlm_inference_streaming(prompt, image_path)
+
+
+_lib.omnivlm_inference_streaming.argtypes = [omni_char_p, omni_char_p]
+_lib.omnivlm_inference_streaming.restype = ctypes.c_void_p
+
+
+def sample(omni_vlm_streaming: ctypes.c_void_p):
+    return _lib.sample(omni_vlm_streaming)
+
+
+_lib.sample.argtypes = [ctypes.c_void_p]
+_lib.sample.restype = ctypes.c_int32
+
+
 def omnivlm_free():
     return _lib.omnivlm_free()
 

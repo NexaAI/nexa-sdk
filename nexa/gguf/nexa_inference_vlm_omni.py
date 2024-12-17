@@ -135,11 +135,13 @@ class NexaOmniVlmInference:
                     message=""
                 )
 
-                response = self.inference(user_input, image_path)
+                # response = self.inference(user_input, image_path)
+                response = self.inference_streaming(user_input, image_path)
 
                 stop_spinner(stop_event, spinner_thread)
 
                 print(f"\nResponse: {response}")
+
             except KeyboardInterrupt:
                 print("\nExiting...")
                 break
@@ -158,6 +160,19 @@ class NexaOmniVlmInference:
                 decoded_response = decoded_response.replace('<|im_start|>assistant', '').strip()
                 
             return decoded_response
+
+    def inference_streaming(self, prompt: str, image_path: str):
+        response = []
+        with suppress_stdout_stderr():
+            prompt = ctypes.c_char_p(prompt.encode("utf-8"))
+            image_path = ctypes.c_char_p(image_path.encode("utf-8"))
+            oss = omni_vlm_cpp.omnivlm_inference_streaming(prompt, image_path)
+            
+            res = 0
+            while res >= 0:
+                res = omni_vlm_cpp.sample(oss)
+                response.append(res)
+        return response
 
     def __del__(self):
         omni_vlm_cpp.omnivlm_free()
