@@ -12,6 +12,7 @@ from nexa.constants import (
 from nexa.general import pull_model
 from nexa.utils import nexa_prompt, SpinningCursorAnimation
 from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
+import numpy as np
 
 
 logging.basicConfig(level=logging.INFO)
@@ -58,6 +59,12 @@ class NexaVoiceInference:
             exit(1)
 
         self.params.update(kwargs)
+
+        # for StreamASRProcessor
+        self.audio_buffer = np.array([], dtype=np.float32)
+        self.commited = []
+        self.buffer_time_offset = 0.0
+
         self.model = None
 
         if not kwargs.get("streamlit", False):
@@ -80,6 +87,50 @@ class NexaVoiceInference:
             )
         logging.debug("Model loaded successfully")
 
+    # for StreamASRProcessor
+    def live_transcribe(self, audio, prompt=""):
+        segments, info = self.model.transcribe(audio, language=self.params["language"], beam_size=self.params["beam_size"], word_timestamps=True, condition_on_previous_text=True, initial_prompt=prompt)
+        return list(segments)
+
+    def ts_words(self, segments):
+        # return a list of (start, end, "word") for each word
+        words = []
+        for seg in segments:
+            if seg.no_speech_prob > 0.9:
+                continue
+            for w in seg.words:
+                words.append((w.start, w.end, w.word))
+        return words
+    
+    def insert_audio_chunk(self, audio):
+        self.audio_buffer = np.append(self.audio_buffer, audio)
+
+    def process_iter(self):
+        # Transcribe the current buffer
+        if len(self.audio_buffer) == 0:
+            return (None, None, "")
+        res = self.live_transcribe(self.audio_buffer)
+        tsw = self.ts_words(res)
+        if len(tsw) == 0:
+            return (None, None, "")
+
+        # We'll consider all words as committed for simplicity
+        self.commited = tsw
+        # return the entire transcription so far
+        text = " ".join([w[2] for w in self.commited])
+        beg = self.commited[0][0] + self.buffer_time_offset
+        end = self.commited[-1][1] + self.buffer_time_offset
+        return (beg, end, text)
+
+    def finish(self):
+        # Final flush when done
+        if len(self.commited) == 0:
+            return (None, None, "")
+        text = " ".join([w[2] for w in self.commited])
+        beg = self.commited[0][0] + self.buffer_time_offset
+        end = self.commited[-1][1] + self.buffer_time_offset
+        return (beg, end, text)
+        
     def run(self):
         from nexa.gguf.llama._utils_spinner import start_spinner, stop_spinner
 
@@ -180,6 +231,54 @@ class NexaVoiceInference:
             audio,
             **kwargs,
         )
+    
+    def stream_transcription(self, audio_path, chunk_duration=1.0):
+        """
+        Simulate streaming by processing the audio in small increments of time.
+        Yields partial transcripts as they become available.
+        """
+        import librosa
+        SAMPLING_RATE = 16000
+        audio, sr = librosa.load(audio_path, sr=SAMPLING_RATE, dtype=np.float32)
+        duration = len(audio) / SAMPLING_RATE
+
+        start = time.time()
+        beg = 0.0
+        while beg < duration:
+            now = time.time() - start
+            # Simulate waiting for real-time
+            if now < beg + chunk_duration:
+                time.sleep((beg + chunk_duration) - now)
+            
+            end = time.time() - start
+            if end > duration:
+                end = duration
+
+            chunk_samples = int((end - beg)*SAMPLING_RATE)
+            chunk_audio = audio[int(beg*SAMPLING_RATE):int(beg*SAMPLING_RATE)+chunk_samples]
+            beg = end
+
+            # Process incrementally
+            self.insert_audio_chunk(chunk_audio)
+            o = self.process_iter()
+            if o[0] is not None:
+                yield {
+                    "emission_time_ms": (time.time()-start)*1000,
+                    "segment_start_ms": o[0]*1000,
+                    "segment_end_ms": o[1]*1000,
+                    "text": o[2]
+                }
+
+        # Final flush
+        o = self.finish()
+        if o[0] is not None:
+            yield {
+                "emission_time_ms": (time.time()-start)*1000,
+                "segment_start_ms": o[0]*1000,
+                "segment_end_ms": o[1]*1000,
+                "text": o[2],
+                "final": True
+            }
 
     def _transcribe_audio(self, audio_path):
         logging.debug(f"Transcribing audio from: {audio_path}")
