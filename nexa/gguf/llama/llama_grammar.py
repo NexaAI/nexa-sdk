@@ -1821,3 +1821,23 @@ def json_schema_to_gbnf(schema: str, prop_order: Optional[List[str]] = None):
     schema = converter.resolve_refs(schema, "stdin")
     converter.visit(schema, "")
     return converter.format_grammar()
+
+def main():
+    try:
+        schema = sys.argv[1]
+        gbnf = json_schema_to_gbnf(schema)
+        
+        print("Generated GBNF Grammar:")
+        print("-" * 40)
+        print(gbnf)
+        print("-" * 40)
+        
+    except json.JSONDecodeError as e:
+        print(f"Error: Invalid JSON schema - {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

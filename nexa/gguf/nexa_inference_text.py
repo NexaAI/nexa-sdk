@@ -1,4 +1,6 @@
 import argparse
+import json
+from jsonschema import validate, ValidationError
 import logging
 import os
 import time
@@ -13,6 +15,7 @@ from nexa.constants import (
 )
 from nexa.gguf.lib_utils import is_gpu_available
 from nexa.general import pull_model
+from nexa.gguf.llama.llama_grammar import LlamaGrammar
 from nexa.utils import SpinningCursorAnimation, nexa_prompt
 from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
 
@@ -314,6 +317,75 @@ class NexaTextInference:
         
     def reload_lora(self, lora_path: str, lora_scale: float = 1.0):
         self.model.reload_lora(lora_path, lora_scale)
+
+    def structure_output(self, json_schema: str = None, json_schema_path: str = None, prompt: str = "", **kwargs):
+        """
+        Generate structured output from the model based on a given JSON schema.
+        Args:
+            json_schema (str): JSON schema as a string.
+            json_schema_path (str): Path to a JSON schema file.
+            prompt (str): The initial prompt or instructions for the model.
+            **kwargs: Additional generation parameters.
+        Returns:
+            dict: The structured output conforming to the provided schema.
+        """
+        
+        if not json_schema and not json_schema_path:
+            raise ValueError("Either json_schema or json_schema_path must be provided.")
+
+        # Load schema from file if json_schema is not provided
+        if json_schema_path and not json_schema:
+            with open(json_schema_path, 'r') as f:
+                json_schema = f.read()
+        
+        # Parse the schema
+        try:
+            schema_data = json.loads(json_schema)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Provided schema is not valid JSON: {e}")
+        
+        # print(f"schema_data: {schema_data}")
+        grammar = LlamaGrammar.from_json_schema(
+            json.dumps(schema_data), verbose=self.model.verbose
+        )
+        print(f"grammar: {grammar}")
+        
+        structured_prompt = f"Extract the following JSON from the text: {prompt}"
+
+        params = {
+            "temperature": self.params.get("temperature", 0.7),
+            "max_tokens": self.params.get("max_new_tokens", 2048),
+            "top_k": self.params.get("top_k", 50),
+            "top_p": self.params.get("top_p", 1.0),
+            "stop": self.stop_words,
+            "logprobs": self.logprobs
+        }
+        params.update(kwargs)
+        # We'll try to generate a completion that looks like JSON
+        completion = self.model.create_completion(
+            prompt=structured_prompt,
+            grammar=grammar,
+            **params
+        )
+
+        generated_text = completion["choices"][0]["text"]
+        try:
+            structured_data = json.loads(generated_text)
+        except json.JSONDecodeError:
+            logging.error("Model output is not valid JSON. Consider retrying or adjusting your prompt.")
+            raise
+
+        # Validate against the schema
+        try:
+            validate(instance=structured_data, schema=schema_data)
+        except ValidationError as e:
+            logging.error("Generated JSON does not conform to the schema.")
+            logging.debug(f"Generated JSON: {generated_text}")
+            logging.debug(f"Validation error: {e}")
+            raise
+        
+        return structured_data
+
 
     def run_streamlit(self, model_path: str, is_local_path = False, hf = False):
         """
