@@ -12,7 +12,6 @@ from contextlib import ExitStack
 from nexa.eval import evaluator
 from nexa.eval.nexa_task.task_manager import TaskManager
 from nexa.eval.utils import make_table, handle_non_serializable
-from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
 from nexa.constants import NEXA_MODEL_EVAL_RESULTS_PATH, NEXA_RUN_MODEL_MAP
 from nexa.eval.nexa_perf import (
     Benchmark,

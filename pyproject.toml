@@ -81,6 +81,12 @@ convert = [
     "nexa-gguf",
 ]
 
+siglip = [
+    "torch",
+    "transformers",
+    "sentencepiece",
+]
+
 [project.urls]
 Homepage = "https://github.com/NexaAI/nexa-sdk"
 Issues = "https://github.com/NexaAI/nexa-sdk/issues"
