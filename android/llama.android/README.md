@@ -1,7 +1,7 @@
 # Nexa
 
-**Nexa** is a Kotlin wrapper for the [llama.cpp](https://github.com/ggerganov/llama.cpp.git) library. offering a convenient Kotlin API for Android developers. It allows seamless integration of llama.cpp models into Android applications.
-**NOTE:** Currently, Nexa supports Vision-Language Model (VLM) inference capabilities.
+**Nexa** offers a convenient Kotlin API for Android developers. It allows seamless integration of llama.cpp models into Android applications.
+**NOTE:** Currently, Nexa supports Large-Language Model (LLM) Vision-Language Model (VLM) inference capabilities.
 
 ## Installation
 
