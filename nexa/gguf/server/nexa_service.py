@@ -41,6 +41,7 @@ from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
 from nexa.general import pull_model
 from nexa.gguf.llama.llama import Llama
 from nexa.gguf.nexa_inference_vlm_omni import NexaOmniVlmInference
+from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
 from nexa.gguf.sd.stable_diffusion import StableDiffusion
 from faster_whisper import WhisperModel
 import numpy as np
@@ -442,6 +443,23 @@ async def load_model():
                 device="cpu", # only support cpu for now because cuDNN needs to be installed on user's machine
                 compute_type="float16"
             )
+        logging.info(f"model loaded as {model}")
+    elif model_type == "AudioLM":
+        with suppress_stdout_stderr():
+            try: 
+                model = NexaAudioLMInference(
+                    model_path=model_path,
+                    device="gpu" if is_gpu_available() else "cpu"
+                )
+            except Exception as e:
+                logging.error(
+                    f"Failed to load model: {e}. Falling back to CPU.",
+                    exc_info=True,
+                )
+                model = NexaAudioLMInference(
+                    model_path=model_path,
+                    device="cpu"
+                )
         logging.info(f"model loaded as {model}")
     else:
         raise ValueError(f"Model {model_path} not found in Model Hub. If you are using local path, be sure to add --local_path and --model_type flags.")
@@ -860,7 +878,6 @@ async def multimodal_chat_completions(request: VLMChatCompletionRequest):
                     elif isinstance(item, ImageUrlContent):
                         try:
                             image_data_uri = process_image_input(item.image_url)
-                            logging.info(f"BRIAN: image_data_uri: {image_data_uri}")
                             processed_content.append({
                                 "type": "image_url",
                                 "image_url": {"url": image_data_uri}
@@ -1237,6 +1254,85 @@ async def translate_audio(
         raise HTTPException(status_code=500, detail=f"Error during translation: {str(e)}")
     finally:
         os.unlink(temp_audio_path)
+
+@app.post("/v1/audiolm/chat/completions", tags=["AudioLM"])
+async def audio_chat_completions(
+    file: UploadFile = File(...),
+    prompt: Optional[str] = Query(None, description="Prompt for audio chat completions"),
+    stream: Optional[bool] = Query(False, description="Whether to stream the response"),
+):
+    temp_file = None
+    
+    try:
+        if model_type != "AudioLM":
+            raise HTTPException(
+                status_code=400,
+                detail="The model that is loaded is not an AudioLM model. Please use an AudioLM model for audio chat completions."
+            )
+        
+        temp_file = tempfile.NamedTemporaryFile(suffix=os.path.splitext(file.filename)[1], delete=False)
+        temp_file.write(await file.read())
+        temp_file.flush()
+        os.fsync(temp_file.fileno())
+        audio_path = temp_file.name
+
+        if stream:
+            async def stream_with_cleanup():
+                try:
+                    for token in model.inference_streaming(audio_path, prompt or ""):
+                        chunk = {
+                            "id": str(uuid.uuid4()),
+                            "object": "chat.completion.chunk",
+                            "created": time.time(),
+                            "choices": [{
+                                "delta": {"content": token},
+                                "index": 0,
+                                "finish_reason": None
+                            }]
+                        }
+                        yield f"data: {json.dumps(chunk)}\n\n"
+                    yield "data: [DONE]\n\n"
+                finally:
+                    temp_file.close()
+                    if os.path.exists(audio_path):
+                        os.unlink(audio_path)
+
+            return StreamingResponse(
+                stream_with_cleanup(),
+                media_type="text/event-stream"
+            )
+        else:
+            try:
+                print("audio_path: ", audio_path)
+                response = model.inference(audio_path, prompt or "")
+                return {
+                    "id": str(uuid.uuid4()),
+                    "object": "chat.completion",
+                    "created": time.time(),
+                    "choices": [{
+                        "message": {"role": "assistant", "content": response},
+                        "index": 0,
+                        "finish_reason": "stop"
+                    }],
+                }
+            finally:
+                temp_file.close()
+                if os.path.exists(audio_path):
+                    os.unlink(audio_path)
+
+    except Exception as e:
+        if temp_file:
+            temp_file.close()
+            if os.path.exists(temp_file.name):
+                try:
+                    os.unlink(temp_file.name)
+                except Exception as cleanup_error:
+                    logging.error(f"Error cleaning up file {temp_file.name}: {cleanup_error}")
+                
+        if isinstance(e, HTTPException):
+            raise e
+        logging.error(f"Error in audio chat completions: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/v1/embeddings", tags=["Embedding"])
 async def create_embedding(request: EmbeddingRequest):
