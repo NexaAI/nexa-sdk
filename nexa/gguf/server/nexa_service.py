@@ -1108,7 +1108,7 @@ async def translate_audio(
     finally:
         os.unlink(temp_audio_path)
 
-@app.post("/v1/audio/chat/completions", tags=["AudioLM"])
+@app.post("/v1/audiolm/chat/completions", tags=["AudioLM"])
 async def audio_chat_completions(
     file: UploadFile = File(...),
     prompt: Optional[str] = Query(None, description="Prompt for audio chat completions"),
@@ -1122,8 +1122,7 @@ async def audio_chat_completions(
                 status_code=400,
                 detail="The model that is loaded is not an AudioLM model. Please use an AudioLM model for audio chat completions."
             )
-            
-        # 创建临时文件并保持打开状态
+        
         temp_file = tempfile.NamedTemporaryFile(suffix=os.path.splitext(file.filename)[1], delete=False)
         temp_file.write(await file.read())
         temp_file.flush()
@@ -1133,7 +1132,7 @@ async def audio_chat_completions(
         if stream:
             async def stream_with_cleanup():
                 try:
-                    for token in model.inference_streaming(prompt or "", audio_path):
+                    for token in model.inference_streaming(audio_path, prompt or ""):
                         chunk = {
                             "id": str(uuid.uuid4()),
                             "object": "chat.completion.chunk",
@@ -1158,7 +1157,7 @@ async def audio_chat_completions(
         else:
             try:
                 print("audio_path: ", audio_path)
-                response = model.inference(prompt or "", audio_path)
+                response = model.inference(audio_path, prompt or "")
                 return {
                     "id": str(uuid.uuid4()),
                     "object": "chat.completion",
