@@ -441,7 +441,7 @@ async def load_model():
             model = WhisperModel(
                 downloaded_path,
                 device="cpu", # only support cpu for now because cuDNN needs to be installed on user's machine
-                compute_type="float16"
+                compute_type="default"
             )
         logging.info(f"model loaded as {model}")
     elif model_type == "AudioLM":
