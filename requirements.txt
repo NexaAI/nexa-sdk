@@ -52,3 +52,12 @@ immutabledict
 torch
 transformers
 sentencepiece
+
+# For tts
+torch
+torchaudio
+sounddevice
+uroman
+mecab-python3
+unidic-lite
+sounddevice

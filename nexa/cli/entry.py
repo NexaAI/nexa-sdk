@@ -120,10 +120,15 @@ def run_ggml_inference(args):
             from nexa.gguf.nexa_inference_voice import NexaVoiceInference
             inference = NexaVoiceInference(model_path=model_path, local_path=local_path, **kwargs)
         elif run_type == "TTS":
-            # # Temporarily disabled since version v0.0.9.3
-            raise NotImplementedError("TTS model is not supported in CLI mode.")
-            # from nexa.gguf.nexa_inference_tts import NexaTTSInference
-            # inference = NexaTTSInference(model_path=model_path, local_path=local_path, **kwargs)
+            # # # Temporarily disabled since version v0.0.9.3
+            # raise NotImplementedError("TTS model is not supported in CLI mode.")
+            kwargs.pop('tts_engine', None)
+            if "OuteTTS" in local_path:
+                from nexa.gguf.nexa_inference_tts import NexaTTSInference
+                inference = NexaTTSInference(model_path=model_path, local_path=local_path, tts_engine="outetts", **kwargs)
+            else:
+                from nexa.gguf.nexa_inference_tts import NexaTTSInference
+                inference = NexaTTSInference(model_path=model_path, local_path=local_path, tts_engine="bark", **kwargs)
         elif run_type == "AudioLM":
             if is_local_path:
                 from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
@@ -493,6 +498,8 @@ def main():
     tts_group.add_argument("--n_threads", type=int, default=1, help="Number of threads to use for processing")
     tts_group.add_argument("--seed", type=int, default=0, help="Seed for random number generation")
     tts_group.add_argument("--verbosity", type=int, default=1, help="Verbosity level for the Bark model")
+    tts_group.add_argument("--tts_engine", type=str, default="outetts", help="TTS engine to use: 'bark' or 'outetts'")
+    tts_group.add_argument("--speaker_name", type=str, default="male_1", help="Speaker name for OuteTTS")
 
     # ONNX command
     onnx_parser = subparsers.add_parser("onnx", help="Run inference for various tasks using ONNX models.")
