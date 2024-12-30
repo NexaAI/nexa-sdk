@@ -690,7 +690,7 @@ def run_nexa_ai_service(model_path_arg=None, is_local_path_arg=False, model_type
     port = kwargs.get("port", 8000)
     reload = kwargs.get("reload", False)
 
-    uvicorn.run(app, host=host, port=port, reload=reload)
+    uvicorn.run(app, host=host, port=port, reload=reload, workers=4)
 
 # Endpoints
 @app.on_event("startup")
@@ -788,6 +788,27 @@ async def load_different_model(request: LoadModelRequest):
         raise HTTPException(
             status_code=500, 
             detail=f"Failed to load model: {str(e)}"
+        )
+    
+@app.post("/v1/unload_model", tags=["Model"])
+async def load_different_model(request: LoadModelRequest):
+    """Load a different model while maintaining the global model state"""
+    try:
+        global model
+        if model != None:
+            await model.close()
+
+        return {
+            "status": "success",
+            "message": f"Successfully unloaded model: {model_path}",
+            "model_type": model_type
+        }
+
+    except Exception as e:
+        logging.error(f"Error unloading model: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to unload model: {str(e)}"
         )
 
 @app.post("/v1/load_whisper_model", tags=["Model"])
