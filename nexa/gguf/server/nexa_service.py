@@ -791,7 +791,7 @@ async def load_different_model(request: LoadModelRequest):
         )
     
 @app.post("/v1/unload_model", tags=["Model"])
-async def load_different_model(request: LoadModelRequest):
+async def unload_different_model(request: LoadModelRequest):
     """Load a different model while maintaining the global model state"""
     try:
         global model
