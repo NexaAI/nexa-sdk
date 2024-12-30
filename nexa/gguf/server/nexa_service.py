@@ -690,7 +690,7 @@ def run_nexa_ai_service(model_path_arg=None, is_local_path_arg=False, model_type
     port = kwargs.get("port", 8000)
     reload = kwargs.get("reload", False)
 
-    uvicorn.run(app, host=host, port=port, reload=reload, workers=4)
+    uvicorn.run(app, host=host, port=port, reload=reload)
 
 # Endpoints
 @app.on_event("startup")
@@ -778,7 +778,7 @@ async def load_different_model(request: LoadModelRequest):
         await load_model()
 
         return {
-            "status": "success",
+            "status": "succeed",
             "message": f"Successfully loaded model: {model_path}",
             "model_type": model_type
         }
@@ -795,11 +795,11 @@ async def unload_different_model(request: LoadModelRequest):
     """Load a different model while maintaining the global model state"""
     try:
         global model
-        if model != None:
-            await model.close()
+        if model:
+            model.close()
 
         return {
-            "status": "success",
+            "status": "succeed",
             "message": f"Successfully unloaded model: {model_path}",
             "model_type": model_type
         }
