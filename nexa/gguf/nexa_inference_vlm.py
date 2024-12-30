@@ -101,6 +101,7 @@ class NexaVLMInference:
         self.downloaded_path = local_path
         self.projector_downloaded_path = projector_local_path
         self.device = device
+        self._is_closed = False
 
         if self.downloaded_path is not None and self.projector_downloaded_path is not None:
             # when running from local, both path should be provided
@@ -362,9 +363,16 @@ class NexaVLMInference:
         sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, str(is_local_path), str(hf), str(projector_local_path)]
         sys.exit(stcli.main())
 
-    def close(self) -> None:
-        if self.model:
-            self.model.close()
+
+    def close(self):
+        if not self._is_closed:
+            if hasattr(self, 'model') and self.model is not None:
+                self.model.reset()
+                self.model.close()
+            if hasattr(self, 'projector') and self.projector is not None:
+                self.projector._exit_stack.close()
+                self.projector = None
+            self._is_closed = True
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

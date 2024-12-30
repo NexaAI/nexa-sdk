@@ -44,6 +44,7 @@ from nexa.general import pull_model
 from nexa.gguf.llama.llama import Llama
 from nexa.gguf.nexa_inference_vlm_omni import NexaOmniVlmInference
 from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
+from nexa.gguf.nexa_inference_vlm import NexaVLMInference
 from nexa.gguf.sd.stable_diffusion import StableDiffusion
 from faster_whisper import WhisperModel
 import numpy as np
@@ -413,33 +414,19 @@ async def load_model():
                         device="cpu"
                     )
             else:
-                projector_handler = NEXA_PROJECTOR_HANDLER_MAP.get(model_path, Llava15ChatHandler)
-                projector = (projector_handler(
-                    clip_model_path=projector_downloaded_path, verbose=False
-                ) if projector_downloaded_path else None)
-                
-                chat_format = NEXA_RUN_CHAT_TEMPLATE_MAP.get(model_path, None)
                 try:
-                    model = Llama(
-                        model_path=downloaded_path,
-                        chat_handler=projector,
-                        verbose=False,
-                        chat_format=chat_format,
-                        n_ctx=n_ctx,
-                        n_gpu_layers=-1 if is_gpu_available() else 0,
+                    model = NexaVLMInference(
+                        model_path=model_path,
+                        device="gpu" if is_gpu_available() else "cpu"
                     )
                 except Exception as e:
                     logging.error(
-                        f"Failed to load model: {e}. Falling back to CPU.",
+                        f"Failed to load Vlm model: {e}. Falling back to CPU.",
                         exc_info=True,
                     )
-                    model = Llama(
-                        model_path=downloaded_path,
-                        chat_handler=projector,
-                        verbose=False,
-                        chat_format=chat_format,
-                        n_ctx=n_ctx,
-                        n_gpu_layers=0,  # hardcode to use CPU
+                    model = NexaVLMInference(
+                        model_path=model_path,
+                        device="cpu"
                     )
         logging.info(f"Model loaded as {model}")
     elif model_type == "AudioLM":
