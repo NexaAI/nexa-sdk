@@ -52,7 +52,7 @@ FetchContent_Declare(
 FetchContent_Declare(
        omni_audio
        GIT_REPOSITORY https://github.com/NexaAI/llama.cpp.git
-       GIT_TAG T/dev
+       GIT_TAG master
        SOURCE_SUBDIR examples/nexa-omni-audio
 )
 
