@@ -806,9 +806,13 @@ async def unload_different_model(request: LoadModelRequest):
 
     except Exception as e:
         logging.error(f"Error unloading model: {e}")
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Failed to unload model: {str(e)}"
+
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "Internal server error",
+                "detail": f"Failed to unload model: {str(e)}"
+            }
         )
 
 @app.post("/v1/load_whisper_model", tags=["Model"])
