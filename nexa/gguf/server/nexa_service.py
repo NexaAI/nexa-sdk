@@ -230,6 +230,9 @@ class DownloadModelRequest(BaseModel):
         "protected_namespaces": ()
     }
 
+class ActionRequest(BaseModel):
+    prompt: str = ""
+
 class StreamASRProcessor:
     def __init__(self, asr, task, language):
         self.asr = asr
@@ -1423,6 +1426,68 @@ async def create_embedding(request: EmbeddingRequest):
     except Exception as e:
         logging.error(f"Error in embedding generation: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/v1/action", tags=["Actions"])
+async def action(request: ActionRequest):
+    try:
+        # Extract content between <nexa_X> and <nexa_end>
+        prompt = request.prompt
+        import re
+        
+        # Use regex to match <nexa_X> pattern
+        match = re.match(r"<nexa_\d+>(.*?)<nexa_end>", prompt)
+        if not match:
+            raise ValueError("Invalid prompt format. Must be wrapped in <nexa_X> and <nexa_end>")
+            
+        # Extract the function call content
+        function_content = match.group(1)
+        
+        # Parse function name and parameters
+        function_name = function_content[:function_content.index("(")]
+        params_str = function_content[function_content.index("(")+1:function_content.rindex(")")]
+        
+        # Parse parameters into dictionary
+        params = {}
+        for param in params_str.split(","):
+            if "=" in param:
+                key, value = param.split("=")
+                params[key.strip()] = value.strip().strip("'").strip('"')
+                
+        # Handle different function types
+        if function_name == "query_plane_ticket":
+            # Validate required parameters
+            required_params = ["year", "date", "time", "departure", "destination"]
+            for param in required_params:
+                if param not in params:
+                    raise ValueError(f"Missing required parameter: {param}")
+                    
+            # Construct the date string in required format
+            date_str = f"{params['date']}/{params['year']}"
+            
+            # Build the URL
+            url = (f"https://www.expedia.com/Flights-Search?"
+                  f"leg1=from:{params['departure']},to:{params['destination']},"
+                  f"departure:{date_str}T&"
+                  f"passengers=adults:1&trip=oneway&mode=search")
+                  
+            return {
+                "status": "success",
+                "function": function_name,
+                "parameters": params,
+                "url": url
+            }
+        else:
+            # Handle other function types in the future
+            return {
+                "status": "error",
+                "message": f"Unsupported function: {function_name}"
+            }
+            
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
