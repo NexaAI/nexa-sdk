@@ -231,7 +231,7 @@ class DownloadModelRequest(BaseModel):
     }
 
 class ActionRequest(BaseModel):
-    prompt: str = "<nexa_0>query_plane_ticket(year='2024', date='12-31', time='12:00', departure='SFO', destination='JFK')<nexa_end>"
+    prompt: str = ""
 
 class StreamASRProcessor:
     def __init__(self, asr, task, language):
