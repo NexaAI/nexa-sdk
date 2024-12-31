@@ -733,7 +733,7 @@ async def download_model(request: DownloadModelRequest):
         else:
             downloaded_path, model_type = pull_model(request.model_path)
             if not downloaded_path or not model_type:
-                return JSONResponse(content="Failed to download model. Please check whether model name is correct.", status_code=400)
+                return JSONResponse(content="Failed to download model. Please check whether model_path is correct.", status_code=400)
             
             return {
                 "status": "success",
