@@ -722,6 +722,10 @@ async def download_model(request: DownloadModelRequest):
             elif request.model_path in NEXA_RUN_MODEL_MAP_AUDIO_LM:
                 downloaded_path, model_type = pull_model(NEXA_RUN_MODEL_MAP_AUDIO_LM[request.model_path])
                 projector_downloaded_path, _ = pull_model(NEXA_RUN_AUDIO_LM_PROJECTOR_MAP[request.model_path])
+
+            if not downloaded_path or not model_type:
+                return JSONResponse(content="Failed to download model. Please check whether model_path is correct.", status_code=400)
+            
             return {
                 "status": "success",
                 "message": "Successfully downloaded model and projector",
