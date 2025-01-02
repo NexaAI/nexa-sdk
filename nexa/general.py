@@ -341,6 +341,7 @@ def download_file_with_progress(
     chunk_size: int = 5 * 1024 * 1024,
     max_workers: int = 20,
     use_processes: bool = default_use_processes(),
+    progress_callback=None,
     **kwargs
 ):
     file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -376,6 +377,8 @@ def download_file_with_progress(
             else concurrent.futures.ThreadPoolExecutor
         )
 
+        downloaded_size = 0  # Track the total downloaded size
+
         with executor_class(max_workers=max_workers) as executor:
             future_to_chunk = {
                 executor.submit(
@@ -389,7 +392,13 @@ def download_file_with_progress(
                 try:
                     chunk_size, chunk_number = future.result()
                     completed_chunks[chunk_number] = True
+                    downloaded_size += chunk_size
                     progress_bar.update(chunk_size)
+
+                    # Call the progress callback with the current progress
+                    if progress_callback:
+                        progress_callback(downloaded_size, file_size)
+
                 except Exception as e:
                     print(f"Error downloading chunk {chunk_number}: {e}")
 
@@ -426,6 +435,7 @@ def download_file_with_progress(
     finally:
         # Clean up temporary directory and all its contents
         shutil.rmtree(temp_dir)
+
 
 
 def download_model_from_official(model_path, model_type, **kwargs):
