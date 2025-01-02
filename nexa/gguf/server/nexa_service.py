@@ -288,7 +288,7 @@ class StreamASRProcessor:
                 words.append((w.start, w.end, w.word))
         return words
 
-class EvaluationResult:
+class MetricsResult:
     def __init__(self, ttft: float, decoding_speed:float):
         self.ttft = ttft
         self.decoding_speed = decoding_speed
@@ -713,9 +713,13 @@ async def read_root(request: Request):
     )
 
 
-def _resp_async_generator(streamer):
+def _resp_async_generator(streamer, start_time):
     _id = str(uuid.uuid4())
+    ttft = 0
+    decoding_times = 0
     for token in streamer:
+        ttft = time.perf_counter() - start_time if ttft==0 else ttft
+        decoding_times += 1
         chunk = {
             "id": _id,
             "object": "chat.completion.chunk",
@@ -723,6 +727,11 @@ def _resp_async_generator(streamer):
             "choices": [{"delta": {"content": token}}],
         }
         yield f"data: {json.dumps(chunk)}\n\n"
+
+    yield f"metrics: {MetricsResult(
+        ttft=ttft,
+        decoding_speed=decoding_times / (time.perf_counter() - start_time)
+    ).to_json()}\n\n"
     yield "data: [DONE]\n\n"
 
 @app.post("/v1/download_model", tags=["Model"])
@@ -871,8 +880,9 @@ async def generate_text(request: GenerationRequest):
         generation_kwargs = request.dict()
         if request.stream:
             # Run the generation and stream the response
+            start_time = time.perf_counter()
             streamer = nexa_run_text_generation(is_chat_completion=False, **generation_kwargs)
-            return StreamingResponse(_resp_async_generator(streamer), media_type="application/x-ndjson")
+            return StreamingResponse(_resp_async_generator(streamer, start_time), media_type="application/x-ndjson")
         else:
             # Generate text synchronously and return the response
             result = nexa_run_text_generation(is_chat_completion=False, **generation_kwargs)
@@ -916,8 +926,9 @@ async def text_chat_completions(request: ChatCompletionRequest):
         ).dict()
 
         if request.stream:
+            start_time = time.perf_counter()
             streamer = nexa_run_text_generation(is_chat_completion=True, **generation_kwargs)
-            return StreamingResponse(_resp_async_generator(streamer), media_type="application/x-ndjson")
+            return StreamingResponse(_resp_async_generator(streamer, start_time), media_type="application/x-ndjson")
         
         result = nexa_run_text_generation(is_chat_completion=True, **generation_kwargs)
         return {
@@ -965,7 +976,8 @@ async def multimodal_chat_completions(request: VLMChatCompletionRequest):
                 processed_messages.append({"role": msg.role, "content": processed_content})
             else:
                 processed_messages.append({"role": msg.role, "content": msg.content})
-                
+
+        start_time = time.perf_counter()        
         response = model.create_chat_completion(
             messages=processed_messages,
             max_tokens=request.max_tokens,
@@ -977,7 +989,8 @@ async def multimodal_chat_completions(request: VLMChatCompletionRequest):
         )
         
         if request.stream:
-            return StreamingResponse(_resp_async_generator(response), media_type="application/x-ndjson")
+            
+            return StreamingResponse(_resp_async_generator(response, start_time), media_type="application/x-ndjson")
         return response
 
     except HTTPException as e:
@@ -1009,7 +1022,7 @@ async def _resp_omnivlm_async_generator(model: NexaOmniVlmInference, prompt: str
                 }]
             }
             yield f"data: {json.dumps(chunk)}\n\n"
-        yield f"eval: {EvaluationResult(
+        yield f"metrics: {MetricsResult(
             ttft=ttft,
             decoding_speed=decoding_times / (time.perf_counter() - start_time)
         ).to_json()}\n\n"
@@ -1330,6 +1343,9 @@ async def audio_chat_completions(
     stream: Optional[bool] = Query(False, description="Whether to stream the response"),
 ):
     temp_file = None
+    ttft = 0
+    start_time = time.perf_counter()
+    decoding_times = 0
     
     try:
         if model_type != "AudioLM":
@@ -1346,8 +1362,11 @@ async def audio_chat_completions(
 
         if stream:
             async def stream_with_cleanup():
+                nonlocal ttft, decoding_times, start_time
                 try:
                     for token in model.inference_streaming(audio_path, prompt or ""):
+                        ttft = time.perf_counter() - start_time if ttft==0 else ttft
+                        decoding_times += 1
                         chunk = {
                             "id": str(uuid.uuid4()),
                             "object": "chat.completion.chunk",
@@ -1359,6 +1378,10 @@ async def audio_chat_completions(
                             }]
                         }
                         yield f"data: {json.dumps(chunk)}\n\n"
+                    yield f"metrics: {MetricsResult(
+                        ttft=ttft,
+                        decoding_speed=decoding_times / (time.perf_counter() - start_time)
+                    ).to_json()}\n\n"
                     yield "data: [DONE]\n\n"
                 finally:
                     temp_file.close()
