@@ -288,6 +288,20 @@ class StreamASRProcessor:
                 words.append((w.start, w.end, w.word))
         return words
 
+class EvaluationResult:
+    def __init__(self, ttft: float, decoding_speed:float):
+        self.ttft = ttft
+        self.decoding_speed = decoding_speed
+
+    def to_dict(self):
+        return {
+            'ttft': round(self.ttft, 2),
+            'decoding_speed': round(self.decoding_speed, 2)
+        }
+    
+    def to_json(self):
+        return json.dumps(self.to_dict())
+
 # helper functions
 async def load_model():
     global model, chat_format, completion_template, model_path, n_ctx, is_local_path, model_type, is_huggingface, is_modelscope, projector_path
@@ -972,13 +986,18 @@ async def multimodal_chat_completions(request: VLMChatCompletionRequest):
         logging.error(f"Error in multimodal chat completions: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-async def _resp_omnivlm_async_generator(model, prompt: str, image_path: str):
+async def _resp_omnivlm_async_generator(model: NexaOmniVlmInference, prompt: str, image_path: str):
     _id = str(uuid.uuid4())
+    ttft = 0
+    start_time = time.perf_counter()
+    decoding_times = 0
     try:
         if not os.path.exists(image_path):
             raise FileNotFoundError(f"Image file not found: {image_path}")
             
         for token in model.inference_streaming(prompt, image_path):
+            ttft = time.perf_counter() - start_time if ttft==0 else ttft
+            decoding_times += 1
             chunk = {
                 "id": _id,
                 "object": "chat.completion.chunk",
@@ -990,6 +1009,10 @@ async def _resp_omnivlm_async_generator(model, prompt: str, image_path: str):
                 }]
             }
             yield f"data: {json.dumps(chunk)}\n\n"
+        yield f"eval: {EvaluationResult(
+            ttft=ttft,
+            decoding_speed=decoding_times / (time.perf_counter() - start_time)
+        ).to_json()}\n\n"
         yield "data: [DONE]\n\n"
     except Exception as e:
         logging.error(f"Error in OmniVLM streaming: {e}")
