@@ -728,10 +728,7 @@ def _resp_async_generator(streamer, start_time):
         }
         yield f"data: {json.dumps(chunk)}\n\n"
 
-    yield f"metrics: {MetricsResult(
-        ttft=ttft,
-        decoding_speed=decoding_times / (time.perf_counter() - start_time)
-    ).to_json()}\n\n"
+    yield f"metrics: {MetricsResult(ttft=ttft, decoding_speed=decoding_times / (time.perf_counter() - start_time)).to_json()}\n\n"
     yield "data: [DONE]\n\n"
 
 @app.post("/v1/download_model", tags=["Model"])
@@ -1022,10 +1019,7 @@ async def _resp_omnivlm_async_generator(model: NexaOmniVlmInference, prompt: str
                 }]
             }
             yield f"data: {json.dumps(chunk)}\n\n"
-        yield f"metrics: {MetricsResult(
-            ttft=ttft,
-            decoding_speed=decoding_times / (time.perf_counter() - start_time)
-        ).to_json()}\n\n"
+        yield f"metrics: {MetricsResult(ttft=ttft, decoding_speed=decoding_times / (time.perf_counter() - start_time)).to_json()}\n\n"
         yield "data: [DONE]\n\n"
     except Exception as e:
         logging.error(f"Error in OmniVLM streaming: {e}")
@@ -1378,10 +1372,7 @@ async def audio_chat_completions(
                             }]
                         }
                         yield f"data: {json.dumps(chunk)}\n\n"
-                    yield f"metrics: {MetricsResult(
-                        ttft=ttft,
-                        decoding_speed=decoding_times / (time.perf_counter() - start_time)
-                    ).to_json()}\n\n"
+                    yield f"metrics: {MetricsResult(ttft=ttft, decoding_speed=decoding_times / (time.perf_counter() - start_time)).to_json()}\n\n"
                     yield "data: [DONE]\n\n"
                 finally:
                     temp_file.close()
