@@ -41,7 +41,6 @@ from nexa.constants import (
     NEXA_RUN_MODEL_PRECISION_MAP,
     NEXA_RUN_MODEL_MAP_FUNCTION_CALLING,
     NEXA_MODEL_LIST_PATH,
-    NEXA_MODEL_LIST_PATH,
     NEXA_OFFICIAL_BUCKET,
 )
 from nexa.gguf.converter.constants import NEXA_MODELS_HUB_DIR
