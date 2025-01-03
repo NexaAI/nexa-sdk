@@ -397,7 +397,7 @@ def download_file_with_progress(
 
                     # Call the progress callback with the current progress
                     if progress_callback:
-                        progress_callback(downloaded_size, file_size)
+                        progress_callback(downloaded_size, file_size, stage="downloading")
 
                 except Exception as e:
                     print(f"Error downloading chunk {chunk_number}: {e}")
@@ -405,6 +405,12 @@ def download_file_with_progress(
         progress_bar.close()
 
         if all(completed_chunks):
+            # Transition to Verifying phase
+            try:
+                if progress_callback:
+                    progress_callback(downloaded_size, file_size, stage="verifying")
+            except Exception as e:
+                print(f"Error Verifying chunk {chunk_number}: {e}")
             # Create a new progress bar for combining chunks
             combine_progress = tqdm(
                 total=file_size,
