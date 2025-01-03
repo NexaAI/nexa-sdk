@@ -717,7 +717,7 @@ def _resp_async_generator(streamer, start_time):
     _id = str(uuid.uuid4())
     ttft = 0
     decoding_times = 0
-    first_token_time = time.perf_counter() if first_token_time==0 else first_token_time
+    first_token_time = 0
     for token in streamer:
         ttft = time.perf_counter() - start_time if ttft==0 else ttft
         first_token_time = time.perf_counter() if first_token_time == 0 else first_token_time
