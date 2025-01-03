@@ -22,11 +22,8 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, HttpUrl, AnyUrl, Field
 import requests
 from io import BytesIO
-from PIL import Image
-import base64
 from urllib.parse import urlparse
 import asyncio
-from fastapi.responses import StreamingResponse
 
 from nexa.constants import (
     NEXA_MODELS_HUB_OFFICIAL_DIR,
