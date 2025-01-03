@@ -717,8 +717,10 @@ def _resp_async_generator(streamer, start_time):
     _id = str(uuid.uuid4())
     ttft = 0
     decoding_times = 0
+    first_token_time = time.perf_counter() if first_token_time==0 else first_token_time
     for token in streamer:
         ttft = time.perf_counter() - start_time if ttft==0 else ttft
+        first_token_time = time.perf_counter() if first_token_time == 0 else first_token_time
         decoding_times += 1
         chunk = {
             "id": _id,
@@ -728,7 +730,7 @@ def _resp_async_generator(streamer, start_time):
         }
         yield f"data: {json.dumps(chunk)}\n\n"
 
-    yield f"metrics: {MetricsResult(ttft=ttft, decoding_speed=decoding_times / (time.perf_counter() - start_time)).to_json()}\n\n"
+    yield f"metrics: {MetricsResult(ttft=ttft, decoding_speed=decoding_times / (time.perf_counter() - first_token_time)).to_json()}\n\n"
     yield "data: [DONE]\n\n"
 
 @app.post("/v1/download_model", tags=["Model"])
@@ -1000,6 +1002,7 @@ async def _resp_omnivlm_async_generator(model: NexaOmniVlmInference, prompt: str
     _id = str(uuid.uuid4())
     ttft = 0
     start_time = time.perf_counter()
+    first_token_time = 0
     decoding_times = 0
     try:
         if not os.path.exists(image_path):
@@ -1007,6 +1010,7 @@ async def _resp_omnivlm_async_generator(model: NexaOmniVlmInference, prompt: str
             
         for token in model.inference_streaming(prompt, image_path):
             ttft = time.perf_counter() - start_time if ttft==0 else ttft
+            first_token_time = time.perf_counter() if first_token_time == 0 else first_token_time
             decoding_times += 1
             chunk = {
                 "id": _id,
@@ -1019,7 +1023,7 @@ async def _resp_omnivlm_async_generator(model: NexaOmniVlmInference, prompt: str
                 }]
             }
             yield f"data: {json.dumps(chunk)}\n\n"
-        yield f"metrics: {MetricsResult(ttft=ttft, decoding_speed=decoding_times / (time.perf_counter() - start_time)).to_json()}\n\n"
+        yield f"metrics: {MetricsResult(ttft=ttft, decoding_speed=decoding_times / (time.perf_counter() - first_token_time)).to_json()}\n\n"
         yield "data: [DONE]\n\n"
     except Exception as e:
         logging.error(f"Error in OmniVLM streaming: {e}")
@@ -1357,9 +1361,11 @@ async def audio_chat_completions(
         if stream:
             async def stream_with_cleanup():
                 nonlocal ttft, decoding_times, start_time
+                first_token_time = 0
                 try:
                     for token in model.inference_streaming(audio_path, prompt or ""):
                         ttft = time.perf_counter() - start_time if ttft==0 else ttft
+                        first_token_time = time.perf_counter() if first_token_time==0 else first_token_time
                         decoding_times += 1
                         chunk = {
                             "id": str(uuid.uuid4()),
@@ -1372,7 +1378,7 @@ async def audio_chat_completions(
                             }]
                         }
                         yield f"data: {json.dumps(chunk)}\n\n"
-                    yield f"metrics: {MetricsResult(ttft=ttft, decoding_speed=decoding_times / (time.perf_counter() - start_time)).to_json()}\n\n"
+                    yield f"metrics: {MetricsResult(ttft=ttft, decoding_speed=decoding_times / (time.perf_counter() - first_token_time)).to_json()}\n\n"
                     yield "data: [DONE]\n\n"
                 finally:
                     temp_file.close()
