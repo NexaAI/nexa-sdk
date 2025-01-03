@@ -24,7 +24,8 @@ git checkout -b android-omnivlm origin/demo/android-omnivlm
 
 ### 4. Model Setup
 1. Download the OmniVLM model from [Nexa AI ModelHub](https://nexa.ai/NexaAI/omniVLM/gguf-q8_0/file)
-2. Copy the model files to your device storage:
+
+2. Copy the model files (`model-q8_0.gguf`  and `projector-q8_0.gguf`) to your device storage:
    ```
    Device path: /sdcard/Android/data/ai.nexa.app_java/files
    ```
