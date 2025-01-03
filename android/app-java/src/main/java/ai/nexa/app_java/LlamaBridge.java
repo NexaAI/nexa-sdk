@@ -2,7 +2,6 @@ package ai.nexa.app_java;
 
 import android.content.Context;
 import com.nexa.NexaOmniVlmInference;
-import com.nexa.NexaVlmInference;
 import android.util.Log;
 
 import java.io.IOException;
@@ -100,63 +99,6 @@ public class LlamaBridge {
             }
         });
     }
-
-    // public void processMessage(String message, String imageUri, InferenceCallback
-    // callback) {
-    // if (!isModelLoaded) {
-    // callback.onError("Model not loaded yet");
-    // return;
-    // }
-    //
-    // try {
-    // // Add user message first
-    // MessageModal userMessage = new MessageModal(message, "user", imageUri);
-    // messageHandler.addMessage(userMessage);
-    //
-    // // Create an initial empty assistant message
-    // MessageModal assistantMessage = new MessageModal("", "assistant", null);
-    // messageHandler.addMessage(assistantMessage);
-    //
-    // // Convert image URI to absolute path
-    // String imageAbsolutePath = imagePathHelper.getPathFromUri(imageUri);
-    //
-    // Flow<String> flow = nexaVlmInference.createCompletionStream(
-    // message,
-    // imageAbsolutePath,
-    // new ArrayList<>(),
-    // DEFAULT_TEMPERATURE,
-    // DEFAULT_MAX_TOKENS,
-    // DEFAULT_TOP_K,
-    // DEFAULT_TOP_P
-    // );
-    //
-    // if (flow != null) {
-    // CoroutineScope scope =
-    // CoroutineScopeKt.CoroutineScope(Dispatchers.getMain());
-    //
-    // Job job = FlowKt.launchIn(
-    // FlowKt.onEach(flow, new Function2<String, Continuation<? super Unit>,
-    // Object>() {
-    // @Override
-    // public Object invoke(String token, Continuation<? super Unit> continuation) {
-    // messageHandler.updateLastAssistantMessage(token);
-    // callback.onToken(token);
-    // return Unit.INSTANCE;
-    // }
-    // }),
-    // scope
-    // );
-    // } else {
-    // messageHandler.finalizeLastAssistantMessage("Error: Failed to create
-    // completion stream");
-    // callback.onError("Failed to create completion stream");
-    // }
-    // } catch (Exception e) {
-    // Log.e(TAG, "Error processing message", e);
-    // messageHandler.finalizeLastAssistantMessage("Error: " + e.getMessage());
-    // callback.onError(e.getMessage());
-    // }
-    // }
 
     public void processMessage(String message, String imageUri, InferenceCallback callback) {
         if (!isModelLoaded) {

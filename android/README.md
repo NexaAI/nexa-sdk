@@ -1,59 +1,34 @@
-# Nexa
+# Nexa SDK Quick Start Guide
 
-**Nexa** is a Kotlin wrapper for the [llama.cpp](https://github.com/ggerganov/llama.cpp.git) library. offering a convenient Kotlin API for Android developers. It allows seamless integration of llama.cpp models into Android applications.
-**NOTE:** Currently, Nexa supports Vision-Language Model (VLM) inference capabilities.
+## Prerequisites
+- Android Studio
+- Android device or emulator
+- Git
 
-## Installation
+## Installation Steps
 
-To add Nexa to your Android project, follow these steps:
-
-- Create a libs folder in your project’s root directory.
-- Copy the .aar file into the libs folder.
-- Add dependency to your build.gradle file:
-
-```
-implementation files("libs/com.nexa.aar")
+### 1. Clone Repository
+```bash
+git clone https://github.com/NexaAI/nexa-sdk.git
+cd nexa-sdk
 ```
 
-## Usage
-### 1. Initialize NexaSwift with model path and projector path
-
-Create a configuration and initialize NexaSwift with the path to your model file:
-
-```kotlin
-nexaVlmInference = NexaVlmInference(pathToModel,
-    mmprojectorPath, imagePath,
-    maxNewTokens = 128,
-    stopWords = listOf("</s>"))
-nexaVlmInference.loadModel()
+### 2. Set Up Development Branch
+```bash
+git checkout -b android-omnivlm origin/demo/android-omnivlm
 ```
 
-### 2. Completion API
+### 3. Project Setup
+1. Open the `android` folder in Android Studio
+2. Wait for project sync and Gradle build to complete
 
-#### Streaming Mode
+### 4. Model Setup
+1. Download the OmniVLM model from [Nexa AI ModelHub](https://nexa.ai/NexaAI/omniVLM/gguf-q8_0/file)
+2. Copy the model files to your device storage:
+   ```
+   Device path: /sdcard/Android/data/ai.nexa.app_java/files
+   ```
 
-```swift
-nexaVlmInference.createCompletionStream(prompt, imagePath)
-    ?.catch {
-        print(it.message)
-    }
-    ?.collect { print(it) }
-```
-
-### 3. release all resources
-```kotlin
-nexaVlmInference.dispose()
-```
-
-## Quick Start
-
-Open the [android test project](./app-java) folder in Android Studio and run the project.
-
-## Download Models
-
-You can download models from the [Nexa AI ModelHub](https://nexa.ai/models).
-
-## How to estimate power usage
-
-- ```adb shell dumpsys batterystats --reset```
-- ```adb shell dumpsys batterystats > batterystats.txt```
+### 5. Run the Application
+1. Connect your Android device or start an emulator
+2. Click the \"Run\" button in Android Studio to build and launch the app
