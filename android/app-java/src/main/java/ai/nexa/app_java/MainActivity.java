@@ -4,9 +4,9 @@ import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Message;
 import android.provider.MediaStore;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
@@ -21,21 +21,24 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "ChatApp";
     private static final int PICK_IMAGE_REQUEST = 30311;
+    private static final int CAPTURE_IMAGE_REQUEST = 30312;
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 200;
     private static final int READ_EXTERNAL_STORAGE_PERMISSION = 303;
+    private static final int CAMERA_PERMISSION_CODE = 304;
 
     private RecyclerView chatsRV;
     private ImageButton selectImageButton;
@@ -60,6 +63,7 @@ public class MainActivity extends AppCompatActivity {
 
         Log.d(TAG, "onCreate: Starting MainActivity");
 
+        checkCameraPermission();
         initializeViews();
         setupRecyclerView();
         initializeLlamaBridge();
@@ -67,6 +71,15 @@ public class MainActivity extends AppCompatActivity {
         setupClickListeners();
 
         Log.d(TAG, "onCreate: MainActivity setup complete");
+    }
+
+    private void checkCameraPermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.CAMERA},
+                    CAMERA_PERMISSION_CODE);
+        }
     }
 
     private void initializeViews() {
@@ -98,8 +111,19 @@ public class MainActivity extends AppCompatActivity {
 
     private void setupClickListeners() {
         selectImageButton.setOnClickListener(v -> {
-            Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-            startActivityForResult(intent, PICK_IMAGE_REQUEST);
+            CharSequence[] items = {"Choose from Gallery", "Take Photo"};
+            new AlertDialog.Builder(this)
+                    .setTitle("Select Image Source")
+                    .setItems(items, (dialog, which) -> {
+                        if (which == 0) {
+                            Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                            startActivityForResult(intent, PICK_IMAGE_REQUEST);
+                        } else {
+                            Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                            startActivityForResult(intent, CAPTURE_IMAGE_REQUEST);
+                        }
+                    })
+                    .show();
         });
 
         sendMsgIB.setOnClickListener(v -> {
@@ -287,11 +311,11 @@ public class MainActivity extends AppCompatActivity {
             public boolean onTouch(View v, MotionEvent event) {
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
-                        // Button is pressed
+                    // Button is pressed
                         speechRecognizer.startListening(speechRecognizerIntent);
                         return true; // Return true to indicate the event was handled
                     case MotionEvent.ACTION_UP:
-                        // Button is released
+                    // Button is released
                         speechRecognizer.stopListening();
                         return true; // Return true to indicate the event was handled
                 }
@@ -317,22 +341,51 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(this, "Read External Storage Permission Denied", Toast.LENGTH_SHORT).show();
                 }
                 break;
+            case CAMERA_PERMISSION_CODE:
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(this, "Camera Permission Granted", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "Camera Permission Denied", Toast.LENGTH_SHORT).show();
+                }
+                break;
             default:
                 break;
         }
-
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null) {
-            Uri selectedImage = data.getData();
-            if (selectedImage != null) {
-                String imageUriString = selectedImage.toString();
-                sendImageAsMessage(imageUriString);
+        if (resultCode == RESULT_OK && data != null) {
+            if (requestCode == PICK_IMAGE_REQUEST) {
+                Uri selectedImage = data.getData();
+                if (selectedImage != null) {
+                    String imageUriString = selectedImage.toString();
+                    sendImageAsMessage(imageUriString);
+                }
+            } else if (requestCode == CAPTURE_IMAGE_REQUEST) {
+                Bundle extras = data.getExtras();
+                if (extras != null) {
+                    Uri imageUri = data.getData();
+                    if (imageUri != null) {
+                        String imageUriString = imageUri.toString();
+                        sendImageAsMessage(imageUriString);
+                    } else {
+                        Bitmap imageBitmap = (Bitmap) extras.get("data");
+                        if (imageBitmap != null) {
+                            Uri uri = getImageUri(this, imageBitmap);
+                            String imageUriString = uri.toString();
+                            sendImageAsMessage(imageUriString);
+                        }
+                    }
+                }
             }
         }
+    }
+
+    private Uri getImageUri(Context context, Bitmap bitmap) {
+        String path = MediaStore.Images.Media.insertImage(context.getContentResolver(), bitmap, "Title", null);
+        return Uri.parse(path);
     }
 
     public void hideKeyboard(View view) {
@@ -341,5 +394,4 @@ public class MainActivity extends AppCompatActivity {
             inputMethodManager.hideSoftInputFromWindow(view.getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
         }
     }
-
 }
