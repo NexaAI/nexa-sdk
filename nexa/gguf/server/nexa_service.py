@@ -1699,7 +1699,15 @@ async def action(request: ActionRequest):
             for param in required_params:
                 if param not in params:
                     raise ValueError(f"Missing required parameter: {param}")
-                    
+            # Corner case handling for date
+            if params['date'] == '00-00':
+                from datetime import datetime, timedelta
+                tomorrow = datetime.now() + timedelta(days=1)
+                params['date'] = tomorrow.strftime('%m-%d')
+
+            if params['year'] == '2024':
+                params['year'] = datetime.now().year
+            
             # Construct the date string in required format
             date_str = f"{params['date']}/{params['year']}"
             
