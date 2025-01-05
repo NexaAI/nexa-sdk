@@ -1706,7 +1706,7 @@ async def action(request: ActionRequest):
                 params['date'] = tomorrow.strftime('%m-%d')
 
             if params['year'] == '2024':
-                params['year'] = '2025'
+                params['year'] = datetime.now().year
             
             # Construct the date string in required format
             date_str = f"{params['date']}/{params['year']}"
