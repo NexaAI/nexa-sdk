@@ -1716,7 +1716,9 @@ async def action(request: ActionRequest):
 
             if params['year'] == '2024':
                 params['year'] = datetime.now().year
-            
+                
+            if params['departure'] == 'current':
+                params['departure'] = 'LAS'
             # Construct the date string in required format
             date_str = f"{params['date']}/{params['year']}"
             
