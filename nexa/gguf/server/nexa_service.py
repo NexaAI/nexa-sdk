@@ -1716,12 +1716,15 @@ async def action(request: ActionRequest):
 
             if params['year'] == '2024':
                 params['year'] = datetime.now().year
-                
+
             if params['departure'] == 'current':
                 params['departure'] = 'LAS'
             # Construct the date string in required format
             date_str = f"{params['date']}/{params['year']}"
-            
+            from urllib.parse import quote
+            params['departure'] = quote(params['departure'])
+            params['destination'] = quote(params['destination'])
+            date_str = quote(f"{params['date']}/{params['year']}")
             # Build the URL
             url = (f"https://www.expedia.com/Flights-Search?"
                   f"leg1=from:{params['departure']},to:{params['destination']},"
