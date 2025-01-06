@@ -157,7 +157,7 @@ class ChatCompletionRequest(BaseModel):
 class VLMChatCompletionRequest(BaseModel):
     messages: List[Message] = [
         {"role": "user", "content": [
-                {"type": "text", "text": "What’s in this image?"},
+                {"type": "text", "text": "What's in this image?"},
                 {"type": "image_url", "image_url": {
                     "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"
                 }}
@@ -1260,16 +1260,24 @@ async def omnivlm_chat_completions(request: VLMChatCompletionRequest):
                         base64_data = base64_image.split(',')[1]
                         image_data = base64.b64decode(base64_data)
                         
-                        temp_file = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)
-                        temp_file.write(image_data)
-                        temp_file.flush()
-                        os.fsync(temp_file.fileno())
-                        temp_file.close()
-                        
-                        image_path = temp_file.name
-                        
-                        if not os.path.exists(image_path):
-                            raise ValueError(f"Failed to create temporary file at {image_path}")
+                        try:
+                            img = Image.open(BytesIO(image_data))
+                            if img.mode != 'RGB':
+                                img = img.convert('RGB')
+
+                            temp_file = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)
+                            img.save(temp_file.name, format='JPEG', quality=95)
+                            temp_file.flush()
+                            os.fsync(temp_file.fileno())
+                            temp_file.close()
+                            
+                            image_path = temp_file.name
+                            
+                            if not os.path.exists(image_path) or os.path.getsize(image_path) == 0:
+                                raise ValueError(f"Failed to create valid image file at {image_path}")
+                                
+                        except Exception as img_err:
+                            raise ValueError(f"Invalid image data or format: {str(img_err)}")
                             
                     except Exception as e:
                         if temp_file and os.path.exists(temp_file.name):
