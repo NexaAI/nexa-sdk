@@ -66,6 +66,7 @@ NEXA_RUN_MODEL_MAP_TEXT = {
     "phi2": "Phi-2:q4_0",
     "phi3": "Phi-3-mini-128k-instruct:q4_0",
     "phi3.5": "Phi-3.5-mini-instruct:q4_0",
+    "phi4": "Phi:q4_0",
     "llama2-uncensored": "Llama2-7b-chat-uncensored:q4_0",
     "llama3-uncensored": "Llama3-8B-Lexi-Uncensored:q4_K_M",
     "openelm": "OpenELM-3B:q4_K_M",
@@ -127,9 +128,11 @@ NEXA_RUN_MODEL_MAP_AUDIO_LM = {
     "Qwen2-Audio-7.8B-Instruct:q6_K": "Qwen2-Audio-7.8B-Instruct:model-q6_K",
     "Qwen2-Audio-7.8B-Instruct:q8_0": "Qwen2-Audio-7.8B-Instruct:model-q8_0",
     "Qwen2-Audio-7.8B-Instruct:fp16": "Qwen2-Audio-7.8B-Instruct:model-fp16",
-    "omniaudio": "omniaudio:model-fp16",
-    "omniaudio:fp16": "omniaudio:model-fp16",
-    "omniaudio:q4_0": "omniaudio:model-q4_0",
+    "omniaudio": "OmniAudio-2.6B:model-q4_K_M",
+    "OmniAudio-2.6B:fp16": "OmniAudio-2.6B:model-fp16",
+    "OmniAudio-2.6B:q8_0": "OmniAudio-2.6B:model-q8_0",
+    "OmniAudio-2.6B:q4_K_M": "OmniAudio-2.6B:model-q4_K_M",
+    "OmniAudio-2.6B:q4_0": "OmniAudio-2.6B:model-q4_0",
 }
 
 NEXA_RUN_MODEL_MAP_VOICE = {
@@ -188,8 +191,10 @@ NEXA_RUN_OMNI_VLM_PROJECTOR_MAP = {
     "omnivision-preview": "omnivision-preview:projector-fp16",
     "omnivision-preview:fp16": "omnivision-preview:projector-fp16",
     "omnivision-preview:q4_0": "omnivision-preview:projector-q4_0",
+    "omnivlm": "omniVLM:projector-fp16",
     "omniVLM": "omniVLM:projector-fp16",
     "omniVLM:fp16": "omniVLM:projector-fp16",
+    "omniVLM:q8_0": "omniVLM:projector-q8_0",
     "omnivision-ocr": "omnivision-ocr:projector-fp16",
     "omnivision-ocr:fp16": "omnivision-ocr:projector-fp16",
 }
@@ -198,8 +203,10 @@ NEXA_RUN_OMNI_VLM_MAP = {
     "omnivision-preview": "omnivision-preview:model-fp16",
     "omnivision-preview:fp16": "omnivision-preview:model-fp16",
     "omnivision-preview:q4_0": "omnivision-preview:model-q4_0",
+    "omnivlm": "omniVLM:model-fp16",
     "omniVLM": "omniVLM:model-fp16",
     "omniVLM:fp16": "omniVLM:model-fp16",
+    "omniVLM:q8_0": "omniVLM:model-q8_0",
     "omnivision-ocr": "omnivision-ocr:model-fp16",
     "omnivision-ocr:fp16": "omnivision-ocr:model-fp16",
 }
@@ -221,9 +228,11 @@ NEXA_RUN_AUDIO_LM_PROJECTOR_MAP = {
     "Qwen2-Audio-7.8B-Instruct:q6_K": "Qwen2-Audio-7.8B-Instruct:projector-q6_K",
     "Qwen2-Audio-7.8B-Instruct:q8_0": "Qwen2-Audio-7.8B-Instruct:projector-q8_0",
     "Qwen2-Audio-7.8B-Instruct:fp16": "Qwen2-Audio-7.8B-Instruct:projector-fp16",
-    "omniaudio": "omniaudio:projector-fp16",
-    "omniaudio:fp16": "omniaudio:projector-fp16",
-    "omniaudio:q4_0": "omniaudio:projector-q4_0",
+    "omniaudio": "OmniAudio-2.6B:projector-q4_K_M",
+    "OmniAudio-2.6B:fp16": "OmniAudio-2.6B:projector-fp16",
+    "OmniAudio-2.6B:q8_0": "OmniAudio-2.6B:projector-q8_0",
+    "OmniAudio-2.6B:q4_K_M": "OmniAudio-2.6B:projector-q4_K_M",
+    "OmniAudio-2.6B:q4_0": "OmniAudio-2.6B:projector-q4_0",
 }
 
 NEXA_RUN_T5XXL_MAP = {
@@ -405,6 +414,7 @@ NEXA_OFFICIAL_MODELS_TYPE = {
     "Phi-3-mini-128k-instruct": ModelType.NLP,
     "Phi-3-mini-4k-instruct": ModelType.NLP,
     "Phi-3.5-mini-instruct": ModelType.NLP,
+    "Phi-4": ModelType.NLP,
     "CodeQwen1.5-7B-Instruct": ModelType.NLP,
     "Qwen2-0.5B-Instruct": ModelType.NLP,
     "Qwen2-1.5B-Instruct": ModelType.NLP,
@@ -468,8 +478,8 @@ NEXA_OFFICIAL_MODELS_TYPE = {
     "llava-v1.6-vicuna-7b": ModelType.MULTIMODAL,
     "llava-phi-3-mini": ModelType.MULTIMODAL,
     "llava-llama-3-8b-v1.1": ModelType.MULTIMODAL,
-    "omniaudio": ModelType.AUDIOLM,
     "Qwen2-Audio-7.8B-Instruct": ModelType.AUDIOLM,
+    "OmniAudio-2.6B": ModelType.AUDIOLM,
     "faster-whisper-tiny.en": ModelType.AUDIO,
     "faster-whisper-tiny": ModelType.AUDIO,
     "faster-whisper-small.en": ModelType.AUDIO,

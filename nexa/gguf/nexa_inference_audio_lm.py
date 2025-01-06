@@ -2,8 +2,8 @@ import ctypes
 import logging
 import os
 import sys
+import time
 import librosa
-import tempfile
 import soundfile as sf
 from pathlib import Path
 from streamlit.web import cli as stcli
@@ -160,12 +160,21 @@ class NexaAudioLMInference:
                 )
             
                 try:
-                    with suppress_stdout_stderr():
-                        response = self.inference(audio_path, user_input)
+                    # with suppress_stdout_stderr():
+                    # response = self.inference(audio_path, user_input)
+                    first_chunk = True
+                    for chunk in self.inference_streaming(audio_path, user_input):
+                        if first_chunk:
+                            stop_spinner(stop_event, spinner_thread)
+                            first_chunk = False
+                            if chunk == '\n':
+                                chunk = ''
+                        # print("FUCK")
+                        print(chunk, end='', flush=True)
+                    print()  # '\n'
                 finally:
                     stop_spinner(stop_event, spinner_thread)
             
-                print(f"{response}")
                 self.cleanup()
 
         except KeyboardInterrupt:
@@ -215,15 +224,42 @@ class NexaAudioLMInference:
             return response.decode("utf-8") if isinstance(response, bytes) else response
         except Exception as e:
             raise RuntimeError(f"Error during inference: {str(e)}")
-        finally:
-            if self.temp_file:
-                try:
-                    self.temp_file.close()
-                    if os.path.exists(self.temp_file.name):
-                        os.unlink(self.temp_file.name)
-                except:
-                    pass
-                self.temp_file = None
+
+    def inference_streaming(self, audio_path: str, prompt: str = "") -> str:
+        """
+        Perform a single inference with the audio language model.
+        """
+        if not os.path.exists(audio_path):
+            raise FileNotFoundError(f"Audio file not found: {audio_path}")
+
+        try:
+            # Ensure audio is at 16kHz before processing
+            audio_path = self._ensure_16khz(audio_path)
+
+            self.ctx_params.file = ctypes.c_char_p(audio_path.encode("utf-8"))
+            self.ctx_params.prompt = ctypes.c_char_p(prompt.encode("utf-8"))
+
+            with suppress_stdout_stderr():
+                self.context = audio_lm_cpp.init_context(
+                    ctypes.byref(self.ctx_params), is_qwen=self.is_qwen
+                )
+                if not self.context:
+                    raise RuntimeError("Failed to load audio language model")
+                logging.debug("Model loaded successfully")
+
+                oss = audio_lm_cpp.process_streaming(
+                    self.context, ctypes.byref(self.ctx_params), is_qwen=self.is_qwen
+                )
+            res = 0
+            while res >= 0:
+                res = audio_lm_cpp.sample(oss)
+                res_str = audio_lm_cpp.get_str(oss).decode('utf-8')
+
+                if '<|im_start|>' in res_str or '</s>' in res_str:
+                    continue
+                yield res_str
+        except Exception as e:
+            raise RuntimeError(f"Error during inference: {str(e)}")
 
     def cleanup(self):
         """
@@ -233,14 +269,12 @@ class NexaAudioLMInference:
             audio_lm_cpp.free(self.context, is_qwen=self.is_qwen)
             self.context = None
         
-        if self.temp_file:
+        if self.temp_file and os.path.exists(self.temp_file):
             try:
-                self.temp_file.close()
-                if os.path.exists(self.temp_file.name):
-                    os.unlink(self.temp_file.name)
-            except:
-                pass
-            self.temp_file = None
+                os.remove(self.temp_file)
+                self.temp_file = None
+            except Exception as e:
+                logging.warning(f"Failed to remove temporary file {self.temp_file}: {e}")
 
     # def __del__(self):
     #     """
@@ -255,25 +289,38 @@ class NexaAudioLMInference:
         Supports various audio formats (mp3, wav, m4a, etc.)
         """
         try:
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            
+            # Create tmp directory if it doesn't exist
+            tmp_dir = os.path.join(base_dir, 'tmp')
+            os.makedirs(tmp_dir, exist_ok=True)
+
+            # Load audio file
             y, sr = librosa.load(audio_path, sr=None)
-    
+
             if sr == 16000:
                 return audio_path
             
             # Resample to 16kHz
             print(f"Resampling audio from {sr} to 16000")
             y_resampled = librosa.resample(y=y, orig_sr=sr, target_sr=16000)
-            self.temp_file = tempfile.NamedTemporaryFile(
-                suffix='.wav',
-                delete=False
-            )
+
+            # Create a unique filename in the tmp directory
+            original_name = os.path.splitext(os.path.basename(audio_path))[0]
+            tmp_filename = f"resampled_{original_name}_16khz_{int(time.time())}.wav"
+            tmp_path = os.path.join(tmp_dir, tmp_filename)
+            
+            # Save the resampled audio
             sf.write(
-                self.temp_file.name, 
+                tmp_path, 
                 y_resampled, 
                 16000,
                 subtype='PCM_16'
             )
-            return self.temp_file.name
+            
+            # Store the path for cleanup
+            self.temp_file = tmp_path
+            return tmp_path
 
         except Exception as e:
             raise RuntimeError(f"Error processing audio file: {str(e)}")
