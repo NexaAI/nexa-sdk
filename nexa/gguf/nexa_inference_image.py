@@ -4,6 +4,7 @@ import multiprocessing
 import os
 import sys
 import time
+import subprocess
 from pathlib import Path
 from nexa.constants import (
     DEFAULT_IMG_GEN_PARAMS,
@@ -109,7 +110,7 @@ class NexaImageInference:
 
         self.profiling = kwargs.get("profiling", False)
         self.params.update({k: v for k, v in kwargs.items() if v is not None})
-        if not kwargs.get("streamlit", False):
+        if not (kwargs.get("streamlit", False) or kwargs.get("gradio", False)):
             self._load_model(model_path)
             if self.model is None:
                 logging.error("Failed to load the model or pipeline.")
@@ -334,6 +335,26 @@ class NexaImageInference:
         sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, str(is_local_path), str(hf)]
         sys.exit(stcli.main())
 
+    def run_gradio(self, model_path: str, is_local_path=False, hf=False):
+        """
+        Run the Gradio UI.
+        """
+        logging.info("Running Gradio UI...")
+
+        gradio_script_path = (
+            Path(os.path.abspath(__file__)).parent
+            / "gradio"
+            / "gradio_image_chat.py"
+        )
+
+        command = [
+            sys.executable,  
+            str(gradio_script_path),
+            model_path,
+            str(is_local_path),
+            str(hf),
+        ]
+        subprocess.run(command, check=True)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -416,6 +437,12 @@ if __name__ == "__main__":
         help="Run the inference in Streamlit UI",
     )
     parser.add_argument(
+        "-gr",
+        "--gradio",
+        action="store_true",
+        help="Run the inference in Gradio UI",
+    )
+    parser.add_argument(
         "-pf",
         "--profiling",
         action="store_true",
@@ -427,6 +454,8 @@ if __name__ == "__main__":
     inference = NexaImageInference(model_path, **kwargs)
     if args.streamlit:
         inference.run_streamlit(model_path)
+    elif args.gradio:
+        inference.run_gradio(model_path)
     else:
         if args.img2img:
             inference.run_img2img()

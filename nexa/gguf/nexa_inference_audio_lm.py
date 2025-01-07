@@ -337,6 +337,28 @@ class NexaAudioLMInference:
 
         sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, str(is_local_path), str(hf), str(projector_local_path)]
         sys.exit(stcli.main())
+    def run_gradio(self, model_path: str, is_local_path=False, hf=False, projector_local_path=None):
+        """
+        Run the Gradio UI.
+        """
+        import subprocess
+        logging.info("Running Gradio UI...")
+
+        gradio_script_path = (
+            Path(os.path.abspath(__file__)).parent / "gradio" / "gradio_audio_lm.py"
+        )
+
+        command = [
+            sys.executable,  
+            str(gradio_script_path),
+            model_path,
+            str(is_local_path),
+            str(hf),
+        ]
+        if projector_local_path:
+            command.append(str(projector_local_path))
+
+        subprocess.run(command, check=True)
 
 if __name__ == "__main__":
     import argparse
@@ -363,6 +385,12 @@ if __name__ == "__main__":
         action="store_true",
         help="Run the inference in Streamlit UI",
     )
+    parser.add_argument(
+        "-gr",
+        "--gradio",
+        action="store_true",
+        help="Run the inference in Gradio UI",
+    )
 
     args = parser.parse_args()
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
@@ -372,5 +400,7 @@ if __name__ == "__main__":
     inference = NexaAudioLMInference(model_path, device=device, **kwargs)
     if args.streamlit:
         inference.run_streamlit(model_path)
+    elif args.gradio:
+        inference.run_gradio(model_path)
     else:
         inference.run()

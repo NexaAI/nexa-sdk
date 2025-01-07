@@ -3,6 +3,7 @@ import logging
 import os
 import sys
 import time
+import subprocess
 from pathlib import Path
 
 from nexa.constants import (
@@ -67,7 +68,7 @@ class NexaVoiceInference:
 
         self.model = None
 
-        if not kwargs.get("streamlit", False):
+        if not (kwargs.get("streamlit", False) or kwargs.get("gradio", False)):
             self._load_model()
             if self.model is None:
                 logging.error("Failed to load model, Exiting.", exc_info=True)
@@ -327,7 +328,29 @@ class NexaVoiceInference:
 
         sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, str(is_local_path), str(hf)]
         sys.exit(stcli.main())
-
+    def run_gradio(self, model_path: str, is_local_path=False, hf=False, projector_local_path=None):
+        """
+        Run the Gradio UI.
+        """
+        logging.info("Running Gradio UI...")
+        
+        gradio_script_path = (
+            Path(os.path.abspath(__file__)).parent
+            / "gradio"
+            / "gradio_voice_chat.py"
+        )
+ 
+        command = [
+            sys.executable,           
+            str(gradio_script_path),  
+            model_path,
+            str(is_local_path),
+            str(hf),
+        ]
+        if projector_local_path:
+            command.append(str(projector_local_path))
+ 
+        subprocess.run(command, check=True)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -381,11 +404,19 @@ if __name__ == "__main__":
         action="store_true",
         help="Run the inference in Streamlit UI",
     )
+    parser.add_argument(
+        "-gr",
+        "--gradio",
+        action="store_true",
+        help="Run the inference in Gradio UI",
+    )
     args = parser.parse_args()
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     model_path = kwargs.pop("model_path")
     inference = NexaVoiceInference(model_path, **kwargs)
     if args.streamlit:
         inference.run_streamlit(model_path)
+    elif args.gradio:
+        inference.run_gradio(model_path)
     else:
         inference.run()

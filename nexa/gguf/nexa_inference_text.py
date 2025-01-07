@@ -2,6 +2,8 @@ import argparse
 import logging
 import os
 import time
+import subprocess
+import sys
 from pathlib import Path
 from typing import Iterator, List, Union
 
@@ -341,6 +343,28 @@ class NexaTextInference:
         sys.argv = args
         sys.exit(stcli.main())
 
+    def run_gradio(self, model_path: str, is_local_path=False, hf=False):
+        """
+        Run the Gradio UI.
+        """
+        logging.info("Running Gradio UI...")
+
+        script_path = (
+            Path(os.path.abspath(__file__)).parent
+            / "gradio"
+            / "gradio_text_chat.py"
+        )
+
+        command = [
+            sys.executable, 
+            str(script_path),
+            model_path,
+            str(is_local_path),
+            str(hf),
+        ]
+
+        subprocess.run(command, check=True)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -393,6 +417,12 @@ if __name__ == "__main__":
         help="Run the inference in Streamlit UI",
     )
     parser.add_argument(
+        "-gr",
+        "--gradio",
+        action="store_true",
+        help="Run the inference in Gradio UI",
+    )
+    parser.add_argument(
         "--lora_path",
         type=str,
         help="Path to a LoRA file to apply to the model.",
@@ -414,5 +444,7 @@ if __name__ == "__main__":
     inference = NexaTextInference(model_path, stop_words=stop_words, device=device, **kwargs)
     if args.streamlit:
         inference.run_streamlit(model_path)
+    elif args.gradio:
+        inference.run_gradio(model_path)
     else:
         inference.run()

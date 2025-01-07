@@ -94,13 +94,19 @@ def run_ggml_inference(args):
         elif run_type == "Computer Vision":
             from nexa.gguf.nexa_inference_image import NexaImageInference
             inference = NexaImageInference(model_path=model_path, local_path=local_path, **kwargs)
+            if hasattr(args, 'gradio') and args.gradio:
+                inference.run_gradio(model_path, is_local_path=is_local_path, hf=hf)
+                return
             if hasattr(args, 'streamlit') and args.streamlit:
                 inference.run_streamlit(model_path, is_local_path=is_local_path, hf=hf)
-            elif args.img2img:
+                return
+            
+            if args.img2img:
                 inference.run_img2img()
             else:
-                inference.run_txt2img()
+                inference.run_txt2img() 
             return
+            
         elif run_type == "Multimodal":
             if is_local_path:
                 if "omni" in local_path:
@@ -139,14 +145,20 @@ def run_ggml_inference(args):
         print(f"Error running ggml inference: {e}")
         print(f"Please refer to our docs to install nexaai package: https://docs.nexaai.com/getting-started/installation ")
         return
-
+    if hasattr(args, 'gradio') and args.gradio:
+        if run_type == "Multimodal" or run_type == "AudioLM":
+            inference.run_gradio(model_path, is_local_path=is_local_path, hf=hf, projector_local_path=projector_local_path)
+        else:
+            inference.run_gradio(model_path, is_local_path=is_local_path, hf=hf)
+        return  
     if hasattr(args, 'streamlit') and args.streamlit:
         if run_type == "Multimodal" or run_type == "AudioLM":
             inference.run_streamlit(model_path, is_local_path=is_local_path, hf=hf, projector_local_path=projector_local_path)
         else:
             inference.run_streamlit(model_path, is_local_path=is_local_path, hf=hf)
-    else:
-        inference.run()
+        return
+    
+    inference.run()
 
 def run_ggml_server(args):
     from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
@@ -453,7 +465,8 @@ def main():
     run_parser.add_argument("-mt", "--model_type", type=str, choices=[e.name for e in ModelType], help="Indicate the model running type (default: NLP)")
     run_parser.add_argument("-hf", "--huggingface", action="store_true", help="Load model from Hugging Face Hub")
     run_parser.add_argument("-ms", "--modelscope", action="store_true", help="Load model from ModelScope Hub")
-
+    run_parser.add_argument("-gr", "--gradio", action="store_true", help="Run the inference with Gradio UI")
+    
     # Text generation/vlm arguments
     text_group = run_parser.add_argument_group('Text generation/VLM options')
     text_group.add_argument("-t", "--temperature", type=float, help="Temperature for sampling")
@@ -618,6 +631,9 @@ def main():
     args = parser.parse_args()
 
     if args.command == "run":
+        if args.streamlit and args.gradio:
+            print("Error: --streamlit and --gradio flags cannot be used together")
+            return
         if args.local_path and args.huggingface:
             print("Error: --local_path and --huggingface flags cannot be used together")
             return

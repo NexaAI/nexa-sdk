@@ -3,6 +3,8 @@ import ctypes
 import logging
 import os
 import sys
+import subprocess
+
 from pathlib import Path
 from streamlit.web import cli as stcli
 from nexa.utils import nexa_prompt, SpinningCursorAnimation
@@ -193,7 +195,29 @@ class NexaOmniVlmInference:
 
         sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, str(is_local_path), str(hf), str(projector_local_path)]
         sys.exit(stcli.main())
-
+    def run_gradio(self, model_path: str, is_local_path=False, hf=False, projector_local_path=None):
+        """
+        Run the Gradio UI.
+        """
+        logging.info("Running Gradio UI...")
+        
+        gradio_script_path = (
+            Path(os.path.abspath(__file__)).parent
+            / "gradio"
+            / "gradio_vlm_omni.py"
+        )
+ 
+        command = [
+            sys.executable,           
+            str(gradio_script_path),  
+            model_path,
+            str(is_local_path),
+            str(hf),
+        ]
+        if projector_local_path:
+            command.append(str(projector_local_path))
+ 
+        subprocess.run(command, check=True)
 
 if __name__ == "__main__":
     import argparse
@@ -221,6 +245,12 @@ if __name__ == "__main__":
         help="Run the inference in Streamlit UI",
     )
     parser.add_argument(
+        "-gr",
+        "--gradio",
+        action="store_true",
+        help="Run the inference in Gradio UI",
+    )
+    parser.add_argument(
         "--omni_vlm_version",
         type=str,
         choices=["vlm-81-ocr", "vlm-81-instruct", "nano-vlm-instruct"],
@@ -236,5 +266,7 @@ if __name__ == "__main__":
     inference = NexaOmniVlmInference(model_path, device=device, **kwargs)
     if args.streamlit:
         inference.run_streamlit(model_path)
+    elif args.gradio:
+        inference.run_gradio(model_path)
     else:
         inference.run()

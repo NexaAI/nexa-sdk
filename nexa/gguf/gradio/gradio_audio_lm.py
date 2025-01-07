@@ -1,32 +1,46 @@
+import sys
+import os
+
 import gradio as gr
 from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
 from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
 from nexa.general import pull_model
 
-# Initialize model variables
-nexa_model = None
-is_local_path = True
-hf = False
-# Set the local model and projector paths here
-local_model_path = "/Users/chenzekai/.cache/nexa/hub/official/OmniAudio-2.6B/model-q4_K_M.gguf"
-projector_local_path = "/Users/chenzekai/.cache/nexa/hub/official/OmniAudio-2.6B/projector-q4_K_M.gguf"
+if len(sys.argv) < 4:
+    print("Usage: python gradio_audio_lm.py <model_path> <is_local_path> <hf> [<projector_local_path>]")
+    sys.exit(1)
 
-default_model = "omniaudio"  # Keep this as 'omniaudio' for display purposes
+model_path = sys.argv[1]
+is_local_path = True if sys.argv[2] == "True" else False
+hf = True if sys.argv[3] == "True" else False
+projector_local_path = sys.argv[4] if len(sys.argv) > 4 else None
 
-def load_model(model_path):
-    # Since is_local_path=True, and we know the paths, we directly initialize
-    nexa_model = NexaAudioLMInference(
-        model_path=model_path,
-        local_path=local_model_path,
-        projector_local_path=projector_local_path
-    )
+def load_model(model_path, is_local, huggingface, projector_path):
+    if is_local:
+        local_path = os.path.abspath(model_path)
+    elif huggingface:
+        local_path, _ = pull_model(model_path, hf=True)
+    else:
+        local_path, _ = pull_model(model_path)
+    
+    if is_local and projector_path:
+        nexa_model = NexaAudioLMInference(
+            model_path=model_path,
+            local_path=local_path,
+            projector_local_path=projector_path
+        )
+    else:
+        nexa_model = NexaAudioLMInference(
+            model_path=model_path,
+            local_path=local_path
+        )
     return nexa_model
 
 try:
-    nexa_model = load_model(default_model)
+    nexa_model = load_model(model_path, is_local_path, hf, projector_local_path)
 except Exception as e:
-    nexa_model = None
     print(f"Failed to load model: {e}")
+    nexa_model = None
 
 def process_audio_fn(audio_file, prompt=""):
     if not nexa_model:
@@ -36,17 +50,14 @@ def process_audio_fn(audio_file, prompt=""):
     
     try:
         with suppress_stdout_stderr():
-            # Use the 'inference' method for OmniAudio
             response = nexa_model.inference(audio_file, prompt)
         return response
     except Exception as e:
         return f"Error during audio processing: {e}"
 
-# Gradio interface
 with gr.Blocks() as demo:
-    # Title and badges in the same line
     gr.HTML(
-        """
+        f"""
         <div style="display: flex; align-items: center; margin-bottom: 5px; padding-top: 10px;">
             <h1 style="font-family: Arial, sans-serif; font-size: 2.5em; font-weight: bold; margin: 0; padding-bottom: 5px;">
                 Nexa AI AudioLM Generation
@@ -55,37 +66,35 @@ with gr.Blocks() as demo:
                 <img src='https://img.shields.io/badge/SDK-Nexa-blue' alt='Nexa SDK' style='vertical-align: middle;'>
             </a>
         </div>
-        """
-    )
-    # Powered by and Model Path
-    # Keep the UI text unchanged, do not show actual paths
-    gr.HTML(
-        """
-        <div style="font-family: Arial, sans-serif; font-size: 1em; color: #444;">
+        <div style="font-family: Arial, sans-serif; font-size: 1em; color: #444; margin-bottom: 0.5em;">
             <b>Powered by Nexa AI SDK🐙</b> <br>
-            <b>Model path: omniaudio</b>
+            <b>Model path: {model_path}</b>
         </div>
         """
     )
 
-    # Optional Prompt
-    gr.HTML("<h3 style='font-family: Arial, sans-serif; font-size: 1.1em; font-weight: bold;'>Enter optional prompt text:</h3>")
-    prompt_textbox = gr.Textbox(placeholder="e.g., Describe the audio content or summarize key information.", lines=1, label="Prompt Box")
+    gr.HTML("<h3 style='font-family: Arial, sans-serif; font-size: 1.3em; font-weight: bold;'>Enter optional prompt text:</h3>")
+    prompt_textbox = gr.Textbox(
+        placeholder="e.g., Describe the audio content or summarize key information.",
+        lines=1,
+        label="Prompt Box"
+    )
 
-    # Option 1: Upload Audio File
-    gr.HTML("<h2 style='font-family: Arial, sans-serif; font-size: 1.5em; font-weight: bold;'>Option 1: Upload Audio File</h2>")
+    gr.HTML("<h2 style='font-family: Arial, sans-serif; font-size: 1.5em; font-weight: bold;'>Upload / Record Audio</h2>")
+    gr.HTML(f"""
+    <div style="font-family: Arial, sans-serif; font-size: 0.8em; font-weight: bold; margin-top: -14.5px; margin-bottom: 0;">
+        <p><strong>Refresh the page if "Microphone not found" is displayed after granting microphone permission</strong></p>
+    </div>
+    """)
     with gr.Row():
-        uploaded_audio = gr.Audio(type="filepath", label="Upload an audio file (wav, mp3)")
+        uploaded_audio = gr.Audio(type="filepath", label="Chooese an audio file under 200MB (wav, mp3) / Record Audio from Microphone")
         upload_response = gr.Textbox(label="Model Response", interactive=False)
-    process_upload_button = gr.Button("Process Uploaded Audio")
-    process_upload_button.click(process_audio_fn, inputs=[uploaded_audio, prompt_textbox], outputs=upload_response)
-
-    # Option 2: Record Audio
-    gr.HTML("<h2 style='font-family: Arial, sans-serif; font-size: 1.5em; font-weight: bold;'>Option 2: Real-time Recording</h2>")
-    recorded_audio = gr.Audio(source="microphone", type="filepath", label="Record Audio from Microphone")
-    record_response = gr.Textbox(label="Model Response", interactive=False)
-    process_record_button = gr.Button("Process Recorded Audio")
-    process_record_button.click(process_audio_fn, inputs=[recorded_audio, prompt_textbox], outputs=record_response)
+    process_upload_button = gr.Button("Process Audio")
+    process_upload_button.click(
+        process_audio_fn,
+        inputs=[uploaded_audio, prompt_textbox],
+        outputs=upload_response
+    )
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860, share=True)
+    demo.launch(server_name="0.0.0.0", server_port=7860, share=True, inbrowser=True)
