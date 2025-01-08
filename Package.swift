@@ -25,9 +25,6 @@ let package = Package(
                 .copy("lib/libllama.dylib"),
                 .copy("lib/libggml_llama.dylib"),
             ],
-            cSettings: [
-                .define("GGML_NO_METAL")  // 禁用 Metal 避免冲突
-            ]
         ),
         .testTarget(
             name: "NexaSwiftTests",
