@@ -1,5 +1,4 @@
 // swift-tools-version: 6.0
-
 import PackageDescription
 
 let package = Package(
@@ -14,19 +13,26 @@ let package = Package(
     products: [
         .library(name: "NexaSwift", targets: ["NexaSwift"]),
     ],
-    dependencies: [
-        .package(url: "https://github.com/ggerganov/llama.cpp.git", branch: "master")
-    ],
     targets: [
         .target(
-            name: "NexaSwift", 
+            name: "NexaSwift",
             dependencies: [
-                .product(name: "llama", package: "llama.cpp")
+                // .product(name: "llama", package: "llama.cpp")
             ],
-            path: "swift/Sources/NexaSwift"),
+            path: "swift/Sources/NexaSwift",
+            resources: [
+                .copy("lib/libomni_vlm_wrapper_shared.dylib"),
+                .copy("lib/libllama.dylib"),
+                .copy("lib/libggml_llama.dylib"),
+            ],
+            cSettings: [
+                .define("GGML_NO_METAL")  // 禁用 Metal 避免冲突
+            ]
+        ),
         .testTarget(
-            name: "NexaSwiftTests", 
+            name: "NexaSwiftTests",
             dependencies: ["NexaSwift"],
-            path: "swift/Tests/NexaSwiftTests"),
+            path: "swift/Tests/NexaSwiftTests"
+        )
     ]
 )

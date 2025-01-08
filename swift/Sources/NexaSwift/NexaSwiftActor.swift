@@ -1,3 +1,8 @@
+//
+//  NexaSwiftActor.swift
+//  NexaSwift
+//
+
 import Foundation
 
 @globalActor
