@@ -148,17 +148,17 @@ class NexaAudioLMInference:
         Run the audio language model inference loop.
         """
         from nexa.gguf.llama._utils_spinner import start_spinner, stop_spinner
-        
+
         try:
             while True:
                 audio_path = self._get_valid_audio_path()
                 user_input = nexa_prompt("Enter text (leave empty if no prompt): ")
-                
+
                 stop_event, spinner_thread = start_spinner(
-                    style="default", 
+                    style="default",
                     message=""
                 )
-            
+
                 try:
                     # with suppress_stdout_stderr():
                     # response = self.inference(audio_path, user_input)
@@ -174,7 +174,7 @@ class NexaAudioLMInference:
                     print()  # '\n'
                 finally:
                     stop_spinner(stop_event, spinner_thread)
-            
+
                 self.cleanup()
 
         except KeyboardInterrupt:
@@ -252,8 +252,8 @@ class NexaAudioLMInference:
                 )
             res = 0
             while res >= 0:
-                res = audio_lm_cpp.sample(oss)
-                res_str = audio_lm_cpp.get_str(oss).decode('utf-8')
+                res = audio_lm_cpp.sample(oss, is_qwen=self.is_qwen)
+                res_str = audio_lm_cpp.get_str(oss, is_qwen=self.is_qwen).decode('utf-8')
 
                 if '<|im_start|>' in res_str or '</s>' in res_str:
                     continue
@@ -268,7 +268,7 @@ class NexaAudioLMInference:
         if self.context:
             audio_lm_cpp.free(self.context, is_qwen=self.is_qwen)
             self.context = None
-        
+
         if self.temp_file and os.path.exists(self.temp_file):
             try:
                 os.remove(self.temp_file)
@@ -290,7 +290,7 @@ class NexaAudioLMInference:
         """
         try:
             base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            
+
             # Create tmp directory if it doesn't exist
             tmp_dir = os.path.join(base_dir, 'tmp')
             os.makedirs(tmp_dir, exist_ok=True)
@@ -300,7 +300,7 @@ class NexaAudioLMInference:
 
             if sr == 16000:
                 return audio_path
-            
+
             # Resample to 16kHz
             print(f"Resampling audio from {sr} to 16000")
             y_resampled = librosa.resample(y=y, orig_sr=sr, target_sr=16000)
@@ -309,15 +309,15 @@ class NexaAudioLMInference:
             original_name = os.path.splitext(os.path.basename(audio_path))[0]
             tmp_filename = f"resampled_{original_name}_16khz_{int(time.time())}.wav"
             tmp_path = os.path.join(tmp_dir, tmp_filename)
-            
+
             # Save the resampled audio
             sf.write(
-                tmp_path, 
-                y_resampled, 
+                tmp_path,
+                y_resampled,
                 16000,
                 subtype='PCM_16'
             )
-            
+
             # Store the path for cleanup
             self.temp_file = tmp_path
             return tmp_path
