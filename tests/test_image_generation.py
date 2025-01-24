@@ -1,6 +1,6 @@
 from nexa.gguf import NexaImageInference
 from tempfile import TemporaryDirectory
-from .utils import download_model
+from tests.utils import download_model
 
 sd = NexaImageInference(
     model_path="sd1-4",
