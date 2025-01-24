@@ -2,8 +2,24 @@ import sys
 import ctypes
 import logging
 
-from nexa.gguf.llama import llama_cpp
+import nexa.gguf.llama as llama_cpp
 
+# enum ggml_log_level {
+#     GGML_LOG_LEVEL_NONE  = 0,
+#     GGML_LOG_LEVEL_INFO  = 1,
+#     GGML_LOG_LEVEL_WARN  = 2,
+#     GGML_LOG_LEVEL_ERROR = 3,
+#     GGML_LOG_LEVEL_DEBUG = 4,
+#     GGML_LOG_LEVEL_CONT  = 5, // continue previous log
+# };
+GGML_LOG_LEVEL_TO_LOGGING_LEVEL = {
+    0: logging.CRITICAL,
+    1: logging.INFO,
+    2: logging.WARNING,
+    3: logging.ERROR,
+    4: logging.DEBUG,
+    5: logging.DEBUG,
+}
 # Mapping ggml log levels to Python logging levels
 GGML_LOG_LEVEL_TO_LOGGING_LEVEL = {
     2: logging.ERROR,
@@ -14,21 +30,6 @@ GGML_LOG_LEVEL_TO_LOGGING_LEVEL = {
 
 # Initialize the logger for llama-cpp-python
 logger = logging.getLogger("nexa-transformers")
-
-# # Define the log callback function
-# @llama_cpp.llama_log_callback
-# def llama_log_callback(
-#     level: int,
-#     text: bytes,
-#     user_data: ctypes.c_void_p,
-# ):
-#     # Check if the logger is set to log the provided level
-#     if logger.level <= GGML_LOG_LEVEL_TO_LOGGING_LEVEL[level]:
-#         # Print the log message to stderr
-#         print(text.decode("utf-8"), end="", flush=True, file=sys.stderr)
-
-# # Set the log callback function for llama_cpp
-# llama_cpp.llama_log_set(llama_log_callback, ctypes.c_void_p(0))
 
 # Utility function to set verbosity
 def set_verbose(verbose: bool):

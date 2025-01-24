@@ -275,7 +275,11 @@ class SpinningCursorAnimation:
     def __enter__(self):
         if self._use_alternate_stream:
             if sys.platform == "win32":  # Windows
-                self.stream = open('CONOUT$', "w")
+                try:
+                    self.stream = open('CONOUT$', "w")
+                except OSError:
+                    # Fall back to stdout if CONOUT$ is not available
+                    self.stream = sys.stdout
             else:
                 try:
                     self.stream = open('/dev/tty', "w")
