@@ -15,8 +15,8 @@ def _load_shared_library(lib_base_name: str, lib_subdir_name: str = ''):
                              this parameter should be set to 'bark'. The function automatically handles the 'lib' prefix and 
                              platform-specific file extensions (e.g., .so, .dll, .dylib).
         lib_subdir_name (str): The name of the subdirectory where the shared library is located. By default, the function looks 
-                               for libraries in the root directory 'nexa/gguf/lib' without recursion. If a non-empty string is
-                               provided, the function will search in 'nexa/gguf/lib/<lib_subdir_name>/'.
+                               for libraries in the root directory without recursion. If a non-empty string is
+                               provided, the function will search in '<root_dir>/<lib_subdir_name>/' instead.
     """
 
     # Determine the file extension based on the platform
