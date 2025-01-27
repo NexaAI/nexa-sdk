@@ -44,7 +44,7 @@ from nexa.constants import (
     NEXA_MODEL_LIST_PATH,
     NEXA_OFFICIAL_BUCKET,
 )
-from nexa.gguf.converter.constants import NEXA_MODELS_HUB_DIR
+
 from nexa.gguf.lib_utils import is_gpu_available
 from nexa.gguf.llama.llama_chat_format import (
     Llava15ChatHandler,
