@@ -1,7 +1,11 @@
 import json
 import logging
 import os
+from pathlib import Path
+import queue
+import shutil
 import socket
+import threading
 import time
 import uuid
 from typing import List, Optional, Dict, Any, Union, Literal
@@ -9,6 +13,8 @@ import base64
 import multiprocessing
 from PIL import Image
 import tempfile
+import concurrent
+import tqdm
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, File, UploadFile, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,13 +22,17 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, HttpUrl, AnyUrl, Field
 import requests
 from io import BytesIO
-from PIL import Image
-import base64
 from urllib.parse import urlparse
+import asyncio
 
 from nexa.constants import (
+    NEXA_MODELS_HUB_OFFICIAL_DIR,
+    NEXA_OFFICIAL_MODELS_TYPE,
     NEXA_RUN_CHAT_TEMPLATE_MAP,
+    NEXA_RUN_MODEL_MAP,
+    NEXA_RUN_MODEL_MAP_TEXT,
     NEXA_RUN_MODEL_MAP_VLM,
+    NEXA_RUN_MODEL_MAP_VOICE,
     NEXA_RUN_PROJECTOR_MAP,
     NEXA_RUN_OMNI_VLM_MAP,
     NEXA_RUN_OMNI_VLM_PROJECTOR_MAP,
@@ -31,8 +41,10 @@ from nexa.constants import (
     NEXA_RUN_COMPLETION_TEMPLATE_MAP,
     NEXA_RUN_MODEL_PRECISION_MAP,
     NEXA_RUN_MODEL_MAP_FUNCTION_CALLING,
-    NEXA_MODEL_LIST_PATH
+    NEXA_MODEL_LIST_PATH,
+    NEXA_OFFICIAL_BUCKET,
 )
+from nexa.gguf.converter.constants import NEXA_MODELS_HUB_DIR
 from nexa.gguf.lib_utils import is_gpu_available
 from nexa.gguf.llama.llama_chat_format import (
     Llava15ChatHandler,
@@ -40,10 +52,11 @@ from nexa.gguf.llama.llama_chat_format import (
     NanoLlavaChatHandler,
 )
 from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
-from nexa.general import pull_model
+from nexa.general import add_model_to_list, default_use_processes, download_file_with_progress, get_model_info, is_model_exists, pull_model
 from nexa.gguf.llama.llama import Llama
 from nexa.gguf.nexa_inference_vlm_omni import NexaOmniVlmInference
 from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
+from nexa.gguf.nexa_inference_vlm import NexaVLMInference
 from nexa.gguf.sd.stable_diffusion import StableDiffusion
 from faster_whisper import WhisperModel
 import numpy as np
@@ -86,8 +99,8 @@ whisper_model = None
 chat_format = None
 completion_template = None
 hostname = socket.gethostname()
-chat_completion_system_prompt = [{"role": "system", "content": "You are a helpful assistant"}]
-function_call_system_prompt = [{"role": "system", "content": "A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions. The assistant calls functions with appropriate input when necessary"}]
+default_chat_completion_system_prompt = [{"role": "system", "content": "You are a helpful assistant"}]
+default_function_call_system_prompt = [{"role": "system", "content": "A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions. The assistant calls functions with appropriate input when necessary"}]
 model_path = None
 whisper_model_path = "faster-whisper-tiny"  # by default, use tiny whisper model
 n_ctx = None
@@ -229,6 +242,9 @@ class DownloadModelRequest(BaseModel):
         "protected_namespaces": ()
     }
 
+class ActionRequest(BaseModel):
+    prompt: str = ""
+
 class StreamASRProcessor:
     def __init__(self, asr, task, language):
         self.asr = asr
@@ -283,6 +299,20 @@ class StreamASRProcessor:
             for w in seg.words:
                 words.append((w.start, w.end, w.word))
         return words
+
+class MetricsResult:
+    def __init__(self, ttft: float, decoding_speed:float):
+        self.ttft = ttft
+        self.decoding_speed = decoding_speed
+
+    def to_dict(self):
+        return {
+            'ttft': round(self.ttft, 2),
+            'decoding_speed': round(self.decoding_speed, 2)
+        }
+    
+    def to_json(self):
+        return json.dumps(self.to_dict())
 
 # helper functions
 async def load_model():
@@ -413,33 +443,19 @@ async def load_model():
                         device="cpu"
                     )
             else:
-                projector_handler = NEXA_PROJECTOR_HANDLER_MAP.get(model_path, Llava15ChatHandler)
-                projector = (projector_handler(
-                    clip_model_path=projector_downloaded_path, verbose=False
-                ) if projector_downloaded_path else None)
-                
-                chat_format = NEXA_RUN_CHAT_TEMPLATE_MAP.get(model_path, None)
                 try:
-                    model = Llama(
-                        model_path=downloaded_path,
-                        chat_handler=projector,
-                        verbose=False,
-                        chat_format=chat_format,
-                        n_ctx=n_ctx,
-                        n_gpu_layers=-1 if is_gpu_available() else 0,
+                    model = NexaVLMInference(
+                        model_path=model_path,
+                        device="gpu" if is_gpu_available() else "cpu"
                     )
                 except Exception as e:
                     logging.error(
-                        f"Failed to load model: {e}. Falling back to CPU.",
+                        f"Failed to load Vlm model: {e}. Falling back to CPU.",
                         exc_info=True,
                     )
-                    model = Llama(
-                        model_path=downloaded_path,
-                        chat_handler=projector,
-                        verbose=False,
-                        chat_format=chat_format,
-                        n_ctx=n_ctx,
-                        n_gpu_layers=0,  # hardcode to use CPU
+                    model = NexaVLMInference(
+                        model_path=model_path,
+                        device="cpu"
                     )
         logging.info(f"Model loaded as {model}")
     elif model_type == "AudioLM":
@@ -480,7 +496,7 @@ async def load_whisper_model(custom_whisper_model_path=None):
         raise ValueError(f"Failed to load Whisper model: {str(e)}")
 
 def nexa_run_text_generation(
-    prompt, temperature, stop_words, max_new_tokens, top_k, top_p, logprobs=None, stream=False, is_chat_completion=True
+    prompt, temperature, stop_words, max_new_tokens, top_k, top_p, messages=[], logprobs=None, stream=False, is_chat_completion=True, **kwargs
 ) -> Dict[str, Any]:
     global model, chat_format, completion_template
     if model is None:
@@ -491,9 +507,10 @@ def nexa_run_text_generation(
 
     if is_chat_completion:
         if is_local_path or is_huggingface or is_modelscope: # do not add system prompt if local path or huggingface or modelscope
-            messages = [{"role": "user", "content": prompt}]
+            pass
         else:
-            messages = chat_completion_system_prompt + [{"role": "user", "content": prompt}]
+            if messages[0]['role'] != 'system':
+                messages = default_chat_completion_system_prompt + messages
 
         params = {
             'messages': messages,
@@ -709,9 +726,15 @@ async def read_root(request: Request):
     )
 
 
-def _resp_async_generator(streamer):
+def _resp_async_generator(streamer, start_time):
     _id = str(uuid.uuid4())
+    ttft = 0
+    decoding_times = 0
+    first_token_time = 0
     for token in streamer:
+        ttft = time.perf_counter() - start_time if ttft==0 else ttft
+        first_token_time = time.perf_counter() if first_token_time == 0 else first_token_time
+        decoding_times += 1
         chunk = {
             "id": _id,
             "object": "chat.completion.chunk",
@@ -719,46 +742,253 @@ def _resp_async_generator(streamer):
             "choices": [{"delta": {"content": token}}],
         }
         yield f"data: {json.dumps(chunk)}\n\n"
+
+    yield f"metrics: {MetricsResult(ttft=ttft, decoding_speed=decoding_times / (time.perf_counter() - first_token_time)).to_json()}\n\n"
     yield "data: [DONE]\n\n"
+
+# Global variable for download progress tracking
+download_progress = {}
+
+def pull_model_with_progress(model_path, progress_key, **kwargs):
+    """
+    Wrapper for pull_model to track download progress using download_file_with_progress.
+    """
+    model_path = NEXA_RUN_MODEL_MAP.get(model_path, model_path)
+    
+    try:
+        # Initialize progress tracking
+        download_progress[progress_key] = 0
+        current_file_completed = False 
+        
+        # Extract local download path
+        local_download_path = kwargs.get('local_download_path')
+        base_download_dir = Path(local_download_path) if local_download_path else NEXA_MODELS_HUB_OFFICIAL_DIR
+        model_name, model_version = model_path.split(":")
+        file_extension = ".zip" if kwargs.get("model_type") in ["onnx", "bin"] else ".gguf"
+        filename = f"{model_version}{file_extension}"
+        file_path = base_download_dir / model_name / filename
+        
+        # Record expected file details
+        expected_files = [
+            {
+                "path": file_path,
+                "size": int(requests.head(f"{NEXA_OFFICIAL_BUCKET}/{model_name}/{filename}").headers.get("Content-Length", 0))
+            }
+        ]
+        
+        # Progress tracker
+        def monitor_progress(file_path, total_size):
+            """
+            Monitor file size growth to estimate progress.
+            """
+            nonlocal current_file_completed
+            while not current_file_completed:
+                # Update downloading progress
+                time.sleep(0.5)
+                
+        def progress_callback(downloaded_chunks, total_chunks, stage="downloading"):
+            """
+            Callback to update progress based on downloaded chunks.
+            """
+            nonlocal current_file_completed
+            if stage == "downloading":
+                if total_chunks > 0:
+                    progress = int((downloaded_chunks / total_chunks) * 100)
+                    download_progress[progress_key] = min(progress, 99)
+                if downloaded_chunks == total_chunks:
+                    current_file_completed = True  # Mark file as completed
+            elif stage == "verifying":
+                download_progress[progress_key] = 100
+                
+        url = f"{NEXA_OFFICIAL_BUCKET}/{model_name}/{filename}"
+        response = requests.head(url)
+        total_size = int(response.headers.get("Content-Length", 0))
+        
+        # Start monitoring progress in a background thread
+        from threading import Thread
+        progress_thread = Thread(target=monitor_progress, args=(file_path, total_size))
+        progress_thread.start()
+        
+        # Call pull_model to start the download
+        result = pull_model(
+            model_path= model_path,
+            hf=kwargs.get("hf", False),
+            ms=kwargs.get("ms", False),
+            progress_callback=lambda downloaded, total, stage: progress_callback(downloaded, total, stage),
+            **kwargs,
+        )
+        
+        if not result or len(result) != 2:
+            raise ValueError("Invalid response from pull_model.")
+        
+        final_file_path, run_type = result
+        
+        if not final_file_path or not run_type:
+            raise ValueError("Failed to download model or invalid response from pull_model.")
+        
+        # Extract model type from the returned file path or extension
+        model_type = Path(final_file_path).suffix.strip(".") or "undefined"
+        
+        download_progress[progress_key] = 100
+        
+        return {
+            "local_path": str(final_file_path),
+            "model_type": model_type,
+            "run_type": run_type,
+        }
+    except Exception as e:
+        download_progress[progress_key] = -1  # Mark download as failed
+        raise ValueError(f"Error in pull_model_with_progress: {e}")
+    
+@app.get("/v1/check_model_type", tags=["Model"])
+async def check_model_type(model_path: str):
+    """
+    Check if the model exists and return its type.
+    """
+    model_name = NEXA_RUN_MODEL_MAP.get(model_path, model_path)
+    
+    if ":" in model_name:
+        model_name = model_name.split(":")[0]
+    else:
+        model_name = model_name
+        
+    if model_name in NEXA_RUN_MODEL_MAP or NEXA_RUN_CHAT_TEMPLATE_MAP:
+        
+        model_type = NEXA_OFFICIAL_MODELS_TYPE[model_name].value
+        return {
+            "model_name": model_name,
+            "model_type": model_type
+        }
+    else:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Model '{model_name}' not found in the official model list."
+        )
 
 @app.post("/v1/download_model", tags=["Model"])
 async def download_model(request: DownloadModelRequest):
-    """Download a model from the model hub"""
+    """
+    Download a model from the model hub with progress tracking.
+    """
     try:
-        if request.model_path in NEXA_RUN_MODEL_MAP_VLM or request.model_path in NEXA_RUN_OMNI_VLM_MAP or request.model_path in NEXA_RUN_MODEL_MAP_AUDIO_LM:  # models and projectors
-            if request.model_path in NEXA_RUN_MODEL_MAP_VLM:
-                downloaded_path, model_type = pull_model(NEXA_RUN_MODEL_MAP_VLM[request.model_path])
-                projector_downloaded_path, _ = pull_model(NEXA_RUN_PROJECTOR_MAP[request.model_path])
-            elif request.model_path in NEXA_RUN_OMNI_VLM_MAP:
-                downloaded_path, model_type = pull_model(NEXA_RUN_OMNI_VLM_MAP[request.model_path])
-                projector_downloaded_path, _ = pull_model(NEXA_RUN_OMNI_VLM_PROJECTOR_MAP[request.model_path])
-            elif request.model_path in NEXA_RUN_MODEL_MAP_AUDIO_LM:
-                downloaded_path, model_type = pull_model(NEXA_RUN_MODEL_MAP_AUDIO_LM[request.model_path])
-                projector_downloaded_path, _ = pull_model(NEXA_RUN_AUDIO_LM_PROJECTOR_MAP[request.model_path])
-            return {
-                "status": "success",
-                "message": "Successfully downloaded model and projector",
-                "model_path": request.model_path,
-                "model_local_path": downloaded_path,
-                "projector_local_path": projector_downloaded_path,
-                "model_type": model_type
-            }
-        else:
-            downloaded_path, model_type = pull_model(request.model_path)
-            return {
-                "status": "success",
-                "message": "Successfully downloaded model",
-                "model_path": request.model_path,
-                "model_local_path": downloaded_path,
-                "model_type": model_type
-            }
-
+        # Initialize progress tracking
+        progress_key = request.model_path
+        download_progress[progress_key] = 0
+        
+        def perform_download():
+            """
+            Perform the download process with progress tracking.
+            """
+            try:
+                if request.model_path in NEXA_RUN_MODEL_MAP_VLM:
+                    downloaded_path = pull_model_with_progress(
+                        NEXA_RUN_MODEL_MAP_VLM[request.model_path], progress_key=progress_key
+                    )
+                    projector_downloaded_path = pull_model_with_progress(
+                        NEXA_RUN_PROJECTOR_MAP[request.model_path], progress_key=progress_key
+                    )
+                    return {
+                        "status": "success",
+                        "message": "Successfully downloaded model and projector",
+                        "model_path": request.model_path,
+                        "model_local_path": downloaded_path["local_path"],
+                        "projector_local_path": projector_downloaded_path["local_path"],
+                        "model_type": downloaded_path["run_type"]
+                    }
+                elif request.model_path in NEXA_RUN_OMNI_VLM_MAP:
+                    downloaded_path = pull_model_with_progress(
+                        NEXA_RUN_OMNI_VLM_MAP[request.model_path], progress_key=progress_key
+                    )
+                    projector_downloaded_path = pull_model_with_progress(
+                        NEXA_RUN_OMNI_VLM_PROJECTOR_MAP[request.model_path], progress_key=progress_key
+                    )
+                    return {
+                        "status": "success",
+                        "message": "Successfully downloaded model and projector",
+                        "model_path": request.model_path,
+                        "model_local_path": downloaded_path["local_path"],
+                        "projector_local_path": projector_downloaded_path["local_path"],
+                        "model_type": downloaded_path["run_type"]
+                    }
+                elif request.model_path in NEXA_RUN_MODEL_MAP_AUDIO_LM:
+                    downloaded_path = pull_model_with_progress(
+                        NEXA_RUN_MODEL_MAP_AUDIO_LM[request.model_path], progress_key=progress_key
+                    )
+                    projector_downloaded_path = pull_model_with_progress(
+                        NEXA_RUN_AUDIO_LM_PROJECTOR_MAP[request.model_path], progress_key=progress_key
+                    )
+                    return {
+                        "status": "success",
+                        "message": "Successfully downloaded model and projector",
+                        "model_path": request.model_path,
+                        "model_local_path": downloaded_path["local_path"],
+                        "projector_local_path": projector_downloaded_path["local_path"],
+                        "model_type": downloaded_path["run_type"]
+                    }
+                else:
+                    downloaded_path = pull_model_with_progress(
+                        request.model_path, progress_key=progress_key
+                    )
+                    return {
+                        "status": "success",
+                        "message": "Successfully downloaded model",
+                        "model_path": request.model_path,
+                        "model_local_path": downloaded_path["local_path"],
+                        "model_type": downloaded_path["run_type"]
+                    }
+            except Exception as e:
+                logging.error(f"Error during download: {e}")
+                download_progress[progress_key] = -1  # Mark download as failed
+                raise
+            
+        # Execute the download in a background thread
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, perform_download)
+        
+        # Return the result of the download
+        return result
+    
     except Exception as e:
+        # Log error and raise HTTP exception
         logging.error(f"Error downloading model: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Failed to download model: {str(e)}"
         )
+
+async def progress_generator(model_path: str):
+    """
+    A generator to stream download progress updates.
+    """
+    try:
+        while True:
+            progress = download_progress.get(model_path, -1)
+            # Check if the model_path exists in download_progress
+            if progress == -1:
+                yield f"data: {{\"error\": \"Download failed or invalid model path.\"}}\n\n"
+                break
+            
+            yield f"data: {{\"model_name\": \"{model_path}\", \"progress\": {progress}}}\n\n"
+            
+            if progress == 100:
+                # if model_path in download_progress and download_progress[model_path] == 100:
+                break
+                
+            await asyncio.sleep(1)
+    except Exception as e:
+        yield f"data: {{\"error\": \"Error streaming progress: {str(e)}\"}}\n\n"
+    
+    
+@app.get("/v1/download_progress", tags=["Model"])
+async def get_download_progress(model_path: str):
+    """
+    Stream the download progress for a specific model.
+    """
+    if model_path not in download_progress:
+        raise HTTPException(status_code=404, detail="No download progress found for the specified model.")
+    
+    # Return a StreamingResponse
+    return StreamingResponse(progress_generator(model_path), media_type="text/event-stream")
 
 @app.post("/v1/load_model", tags=["Model"])
 async def load_different_model(request: LoadModelRequest):
@@ -778,7 +1008,7 @@ async def load_different_model(request: LoadModelRequest):
         await load_model()
 
         return {
-            "status": "success",
+            "status": "succeed",
             "message": f"Successfully loaded model: {model_path}",
             "model_type": model_type
         }
@@ -788,6 +1018,31 @@ async def load_different_model(request: LoadModelRequest):
         raise HTTPException(
             status_code=500, 
             detail=f"Failed to load model: {str(e)}"
+        )
+    
+@app.post("/v1/unload_model", tags=["Model"])
+async def unload_different_model(request: LoadModelRequest):
+    """Load a different model while maintaining the global model state"""
+    try:
+        global model
+        if model:
+            model.close()
+
+        return {
+            "status": "succeed",
+            "message": f"Successfully unloaded model: {model_path}",
+            "model_type": model_type
+        }
+
+    except Exception as e:
+        logging.error(f"Error unloading model: {e}")
+
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "Internal server error",
+                "detail": f"Failed to unload model: {str(e)}"
+            }
         )
 
 @app.post("/v1/load_whisper_model", tags=["Model"])
@@ -835,8 +1090,9 @@ async def generate_text(request: GenerationRequest):
         generation_kwargs = request.dict()
         if request.stream:
             # Run the generation and stream the response
+            start_time = time.perf_counter()
             streamer = nexa_run_text_generation(is_chat_completion=False, **generation_kwargs)
-            return StreamingResponse(_resp_async_generator(streamer), media_type="application/x-ndjson")
+            return StreamingResponse(_resp_async_generator(streamer, start_time), media_type="application/x-ndjson")
         else:
             # Generate text synchronously and return the response
             result = nexa_run_text_generation(is_chat_completion=False, **generation_kwargs)
@@ -867,23 +1123,18 @@ async def text_chat_completions(request: ChatCompletionRequest):
                 detail="The model that is loaded is not an NLP model. Please use an NLP model for text chat completion."
             )
 
-        generation_kwargs = GenerationRequest(
-            prompt="" if len(request.messages) == 0 else request.messages[-1].content,
-            temperature=request.temperature,
-            max_new_tokens=request.max_tokens,
-            stop_words=request.stop_words,
-            logprobs=request.logprobs,
-            top_logprobs=request.top_logprobs,
-            stream=request.stream,
-            top_k=request.top_k,
-            top_p=request.top_p
-        ).dict()
+        if not request.messages:
+            raise HTTPException(
+                status_code=400,
+                detail="No messages provided in the request."
+            )
 
         if request.stream:
-            streamer = nexa_run_text_generation(is_chat_completion=True, **generation_kwargs)
-            return StreamingResponse(_resp_async_generator(streamer), media_type="application/x-ndjson")
+            start_time = time.perf_counter()
+            streamer = nexa_run_text_generation(None, max_new_tokens=request.max_tokens, is_chat_completion=True, **request.dict())
+            return StreamingResponse(_resp_async_generator(streamer, start_time), media_type="application/x-ndjson")
         
-        result = nexa_run_text_generation(is_chat_completion=True, **generation_kwargs)
+        result = nexa_run_text_generation(None, max_new_tokens=request.max_tokens, is_chat_completion=True, **request.dict())
         return {
             "id": str(uuid.uuid4()),
             "object": "chat.completion",
@@ -929,7 +1180,8 @@ async def multimodal_chat_completions(request: VLMChatCompletionRequest):
                 processed_messages.append({"role": msg.role, "content": processed_content})
             else:
                 processed_messages.append({"role": msg.role, "content": msg.content})
-                
+
+        start_time = time.perf_counter()        
         response = model.create_chat_completion(
             messages=processed_messages,
             max_tokens=request.max_tokens,
@@ -941,7 +1193,8 @@ async def multimodal_chat_completions(request: VLMChatCompletionRequest):
         )
         
         if request.stream:
-            return StreamingResponse(_resp_async_generator(response), media_type="application/x-ndjson")
+            
+            return StreamingResponse(_resp_async_generator(response, start_time), media_type="application/x-ndjson")
         return response
 
     except HTTPException as e:
@@ -950,13 +1203,20 @@ async def multimodal_chat_completions(request: VLMChatCompletionRequest):
         logging.error(f"Error in multimodal chat completions: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-async def _resp_omnivlm_async_generator(model, prompt: str, image_path: str):
+async def _resp_omnivlm_async_generator(model: NexaOmniVlmInference, prompt: str, image_path: str):
     _id = str(uuid.uuid4())
+    ttft = 0
+    start_time = time.perf_counter()
+    first_token_time = 0
+    decoding_times = 0
     try:
         if not os.path.exists(image_path):
             raise FileNotFoundError(f"Image file not found: {image_path}")
             
         for token in model.inference_streaming(prompt, image_path):
+            ttft = time.perf_counter() - start_time if ttft==0 else ttft
+            first_token_time = time.perf_counter() if first_token_time == 0 else first_token_time
+            decoding_times += 1
             chunk = {
                 "id": _id,
                 "object": "chat.completion.chunk",
@@ -968,6 +1228,7 @@ async def _resp_omnivlm_async_generator(model, prompt: str, image_path: str):
                 }]
             }
             yield f"data: {json.dumps(chunk)}\n\n"
+        yield f"metrics: {MetricsResult(ttft=ttft, decoding_speed=decoding_times / (time.perf_counter() - first_token_time)).to_json()}\n\n"
         yield "data: [DONE]\n\n"
     except Exception as e:
         logging.error(f"Error in OmniVLM streaming: {e}")
@@ -1078,7 +1339,7 @@ async def function_call(request: FunctionCallRequest):
                 status_code=400,
                 detail="The model that is loaded is not an NLP model. Please use an NLP model for function calling."
             )
-        messages = function_call_system_prompt + [
+        messages = default_function_call_system_prompt + [
             {"role": msg.role, "content": msg.content} for msg in request.messages
         ]
         tools = [tool.dict() for tool in request.tools]
@@ -1285,6 +1546,9 @@ async def audio_chat_completions(
     stream: Optional[bool] = Query(False, description="Whether to stream the response"),
 ):
     temp_file = None
+    ttft = 0
+    start_time = time.perf_counter()
+    decoding_times = 0
     
     try:
         if model_type != "AudioLM":
@@ -1301,8 +1565,13 @@ async def audio_chat_completions(
 
         if stream:
             async def stream_with_cleanup():
+                nonlocal ttft, decoding_times, start_time
+                first_token_time = 0
                 try:
                     for token in model.inference_streaming(audio_path, prompt or ""):
+                        ttft = time.perf_counter() - start_time if ttft==0 else ttft
+                        first_token_time = time.perf_counter() if first_token_time==0 else first_token_time
+                        decoding_times += 1
                         chunk = {
                             "id": str(uuid.uuid4()),
                             "object": "chat.completion.chunk",
@@ -1314,6 +1583,7 @@ async def audio_chat_completions(
                             }]
                         }
                         yield f"data: {json.dumps(chunk)}\n\n"
+                    yield f"metrics: {MetricsResult(ttft=ttft, decoding_speed=decoding_times / (time.perf_counter() - first_token_time)).to_json()}\n\n"
                     yield "data: [DONE]\n\n"
                 finally:
                     temp_file.close()
@@ -1404,6 +1674,81 @@ async def create_embedding(request: EmbeddingRequest):
     except Exception as e:
         logging.error(f"Error in embedding generation: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/v1/action", tags=["Actions"])
+async def action(request: ActionRequest):
+    try:
+        # Extract content between <nexa_X> and <nexa_end>
+        prompt = request.prompt
+        import re
+        
+        # Use regex to match <nexa_X> pattern
+        match = re.match(r"<nexa_\d+>(.*?)<nexa_end>", prompt)
+        if not match:
+            raise ValueError("Invalid prompt format. Must be wrapped in <nexa_X> and <nexa_end>")
+            
+        # Extract the function call content
+        function_content = match.group(1)
+        
+        # Parse function name and parameters
+        function_name = function_content[:function_content.index("(")]
+        params_str = function_content[function_content.index("(")+1:function_content.rindex(")")]
+        
+        # Parse parameters into dictionary
+        params = {}
+        for param in params_str.split(","):
+            if "=" in param:
+                key, value = param.split("=")
+                params[key.strip()] = value.strip().strip("'").strip('"')
+                
+        # Handle different function types
+        if function_name == "query_plane_ticket":
+            # Validate required parameters
+            required_params = ["year", "date", "time", "departure", "destination"]
+            for param in required_params:
+                if param not in params:
+                    raise ValueError(f"Missing required parameter: {param}")
+            # Corner case handling for date
+            if params['date'] == '00-00':
+                from datetime import datetime, timedelta
+                tomorrow = datetime.now() + timedelta(days=1)
+                params['date'] = tomorrow.strftime('%m-%d')
+
+            if params['year'] == '2024':
+                params['year'] = datetime.now().year
+
+            if params['departure'] == 'current':
+                params['departure'] = 'LAS'
+            # Construct the date string in required format
+            date_str = f"{params['date']}/{params['year']}"
+            from urllib.parse import quote
+            params['departure'] = quote(params['departure'])
+            params['destination'] = quote(params['destination'])
+            date_str = quote(f"{params['date']}/{params['year']}")
+            # Build the URL
+            url = (f"https://www.expedia.com/Flights-Search?"
+                  f"leg1=from:{params['departure']},to:{params['destination']},"
+                  f"departure:{date_str}T&"
+                  f"passengers=adults:1&trip=oneway&mode=search")
+                  
+            return {
+                "status": "success",
+                "function": function_name,
+                "parameters": params,
+                "url": url
+            }
+        else:
+            # Handle other function types in the future
+            return {
+                "status": "error",
+                "message": f"Unsupported function: {function_name}"
+            }
+            
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

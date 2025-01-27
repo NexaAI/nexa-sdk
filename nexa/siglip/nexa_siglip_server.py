@@ -11,6 +11,8 @@ import argparse
 from PIL import Image
 import torch
 from transformers import AutoProcessor, AutoModel
+import base64
+from io import BytesIO
 
 app = FastAPI(title="Nexa AI SigLIP Image-Text Matching Service")
 app.add_middleware(
@@ -32,6 +34,7 @@ class ImagePathRequest(BaseModel):
 
 class SearchResponse(BaseModel):
     image_path: str
+    image_base64: str
     similarity_score: float
     latency: float
 
@@ -136,10 +139,17 @@ async def find_similar(text: str):
         max_prob_index = torch.argmax(probs).item()
         max_prob = probs[max_prob_index][0].item()
         
+        # Convert the PIL Image to base64
+        matched_image = images[max_prob_index]
+        buffered = BytesIO()
+        matched_image.save(buffered, format="JPEG")
+        img_str = "data:image/jpeg;base64," + base64.b64encode(buffered.getvalue()).decode()
+        
         return SearchResponse(
             image_path=image_paths[max_prob_index],
+            image_base64=img_str,
             similarity_score=max_prob,
-            latency = round(time.time() - start_time, 3)
+            latency=round(time.time() - start_time, 3)
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")

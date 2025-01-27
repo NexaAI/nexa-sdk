@@ -276,6 +276,9 @@ class NexaAudioLMInference:
             except Exception as e:
                 logging.warning(f"Failed to remove temporary file {self.temp_file}: {e}")
 
+    def close(self) -> None:
+        self.cleanup()
+
     # def __del__(self):
     #     """
     #     Destructor to free the Bark context when the instance is deleted.
