@@ -24,9 +24,10 @@ from nexa.gguf.lib_utils import load_library
 
 # Specify the base name of the shared library to load
 _lib_base_name = "stable-diffusion"
+_lib_subdir_name = 'stable_diffusion'
 
 # Load the library
-_lib = load_library(_lib_base_name)
+_lib = load_library(_lib_base_name, _lib_subdir_name)
 
 # ctypes sane type hint helpers
 #
