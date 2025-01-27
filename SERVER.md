@@ -310,9 +310,11 @@ Generates wav format voices based on a single prompt.
   "text": "Hello, this is a text-to-speech interface.",
   "seed": 42,
   "sampling_rate": 24000,
-  "language": "en" // only for OuteTTS
+  "language": "en"
 }
 ```
+
+The `language` argument applies only to OuteTTS models.
 
 #### Example Response:
 
