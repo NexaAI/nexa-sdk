@@ -33,8 +33,9 @@ if TYPE_CHECKING:
 
 # Specify the base name of the shared library to load
 _lib_base_name = "llama"
+_lib_subdir_name = 'llama'
 # Load the library
-_lib = load_library(_lib_base_name)
+_lib = load_library(_lib_base_name, _lib_subdir_name)
 
 ctypes_function = ctypes_function_for_shared_library(_lib)
 
