@@ -107,5 +107,4 @@ class PromptProcessor:
         return prompt
     
     def extract_audio_from_tokens(self, tokens: list[tuple]) -> list[int]:
-        token_ids = [t[0] for t in tokens if isinstance(t, tuple)]
-        return [self.map_audio_tokens[i] for i in token_ids if i in self.map_audio_tokens]
+        return [self.map_audio_tokens[i] for i in tokens if i in self.map_audio_tokens]

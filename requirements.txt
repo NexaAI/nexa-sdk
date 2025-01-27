@@ -61,3 +61,4 @@ uroman
 mecab-python3
 unidic-lite
 sounddevice
+einops # for OuteTTS
