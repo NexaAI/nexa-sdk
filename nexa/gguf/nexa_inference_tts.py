@@ -230,6 +230,7 @@ class NexaTTSInference:
             sf.write(file_path, audio_data, sampling_rate)
         elif self.tts_engine == "outetts":
             audio_data.save(file_path)
+        return file_path
 
 
     def get_load_time(self):

@@ -1,5 +1,3 @@
-# Temporarily disabled since version v0.0.9.3
-
 from nexa.gguf import NexaTTSInference
 
 def test_tts_generation_barkcpp():
