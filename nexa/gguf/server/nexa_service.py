@@ -1184,11 +1184,10 @@ async def txt2speech(request: TextToSpeechRequest):
                 language=request.language
             )
 
-
         if model_type != "TTS":
             raise HTTPException(
                 status_code=400,
-                detail="The model loaded is not a Text-to-Speech model. Please use a Text-to-Speech model for this operation."
+                detail="The model loaded is not a Text-to-Speech model. Please use a Text-to-Speech model for this api."
             )
         
         audio_data = model.audio_generation(request.text)
