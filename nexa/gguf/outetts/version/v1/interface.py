@@ -37,23 +37,15 @@ def get_speaker_path(speaker_name):
 _DEFAULT_SPEAKERS = {
     "en": {
         "male_1": get_speaker_path("en_male_1"),
-        "male_2": get_speaker_path("en_male_2"),
-        "male_3": get_speaker_path("en_male_3"),
-        "male_4": get_speaker_path("en_male_4"),
         "female_1": get_speaker_path("en_female_1"),
-        "female_2": get_speaker_path("en_female_2"),
     },
     "ja": {
         "male_1": get_speaker_path("ja_male_1"),
         "female_1": get_speaker_path("ja_female_1"),
-        "female_2": get_speaker_path("ja_female_2"),
-        "female_3": get_speaker_path("ja_female_3"),
     },
     "ko": {
         "male_1": get_speaker_path("ko_male_1"),
-        "male_2": get_speaker_path("ko_male_2"),
         "female_1": get_speaker_path("ko_female_1"),
-        "female_2": get_speaker_path("ko_female_2"),
     },
     "zh": {
         "male_1": get_speaker_path("zh_male_1"),

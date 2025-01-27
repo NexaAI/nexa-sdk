@@ -55,6 +55,7 @@ from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
 from nexa.general import add_model_to_list, default_use_processes, download_file_with_progress, get_model_info, is_model_exists, pull_model
 from nexa.gguf.llama.llama import Llama
 from nexa.gguf.nexa_inference_tts import NexaTTSInference
+# temporarily disabled NexaOmniVlmInference and NexaAudioLMInference 
 # from nexa.gguf.nexa_inference_vlm_omni import NexaOmniVlmInference
 # from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
 from nexa.gguf.nexa_inference_vlm import NexaVLMInference
