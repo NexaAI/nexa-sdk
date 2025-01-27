@@ -178,6 +178,10 @@ class NexaOmniVlmInference:
                 continue
             yield res_str
 
+
+    def close(self) -> None:
+        self.__del__()
+
     def __del__(self):
         omni_vlm_cpp.omnivlm_free()
 

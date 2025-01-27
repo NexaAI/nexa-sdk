@@ -328,6 +328,8 @@ class NexaVoiceInference:
         sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, str(is_local_path), str(hf)]
         sys.exit(stcli.main())
 
+    def close(self) -> None:
+        self.model.model.unload_model()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
