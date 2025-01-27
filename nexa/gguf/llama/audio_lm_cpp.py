@@ -46,6 +46,7 @@ def _get_lib(is_qwen: bool = True):
         / "nexa"
         / "gguf"
         / "lib"
+        / "llama"
     )
     return _load_shared_library(_lib_base_name, base_path)
 

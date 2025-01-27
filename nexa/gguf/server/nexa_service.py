@@ -54,9 +54,9 @@ from nexa.gguf.llama.llama_chat_format import (
 from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
 from nexa.general import add_model_to_list, default_use_processes, download_file_with_progress, get_model_info, is_model_exists, pull_model
 from nexa.gguf.llama.llama import Llama
-from nexa.gguf.nexa_inference_vlm_omni import NexaOmniVlmInference
 from nexa.gguf.nexa_inference_tts import NexaTTSInference
-from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
+# from nexa.gguf.nexa_inference_vlm_omni import NexaOmniVlmInference
+# from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
 from nexa.gguf.nexa_inference_vlm import NexaVLMInference
 from nexa.gguf.sd.stable_diffusion import StableDiffusion
 from faster_whisper import WhisperModel
@@ -1241,7 +1241,7 @@ async def multimodal_chat_completions(request: VLMChatCompletionRequest):
         logging.error(f"Error in multimodal chat completions: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-async def _resp_omnivlm_async_generator(model: NexaOmniVlmInference, prompt: str, image_path: str):
+async def _resp_omnivlm_async_generator(model, prompt: str, image_path: str):
     _id = str(uuid.uuid4())
     ttft = 0
     start_time = time.perf_counter()
