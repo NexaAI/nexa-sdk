@@ -29,16 +29,6 @@ dependencies = [
     "streamlit>=1.37.1",
     "streamlit-audiorec",
     "python-multipart",
-    "torchaudio",
-    "encodec",
-    "einops",
-    "transformers",
-    "mecab-python3",
-    "uroman",
-    "scipy",
-    "inflect",
-    "sounddevice",
-    "unidic-lite"
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -63,6 +53,19 @@ onnx = [
     "soundfile",
     "transformers",
     "ttstokenizer",
+]
+
+tts = [
+    "torchaudio",
+    "encodec",
+    "einops",
+    "transformers",
+    "mecab-python3",
+    "uroman",
+    "scipy",
+    "inflect",
+    "sounddevice",
+    "unidic-lite"
 ]
 
 eval = [
