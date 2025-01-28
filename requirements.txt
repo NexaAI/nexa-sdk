@@ -50,5 +50,17 @@ immutabledict
 
 # For SigLIP
 torch
-transformers
 sentencepiece
+
+# For tts
+torch
+torchaudio
+sounddevice
+uroman
+mecab-python3
+einops
+scipy
+pyyaml
+encodec
+unidic-lite
+inflect

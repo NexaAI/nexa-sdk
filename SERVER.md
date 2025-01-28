@@ -299,7 +299,38 @@ Modifies existing images based on a single prompt.
 }
 ```
 
-### 6. Audio Transcriptions: <code>/v1/audio/transcriptions</code>
+### 6. Text-to-Image: <code>/v1/txt2speech</code>
+
+Generates wav format voices based on a single prompt.
+
+#### Request body:
+
+```json
+{
+  "text": "Hello, this is a text-to-speech interface.",
+  "seed": 42,
+  "sampling_rate": 24000,
+  "language": "en"
+}
+```
+
+The `language` argument applies only to OuteTTS models.
+
+#### Example Response:
+
+```json
+{
+  "created": 1724186615.5426757,
+  "data": [
+    {
+      "base64": "base64_of_generated_wav_file",
+      "url": "path/to/generated_wav_file"
+    }
+  ]
+}
+```
+
+### 7. Audio Transcriptions: <code>/v1/audio/transcriptions</code>
 
 Transcribes audio files to text.
 
@@ -325,7 +356,7 @@ Transcribes audio files to text.
 }
 ```
 
-### 7. Audio Translations: <code>/v1/audio/translations</code>
+### 8. Audio Translations: <code>/v1/audio/translations</code>
 
 Translates audio files to text in English.
 
@@ -350,7 +381,7 @@ Translates audio files to text in English.
 }
 ```
 
-### 8. Generate Embeddings: <code>/v1/embeddings</code>
+### 9. Generate Embeddings: <code>/v1/embeddings</code>
 
 Generate embeddings for a given text.
 

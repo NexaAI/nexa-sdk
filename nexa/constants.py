@@ -151,6 +151,8 @@ NEXA_RUN_MODEL_MAP_VOICE = {
 }
 
 NEXA_RUN_MODEL_MAP_TTS = {
+    "OuteTTS-0.2-500M": "OuteTTS-0.2-500M:q4_K_M",
+    "OuteTTS-0.1-350M": "OuteTTS-0.1-350M:q4_K_M",
     "bark": "bark:fp16",
     "bark-small": "bark-small:fp16",
 }
@@ -496,6 +498,8 @@ NEXA_OFFICIAL_MODELS_TYPE = {
     "whisper-small": ModelType.AUDIO,
     "whisper-base.en": ModelType.AUDIO,
     "whisper-base": ModelType.AUDIO,
+    "OuteTTS-0.2-500M": ModelType.TTS,
+    "OuteTTS-0.1-350M": ModelType.TTS,
     "bark": ModelType.TTS,
     "bark-small": ModelType.TTS,
     "mxbai-embed-large-v1": ModelType.TEXT_EMBEDDING,

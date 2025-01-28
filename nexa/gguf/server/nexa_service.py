@@ -44,7 +44,7 @@ from nexa.constants import (
     NEXA_MODEL_LIST_PATH,
     NEXA_OFFICIAL_BUCKET,
 )
-from nexa.gguf.converter.constants import NEXA_MODELS_HUB_DIR
+
 from nexa.gguf.lib_utils import is_gpu_available
 from nexa.gguf.llama.llama_chat_format import (
     Llava15ChatHandler,
@@ -54,8 +54,10 @@ from nexa.gguf.llama.llama_chat_format import (
 from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
 from nexa.general import add_model_to_list, default_use_processes, download_file_with_progress, get_model_info, is_model_exists, pull_model
 from nexa.gguf.llama.llama import Llama
-from nexa.gguf.nexa_inference_vlm_omni import NexaOmniVlmInference
-from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
+from nexa.gguf.nexa_inference_tts import NexaTTSInference
+# temporarily disabled NexaOmniVlmInference and NexaAudioLMInference 
+# from nexa.gguf.nexa_inference_vlm_omni import NexaOmniVlmInference
+# from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
 from nexa.gguf.nexa_inference_vlm import NexaVLMInference
 from nexa.gguf.sd.stable_diffusion import StableDiffusion
 from faster_whisper import WhisperModel
@@ -214,6 +216,12 @@ class ImageGenerationRequest(BaseModel):
     sample_steps: int = 20
     seed: int = 0
     negative_prompt: Optional[str] = ""
+
+class TextToSpeechRequest(BaseModel):
+    text: str = "Hello, this is a text-to-speech interface."
+    seed: int = 42
+    sampling_rate: int = 24000
+    language: Optional[str] = "en"  # Only for 'outetts'
 
 # New request class for embeddings
 class EmbeddingRequest(BaseModel):
@@ -425,6 +433,10 @@ async def load_model():
                 n_threads=multiprocessing.cpu_count(),
             )
         logging.info(f"model loaded as {model}")
+    elif model_type == "TTS":
+        # The TTS model requires parameters that are only available upon receiving a user request. 
+        # Therefore, model initialization is deferred until the text-to-speech API is called.
+        model = None
     elif model_type == "Multimodal":
         with suppress_stdout_stderr():
             if 'omni' in model_path.lower():
@@ -671,6 +683,33 @@ def image_url_to_base64(image_url: str) -> str:
     buffered = BytesIO()
     img.save(buffered, format="PNG")
     return f"data:image/png;base64,{base64.b64encode(buffered.getvalue()).decode()}"
+
+def voice_url_to_base64(file_path: str) -> str:
+    """
+    Converts a WAV file to a base64 string.
+    
+    :param file_path: Path to the WAV file.
+    :return: Base64 encoded string.
+    """
+    try:
+        with open(file_path, "rb") as wav_file:
+            base64_string = base64.b64encode(wav_file.read()).decode('utf-8')
+        return base64_string
+    except Exception as e:
+        raise ValueError(f"Error converting file to base64: {e}")
+
+def base64_to_wav(base64_string: str, save_path: str):
+    """
+    Converts a base64 string back to a WAV file.
+    
+    :param base64_string: Base64 encoded string.
+    :param save_path: Path where the WAV file will be saved.
+    """
+    try:
+        with open(save_path, "wb") as wav_file:
+            wav_file.write(base64.b64decode(base64_string))
+    except Exception as e:
+        raise ValueError(f"Error converting base64 string to WAV file: {e}")
 
 def image_path_to_base64(file_path):
     if file_path and os.path.exists(file_path):
@@ -1203,7 +1242,7 @@ async def multimodal_chat_completions(request: VLMChatCompletionRequest):
         logging.error(f"Error in multimodal chat completions: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-async def _resp_omnivlm_async_generator(model: NexaOmniVlmInference, prompt: str, image_path: str):
+async def _resp_omnivlm_async_generator(model, prompt: str, image_path: str):
     _id = str(uuid.uuid4())
     ttft = 0
     start_time = time.perf_counter()
@@ -1383,6 +1422,57 @@ async def txt2img(request: ImageGenerationRequest):
 
     except Exception as e:
         logging.error(f"Error in txt2img generation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/v1/txt2speech", tags=["Text-to-Speech"])
+async def txt2speech(request: TextToSpeechRequest):
+    global model
+    try:
+        # Initialize a new model if:
+        # 1. No model has been initialized.
+        # 2. The user provides new model initialization parameters. 
+        if (
+            model is None 
+            or model.seed != request.seed 
+            or model.sampling_rate != request.sampling_rate 
+            or model.language != request.language
+        ):
+            model = NexaTTSInference(
+                model_path=model_path,
+                tts_engine= 'bark' if 'bark' in model_path.lower() else 'outetts',
+                seed=request.seed,
+                sampling_rate=request.sampling_rate,
+                language=request.language
+            )
+
+        if model_type != "TTS":
+            raise HTTPException(
+                status_code=400,
+                detail="The model loaded is not a Text-to-Speech model. Please use a Text-to-Speech model for this api."
+            )
+        
+        audio_data = model.audio_generation(request.text)
+        output_dir = "nexa_server_output"
+        os.makedirs(output_dir, exist_ok=True)
+        file_path = model._save_audio(audio_data, request.sampling_rate, output_dir)
+
+        resp = {
+            "created": time.time(),
+            "data": {
+                "url": os.path.abspath(file_path),
+                "base64": voice_url_to_base64(file_path)
+            }
+        }
+
+        return resp
+
+    except Exception as e:
+        logging.error(f"Error in text-to-speech generation: {e}")
+        if isinstance(e, ImportError):
+            logging.error(
+                "To resolve this issue, please run "
+                "`pip install nexaai[tts]` to install necessary dependencies for TTS models."
+            )
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/v1/img2img", tags=["Computer Vision"])

@@ -29,7 +29,6 @@ dependencies = [
     "streamlit>=1.37.1",
     "streamlit-audiorec",
     "python-multipart",
-    "cmake"
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -48,13 +47,25 @@ onnx = [
     "optimum[onnxruntime]", # for CPU version
     "diffusers",            # required for image generation
     "optuna",
-    "pydantic",
     "PyYAML",
     "requests",
     "setuptools",
     "soundfile",
     "transformers",
     "ttstokenizer",
+]
+
+tts = [
+    "torchaudio",
+    "encodec",
+    "einops",
+    "transformers",
+    "mecab-python3",
+    "uroman",
+    "scipy",
+    "inflect",
+    "sounddevice",
+    "unidic-lite"
 ]
 
 eval = [
