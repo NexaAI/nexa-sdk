@@ -1468,6 +1468,11 @@ async def txt2speech(request: TextToSpeechRequest):
 
     except Exception as e:
         logging.error(f"Error in text-to-speech generation: {e}")
+        if isinstance(e, ImportError):
+            logging.error(
+                "To resolve this issue, please run "
+                "`pip install nexaai[tts]` to install necessary dependencies for TTS models."
+            )
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/v1/img2img", tags=["Computer Vision"])

@@ -120,15 +120,10 @@ def run_ggml_inference(args):
             from nexa.gguf.nexa_inference_voice import NexaVoiceInference
             inference = NexaVoiceInference(model_path=model_path, local_path=local_path, **kwargs)
         elif run_type == "TTS":
-            # # # Temporarily disabled since version v0.0.9.3
-            # raise NotImplementedError("TTS model is not supported in CLI mode.")
             kwargs.pop('tts_engine', None)
-            if "OuteTTS" in local_path:
-                from nexa.gguf.nexa_inference_tts import NexaTTSInference
-                inference = NexaTTSInference(model_path=model_path, local_path=local_path, tts_engine="outetts", **kwargs)
-            else:
-                from nexa.gguf.nexa_inference_tts import NexaTTSInference
-                inference = NexaTTSInference(model_path=model_path, local_path=local_path, tts_engine="bark", **kwargs)
+            from nexa.gguf.nexa_inference_tts import NexaTTSInference
+            tts_engine = "outetts" if "OuteTTS" in local_path else "bark"
+            inference = NexaTTSInference(model_path=model_path, local_path=local_path, tts_engine=tts_engine, **kwargs)
         elif run_type == "AudioLM":
             if is_local_path:
                 from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
@@ -143,6 +138,8 @@ def run_ggml_inference(args):
     except Exception as e:
         print(f"Error running ggml inference: {e}")
         print(f"Please refer to our docs to install nexaai package: https://docs.nexaai.com/getting-started/installation ")
+        if isinstance(e, ImportError) and run_type == "TTS":
+            print(f"In order to run TTS models, you need to run `pip install nexaai[tts]` to install required dependencies.")
         return
 
     if hasattr(args, 'streamlit') and args.streamlit:
