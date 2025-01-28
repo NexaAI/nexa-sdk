@@ -37,21 +37,8 @@ class GGUFModel:
             **additional_model_config
         )
 
-    def generate(self, input_ids: list[int], config: GenerationConfig, stream: bool = False):
-        if stream:
-            return self._generate_stream(input_ids, config)
+    def generate(self, input_ids: list[int], config: GenerationConfig):
         return self._generate(input_ids, config)
-
-    def _generate_stream(self, input_ids: list[int], config: GenerationConfig):
-        for token in self.model.generate(
-            input_ids,
-            temp=config.temperature,
-            repeat_penalty=config.repetition_penalty,
-            **config.additional_gen_config,
-        ):
-            yield token
-            if llama_token_is_eog(self.model._model.model, token):
-                break
 
     def _generate(self, input_ids: list[int], config: GenerationConfig) -> list:
         tokens = []
