@@ -38,7 +38,6 @@ dependencies = [
     "uroman",
     "unidic-lite",
     "scipy",
-    "pesq",
     "inflect",
     "sounddevice"
     
