@@ -64,6 +64,5 @@ einops
 scipy
 pyyaml
 encodec
-pytorch-lightning
 pesq
 inflect

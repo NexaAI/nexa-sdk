@@ -29,7 +29,10 @@ dependencies = [
     "streamlit>=1.37.1",
     "streamlit-audiorec",
     "python-multipart",
-    "cmake"
+    "cmake",
+    "torchaudio",
+    "encodec",
+    "einops"
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
