@@ -299,26 +299,3 @@ class EncodecModel(nn.Module):
             model.load_state_dict(state_dict)
         model.eval()
         return model
-
-
-def test():
-    from itertools import product
-    import torchaudio
-    bandwidths = [3, 6, 12, 24]
-    models = {
-        'encodec_24khz': EncodecModel.encodec_model_24khz,
-        'encodec_48khz': EncodecModel.encodec_model_48khz
-    }
-    for model_name, bw in product(models.keys(), bandwidths):
-        model = models[model_name]()
-        model.set_target_bandwidth(bw)
-        audio_suffix = model_name.split('_')[1][:3]
-        wav, sr = torchaudio.load(f"test_{audio_suffix}.wav")
-        wav = wav[:, :model.sample_rate * 2]
-        wav_in = wav.unsqueeze(0)
-        wav_dec = model(wav_in)[0]
-        assert wav.shape == wav_dec.shape, (wav.shape, wav_dec.shape)
-
-
-if __name__ == '__main__':
-    test()

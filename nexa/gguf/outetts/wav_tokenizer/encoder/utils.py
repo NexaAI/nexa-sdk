@@ -11,7 +11,6 @@ from pathlib import Path
 import typing as tp
 
 import torch
-import torchaudio
 
 
 def _linear_overlap_add(frames: tp.List[torch.Tensor], stride: int):
@@ -74,30 +73,3 @@ def _check_checksum(path: Path, checksum: str):
     if actual_checksum != checksum:
         raise RuntimeError(f'Invalid checksum for file {path}, '
                            f'expected {checksum} but got {actual_checksum}')
-
-
-def convert_audio(wav: torch.Tensor, sr: int, target_sr: int, target_channels: int):
-    assert wav.dim() >= 2, "Audio tensor must have at least 2 dimensions"
-    assert wav.shape[-2] in [1, 2], "Audio must be mono or stereo."
-    *shape, channels, length = wav.shape
-    if target_channels == 1:
-        wav = wav.mean(-2, keepdim=True)
-    elif target_channels == 2:
-        wav = wav.expand(*shape, target_channels, length)
-    elif channels == 1:
-        wav = wav.expand(target_channels, -1)
-    else:
-        raise RuntimeError(f"Impossible to convert from {channels} to {target_channels}")
-    wav = torchaudio.transforms.Resample(sr, target_sr)(wav)
-    return wav
-
-
-def save_audio(wav: torch.Tensor, path: tp.Union[Path, str],
-               sample_rate: int, rescale: bool = False):
-    limit = 0.99
-    mx = wav.abs().max()
-    if rescale:
-        wav = wav * min(limit / mx, 1)
-    else:
-        wav = wav.clamp(-limit, limit)
-    torchaudio.save(str(path), wav, sample_rate=sample_rate, encoding='PCM_S', bits_per_sample=16)

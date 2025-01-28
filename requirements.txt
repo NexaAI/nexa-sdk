@@ -58,7 +58,6 @@ torchaudio
 sounddevice
 uroman
 mecab-python3
-unidic-lite
 einops
 scipy
 pyyaml
