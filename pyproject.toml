@@ -37,8 +37,8 @@ dependencies = [
     "uroman",
     "scipy",
     "inflect",
-    "sounddevice"
-    
+    "sounddevice",
+    "unidic-lite"
 ]
 classifiers = [
     "Programming Language :: Python :: 3",

@@ -62,4 +62,5 @@ einops
 scipy
 pyyaml
 encodec
+unidic-lite
 inflect
