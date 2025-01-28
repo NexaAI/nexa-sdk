@@ -50,7 +50,6 @@ immutabledict
 
 # For SigLIP
 torch
-transformers
 sentencepiece
 
 # For tts

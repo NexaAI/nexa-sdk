@@ -32,7 +32,16 @@ dependencies = [
     "cmake",
     "torchaudio",
     "encodec",
-    "einops"
+    "einops",
+    "transformers",
+    "mecab-python3",
+    "uroman",
+    "unidic-lite",
+    "scipy",
+    "pesq",
+    "inflect",
+    "sounddevice"
+    
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -51,7 +60,6 @@ onnx = [
     "optimum[onnxruntime]", # for CPU version
     "diffusers",            # required for image generation
     "optuna",
-    "pydantic",
     "PyYAML",
     "requests",
     "setuptools",
