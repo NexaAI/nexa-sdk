@@ -63,5 +63,4 @@ einops
 scipy
 pyyaml
 encodec
-pesq
 inflect

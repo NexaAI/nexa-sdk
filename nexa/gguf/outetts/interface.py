@@ -5,14 +5,12 @@ MODEL_CONFIGS = {
     "0.1": {
         "tokenizer": "OuteAI/OuteTTS-0.1-350M",
         "sizes": ["350M"],
-        "links": ["https://huggingface.co/OuteAI/OuteTTS-0.1-350M", "https://huggingface.co/OuteAI/OuteTTS-0.1-350M-GGUF"],
         "languages": ["en"],
         "max_seq_length": 4096
     },
     "0.2": {
         "tokenizer": "OuteAI/OuteTTS-0.2-500M",
         "sizes": ["500M"],
-        "links": ["https://huggingface.co/OuteAI/OuteTTS-0.2-500M", "https://huggingface.co/OuteAI/OuteTTS-0.2-500M-GGUF"],
         "languages": ["en", "ja", "ko", "zh"],
         "max_seq_length": 4096
     },
