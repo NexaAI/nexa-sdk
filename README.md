@@ -254,6 +254,8 @@ Supported model examples (full list at [Model Hub](https://nexa.ai/models)):
 | [nomic-embed-text-v1.5](https://nexa.ai/nomic-ai/nomic-embed-text-v1.5/gguf-fp16/readme) | Embedding | GGUF | `nexa embed nomic` |
 | [all-MiniLM-L12-v2](https://nexa.ai/sentence-transformers/all-MiniLM-L12-v2/gguf-fp16/readme) | Embedding | GGUF | `nexa embed all-MiniLM-L12-v2:fp16` |
 | [bark-small](https://nexa.ai/suno/bark-small/gguf-fp16/readme) | Text-to-Speech | GGUF | `nexa run bark-small:fp16` |
+| [OuteTTS-0.1-350M](https://nexa.ai/OuteAI/OuteTTS-0.1-350M/gguf-q4_K_M/readme) | Text-to-Speech | GGUF | `nexa run OuteTTS-0.1-350M:q4_K_M` |
+| [OuteTTS-0.2-500M](https://nexa.ai/OuteAI/OuteTTS-0.2-500M/gguf-q4_K_M/readme) | Text-to-Speech | GGUF | `nexa run OuteTTS-0.2-500M:q4_K_M` |
 
 ## Run Models from 🤗 HuggingFace or 🤖 ModelScope
 
