@@ -195,8 +195,10 @@ NEXA_RUN_OMNI_VLM_PROJECTOR_MAP = {
     "omnivision-preview:q4_0": "omnivision-preview:projector-q4_0",
     "omnivlm": "omniVLM:projector-fp16",
     "omniVLM": "omniVLM:projector-fp16",
-    "omniVLM:fp16": "omniVLM:projector-fp16",
+    "omniVLM:q4_0": "omniVLM:projector-q4_0",
+    "omniVLM:q4_K_M": "omniVLM:projector-q4_K_M",
     "omniVLM:q8_0": "omniVLM:projector-q8_0",
+    "omniVLM:fp16": "omniVLM:projector-fp16",
     "omnivision-ocr": "omnivision-ocr:projector-fp16",
     "omnivision-ocr:fp16": "omnivision-ocr:projector-fp16",
 }
@@ -207,8 +209,10 @@ NEXA_RUN_OMNI_VLM_MAP = {
     "omnivision-preview:q4_0": "omnivision-preview:model-q4_0",
     "omnivlm": "omniVLM:model-fp16",
     "omniVLM": "omniVLM:model-fp16",
-    "omniVLM:fp16": "omniVLM:model-fp16",
+    "omniVLM:q4_0": "omniVLM:model-q4_0",
+    "omniVLM:q4_K_M": "omniVLM:model-q4_K_M",
     "omniVLM:q8_0": "omniVLM:model-q8_0",
+    "omniVLM:fp16": "omniVLM:model-fp16",
     "omnivision-ocr": "omnivision-ocr:model-fp16",
     "omnivision-ocr:fp16": "omnivision-ocr:model-fp16",
 }
