@@ -21,7 +21,7 @@ jobs:
         run: |
           $matrix = @{
               'os' = @('ubuntu-20.04')
-              'pyver' = @("3.7", "3.8", "3.9", "3.10", "3.11", "3.12")
+              'pyver' = @("3.8", "3.9", "3.10", "3.11", "3.12")
               'cuda' = @("12.4.1")
               'releasetag' = @("basic")
           }
@@ -64,7 +64,7 @@ jobs:
           activate-environment: "build"
           python-version: ${{ matrix.pyver }}
           miniforge-variant: Mambaforge
-          miniforge-version: latest
+          miniforge-version: 23.11.0-0
           use-mamba: true
           add-pip-as-python-dependency: true
           auto-activate-base: false
