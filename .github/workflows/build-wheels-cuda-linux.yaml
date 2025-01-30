@@ -43,6 +43,12 @@ jobs:
       AVXVER: ${{ matrix.releasetag }}
 
     steps:
+      - name: Add MSBuild to PATH
+        if: runner.os == 'Windows'
+        uses: microsoft/setup-msbuild@v2
+        with:
+          vs-version: "[16.11,16.12)"
+    
       - uses: actions/checkout@v4
         with:
           submodules: "recursive"
@@ -60,6 +66,30 @@ jobs:
           miniconda-version: "latest"
           add-pip-as-python-dependency: true
           auto-activate-base: false
+
+      - name: VS Integration Cache
+        id: vs-integration-cache
+        if: runner.os == 'Windows'
+        uses: actions/cache@v4.0.2
+        with:
+          path: ./MSBuildExtensions
+          key: cuda-${{ matrix.cuda }}-vs-integration
+
+      - name: Get Visual Studio Integration
+        if: runner.os == 'Windows' && steps.vs-integration-cache.outputs.cache-hit != 'true'
+        run: |
+          $links = (Invoke-RestMethod 'https://raw.githubusercontent.com/Jimver/cuda-toolkit/master/src/links/windows-links.ts').Trim().split().where({$_ -ne ''})
+          for ($i=$q=0;$i -lt $links.count -and $q -lt 2;$i++) {if ($links[$i] -eq "'$env:CUDAVER',") {$q++}}
+          Invoke-RestMethod $links[$i].Trim("'") -OutFile 'cudainstaller.zip'
+          & 'C:\Program Files\7-Zip\7z.exe' e cudainstaller.zip -oMSBuildExtensions -r *\MSBuildExtensions\* > $null
+          Remove-Item 'cudainstaller.zip'
+      - name: Install Visual Studio Integration
+        if: runner.os == 'Windows'
+        run: |
+          $y = (gi '.\MSBuildExtensions').fullname + '\*'
+          (gi 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Microsoft\VC\*\BuildCustomizations').fullname.foreach({cp $y $_})
+          $cupath = 'CUDA_PATH_V' + $env:CUDAVER.Remove($env:CUDAVER.LastIndexOf('.')).Replace('.','_')
+          echo "$cupath=$env:CONDA_PREFIX" >> $env:GITHUB_ENV
 
       - name: Install Dependencies
         env:
@@ -86,13 +116,6 @@ jobs:
           $env:CMAKE_BUILD_PARALLEL_LEVEL = $(nproc)
           $env:CMAKE_ARGS = '-DSD_CUBLAS=ON -DGGML_CUDA=ON -DGGML_CUBLAS=ON -DCMAKE_CUDA_ARCHITECTURES=all'
           $env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DGGML_CUDA_FORCE_MMQ=ON -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_F16C=OFF'
-
-          # Debug OpenMP detection
-          echo "Checking OpenMP..."
-          echo "GCC Version:"
-          gcc --version
-          echo "Checking OpenMP Flags:"
-          cpp -fopenmp -dM | Select-String -Pattern "OPENMP" || echo "OpenMP NOT found!"
 
           python -m build --wheel
           # write the build tag to the output
