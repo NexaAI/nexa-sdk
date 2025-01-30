@@ -10,7 +10,6 @@ from nexa.general import pull_model
 from nexa.gguf.lib_utils import is_gpu_available
 
 from nexa.gguf.bark import bark_cpp
-import nexa.gguf.outetts as outetts
 
 class NexaTTSInference:
     """
@@ -143,7 +142,7 @@ class NexaTTSInference:
             # OuteTTS loading
             logging.debug(f"Loading OuteTTS model from {self.downloaded_path}")
             # For OuteTTS we assume model_path is a GGUF model.
-            # Example from run_outetts.py:
+            import nexa.gguf.outetts as outetts
             model_config = outetts.GGUFModelConfig_v1(
                 model_path=self.downloaded_path,
                 language=self.language,
