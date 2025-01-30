@@ -67,7 +67,9 @@ jobs:
           CONDA_NO_LOW_SPEED_LIMIT: "1"
         run: |
           $cudaVersion = $env:CUDAVER
-          conda install -y -c nvidia/label/cuda-$cudaVersion cuda
+          conda install -y -c nvidia/label/cuda-$cudaVersion cuda  # Use conda instead of mamba
+          conda install -y openmp  # Install OpenMP
+          conda install -y -c conda-forge libgcc libgomp  # Ensure required GCC libraries
           python -m pip install build wheel
 
       - name: Build Wheel
@@ -85,6 +87,13 @@ jobs:
           $env:CMAKE_ARGS = '-DSD_CUBLAS=ON -DGGML_CUDA=ON -DGGML_CUBLAS=ON -DCMAKE_CUDA_ARCHITECTURES=all'
           $env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DGGML_CUDA_FORCE_MMQ=ON -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_F16C=OFF'
 
+          # Debug OpenMP detection
+          echo "Checking OpenMP..."
+          echo "GCC Version:"
+          gcc --version
+          echo "Checking OpenMP Flags:"
+          echo | cpp -fopenmp -dM | grep -i openmp || echo "OpenMP NOT found!"
+          
           python -m build --wheel
           # write the build tag to the output
           Write-Output "CUDA_VERSION=$cudaVersion" >> $env:GITHUB_ENV
