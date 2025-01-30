@@ -59,14 +59,12 @@ jobs:
           python-version: ${{ matrix.pyver }}
           cache: "pip"
 
-      - name: Setup Mamba
+      - name: Setup Miniconda
         uses: conda-incubator/setup-miniconda@v3.0.4
         with:
           activate-environment: "build"
           python-version: ${{ matrix.pyver }}
-          miniforge-variant: Mambaforge
-          miniforge-version: latest
-          use-mamba: true
+          miniconda-version: "latest"
           add-pip-as-python-dependency: true
           auto-activate-base: false
 
@@ -97,11 +95,13 @@ jobs:
 
       - name: Install Dependencies
         env:
-          MAMBA_DOWNLOAD_FAILFAST: "0"
-          MAMBA_NO_LOW_SPEED_LIMIT: "1"
+          CONDA_DOWNLOAD_FAILFAST: "0"
+          CONDA_NO_LOW_SPEED_LIMIT: "1"
         run: |
           $cudaVersion = $env:CUDAVER
-          mamba install -y 'cuda' -c nvidia/label/cuda-$cudaVersion
+          conda install -y -c nvidia/label/cuda-$cudaVersion cuda
+          conda install -y -c conda-forge libiomp
+          conda install -y -c conda-forge cmake ninja
           python -m pip install build wheel
 
       - name: Build Wheel
