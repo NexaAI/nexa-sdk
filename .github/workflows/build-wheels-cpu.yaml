@@ -94,19 +94,19 @@ jobs:
 
   build_wheels_arm64:
     name: Build arm64 wheels
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-20.04-arm
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: "recursive"    
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: linux/arm64
+      # - name: Set up QEMU
+      #   uses: docker/setup-qemu-action@v3
+      #   with:
+      #     platforms: linux/arm64
 
-      - name: Check nproc value
-        run: echo "Number of processors $(nproc)"
+      # - name: Check nproc value
+      #   run: echo "Number of processors $(nproc)"
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.20.0
