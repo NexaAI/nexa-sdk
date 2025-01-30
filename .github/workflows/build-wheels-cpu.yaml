@@ -126,43 +126,43 @@ jobs:
           name: wheels_arm64
           path: ./wheelhouse/*.whl
 
-  build_sdist:
-    name: Build source distribution
-    runs-on: ubuntu-latest
+  # build_sdist:
+  #   name: Build source distribution
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: "recursive"
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.8"
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip build
-          python -m pip install -e .
-      - name: Build source distribution
-        run: |
-          python -m build --sdist
-      - uses: actions/upload-artifact@v4
-        with:
-          name: sdist
-          path: ./dist/*.tar.gz
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         submodules: "recursive"
+  #     - uses: actions/setup-python@v5
+  #       with:
+  #         python-version: "3.8"
+  #     - name: Install dependencies
+  #       run: |
+  #         python -m pip install --upgrade pip build
+  #         python -m pip install -e .
+  #     - name: Build source distribution
+  #       run: |
+  #         python -m build --sdist
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: sdist
+  #         path: ./dist/*.tar.gz
 
-  release:
-    name: Release
-    needs: [build_wheels_win, build_wheels_arm64, build_sdist]  # build_wheels_linux
-    runs-on: ubuntu-latest
+  # release:
+  #   name: Release
+  #   needs: [build_wheels_win, build_wheels_arm64, build_sdist]  # build_wheels_linux
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          merge-multiple: true
-          path: dist
+  #   steps:
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         merge-multiple: true
+  #         path: dist
 
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
-          tag_name: ${{ github.ref_name }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #     - uses: softprops/action-gh-release@v2
+  #       with:
+  #         files: dist/*
+  #         tag_name: ${{ github.ref_name }}
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
