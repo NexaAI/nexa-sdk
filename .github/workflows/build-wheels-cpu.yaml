@@ -106,7 +106,7 @@ jobs:
           platforms: linux/arm64
 
       - name: Check nproc value
-        run: echo "Number of processors: $(nproc)"
+        run: echo "Number of processors $(nproc)"
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.20.0
