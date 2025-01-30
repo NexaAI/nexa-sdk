@@ -48,49 +48,49 @@ jobs:
   #         name: wheels-${{ matrix.os }}
   #         path: ./wheelhouse/*.whl
 
-  build_wheels_win:
-    name: Build wheels on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        # here 'sdk-windows-8-core' is a large runner
-        os: [sdk-windows-8-core]
+  # build_wheels_win:
+  #   name: Build wheels on ${{ matrix.os }}
+  #   runs-on: ${{ matrix.os }}
+  #   strategy:
+  #     matrix:
+  #       # here 'sdk-windows-8-core' is a large runner
+  #       os: [sdk-windows-8-core]
 
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: "recursive"
-      - uses: GuillaumeFalourd/setup-windows10-sdk-action@v2
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         submodules: "recursive"
+  #     - uses: GuillaumeFalourd/setup-windows10-sdk-action@v2
 
-      # Used to host cibuildwheel
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.8"
-          cache: "pip"
+  #     # Used to host cibuildwheel
+  #     - uses: actions/setup-python@v5
+  #       with:
+  #         python-version: "3.8"
+  #         cache: "pip"
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          # python -m pip install -e .
-          python -m pip install build wheel
+  #     - name: Install dependencies
+  #       run: |
+  #         python -m pip install --upgrade pip
+  #         # python -m pip install -e .
+  #         python -m pip install build wheel
 
-      - name: Build wheels
-        uses: pypa/cibuildwheel@v2.20.0
-        env:
-          # disable repair
-          CIBW_REPAIR_WHEEL_COMMAND: ""
-          CIBW_BUILD_FRONTEND: "build"
-          CIBW_BUILD: "cp37-* cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
-          CMAKE_BUILD_PARALLEL_LEVEL: 16
-          CIBW_ENVIRONMENT_WINDOWS: 'CMAKE_ARGS="-DCMAKE_SYSTEM_VERSION=10.0.18362.0 -DCMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION=10.0.18362.0"'
-        with:
-          package-dir: .
-          output-dir: wheelhouse
+  #     - name: Build wheels
+  #       uses: pypa/cibuildwheel@v2.20.0
+  #       env:
+  #         # disable repair
+  #         CIBW_REPAIR_WHEEL_COMMAND: ""
+  #         CIBW_BUILD_FRONTEND: "build"
+  #         CIBW_BUILD: "cp37-* cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
+  #         CMAKE_BUILD_PARALLEL_LEVEL: 16
+  #         CIBW_ENVIRONMENT_WINDOWS: 'CMAKE_ARGS="-DCMAKE_SYSTEM_VERSION=10.0.18362.0 -DCMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION=10.0.18362.0"'
+  #       with:
+  #         package-dir: .
+  #         output-dir: wheelhouse
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: wheels-${{ matrix.os }}
-          path: ./wheelhouse/*.whl
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: wheels-${{ matrix.os }}
+  #         path: ./wheelhouse/*.whl
 
   build_wheels_arm64:
     name: Build arm64 wheels
