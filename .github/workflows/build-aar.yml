@@ -34,7 +34,7 @@ jobs:
     - name: Navigate to android Directory and Build AAR
       run: |
         echo "Navigating to the example directory..."
-        cd android/llama.android
+        cd android
         echo "Starting Gradle build process in $(pwd)..."
         ./gradlew assembleRelease --stacktrace --info
       shell: bash
@@ -42,7 +42,7 @@ jobs:
     - name: Rename and upload AAR
       run: |
         echo "Navigating to the android directory to find AAR output..."
-        cd android/llama.android
+        cd android
         mkdir -p ../artifacts
         ls -ld ../artifacts || echo "Artifacts directory does not exist."
         AAR_PATH=$(find ./llama/build/outputs/aar -type f -name "*.aar" | head -n 1)

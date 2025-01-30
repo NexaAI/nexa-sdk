@@ -6,7 +6,19 @@ import pathlib
 
 
 # Load the library
-def _load_shared_library(lib_base_name: str):
+def _load_shared_library(lib_base_name: str, lib_subdir_name: str = ''):
+    """
+    Loads a shared library for bark.cpp using ctypes.
+
+    Args:
+        lib_base_name (str): The base name of the shared library. For example, if your shared library file is named 'libbark.so', 
+                             this parameter should be set to 'bark'. The function automatically handles the 'lib' prefix and 
+                             platform-specific file extensions (e.g., .so, .dll, .dylib).
+        lib_subdir_name (str): The name of the subdirectory where the shared library is located. By default, the function looks 
+                               for libraries in the root directory without recursion. If a non-empty string is
+                               provided, the function will search in '<root_dir>/<lib_subdir_name>/' instead.
+    """
+
     # Determine the file extension based on the platform
     if sys.platform.startswith("linux"):
         lib_ext = ".so"
@@ -19,10 +31,16 @@ def _load_shared_library(lib_base_name: str):
 
     # Construct the paths to the possible shared library names
     _base_path = pathlib.Path(__file__).parent.parent.resolve()
-    _lib_paths = [
-        _base_path / f"lib/lib{lib_base_name}{lib_ext}",
-        _base_path / f"lib/{lib_base_name}{lib_ext}",
-    ]
+    if len(lib_subdir_name) == 0:
+        _lib_paths = [
+            _base_path / f"lib/lib{lib_base_name}{lib_ext}",
+            _base_path / f"lib/{lib_base_name}{lib_ext}",
+        ]
+    else:
+        _lib_paths = [
+            _base_path / "lib" / lib_subdir_name / f"lib{lib_base_name}{lib_ext}",
+            _base_path / "lib" / lib_subdir_name / f"{lib_base_name}{lib_ext}",
+        ] 
 
     if "BARK_CPP_LIB" in os.environ:
         lib_base_name = os.environ["BARK_CPP_LIB"]
@@ -32,7 +50,10 @@ def _load_shared_library(lib_base_name: str):
 
     # Add the library directory to the DLL search path on Windows (if needed)
     if sys.platform == "win32" and sys.version_info >= (3, 8):
-        os.add_dll_directory(str(_base_path))
+        if len(lib_subdir_name) == 0:
+            os.add_dll_directory(str(_base_path / 'lib'))
+        else:
+            os.add_dll_directory(str(_base_path / 'lib' / lib_subdir_name))
 
     # Try to load the shared library, handling potential errors
     for _lib_path in _lib_paths:
@@ -49,9 +70,10 @@ def _load_shared_library(lib_base_name: str):
 
 # Specify the base name of the shared library to load
 _lib_base_name = "bark"
+_lib_subdir_name = "bark.cpp"
 
 # Load the library
-_lib = _load_shared_library(_lib_base_name)
+_lib = _load_shared_library(_lib_base_name, _lib_subdir_name)
 
 
 

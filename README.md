@@ -7,7 +7,7 @@
 [MacOS-image]: https://img.shields.io/badge/-MacOS-black?logo=apple
 [Linux-image]: https://img.shields.io/badge/-Linux-333?logo=ubuntu
 
-[![MacOS][MacOS-image]][release-url] [![Linux][Linux-image]][release-url] [![Windows][Windows-image]][release-url] [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FNexaAI%2Fnexa-sdk%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/NexaAI/nexa-sdk) [![Build workflow](https://img.shields.io/github/actions/workflow/status/NexaAI/nexa-sdk/ci.yaml?label=CI&logo=github)](https://github.com/NexaAI/nexa-sdk/actions/workflows/ci.yaml?query=branch%3Amain) ![GitHub License](https://img.shields.io/github/license/NexaAI/nexa-sdk) [![GitHub Release](https://img.shields.io/github/v/release/NexaAI/nexa-sdk)](https://github.com/NexaAI/nexa-sdk/releases/latest)
+[![MacOS][MacOS-image]][release-url] [![Linux][Linux-image]][release-url] [![Windows][Windows-image]][release-url] [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FNexaAI%2Fnexa-sdk%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/NexaAI/nexa-sdk) [![Build workflow](https://img.shields.io/github/actions/workflow/status/NexaAI/nexa-sdk/ci.yaml?label=CI&logo=github)](https://github.com/NexaAI/nexa-sdk/actions/workflows/ci.yaml?query=branch%3Amain) ![GitHub License](https://img.shields.io/github/license/NexaAI/nexa-sdk) [![GitHub Release](https://img.shields.io/github/v/release/NexaAI/nexa-sdk)](https://github.com/NexaAI/nexa-sdk/releases/latest) [![PyPI](https://img.shields.io/pypi/v/nexaai)](https://pypi.org/project/nexaai/)
 
 [**On-Device Model Hub**](https://nexa.ai/models) | [**Documentation**](https://docs.nexa.ai/) | [**Discord**](https://discord.gg/thRu2HaK4D) | [**Blogs**](https://nexa.ai/blogs) | [**X (Twitter)**](https://x.com/nexa_ai)
 
@@ -242,6 +242,8 @@ Supported model examples (full list at [Model Hub](https://nexa.ai/models)):
 | [codeqwen](https://www.nexaai.com/Qwen/CodeQwen1.5-7B-Instruct/gguf-q4_0/readme) | Text | GGUF | `nexa run codeqwen` |
 | [mistral](https://www.nexaai.com/mistralai/Mistral-7B-Instruct-v0.3/gguf-q4_0/readme) | Text | GGUF/ONNX | `nexa run mistral` |
 | [deepseek-coder](https://www.nexaai.com/DeepSeek/deepseek-coder-1.3b-instruct/gguf-q4_0/readme) | Text | GGUF | `nexa run deepseek-coder` |
+| [DeepSeek-R1-Distill-Qwen-1.5B](https://nexa.ai/DeepSeek/DeepSeek-R1-Distill-Qwen-1.5B/gguf-q4_K_M/readme) | Text | GGUF | `nexa run DeepSeek-R1-Distill-Qwen-1.5B:q4_K_M` |
+| [DeepSeek-R1-Distill-Llama-8B](https://nexa.ai/DeepSeek/DeepSeek-R1-Distill-Llama-8B/gguf-q4_K_M/readme) | Text | GGUF | `nexa run DeepSeek-R1-Distill-Llama-8B:q4_K_M` |
 | [phi3.5](https://nexaai.com/microsoft/Phi-3.5-mini-instruct/gguf-q4_0/readme) | Text | GGUF | `nexa run phi3.5` |
 | [openelm](https://nexaai.com/apple/OpenELM-3B/gguf-q4_K_M/readme) | Text | GGUF | `nexa run openelm` |
 | [stable-diffusion-v2-1](https://nexaai.com/StabilityAI/stable-diffusion-v2-1/gguf-q4_0/readme) | Image Generation | GGUF | `nexa run sd2-1` |
@@ -254,6 +256,8 @@ Supported model examples (full list at [Model Hub](https://nexa.ai/models)):
 | [nomic-embed-text-v1.5](https://nexa.ai/nomic-ai/nomic-embed-text-v1.5/gguf-fp16/readme) | Embedding | GGUF | `nexa embed nomic` |
 | [all-MiniLM-L12-v2](https://nexa.ai/sentence-transformers/all-MiniLM-L12-v2/gguf-fp16/readme) | Embedding | GGUF | `nexa embed all-MiniLM-L12-v2:fp16` |
 | [bark-small](https://nexa.ai/suno/bark-small/gguf-fp16/readme) | Text-to-Speech | GGUF | `nexa run bark-small:fp16` |
+| [OuteTTS-0.1-350M](https://nexa.ai/OuteAI/OuteTTS-0.1-350M/gguf-q4_K_M/readme) | Text-to-Speech | GGUF | `nexa run OuteTTS-0.1-350M:q4_K_M` |
+| [OuteTTS-0.2-500M](https://nexa.ai/OuteAI/OuteTTS-0.2-500M/gguf-q4_K_M/readme) | Text-to-Speech | GGUF | `nexa run OuteTTS-0.2-500M:q4_K_M` |
 
 ## Run Models from 🤗 HuggingFace or 🤖 ModelScope
 
@@ -298,7 +302,8 @@ nexa convert -ms Qwen/Qwen2.5-7B-Instruct
 > 1. If you want to use <strong>ONNX model</strong>, just replace `pip install nexaai` with `pip install "nexaai[onnx]"` in provided commands.
 > 2. If you want to <strong>run benchmark evaluation</strong>, just replace `pip install nexaai` with `pip install "nexaai[eval]"` in provided commands.
 > 3. If you want to <strong>convert and quantize huggingface models to GGUF models</strong>, just replace `pip install nexaai` with `pip install "nexaai[convert]"` in provided commands.
-> 4. For Chinese developers, we recommend you to use <strong>Tsinghua Open Source Mirror</strong> as extra index url, just replace `--extra-index-url https://pypi.org/simple` with `--extra-index-url https://pypi.tuna.tsinghua.edu.cn/simple` in provided commands.
+> 4. If you want to use <strong>TTS model</strong>, just replace `pip install nexaai` with `pip install nexaai[tts]` in provided commands.
+> 5. For Chinese developers, we recommend you to use <strong>Tsinghua Open Source Mirror</strong> as extra index url, just replace `--extra-index-url https://pypi.org/simple` with `--extra-index-url https://pypi.tuna.tsinghua.edu.cn/simple` in provided commands.
 
 ### CLI Reference
 

@@ -40,12 +40,13 @@ def _load_shared_library(lib_base_name: str, base_path: Path = None):
 
 def _get_lib(is_qwen: bool = True):
     # Specify the base name of the shared library to load
-    _lib_base_name = "nexa-qwen2-audio-lib_shared" if is_qwen else "nexa-omni-audio-lib_shared"
+    _lib_base_name = "nexa-qwen2-audio-lib_shared" if is_qwen else "omni_audio_shared"
     base_path = (
         Path(__file__).parent.parent.parent.parent.resolve()
         / "nexa"
         / "gguf"
         / "lib"
+        / "llama"
     )
     return _load_shared_library(_lib_base_name, base_path)
 
@@ -93,6 +94,21 @@ def process_full(ctx: omni_context_p, params: omni_context_params_p, is_qwen: bo
     _lib = _lib_qwen if is_qwen else _lib_omni
     return _lib.omni_process_full(ctx, params)
 
+
+def process_streaming(ctx: omni_context_p, params: omni_context_params_p, is_qwen: bool = True):
+    _lib = _lib_qwen if is_qwen else _lib_omni
+    return _lib.omni_process_streaming(ctx, params)
+
+
+def sample(omni_streaming: ctypes.c_void_p, is_qwen: bool = True):
+    _lib = _lib_qwen if is_qwen else _lib_omni
+    return _lib.sample(omni_streaming)
+
+
+def get_str(omni_streaming: ctypes.c_void_p, is_qwen: bool = True):
+    _lib = _lib_qwen if is_qwen else _lib_omni
+    return _lib.get_str(omni_streaming)
+
 # OMNI_AUDIO_API void omni_free(struct omni_context *ctx_omni);
 def free(ctx: omni_context_p, is_qwen: bool = True):
     _lib = _lib_qwen if is_qwen else _lib_omni
@@ -110,6 +126,15 @@ for lib in [_lib_omni, _lib_qwen]:
     # Configure process_full
     lib.omni_process_full.argtypes = [omni_context_p, omni_context_params_p]
     lib.omni_process_full.restype = ctypes.c_char_p
+
+    lib.omni_process_streaming.argtypes = [omni_context_p, omni_context_params_p]
+    lib.omni_process_streaming.restype = ctypes.c_void_p
+
+    lib.sample.argtypes = [ctypes.c_void_p]
+    lib.sample.restype = ctypes.c_int32
+
+    lib.get_str.argtypes = [ctypes.c_void_p]
+    lib.get_str.restype = ctypes.c_char_p
 
     # Configure free
     lib.omni_free.argtypes = [omni_context_p]

@@ -1,6 +1,7 @@
 from nexa.gguf import NexaTextInference
 from nexa.gguf.lib_utils import is_gpu_available
 
+
 model = NexaTextInference(
     model_path="gemma",
     local_path=None,

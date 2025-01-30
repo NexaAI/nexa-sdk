@@ -120,10 +120,10 @@ def run_ggml_inference(args):
             from nexa.gguf.nexa_inference_voice import NexaVoiceInference
             inference = NexaVoiceInference(model_path=model_path, local_path=local_path, **kwargs)
         elif run_type == "TTS":
-            # # Temporarily disabled since version v0.0.9.3
-            raise NotImplementedError("TTS model is not supported in CLI mode.")
-            # from nexa.gguf.nexa_inference_tts import NexaTTSInference
-            # inference = NexaTTSInference(model_path=model_path, local_path=local_path, **kwargs)
+            kwargs.pop('tts_engine', None)
+            from nexa.gguf.nexa_inference_tts import NexaTTSInference
+            tts_engine = "outetts" if "OuteTTS" in local_path else "bark"
+            inference = NexaTTSInference(model_path=model_path, local_path=local_path, tts_engine=tts_engine, **kwargs)
         elif run_type == "AudioLM":
             if is_local_path:
                 from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
@@ -138,6 +138,8 @@ def run_ggml_inference(args):
     except Exception as e:
         print(f"Error running ggml inference: {e}")
         print(f"Please refer to our docs to install nexaai package: https://docs.nexaai.com/getting-started/installation ")
+        if isinstance(e, ImportError) and run_type == "TTS":
+            print(f"In order to run TTS models, you need to run `pip install nexaai[tts]` to install required dependencies.")
         return
 
     if hasattr(args, 'streamlit') and args.streamlit:
@@ -152,7 +154,7 @@ def run_ggml_server(args):
     from nexa.gguf.server.nexa_service import run_nexa_ai_service as NexaServer
     
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
-    model_path = kwargs.pop("model_path")
+    model_path = kwargs.pop("model_path", None)
     is_local_path = kwargs.pop("local_path", False)
     model_type = kwargs.pop("model_type", None)
     hf = kwargs.pop('huggingface', False)
@@ -271,6 +273,15 @@ def run_eval_tasks(args):
         print(f"Error running evaluation: {e}")
         print("Please run: pip install 'nexaai[eval]'")
         return
+
+def run_siglip_server(args):
+    from nexa.siglip.nexa_siglip_server import run_nexa_ai_siglip_service
+    run_nexa_ai_siglip_service(
+        image_dir=args.image_dir,
+        host=args.host,
+        port=args.port,
+        reload=args.reload
+    )
 
 def run_embedding_generation(args):
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
@@ -484,6 +495,8 @@ def main():
     tts_group.add_argument("--n_threads", type=int, default=1, help="Number of threads to use for processing")
     tts_group.add_argument("--seed", type=int, default=0, help="Seed for random number generation")
     tts_group.add_argument("--verbosity", type=int, default=1, help="Verbosity level for the Bark model")
+    tts_group.add_argument("--tts_engine", type=str, default="outetts", help="TTS engine to use: 'bark' or 'outetts'")
+    tts_group.add_argument("--speaker_name", type=str, default="male_1", help="Speaker name for OuteTTS")
 
     # ONNX command
     onnx_parser = subparsers.add_parser("onnx", help="Run inference for various tasks using ONNX models.")
@@ -556,8 +569,8 @@ def main():
     quantization_parser.add_argument("--keep_split", action="store_true", help="Quantize to the same number of shards")
 
     # GGML server parser
-    server_parser = subparsers.add_parser("server", help="Run the Nexa AI Text Generation Service")
-    server_parser.add_argument("model_path", type=str, nargs='?', help="Path or identifier for the model in Nexa Model Hub")
+    server_parser = subparsers.add_parser("server", help="Run the Nexa AI local service")
+    server_parser.add_argument("--model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
     server_parser.add_argument("-lp", "--local_path", action="store_true", help="Indicate that the model path provided is the local path")
     server_parser.add_argument("-mt", "--model_type", type=str, choices=[e.name for e in ModelType], help="Indicate the model running type, must be used with -lp, -hf or -ms")
     server_parser.add_argument("-hf", "--huggingface", action="store_true", help="Load model from Hugging Face Hub")
@@ -599,6 +612,13 @@ def main():
     perf_eval_group.add_argument("--device", type=str, help="Device to run performance evaluation on, choose from 'cpu', 'cuda', 'mps'", default="cpu")
     perf_eval_group.add_argument("--new_tokens", type=int, help="Number of new tokens to evaluate", default=100)
 
+    # Siglip Server
+    siglip_parser = subparsers.add_parser("siglip", help="Run the Nexa AI SigLIP Service")
+    siglip_parser.add_argument("--image_dir", type=str, help="Directory of images to load")
+    siglip_parser.add_argument("--host", type=str, default="localhost", help="Host to bind the server to")
+    siglip_parser.add_argument("--port", type=int, default=8100, help="Port to bind the server to")
+    siglip_parser.add_argument("--reload", action="store_true", help="Enable automatic reloading on code changes")
+
     args = parser.parse_args()
 
     if args.command == "run":
@@ -627,6 +647,8 @@ def main():
         run_onnx_inference(args)
     elif args.command == "eval":
         run_eval_tasks(args)
+    elif args.command == "siglip":
+        run_siglip_server(args)
     elif args.command == "embed":
         run_embedding_generation(args)
     elif args.command == "pull":

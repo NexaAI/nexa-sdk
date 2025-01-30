@@ -47,3 +47,20 @@ sacrebleu
 langdetect
 rouge_score
 immutabledict
+
+# For SigLIP
+torch
+sentencepiece
+
+# For tts
+torch
+torchaudio
+sounddevice
+uroman
+mecab-python3
+einops
+scipy
+pyyaml
+encodec
+unidic-lite
+inflect

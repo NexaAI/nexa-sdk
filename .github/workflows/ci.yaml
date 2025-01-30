@@ -41,6 +41,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install build pytest wheel setuptools scikit-build-core
+        python -m pip install -r requirements.txt
       shell: bash
 
     - name: Build DLL (Windows)

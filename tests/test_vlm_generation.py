@@ -1,7 +1,7 @@
 # from nexa.gguf import NexaVLMInference
 # from nexa.gguf.lib_utils import is_gpu_available
 # from tempfile import TemporaryDirectory
-# from .utils import download_model 
+# from tests.utils import download_model 
 
 # # Initialize the model
 # model = NexaVLMInference(
