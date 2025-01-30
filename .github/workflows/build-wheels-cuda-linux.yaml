@@ -67,9 +67,9 @@ jobs:
           CONDA_NO_LOW_SPEED_LIMIT: "1"
         run: |
           $cudaVersion = $env:CUDAVER
-          conda install -y -c nvidia/label/cuda-$cudaVersion cuda  # Use conda instead of mamba
-          conda install -y openmp  # Install OpenMP
-          conda install -y -c conda-forge libgcc libgomp  # Ensure required GCC libraries
+          conda install -y -c nvidia/label/cuda-$cudaVersion cuda
+          conda install -y -c conda-forge libgcc libgomp openmp
+          sudo apt-get update && sudo apt-get install -y libgomp1
           python -m pip install build wheel
 
       - name: Build Wheel
@@ -92,8 +92,8 @@ jobs:
           echo "GCC Version:"
           gcc --version
           echo "Checking OpenMP Flags:"
-          echo | cpp -fopenmp -dM | grep -i openmp || echo "OpenMP NOT found!"
-          
+          cpp -fopenmp -dM | Select-String -Pattern "OPENMP" || echo "OpenMP NOT found!"
+
           python -m build --wheel
           # write the build tag to the output
           Write-Output "CUDA_VERSION=$cudaVersion" >> $env:GITHUB_ENV
