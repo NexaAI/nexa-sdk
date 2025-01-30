@@ -242,6 +242,8 @@ Supported model examples (full list at [Model Hub](https://nexa.ai/models)):
 | [codeqwen](https://www.nexaai.com/Qwen/CodeQwen1.5-7B-Instruct/gguf-q4_0/readme) | Text | GGUF | `nexa run codeqwen` |
 | [mistral](https://www.nexaai.com/mistralai/Mistral-7B-Instruct-v0.3/gguf-q4_0/readme) | Text | GGUF/ONNX | `nexa run mistral` |
 | [deepseek-coder](https://www.nexaai.com/DeepSeek/deepseek-coder-1.3b-instruct/gguf-q4_0/readme) | Text | GGUF | `nexa run deepseek-coder` |
+| [DeepSeek-R1-Distill-Qwen-1.5B](https://nexa.ai/DeepSeek/DeepSeek-R1-Distill-Qwen-1.5B/gguf-q4_K_M/readme) | Text | GGUF | `nexa run DeepSeek-R1-Distill-Qwen-1.5B:q4_K_M` |
+| [DeepSeek-R1-Distill-Llama-8B](https://nexa.ai/DeepSeek/DeepSeek-R1-Distill-Llama-8B/gguf-q4_K_M/readme) | Text | GGUF | `nexa run DeepSeek-R1-Distill-Llama-8B:q4_K_M` |
 | [phi3.5](https://nexaai.com/microsoft/Phi-3.5-mini-instruct/gguf-q4_0/readme) | Text | GGUF | `nexa run phi3.5` |
 | [openelm](https://nexaai.com/apple/OpenELM-3B/gguf-q4_K_M/readme) | Text | GGUF | `nexa run openelm` |
 | [stable-diffusion-v2-1](https://nexaai.com/StabilityAI/stable-diffusion-v2-1/gguf-q4_0/readme) | Image Generation | GGUF | `nexa run sd2-1` |
