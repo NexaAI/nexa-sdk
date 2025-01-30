@@ -94,7 +94,7 @@ jobs:
 
   build_wheels_arm64:
     name: Build arm64 wheels
-    runs-on: ubuntu-20.04-arm
+    runs-on: ubuntu-22.04-arm
     steps:
       - uses: actions/checkout@v4
         with:
