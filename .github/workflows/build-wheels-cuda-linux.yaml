@@ -71,32 +71,49 @@ jobs:
           conda install -y -c conda-forge libgcc libgomp openmp
           sudo apt-get update && sudo apt-get install -y libgomp1
           python -m pip install build wheel
-
-      - name: Build Wheel
+          
+      - name: Debug CUDA & GLIBC Issues
         run: |
-          $cudaVersion = $env:CUDAVER.Remove($env:CUDAVER.LastIndexOf('.')).Replace('.','')
-          $env:CUDA_PATH = $env:CONDA_PREFIX
-          $env:CUDA_HOME = $env:CONDA_PREFIX
-          $env:CUDA_TOOLKIT_ROOT_DIR = $env:CONDA_PREFIX
-          if ($IsLinux) {
-            $env:LD_LIBRARY_PATH = $env:CONDA_PREFIX + '/lib:' + $env:LD_LIBRARY_PATH
-          }
-          $env:VERBOSE = '1'
+          echo "## Checking GLIBC version..."
+          ldd --version | head -n 1
 
-          $env:CMAKE_BUILD_PARALLEL_LEVEL = $(nproc)
-          $env:CMAKE_ARGS = '-DSD_CUBLAS=ON -DGGML_CUDA=ON -DGGML_CUBLAS=ON -DCMAKE_CUDA_ARCHITECTURES=all'
-          $env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DGGML_CUDA_FORCE_MMQ=ON -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_F16C=OFF'
+          echo "## Checking CUDA installation..."
+          nvcc --version || echo "CUDA not found!"
 
-          # Debug OpenMP detection
-          echo "Checking OpenMP..."
-          echo "GCC Version:"
-          gcc --version
-          echo "Checking OpenMP Flags:"
-          cpp -fopenmp -dM | Select-String -Pattern "OPENMP" || echo "OpenMP NOT found!"
+          echo "## Checking if libdl and librt are available..."
+          ldconfig -p | grep -E "libdl|librt" || echo "Missing libdl or librt!"
 
-          python -m build --wheel
-          # write the build tag to the output
-          Write-Output "CUDA_VERSION=$cudaVersion" >> $env:GITHUB_ENV
+          echo "## Checking Conda environment libraries..."
+          conda list | grep -E "libgcc-ng|glibc" || echo "Missing libgcc-ng or glibc in Conda!"
+
+          echo "## Checking CUDA shared libraries..."
+          ls -l $CONDA_PREFIX/lib/ | grep "libcudart.so" || echo "Missing libcudart.so!"
+
+      # - name: Build Wheel
+      #   run: |
+      #     $cudaVersion = $env:CUDAVER.Remove($env:CUDAVER.LastIndexOf('.')).Replace('.','')
+      #     $env:CUDA_PATH = $env:CONDA_PREFIX
+      #     $env:CUDA_HOME = $env:CONDA_PREFIX
+      #     $env:CUDA_TOOLKIT_ROOT_DIR = $env:CONDA_PREFIX
+      #     if ($IsLinux) {
+      #       $env:LD_LIBRARY_PATH = $env:CONDA_PREFIX + '/lib:' + $env:LD_LIBRARY_PATH
+      #     }
+      #     $env:VERBOSE = '1'
+
+      #     $env:CMAKE_BUILD_PARALLEL_LEVEL = $(nproc)
+      #     $env:CMAKE_ARGS = '-DSD_CUBLAS=ON -DGGML_CUDA=ON -DGGML_CUBLAS=ON -DCMAKE_CUDA_ARCHITECTURES=all'
+      #     $env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DGGML_CUDA_FORCE_MMQ=ON -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_F16C=OFF'
+
+      #     # Debug OpenMP detection
+      #     echo "Checking OpenMP..."
+      #     echo "GCC Version:"
+      #     gcc --version
+      #     echo "Checking OpenMP Flags:"
+      #     cpp -fopenmp -dM | Select-String -Pattern "OPENMP" || echo "OpenMP NOT found!"
+
+      #     python -m build --wheel
+      #     # write the build tag to the output
+      #     Write-Output "CUDA_VERSION=$cudaVersion" >> $env:GITHUB_ENV
 
       - uses: softprops/action-gh-release@v2
         with:
