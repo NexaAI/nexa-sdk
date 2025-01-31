@@ -64,9 +64,9 @@ jobs:
         with:
           activate-environment: "build"
           python-version: ${{ matrix.pyver }}
-          miniforge-variant: Mambaforge
-          miniforge-version: latest
-          use-mamba: true
+          channels: conda-forge,defaults
+          channel-priority: true
+          mamba-version: "*"
           add-pip-as-python-dependency: true
           auto-activate-base: false
 
