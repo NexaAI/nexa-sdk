@@ -9,8 +9,8 @@ def test_structural_output():
     response = nexa.structure_output(prompt=prompt, json_schema_path=schema_abs_path)
     print(f"response: {json.dumps(response, indent=4)}")
 
-def echo_integer(number):
-    return number
+def add_integer(num1, num2):
+    return num1, num2
 
 def test_function_calling():
     tools = [
@@ -22,8 +22,8 @@ def test_function_calling():
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "number1": {"type": "integer", "description": "An integer to add."},
-                        "number2": {"type": "integer", "description": "An integer to add."} 
+                        "num1": {"type": "integer", "description": "An integer to add."},
+                        "num2": {"type": "integer", "description": "An integer to add."} 
                     },
                     "required": ["number"],
                     "additionalProperties": False
@@ -34,10 +34,10 @@ def test_function_calling():
     ]
     messages = [
         {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "Please echo the number 142."}
+        {"role": "user", "content": "Please calculate the sum of 42 and 100."}
     ]
     
-    nexa = NexaTextInference(model_path="Meta-Llama-3.1-8B-Instruct:q4_0")
+    nexa = NexaTextInference(model_path="Meta-Llama-3.1-8B-Instruct:q4_0", function_calling=True)
     response = nexa.function_calling(messages=messages, tools=tools)
     print(response)
 

@@ -47,7 +47,7 @@ class NexaTextInference:
     top_k (int): Top-k sampling parameter.
     top_p (float): Top-p sampling parameter
     """
-    def __init__(self, model_path=None, local_path=None, stop_words=None, device="auto", **kwargs):
+    def __init__(self, model_path=None, local_path=None, stop_words=None, device="auto", function_calling:bool=False, **kwargs):
         if model_path is None and local_path is None:
             raise ValueError("Either model_path or local_path must be provided.")
         
@@ -75,8 +75,10 @@ class NexaTextInference:
 
         model_name = model_path.split(":")[0].lower() if model_path else None
         self.stop_words = (stop_words if stop_words else NEXA_STOP_WORDS_MAP.get(model_name, []))
-        # self.chat_format = NEXA_RUN_CHAT_TEMPLATE_MAP.get(model_name, None)
-        self.chat_format = 'functionary'
+        if function_calling:
+            self.chat_format = 'functionary' 
+        else:
+            self.chat_format = NEXA_RUN_CHAT_TEMPLATE_MAP.get(model_name, None)
         self.completion_template = NEXA_RUN_COMPLETION_TEMPLATE_MAP.get(model_name, None)
 
         if not kwargs.get("streamlit", False):
@@ -387,8 +389,32 @@ class NexaTextInference:
         
         return structured_data
     
-    def function_calling(self, messages, tools):
-        return self.model.create_chat_completion(messages=messages, tools=tools)
+    def function_calling(self, messages, tools) -> list:
+        response = self.model.create_chat_completion(messages=messages, tools=tools, function_call='none')
+        def process_output(output):
+            processed_output = []
+        
+            for item in output['choices'][0]['message']['tool_calls']:
+                if "function" in item and isinstance(item["function"], dict):
+                    try:
+                        function_data = json.loads(item["function"]["arguments"])
+                        function_name = function_data.get("function", "")
+                        function_args = {k: v for k, v in function_data.items() if k not in ['type', 'function']}
+                        function_args = function_args['input']
+
+                        processed_output.append({
+                            "type": "function",
+                            "function": {
+                                "name": function_name,
+                                "arguments": json.dumps(function_args)
+                            }
+                        })
+                    except json.JSONDecodeError:
+                        print("Error: Unable to parse JSON from function arguments")
+            
+            return processed_output
+        
+        return process_output(response)
 
     def run_streamlit(self, model_path: str, is_local_path = False, hf = False):
         """
