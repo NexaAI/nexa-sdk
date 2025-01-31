@@ -74,6 +74,10 @@ jobs:
 
       - name: Debug CUDA & GLIBC Issues
         run: |
+          echo "check gcc"
+          gcc --version
+          which gcc
+          
           echo "## Checking GLIBC version..."
           ldd --version
 
@@ -87,7 +91,7 @@ jobs:
           conda list | grep -E "libgcc-ng|glibc" || echo "Missing libgcc-ng or glibc in Conda!"
 
           echo "## Checking CUDA shared libraries..."
-          ls -l $CONDA_PREFIX/lib/ | grep "libcudart.so" || echo "Missing libcudart.so!"
+          ls -l $CONDA_PREFIX/lib/ | grep "libcudart" || echo "Missing libcudart!"
 
       - name: Build Wheel
         run: |
