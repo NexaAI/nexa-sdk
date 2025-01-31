@@ -75,7 +75,8 @@ class NexaTextInference:
 
         model_name = model_path.split(":")[0].lower() if model_path else None
         self.stop_words = (stop_words if stop_words else NEXA_STOP_WORDS_MAP.get(model_name, []))
-        self.chat_format = NEXA_RUN_CHAT_TEMPLATE_MAP.get(model_name, None)
+        # self.chat_format = NEXA_RUN_CHAT_TEMPLATE_MAP.get(model_name, None)
+        self.chat_format = 'functionary'
         self.completion_template = NEXA_RUN_COMPLETION_TEMPLATE_MAP.get(model_name, None)
 
         if not kwargs.get("streamlit", False):
@@ -385,7 +386,9 @@ class NexaTextInference:
             raise
         
         return structured_data
-
+    
+    def function_calling(self, messages, tools):
+        return self.model.create_chat_completion(messages=messages, tools=tools)
 
     def run_streamlit(self, model_path: str, is_local_path = False, hf = False):
         """
