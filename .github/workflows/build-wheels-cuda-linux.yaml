@@ -71,11 +71,11 @@ jobs:
           conda install -y -c conda-forge libgcc libgomp openmp
           sudo apt-get update && sudo apt-get install -y libgomp1
           python -m pip install build wheel
-          
+
       - name: Debug CUDA & GLIBC Issues
         run: |
           echo "## Checking GLIBC version..."
-          ldd --version | head -n 1
+          ldd --version
 
           echo "## Checking CUDA installation..."
           nvcc --version || echo "CUDA not found!"
