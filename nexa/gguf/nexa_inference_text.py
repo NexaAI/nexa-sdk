@@ -390,11 +390,9 @@ class NexaTextInference:
         return structured_data
     
     def function_calling(self, messages, tools) -> list:
-        response = self.model.create_chat_completion(messages=messages, tools=tools, function_call='none')
         def process_output(output):
             processed_output = []
-        
-            for item in output['choices'][0]['message']['tool_calls']:
+            for item in output:
                 if "function" in item and isinstance(item["function"], dict):
                     try:
                         function_data = json.loads(item["function"]["arguments"])
@@ -414,7 +412,16 @@ class NexaTextInference:
             
             return processed_output
         
-        return process_output(response)
+        response = self.model.create_chat_completion(messages=messages, tools=tools, function_call='none')
+        response = response['choices'][0]['message']['tool_calls'] 
+        try:
+            return process_output(response)
+        except Exception as e:
+            print(
+                "Error: The model output does not match the expected function calling format. "
+                "Consider trying a more capable model or adjusting your prompt."
+            )
+            return []
 
     def run_streamlit(self, model_path: str, is_local_path = False, hf = False):
         """
