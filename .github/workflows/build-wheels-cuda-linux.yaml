@@ -73,13 +73,13 @@ jobs:
           python -m pip install build wheel
       
       - name: Debug CUDA & GLIBC Issues
-      run: |
-        echo "Check GCC"
-        gcc --version
-        which gcc
+        run: |
+          echo "Check GCC"
+          gcc --version
+          which gcc
 
-        echo "## Checking if libdl and librt are available"
-        ldconfig -p | grep -E "libdl|librt" || echo "Missing libdl or librt!"
+          echo "## Checking if libdl and librt are available"
+          ldconfig -p | grep -E "libdl|librt" || echo "Missing libdl or librt!"
 
       - name: Build Wheel
         run: |
