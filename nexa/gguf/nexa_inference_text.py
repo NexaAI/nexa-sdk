@@ -419,6 +419,10 @@ class NexaTextInference:
             for item in output:
                 if "function" in item and isinstance(item["function"], dict):
                     try:
+                        # llama-cpp-python's `create_chat_completion` produces incorrectly parsed output when only
+                        # `messages` and `tools` are provided. Specifically, the function name is mistakenly treated
+                        # as an argument, while the `function.name` field is an empty string. 
+                        # The following code corrects this issue.
                         function_data = json.loads(item["function"]["arguments"])
                         function_name = function_data.get("function", "")
                         function_args = {k: v for k, v in function_data.items() if k not in ['type', 'function']}
