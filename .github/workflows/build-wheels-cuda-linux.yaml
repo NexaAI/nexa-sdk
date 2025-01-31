@@ -68,7 +68,7 @@ jobs:
         run: |
           $cudaVersion = $env:CUDAVER
           conda install -y -c nvidia/label/cuda-$cudaVersion cuda
-          conda install -y -c conda-forge libgcc libgomp openmp glibc
+          conda install -y -c conda-forge libgcc libgomp openmp
           sudo apt-get update && sudo apt-get install -y libgomp1
           python -m pip install build wheel
 
@@ -77,7 +77,7 @@ jobs:
           echo "check gcc"
           gcc --version
           which gcc
-          
+
           echo "## Checking GLIBC version..."
           ldd --version
 
@@ -91,7 +91,7 @@ jobs:
           conda list | grep -E "libgcc-ng|glibc" || echo "Missing libgcc-ng or glibc in Conda!"
 
           echo "## Checking CUDA shared libraries..."
-          ls -l $CONDA_PREFIX/lib/ | grep "libcudart" || echo "Missing libcudart!"
+          ls -l $CONDA_PREFIX/lib/
 
       - name: Build Wheel
         run: |
