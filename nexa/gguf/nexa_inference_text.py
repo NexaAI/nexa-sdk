@@ -389,7 +389,31 @@ class NexaTextInference:
         
         return structured_data
     
-    def function_calling(self, messages, tools) -> list:
+    def function_calling(self, messages, tools) -> list[dict]:
+        """
+        Generate function calls based on input messages and available functions.
+
+        This method generates a list of function calls in JSON format. 
+        To use this method, the `function_calling` argument must be set to `True` 
+        when initializing the `NexaTextInference` instance.
+
+        Args:
+            messages (list): A list of dictionaries representing the chat. Each dictionary should contain:
+                - 'role' (str): The role of the message sender (e.g., 'user',
+                'assistant').
+                - 'content' (str): The textual content of the message.
+            tools (list): A list of dictionaries, each defining an available
+                function that can be called by the LLM. Each dictionary should include:
+                - 'name' (str): The function's name.
+                - 'description' (str): A brief description of the function's
+                purpose.
+                - 'parameters' (dict): A schema defining the function's parameters,
+                including their types and descriptions.
+
+        Returns:
+            A list of dictionaries representing the assistant's responses.
+            Each dictionary contains the function name and its corresponding arguments.
+        """
         def process_output(output):
             processed_output = []
             for item in output:
