@@ -367,6 +367,7 @@ Generates function calling commands based on the provided messages and available
     {"role": "user", "content": "Please calculate the sum of 42 and 100."}
   ]
 }
+```
 
 **Note:** It is highly recommended to provide a well-defined and detailed system prompt, as it greatly improves the accuracy and consistency of function calling responses. You can use the system prompt provided above as a reference.
 
