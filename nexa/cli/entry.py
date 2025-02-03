@@ -159,7 +159,8 @@ def run_ggml_server(args):
     model_type = kwargs.pop("model_type", None)
     hf = kwargs.pop('huggingface', False)
     ms = kwargs.pop('modelscope', False)
-    
+    use_function_calling = kwargs.pop('function_calling', False)
+
     run_type = None
     if model_type:
         run_type = ModelType[model_type].value
@@ -193,6 +194,7 @@ def run_ggml_server(args):
         model_type_arg=run_type,
         huggingface=hf,
         modelscope=ms,
+        function_calling=use_function_calling,
         projector_local_path_arg=projector_local_path,
         **kwargs
     )
@@ -579,6 +581,15 @@ def main():
     server_parser.add_argument("--port", type=int, default=8000, help="Port to bind the server to")
     server_parser.add_argument("--reload", action="store_true", help="Enable automatic reloading on code changes")
     server_parser.add_argument("--nctx", type=int, default=2048, help="Maximum context length of the model you're using")
+    server_parser.add_argument(
+        "-fc",
+        "--function_calling",
+        action="store_true",
+        help="Enable function calling capabilities in the NLP model. "
+            "If set, the model can only process function calling requests via the /v1/function_calling API "
+            "and will not handle normal NLP tasks."
+    )
+
 
     # Other commands
     pull_parser = subparsers.add_parser("pull", help="Pull a model from official or hub.")

@@ -299,7 +299,7 @@ Modifies existing images based on a single prompt.
 }
 ```
 
-### 6. Text-to-Image: <code>/v1/txt2speech</code>
+### 6. Text-to-Speech: <code>/v1/txt2speech</code>
 
 Generates wav format voices based on a single prompt.
 
@@ -330,7 +330,65 @@ The `language` argument applies only to OuteTTS models.
 }
 ```
 
-### 7. Audio Transcriptions: <code>/v1/audio/transcriptions</code>
+### 7. Function Calling API: <code>/v1/function_calling</code>
+Generates function calling commands based on the provided messages and available tools. This API is only accessible if the loaded model is an NLP model and the `-fc` (or `--function_calling`) flag is enabled when running `nexa server`.
+
+#### Request body:
+
+```json
+{
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "add_integer",
+        "description": "Returns the addition of input integers.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "num1": {"type": "integer", "description": "An integer to add."},
+            "num2": {"type": "integer", "description": "An integer to add."}
+          },
+          "required": ["num1", "num2"],
+          "additionalProperties": false
+        },
+        "strict": true
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are an AI assistant that generates structured function calling responses. "
+      "Identify the correct function from the available tools and return a JSON object "
+      "containing the function name and all required parameters. Ensure the parameters "
+      "are accurately derived from the user's input and formatted correctly."
+    },
+    {"role": "user", "content": "Please calculate the sum of 42 and 100."}
+  ]
+}
+```
+
+**Note:** It is highly recommended to provide a well-defined and detailed system prompt, as it greatly improves the accuracy and consistency of function calling responses. You can use the system prompt provided above as a reference.
+
+#### Example Response:
+
+```json
+{
+  "created": 1738610394.597405,
+  "response": [
+    {
+      "type": "function",
+      "function": {
+        "name": "add_integer",
+        "arguments": "{\"num1\": 42, \"num2\": 100}"
+      }
+    }
+  ]
+}
+```
+
+### 8. Audio Transcriptions: <code>/v1/audio/transcriptions</code>
 
 Transcribes audio files to text.
 
@@ -356,7 +414,7 @@ Transcribes audio files to text.
 }
 ```
 
-### 8. Audio Translations: <code>/v1/audio/translations</code>
+### 9. Audio Translations: <code>/v1/audio/translations</code>
 
 Translates audio files to text in English.
 
@@ -381,7 +439,7 @@ Translates audio files to text in English.
 }
 ```
 
-### 9. Generate Embeddings: <code>/v1/embeddings</code>
+### 10. Generate Embeddings: <code>/v1/embeddings</code>
 
 Generate embeddings for a given text.
 
