@@ -331,8 +331,7 @@ The `language` argument applies only to OuteTTS models.
 ```
 
 ### 7. Function Calling API: <code>/v1/function_calling</code>
-
-Generate function calling command based on provided messages and available tools.
+Generates function calling commands based on the provided messages and available tools. This API is only accessible if the loaded model is an NLP model and the `-fc` (or `--function_calling`) flag is enabled when running `nexa server`.
 
 #### Request body:
 
