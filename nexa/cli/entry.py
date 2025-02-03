@@ -160,7 +160,7 @@ def run_ggml_server(args):
     hf = kwargs.pop('huggingface', False)
     ms = kwargs.pop('modelscope', False)
     use_function_calling = kwargs.pop('function_calling', False)
-    
+
     run_type = None
     if model_type:
         run_type = ModelType[model_type].value
@@ -194,8 +194,8 @@ def run_ggml_server(args):
         model_type_arg=run_type,
         huggingface=hf,
         modelscope=ms,
+        function_calling=use_function_calling,
         projector_local_path_arg=projector_local_path,
-        use_function_calling=use_function_calling
         **kwargs
     )
 

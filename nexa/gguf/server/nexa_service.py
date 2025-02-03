@@ -357,12 +357,6 @@ async def load_model():
     global model, chat_format, completion_template, model_path, n_ctx, is_local_path, model_type, is_huggingface, is_modelscope, projector_path
     global use_function_calling
 
-    if use_function_calling and model_type != "NLP":
-        raise ValueError(
-            "Function calling is only supported for NLP models. "
-            "Please ensure that you are using a compatible NLP model before enabling this feature."
-    )
-
     if is_local_path:
         if model_type == "Multimodal":
             if not projector_path:
@@ -393,6 +387,12 @@ async def load_model():
     print(f"model_type: {model_type}")
     if use_function_calling:
         print('Function calling option is enabled')
+
+    if use_function_calling and model_type != "NLP":
+        raise ValueError(
+            "Function calling is only supported for NLP models. "
+            "Please ensure that you are using a compatible NLP model before enabling this feature."
+    )
 
     if model_type == "NLP" or model_type == "Text Embedding":
         if model_type == "NLP" and use_function_calling:
@@ -768,7 +768,7 @@ def load_audio_from_bytes(audio_bytes: bytes):
         a = librosa.resample(a, orig_sr=sr, target_sr=SAMPLING_RATE)
     return a
 
-def run_nexa_ai_service(model_path_arg=None, is_local_path_arg=False, model_type_arg=None, huggingface=False, modelscope=False, projector_local_path_arg=None, function_calling=False, **kwargs):
+def run_nexa_ai_service(model_path_arg=None, is_local_path_arg=False, model_type_arg=None, huggingface=False, modelscope=False, function_calling=False, projector_local_path_arg=None, **kwargs):
     global model_path, n_ctx, is_local_path, model_type, is_huggingface, is_modelscope, projector_path, use_function_calling
     is_local_path = is_local_path_arg
     is_huggingface = huggingface
