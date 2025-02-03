@@ -357,10 +357,18 @@ Generates function calling commands based on the provided messages and available
     }
   ],
   "messages": [
-    {"role": "system", "content": "You are a helpful assistant."},
+    {
+      "role": "system",
+      "content": "You are an AI assistant that generates structured function calling responses. "
+      "Identify the correct function from the available tools and return a JSON object "
+      "containing the function name and all required parameters. Ensure the parameters "
+      "are accurately derived from the user's input and formatted correctly."
+    },
     {"role": "user", "content": "Please calculate the sum of 42 and 100."}
   ]
 }
+
+**Note:** It is highly recommended to provide a well-defined and detailed system prompt, as it greatly improves the accuracy and consistency of function calling responses. You can use the system prompt provided above as a reference.
 
 #### Example Response:
 
