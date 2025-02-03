@@ -585,7 +585,9 @@ def main():
         "-fc",
         "--function_calling",
         action="store_true",
-        help="Switch NLP model to handle function calling tasks."
+        help="Enable function calling capabilities in the NLP model. "
+            "If set, the model can only process function calling requests via the /v1/function_calling API "
+            "and will not handle normal NLP tasks."
     )
 
 
