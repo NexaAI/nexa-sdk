@@ -172,32 +172,32 @@ class FunctionDefinitionRequestClass(BaseModel):
     class Config:
         extra = "allow"
 
-class FunctionCallRequest(BaseModel):
-    messages: List[Message] = [
-        Message(role="user", content="Extract Jason is 25 years old")]
-    tools: List[FunctionDefinitionRequestClass] = [
-        FunctionDefinitionRequestClass(
-            type="function",
-            function={
-                "name": "UserDetail",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string",
-                            "description": "The user's name"
-                        },
-                        "age": {
-                            "type": "integer",
-                            "description": "The user's age"
-                        }
-                    },
-                    "required": ["name", "age"]
-                }
-            }
-        )
-    ]
-    tool_choice: Optional[str] = "auto"
+# class FunctionCallRequest(BaseModel):
+#     messages: List[Message] = [
+#         Message(role="user", content="Extract Jason is 25 years old")]
+#     tools: List[FunctionDefinitionRequestClass] = [
+#         FunctionDefinitionRequestClass(
+#             type="function",
+#             function={
+#                 "name": "UserDetail",
+#                 "parameters": {
+#                     "type": "object",
+#                     "properties": {
+#                         "name": {
+#                             "type": "string",
+#                             "description": "The user's name"
+#                         },
+#                         "age": {
+#                             "type": "integer",
+#                             "description": "The user's age"
+#                         }
+#                     },
+#                     "required": ["name", "age"]
+#                 }
+#             }
+#         )
+#     ]
+#     tool_choice: Optional[str] = "auto"
 
 class ImageGenerationRequest(BaseModel):
     prompt: str = "A girl, standing in a field of flowers, vivid"
@@ -247,7 +247,13 @@ class FunctionCallRequest(BaseModel):
         }
     ]
     messages: List[Dict[str, Any]] = [
-        {"role": "system", "content": "You are a helpful assistant."},
+        {
+            "role": "system",
+            "content": "You are an AI assistant that generates structured function calling responses. "
+            "Identify the correct function from the available tools and return a JSON object "
+            "containing the function name and all required parameters. Ensure the parameters "
+            "are accurately derived from the user's input and formatted correctly."
+        },
         {"role": "user", "content": "Please calculate the sum of 42 and 100."}
     ]
 

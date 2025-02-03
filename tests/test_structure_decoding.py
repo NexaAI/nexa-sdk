@@ -13,28 +13,83 @@ def add_integer(num1, num2):
     return num1, num2
 
 def test_function_calling():
-    tools = [
-        {
-            "type": "function",
-            "function": {
-                "name": "add_integer",
-                "description": "Returns the addition of input integers.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "num1": {"type": "integer", "description": "An integer to add."},
-                        "num2": {"type": "integer", "description": "An integer to add."} 
-                    },
-                    "required": ["number"],
-                    "additionalProperties": False
+
+    system_prompt = (
+        "You are an AI assistant that generates structured function calling responses. "
+        "Identify the correct function from the available tools and return a JSON object "
+        "containing the function name and all required parameters. Ensure the parameters "
+        "are accurately derived from the user's input and formatted correctly."
+    )
+
+    # tools = [
+    #     {
+    #         "type": "function",
+    #         "function": {
+    #             "name": "add_integer",
+    #             "description": "Returns the addition of input integers.",
+    #             "parameters": {
+    #                 "type": "object",
+    #                 "properties": {
+    #                     "num1": {"type": "integer", "description": "An integer to add."},
+    #                     "num2": {"type": "integer", "description": "An integer to add."} 
+    #                 },
+    #                 "required": ["number"],
+    #                 "additionalProperties": False
+    #             },
+    #             "strict": True
+    #         }
+    #     }
+    # ]
+    # messages = [
+    #     {"role": "system", "content": system_prompt},
+    #     {"role": "user", "content": "Please calculate the sum of 42 and 100."}
+    # ]
+
+    # tools = [
+    #     {
+    #         "type": "function",
+    #         "function": {
+    #             "name": "max_integer",
+    #             "description": "Returns the maximum of input integers.",
+    #             "parameters": {
+    #                 "type": "object",
+    #                 "properties": {
+    #                     "num1": {"type": "integer", "description": "An input integer."},
+    #                     "num2": {"type": "integer", "description": "An input integer."} 
+    #                 },
+    #                 "required": ["num1", "num2"],
+    #                 "additionalProperties": False
+    #             },
+    #             "strict": True
+    #         }
+    #     }
+    # ]
+    # messages = [
+    #     {"role": "system", "content": system_prompt},
+    #     {"role": "user", "content": "Please calculate the maximum of 42 and 100."}
+    # ]
+
+    tools = [{
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get current temperature for provided coordinates in celsius.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "latitude": {"type": "number"},
+                    "longitude": {"type": "number"}
                 },
-                "strict": True
-            }
+                "required": ["latitude", "longitude"],
+                "additionalProperties": False
+            },
+            "strict": True
         }
-    ]
+    }]
+
     messages = [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "Please calculate the sum of 42 and 100."}
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": "What's the weather like in Paris today?"}
     ]
     
     nexa = NexaTextInference(model_path="Meta-Llama-3.1-8B-Instruct:q4_0", function_calling=True)
@@ -43,5 +98,5 @@ def test_function_calling():
 
 
 if __name__ == "__main__":
-    test_structural_output()
+    # test_structural_output()
     test_function_calling()

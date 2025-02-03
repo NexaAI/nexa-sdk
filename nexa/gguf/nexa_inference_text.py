@@ -425,8 +425,13 @@ class NexaTextInference:
                         # The following code corrects this issue.
                         function_data = json.loads(item["function"]["arguments"])
                         function_name = function_data.get("function", "")
-                        function_args = {k: v for k, v in function_data.items() if k not in ['type', 'function']}
-                        function_args = function_args['input']
+                        if function_name == "":
+                            function_name = function_data.get("name", "")
+                        function_args = {k: v for k, v in function_data.items() if k not in ['type', 'function', 'name']}
+                        if 'input' in function_args:
+                            function_args = function_args['input']
+                        else:
+                            function_args = function_args['parameters']
 
                         processed_output.append({
                             "type": "function",
@@ -443,6 +448,7 @@ class NexaTextInference:
         response = self.model.create_chat_completion(messages=messages, tools=tools, function_call='none')
         response = response['choices'][0]['message']['tool_calls'] 
         try:
+            # print(response)
             return process_output(response)
         except Exception as e:
             print(
