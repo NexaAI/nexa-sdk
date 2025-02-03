@@ -52,8 +52,6 @@ from nexa.gguf.llama.llama import Llama
 # temporarily disabled NexaOmniVlmInference and NexaAudioLMInference 
 # from nexa.gguf.nexa_inference_vlm_omni import NexaOmniVlmInference
 # from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
-from nexa.gguf.nexa_inference_vlm import NexaVLMInference
-from nexa.gguf.sd.stable_diffusion import StableDiffusion
 from faster_whisper import WhisperModel
 import numpy as np
 import argparse
@@ -468,6 +466,7 @@ async def load_model():
                 logging.debug("Chat format detected")
     elif model_type == "Computer Vision":
         with suppress_stdout_stderr():
+            from nexa.gguf.sd.stable_diffusion import StableDiffusion
             model = StableDiffusion(
                 model_path=downloaded_path,
                 wtype=NEXA_RUN_MODEL_PRECISION_MAP.get(
@@ -498,6 +497,7 @@ async def load_model():
                         device="cpu"
                     )
             else:
+                from nexa.gguf.nexa_inference_vlm import NexaVLMInference
                 try:
                     model = NexaVLMInference(
                         model_path=model_path,
