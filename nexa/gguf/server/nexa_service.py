@@ -49,8 +49,6 @@ from nexa.gguf.llama.llama_chat_format import (
 from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
 from nexa.general import add_model_to_list, default_use_processes, download_file_with_progress, get_model_info, is_model_exists, pull_model
 from nexa.gguf.llama.llama import Llama
-# temporarily disabled NexaAudioLMInference 
-# from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
 from faster_whisper import WhisperModel
 import numpy as np
 import argparse
@@ -520,6 +518,9 @@ async def load_model():
                     )
         logging.info(f"Model loaded as {model}")
     elif model_type == "AudioLM":
+        # temporarily disabled NexaAudioLMInference
+        raise ValueError("Nexa Audio VLM currently unavilable.")
+        from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
         with suppress_stdout_stderr():
             try: 
                 model = NexaAudioLMInference(
