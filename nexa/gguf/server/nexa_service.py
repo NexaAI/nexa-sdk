@@ -518,8 +518,6 @@ async def load_model():
                     )
         logging.info(f"Model loaded as {model}")
     elif model_type == "AudioLM":
-        # temporarily disabled NexaAudioLMInference
-        raise ValueError("Nexa Audio VLM currently unavilable.")
         from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
         with suppress_stdout_stderr():
             try: 

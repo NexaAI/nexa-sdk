@@ -126,15 +126,15 @@ for lib in [_lib_omni, _lib_qwen]:
     # Configure process_full
     lib.omni_process_full.argtypes = [omni_context_p, omni_context_params_p]
     lib.omni_process_full.restype = ctypes.c_char_p
+    # Temporarily disabled streaming
+    # lib.omni_process_streaming.argtypes = [omni_context_p, omni_context_params_p]
+    # lib.omni_process_streaming.restype = ctypes.c_void_p
 
-    lib.omni_process_streaming.argtypes = [omni_context_p, omni_context_params_p]
-    lib.omni_process_streaming.restype = ctypes.c_void_p
+    # lib.sample.argtypes = [ctypes.c_void_p]
+    # lib.sample.restype = ctypes.c_int32
 
-    lib.sample.argtypes = [ctypes.c_void_p]
-    lib.sample.restype = ctypes.c_int32
-
-    lib.get_str.argtypes = [ctypes.c_void_p]
-    lib.get_str.restype = ctypes.c_char_p
+    # lib.get_str.argtypes = [ctypes.c_void_p]
+    # lib.get_str.restype = ctypes.c_char_p
 
     # Configure free
     lib.omni_free.argtypes = [omni_context_p]
