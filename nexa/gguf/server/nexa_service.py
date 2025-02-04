@@ -19,7 +19,7 @@ import requests
 from io import BytesIO
 from urllib.parse import urlparse
 import asyncio
-from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
+
 
 from nexa.constants import (
     NEXA_MODELS_HUB_OFFICIAL_DIR,
