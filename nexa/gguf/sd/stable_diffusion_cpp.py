@@ -22,6 +22,8 @@ from nexa.gguf.lib_utils import load_library
 
 # Specify the base name of the shared library to load
 _lib_base_name = "stable-diffusion"
+
+# Specify the subdirectory that contains the shared library
 _lib_subdir_name = 'stable_diffusion'
 
 # Load the library
