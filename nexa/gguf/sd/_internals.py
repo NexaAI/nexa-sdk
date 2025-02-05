@@ -1,8 +1,10 @@
 import os
 from contextlib import ExitStack
 
-import nexa.gguf.sd.stable_diffusion_cpp  as sd_cpp
 from nexa.gguf.sd._utils import suppress_stdout_stderr
+
+import nexa.gguf.sd.stable_diffusion_cpp  as sd_cpp
+
 
 from ._utils import suppress_stdout_stderr
 
