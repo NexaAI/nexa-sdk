@@ -4,6 +4,7 @@ from tempfile import TemporaryDirectory
 import os
 import subprocess
 
+
 def download_model(url, output_dir):
     """
     Download a file from a given URL using curl, if it doesn't already exist.
@@ -19,7 +20,8 @@ def download_model(url, output_dir):
     output_path = os.path.join(output_dir, file_name)
 
     if os.path.exists(output_path):
-        print(f"File {file_name} already exists in {output_dir}. Skipping download.")
+        print(
+            f"File {file_name} already exists in {output_dir}. Skipping download.")
         return output_path
 
     try:
@@ -31,12 +33,14 @@ def download_model(url, output_dir):
 
     return output_path
 
+
 # Initialize the model
 model = NexaVLMInference(
     model_path="nanollava",
     verbose=False,
     n_gpu_layers=-1 if is_gpu_available() else 0,
 )
+
 
 # Test VLM generation without an image
 def test_text_only_generation():
@@ -50,6 +54,7 @@ def test_text_only_generation():
     response = output["choices"][0]["message"]["content"]
     print("Text-only response:", response)
     assert "Paris" in response, "The response should mention Paris"
+
 
 # Test VLM generation with an image
 def test_image_description():
@@ -66,13 +71,15 @@ def test_image_description():
         print("Image description:", response)
         assert len(response) > 50, "The image description should be detailed"
 
+
 # Test streaming output
 def test_streaming_output():
     global model
     messages = [
         {"role": "user", "content": "Write a short story about a robot learning to paint."}
     ]
-    output = model.create_chat_completion(messages=messages, max_tokens=200, stream=True)
+    output = model.create_chat_completion(
+        messages=messages, max_tokens=200, stream=True)
     story = ""
     for chunk in output:
         if "choices" in chunk and len(chunk["choices"]) > 0:
@@ -83,13 +90,14 @@ def test_streaming_output():
     print("\nFull story:", story)
     assert len(story) > 100, "The generated story should be of substantial length"
 
+
 # Main execution
 if __name__ == "__main__":
     print("=== Testing Text-Only Generation ===")
     test_text_only_generation()
-    
+
     print("\n=== Testing Image Generation ===")
     test_image_description()
-    
+
     print("\n=== Testing Streaming Output ===")
     test_streaming_output()
