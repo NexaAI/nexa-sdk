@@ -38,7 +38,7 @@ def _load_shared_library(lib_base_name: str, base_path: Path = None):
         f"Shared library with base name '{lib_base_name}' not found"
     )
 
-def _get_lib():
+def _get_lib(sub_dir:str=""):
     # Specify the base name of the shared library to load
     _lib_base_name = "omni_vlm_wrapper_shared"
     base_path = (
@@ -47,10 +47,12 @@ def _get_lib():
         / "gguf"
         / "lib"
     )
+    if sub_dir != "":
+        base_path = base_path / sub_dir
     return _load_shared_library(_lib_base_name, base_path)
 
 # Initialize both libraries
-_lib = _get_lib()
+_lib = _get_lib('llama')
 
 omni_char_p = ctypes.c_char_p
 

@@ -38,6 +38,7 @@ def _load_shared_library(lib_base_name: str, base_path: Path = None):
         f"Shared library with base name '{lib_base_name}' not found"
     )
 
+
 def _get_lib(is_qwen: bool = True):
     # Specify the base name of the shared library to load
     _lib_base_name = "nexa-qwen2-audio-lib_shared" if is_qwen else "omni_audio_shared"
@@ -49,6 +50,7 @@ def _get_lib(is_qwen: bool = True):
         / "llama"
     )
     return _load_shared_library(_lib_base_name, base_path)
+
 
 # Initialize both libraries
 _lib_omni = _get_lib(is_qwen=False)
@@ -64,6 +66,8 @@ _lib_qwen = _get_lib(is_qwen=True)
 #     char *prompt;
 #     int32_t n_gpu_layers;
 # };
+
+
 class omni_context_params(ctypes.Structure):
     _fields_ = [
         ("model", ctypes.c_char_p),
@@ -73,15 +77,20 @@ class omni_context_params(ctypes.Structure):
         ("n_gpu_layers", ctypes.c_int32),
     ]
 
+
 omni_context_params_p = ctypes.POINTER(omni_context_params)
 omni_context_p = ctypes.c_void_p
 
 # OMNI_AUDIO_API omni_context_params omni_context_default_params();
+
+
 def context_default_params(is_qwen: bool = True) -> omni_context_params:
     _lib = _lib_qwen if is_qwen else _lib_omni
     return _lib.omni_context_default_params()
 
 # OMNI_AUDIO_API struct omni_context *omni_init_context(omni_context_params &params);
+
+
 def init_context(params: omni_context_params_p, is_qwen: bool = True) -> omni_context_p:  # type: ignore
     _lib = _lib_qwen if is_qwen else _lib_omni
     return _lib.omni_init_context(params)
@@ -90,6 +99,8 @@ def init_context(params: omni_context_params_p, is_qwen: bool = True) -> omni_co
 #     struct omni_context *ctx_omni,
 #     omni_context_params &params
 # );
+
+
 def process_full(ctx: omni_context_p, params: omni_context_params_p, is_qwen: bool = True):  # type: ignore
     _lib = _lib_qwen if is_qwen else _lib_omni
     return _lib.omni_process_full(ctx, params)
@@ -110,9 +121,12 @@ def get_str(omni_streaming: ctypes.c_void_p, is_qwen: bool = True):
     return _lib.get_str(omni_streaming)
 
 # OMNI_AUDIO_API void omni_free(struct omni_context *ctx_omni);
+
+
 def free(ctx: omni_context_p, is_qwen: bool = True):
     _lib = _lib_qwen if is_qwen else _lib_omni
     return _lib.omni_free(ctx)
+
 
 for lib in [_lib_omni, _lib_qwen]:
     # Configure context_default_params
@@ -127,7 +141,8 @@ for lib in [_lib_omni, _lib_qwen]:
     lib.omni_process_full.argtypes = [omni_context_p, omni_context_params_p]
     lib.omni_process_full.restype = ctypes.c_char_p
 
-    lib.omni_process_streaming.argtypes = [omni_context_p, omni_context_params_p]
+    lib.omni_process_streaming.argtypes = [
+        omni_context_p, omni_context_params_p]
     lib.omni_process_streaming.restype = ctypes.c_void_p
 
     lib.sample.argtypes = [ctypes.c_void_p]

@@ -6,6 +6,7 @@ import time
 import librosa
 import soundfile as sf
 from pathlib import Path
+from typing import Generator
 from streamlit.web import cli as stcli
 from nexa.utils import SpinningCursorAnimation, nexa_prompt
 from nexa.constants import (
@@ -225,7 +226,7 @@ class NexaAudioLMInference:
         except Exception as e:
             raise RuntimeError(f"Error during inference: {str(e)}")
 
-    def inference_streaming(self, audio_path: str, prompt: str = "") -> str:
+    def inference_streaming(self, audio_path: str, prompt: str = "") -> Generator[str, None, None]:
         """
         Perform a single inference with the audio language model.
         """

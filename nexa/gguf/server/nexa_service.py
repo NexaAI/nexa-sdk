@@ -20,6 +20,7 @@ from io import BytesIO
 from urllib.parse import urlparse
 import asyncio
 
+
 from nexa.constants import (
     NEXA_MODELS_HUB_OFFICIAL_DIR,
     NEXA_OFFICIAL_MODELS_TYPE,
@@ -49,9 +50,6 @@ from nexa.gguf.llama.llama_chat_format import (
 from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
 from nexa.general import add_model_to_list, default_use_processes, download_file_with_progress, get_model_info, is_model_exists, pull_model
 from nexa.gguf.llama.llama import Llama
-# temporarily disabled NexaOmniVlmInference and NexaAudioLMInference 
-# from nexa.gguf.nexa_inference_vlm_omni import NexaOmniVlmInference
-# from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
 from faster_whisper import WhisperModel
 import numpy as np
 import argparse
@@ -486,6 +484,7 @@ async def load_model():
         # Therefore, model initialization is deferred until the text-to-speech API is called.
         model = None
     elif model_type == "Multimodal":
+        from nexa.gguf.nexa_inference_vlm_omni import NexaOmniVlmInference
         with suppress_stdout_stderr():
             if 'omni' in model_path.lower():
                 try:
@@ -520,6 +519,7 @@ async def load_model():
                     )
         logging.info(f"Model loaded as {model}")
     elif model_type == "AudioLM":
+        from nexa.gguf.nexa_inference_audio_lm import NexaAudioLMInference
         with suppress_stdout_stderr():
             try: 
                 model = NexaAudioLMInference(

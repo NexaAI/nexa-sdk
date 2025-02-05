@@ -10,6 +10,7 @@ model = NexaTextInference(
     chat_format="llama-2",
 )
 
+
 # Test text generation from a prompt
 def test_text_generation():
     global model
@@ -21,6 +22,7 @@ def test_text_generation():
     )
     # print(output)
     # TODO: add assertions here
+
 
 # Test chat completion in streaming mode
 def test_streaming():
@@ -35,6 +37,7 @@ def test_streaming():
         if "choices" in chunk:
             print(chunk["choices"][0]["text"], end="", flush=True)
     # TODO: add assertions here
+
 
 # Test conversation mode with chat format
 def test_create_chat_completion():
@@ -53,6 +56,7 @@ def test_create_chat_completion():
         elif "content" in delta:
             print(delta["content"], end="", flush=True)
 
+
 def test_create_embedding():
     model = NexaTextInference(
         model_path="gemma",
@@ -60,9 +64,10 @@ def test_create_embedding():
         n_gpu_layers=-1 if is_gpu_available() else 0,
         chat_format="llama-2",
         embedding=True,
-    )    
+    )
     embeddings = model.create_embedding("Hello, world!")
     print("Embeddings:\n", embeddings)
+
 
 # Main execution
 if __name__ == "__main__":

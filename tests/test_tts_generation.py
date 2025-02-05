@@ -1,5 +1,6 @@
 from nexa.gguf import NexaTTSInference
 
+
 def test_tts_generation_barkcpp():
     tts = NexaTTSInference(
         model_path="bark-small",
@@ -10,11 +11,11 @@ def test_tts_generation_barkcpp():
         sampling_rate=24000,
         verbosity=2
     )
-    
+
     # Generate audio from prompt
     prompt = "Hello, this is a test of the Bark text to speech system."
     audio_data = tts.audio_generation(prompt)
-    
+
     # Save the generated audio
     tts._save_audio(audio_data, tts.sampling_rate, "tts_output/barkcpp")
 
@@ -28,14 +29,14 @@ def test_tts_generation_outetts():
         sampling_rate=24000,
         verbosity=2
     )
-    
+
     # Generate audio from prompt
     prompt = "Hello, this is a test of the OuteTTS text to speech system."
     audio_data = tts.audio_generation(prompt)
-    
+
     # Save the generated audio
     tts._save_audio(audio_data, tts.sampling_rate, "tts_output/outetts")
-    
+
 
 if __name__ == "__main__":
     test_tts_generation_barkcpp()
