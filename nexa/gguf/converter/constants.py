@@ -67,10 +67,10 @@ from nexa.gguf.llama.llama_cpp import (
     GGML_TYPE_I64,
     GGML_TYPE_F64,
     GGML_TYPE_IQ1_M,
-    GGML_TYPE_BF16,
-    GGML_TYPE_Q4_0_4_4,
-    GGML_TYPE_Q4_0_4_8,
-    GGML_TYPE_Q4_0_8_8,
+    # GGML_TYPE_BF16,
+    # GGML_TYPE_Q4_0_4_4,
+    # GGML_TYPE_Q4_0_4_8,
+    # GGML_TYPE_Q4_0_8_8,
     GGML_TYPE_COUNT,
 )
 
@@ -145,10 +145,10 @@ GGML_TYPES = {
     "i64": GGML_TYPE_I64,
     "f64": GGML_TYPE_F64,
     "iq1_m": GGML_TYPE_IQ1_M,
-    "bf16": GGML_TYPE_BF16,
-    "q4_0_4_4": GGML_TYPE_Q4_0_4_4,
-    "q4_0_4_8": GGML_TYPE_Q4_0_4_8,
-    "q4_0_8_8": GGML_TYPE_Q4_0_8_8,
+    # "bf16": GGML_TYPE_BF16,
+    # "q4_0_4_4": GGML_TYPE_Q4_0_4_4,
+    # "q4_0_4_8": GGML_TYPE_Q4_0_4_8,
+    # "q4_0_8_8": GGML_TYPE_Q4_0_8_8,
 }
 
 NEXA_CACHE_ROOT = Path(os.getenv("NEXA_CACHE_ROOT")
