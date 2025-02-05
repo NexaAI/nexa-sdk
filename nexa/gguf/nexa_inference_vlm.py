@@ -89,10 +89,12 @@ class NexaVLMInference:
     top_k (int): Top-k sampling parameter.
     top_p (float): Top-p sampling parameter
     """
+
     def __init__(self, model_path=None, local_path=None, projector_local_path=None, stop_words=None, device="auto", **kwargs):
         if model_path is None and local_path is None:
-            raise ValueError("Either model_path or local_path must be provided.")
-        
+            raise ValueError(
+                "Either model_path or local_path must be provided.")
+
         self.params = DEFAULT_TEXT_GEN_PARAMS.copy()
         self.params.update(kwargs)
         self.model = None
@@ -109,18 +111,21 @@ class NexaVLMInference:
         elif self.downloaded_path is not None:
             if model_path in NEXA_RUN_MODEL_MAP_VLM:
                 self.projector_path = NEXA_RUN_PROJECTOR_MAP[model_path]
-                self.projector_downloaded_path, _ = pull_model(self.projector_path, **kwargs)
+                self.projector_downloaded_path, _ = pull_model(
+                    self.projector_path, **kwargs)
         elif model_path in NEXA_RUN_MODEL_MAP_VLM:
             self.model_path = NEXA_RUN_MODEL_MAP_VLM[model_path]
             self.projector_path = NEXA_RUN_PROJECTOR_MAP[model_path]
             self.downloaded_path, _ = pull_model(self.model_path, **kwargs)
-            self.projector_downloaded_path, _ = pull_model(self.projector_path, **kwargs)
+            self.projector_downloaded_path, _ = pull_model(
+                self.projector_path, **kwargs)
         elif Path(model_path).parent.exists():
             local_dir = Path(model_path).parent
             model_name = Path(model_path).name
             tag_and_ext = model_name.split(":")[-1]
             self.downloaded_path = local_dir / f"model-{tag_and_ext}"
-            self.projector_downloaded_path = local_dir / f"projector-{tag_and_ext}"
+            self.projector_downloaded_path = local_dir / \
+                f"projector-{tag_and_ext}"
             if not (self.downloaded_path.exists() and self.projector_downloaded_path.exists()):
                 logging.error(
                     f"Model or projector not found in {local_dir}. "
@@ -172,7 +177,7 @@ class NexaVLMInference:
                     n_gpu_layers = -1 if is_gpu_available() else 0
                 elif self.device == "cpu":
                     n_gpu_layers = 0
-                
+
                 self.model = Llama(
                     model_path=self.downloaded_path,
                     chat_handler=self.projector,
@@ -232,7 +237,8 @@ class NexaVLMInference:
                 readline.parse_and_bind("tab: complete")
                 readline.set_completer(_complete)
 
-                image_path = nexa_prompt("Image Path (leave empty if no image)")
+                image_path = nexa_prompt(
+                    "Image Path (leave empty if no image)")
                 if image_path and not os.path.exists(image_path):
                     print(f"'{image_path}' is not a path to image. Will ignore.")
 
@@ -256,7 +262,7 @@ class NexaVLMInference:
                         print(delta["role"], end=": ", flush=True)
                     elif "content" in delta:
                         print(delta["content"], end="", flush=True)
-                        generated_text += delta["content"]            
+                        generated_text += delta["content"]
 
             except KeyboardInterrupt:
                 pass
@@ -265,13 +271,13 @@ class NexaVLMInference:
             print("\n")
 
     def create_chat_completion(self,
-                            messages,
-                            max_tokens:int = 2048,
-                            temperature: float = 0.2,
-                            top_p: float = 0.95,
-                            top_k: int = 40,
-                            stream=False,
-                            stop=[]):
+                               messages,
+                               max_tokens: int = 2048,
+                               temperature: float = 0.2,
+                               top_p: float = 0.95,
+                               top_k: int = 40,
+                               stream=False,
+                               stop=[]):
         """
         Generate text completion for a given chat prompt.
 
@@ -327,7 +333,8 @@ class NexaVLMInference:
 
         content = [{"type": "text", "text": user_input}]
         if data_uri:
-            content.insert(0, {"type": "image_url", "image_url": {"url": data_uri}})
+            content.insert(
+                0, {"type": "image_url", "image_url": {"url": data_uri}})
 
         messages = [
             {
@@ -350,19 +357,20 @@ class NexaVLMInference:
             stop=self.stop_words,
         )
 
-    def run_streamlit(self, model_path: str, is_local_path = False, hf = False, projector_local_path = None):
+    def run_streamlit(self, model_path: str, is_local_path=False, hf=False, projector_local_path=None):
         """
         Run the Streamlit UI.
         """
         logging.info("Running Streamlit UI...")
 
         streamlit_script_path = (
-            Path(os.path.abspath(__file__)).parent / "streamlit" / "streamlit_vlm.py"
+            Path(os.path.abspath(__file__)).parent /
+            "streamlit" / "streamlit_vlm.py"
         )
 
-        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, str(is_local_path), str(hf), str(projector_local_path)]
+        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, str(
+            is_local_path), str(hf), str(projector_local_path)]
         sys.exit(stcli.main())
-
 
     def close(self):
         if not self._is_closed:
@@ -373,6 +381,7 @@ class NexaVLMInference:
                 self.projector._exit_stack.close()
                 self.projector = None
             self._is_closed = True
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -438,7 +447,8 @@ if __name__ == "__main__":
     stop_words = kwargs.pop("stop_words", [])
     device = kwargs.pop("device", "auto")
 
-    inference = NexaVLMInference(model_path, stop_words=stop_words, device=device, **kwargs)
+    inference = NexaVLMInference(
+        model_path, stop_words=stop_words, device=device, **kwargs)
     if args.streamlit:
         inference.run_streamlit(model_path)
     else:

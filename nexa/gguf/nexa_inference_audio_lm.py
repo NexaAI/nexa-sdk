@@ -19,6 +19,7 @@ from nexa.gguf.llama import audio_lm_cpp
 from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
 from nexa.general import pull_model
 
+
 def is_qwen(model_name):
     if "qwen" in model_name.lower():  # TEMPORARY SOLUTION : this hardcode can be risky
         return True
@@ -54,13 +55,15 @@ class NexaAudioLMInference:
         **kwargs,
     ):
         if model_path is None and local_path is None:
-            raise ValueError("Either model_path or local_path must be provided.")
+            raise ValueError(
+                "Either model_path or local_path must be provided.")
 
         self.params = DEFAULT_TEXT_GEN_PARAMS.copy()
         self.params.update(kwargs)
         self.model = None
         self.projector = None
-        self.projector_path = NEXA_RUN_AUDIO_LM_PROJECTOR_MAP.get(model_path, None)
+        self.projector_path = NEXA_RUN_AUDIO_LM_PROJECTOR_MAP.get(
+            model_path, None)
         self.downloaded_path = local_path
         self.projector_downloaded_path = projector_local_path
         self.device = device
@@ -96,7 +99,8 @@ class NexaAudioLMInference:
             model_name = Path(model_path).name
             tag_and_ext = model_name.split(":")[-1]
             self.downloaded_path = local_dir / f"model-{tag_and_ext}"
-            self.projector_downloaded_path = local_dir / f"projector-{tag_and_ext}"
+            self.projector_downloaded_path = local_dir / \
+                f"projector-{tag_and_ext}"
             if not (
                 self.downloaded_path.exists()
                 and self.projector_downloaded_path.exists()
@@ -116,7 +120,8 @@ class NexaAudioLMInference:
                 exc_info=True,
             )
             exit(1)
-        self.is_qwen = is_qwen(self.downloaded_path) # TEMPORARY SOLUTION : this hardcode can be risky
+        # TEMPORARY SOLUTION : this hardcode can be risky
+        self.is_qwen = is_qwen(self.downloaded_path)
         self.ctx_params = audio_lm_cpp.context_default_params(self.is_qwen)
         with suppress_stdout_stderr():
             self._load_model()
@@ -153,7 +158,8 @@ class NexaAudioLMInference:
         try:
             while True:
                 audio_path = self._get_valid_audio_path()
-                user_input = nexa_prompt("Enter text (leave empty if no prompt): ")
+                user_input = nexa_prompt(
+                    "Enter text (leave empty if no prompt): ")
 
                 stop_event, spinner_thread = start_spinner(
                     style="default",
@@ -181,21 +187,25 @@ class NexaAudioLMInference:
         except KeyboardInterrupt:
             print("\nExiting...")
         except Exception as e:
-            logging.error(f"\nError during audio generation: {e}", exc_info=True)
+            logging.error(
+                f"\nError during audio generation: {e}", exc_info=True)
 
     def _get_valid_audio_path(self) -> str:
         """
         Helper method to get a valid audio file path from user
         """
         while True:
-            audio_path = nexa_prompt("Enter the path to your audio file (required): ")
+            audio_path = nexa_prompt(
+                "Enter the path to your audio file (required): ")
             if os.path.exists(audio_path):
                 # Check if it's a supported audio format
                 if any(audio_path.lower().endswith(ext) for ext in ['.wav', '.mp3', '.m4a', '.flac', '.ogg']):
                     return audio_path
-                print(f"Unsupported audio format. Please use WAV, MP3, M4A, FLAC, or OGG files.")
+                print(
+                    f"Unsupported audio format. Please use WAV, MP3, M4A, FLAC, or OGG files.")
             else:
-                print(f"'{audio_path}' is not a valid audio path. Please try again.")
+                print(
+                    f"'{audio_path}' is not a valid audio path. Please try again.")
 
     # @SpinningCursorAnimation()
     def inference(self, audio_path: str, prompt: str = "") -> str:
@@ -254,7 +264,8 @@ class NexaAudioLMInference:
             res = 0
             while res >= 0:
                 res = audio_lm_cpp.sample(oss, is_qwen=self.is_qwen)
-                res_str = audio_lm_cpp.get_str(oss, is_qwen=self.is_qwen).decode('utf-8')
+                res_str = audio_lm_cpp.get_str(
+                    oss, is_qwen=self.is_qwen).decode('utf-8')
 
                 if '<|im_start|>' in res_str or '</s>' in res_str:
                     continue
@@ -275,7 +286,8 @@ class NexaAudioLMInference:
                 os.remove(self.temp_file)
                 self.temp_file = None
             except Exception as e:
-                logging.warning(f"Failed to remove temporary file {self.temp_file}: {e}")
+                logging.warning(
+                    f"Failed to remove temporary file {self.temp_file}: {e}")
 
     def close(self) -> None:
         self.cleanup()
@@ -293,7 +305,8 @@ class NexaAudioLMInference:
         Supports various audio formats (mp3, wav, m4a, etc.)
         """
         try:
-            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            base_dir = os.path.dirname(os.path.dirname(
+                os.path.dirname(os.path.abspath(__file__))))
 
             # Create tmp directory if it doesn't exist
             tmp_dir = os.path.join(base_dir, 'tmp')
@@ -329,18 +342,21 @@ class NexaAudioLMInference:
         except Exception as e:
             raise RuntimeError(f"Error processing audio file: {str(e)}")
 
-    def run_streamlit(self, model_path: str, is_local_path = False, hf = False, projector_local_path = None):
+    def run_streamlit(self, model_path: str, is_local_path=False, hf=False, projector_local_path=None):
         """
         Run the Streamlit UI.
         """
         logging.info("Running Streamlit UI...")
 
         streamlit_script_path = (
-            Path(os.path.abspath(__file__)).parent / "streamlit" / "streamlit_audio_lm.py"
+            Path(os.path.abspath(__file__)).parent /
+            "streamlit" / "streamlit_audio_lm.py"
         )
 
-        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, str(is_local_path), str(hf), str(projector_local_path)]
+        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, str(
+            is_local_path), str(hf), str(projector_local_path)]
         sys.exit(stcli.main())
+
 
 if __name__ == "__main__":
     import argparse

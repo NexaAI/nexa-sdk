@@ -33,6 +33,7 @@ RETRY_ATTEMPTS = (
 FLUX_VAE_PATH = "FLUX.1-schnell:ae-fp16"
 FLUX_CLIP_L_PATH = "FLUX.1-schnell:clip_l-fp16"
 
+
 class NexaImageInference:
     """
     A class used for loading image models and running image generation.
@@ -65,8 +66,9 @@ class NexaImageInference:
 
     def __init__(self, model_path=None, local_path=None, **kwargs):
         if model_path is None and local_path is None:
-            raise ValueError("Either model_path or local_path must be provided.")
-        
+            raise ValueError(
+                "Either model_path or local_path must be provided.")
+
         self.model_path = model_path
         self.downloaded_path = local_path
 
@@ -95,13 +97,16 @@ class NexaImageInference:
             self.clip_l_path = FLUX_CLIP_L_PATH
 
             if self.t5xxl_path:
-                self.t5xxl_downloaded_path, _ = pull_model(self.t5xxl_path, **kwargs)
+                self.t5xxl_downloaded_path, _ = pull_model(
+                    self.t5xxl_path, **kwargs)
             if self.ae_path:
                 self.ae_downloaded_path, _ = pull_model(self.ae_path, **kwargs)
             if self.clip_l_path:
-                self.clip_l_downloaded_path, _ = pull_model(self.clip_l_path, **kwargs)
+                self.clip_l_downloaded_path, _ = pull_model(
+                    self.clip_l_path, **kwargs)
         if "lcm-dreamshaper" in self.model_path or "flux" in self.model_path:
-            self.params = DEFAULT_IMG_GEN_PARAMS_LCM.copy() # both lcm-dreamshaper and flux use the same params
+            # both lcm-dreamshaper and flux use the same params
+            self.params = DEFAULT_IMG_GEN_PARAMS_LCM.copy()
         elif "sdxl-turbo" in self.model_path:
             self.params = DEFAULT_IMG_GEN_PARAMS_TURBO.copy()
         else:
@@ -125,20 +130,26 @@ class NexaImageInference:
                     clip_l_path=self.clip_l_downloaded_path,
                     t5xxl_path=self.t5xxl_downloaded_path,
                     vae_path=self.ae_downloaded_path,
-                    n_threads=self.params.get("n_threads", multiprocessing.cpu_count()),
+                    n_threads=self.params.get(
+                        "n_threads", multiprocessing.cpu_count()),
                     wtype=self.params.get(
-                        "wtype", NEXA_RUN_MODEL_PRECISION_MAP.get(model_path, "default")
-                    ),  # Weight type (options: default, f32, f16, q4_0, q4_1, q5_0, q5_1, q8_0)
+                        "wtype", NEXA_RUN_MODEL_PRECISION_MAP.get(
+                            model_path, "default")
+                        # Weight type (options: default, f32, f16, q4_0, q4_1, q5_0, q5_1, q8_0)
+                    ),
                     verbose=self.profiling,
                 )
             else:
                 self.model = StableDiffusion(
                     model_path=self.downloaded_path,
                     lora_model_dir=self.params.get("lora_dir", ""),
-                    n_threads=self.params.get("n_threads", multiprocessing.cpu_count()),
+                    n_threads=self.params.get(
+                        "n_threads", multiprocessing.cpu_count()),
                     wtype=self.params.get(
-                        "wtype", NEXA_RUN_MODEL_PRECISION_MAP.get(model_path, "default")
-                    ),  # Weight type (options: default, f32, f16, q4_0, q4_1, q5_0, q5_1, q8_0)
+                        "wtype", NEXA_RUN_MODEL_PRECISION_MAP.get(
+                            model_path, "default")
+                        # Weight type (options: default, f32, f16, q4_0, q4_1, q5_0, q5_1, q8_0)
+                    ),
                     control_net_path=self.params.get("control_net_path", ""),
                     verbose=self.profiling,
                 )
@@ -227,12 +238,14 @@ class NexaImageInference:
                         sample_steps=self.params["num_inference_steps"],
                         seed=self.params["random_seed"],
                         control_cond=self.params.get("control_image_path", ""),
-                        control_strength=self.params.get("control_strength", 0.9),
+                        control_strength=self.params.get(
+                            "control_strength", 0.9),
                     )
                     if images:
                         self._save_images(images)
                 except Exception as e:
-                    logging.error(f"Error during text to image generation: {e}")
+                    logging.error(
+                        f"Error during text to image generation: {e}")
                 finally:
                     stop_spinner(stop_event, spinner_thread)
 
@@ -311,7 +324,7 @@ class NexaImageInference:
 
                 if images:
                     self._save_images(images)
-                
+
                 stop_spinner(stop_event, spinner_thread)
 
             except KeyboardInterrupt:
@@ -319,7 +332,7 @@ class NexaImageInference:
             except Exception as e:
                 logging.error(f"Error during generation: {e}", exc_info=True)
 
-    def run_streamlit(self, model_path: str, is_local_path = False, hf = False):
+    def run_streamlit(self, model_path: str, is_local_path=False, hf=False):
         """
         Run the Streamlit UI.
         """
@@ -331,7 +344,8 @@ class NexaImageInference:
             / "streamlit_image_chat.py"
         )
 
-        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, str(is_local_path), str(hf)]
+        sys.argv = ["streamlit", "run", str(
+            streamlit_script_path), model_path, str(is_local_path), str(hf)]
         sys.exit(stcli.main())
 
 
