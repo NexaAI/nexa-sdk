@@ -120,8 +120,10 @@ class StableDiffusion:
         # =========== Validate Inputs ===========
 
         self.wtype = validate_and_set_input(self.wtype, GGML_TYPE_MAP, "wtype")
-        self.rng_type = validate_and_set_input(self.rng_type, RNG_TYPE_MAP, "rng_type")
-        self.schedule = validate_and_set_input(self.schedule, SCHEDULE_MAP, "schedule")
+        self.rng_type = validate_and_set_input(
+            self.rng_type, RNG_TYPE_MAP, "rng_type")
+        self.schedule = validate_and_set_input(
+            self.schedule, SCHEDULE_MAP, "schedule")
 
         # =========== SD Model loading ===========
 
@@ -189,7 +191,8 @@ class StableDiffusion:
         guidance: float = 3.5,
         width: int = 512,
         height: int = 512,
-        sample_method: Optional[Union[str, SampleMethod, int, float]] = "euler_a",
+        sample_method: Optional[Union[str,
+                                      SampleMethod, int, float]] = "euler_a",
         sample_steps: int = 20,
         seed: int = 42,
         batch_count: int = 1,
@@ -241,7 +244,8 @@ class StableDiffusion:
 
         # =========== Validate string and int inputs ===========
 
-        sample_method = validate_and_set_input(sample_method, SAMPLE_METHOD_MAP, "sample_method")
+        sample_method = validate_and_set_input(
+            sample_method, SAMPLE_METHOD_MAP, "sample_method")
 
         # Ensure dimensions are multiples of 64
         width = validate_dimensions(width, "width")
@@ -266,12 +270,14 @@ class StableDiffusion:
             ):
                 progress_callback(step, steps, time)
 
-            sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
+            sd_cpp.sd_set_progress_callback(
+                sd_progress_callback, ctypes.c_void_p(0))
 
         # ==================== Format Inputs ====================
 
         # Convert the control condition to a C sd_image_t
-        control_cond = self._format_control_cond(control_cond, canny, self.control_net_path)
+        control_cond = self._format_control_cond(
+            control_cond, canny, self.control_net_path)
 
         # Convert skip_layers to a ctypes array
         skip_layers_array = (ctypes.c_int * len(skip_layers))(*skip_layers)
@@ -322,7 +328,8 @@ class StableDiffusion:
         guidance: float = 3.5,
         width: int = 512,
         height: int = 512,
-        sample_method: Optional[Union[str, SampleMethod, int, float]] = "euler_a",
+        sample_method: Optional[Union[str,
+                                      SampleMethod, int, float]] = "euler_a",
         sample_steps: int = 20,
         strength: float = 0.75,
         seed: int = 42,
@@ -377,11 +384,13 @@ class StableDiffusion:
             raise Exception("Stable diffusion model not loaded.")
 
         if self.vae_decode_only == True:
-            raise Exception("Cannot run img_to_img with vae_decode_only set to True.")
+            raise Exception(
+                "Cannot run img_to_img with vae_decode_only set to True.")
 
         # =========== Validate string and int inputs ===========
 
-        sample_method = validate_and_set_input(sample_method, SAMPLE_METHOD_MAP, "sample_method")
+        sample_method = validate_and_set_input(
+            sample_method, SAMPLE_METHOD_MAP, "sample_method")
 
         # Ensure dimensions are multiples of 64
         width = validate_dimensions(width, "width")
@@ -406,19 +415,23 @@ class StableDiffusion:
             ):
                 progress_callback(step, steps, time)
 
-            sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
+            sd_cpp.sd_set_progress_callback(
+                sd_progress_callback, ctypes.c_void_p(0))
 
         # ==================== Format Inputs ====================
 
         # Convert the control condition to a C sd_image_t
-        control_cond = self._format_control_cond(control_cond, canny, self.control_net_path)
+        control_cond = self._format_control_cond(
+            control_cond, canny, self.control_net_path)
 
         # Resize the input image
-        image = self._resize_image(image, width, height)  # Input image and generated image must have the same size
+        # Input image and generated image must have the same size
+        image = self._resize_image(image, width, height)
 
         def _create_blank_mask_image(width: int, height: int):
             """Create a blank white mask image in c_unit8 format."""
-            mask_image_buffer = (ctypes.c_uint8 * (width * height))(*[255] * (width * height))
+            mask_image_buffer = (
+                ctypes.c_uint8 * (width * height))(*[255] * (width * height))
             return mask_image_buffer
 
         # Convert the image and mask image to a byte array
@@ -426,7 +439,8 @@ class StableDiffusion:
         if mask_image:
             # Resize the mask image (however the mask should ideally already be the same size as the input image)
             mask_image = self._resize_image(mask_image, width, height)
-            mask_image_pointer = self._image_to_sd_image_t_p(mask_image, channel=1)
+            mask_image_pointer = self._image_to_sd_image_t_p(
+                mask_image, channel=1)
         else:
             # Create a blank white mask image
             mask_image_pointer = self._c_uint8_to_sd_image_t_p(
@@ -486,7 +500,8 @@ class StableDiffusion:
         augmentation_level: float = 0.0,
         min_cfg: float = 1.0,
         cfg_scale: float = 7.0,
-        sample_method: Optional[Union[str, SampleMethod, int, float]] = "euler_a",
+        sample_method: Optional[Union[str,
+                                      SampleMethod, int, float]] = "euler_a",
         sample_steps: int = 20,
         strength: float = 0.75,
         seed: int = 42,
@@ -673,7 +688,8 @@ class StableDiffusion:
             ):
                 progress_callback(step, steps, time)
 
-            sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
+            sd_cpp.sd_set_progress_callback(
+                sd_progress_callback, ctypes.c_void_p(0))
 
         if not isinstance(images, list):
             images = [images]  # Wrap single image in a list
@@ -696,7 +712,8 @@ class StableDiffusion:
 
             # Load the image from the C sd_image_t and convert it to a PIL Image
             image = self._dereference_sd_image_t_p(image)
-            image = self._bytes_to_image(image["data"], image["width"], image["height"])
+            image = self._bytes_to_image(
+                image["data"], image["width"], image["height"])
             upscaled_images.append(image)
 
         return upscaled_images
@@ -816,7 +833,8 @@ class StableDiffusion:
 
     def _image_slice(self, c_images: sd_cpp.sd_image_t, count: int, upscale_factor: int) -> List[Dict]:
         """Slice a C array of images."""
-        image_array = ctypes.cast(c_images, ctypes.POINTER(sd_cpp.sd_image_t * count)).contents
+        image_array = ctypes.cast(c_images, ctypes.POINTER(
+            sd_cpp.sd_image_t * count)).contents
 
         images = []
 
@@ -849,7 +867,8 @@ class StableDiffusion:
         # Convert each image to PIL Image
         for i in range(len(images)):
             image = images[i]
-            images[i] = self._bytes_to_image(image["data"], image["width"], image["height"])
+            images[i] = self._bytes_to_image(
+                image["data"], image["width"], image["height"])
 
         return images
 
@@ -864,7 +883,8 @@ class StableDiffusion:
             for x in range(width):
                 idx = (y * width + x) * channel
                 # Dynamically create the color tuple
-                color = tuple(byte_data[idx + i] if idx + i < len(byte_data) else 0 for i in range(channel))
+                color = tuple(byte_data[idx + i] if idx + i <
+                              len(byte_data) else 0 for i in range(channel))
                 if channel == 1:  # Grayscale
                     color = (color[0],) * 3 + (255,)  # Convert to (R, G, B, A)
                 elif channel == 3:  # RGB
@@ -918,11 +938,13 @@ def validate_and_set_input(user_input: Union[str, int, float], type_map: Dict, a
         if user_input in type_map:
             return int(type_map[user_input])
         else:
-            raise ValueError(f"Invalid {attribute_name} type '{user_input}'. Must be one of {list(type_map.keys())}.")
+            raise ValueError(
+                f"Invalid {attribute_name} type '{user_input}'. Must be one of {list(type_map.keys())}.")
     elif isinstance(user_input, int) and user_input in type_map.values():
         return int(user_input)
     else:
-        raise ValueError(f"{attribute_name} must be a string or an integer and must be a valid type.")
+        raise ValueError(
+            f"{attribute_name} must be a string or an integer and must be a valid type.")
 
 
 RNG_TYPE_MAP = {

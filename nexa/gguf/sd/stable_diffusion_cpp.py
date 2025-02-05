@@ -47,7 +47,8 @@ if TYPE_CHECKING:
     class CtypesRef(Generic[CtypesCData]):
         pass
 
-    CtypesPointerOrRef: TypeAlias = Union[CtypesPointer[CtypesCData], CtypesRef[CtypesCData]]
+    CtypesPointerOrRef: TypeAlias = Union[CtypesPointer[CtypesCData],
+                                          CtypesRef[CtypesCData]]
 
     CtypesFuncPointer: TypeAlias = ctypes._FuncPointer  # type: ignore
 
@@ -84,7 +85,8 @@ byref = ctypes.byref  # type: ignore
 
 # from ggml-backend.h
 # typedef bool (*ggml_backend_sched_eval_callback)(struct ggml_tensor * t, bool ask, void * user_data);
-ggml_backend_sched_eval_callback = ctypes.CFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_bool, ctypes.c_void_p)
+ggml_backend_sched_eval_callback = ctypes.CFUNCTYPE(
+    ctypes.c_bool, ctypes.c_void_p, ctypes.c_bool, ctypes.c_void_p)
 
 # // Abort callback
 # // If not NULL, called before ggml computation
@@ -397,7 +399,7 @@ def txt2img(
     [
         sd_ctx_t_p_ctypes,  # sd_ctx
         sd_image_t,  # init_image
-        sd_image_t, # mask_image
+        sd_image_t,  # mask_image
         ctypes.c_char_p,  # prompt
         ctypes.c_char_p,  # negative_prompt
         ctypes.c_int,  # clip_skip
@@ -639,7 +641,8 @@ def sd_get_system_info() -> bytes:
 # Progression
 # ==================================
 
-sd_progress_callback = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_int, ctypes.c_float, ctypes.c_void_p)
+sd_progress_callback = ctypes.CFUNCTYPE(
+    None, ctypes.c_int, ctypes.c_int, ctypes.c_float, ctypes.c_void_p)
 
 
 @ctypes_function(
@@ -660,7 +663,8 @@ def sd_set_progress_callback(
 # Logging
 # ==================================
 
-sd_log_callback = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p, ctypes.c_void_p)
+sd_log_callback = ctypes.CFUNCTYPE(
+    None, ctypes.c_int, ctypes.c_char_p, ctypes.c_void_p)
 
 
 @ctypes_function(
