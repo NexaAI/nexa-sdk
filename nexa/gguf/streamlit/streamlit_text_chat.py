@@ -20,6 +20,7 @@ model_map = NEXA_RUN_MODEL_MAP_TEXT
 # init:
 DEFAULT_PARAMS = DEFAULT_TEXT_GEN_PARAMS.copy()
 
+
 @st.cache_resource(show_spinner=False)
 def load_model(model_path: str, is_local: bool = False, is_hf: bool = False):
     """Load model with proper error handling and state management."""
@@ -31,7 +32,8 @@ def load_model(model_path: str, is_local: bool = False, is_hf: bool = False):
         elif is_hf:
             try:
                 local_path, _ = pull_model(model_path, hf=True)
-                update_model_options(specified_run_type, model_map)  # update options after successful pull
+                # update options after successful pull
+                update_model_options(specified_run_type, model_map)
             except Exception as e:
                 st.error(f"Error pulling HuggingFace model: {str(e)}")
                 return None
@@ -40,9 +42,11 @@ def load_model(model_path: str, is_local: bool = False, is_hf: bool = False):
                 # model hub case:
                 local_path, run_type = pull_model(model_path)
                 if not local_path or not run_type:
-                    st.error(f"Failed to pull model {model_path} from Nexa Model Hub")
+                    st.error(
+                        f"Failed to pull model {model_path} from Nexa Model Hub")
                     return None
-                update_model_options(specified_run_type, model_map)  # update options after successful pull
+                # update options after successful pull
+                update_model_options(specified_run_type, model_map)
             except ValueError as e:
                 st.error(f"Error pulling model from Nexa Model Hub: {str(e)}")
                 return None
@@ -62,7 +66,8 @@ def load_model(model_path: str, is_local: bool = False, is_hf: bool = False):
 
             # reset the model index to include the new model:
             if model_path in st.session_state.model_options:
-                st.session_state.current_model_index = st.session_state.model_options.index(model_path)
+                st.session_state.current_model_index = st.session_state.model_options.index(
+                    model_path)
             return nexa_model
 
         except Exception as e:
@@ -72,6 +77,7 @@ def load_model(model_path: str, is_local: bool = False, is_hf: bool = False):
     except Exception as e:
         st.error(f"Error in load_model: {str(e)}")
         return None
+
 
 @st.cache_resource(show_spinner=False)
 def load_local_model(local_path: str):
@@ -83,11 +89,13 @@ def load_local_model(local_path: str):
             local_path=local_path,
             **DEFAULT_PARAMS
         )
-        update_model_options(specified_run_type, model_map)  # update options after successful local model load
+        # update options after successful local model load
+        update_model_options(specified_run_type, model_map)
         return nexa_model
     except Exception as e:
         st.error(f"Error loading local model: {str(e)}")
         return None
+
 
 def generate_response(nexa_model: NexaTextInference) -> Iterator:
     """Generate response from the model."""
@@ -96,6 +104,7 @@ def generate_response(nexa_model: NexaTextInference) -> Iterator:
         return nexa_model._chat(user_input)
     else:
         return nexa_model._complete(user_input)
+
 
 # main execution:
 try:
@@ -125,7 +134,8 @@ try:
 
     # force refresh model options on every page load:
     if 'model_options' not in st.session_state:
-        st.session_state.model_options = get_model_options(specified_run_type, model_map)
+        st.session_state.model_options = get_model_options(
+            specified_run_type, model_map)
     else:
         update_model_options(specified_run_type, model_map)
 
@@ -147,10 +157,12 @@ try:
 
             # set to model hub option if not found in list:
             if default_model not in st.session_state.model_options:
-                st.session_state.current_model_index = st.session_state.model_options.index("Use Model From Nexa Model Hub 🔍")
+                st.session_state.current_model_index = st.session_state.model_options.index(
+                    "Use Model From Nexa Model Hub 🔍")
         else:
             try:
-                st.session_state.current_model_index = st.session_state.model_options.index(default_model)
+                st.session_state.current_model_index = st.session_state.model_options.index(
+                    default_model)
             except ValueError:
                 st.session_state.current_model_index = 0
 
@@ -163,13 +175,16 @@ try:
     if 'nexa_model' in st.session_state:
         if st.session_state.current_hub_model:
             # if we have a hub model loaded, select the hub option:
-            current_index = st.session_state.model_options.index("Use Model From Nexa Model Hub 🔍")
+            current_index = st.session_state.model_options.index(
+                "Use Model From Nexa Model Hub 🔍")
         elif st.session_state.current_local_path:
             # if we have a local model loaded, select the local option:
-            current_index = st.session_state.model_options.index("Local Model 📁")
+            current_index = st.session_state.model_options.index(
+                "Local Model 📁")
         elif st.session_state.current_model_path:
             # if we have a listed model loaded, find its index:
-            current_index = st.session_state.model_options.index(st.session_state.current_model_path)
+            current_index = st.session_state.model_options.index(
+                st.session_state.current_model_path)
         else:
             current_index = st.session_state.current_model_index
     else:
@@ -203,7 +218,8 @@ try:
         local_model_path = local_model_path.strip()  # remove spaces
         if 'nexa_model' not in st.session_state or st.session_state.current_local_path != local_model_path:
             with st.spinner("Loading local model..."):
-                st.session_state.nexa_model = load_local_model(local_model_path)
+                st.session_state.nexa_model = load_local_model(
+                    local_model_path)
                 st.session_state.current_local_path = local_model_path
 
     elif model_path == "Use Model From Nexa Model Hub 🔍":
@@ -241,7 +257,7 @@ try:
     else:
         # load selected model if it's not already loaded:
         if ('nexa_model' not in st.session_state or
-            getattr(st.session_state, 'current_model_path', None) != model_path):
+                getattr(st.session_state, 'current_model_path', None) != model_path):
             with st.spinner(f"Loading model: {model_path}"):
                 st.session_state.nexa_model = load_model(model_path)
                 if st.session_state.nexa_model:  # only update if load was successful
@@ -253,19 +269,23 @@ try:
         model_params = st.session_state.nexa_model.params
 
         temperature = st.sidebar.slider(
-            "Temperature", 0.0, 1.0, model_params.get("temperature", DEFAULT_PARAMS["temperature"])
+            "Temperature", 0.0, 1.0, model_params.get(
+                "temperature", DEFAULT_PARAMS["temperature"])
         )
         max_new_tokens = st.sidebar.slider(
-            "Max New Tokens", 1, 500, model_params.get("max_new_tokens", DEFAULT_PARAMS["max_new_tokens"])
+            "Max New Tokens", 1, 500, model_params.get(
+                "max_new_tokens", DEFAULT_PARAMS["max_new_tokens"])
         )
         top_k = st.sidebar.slider(
             "Top K", 1, 100, model_params.get("top_k", DEFAULT_PARAMS["top_k"])
         )
         top_p = st.sidebar.slider(
-            "Top P", 0.0, 1.0, model_params.get("top_p", DEFAULT_PARAMS["top_p"])
+            "Top P", 0.0, 1.0, model_params.get(
+                "top_p", DEFAULT_PARAMS["top_p"])
         )
         nctx = st.sidebar.slider(
-            "Context length", 1000, 9999, model_params.get("nctx", DEFAULT_PARAMS["nctx"])
+            "Context length", 1000, 9999, model_params.get(
+                "nctx", DEFAULT_PARAMS["nctx"])
         )
 
         st.session_state.nexa_model.params.update({
@@ -285,7 +305,8 @@ try:
         if 'nexa_model' not in st.session_state or not st.session_state.nexa_model:
             st.error("Please wait for the model to load or select a valid model.")
         else:
-            st.session_state.messages.append({"role": "user", "content": prompt})
+            st.session_state.messages.append(
+                {"role": "user", "content": prompt})
             with st.chat_message("user"):
                 st.markdown(prompt)
 
@@ -302,10 +323,12 @@ try:
                         content = delta
 
                     full_response += content
-                    response_placeholder.markdown(full_response, unsafe_allow_html=True)
+                    response_placeholder.markdown(
+                        full_response, unsafe_allow_html=True)
                 response_placeholder.markdown(full_response)
 
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
+            st.session_state.messages.append(
+                {"role": "assistant", "content": full_response})
 
 except Exception as e:
     st.error(f"An unexpected error occurred: {str(e)}")

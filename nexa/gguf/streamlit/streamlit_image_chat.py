@@ -20,14 +20,18 @@ import io
 specified_run_type = 'Computer Vision'
 model_map = NEXA_RUN_MODEL_MAP_IMAGE | NEXA_RUN_MODEL_MAP_FLUX
 
+
 def get_default_params(model_path: str) -> dict:
     """Get default parameters based on model type."""
     if "lcm-dreamshaper" in model_path or "flux" in model_path:
-        return DEFAULT_IMG_GEN_PARAMS_LCM.copy()  # fast LCM models: 4 steps @ 1.0 guidance
+        # fast LCM models: 4 steps @ 1.0 guidance
+        return DEFAULT_IMG_GEN_PARAMS_LCM.copy()
     elif "sdxl-turbo" in model_path:
         return DEFAULT_IMG_GEN_PARAMS_TURBO.copy()  # sdxl-turbo: 5 steps @ 5.0 guidance
     else:
-        return DEFAULT_IMG_GEN_PARAMS.copy()  # standard SD models: 20 steps @ 7.5 guidance
+        # standard SD models: 20 steps @ 7.5 guidance
+        return DEFAULT_IMG_GEN_PARAMS.copy()
+
 
 @st.cache_resource(show_spinner=False)
 def load_model(model_path: str, is_local: bool = False, is_hf: bool = False):
@@ -47,9 +51,11 @@ def load_model(model_path: str, is_local: bool = False, is_hf: bool = False):
                 # model hub case:
                 local_path, run_type = pull_model(model_path)
                 if not local_path or not run_type:
-                    st.error(f"Failed to pull model {model_path} from Nexa Model Hub")
+                    st.error(
+                        f"Failed to pull model {model_path} from Nexa Model Hub")
                     return None
-                update_model_options(specified_run_type, model_map)  # update options after successful pull
+                # update options after successful pull
+                update_model_options(specified_run_type, model_map)
             except ValueError as e:
                 st.error(f"Error pulling model from Nexa Model Hub: {str(e)}")
                 return None
@@ -76,6 +82,7 @@ def load_model(model_path: str, is_local: bool = False, is_hf: bool = False):
         st.error(f"Error in load_model: {str(e)}")
         return None
 
+
 @st.cache_resource(show_spinner=False)
 def load_local_model(local_path: str):
     """Load local model with default parameters."""
@@ -84,11 +91,13 @@ def load_local_model(local_path: str):
             model_path="local_model",
             local_path=local_path
         )
-        update_model_options(specified_run_type, model_map)  # update options after successful local model load
+        # update options after successful local model load
+        update_model_options(specified_run_type, model_map)
         return nexa_model
     except Exception as e:
         st.error(f"Error loading local model: {str(e)}")
         return None
+
 
 def generate_images(nexa_model: NexaImageInference, prompt: str, negative_prompt: str):
     """Generate images using the model."""
@@ -107,6 +116,7 @@ def generate_images(nexa_model: NexaImageInference, prompt: str, negative_prompt
     )
 
     return images
+
 
 # main execution:
 try:
@@ -136,7 +146,8 @@ try:
 
     # force refresh model options on every page load:
     if 'model_options' not in st.session_state:
-        st.session_state.model_options = get_model_options(specified_run_type, model_map)
+        st.session_state.model_options = get_model_options(
+            specified_run_type, model_map)
     else:
         update_model_options(specified_run_type, model_map)
 
@@ -156,10 +167,12 @@ try:
                 st.error(f"Error loading default model: {str(e)}")
 
             if default_model not in st.session_state.model_options:
-                st.session_state.current_model_index = st.session_state.model_options.index("Use Model From Nexa Model Hub 🔍")
+                st.session_state.current_model_index = st.session_state.model_options.index(
+                    "Use Model From Nexa Model Hub 🔍")
         else:
             try:
-                st.session_state.current_model_index = st.session_state.model_options.index(default_model)
+                st.session_state.current_model_index = st.session_state.model_options.index(
+                    default_model)
             except ValueError:
                 st.session_state.current_model_index = 0
 
@@ -171,11 +184,14 @@ try:
     # update selectbox index based on current model
     if 'nexa_model' in st.session_state:
         if st.session_state.current_hub_model:
-            current_index = st.session_state.model_options.index("Use Model From Nexa Model Hub 🔍")
+            current_index = st.session_state.model_options.index(
+                "Use Model From Nexa Model Hub 🔍")
         elif st.session_state.current_local_path:
-            current_index = st.session_state.model_options.index("Local Model 📁")
+            current_index = st.session_state.model_options.index(
+                "Local Model 📁")
         elif st.session_state.current_model_path:
-            current_index = st.session_state.model_options.index(st.session_state.current_model_path)
+            current_index = st.session_state.model_options.index(
+                st.session_state.current_model_path)
         else:
             current_index = st.session_state.current_model_index
     else:
@@ -199,7 +215,8 @@ try:
         # handle local model path changes:
         if 'nexa_model' not in st.session_state or st.session_state.current_local_path != local_model_path:
             with st.spinner("Loading local model..."):
-                st.session_state.nexa_model = load_local_model(local_model_path)
+                st.session_state.nexa_model = load_local_model(
+                    local_model_path)
                 st.session_state.current_local_path = local_model_path
 
     elif model_path == "Use Model From Nexa Model Hub 🔍":
@@ -321,7 +338,8 @@ try:
                 )
                 st.success("Images generated successfully!")
                 for i, image in enumerate(images):
-                    st.image(image, caption=f"Generated Image", use_column_width=True)
+                    st.image(image, caption=f"Generated Image",
+                             use_column_width=True)
 
                     img_byte_arr = io.BytesIO()
                     image.save(img_byte_arr, format='PNG')

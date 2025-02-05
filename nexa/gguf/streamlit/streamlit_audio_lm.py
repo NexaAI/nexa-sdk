@@ -22,6 +22,7 @@ is_local_path = False if sys.argv[2] == "False" else True
 hf = False if sys.argv[3] == "False" else True
 projector_local_path = sys.argv[4] if len(sys.argv) > 4 else None
 
+
 @st.cache_resource
 def load_model(model_path):
     if is_local_path:
@@ -30,12 +31,15 @@ def load_model(model_path):
         local_path, _ = pull_model(model_path, hf=True)
     else:
         local_path, _ = pull_model(model_path)
-        
+
     if is_local_path:
-        nexa_model = NexaAudioLMInference(model_path=model_path, local_path=local_path, projector_local_path=projector_local_path)
+        nexa_model = NexaAudioLMInference(
+            model_path=model_path, local_path=local_path, projector_local_path=projector_local_path)
     else:
-        nexa_model = NexaAudioLMInference(model_path=model_path, local_path=local_path)
+        nexa_model = NexaAudioLMInference(
+            model_path=model_path, local_path=local_path)
     return nexa_model
+
 
 def process_audio(nexa_model, audio_file, prompt=""):
     # Save the uploaded audio data to a temporary file
@@ -58,12 +62,15 @@ def process_audio(nexa_model, audio_file, prompt=""):
         if os.path.exists(temp_audio_path):
             os.unlink(temp_audio_path)
 
+
 def start_new_callback():
     st.session_state.has_result = False
     st.session_state.prompt = ""
     st.session_state.key += 1
 
-st.markdown("# Nexa AI AudioLM Generation [![Nexa SDK](https://img.shields.io/badge/SDK-Nexa-blue)](https://github.com/NexaAI/nexa-sdk)")
+
+st.markdown(
+    "# Nexa AI AudioLM Generation [![Nexa SDK](https://img.shields.io/badge/SDK-Nexa-blue)](https://github.com/NexaAI/nexa-sdk)")
 st.caption("Powered by Nexa AI SDK🐙")
 
 # Sidebar configuration
@@ -75,8 +82,8 @@ if not model_path:
     st.stop()
 
 # Initialize or update the model when the path changes
-if ("current_model_path" not in st.session_state 
-    or st.session_state.current_model_path != model_path):
+if ("current_model_path" not in st.session_state
+        or st.session_state.current_model_path != model_path):
     st.session_state.current_model_path = model_path
     st.session_state.nexa_model = load_model(model_path)
     if st.session_state.nexa_model is None:
@@ -87,22 +94,24 @@ input_container = st.container()
 
 with input_container:
     # Text prompt input
-    prompt = st.text_input("Enter optional prompt text:", value=st.session_state.prompt, key=f"prompt_{st.session_state.key}")
+    prompt = st.text_input("Enter optional prompt text:",
+                           value=st.session_state.prompt, key=f"prompt_{st.session_state.key}")
 
-    
     # Option 1: Upload Audio File
     st.subheader("Option 1: Upload Audio File")
-    uploaded_file = st.file_uploader("Choose an audio file", type=["wav", "mp3"], key=f"uploader_{st.session_state.key}")
+    uploaded_file = st.file_uploader("Choose an audio file", type=[
+                                     "wav", "mp3"], key=f"uploader_{st.session_state.key}")
 
     if uploaded_file is not None:
         st.audio(uploaded_file, format="audio/wav")
-        
+
         if st.button("Process Audio", key="process_upload"):
             with st.spinner("Processing audio..."):
-                response = process_audio(st.session_state.nexa_model, uploaded_file, prompt)
+                response = process_audio(
+                    st.session_state.nexa_model, uploaded_file, prompt)
                 if response:
                     st.session_state.has_result = True
-            
+
             if response:
                 st.subheader("Model Response:")
                 st.write(response)
@@ -111,19 +120,21 @@ with input_container:
                         pass
                     st.write("Start new conversation to try next prompt")
             else:
-                st.error("Processing failed. Please try again with a different audio file.")
-    
+                st.error(
+                    "Processing failed. Please try again with a different audio file.")
+
     # Option 2: Real-time Recording
     st.subheader("Option 2: Record Audio")
     wav_audio_data = st_audiorec()
-    
+
     if wav_audio_data:
         if st.button("Process Audio", key="process_record"):
             with st.spinner("Processing audio..."):
-                response = process_audio(st.session_state.nexa_model, io.BytesIO(wav_audio_data), prompt)
+                response = process_audio(
+                    st.session_state.nexa_model, io.BytesIO(wav_audio_data), prompt)
                 if response:
                     st.session_state.has_result = True
-            
+
             if response:
                 st.subheader("Model Response:")
                 st.write(response)
@@ -134,4 +145,5 @@ with input_container:
             else:
                 st.error("Processing failed. Please try recording again.")
     else:
-        st.warning("No audio recorded. Please record some audio before processing.")
+        st.warning(
+            "No audio recorded. Please record some audio before processing.")
