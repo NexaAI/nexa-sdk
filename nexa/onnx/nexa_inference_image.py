@@ -46,10 +46,12 @@ class NexaImageInference:
     random_seed (int): Random seed for image generation.
     streamlit (bool): Run the inference in Streamlit UI.
     """
+
     def __init__(self, model_path=None, local_path=None, **kwargs):
         if model_path is None and local_path is None:
-            raise ValueError("Either model_path or local_path must be provided.")
-        
+            raise ValueError(
+                "Either model_path or local_path must be provided.")
+
         self.model_path = NEXA_RUN_MODEL_MAP_ONNX.get(model_path, model_path)
         self.download_onnx_folder = local_path
         self.params = {
@@ -65,7 +67,8 @@ class NexaImageInference:
         self.pipeline = None
 
         if self.download_onnx_folder is None:
-            self.download_onnx_folder, _ = pull_model(self.model_path, **kwargs)
+            self.download_onnx_folder, _ = pull_model(
+                self.model_path, **kwargs)
 
         if self.download_onnx_folder is None:
             logging.error(
@@ -86,7 +89,8 @@ class NexaImageInference:
         """
         logging.debug(f"Loading model from {self.download_onnx_folder}")
         try:
-            model_index_path = os.path.join(self.download_onnx_folder, "model_index.json")
+            model_index_path = os.path.join(
+                self.download_onnx_folder, "model_index.json")
             with open(model_index_path, "r") as index_file:
                 model_index = json.load(index_file)
 
@@ -96,8 +100,10 @@ class NexaImageInference:
             PipelineClass = ORT_PIPELINES_MAPPING.get(
                 pipeline_class_name, ORTStableDiffusionPipeline
             )
-            self.pipeline = PipelineClass.from_pretrained(self.download_onnx_folder)
-            logging.debug(f"Model loaded successfully using {pipeline_class_name}")
+            self.pipeline = PipelineClass.from_pretrained(
+                self.download_onnx_folder)
+            logging.debug(
+                f"Model loaded successfully using {pipeline_class_name}")
         except Exception as e:
             logging.error(f"Error loading model: {e}")
 
@@ -116,7 +122,8 @@ class NexaImageInference:
             except KeyboardInterrupt:
                 print(EXIT_REMINDER)
             except Exception as e:
-                logging.error(f"Error during text generation: {e}", exc_info=True)
+                logging.error(
+                    f"Error during text generation: {e}", exc_info=True)
 
     def generate_images(self, prompt, negative_prompt):
         """
@@ -154,8 +161,6 @@ class NexaImageInference:
         images = self.pipeline(**pipeline_kwargs).images
         return images
 
-
-
     def _save_images(self, images):
         """
         Save the generated images to the specified output path.
@@ -169,7 +174,7 @@ class NexaImageInference:
             image.save(file_path)
             print(f"Image {i+1} saved to: {file_path}")
 
-    def run_streamlit(self, model_path: str, is_local_path = False):
+    def run_streamlit(self, model_path: str, is_local_path=False):
         """
         Run the Streamlit UI.
         """
@@ -177,10 +182,12 @@ class NexaImageInference:
         from streamlit.web import cli as stcli
 
         streamlit_script_path = (
-            Path(__file__).resolve().parent / "streamlit" / "streamlit_image_chat.py"
+            Path(__file__).resolve().parent /
+            "streamlit" / "streamlit_image_chat.py"
         )
 
-        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, str(is_local_path)]
+        sys.argv = ["streamlit", "run", str(
+            streamlit_script_path), model_path, str(is_local_path)]
         sys.exit(stcli.main())
 
 

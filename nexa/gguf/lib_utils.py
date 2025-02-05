@@ -11,13 +11,16 @@ from typing import List
 
 def is_gpu_available():
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    sentinel_file_exists = os.path.exists(os.path.join(current_dir, "lib", "empty_file.txt"))
+    sentinel_file_exists = os.path.exists(
+        os.path.join(current_dir, "lib", "empty_file.txt"))
     return sentinel_file_exists
+
 
 # Load the library
 def load_library(lib_base_name: str, lib_subdir_name: str = ''):
     # Construct the paths to the possible shared library names
-    _base_path = pathlib.Path(os.path.abspath(os.path.dirname(__file__))) / "lib"
+    _base_path = pathlib.Path(os.path.abspath(
+        os.path.dirname(__file__))) / "lib"
     if len(lib_subdir_name) != 0:
         _base_path = _base_path / lib_subdir_name
     # Searching for the library in the current directory under the name "libllama" (default name
@@ -70,7 +73,8 @@ def load_library(lib_base_name: str, lib_subdir_name: str = ''):
             try:
                 return ctypes.CDLL(str(_lib_path), **cdll_args)  # type: ignore
             except Exception as e:
-                raise RuntimeError(f"Failed to load shared library '{_lib_path}': {e}")
+                raise RuntimeError(
+                    f"Failed to load shared library '{_lib_path}': {e}")
 
     raise FileNotFoundError(
         f"Shared library with base name '{lib_base_name}' not found"
@@ -86,11 +90,15 @@ def _add_windows_dll_directories(base_path: Path) -> None:
 
         if sys.version_info >= (3, 8):
             if "CUDA_PATH" in os.environ:
-                os.add_dll_directory(os.path.join(os.environ["CUDA_PATH"], "bin"))
-                os.add_dll_directory(os.path.join(os.environ["CUDA_PATH"], "lib"))
+                os.add_dll_directory(os.path.join(
+                    os.environ["CUDA_PATH"], "bin"))
+                os.add_dll_directory(os.path.join(
+                    os.environ["CUDA_PATH"], "lib"))
             if "HIP_PATH" in os.environ:
-                os.add_dll_directory(os.path.join(os.environ["HIP_PATH"], "bin"))
-                os.add_dll_directory(os.path.join(os.environ["HIP_PATH"], "lib"))
+                os.add_dll_directory(os.path.join(
+                    os.environ["HIP_PATH"], "bin"))
+                os.add_dll_directory(os.path.join(
+                    os.environ["HIP_PATH"], "lib"))
 
 
 def try_add_cuda_lib_path():
@@ -112,7 +120,8 @@ def try_add_cuda_lib_path():
 
                 lib_path = nvidia_lib_root / submodule / "bin"
                 os.add_dll_directory(str(lib_path))
-                os.environ["PATH"] = str(lib_path) + os.pathsep + os.environ["PATH"]
+                os.environ["PATH"] = str(lib_path) + \
+                    os.pathsep + os.environ["PATH"]
                 logging.debug(f"Added {lib_path} to PATH")
             except PackageNotFoundError:
                 logging.debug(f"{package_name} not found")

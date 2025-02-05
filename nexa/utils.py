@@ -71,7 +71,8 @@ def get_model_options(
 ) -> List[str]:
     """Get list of model options including special options."""
     available_models = get_available_models()
-    models_list = filter_available_models(available_models, specified_run_type, model_map)
+    models_list = filter_available_models(
+        available_models, specified_run_type, model_map)
     # add special options at the end of the dropdown menu:
     models_list.extend(["Use Model From Nexa Model Hub 🔍", "Local Model 📁"])
     return models_list
@@ -84,14 +85,17 @@ def update_model_options(
     """Update the model options in session state and force a refresh."""
     try:
         fresh_options = get_model_options(specified_run_type, model_map)
-        st.session_state.model_options = fresh_options  # update session state with new options
+        # update session state with new options
+        st.session_state.model_options = fresh_options
 
         if hasattr(st.session_state, 'current_model_path') and st.session_state.current_model_path:
             if st.session_state.current_model_path in fresh_options:
-                st.session_state.current_model_index = fresh_options.index(st.session_state.current_model_path)
+                st.session_state.current_model_index = fresh_options.index(
+                    st.session_state.current_model_path)
             else:
                 # if current model not in list, reset to Model Hub option:
-                hub_index = fresh_options.index("Use Model From Nexa Model Hub 🔍")
+                hub_index = fresh_options.index(
+                    "Use Model From Nexa Model Hub 🔍")
                 st.session_state.current_model_index = hub_index
 
     except Exception as e:
@@ -139,6 +143,7 @@ def is_arm64() -> bool:
     """Check if the architecture is ARM64."""
     return platform.machine().startswith("arm")
 
+
 # For prompt input based on the platform
 if sys.platform == "win32":
     import msvcrt
@@ -154,6 +159,7 @@ else:
 
     _prompt = partial(prompt, ">>> ", style=_style)
 
+
 def light_text(placeholder):
     """Apply light text style to the placeholder."""
     if sys.platform == "win32":
@@ -161,11 +167,13 @@ def light_text(placeholder):
     else:
         return HTML(f'<style color="#777777">{placeholder} (type "/exit" to quit)</style>')
 
+
 def strip_ansi(text):
     """Remove ANSI escape codes from a string."""
     import re
     ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
     return ansi_escape.sub('', text)
+
 
 def nexa_prompt(placeholder: str = "Send a message ...") -> str:
     """Display a prompt to the user and handle input."""

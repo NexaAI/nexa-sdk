@@ -12,6 +12,7 @@ is_local_path = False if sys.argv[2] == "False" else True
 hf = False if sys.argv[3] == "False" else True
 projector_local_path = sys.argv[4] if len(sys.argv) > 4 else None
 
+
 @st.cache_resource
 def load_model(model_path):
     if is_local_path:
@@ -20,15 +21,19 @@ def load_model(model_path):
         local_path, _ = pull_model(model_path, hf=True)
     else:
         local_path, _ = pull_model(model_path)
-        
+
     if is_local_path:
-        nexa_model = NexaOmniVlmInference(model_path=model_path, local_path=local_path, projector_local_path=projector_local_path)
+        nexa_model = NexaOmniVlmInference(
+            model_path=model_path, local_path=local_path, projector_local_path=projector_local_path)
     else:
-        nexa_model = NexaOmniVlmInference(model_path=model_path, local_path=local_path)
+        nexa_model = NexaOmniVlmInference(
+            model_path=model_path, local_path=local_path)
     return nexa_model
+
 
 def generate_response(nexa_model: NexaOmniVlmInference, image_path: str, user_input: str) -> str:
     return nexa_model.inference(user_input, image_path)
+
 
 st.markdown(
     r"""
@@ -62,7 +67,8 @@ if (
         st.stop()
 
 user_input = st.text_input("Enter your text input:")
-uploaded_file = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
+uploaded_file = st.file_uploader(
+    "Upload an image", type=["png", "jpg", "jpeg"])
 
 generate_button = st.button("Send")
 spinner_placeholder = st.empty()

@@ -10,6 +10,7 @@ from nexa.onnx.nexa_inference_image import NexaImageInference
 default_model = sys.argv[1]
 is_local_path = False if sys.argv[2] == "False" else True
 
+
 @st.cache_resource
 def load_model(model_path):
     if is_local_path:
@@ -20,8 +21,9 @@ def load_model(model_path):
         model_path = local_path
     else:
         local_path, run_type = pull_model(model_path)
-        
-    nexa_model = NexaImageInference(model_path=model_path, local_path=local_path)
+
+    nexa_model = NexaImageInference(
+        model_path=model_path, local_path=local_path)
 
     if nexa_model.download_onnx_folder is None:
         st.error("Failed to download the model. Please check the model path.")
@@ -38,7 +40,8 @@ def generate_images(nexa_model: NexaImageInference, prompt, negative_prompt):
 
     generator = np.random.RandomState(nexa_model.params["random_seed"])
 
-    is_lcm_pipeline = isinstance(nexa_model.pipeline, ORTLatentConsistencyModelPipeline)
+    is_lcm_pipeline = isinstance(
+        nexa_model.pipeline, ORTLatentConsistencyModelPipeline)
 
     pipeline_kwargs = {
         "prompt": prompt,
@@ -63,7 +66,8 @@ st.sidebar.header("Model Configuration")
 model_path = st.sidebar.text_input("Model path", default_model)
 
 if not model_path:
-    st.warning("Please enter a valid path or identifier for the model in Nexa Model Hub to proceed.")
+    st.warning(
+        "Please enter a valid path or identifier for the model in Nexa Model Hub to proceed.")
     st.stop()
 
 # Initialize or update the model when the path changes

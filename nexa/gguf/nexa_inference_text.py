@@ -47,10 +47,12 @@ class NexaTextInference:
     top_k (int): Top-k sampling parameter.
     top_p (float): Top-p sampling parameter
     """
-    def __init__(self, model_path=None, local_path=None, stop_words=None, device="auto", function_calling:bool=False, **kwargs):
+
+    def __init__(self, model_path=None, local_path=None, stop_words=None, device="auto", function_calling: bool = False, **kwargs):
         if model_path is None and local_path is None:
-            raise ValueError("Either model_path or local_path must be provided.")
-        
+            raise ValueError(
+                "Either model_path or local_path must be provided.")
+
         self.params = DEFAULT_TEXT_GEN_PARAMS.copy()
         self.params.update(kwargs)
         self.model = None
@@ -74,12 +76,14 @@ class NexaTextInference:
         self.profiling = kwargs.get("profiling", False)
 
         model_name = model_path.split(":")[0].lower() if model_path else None
-        self.stop_words = (stop_words if stop_words else NEXA_STOP_WORDS_MAP.get(model_name, []))
+        self.stop_words = (
+            stop_words if stop_words else NEXA_STOP_WORDS_MAP.get(model_name, []))
         if function_calling:
-            self.chat_format = 'functionary' 
+            self.chat_format = 'functionary'
         else:
             self.chat_format = NEXA_RUN_CHAT_TEMPLATE_MAP.get(model_name, None)
-        self.completion_template = NEXA_RUN_COMPLETION_TEMPLATE_MAP.get(model_name, None)
+        self.completion_template = NEXA_RUN_COMPLETION_TEMPLATE_MAP.get(
+            model_name, None)
 
         if not kwargs.get("streamlit", False):
             self._load_model()
@@ -88,7 +92,7 @@ class NexaTextInference:
                     "Failed to load model or tokenizer. Exiting.", exc_info=True
                 )
                 exit(1)
-    
+
     def create_embedding(
         self,
         input: Union[str, List[str]],
@@ -109,7 +113,8 @@ class NexaTextInference:
 
     @SpinningCursorAnimation()
     def _load_model(self):
-        logging.debug(f"Loading model from {self.downloaded_path}, use_cuda_or_metal : {is_gpu_available()}")
+        logging.debug(
+            f"Loading model from {self.downloaded_path}, use_cuda_or_metal : {is_gpu_available()}")
         start_time = time.time()
         with suppress_stdout_stderr():
             from nexa.gguf.llama.llama import Llama
@@ -129,7 +134,8 @@ class NexaTextInference:
                     lora_path=self.params.get("lora_path", ""),
                 )
             except Exception as e:
-                logging.error(f"Failed to load model: {e}. Falling back to CPU.", exc_info=True)
+                logging.error(
+                    f"Failed to load model: {e}. Falling back to CPU.", exc_info=True)
                 self.model = Llama(
                     model_path=self.downloaded_path,
                     verbose=self.profiling,
@@ -176,7 +182,7 @@ class NexaTextInference:
                 if self.chat_format:
                     output = self._chat(user_input)
                     first_token = True
-                    stop_spinner(stop_event, spinner_thread) 
+                    stop_spinner(stop_event, spinner_thread)
 
                     for chunk in output:
                         if first_token:
@@ -194,7 +200,7 @@ class NexaTextInference:
                 else:
                     output = self._complete(user_input)
                     first_token = True
-                    stop_spinner(stop_event, spinner_thread) 
+                    stop_spinner(stop_event, spinner_thread)
 
                     for chunk in output:
                         if first_token:
@@ -206,7 +212,7 @@ class NexaTextInference:
                             delta = choice["text"]
                         elif "delta" in choice:
                             delta = choice["delta"]["content"]
-                        
+
                         print(delta, end="", flush=True)
                         generated_text += delta
 
@@ -214,8 +220,10 @@ class NexaTextInference:
                     if len(self.conversation_history) >= 2:
                         self.conversation_history = self.conversation_history[2:]
 
-                    self.conversation_history.append({"role": "user", "content": user_input})
-                    self.conversation_history.append({"role": "assistant", "content": generated_text})
+                    self.conversation_history.append(
+                        {"role": "user", "content": user_input})
+                    self.conversation_history.append(
+                        {"role": "assistant", "content": generated_text})
             except KeyboardInterrupt:
                 pass
             except Exception as e:
@@ -282,9 +290,9 @@ class NexaTextInference:
 
         return self.model.create_completion(prompt=prompt, **params)
 
-
     def _chat(self, user_input: str) -> Iterator:
-        current_messages = self.conversation_history + [{"role": "user", "content": user_input}]
+        current_messages = self.conversation_history + \
+            [{"role": "user", "content": user_input}]
         return self.model.create_chat_completion(
             messages=current_messages,
             temperature=self.params["temperature"],
@@ -314,10 +322,10 @@ class NexaTextInference:
             stop=self.stop_words,
             logprobs=self.logprobs,
         )
-        
+
     def unload_lora(self):
         self.model.unload_lora()
-        
+
     def reload_lora(self, lora_path: str, lora_scale: float = 1.0):
         self.model.reload_lora(lora_path, lora_scale)
 
@@ -332,27 +340,28 @@ class NexaTextInference:
         Returns:
             dict: The structured output conforming to the provided schema.
         """
-        
+
         if not json_schema and not json_schema_path:
-            raise ValueError("Either json_schema or json_schema_path must be provided.")
+            raise ValueError(
+                "Either json_schema or json_schema_path must be provided.")
 
         # Load schema from file if json_schema is not provided
         if json_schema_path and not json_schema:
             with open(json_schema_path, 'r') as f:
                 json_schema = f.read()
-        
+
         # Parse the schema
         try:
             schema_data = json.loads(json_schema)
         except json.JSONDecodeError as e:
             raise ValueError(f"Provided schema is not valid JSON: {e}")
-        
+
         # print(f"schema_data: {schema_data}")
         grammar = LlamaGrammar.from_json_schema(
             json.dumps(schema_data), verbose=self.model.verbose
         )
         print(f"grammar: {grammar}")
-        
+
         structured_prompt = f"Extract the following JSON from the text: {prompt}"
 
         params = {
@@ -375,7 +384,8 @@ class NexaTextInference:
         try:
             structured_data = json.loads(generated_text)
         except json.JSONDecodeError:
-            logging.error("Model output is not valid JSON. Consider retrying or adjusting your prompt.")
+            logging.error(
+                "Model output is not valid JSON. Consider retrying or adjusting your prompt.")
             raise
 
         # Validate against the schema
@@ -386,9 +396,9 @@ class NexaTextInference:
             logging.debug(f"Generated JSON: {generated_text}")
             logging.debug(f"Validation error: {e}")
             raise
-        
+
         return structured_data
-    
+
     def function_calling(self, messages, tools) -> list[dict]:
         """
         Generate function calls based on input messages and available functions.
@@ -421,13 +431,15 @@ class NexaTextInference:
                     try:
                         # llama-cpp-python's `create_chat_completion` produces incorrectly parsed output when only
                         # `messages` and `tools` are provided. Specifically, the function name is mistakenly treated
-                        # as an argument, while the `function.name` field is an empty string. 
+                        # as an argument, while the `function.name` field is an empty string.
                         # The following code corrects this issue.
-                        function_data = json.loads(item["function"]["arguments"])
+                        function_data = json.loads(
+                            item["function"]["arguments"])
                         function_name = function_data.get("function", "")
                         if function_name == "":
                             function_name = function_data.get("name", "")
-                        function_args = {k: v for k, v in function_data.items() if k not in ['type', 'function', 'name']}
+                        function_args = {k: v for k, v in function_data.items() if k not in [
+                            'type', 'function', 'name']}
                         if 'input' in function_args:
                             function_args = function_args['input']
                         else:
@@ -442,11 +454,12 @@ class NexaTextInference:
                         })
                     except json.JSONDecodeError:
                         print("Error: Unable to parse JSON from function arguments")
-            
+
             return processed_output
-        
-        response = self.model.create_chat_completion(messages=messages, tools=tools, function_call='none')
-        response = response['choices'][0]['message']['tool_calls'] 
+
+        response = self.model.create_chat_completion(
+            messages=messages, tools=tools, function_call='none')
+        response = response['choices'][0]['message']['tool_calls']
         try:
             # print(response)
             return process_output(response)
@@ -457,7 +470,7 @@ class NexaTextInference:
             )
             return []
 
-    def run_streamlit(self, model_path: str, is_local_path = False, hf = False):
+    def run_streamlit(self, model_path: str, is_local_path=False, hf=False):
         """
         Used for CLI. Run the Streamlit UI.
         """
@@ -553,7 +566,8 @@ if __name__ == "__main__":
     stop_words = kwargs.pop("stop_words", [])
     device = kwargs.pop("device", "auto")
 
-    inference = NexaTextInference(model_path, stop_words=stop_words, device=device, **kwargs)
+    inference = NexaTextInference(
+        model_path, stop_words=stop_words, device=device, **kwargs)
     if args.streamlit:
         inference.run_streamlit(model_path)
     else:
