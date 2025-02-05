@@ -151,6 +151,7 @@ GGML_TYPES = {
     "q4_0_8_8": GGML_TYPE_Q4_0_8_8,
 }
 
-NEXA_CACHE_ROOT = Path(os.getenv("NEXA_CACHE_ROOT") or "~/.cache/nexa").expanduser()
+NEXA_CACHE_ROOT = Path(os.getenv("NEXA_CACHE_ROOT")
+                       or "~/.cache/nexa").expanduser()
 NEXA_MODELS_HUB_DIR = NEXA_CACHE_ROOT / "hub"
 NEXA_MODELS_HUB_CONVERTED_DIR = NEXA_MODELS_HUB_DIR / "converted"
