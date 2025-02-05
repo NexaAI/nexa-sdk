@@ -24,8 +24,9 @@ def load_model(model_path):
         model_path = local_path
     else:
         local_path, run_type = pull_model(model_path)
-    
-    nexa_model = NexaVoiceInference(model_path=model_path, local_path=local_path)
+
+    nexa_model = NexaVoiceInference(
+        model_path=model_path, local_path=local_path)
 
     if nexa_model.downloaded_onnx_folder is None:
         st.error("Failed to download the model. Please check the model path.")
@@ -41,14 +42,16 @@ def transcribe_audio(nexa_model, audio_file):
         temp_audio_path = temp_audio.name
 
     try:
-        audio, sr = librosa.load(temp_audio_path, sr=nexa_model.params["sampling_rate"])
+        audio, sr = librosa.load(
+            temp_audio_path, sr=nexa_model.params["sampling_rate"])
         inputs = nexa_model.processor(
             audio, return_tensors="pt", sampling_rate=nexa_model.params["sampling_rate"]
         )
 
         input_features = inputs.input_features
         attention_mask = (
-            inputs.attention_mask if hasattr(inputs, "attention_mask") else None
+            inputs.attention_mask if hasattr(
+                inputs, "attention_mask") else None
         )
 
         gen_tokens = nexa_model.model.generate(
@@ -98,7 +101,8 @@ if uploaded_file is not None:
 
     if st.button("Transcribe Uploaded Audio"):
         with st.spinner("Transcribing audio..."):
-            transcription = transcribe_audio(st.session_state.nexa_model, uploaded_file)
+            transcription = transcribe_audio(
+                st.session_state.nexa_model, uploaded_file)
 
         if transcription:
             st.subheader("Transcription:")

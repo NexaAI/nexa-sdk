@@ -32,11 +32,12 @@ class NexaTTSInference:
     sampling_rate (int): Sampling rate for audio processing.
     streamlit (bool): Run the inference in Streamlit UI.
     """
-    
+
     def __init__(self, model_path=None, local_path=None, **kwargs):
         if model_path is None and local_path is None:
-            raise ValueError("Either model_path or local_path must be provided.")
-        
+            raise ValueError(
+                "Either model_path or local_path must be provided.")
+
         self.model_path = NEXA_RUN_MODEL_MAP_ONNX.get(model_path, model_path)
         self.yaml_file_name = None
         self.params = {
@@ -50,7 +51,8 @@ class NexaTTSInference:
         self.downloaded_onnx_folder = local_path
 
         if self.downloaded_onnx_folder is None:
-            self.downloaded_onnx_folder, _ = pull_model(self.model_path, **kwargs)
+            self.downloaded_onnx_folder, _ = pull_model(
+                self.model_path, **kwargs)
 
         if self.downloaded_onnx_folder is None:
             logging.error(
@@ -59,7 +61,8 @@ class NexaTTSInference:
             )
             exit(1)
 
-        self.yaml_file_name = os.path.join(self.downloaded_onnx_folder, "config.yaml")
+        self.yaml_file_name = os.path.join(
+            self.downloaded_onnx_folder, "config.yaml")
         with open(self.yaml_file_name, "r", encoding="utf-8") as f:
             self.config = yaml.safe_load(f)
 
@@ -85,11 +88,12 @@ class NexaTTSInference:
                 self._save_audio(
                     outputs[0], self.params["sampling_rate"], self.params["output_path"]
                 )
-                logging.info(f"Audio saved to {self.params['output_path']}")                
+                logging.info(f"Audio saved to {self.params['output_path']}")
             except KeyboardInterrupt:
                 print(EXIT_REMINDER)
             except Exception as e:
-                logging.error(f"Error during text generation: {e}", exc_info=True)
+                logging.error(
+                    f"Error during text generation: {e}", exc_info=True)
 
     def audio_generation(self, user_input):
         """
@@ -105,14 +109,13 @@ class NexaTTSInference:
         outputs = self.model.run(None, {"text": inputs})
         return outputs
 
-
     def _save_audio(self, audio_data, sampling_rate, output_path):
         os.makedirs(output_path, exist_ok=True)
         file_name = f"audio_{int(time.time())}.wav"
         file_path = os.path.join(output_path, file_name)
         sf.write(file_path, audio_data, sampling_rate)
 
-    def run_streamlit(self, model_path: str, is_local_path = False):
+    def run_streamlit(self, model_path: str, is_local_path=False):
         """
         Run the Streamlit UI.
         """
@@ -123,7 +126,8 @@ class NexaTTSInference:
             Path(__file__).resolve().parent / "streamlit" / "streamlit_tts.py"
         )
 
-        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, str(is_local_path)]
+        sys.argv = ["streamlit", "run", str(
+            streamlit_script_path), model_path, str(is_local_path)]
         sys.exit(stcli.main())
 
 

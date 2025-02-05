@@ -34,8 +34,10 @@ is_chat_mode = False
 chat_format = None
 completion_template = None
 hostname = socket.gethostname()
-conversation_history = [{"role": "system", "content": "You are a helpful assistant"}]
+conversation_history = [
+    {"role": "system", "content": "You are a helpful assistant"}]
 model_path = None
+
 
 class GenerationRequest(BaseModel):
     prompt: str
@@ -103,7 +105,7 @@ async def nexa_run_text_generation(
         pad_token_id=tokenizer.eos_token_id,
     )
     response = tokenizer.decode(
-        output[0][len(inputs["input_ids"][0]) :], skip_special_tokens=True
+        output[0][len(inputs["input_ids"][0]):], skip_special_tokens=True
     )
     if is_chat_mode:
         conversation_history.append({"role": "assistant", "content": response})
@@ -134,7 +136,8 @@ class Message(BaseModel):
 
 
 class ChatCompletionRequest(BaseModel):
-    model_path: Optional[str] = "gemma"  # Default model path or make it optional
+    # Default model path or make it optional
+    model_path: Optional[str] = "gemma"
     messages: List[Message] = [
         Message(role="system", content="You are a helpful assistant"),
         Message(role="user", content="tell me a story")
@@ -169,7 +172,8 @@ async def chat_completions(request: ChatCompletionRequest):
     await nexa_run_text_generation_preperation(model_path=args.model_path)
 
     generation_kwargs = GenerationRequest.model_construct(
-        prompt="" if len(request.messages) == 0 else request.messages[-1].content,
+        prompt="" if len(
+            request.messages) == 0 else request.messages[-1].content,
         temperature=request.temperature,
         max_new_tokens=request.max_tokens,
     ).model_dump()
@@ -200,6 +204,7 @@ async def chat_completions(request: ChatCompletionRequest):
             "choices": [{"message": Message(role="assistant", content=resp_content)}],
         }
 
+
 def run_nexa_ai_service(model_path_arg, **kwargs):
     global model_path
     model_path = model_path_arg or "gemma"
@@ -214,7 +219,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Run the Nexa AI Text Generation Service"
     )
-    parser.add_argument("model_path", type=str, nargs='?', default="gemma", help="Folder Path on Amazon S3")
+    parser.add_argument("model_path", type=str, nargs='?',
+                        default="gemma", help="Folder Path on Amazon S3")
     parser.add_argument(
         "--host", type=str, default="localhost", help="Host to bind the server to"
     )
@@ -227,4 +233,5 @@ if __name__ == "__main__":
         help="Enable automatic reloading on code changes",
     )
     args = parser.parse_args()
-    run_nexa_ai_service(args.model_path, host=args.host, port=args.port, reload=args.reload)
+    run_nexa_ai_service(args.model_path, host=args.host,
+                        port=args.port, reload=args.reload)
