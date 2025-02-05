@@ -8,7 +8,7 @@ from PIL import Image
 
 import nexa.gguf.sd.stable_diffusion_cpp as sd_cpp
 from nexa.gguf.sd._utils import suppress_stdout_stderr
-from nexa.gguf.sd._logger import log_event, set_verbose
+# from nexa.gguf.sd._logger import log_event, set_verbose
 from nexa.gguf.sd._internals import _UpscalerModel, _StableDiffusionModel
 from nexa.gguf.sd.stable_diffusion_cpp import RNGType, GGMLType, Schedule, SampleMethod
 
@@ -115,7 +115,7 @@ class StableDiffusion:
         # =========== Logging ===========
 
         self.verbose = verbose
-        set_verbose(verbose)
+        # set_verbose(verbose)
 
         # =========== Validate Inputs ===========
 
@@ -750,7 +750,7 @@ class StableDiffusion:
             return None
 
         if not control_net_path:
-            log_event(1, "'control_net_path' not set. Skipping control condition.")
+            # log_event(1, "'control_net_path' not set. Skipping control condition.")
             return None
 
         if canny:
