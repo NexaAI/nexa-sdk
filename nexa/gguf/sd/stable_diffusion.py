@@ -7,9 +7,9 @@ from typing import Dict, List, Union, Callable, Optional
 from PIL import Image
 
 import nexa.gguf.sd.stable_diffusion_cpp as sd_cpp
-from nexa.gguf.sd._utils import suppress_stdout_stderr
+from nexa.gguf.sd._utils_diffusion import suppress_stdout_stderr
 # from nexa.gguf.sd._logger import log_event, set_verbose
-from nexa.gguf.sd._internals import _UpscalerModel, _StableDiffusionModel
+from nexa.gguf.sd._internals_diffusion import _UpscalerModel, _StableDiffusionModel
 from nexa.gguf.sd.stable_diffusion_cpp import RNGType, GGMLType, Schedule, SampleMethod
 
 
