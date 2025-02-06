@@ -259,6 +259,7 @@ class NexaImageInference:
         image_path,
         prompt,
         negative_prompt="",
+        mask_image_path="",
         cfg_scale=7.5,
         width=512,
         height=512,
@@ -281,6 +282,7 @@ class NexaImageInference:
         images = self._retry(
             self.model.img_to_img,
             image=image_path,
+            mask_image=mask_image_path,
             prompt=prompt,
             negative_prompt=negative_prompt,
             cfg_scale=cfg_scale,
