@@ -47,7 +47,6 @@ def test_txt_to_img():
 
 # Test image-to-image generation
 def test_img_to_img():
-
     global sd
     img_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"
     with TemporaryDirectory() as temp_dir:
@@ -60,6 +59,7 @@ def test_img_to_img():
             negative_prompt="black soil",
             sample_steps=2,
         )
+        output[0].save("img2img.png")
 
 
 def test_img_inpainting():
@@ -84,7 +84,6 @@ def test_img_inpainting():
         output[0].save("image_inpainting.png")
 
 
-# Main execution
 if __name__ == "__main__":
     test_txt_to_img()
     test_img_to_img()
