@@ -141,6 +141,7 @@ if(STABLE_DIFFUSION_BUILD)
             -DBUILD_SHARED_LIBS=ON
             -DSD_METAL=${GGML_METAL}
             -DSD_CUBLAS=${GGML_CUDA}
+            -DSD_CUDA=${GGML_CUDA} 
             -DSD_HIPBLAS=${GGML_HIPBLAS}
             -DSD_VULKAN=${GGML_VULKAN}
         BUILD_ALWAYS 1
