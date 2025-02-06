@@ -1,29 +1,29 @@
 from __future__ import annotations
 
-import sys
-import os
 import ctypes
 import functools
-import pathlib
 from enum import IntEnum
 
 from typing import (
+    TYPE_CHECKING,
     Any,
-    Callable,
     List,
     Union,
-    NewType,
-    Optional,
-    TYPE_CHECKING,
-    TypeVar,
     Generic,
+    NewType,
+    TypeVar,
+    Callable,
+    Optional,
 )
+
 from typing_extensions import TypeAlias
 
 from nexa.gguf.lib_utils import load_library
 
 # Specify the base name of the shared library to load
 _lib_base_name = "stable-diffusion"
+
+# Specify the subdirectory that contains the shared library
 _lib_subdir_name = 'stable_diffusion'
 
 # Load the library
@@ -49,7 +49,8 @@ if TYPE_CHECKING:
     class CtypesRef(Generic[CtypesCData]):
         pass
 
-    CtypesPointerOrRef: TypeAlias = Union[CtypesPointer[CtypesCData], CtypesRef[CtypesCData]]
+    CtypesPointerOrRef: TypeAlias = Union[CtypesPointer[CtypesCData],
+                                          CtypesRef[CtypesCData]]
 
     CtypesFuncPointer: TypeAlias = ctypes._FuncPointer  # type: ignore
 
@@ -86,7 +87,8 @@ byref = ctypes.byref  # type: ignore
 
 # from ggml-backend.h
 # typedef bool (*ggml_backend_sched_eval_callback)(struct ggml_tensor * t, bool ask, void * user_data);
-ggml_backend_sched_eval_callback = ctypes.CFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_bool, ctypes.c_void_p)
+ggml_backend_sched_eval_callback = ctypes.CFUNCTYPE(
+    ctypes.c_bool, ctypes.c_void_p, ctypes.c_bool, ctypes.c_void_p)
 
 # // Abort callback
 # // If not NULL, called before ggml computation
@@ -157,40 +159,42 @@ class Schedule(IntEnum):
 
 # // same as enum ggml_type
 # enum sd_type_t {
-#     SD_TYPE_F32     = 0,
-#     SD_TYPE_F16     = 1,
-#     SD_TYPE_Q4_0    = 2,
-#     SD_TYPE_Q4_1    = 3,
+#     SD_TYPE_F32  = 0,
+#     SD_TYPE_F16  = 1,
+#     SD_TYPE_Q4_0 = 2,
+#     SD_TYPE_Q4_1 = 3,
 #     // SD_TYPE_Q4_2 = 4, support has been removed
 #     // SD_TYPE_Q4_3 = 5, support has been removed
-#     SD_TYPE_Q5_0    = 6,
-#     SD_TYPE_Q5_1    = 7,
-#     SD_TYPE_Q8_0    = 8,
-#     SD_TYPE_Q8_1    = 9,
-#     SD_TYPE_Q2_K    = 10,
-#     SD_TYPE_Q3_K    = 11,
-#     SD_TYPE_Q4_K    = 12,
-#     SD_TYPE_Q5_K    = 13,
-#     SD_TYPE_Q6_K    = 14,
-#     SD_TYPE_Q8_K    = 15,
-#     SD_TYPE_IQ2_XXS = 16,
-#     SD_TYPE_IQ2_XS  = 17,
-#     SD_TYPE_IQ3_XXS = 18,
-#     SD_TYPE_IQ1_S   = 19,
-#     SD_TYPE_IQ4_NL  = 20,
-#     SD_TYPE_IQ3_S   = 21,
-#     SD_TYPE_IQ2_S   = 22,
-#     SD_TYPE_IQ4_XS  = 23,
-#     SD_TYPE_I8      = 24,
-#     SD_TYPE_I16     = 25,
-#     SD_TYPE_I32     = 26,
-#     SD_TYPE_I64     = 27,
-#     SD_TYPE_F64     = 28,
-#     SD_TYPE_IQ1_M   = 29,
-#     SD_TYPE_BF16    = 30,
+#     SD_TYPE_Q5_0     = 6,
+#     SD_TYPE_Q5_1     = 7,
+#     SD_TYPE_Q8_0     = 8,
+#     SD_TYPE_Q8_1     = 9,
+#     SD_TYPE_Q2_K     = 10,
+#     SD_TYPE_Q3_K     = 11,
+#     SD_TYPE_Q4_K     = 12,
+#     SD_TYPE_Q5_K     = 13,
+#     SD_TYPE_Q6_K     = 14,
+#     SD_TYPE_Q8_K     = 15,
+#     SD_TYPE_IQ2_XXS  = 16,
+#     SD_TYPE_IQ2_XS   = 17,
+#     SD_TYPE_IQ3_XXS  = 18,
+#     SD_TYPE_IQ1_S    = 19,
+#     SD_TYPE_IQ4_NL   = 20,
+#     SD_TYPE_IQ3_S    = 21,
+#     SD_TYPE_IQ2_S    = 22,
+#     SD_TYPE_IQ4_XS   = 23,
+#     SD_TYPE_I8       = 24,
+#     SD_TYPE_I16      = 25,
+#     SD_TYPE_I32      = 26,
+#     SD_TYPE_I64      = 27,
+#     SD_TYPE_F64      = 28,
+#     SD_TYPE_IQ1_M    = 29,
+#     SD_TYPE_BF16     = 30,
 #     SD_TYPE_Q4_0_4_4 = 31,
 #     SD_TYPE_Q4_0_4_8 = 32,
 #     SD_TYPE_Q4_0_8_8 = 33,
+#     SD_TYPE_TQ1_0    = 34,
+#     SD_TYPE_TQ2_0    = 35,
 #     SD_TYPE_COUNT,
 # };
 class GGMLType(IntEnum):
@@ -198,8 +202,8 @@ class GGMLType(IntEnum):
     SD_TYPE_F16 = 1
     SD_TYPE_Q4_0 = 2
     SD_TYPE_Q4_1 = 3
-    # // SD_TYPE_Q4_2 = 4, support has been removed
-    # // SD_TYPE_Q4_3 (5) support has been removed
+    # SD_TYPE_Q4_2 = 4 support has been removed
+    # SD_TYPE_Q4_3 = 5 support has been removed
     SD_TYPE_Q5_0 = 6
     SD_TYPE_Q5_1 = 7
     SD_TYPE_Q8_0 = 8
@@ -229,7 +233,9 @@ class GGMLType(IntEnum):
     SD_TYPE_Q4_0_4_4 = 31
     SD_TYPE_Q4_0_4_8 = 32
     SD_TYPE_Q4_0_8_8 = 33
-    SD_TYPE_COUNT = 34
+    SD_TYPE_TQ1_0 = 34
+    SD_TYPE_TQ2_0 = 35
+    SD_TYPE_COUNT = 36
 
 
 # ==================================
@@ -248,6 +254,7 @@ sd_ctx_t_p_ctypes = ctypes.c_void_p
     [
         ctypes.c_char_p,  # model_path
         ctypes.c_char_p,  # clip_l_path
+        ctypes.c_char_p,  # clip_g_path
         ctypes.c_char_p,  # t5xxl_path
         ctypes.c_char_p,  # diffusion_model_path
         ctypes.c_char_p,  # vae_path
@@ -266,12 +273,14 @@ sd_ctx_t_p_ctypes = ctypes.c_void_p
         ctypes.c_bool,  # keep_clip_on_cpu
         ctypes.c_bool,  # keep_control_net_cpu
         ctypes.c_bool,  # keep_vae_on_cpu
+        ctypes.c_bool,  # diffusion_flash_attn
     ],
     sd_ctx_t_p_ctypes,
 )
 def new_sd_ctx(
     model_path: bytes,
     clip_l_path: bytes,
+    clip_g_path: bytes,
     t5xxl_path: bytes,
     diffusion_model_path: bytes,
     vae_path: bytes,
@@ -290,6 +299,7 @@ def new_sd_ctx(
     keep_clip_on_cpu: bool,
     keep_control_net_cpu: bool,
     keep_vae_on_cpu: bool,
+    diffusion_flash_attn: bool,
     /,
 ) -> Optional[sd_ctx_t_p]: ...
 
@@ -326,7 +336,7 @@ sd_image_t_p = ctypes.POINTER(sd_image_t)
 # ------------ txt2img ------------
 
 
-# SD_API sd_image_t* txt2img(sd_ctx_t* sd_ctx, const char* prompt, const char* negative_prompt, int clip_skip, float cfg_scale, int width, int height, enum sample_method_t sample_method, int sample_steps, int64_t seed, int batch_count, const sd_image_t* control_cond, float control_strength, float style_strength, bool normalize_input, const char* input_id_images_path);
+# SD_API sd_image_t* txt2img(sd_ctx_t* sd_ctx, const char* prompt, const char* negative_prompt, int clip_skip, float cfg_scale, float guidance, int width, int height, enum sample_method_t sample_method, int sample_steps, int64_t seed, int batch_count, const sd_image_t* control_cond, float control_strength, float style_strength, bool normalize_input, const char* input_id_images_path, int* skip_layers, size_t skip_layers_count, float slg_scale, float skip_layer_start, float skip_layer_end);
 @ctypes_function(
     "txt2img",
     [
@@ -347,6 +357,11 @@ sd_image_t_p = ctypes.POINTER(sd_image_t)
         ctypes.c_float,  # style_strength
         ctypes.c_bool,  # normalize_input
         ctypes.c_char_p,  # input_id_images_path
+        ctypes.POINTER(ctypes.c_int),  # skip_layers
+        ctypes.c_size_t,  # skip_layers_count
+        ctypes.c_float,  # slg_scale
+        ctypes.c_float,  # skip_layer_start
+        ctypes.c_float,  # skip_layer_end
     ],
     sd_image_t_p,
 )
@@ -368,6 +383,11 @@ def txt2img(
     style_strength: float,
     normalize_input: bool,
     input_id_images_path: bytes,
+    skip_layers: List[int],
+    skip_layers_count: int,
+    slg_scale: float,
+    skip_layer_start: float,
+    skip_layer_end: float,
     /,
 ) -> CtypesArray[sd_image_t]: ...
 
@@ -375,12 +395,13 @@ def txt2img(
 # ------------ img2img ------------
 
 
-# SD_API sd_image_t* img2img(sd_ctx_t* sd_ctx, sd_image_t init_image, const char* prompt, const char* negative_prompt, int clip_skip, float cfg_scale, int width, int height, enum sample_method_t sample_method, int sample_steps, float strength, int64_t seed, int batch_count);
+# SD_API sd_image_t* img2img(sd_ctx_t* sd_ctx, sd_image_t init_image, sd_image_t mask_image, const char* prompt, const char* negative_prompt, int clip_skip, float cfg_scale, float guidance, int width, int height, enum sample_method_t sample_method, int sample_steps, float strength, int64_t seed, int batch_count, const sd_image_t* control_cond, float control_strength, float style_strength, bool normalize_input, const char* input_id_images_path, int* skip_layers, size_t skip_layers_count, float slg_scale, float skip_layer_start, float skip_layer_end);
 @ctypes_function(
     "img2img",
     [
         sd_ctx_t_p_ctypes,  # sd_ctx
         sd_image_t,  # init_image
+        sd_image_t,  # mask_image
         ctypes.c_char_p,  # prompt
         ctypes.c_char_p,  # negative_prompt
         ctypes.c_int,  # clip_skip
@@ -398,12 +419,18 @@ def txt2img(
         ctypes.c_float,  # style_strength
         ctypes.c_bool,  # normalize_input
         ctypes.c_char_p,  # input_id_images_path
+        ctypes.POINTER(ctypes.c_int),  # skip_layers
+        ctypes.c_size_t,  # skip_layers_count
+        ctypes.c_float,  # slg_scale
+        ctypes.c_float,  # skip_layer_start
+        ctypes.c_float,  # skip_layer_end
     ],
     sd_image_t_p,
 )
 def img2img(
     sd_ctx: sd_ctx_t_p,
     init_image: sd_image_t,
+    mask_image: sd_image_t,
     prompt: bytes,
     negative_prompt: bytes,
     clip_skip: int,
@@ -421,6 +448,11 @@ def img2img(
     style_strength: float,
     normalize_input: bool,
     input_id_images_path: bytes,
+    skip_layers: List[int],
+    skip_layers_count: int,
+    slg_scale: float,
+    skip_layer_start: float,
+    skip_layer_end: float,
     /,
 ) -> CtypesArray[sd_image_t]: ...
 
@@ -474,20 +506,18 @@ upscaler_ctx_t_p = NewType("upscaler_ctx_t_p", int)
 upscaler_ctx_t_p_ctypes = ctypes.c_void_p
 
 
-# SD_API upscaler_ctx_t* new_upscaler_ctx(const char* esrgan_path, int n_threads, enum sd_type_t wtype);
+# SD_API upscaler_ctx_t* new_upscaler_ctx(const char* esrgan_path, int n_threads);
 @ctypes_function(
     "new_upscaler_ctx",
     [
         ctypes.c_char_p,  # esrgan_path
         ctypes.c_int,  # n_threads
-        ctypes.c_int,  # wtype (GGMLType)
     ],
     upscaler_ctx_t_p_ctypes,
 )
 def new_upscaler_ctx(
     esrgan_path: bytes,
     n_threads: int,
-    wtype: int,  # GGMLType
     /,
 ) -> upscaler_ctx_t_p: ...
 
@@ -613,7 +643,8 @@ def sd_get_system_info() -> bytes:
 # Progression
 # ==================================
 
-sd_progress_callback = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_int, ctypes.c_float, ctypes.c_void_p)
+sd_progress_callback = ctypes.CFUNCTYPE(
+    None, ctypes.c_int, ctypes.c_int, ctypes.c_float, ctypes.c_void_p)
 
 
 @ctypes_function(
@@ -634,7 +665,8 @@ def sd_set_progress_callback(
 # Logging
 # ==================================
 
-sd_log_callback = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p, ctypes.c_void_p)
+sd_log_callback = ctypes.CFUNCTYPE(
+    None, ctypes.c_int, ctypes.c_char_p, ctypes.c_void_p)
 
 
 @ctypes_function(

@@ -1,13 +1,16 @@
-from typing import List, Dict, Optional, Union, Callable
-import random
 import ctypes
-import multiprocessing
+import random
 import contextlib
+import multiprocessing
+from typing import Dict, List, Union, Callable, Optional
+
 from PIL import Image
+
 import nexa.gguf.sd.stable_diffusion_cpp as sd_cpp
-from nexa.gguf.sd.stable_diffusion_cpp import GGMLType, RNGType, Schedule, SampleMethod
-from nexa.gguf.sd._internals_diffusion import _StableDiffusionModel, _UpscalerModel
 from nexa.gguf.sd._utils_diffusion import suppress_stdout_stderr
+# from nexa.gguf.sd._logger import log_event, set_verbose
+from nexa.gguf.sd._internals_diffusion import _UpscalerModel, _StableDiffusionModel
+from nexa.gguf.sd.stable_diffusion_cpp import RNGType, GGMLType, Schedule, SampleMethod
 
 
 class StableDiffusion:
@@ -17,6 +20,7 @@ class StableDiffusion:
         self,
         model_path: str = "",
         clip_l_path: str = "",
+        clip_g_path: str = "",
         t5xxl_path: str = "",
         diffusion_model_path: str = "",
         vae_path: str = "",
@@ -28,14 +32,14 @@ class StableDiffusion:
         stacked_id_embed_dir: str = "",
         vae_decode_only: bool = False,
         vae_tiling: bool = False,
-        free_params_immediately: bool = False,
         n_threads: int = -1,
-        wtype: Union[str, GGMLType, int, float, None] = "default",
-        rng_type: Union[str, RNGType, int, float, None] = "default",
-        schedule: Union[str, Schedule, int, float, None] = "default",
+        wtype: Optional[Union[str, GGMLType, int, float]] = "default",
+        rng_type: Optional[Union[str, RNGType, int, float]] = "cuda",
+        schedule: Optional[Union[str, Schedule, int, float]] = "default",
         keep_clip_on_cpu: bool = False,
         keep_control_net_cpu: bool = False,
         keep_vae_on_cpu: bool = False,
+        diffusion_flash_attn: bool = False,
         verbose: bool = True,
     ):
         """Load a stable-diffusion.cpp model from `model_path`.
@@ -64,14 +68,14 @@ class StableDiffusion:
             stacked_id_embed_dir: Path to PHOTOMAKER stacked id embeddings.
             vae_decode_only: Process vae in decode only mode.
             vae_tiling: Process vae in tiles to reduce memory usage.
-            free_params_immediately: Free parameters immediately after use.
-            n_threads: Number of threads to use for generation.
+            n_threads: Number of threads to use for generation (default: half the number of CPUs).
             wtype: The weight type (default: automatically determines the weight type of the model file).
             rng_type: Random number generator.
             schedule: Denoiser sigma schedule.
             keep_clip_on_cpu: Keep clip in CPU (for low vram).
             keep_control_net_cpu: Keep controlnet in CPU (for low vram).
             keep_vae_on_cpu: Keep vae in CPU (for low vram).
+            diffusion_flash_attn: Use flash attention in diffusion model (can reduce memory usage significantly).
             verbose: Print verbose output to stderr.
 
         Raises:
@@ -83,6 +87,7 @@ class StableDiffusion:
         # Params
         self.model_path = model_path
         self.clip_l_path = clip_l_path
+        self.clip_g_path = clip_g_path
         self.t5xxl_path = t5xxl_path
         self.diffusion_model_path = diffusion_model_path
         self.vae_path = vae_path
@@ -93,26 +98,32 @@ class StableDiffusion:
         self.stacked_id_embed_dir = stacked_id_embed_dir
         self.vae_decode_only = vae_decode_only
         self.vae_tiling = vae_tiling
-        self.free_params_immediately = free_params_immediately
-        self.n_threads = n_threads or max(multiprocessing.cpu_count() // 2, 1) # Default to half the number of CPUs
+        self.n_threads = n_threads
         self.wtype = wtype
         self.rng_type = rng_type
         self.schedule = schedule
         self.keep_clip_on_cpu = keep_clip_on_cpu
         self.keep_control_net_cpu = keep_control_net_cpu
         self.keep_vae_on_cpu = keep_vae_on_cpu
+        self.diffusion_flash_attn = diffusion_flash_attn
         self._stack = contextlib.ExitStack()
+
+        # Default to half the number of CPUs
+        if n_threads <= 0:
+            self.n_threads = max(multiprocessing.cpu_count() // 2, 1)
 
         # =========== Logging ===========
 
         self.verbose = verbose
         # set_verbose(verbose)
 
-        # =========== Validate string and int inputs ===========
+        # =========== Validate Inputs ===========
 
         self.wtype = validate_and_set_input(self.wtype, GGML_TYPE_MAP, "wtype")
-        self.rng_type = validate_and_set_input(self.rng_type, RNG_TYPE_MAP, "rng_type")
-        self.schedule = validate_and_set_input(self.schedule, SCHEDULE_MAP, "schedule")
+        self.rng_type = validate_and_set_input(
+            self.rng_type, RNG_TYPE_MAP, "rng_type")
+        self.schedule = validate_and_set_input(
+            self.schedule, SCHEDULE_MAP, "schedule")
 
         # =========== SD Model loading ===========
 
@@ -121,6 +132,7 @@ class StableDiffusion:
                 _StableDiffusionModel(
                     self.model_path,
                     self.clip_l_path,
+                    self.clip_g_path,
                     self.t5xxl_path,
                     self.diffusion_model_path,
                     self.vae_path,
@@ -131,7 +143,6 @@ class StableDiffusion:
                     self.stacked_id_embed_dir,
                     self.vae_decode_only,
                     self.vae_tiling,
-                    self.free_params_immediately,
                     self.n_threads,
                     self.wtype,
                     self.rng_type,
@@ -139,6 +150,7 @@ class StableDiffusion:
                     self.keep_clip_on_cpu,
                     self.keep_control_net_cpu,
                     self.keep_vae_on_cpu,
+                    self.diffusion_flash_attn,
                     self.verbose,
                 )
             )
@@ -151,7 +163,6 @@ class StableDiffusion:
                 _UpscalerModel(
                     upscaler_path,
                     self.n_threads,
-                    self.wtype,
                     self.verbose,
                 )
             )
@@ -180,7 +191,8 @@ class StableDiffusion:
         guidance: float = 3.5,
         width: int = 512,
         height: int = 512,
-        sample_method: Union[str, SampleMethod, int, float, None] = "euler_a",
+        sample_method: Optional[Union[str,
+                                      SampleMethod, int, float]] = "euler_a",
         sample_steps: int = 20,
         seed: int = 42,
         batch_count: int = 1,
@@ -189,6 +201,10 @@ class StableDiffusion:
         style_strength: float = 20.0,
         normalize_input: bool = False,
         input_id_images_path: str = "",
+        skip_layers: List[int] = [7, 8, 9],
+        slg_scale: float = 0.0,
+        skip_layer_start: float = 0.01,
+        skip_layer_end: float = 0.2,
         canny: bool = False,
         upscale_factor: int = 1,
         progress_callback: Optional[Callable] = None,
@@ -212,6 +228,10 @@ class StableDiffusion:
             style_strength: Strength for keeping input identity (default: 20%).
             normalize_input: Normalize PHOTOMAKER input id images.
             input_id_images_path: Path to PHOTOMAKER input id images dir.
+            skip_layers: Layers to skip for SLG steps (default: [7,8,9]).
+            slg_scale: Skip layer guidance (SLG) scale, only for DiT models (default: 0).
+            skip_layer_start: SLG enabling point (default: 0.01).
+            skip_layer_end: SLG disabling point (default: 0.2).
             canny: Apply canny edge detection preprocessor to the control_cond image.
             upscale_factor: The image upscaling factor.
             progress_callback: Callback function to call on each step end.
@@ -224,7 +244,8 @@ class StableDiffusion:
 
         # =========== Validate string and int inputs ===========
 
-        sample_method = validate_and_set_input(sample_method, SAMPLE_METHOD_MAP, "sample_method")
+        sample_method = validate_and_set_input(
+            sample_method, SAMPLE_METHOD_MAP, "sample_method")
 
         # Ensure dimensions are multiples of 64
         width = validate_dimensions(width, "width")
@@ -249,13 +270,20 @@ class StableDiffusion:
             ):
                 progress_callback(step, steps, time)
 
-            sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
+            sd_cpp.sd_set_progress_callback(
+                sd_progress_callback, ctypes.c_void_p(0))
 
-        # ==================== Convert the control condition to a C sd_image_t ====================
+        # ==================== Format Inputs ====================
 
-        control_cond = self._format_control_cond(control_cond, canny, self.control_net_path)
+        # Convert the control condition to a C sd_image_t
+        control_cond = self._format_control_cond(
+            control_cond, canny, self.control_net_path)
 
-        with suppress_stdout_stderr(disable=True):
+        # Convert skip_layers to a ctypes array
+        skip_layers_array = (ctypes.c_int * len(skip_layers))(*skip_layers)
+        skip_layers_count = len(skip_layers)
+
+        with suppress_stdout_stderr(disable=self.verbose):
             # Generate images
             c_images = sd_cpp.txt2img(
                 self.model,
@@ -275,6 +303,11 @@ class StableDiffusion:
                 style_strength,
                 normalize_input,
                 input_id_images_path.encode("utf-8"),
+                skip_layers_array,
+                skip_layers_count,
+                slg_scale,
+                skip_layer_start,
+                skip_layer_end,
             )
 
         # Convert the C array of images to a Python list of images
@@ -288,13 +321,15 @@ class StableDiffusion:
         self,
         image: Union[Image.Image, str],
         prompt: str,
+        mask_image: Optional[Union[Image.Image, str]] = None,
         negative_prompt: str = "",
         clip_skip: int = -1,
         cfg_scale: float = 7.0,
         guidance: float = 3.5,
         width: int = 512,
         height: int = 512,
-        sample_method: Union[str, SampleMethod, int, float, None] = "euler_a",
+        sample_method: Optional[Union[str,
+                                      SampleMethod, int, float]] = "euler_a",
         sample_steps: int = 20,
         strength: float = 0.75,
         seed: int = 42,
@@ -304,6 +339,10 @@ class StableDiffusion:
         style_strength: float = 20.0,
         normalize_input: bool = False,
         input_id_images_path: str = "",
+        skip_layers: List[int] = [7, 8, 9],
+        slg_scale: float = 0.0,
+        skip_layer_start: float = 0.01,
+        skip_layer_end: float = 0.2,
         canny: bool = False,
         upscale_factor: int = 1,
         progress_callback: Optional[Callable] = None,
@@ -313,6 +352,7 @@ class StableDiffusion:
         Args:
             image: The input image path or Pillow Image to direct the generation.
             prompt: The prompt to render.
+            mask_image: The inpainting mask image path or Pillow Image.
             negative_prompt: The negative prompt.
             clip_skip: Ignore last layers of CLIP network; 1 ignores none, 2 ignores one layer.
             cfg_scale: Unconditional guidance scale.
@@ -329,6 +369,10 @@ class StableDiffusion:
             style_strength: Strength for keeping input identity (default: 20%).
             normalize_input: Normalize PHOTOMAKER input id images.
             input_id_images_path: Path to PHOTOMAKER input id images dir.
+            skip_layers: Layers to skip for SLG steps (default: [7,8,9]).
+            slg_scale: Skip layer guidance (SLG) scale, only for DiT models (default: 0).
+            skip_layer_start: SLG enabling point (default: 0.01).
+            skip_layer_end: SLG disabling point (default: 0.2).
             canny: Apply canny edge detection preprocessor to the control_cond image.
             upscale_factor: The image upscaling factor.
             progress_callback: Callback function to call on each step end.
@@ -339,9 +383,14 @@ class StableDiffusion:
         if self.model is None:
             raise Exception("Stable diffusion model not loaded.")
 
+        if self.vae_decode_only == True:
+            raise Exception(
+                "Cannot run img_to_img with vae_decode_only set to True.")
+
         # =========== Validate string and int inputs ===========
 
-        sample_method = validate_and_set_input(sample_method, SAMPLE_METHOD_MAP, "sample_method")
+        sample_method = validate_and_set_input(
+            sample_method, SAMPLE_METHOD_MAP, "sample_method")
 
         # Ensure dimensions are multiples of 64
         width = validate_dimensions(width, "width")
@@ -366,25 +415,51 @@ class StableDiffusion:
             ):
                 progress_callback(step, steps, time)
 
-            sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
+            sd_cpp.sd_set_progress_callback(
+                sd_progress_callback, ctypes.c_void_p(0))
 
-        # ==================== Convert the control condition to a C sd_image_t ====================
+        # ==================== Format Inputs ====================
 
-        control_cond = self._format_control_cond(control_cond, canny, self.control_net_path)
+        # Convert the control condition to a C sd_image_t
+        control_cond = self._format_control_cond(
+            control_cond, canny, self.control_net_path)
 
-        # ==================== Resize the input image ====================
+        # Resize the input image
+        # Input image and generated image must have the same size
+        image = self._resize_image(image, width, height)
 
-        image = self._resize_image(image, width, height) # Input image and generated image must have the same size
+        def _create_blank_mask_image(width: int, height: int):
+            """Create a blank white mask image in c_unit8 format."""
+            mask_image_buffer = (
+                ctypes.c_uint8 * (width * height))(*[255] * (width * height))
+            return mask_image_buffer
 
-        # ==================== Convert the image to a byte array ====================
-
+        # Convert the image and mask image to a byte array
         image_pointer = self._image_to_sd_image_t_p(image)
+        if mask_image:
+            # Resize the mask image (however the mask should ideally already be the same size as the input image)
+            mask_image = self._resize_image(mask_image, width, height)
+            mask_image_pointer = self._image_to_sd_image_t_p(
+                mask_image, channel=1)
+        else:
+            # Create a blank white mask image
+            mask_image_pointer = self._c_uint8_to_sd_image_t_p(
+                image=_create_blank_mask_image(width, height),
+                width=width,
+                height=height,
+                channel=1,
+            )
 
-        with suppress_stdout_stderr(disable=True):
+        # Convert skip_layers to a ctypes array
+        skip_layers_array = (ctypes.c_int * len(skip_layers))(*skip_layers)
+        skip_layers_count = len(skip_layers)
+
+        with suppress_stdout_stderr(disable=self.verbose):
             # Generate images
             c_images = sd_cpp.img2img(
                 self.model,
                 image_pointer,
+                mask_image_pointer,
                 prompt.encode("utf-8"),
                 negative_prompt.encode("utf-8"),
                 clip_skip,
@@ -402,6 +477,11 @@ class StableDiffusion:
                 style_strength,
                 normalize_input,
                 input_id_images_path.encode("utf-8"),
+                skip_layers_array,
+                skip_layers_count,
+                slg_scale,
+                skip_layer_start,
+                skip_layer_end,
             )
         return self._sd_image_t_p_to_images(c_images, batch_count, upscale_factor)
 
@@ -420,7 +500,8 @@ class StableDiffusion:
         augmentation_level: float = 0.0,
         min_cfg: float = 1.0,
         cfg_scale: float = 7.0,
-        sample_method: Union[str, SampleMethod, int, float, None] = "euler_a",
+        sample_method: Optional[Union[str,
+                                      SampleMethod, int, float]] = "euler_a",
         sample_steps: int = 20,
         strength: float = 0.75,
         seed: int = 42,
@@ -447,10 +528,14 @@ class StableDiffusion:
         Returns:
             A list of Pillow Images."""
 
-        raise NotImplementedError("Not yet implemented.")
+        # WARNING - Image to Video functionality does not work and must first be implemented in the C++ code.
+        raise NotImplementedError("SVD support is broken, do not use it.")
 
         # if self.model is None:
         #     raise Exception("Stable diffusion model not loaded.")
+
+        # if self.vae_decode_only == True:
+        #     raise Exception("Cannot run img_to_vid with vae_decode_only set to True.")
 
         # # =========== Validate string and int inputs ===========
 
@@ -481,14 +566,14 @@ class StableDiffusion:
 
         #     sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
 
-        # # ==================== Resize the input image ====================
+        # # ==================== Format Inputs ====================
 
+        # # Resize the input image
         # image = self._resize_image(
         #     image, width, height
         # )  # Input image and generated image must have the same size
 
-        # # ==================== Convert the image to a byte array ====================
-
+        # # Convert the image to a byte array
         # image_pointer = self._image_to_sd_image_t_p(image)
 
         # with suppress_stdout_stderr(disable=self.verbose):
@@ -603,7 +688,8 @@ class StableDiffusion:
             ):
                 progress_callback(step, steps, time)
 
-            sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
+            sd_cpp.sd_set_progress_callback(
+                sd_progress_callback, ctypes.c_void_p(0))
 
         if not isinstance(images, list):
             images = [images]  # Wrap single image in a list
@@ -611,7 +697,6 @@ class StableDiffusion:
         # ==================== Upscale images ====================
 
         upscaled_images = []
-
         for image in images:
 
             # Convert the image to a byte array
@@ -627,7 +712,8 @@ class StableDiffusion:
 
             # Load the image from the C sd_image_t and convert it to a PIL Image
             image = self._dereference_sd_image_t_p(image)
-            image = self._bytes_to_image(image["data"], image["width"], image["height"])
+            image = self._bytes_to_image(
+                image["data"], image["width"], image["height"])
             upscaled_images.append(image)
 
         return upscaled_images
@@ -648,19 +734,24 @@ class StableDiffusion:
     def _format_image(
         self,
         image: Union[Image.Image, str],
+        channel: int = 3,
     ) -> Image.Image:
-        """Convert an image path or Pillow Image to a Pillow Image of RGBA format."""
+        """Convert an image path or Pillow Image to a Pillow Image of RGBA or grayscale (inpainting masks) format."""
         # Convert image path to image if str
         if isinstance(image, str):
             image = Image.open(image)
 
-        # Convert any non RGBA to RGBA
-        if image.format != "PNG":
-            image = image.convert("RGBA")
+        if channel == 1:
+            # Grayscale the image if channel is 1
+            image = image.convert("L")
+        else:
+            # Convert any non RGBA to RGBA
+            if image.format != "PNG":
+                image = image.convert("RGBA")
 
-        # Ensure the image is in RGB mode
-        if image.mode != "RGB":
-            image = image.convert("RGB")
+            # Ensure the image is in RGB mode
+            if image.mode != "RGB":
+                image = image.convert("RGB")
 
         return image, image.width, image.height
 
@@ -675,9 +766,9 @@ class StableDiffusion:
         if not control_cond:
             return None
 
-        # if not control_net_path:
-        #     log_event(1, "'control_net_path' not set. Skipping control condition.")
-        #     return None
+        if not control_net_path:
+            # log_event(1, "'control_net_path' not set. Skipping control condition.")
+            return None
 
         if canny:
             # Convert Pillow Image to canny edge detection image then format into C sd_image_t
@@ -691,14 +782,12 @@ class StableDiffusion:
 
     # ============= Image to C uint8 pointer =============
 
-    def _cast_image(self, image: Union[Image.Image, str]):
+    def _cast_image(self, image: Union[Image.Image, str], channel: int = 3):
         """Cast a PIL Image to a C uint8 pointer."""
-
-        image, width, height = self._format_image(image)
+        image, width, height = self._format_image(image, channel)
 
         # Convert the PIL Image to a byte array
         image_bytes = image.tobytes()
-
         data = ctypes.cast(
             (ctypes.c_byte * len(image_bytes))(*image_bytes),
             ctypes.POINTER(ctypes.c_uint8),
@@ -707,8 +796,8 @@ class StableDiffusion:
 
     # ============= Image to C sd_image_t =============
 
-    def _c_uint8_to_sd_image_t_p(self, image: ctypes.c_uint8, width, height, channel: int = 3):
-        # Create a new C sd_image_t
+    def _c_uint8_to_sd_image_t_p(self, image: ctypes.c_uint8, width: int, height: int, channel: int = 3) -> sd_cpp.sd_image_t:
+        """Convert a C uint8 pointer to a C sd_image_t."""
         c_image = sd_cpp.sd_image_t(
             width=width,
             height=height,
@@ -717,21 +806,18 @@ class StableDiffusion:
         )
         return c_image
 
-    def _image_to_sd_image_t_p(self, image: Union[Image.Image, str]):
+    def _image_to_sd_image_t_p(self, image: Union[Image.Image, str], channel: int = 3) -> sd_cpp.sd_image_t:
         """Convert a PIL Image or image path to a C sd_image_t."""
-
-        data, width, height = self._cast_image(image)
-
-        # Create a new C sd_image_t
-        c_image = self._c_uint8_to_sd_image_t_p(data, width, height)
+        data, width, height = self._cast_image(image, channel)
+        c_image = self._c_uint8_to_sd_image_t_p(data, width, height, channel)
         return c_image
 
     # ============= C sd_image_t to Image =============
 
-    def _c_array_to_bytes(self, c_array, buffer_size: int):
+    def _c_array_to_bytes(self, c_array, buffer_size: int) -> bytes:
         return bytearray(ctypes.cast(c_array, ctypes.POINTER(ctypes.c_byte * buffer_size)).contents)
 
-    def _dereference_sd_image_t_p(self, c_image: sd_cpp.sd_image_t):
+    def _dereference_sd_image_t_p(self, c_image: sd_cpp.sd_image_t) -> Dict:
         """Dereference a C sd_image_t pointer to a Python dictionary with height, width, channel and data (bytes)."""
 
         # Calculate the size of the data buffer
@@ -745,9 +831,10 @@ class StableDiffusion:
         }
         return image
 
-    def _image_slice(self, c_images: sd_cpp.sd_image_t, count: int, upscale_factor: int):
+    def _image_slice(self, c_images: sd_cpp.sd_image_t, count: int, upscale_factor: int) -> List[Dict]:
         """Slice a C array of images."""
-        image_array = ctypes.cast(c_images, ctypes.POINTER(sd_cpp.sd_image_t * count)).contents
+        image_array = ctypes.cast(c_images, ctypes.POINTER(
+            sd_cpp.sd_image_t * count)).contents
 
         images = []
 
@@ -771,7 +858,7 @@ class StableDiffusion:
         # Return the list of images
         return images
 
-    def _sd_image_t_p_to_images(self, c_images: sd_cpp.sd_image_t, count: int, upscale_factor: int):
+    def _sd_image_t_p_to_images(self, c_images: sd_cpp.sd_image_t, count: int, upscale_factor: int) -> List[Image.Image]:
         """Convert C sd_image_t_p images to a Python list of images."""
 
         # Convert C array to Python list of images
@@ -780,26 +867,38 @@ class StableDiffusion:
         # Convert each image to PIL Image
         for i in range(len(images)):
             image = images[i]
-            images[i] = self._bytes_to_image(image["data"], image["width"], image["height"])
+            images[i] = self._bytes_to_image(
+                image["data"], image["width"], image["height"])
 
         return images
 
     # ============= Bytes to Image =============
 
-    def _bytes_to_image(self, byte_data: bytes, width: int, height: int):
+    def _bytes_to_image(self, byte_data: bytes, width: int, height: int, channel: int = 3) -> Image.Image:
         """Convert a byte array to a PIL Image."""
+        # Initialize the image with RGBA mode
         image = Image.new("RGBA", (width, height))
 
         for y in range(height):
             for x in range(width):
-                idx = (y * width + x) * 3
-                image.putpixel(
-                    (x, y),
-                    (byte_data[idx], byte_data[idx + 1], byte_data[idx + 2], 255),
-                )
+                idx = (y * width + x) * channel
+                # Dynamically create the color tuple
+                color = tuple(byte_data[idx + i] if idx + i <
+                              len(byte_data) else 0 for i in range(channel))
+                if channel == 1:  # Grayscale
+                    color = (color[0],) * 3 + (255,)  # Convert to (R, G, B, A)
+                elif channel == 3:  # RGB
+                    color = color + (255,)  # Add alpha channel
+                elif channel == 4:  # RGBA
+                    pass  # Use color as is
+                else:
+                    raise ValueError(f"Unsupported channel value: {channel}")
+                # Set the pixel
+                image.putpixel((x, y), color)
+
         return image
 
-    def __setstate__(self, state):
+    def __setstate__(self, state) -> None:
         self.__init__(**state)
 
     def close(self) -> None:
@@ -815,7 +914,7 @@ class StableDiffusion:
 # ============================================
 
 
-def validate_dimensions(dimension: int | float, attribute_name: str) -> int:
+def validate_dimensions(dimension: Union[int, float], attribute_name: str) -> int:
     """Dimensions must be a multiple of 64 otherwise a GGML_ASSERT error is encountered."""
     dimension = int(dimension)
     if dimension <= 0 or dimension % 64 != 0:
@@ -839,11 +938,13 @@ def validate_and_set_input(user_input: Union[str, int, float], type_map: Dict, a
         if user_input in type_map:
             return int(type_map[user_input])
         else:
-            raise ValueError(f"Invalid {attribute_name} type '{user_input}'. Must be one of {list(type_map.keys())}.")
+            raise ValueError(
+                f"Invalid {attribute_name} type '{user_input}'. Must be one of {list(type_map.keys())}.")
     elif isinstance(user_input, int) and user_input in type_map.values():
         return int(user_input)
     else:
-        raise ValueError(f"{attribute_name} must be a string or an integer and must be a valid type.")
+        raise ValueError(
+            f"{attribute_name} must be a string or an integer and must be a valid type.")
 
 
 RNG_TYPE_MAP = {
@@ -862,6 +963,7 @@ SAMPLE_METHOD_MAP = {
     "ipndm": SampleMethod.IPNDM,
     "ipndm_v": SampleMethod.IPNDM_V,
     "lcm": SampleMethod.LCM,
+    "n_sample_methods": SampleMethod.N_SAMPLE_METHODS,
 }
 
 SCHEDULE_MAP = {
@@ -871,6 +973,7 @@ SCHEDULE_MAP = {
     "exponential": Schedule.EXPONENTIAL,
     "ays": Schedule.AYS,
     "gits": Schedule.GITS,
+    "n_schedules": Schedule.N_SCHEDULES,
 }
 
 GGML_TYPE_MAP = {
@@ -907,6 +1010,8 @@ GGML_TYPE_MAP = {
     "q4_0_4_4": GGMLType.SD_TYPE_Q4_0_4_4,
     "q4_0_4_8": GGMLType.SD_TYPE_Q4_0_4_8,
     "q4_0_8_8": GGMLType.SD_TYPE_Q4_0_8_8,
+    "tq1_0": GGMLType.SD_TYPE_TQ1_0,
+    "tq2_0": GGMLType.SD_TYPE_TQ2_0,
     # Default
     "default": GGMLType.SD_TYPE_COUNT,
 }
