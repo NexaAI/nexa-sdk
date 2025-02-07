@@ -33,7 +33,6 @@ from nexa.constants import (
     NEXA_RUN_MODEL_MAP_AUDIO_LM,
     NEXA_RUN_AUDIO_LM_PROJECTOR_MAP,
     NEXA_RUN_COMPLETION_TEMPLATE_MAP,
-    NEXA_RUN_MODEL_PRECISION_MAP,
     NEXA_RUN_MODEL_MAP_FUNCTION_CALLING,
     NEXA_MODEL_LIST_PATH,
     NEXA_OFFICIAL_BUCKET,
@@ -181,14 +180,14 @@ class FunctionDefinitionRequestClass(BaseModel):
         extra = "allow"
 
 
-class TextToImageRequest(BaseModel):
-    prompt: str = "a lovely cat holding a sign says 'Nexa Server'"
-    negative_prompt: Optional[str] = ""
-    cfg_scale: Optional[float] = 7.0
-    width: Optional[int] = 512
-    height: Optional[int] = 512
-    sample_steps: Optional[int] = 20
-    seed: Optional[int] = 42
+# class TextToImageRequest(BaseModel):
+#     prompt: str = "a lovely cat holding a sign says 'Nexa Server'"
+#     negative_prompt: Optional[str] = ""
+#     cfg_scale: Optional[float] = 7.0
+#     width: Optional[int] = 512
+#     height: Optional[int] = 512
+#     sample_steps: Optional[int] = 20
+#     seed: Optional[int] = 42
 
 
 class TextToSpeechRequest(BaseModel):
@@ -1526,15 +1525,24 @@ async def function_call(request: FunctionCallRequest):
 
 
 @app.post("/v1/txt2img", tags=["Computer Vision"])
-async def txt2img(request: TextToImageRequest):
+async def txt2img(
+        prompt: str = Form("a lovely cat holding a sign says 'Nexa Server'"),
+        negative_prompt: Optional[str] = Form(""),
+        cfg_scale: Optional[float] = Form(7.0, description="set to 1.0 when using Flux for optimal results"),
+        width: Optional[int] = Form(512), 
+        height: Optional[int] = Form(512),
+        sample_steps: Optional[int] = Form(20, description="set to 4 when using Flux for optimal results"),
+        seed: Optional[int] = Form(42),
+):
     try:
         if model_type != "Computer Vision":
             raise HTTPException(
                 status_code=400,
                 detail="The model that is loaded is not a Computer Vision model. Please use a Computer Vision model for image generation."
             )
-        generation_kwargs = request.dict()
-        generated_images = await nexa_run_text_to_image(**generation_kwargs)
+        generated_images = await nexa_run_text_to_image(prompt=prompt, negative_prompt=negative_prompt,
+                                                        cfg_scale=cfg_scale, width=width, height=height,
+                                                        sample_steps=sample_steps,seed=seed)
 
         resp = {"created": time.time(), "data": []}
 
@@ -1557,16 +1565,15 @@ async def txt2img(request: TextToImageRequest):
 
 
 @app.post("/v1/img2img", tags=["Computer Vision"])
-# async def img2img(request: ImageToImageRequest):
 async def img2img(
-    prompt: str = Form("a lovely cat holding a sign says 'Nexa Server'"),
+    prompt: str = Form("Convert the image to grayscale."),
     image: UploadFile = File(...),
     negative_prompt: Optional[str] = Form(""),
     strength: Optional[float] = Form(0.75),
-    cfg_scale: Optional[float] = Form(7.0),
+    cfg_scale: Optional[float] = Form(7.0, description="set to 1.0 when using Flux for optimal results"),
     width: Optional[int] = Form(512),
     height: Optional[int] = Form(512),
-    sample_steps: Optional[int] = Form(20),
+    sample_steps: Optional[int] = Form(20, description="set to 4 when using Flux for optimal results"),
     seed: Optional[int] = Form(42),
 ):
     try:
