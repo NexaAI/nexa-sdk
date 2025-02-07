@@ -16,10 +16,6 @@ from nexa.constants import (
     NEXA_RUN_T5XXL_MAP,
 )
 
-
-def callback(step: int, steps: int, time: float):
-            print("Completed step: {} of {}".format(step, steps))
-
 from nexa.utils import SpinningCursorAnimation, nexa_prompt
 from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
 
@@ -201,7 +197,7 @@ class NexaImageInference:
         
         images = self.model.txt_to_img(prompt=prompt, negative_prompt=negative_prompt, seed=seed, cfg_scale=cfg_scale, width=width,
                                        height=height, sample_steps=sample_steps, sample_method='euler', control_cond=control_cond,
-                                       control_strength=control_strength, progress_callback=callback)
+                                       control_strength=control_strength)
         return images
 
     def run_txt2img(self):
