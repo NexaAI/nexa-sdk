@@ -384,8 +384,26 @@ DEFAULT_IMG_GEN_PARAMS_LCM = {
     "height": 512,
     "width": 512,
     "guidance_scale": 1.0,
-    "output_path": "generated_images/image.png",
+    "output_path": "generated_images/lcm_image.png",
     "random_seed": 0,
+}
+
+DEFAULT_IMG_GEN_PARAMS_FLUX = {
+    "num_inference_steps": 4,
+    "height": 512,
+    "width": 512,
+    "guidance_scale": 1.0,
+    "output_path": "generated_images/flux_image.png",
+    "random_seed": 42,
+}
+
+DEFAULT_IMG_GEN_PARAMS_SD_3_5 = {
+    "num_inference_steps": 10,
+    "height": 512,
+    "width": 512,
+    "guidance_scale": 4.5,
+    "output_path": "generated_images/sd3.5_image.png",
+    "random_seed": 42,
 }
 
 DEFAULT_IMG_GEN_PARAMS_TURBO = {
@@ -393,7 +411,7 @@ DEFAULT_IMG_GEN_PARAMS_TURBO = {
     "height": 512,
     "width": 512,
     "guidance_scale": 5.0,
-    "output_path": "generated_images/image.png",
+    "output_path": "generated_images/turbo_image.png",
     "random_seed": 0,
 }
 

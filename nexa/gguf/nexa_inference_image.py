@@ -1,12 +1,13 @@
 import argparse
 import logging
-import multiprocessing
 import os
 import sys
 import time
 from pathlib import Path
 from nexa.constants import (
     DEFAULT_IMG_GEN_PARAMS,
+    DEFAULT_IMG_GEN_PARAMS_FLUX,
+    DEFAULT_IMG_GEN_PARAMS_SD_3_5,
     EXIT_REMINDER,
     NEXA_RUN_MODEL_PRECISION_MAP,
     DEFAULT_IMG_GEN_PARAMS_LCM,
@@ -14,6 +15,11 @@ from nexa.constants import (
     NEXA_RUN_MODEL_MAP_FLUX,
     NEXA_RUN_T5XXL_MAP,
 )
+
+
+def callback(step: int, steps: int, time: float):
+            print("Completed step: {} of {}".format(step, steps))
+
 from nexa.utils import SpinningCursorAnimation, nexa_prompt
 from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
 
@@ -104,10 +110,17 @@ class NexaImageInference:
             if self.clip_l_path:
                 self.clip_l_downloaded_path, _ = pull_model(
                     self.clip_l_path, **kwargs)
-        if "lcm-dreamshaper" in self.model_path or "flux" in self.model_path:
-            # both lcm-dreamshaper and flux use the same params
+        if "lcm-dreamshaper" in self.model_path:
+            print('use lcm default arguments')
             self.params = DEFAULT_IMG_GEN_PARAMS_LCM.copy()
+        elif "flux" in self.model_path.lower():
+            print('use flux default arguments') 
+            self.params = DEFAULT_IMG_GEN_PARAMS_FLUX.copy()
+        elif "stable-diffusion-v3-5" in self.model_path:
+            print('use stable diffusion 3.5 default arguments')
+            self.params = DEFAULT_IMG_GEN_PARAMS_SD_3_5.copy()
         elif "sdxl-turbo" in self.model_path:
+            print('use sdxl-turbo default arguments') 
             self.params = DEFAULT_IMG_GEN_PARAMS_TURBO.copy()
         else:
             self.params = DEFAULT_IMG_GEN_PARAMS.copy()
@@ -130,26 +143,12 @@ class NexaImageInference:
                     clip_l_path=self.clip_l_downloaded_path,
                     t5xxl_path=self.t5xxl_downloaded_path,
                     vae_path=self.ae_downloaded_path,
-                    n_threads=self.params.get(
-                        "n_threads", multiprocessing.cpu_count()),
-                    wtype=self.params.get(
-                        "wtype", NEXA_RUN_MODEL_PRECISION_MAP.get(
-                            model_path, "default")
-                        # Weight type (options: default, f32, f16, q4_0, q4_1, q5_0, q5_1, q8_0)
-                    ),
                     verbose=self.profiling,
                 )
             else:
                 self.model = StableDiffusion(
                     model_path=self.downloaded_path,
                     lora_model_dir=self.params.get("lora_dir", ""),
-                    n_threads=self.params.get(
-                        "n_threads", multiprocessing.cpu_count()),
-                    wtype=self.params.get(
-                        "wtype", NEXA_RUN_MODEL_PRECISION_MAP.get(
-                            model_path, "default")
-                        # Weight type (options: default, f32, f16, q4_0, q4_1, q5_0, q5_1, q8_0)
-                    ),
                     control_net_path=self.params.get("control_net_path", ""),
                     verbose=self.profiling,
                 )
@@ -199,18 +198,10 @@ class NexaImageInference:
         Returns:
             list: List of generated images.
         """
-        images = self._retry(
-            self.model.txt_to_img,
-            prompt=prompt,
-            negative_prompt=negative_prompt,
-            cfg_scale=cfg_scale,
-            width=width,
-            height=height,
-            sample_steps=sample_steps,
-            seed=seed,
-            control_cond=control_cond,
-            control_strength=control_strength,
-        )
+        
+        images = self.model.txt_to_img(prompt=prompt, negative_prompt=negative_prompt, seed=seed, cfg_scale=cfg_scale, width=width,
+                                       height=height, sample_steps=sample_steps, sample_method='euler', control_cond=control_cond,
+                                       control_strength=control_strength, progress_callback=callback)
         return images
 
     def run_txt2img(self):
@@ -264,7 +255,7 @@ class NexaImageInference:
         width=512,
         height=512,
         sample_steps=20,
-        seed=0,
+        seed=42,
         control_cond="",
         control_strength=0.9,
     ):
@@ -279,20 +270,10 @@ class NexaImageInference:
         Returns:
             list: List of generated images.
         """
-        images = self._retry(
-            self.model.img_to_img,
-            image=image_path,
-            mask_image=mask_image_path,
-            prompt=prompt,
-            negative_prompt=negative_prompt,
-            cfg_scale=cfg_scale,
-            width=width,
-            height=height,
-            sample_steps=sample_steps,
-            seed=seed,
-            control_cond=control_cond,
-            control_strength=control_strength,
-        )
+        images = self.model.img_to_img(image=image_path, mask_image=mask_image_path, prompt=prompt,
+                                       negative_prompt=negative_prompt, cfg_scale=cfg_scale,
+                                       width=width, height=height, sample_steps=sample_steps,
+                                       seed=seed, sample_method='euler', control_cond=control_cond, control_strength=control_strength)
         return images
 
     def run_img2img(self):
