@@ -847,7 +847,8 @@ def run_nexa_ai_service(model_path_arg=None, is_local_path_arg=False, model_type
     port = kwargs.get("port", 8000)
     reload = kwargs.get("reload", False)
 
-    uvicorn.run(app, host=host, port=port, reload=reload)
+    # uvicorn.run(app, host=host, port=port, reload=reload)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
 # Endpoints
