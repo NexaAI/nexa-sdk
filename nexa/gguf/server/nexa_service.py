@@ -720,7 +720,7 @@ async def nexa_run_text_to_image(
     return generated_image
 
 
-def base64_encode_image(image_path):
+def base64_encode_image(image_path: str):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
 
@@ -798,7 +798,7 @@ def base64_to_wav(base64_string: str, save_path: str):
         raise ValueError(f"Error converting base64 string to WAV file: {e}")
 
 
-def image_path_to_base64(file_path):
+def image_path_to_base64(file_path: str):
     if file_path and os.path.exists(file_path):
         with open(file_path, "rb") as img_file:
             base64_data = base64.b64encode(img_file.read()).decode("utf-8")
@@ -886,7 +886,7 @@ def _resp_async_generator(streamer, start_time):
 download_progress = {}
 
 
-def pull_model_with_progress(model_path, progress_key, **kwargs):
+def pull_model_with_progress(model_path: str, progress_key, **kwargs):
     """
     Wrapper for pull_model to track download progress using download_file_with_progress.
     """
