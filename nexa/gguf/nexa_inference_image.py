@@ -59,7 +59,7 @@ class NexaImageInference:
     profiling (bool): Enable profiling logs for the inference process.
     """
 
-    def __init__(self, model_path=None, local_path=None, **kwargs):
+    def __init__(self, model_path: str = None, local_path: str = None, **kwargs):
         if model_path is None and local_path is None:
             raise ValueError(
                 "Either model_path or local_path must be provided.")
@@ -168,15 +168,15 @@ class NexaImageInference:
 
     def txt2img(
         self,
-        prompt,
-        negative_prompt="",
-        cfg_scale=7.5,
-        width=512,
-        height=512,
-        sample_steps=20,
-        seed=0,
-        control_cond="",
-        control_strength=0.9,
+        prompt: str,
+        negative_prompt: str = "",
+        cfg_scale: float = 7.5,
+        width: int = 512,
+        height: int = 512,
+        sample_steps: int = 20,
+        seed: int = 0,
+        control_cond: str = "",
+        control_strength: float = 0.9,
     ):
         """
         Used for SDK. Generate images from text.
@@ -237,18 +237,18 @@ class NexaImageInference:
 
     def img2img(
         self,
-        image_path:str,
-        prompt:str,
-        strength:float=0.75,
-        negative_prompt:str="",
-        mask_image_path:str="",
-        cfg_scale:float=7.5,
-        width:int=512,
-        height:int=512,
-        sample_steps:int=20,
-        seed:int=42,
-        control_cond:str="",
-        control_strength:str=0.9,
+        image_path: str,
+        prompt: str,
+        strength: float = 0.75,
+        negative_prompt: str = "",
+        mask_image_path: str = "",
+        cfg_scale: float = 7.5,
+        width: int = 512,
+        height: int = 512,
+        sample_steps: int = 20,
+        seed: int = 42,
+        control_cond: str = "",
+        control_strength: str = 0.9,
     ):
         """
         Used for SDK. Generate images from an image.
@@ -261,7 +261,7 @@ class NexaImageInference:
         Returns:
             list: List of generated images.
         """
-        images = self.model.img_to_img(strength=strength,image=image_path, mask_image=mask_image_path, prompt=prompt,
+        images = self.model.img_to_img(strength=strength, image=image_path, mask_image=mask_image_path, prompt=prompt,
                                        negative_prompt=negative_prompt, cfg_scale=cfg_scale,
                                        width=width, height=height, sample_steps=sample_steps,
                                        seed=seed, control_cond=control_cond, control_strength=control_strength)
