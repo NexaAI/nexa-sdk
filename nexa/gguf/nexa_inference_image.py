@@ -10,8 +10,8 @@ from nexa.constants import (
     DEFAULT_IMG_GEN_PARAMS_SD_3_5,
     FLUX_CLIP_L_PATH,
     FLUX_VAE_PATH,
+    IMAGE_GEN_RETRY_ATTEMPTS,
     EXIT_REMINDER,
-    NEXA_RUN_MODEL_PRECISION_MAP,
     DEFAULT_IMG_GEN_PARAMS_LCM,
     DEFAULT_IMG_GEN_PARAMS_TURBO,
     NEXA_RUN_MODEL_MAP_FLUX,
@@ -26,11 +26,6 @@ from nexa.general import pull_model
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-
-# image generation retry attempts
-RETRY_ATTEMPTS = (
-    3  # a temporary fix for the issue of segmentation fault for stable-diffusion-cpp
 )
 
 
@@ -105,22 +100,23 @@ class NexaImageInference:
                 self.clip_l_downloaded_path, _ = pull_model(
                     self.clip_l_path, **kwargs)
         if "lcm-dreamshaper" in self.model_path:
-            print('use lcm default arguments')
+            # print('Loading lcm default arguments')
             self.params = DEFAULT_IMG_GEN_PARAMS_LCM.copy()
         elif "flux" in self.model_path.lower():
-            print('use flux default arguments') 
+            # print('Loading flux default arguments')
             self.params = DEFAULT_IMG_GEN_PARAMS_FLUX.copy()
         elif "stable-diffusion-v3-5" in self.model_path:
-            print('use stable diffusion 3.5 default arguments')
+            # print('Loading stable diffusion 3.5 default arguments')
             self.params = DEFAULT_IMG_GEN_PARAMS_SD_3_5.copy()
         elif "sdxl-turbo" in self.model_path:
-            print('use sdxl-turbo default arguments') 
+            # print('Loading sdxl-turbo default arguments')
             self.params = DEFAULT_IMG_GEN_PARAMS_TURBO.copy()
         else:
+            # print('Loading default image generation arguments.')
             self.params = DEFAULT_IMG_GEN_PARAMS.copy()
-
         self.profiling = kwargs.get("profiling", False)
         self.params.update({k: v for k, v in kwargs.items() if v is not None})
+        # print("Overwriting loaded default parameters with user-specified arguments.")
         if not kwargs.get("streamlit", False):
             self._load_model(model_path)
             if self.model is None:
@@ -161,7 +157,7 @@ class NexaImageInference:
             print(f"\nImage {i+1} saved to: {os.path.abspath(file_path)}")
 
     def _retry(self, func, *args, **kwargs):
-        for attempt in range(RETRY_ATTEMPTS):
+        for attempt in range(IMAGE_GEN_RETRY_ATTEMPTS):
             try:
                 return func(*args, **kwargs)
             except Exception as e:
@@ -192,7 +188,7 @@ class NexaImageInference:
         Returns:
             list: List of generated images.
         """
-        
+
         images = self.model.txt_to_img(prompt=prompt, negative_prompt=negative_prompt, seed=seed, cfg_scale=cfg_scale, width=width,
                                        height=height, sample_steps=sample_steps, sample_method='euler', control_cond=control_cond,
                                        control_strength=control_strength)

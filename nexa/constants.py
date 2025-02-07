@@ -374,6 +374,11 @@ DEFAULT_TEXT_GEN_PARAMS = {
 FLUX_VAE_PATH = "FLUX.1-schnell:ae-fp16"
 FLUX_CLIP_L_PATH = "FLUX.1-schnell:clip_l-fp16"
 
+# image generation retry attempts
+IMAGE_GEN_RETRY_ATTEMPTS = (
+    3  # a temporary fix for the issue of segmentation fault for stable-diffusion-cpp
+)
+
 DEFAULT_IMG_GEN_PARAMS = {
     "num_inference_steps": 20,
     "height": 512,
