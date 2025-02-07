@@ -77,7 +77,7 @@ NEXA_PROJECTOR_HANDLER_MAP: dict[str, Llava15ChatHandler] = {
     "llava-v1.6-vicuna-7b:fp16": Llava16ChatHandler,
 }
 
-app = FastAPI()
+app = FastAPI(title="Nexa SDK Server")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allows all origins
@@ -210,16 +210,26 @@ class FunctionDefinitionRequestClass(BaseModel):
 #     tool_choice: Optional[str] = "auto"
 
 
-class ImageGenerationRequest(BaseModel):
-    prompt: str = "A girl, standing in a field of flowers, vivid"
+class TextToImageRequest(BaseModel):
+    prompt: str = "a lovely cat holding a sign says 'Nexa Server'"
+    negative_prompt: Optional[str] = ""
+    cfg_scale: float = 7.0
+    width: int = 256
+    height: int = 256
+    sample_steps: int = 20
+    seed: int = 0
+
+
+class ImageToImageRequest(BaseModel):
+    prompt: str = "a lovely cat holding a sign says 'Nexa Server'"
+    negative_prompt: Optional[str] = ""
     image_path: Optional[str] = ""
     cfg_scale: float = 7.0
     width: int = 256
     height: int = 256
     sample_steps: int = 20
     seed: int = 0
-    negative_prompt: Optional[str] = ""
-
+    
 
 class TextToSpeechRequest(BaseModel):
     text: str = "Hello, this is a text-to-speech interface."
@@ -507,6 +517,7 @@ async def load_model():
                 logging.debug("Chat format detected")
     elif model_type == "Computer Vision":
         with suppress_stdout_stderr():
+            # TODO: add flux support
             from nexa.gguf.sd.stable_diffusion import StableDiffusion
             model = StableDiffusion(
                 model_path=downloaded_path,
@@ -1542,7 +1553,7 @@ async def function_call(request: FunctionCallRequest):
 
 
 @app.post("/v1/txt2img", tags=["Computer Vision"])
-async def txt2img(request: ImageGenerationRequest):
+async def txt2img(request: TextToImageRequest):
     try:
         if model_type != "Computer Vision":
             raise HTTPException(
@@ -1569,6 +1580,37 @@ async def txt2img(request: ImageGenerationRequest):
 
     except Exception as e:
         logging.error(f"Error in txt2img generation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/v1/img2img", tags=["Computer Vision"])
+async def img2img(request: ImageToImageRequest):
+    try:
+        if model_type != "Computer Vision":
+            raise HTTPException(
+                status_code=400,
+                detail="The model that is loaded is not a Computer Vision model. Please use a Computer Vision model for image generation."
+            )
+        generation_kwargs = request.dict()
+
+        generated_images = await nexa_run_image_generation(**generation_kwargs)
+        resp = {"created": time.time(), "data": []}
+
+        for image in generated_images:
+            id = int(time.time())
+            if not os.path.exists("nexa_server_output"):
+                os.makedirs("nexa_server_output")
+            image_path = os.path.join(
+                "nexa_server_output", f"img2img_{id}.png")
+            image.save(image_path)
+            img = ImageResponse(base64=base64_encode_image(
+                image_path), url=os.path.abspath(image_path))
+            resp["data"].append(img)
+
+        return resp
+
+    except Exception as e:
+        logging.error(f"Error in img2img generation: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1638,37 +1680,6 @@ async def function_calling(request: FunctionCallRequest):
         }
     except Exception as e:
         logging.error(f"Error in function calling: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/v1/img2img", tags=["Computer Vision"])
-async def img2img(request: ImageGenerationRequest):
-    try:
-        if model_type != "Computer Vision":
-            raise HTTPException(
-                status_code=400,
-                detail="The model that is loaded is not a Computer Vision model. Please use a Computer Vision model for image generation."
-            )
-        generation_kwargs = request.dict()
-
-        generated_images = await nexa_run_image_generation(**generation_kwargs)
-        resp = {"created": time.time(), "data": []}
-
-        for image in generated_images:
-            id = int(time.time())
-            if not os.path.exists("nexa_server_output"):
-                os.makedirs("nexa_server_output")
-            image_path = os.path.join(
-                "nexa_server_output", f"img2img_{id}.png")
-            image.save(image_path)
-            img = ImageResponse(base64=base64_encode_image(
-                image_path), url=os.path.abspath(image_path))
-            resp["data"].append(img)
-
-        return resp
-
-    except Exception as e:
-        logging.error(f"Error in img2img generation: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
