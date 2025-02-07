@@ -4,7 +4,7 @@ import os
 import subprocess
 
 
-def download_file(url, output_dir):
+def download_file(url: str, output_dir: str):
     """
     Download a file from a given URL using curl, if it doesn't already exist.
 
@@ -31,27 +31,26 @@ def download_file(url, output_dir):
     return output_path
 
 
-sd = NexaImageInference(
+model = NexaImageInference(
     model_path="sd1-4",
     local_path=None,
     wtype="q4_0",
 )
 
 
-# Test text-to-image generation
 def test_txt_to_img():
-    global sd
-    output = sd.txt2img("a lovely cat", width=128, height=128, sample_steps=2)
+    global model
+    output = model.txt2img("a lovely cat", width=128,
+                           height=128, sample_steps=2)
     output[0].save("output_txt_to_img.png")
 
 
-# Test image-to-image generation
 def test_img_to_img():
-    global sd
+    global model
     img_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"
     with TemporaryDirectory() as temp_dir:
         img_path = download_file(img_url, temp_dir)
-        output = sd.img2img(
+        output = model.img2img(
             image_path=img_path,
             prompt="blue sky",
             width=128,
@@ -63,7 +62,7 @@ def test_img_to_img():
 
 
 def test_img_inpainting():
-    global sd
+    global model
     with TemporaryDirectory() as temp_dir:
         # Use test images from stable-diffusion-cpp-python
         input_img_url = "https://raw.githubusercontent.com/william-murray1204/stable-diffusion-cpp-python/ec89c55/assets/input.png"
@@ -72,8 +71,8 @@ def test_img_inpainting():
         mask_img_path = download_file(mask_img_url, temp_dir)
         print(f'input: {input_img_path}')
         print(f'mask: {mask_img_path}')
-        
-        output = sd.img2img(
+
+        output = model.img2img(
             prompt="blue eyes",
             image_path=input_img_path,
             mask_image_path=mask_img_path,
