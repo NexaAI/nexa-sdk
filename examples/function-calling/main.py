@@ -1,3 +1,5 @@
+import json
+
 from nexa.gguf.nexa_inference_text import NexaTextInference
 from utils import call_function, add_integer, get_weather
 from utils import system_prompt
@@ -49,14 +51,15 @@ if __name__ == "__main__":
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": "What's the weather in Paris today?"}
     ]
-
+    
     responses = model.function_calling(messages=messages, tools=tools)
     for response in responses:
         func_info = response['function']
         func_name = func_info['name']
-        func_args = func_info['arguments']
+        func_args = json.loads(func_info['arguments'])
 
-        print('-' * 20)
-        print(func_name)
-        print(func_args)
-        print('-' * 20)
+        # print(func_name)
+        # print(func_args)
+        # print(type(func_args))
+        res = call_function(func_name, **func_args)
+        print(res)

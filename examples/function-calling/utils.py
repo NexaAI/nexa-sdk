@@ -1,18 +1,29 @@
 import requests
 
 
-def call_function(func, *args, **kwargs):
+def call_function(func_name: str, *args, **kwargs):
     """
-    Calls the given function with the provided positional and keyword arguments.
+    Calls a function by its name from the global scope.
 
     Parameters:
-    func (callable): The function to be called.
-    *args: Variable-length positional arguments to pass to the function.
-    **kwargs: Variable-length keyword arguments to pass to the function.
+    func_name (str): The name of the function as a string.
+    *args: Positional arguments to pass to the function.
+    **kwargs: Keyword arguments to pass to the function.
 
     Returns:
     The return value of the called function.
+
+    Raises:
+    AttributeError: If the function is not found or is not callable.
     """
+    # Retrieve the function object from global variables
+    func = globals().get(func_name)
+
+    # Check if function exists and is callable
+    if not callable(func):
+        raise AttributeError(f"Function '{func_name}' not found or is not callable.")
+
+    # Call the function with arguments
     return func(*args, **kwargs)
 
 
