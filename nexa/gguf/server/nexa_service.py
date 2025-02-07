@@ -184,21 +184,11 @@ class FunctionDefinitionRequestClass(BaseModel):
 class TextToImageRequest(BaseModel):
     prompt: str = "a lovely cat holding a sign says 'Nexa Server'"
     negative_prompt: Optional[str] = ""
-    cfg_scale: float = 7.0
-    width: int = 256
-    height: int = 256
-    sample_steps: int = 20
-    seed: int = 0
-
-
-# class ImageToImageRequest(BaseModel):
-#     prompt: str = "a lovely cat holding a sign says 'Nexa Server'"
-#     negative_prompt: Optional[str] = ""
-#     cfg_scale: float = 7.0
-#     width: int = 256
-#     height: int = 256
-#     sample_steps: int = 20
-#     seed: int = 0
+    cfg_scale: Optional[float] = 7.0
+    width: Optional[int] = 512
+    height: Optional[int] = 512
+    sample_steps: Optional[int] = 20
+    seed: Optional[int] = 42
 
 
 class TextToSpeechRequest(BaseModel):
@@ -1570,14 +1560,14 @@ async def txt2img(request: TextToImageRequest):
 # async def img2img(request: ImageToImageRequest):
 async def img2img(
     prompt: str = Form("a lovely cat holding a sign says 'Nexa Server'"),
+    image: UploadFile = File(...),
     negative_prompt: Optional[str] = Form(""),
-    strength: float = Form(0.75),
-    cfg_scale: float = Form(7.0),
-    width: int = Form(256),
-    height: int = Form(256),
-    sample_steps: int = Form(20),
-    seed: int = Form(0),
-    image: UploadFile = File(...)
+    strength: Optional[float] = Form(0.75),
+    cfg_scale: Optional[float] = Form(7.0),
+    width: Optional[int] = Form(512),
+    height: Optional[int] = Form(512),
+    sample_steps: Optional[int] = Form(20),
+    seed: Optional[int] = Form(42),
 ):
     try:
         if model_type != "Computer Vision":
