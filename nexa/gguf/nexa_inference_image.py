@@ -237,17 +237,18 @@ class NexaImageInference:
 
     def img2img(
         self,
-        image_path,
-        prompt,
-        negative_prompt="",
-        mask_image_path="",
-        cfg_scale=7.5,
-        width=512,
-        height=512,
-        sample_steps=20,
-        seed=42,
-        control_cond="",
-        control_strength=0.9,
+        image_path:str,
+        prompt:str,
+        strength:float=0.75,
+        negative_prompt:str="",
+        mask_image_path:str="",
+        cfg_scale:float=7.5,
+        width:int=512,
+        height:int=512,
+        sample_steps:int=20,
+        seed:int=42,
+        control_cond:str="",
+        control_strength:str=0.9,
     ):
         """
         Used for SDK. Generate images from an image.
@@ -260,10 +261,10 @@ class NexaImageInference:
         Returns:
             list: List of generated images.
         """
-        images = self.model.img_to_img(image=image_path, mask_image=mask_image_path, prompt=prompt,
+        images = self.model.img_to_img(strength=strength,image=image_path, mask_image=mask_image_path, prompt=prompt,
                                        negative_prompt=negative_prompt, cfg_scale=cfg_scale,
                                        width=width, height=height, sample_steps=sample_steps,
-                                       seed=seed, sample_method='euler', control_cond=control_cond, control_strength=control_strength)
+                                       seed=seed, control_cond=control_cond, control_strength=control_strength)
         return images
 
     def run_img2img(self):

@@ -675,6 +675,7 @@ async def nexa_run_image_to_image(
     height: int,
     sample_steps: int,
     seed: int,
+    strength: float,
     negative_prompt: str = "",
 ):
     global model
@@ -688,6 +689,7 @@ async def nexa_run_image_to_image(
             raise ValueError(f"Image file not found: {image_path}")
         generated_image = model.img2img(
             image_path=image_path,
+            strength=strength,
             prompt=prompt,
             negative_prompt=negative_prompt,
             cfg_scale=cfg_scale,
@@ -847,8 +849,8 @@ def run_nexa_ai_service(model_path_arg=None, is_local_path_arg=False, model_type
     port = kwargs.get("port", 8000)
     reload = kwargs.get("reload", False)
 
-    # uvicorn.run(app, host=host, port=port, reload=reload)
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=host, port=port, reload=reload)
+    # uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
 # Endpoints
@@ -1569,6 +1571,7 @@ async def txt2img(request: TextToImageRequest):
 async def img2img(
     prompt: str = Form("a lovely cat holding a sign says 'Nexa Server'"),
     negative_prompt: Optional[str] = Form(""),
+    strength: float = Form(0.75),
     cfg_scale: float = Form(7.0),
     width: int = Form(256),
     height: int = Form(256),
@@ -1589,8 +1592,7 @@ async def img2img(
         with uploaded_image_path.open("wb") as buffer:
             shutil.copyfileobj(image.file, buffer)
 
-        # generation_kwargs.update({'image_path': str(uploaded_image_path)})
-        generated_images = await nexa_run_image_to_image(prompt=prompt, negative_prompt=negative_prompt,
+        generated_images = await nexa_run_image_to_image(prompt=prompt, negative_prompt=negative_prompt, strength=strength,
                                                          cfg_scale=cfg_scale, width=width, height=height, sample_steps=sample_steps,
                                                          seed=seed, image_path=str(uploaded_image_path))
 
