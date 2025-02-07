@@ -83,6 +83,10 @@ def test_img_inpainting():
         output[0].save("image_inpainting.png")
 
 
+# Note: The image generation tests here are designed to verify that the
+# image generation code runs without errors. The test parameters are chosen
+# to be resource-efficient to speed up GitHub CI. These tests
+# do not assess the image generation quality of the SDK.
 if __name__ == "__main__":
     test_txt_to_img()
     test_img_to_img()
