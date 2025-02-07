@@ -182,33 +182,6 @@ class FunctionDefinitionRequestClass(BaseModel):
     class Config:
         extra = "allow"
 
-# class FunctionCallRequest(BaseModel):
-#     messages: List[Message] = [
-#         Message(role="user", content="Extract Jason is 25 years old")]
-#     tools: List[FunctionDefinitionRequestClass] = [
-#         FunctionDefinitionRequestClass(
-#             type="function",
-#             function={
-#                 "name": "UserDetail",
-#                 "parameters": {
-#                     "type": "object",
-#                     "properties": {
-#                         "name": {
-#                             "type": "string",
-#                             "description": "The user's name"
-#                         },
-#                         "age": {
-#                             "type": "integer",
-#                             "description": "The user's age"
-#                         }
-#                     },
-#                     "required": ["name", "age"]
-#                 }
-#             }
-#         )
-#     ]
-#     tool_choice: Optional[str] = "auto"
-
 
 class TextToImageRequest(BaseModel):
     prompt: str = "a lovely cat holding a sign says 'Nexa Server'"
