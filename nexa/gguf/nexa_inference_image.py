@@ -8,6 +8,8 @@ from nexa.constants import (
     DEFAULT_IMG_GEN_PARAMS,
     DEFAULT_IMG_GEN_PARAMS_FLUX,
     DEFAULT_IMG_GEN_PARAMS_SD_3_5,
+    FLUX_CLIP_L_PATH,
+    FLUX_VAE_PATH,
     EXIT_REMINDER,
     NEXA_RUN_MODEL_PRECISION_MAP,
     DEFAULT_IMG_GEN_PARAMS_LCM,
@@ -30,10 +32,6 @@ logging.basicConfig(
 RETRY_ATTEMPTS = (
     3  # a temporary fix for the issue of segmentation fault for stable-diffusion-cpp
 )
-
-# FLUX vae and clip model paths
-FLUX_VAE_PATH = "FLUX.1-schnell:ae-fp16"
-FLUX_CLIP_L_PATH = "FLUX.1-schnell:clip_l-fp16"
 
 
 class NexaImageInference:

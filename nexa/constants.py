@@ -370,6 +370,10 @@ DEFAULT_TEXT_GEN_PARAMS = {
     "top_p": 1.0,
 }
 
+# FLUX vae and clip model paths on Nexa Model Hub
+FLUX_VAE_PATH = "FLUX.1-schnell:ae-fp16"
+FLUX_CLIP_L_PATH = "FLUX.1-schnell:clip_l-fp16"
+
 DEFAULT_IMG_GEN_PARAMS = {
     "num_inference_steps": 20,
     "height": 512,
