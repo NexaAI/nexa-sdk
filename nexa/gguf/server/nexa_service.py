@@ -7,11 +7,11 @@ import time
 import uuid
 from typing import List, Optional, Dict, Any, Union, Literal
 import base64
-import multiprocessing
+import shutil
 from PIL import Image
 import tempfile
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request, File, UploadFile, Query
+from fastapi import FastAPI, HTTPException, Request, File, UploadFile, Query, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, HttpUrl, AnyUrl, Field
@@ -26,16 +26,13 @@ from nexa.constants import (
     NEXA_OFFICIAL_MODELS_TYPE,
     NEXA_RUN_CHAT_TEMPLATE_MAP,
     NEXA_RUN_MODEL_MAP,
-    NEXA_RUN_MODEL_MAP_TEXT,
     NEXA_RUN_MODEL_MAP_VLM,
-    NEXA_RUN_MODEL_MAP_VOICE,
     NEXA_RUN_PROJECTOR_MAP,
     NEXA_RUN_OMNI_VLM_MAP,
     NEXA_RUN_OMNI_VLM_PROJECTOR_MAP,
     NEXA_RUN_MODEL_MAP_AUDIO_LM,
     NEXA_RUN_AUDIO_LM_PROJECTOR_MAP,
     NEXA_RUN_COMPLETION_TEMPLATE_MAP,
-    NEXA_RUN_MODEL_PRECISION_MAP,
     NEXA_RUN_MODEL_MAP_FUNCTION_CALLING,
     NEXA_MODEL_LIST_PATH,
     NEXA_OFFICIAL_BUCKET,
@@ -77,7 +74,7 @@ NEXA_PROJECTOR_HANDLER_MAP: dict[str, Llava15ChatHandler] = {
     "llava-v1.6-vicuna-7b:fp16": Llava16ChatHandler,
 }
 
-app = FastAPI()
+app = FastAPI(title="Nexa SDK Server")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allows all origins
@@ -182,43 +179,15 @@ class FunctionDefinitionRequestClass(BaseModel):
     class Config:
         extra = "allow"
 
-# class FunctionCallRequest(BaseModel):
-#     messages: List[Message] = [
-#         Message(role="user", content="Extract Jason is 25 years old")]
-#     tools: List[FunctionDefinitionRequestClass] = [
-#         FunctionDefinitionRequestClass(
-#             type="function",
-#             function={
-#                 "name": "UserDetail",
-#                 "parameters": {
-#                     "type": "object",
-#                     "properties": {
-#                         "name": {
-#                             "type": "string",
-#                             "description": "The user's name"
-#                         },
-#                         "age": {
-#                             "type": "integer",
-#                             "description": "The user's age"
-#                         }
-#                     },
-#                     "required": ["name", "age"]
-#                 }
-#             }
-#         )
-#     ]
-#     tool_choice: Optional[str] = "auto"
 
-
-class ImageGenerationRequest(BaseModel):
-    prompt: str = "A girl, standing in a field of flowers, vivid"
-    image_path: Optional[str] = ""
-    cfg_scale: float = 7.0
-    width: int = 256
-    height: int = 256
-    sample_steps: int = 20
-    seed: int = 0
-    negative_prompt: Optional[str] = ""
+# class TextToImageRequest(BaseModel):
+#     prompt: str = "a lovely cat holding a sign says 'Nexa Server'"
+#     negative_prompt: Optional[str] = ""
+#     cfg_scale: Optional[float] = 7.0
+#     width: Optional[int] = 512
+#     height: Optional[int] = 512
+#     sample_steps: Optional[int] = 20
+#     seed: Optional[int] = 42
 
 
 class TextToSpeechRequest(BaseModel):
@@ -420,7 +389,7 @@ async def load_model():
         else:
             downloaded_path, model_type = pull_model(model_path)
 
-    print(f"model_type: {model_type}")
+    print(f"Model type: {model_type}")
     if use_function_calling:
         print('Function calling option is enabled')
 
@@ -462,7 +431,7 @@ async def load_model():
                         embedding=False
                     )
 
-                logging.info(f"model loaded as {model}")
+                logging.info(f"NLP model loaded as {model}")
         else:
             model_name = model_path.split(":")[0].lower()
             chat_format = NEXA_RUN_CHAT_TEMPLATE_MAP.get(model_name, None)
@@ -507,16 +476,9 @@ async def load_model():
                 logging.debug("Chat format detected")
     elif model_type == "Computer Vision":
         with suppress_stdout_stderr():
-            from nexa.gguf.sd.stable_diffusion import StableDiffusion
-            model = StableDiffusion(
-                model_path=downloaded_path,
-                wtype=NEXA_RUN_MODEL_PRECISION_MAP.get(
-                    model_path, "f32"
-                    # Weight type (options: default, f32, f16, q4_0, q4_1, q5_0, q5_1, q8_0)
-                ),
-                n_threads=multiprocessing.cpu_count(),
-            )
-        logging.info(f"model loaded as {model}")
+            from nexa.gguf.nexa_inference_image import NexaImageInference
+            model = NexaImageInference(model_path=model_path, local_path=None)
+        logging.info(f"Image generation model loaded as {model}")
     elif model_type == "TTS":
         # The TTS model requires parameters that are only available upon receiving a user request.
         # Therefore, model initialization is deferred until the text-to-speech API is called.
@@ -694,15 +656,16 @@ def nexa_run_text_generation(
     return result
 
 
-async def nexa_run_image_generation(
-    prompt,
-    image_path,
-    cfg_scale,
-    width,
-    height,
-    sample_steps,
-    seed,
-    negative_prompt="",
+async def nexa_run_image_to_image(
+    prompt: str,
+    image_path: str,
+    cfg_scale: float,
+    width: int,
+    height: int,
+    sample_steps: int,
+    seed: int,
+    strength: float,
+    negative_prompt: str = "",
 ):
     global model
     if model is None:
@@ -713,9 +676,9 @@ async def nexa_run_image_generation(
         image_path = image_path.strip()
         if not os.path.exists(image_path):
             raise ValueError(f"Image file not found: {image_path}")
-        image = Image.open(image_path)
-        generated_image = model.img_to_img(
-            image=image,
+        generated_image = model.img2img(
+            image_path=image_path,
+            strength=strength,
             prompt=prompt,
             negative_prompt=negative_prompt,
             cfg_scale=cfg_scale,
@@ -725,19 +688,38 @@ async def nexa_run_image_generation(
             seed=seed,
         )
     else:
-        generated_image = model.txt_to_img(
-            prompt=prompt,
-            negative_prompt=negative_prompt,
-            cfg_scale=cfg_scale,
-            width=width,
-            height=height,
-            sample_steps=sample_steps,
-            seed=seed,
-        )
+        raise ValueError(
+            "No valid input image path provided. Unable to perform img2img generation.")
     return generated_image
 
 
-def base64_encode_image(image_path):
+async def nexa_run_text_to_image(
+    prompt: str,
+    cfg_scale: float,
+    width: int,
+    height: int,
+    sample_steps: int,
+    seed: int,
+    negative_prompt: str = "",
+):
+    global model
+    if model is None:
+        raise ValueError(
+            "Model is not loaded. Please check the model path and try again.")
+
+    generated_image = model.txt2img(
+        prompt=prompt,
+        negative_prompt=negative_prompt,
+        cfg_scale=cfg_scale,
+        width=width,
+        height=height,
+        sample_steps=sample_steps,
+        seed=seed,
+    )
+    return generated_image
+
+
+def base64_encode_image(image_path: str):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
 
@@ -815,7 +797,7 @@ def base64_to_wav(base64_string: str, save_path: str):
         raise ValueError(f"Error converting base64 string to WAV file: {e}")
 
 
-def image_path_to_base64(file_path):
+def image_path_to_base64(file_path: str):
     if file_path and os.path.exists(file_path):
         with open(file_path, "rb") as img_file:
             base64_data = base64.b64encode(img_file.read()).decode("utf-8")
@@ -857,6 +839,7 @@ def run_nexa_ai_service(model_path_arg=None, is_local_path_arg=False, model_type
     reload = kwargs.get("reload", False)
 
     uvicorn.run(app, host=host, port=port, reload=reload)
+    # uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
 # Endpoints
@@ -902,7 +885,7 @@ def _resp_async_generator(streamer, start_time):
 download_progress = {}
 
 
-def pull_model_with_progress(model_path, progress_key, **kwargs):
+def pull_model_with_progress(model_path: str, progress_key, **kwargs):
     """
     Wrapper for pull_model to track download progress using download_file_with_progress.
     """
@@ -1542,15 +1525,24 @@ async def function_call(request: FunctionCallRequest):
 
 
 @app.post("/v1/txt2img", tags=["Computer Vision"])
-async def txt2img(request: ImageGenerationRequest):
+async def txt2img(
+        prompt: str = Form("a lovely cat holding a sign says 'Nexa Server'"),
+        negative_prompt: Optional[str] = Form(""),
+        cfg_scale: Optional[float] = Form(7.0, description="set to 1.0 when using Flux for optimal results"),
+        width: Optional[int] = Form(512), 
+        height: Optional[int] = Form(512),
+        sample_steps: Optional[int] = Form(20, description="set to 4 when using Flux for optimal results"),
+        seed: Optional[int] = Form(42),
+):
     try:
         if model_type != "Computer Vision":
             raise HTTPException(
                 status_code=400,
                 detail="The model that is loaded is not a Computer Vision model. Please use a Computer Vision model for image generation."
             )
-        generation_kwargs = request.dict()
-        generated_images = await nexa_run_image_generation(**generation_kwargs)
+        generated_images = await nexa_run_text_to_image(prompt=prompt, negative_prompt=negative_prompt,
+                                                        cfg_scale=cfg_scale, width=width, height=height,
+                                                        sample_steps=sample_steps,seed=seed)
 
         resp = {"created": time.time(), "data": []}
 
@@ -1569,6 +1561,55 @@ async def txt2img(request: ImageGenerationRequest):
 
     except Exception as e:
         logging.error(f"Error in txt2img generation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/v1/img2img", tags=["Computer Vision"])
+async def img2img(
+    prompt: str = Form("Convert the image to grayscale."),
+    image: UploadFile = File(...),
+    negative_prompt: Optional[str] = Form(""),
+    strength: Optional[float] = Form(0.75),
+    cfg_scale: Optional[float] = Form(7.0, description="set to 1.0 when using Flux for optimal results"),
+    width: Optional[int] = Form(512),
+    height: Optional[int] = Form(512),
+    sample_steps: Optional[int] = Form(20, description="set to 4 when using Flux for optimal results"),
+    seed: Optional[int] = Form(42),
+):
+    try:
+        if model_type != "Computer Vision":
+            raise HTTPException(
+                status_code=400,
+                detail="The model that is loaded is not a Computer Vision model. Please use a Computer Vision model for image generation."
+            )
+
+        uploaded_image_path = Path("uploads")
+        uploaded_image_path.mkdir(exist_ok=True)
+        uploaded_image_path = uploaded_image_path / image.filename
+        with uploaded_image_path.open("wb") as buffer:
+            shutil.copyfileobj(image.file, buffer)
+
+        generated_images = await nexa_run_image_to_image(prompt=prompt, negative_prompt=negative_prompt, strength=strength,
+                                                         cfg_scale=cfg_scale, width=width, height=height, sample_steps=sample_steps,
+                                                         seed=seed, image_path=str(uploaded_image_path))
+
+        resp = {"created": time.time(), "data": []}
+
+        for image in generated_images:
+            id = int(time.time())
+            if not os.path.exists("nexa_server_output"):
+                os.makedirs("nexa_server_output")
+            image_path = os.path.join(
+                "nexa_server_output", f"img2img_{id}.png")
+            image.save(image_path)
+            img = ImageResponse(base64=base64_encode_image(
+                image_path), url=os.path.abspath(image_path))
+            resp["data"].append(img)
+
+        return resp
+
+    except Exception as e:
+        logging.error(f"Error in img2img generation: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1638,37 +1679,6 @@ async def function_calling(request: FunctionCallRequest):
         }
     except Exception as e:
         logging.error(f"Error in function calling: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/v1/img2img", tags=["Computer Vision"])
-async def img2img(request: ImageGenerationRequest):
-    try:
-        if model_type != "Computer Vision":
-            raise HTTPException(
-                status_code=400,
-                detail="The model that is loaded is not a Computer Vision model. Please use a Computer Vision model for image generation."
-            )
-        generation_kwargs = request.dict()
-
-        generated_images = await nexa_run_image_generation(**generation_kwargs)
-        resp = {"created": time.time(), "data": []}
-
-        for image in generated_images:
-            id = int(time.time())
-            if not os.path.exists("nexa_server_output"):
-                os.makedirs("nexa_server_output")
-            image_path = os.path.join(
-                "nexa_server_output", f"img2img_{id}.png")
-            image.save(image_path)
-            img = ImageResponse(base64=base64_encode_image(
-                image_path), url=os.path.abspath(image_path))
-            resp["data"].append(img)
-
-        return resp
-
-    except Exception as e:
-        logging.error(f"Error in img2img generation: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
