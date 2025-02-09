@@ -33,13 +33,15 @@ def add_integer(a: int, b: int):
 
 # Fetch real-time weather data for a city using wttr.in, a simple console-based weather API.
 def get_weather(city: str) -> str:
-    url = f"https://wttr.in/{city}?format=%t"
-    response = requests.get(url)
+    # TODO: wttr api is not stable, swtich to another weather api later
+    # url = f"https://wttr.in/{city}?format=%t"
+    # response = requests.get(url)
 
-    if response.status_code == 200:
-        return response.text.strip()
-    else:
-        return "City not found"
+    # if response.status_code == 200:
+    #     return response.text.strip()
+    # else:
+    #     return "City not found"
+    return '+67F'
 
 
 system_prompt = (

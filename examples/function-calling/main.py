@@ -53,6 +53,7 @@ if __name__ == "__main__":
     ]
     
     responses = model.function_calling(messages=messages, tools=tools)
+
     for response in responses:
         func_info = response['function']
         func_name = func_info['name']
@@ -62,4 +63,10 @@ if __name__ == "__main__":
         # print(func_args)
         # print(type(func_args))
         res = call_function(func_name, **func_args)
-        print(res)
+        messages.append({"role": "assistant", "content": None, "function_call": response['function']})
+        messages.append({"role": "function", "name": func_name, "content": str(res)})
+    
+    output = model.create_chat_completion(messages=messages)
+    print('-' * 20)
+    print(output['choices'][0]['message']['content'])
+    print('-' * 20)
