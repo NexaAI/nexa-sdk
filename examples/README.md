@@ -24,7 +24,7 @@ Welcome to the **Nexa SDK Examples**! This is your go-to place for exploring var
 
 - **[Voice Transcription & Translation](https://github.com/NexaAI/nexa-sdk/tree/main/examples/voice_transcription):** Real-time voice-to-text, translation, and summarization. Perfect for meetings or multilingual needs! 🎤📝🌍
 
-- **[Local Weather Service](https://github.com/NexaAI/nexa-sdk/tree/main/examples/function-calling):** Weather retrieval with on-device function calling. Fast, reliable, and works without cloud-based AI dependencies! 
+- **[Local Weather Service](https://github.com/NexaAI/nexa-sdk/tree/main/examples/function-calling-weather-service):** Weather retrieval with on-device function calling. Fast, reliable, and works without cloud-based AI dependencies! 
 
 - **Function Calling:** TODO
 

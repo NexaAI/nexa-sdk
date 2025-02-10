@@ -42,7 +42,7 @@ tool_add_integer = {
 
 
 if __name__ == "__main__":
-
+    # Include add_integer in the available tools to check if the model could selects the correct function.
     tools = [tool_get_weather, tool_add_integer]
     with suppress_stdout_stderr():
         model = NexaTextInference(
