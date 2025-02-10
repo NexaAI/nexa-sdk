@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
 project(nexa_gguf)
 
-message(STATUS "CMAKE_ARGS Check:")
-message(STATUS "  GGML_SYCL: ${GGML_SYCL}")
-message(STATUS "  CMAKE_C_COMPILER: ${CMAKE_C_COMPILER}")
-message(STATUS "  CMAKE_CXX_COMPILER: ${CMAKE_CXX_COMPILER}")
-message(STATUS "  CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+message(WARNING "CMAKE_ARGS Check:")
+message(WARNING "  GGML_SYCL: ${GGML_SYCL}")
+message(WARNING "  CMAKE_C_COMPILER: ${CMAKE_C_COMPILER}")
+message(WARNING "  CMAKE_CXX_COMPILER: ${CMAKE_CXX_COMPILER}")
+message(WARNING "  CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 
 include(ExternalProject)
 
