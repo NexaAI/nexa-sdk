@@ -12,7 +12,7 @@ class GGUFLM:
     def __init__(self, model_path=None, **kwargs):
         if model_path is None:
             raise ValueError("model_path must be provided.")
-        self.model = NexaTextInference(model_path)
+        self.model = NexaTextInference(model_path, logits_all=True)
         self.logprobs = 10
         self.temperature = 0
 

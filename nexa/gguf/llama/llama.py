@@ -89,7 +89,7 @@ class Llama:
         yarn_beta_fast: float = 32.0,
         yarn_beta_slow: float = 1.0,
         yarn_orig_ctx: int = 0,
-        logits_all: bool = True,
+        logits_all: bool = False,
         embedding: bool = False,
         offload_kqv: bool = True,
         flash_attn: bool = False,
