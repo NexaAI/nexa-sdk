@@ -1,4 +1,57 @@
+import os
+import sys
 import requests
+
+outnull_file = open(os.devnull, "w")
+errnull_file = open(os.devnull, "w")
+
+STDOUT_FILENO = 1
+STDERR_FILENO = 2
+
+
+class suppress_stdout_stderr(object):
+    # NOTE: these must be "saved" here to avoid exceptions when using
+    #       this context manager inside of a __del__ method
+    sys = sys
+    os = os
+
+    def __init__(self, disable: bool = True):
+        self.disable = disable
+
+    # Oddly enough this works better than the contextlib version
+    def __enter__(self):
+        if self.disable:
+            return self
+
+        self.old_stdout_fileno_undup = STDOUT_FILENO
+        self.old_stderr_fileno_undup = STDERR_FILENO
+
+        self.old_stdout_fileno = self.os.dup(self.old_stdout_fileno_undup)
+        self.old_stderr_fileno = self.os.dup(self.old_stderr_fileno_undup)
+
+        self.old_stdout = self.sys.stdout
+        self.old_stderr = self.sys.stderr
+
+        self.os.dup2(outnull_file.fileno(), self.old_stdout_fileno_undup)
+        self.os.dup2(errnull_file.fileno(), self.old_stderr_fileno_undup)
+
+        self.sys.stdout = outnull_file
+        self.sys.stderr = errnull_file
+        return self
+
+    def __exit__(self, *_):
+        if self.disable:
+            return
+
+        # Check if sys.stdout and sys.stderr have fileno method
+        self.sys.stdout = self.old_stdout
+        self.sys.stderr = self.old_stderr
+
+        self.os.dup2(self.old_stdout_fileno, self.old_stdout_fileno_undup)
+        self.os.dup2(self.old_stderr_fileno, self.old_stderr_fileno_undup)
+
+        self.os.close(self.old_stdout_fileno)
+        self.os.close(self.old_stderr_fileno)
 
 
 def call_function(func_name: str, *args, **kwargs):
@@ -21,7 +74,8 @@ def call_function(func_name: str, *args, **kwargs):
 
     # Check if function exists and is callable
     if not callable(func):
-        raise AttributeError(f"Function '{func_name}' not found or is not callable.")
+        raise AttributeError(
+            f"Function '{func_name}' not found or is not callable.")
 
     # Call the function with arguments
     return func(*args, **kwargs)
@@ -33,15 +87,18 @@ def add_integer(a: int, b: int):
 
 # Fetch real-time weather data for a city using wttr.in, a simple console-based weather API.
 def get_weather(city: str) -> str:
-    # TODO: wttr api is not stable, swtich to another weather api later
-    # url = f"https://wttr.in/{city}?format=%t"
-    # response = requests.get(url)
-
-    # if response.status_code == 200:
-    #     return response.text.strip()
-    # else:
-    #     return "City not found"
-    return '+67F'
+    city = city.strip()
+    url = f"https://wttr.in/{city}"
+    response = requests.get(url, timeout=5)
+    try:
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
+        # Only keep ASCII graphical outputs
+        weather_output = '\n'.join(response.text.split('\n')[:-1])
+        return weather_output
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching weather data: {e}")
+        return f'Weather of {city} not found.'
 
 
 system_prompt = (

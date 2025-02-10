@@ -1,6 +1,7 @@
 import json
 
 from nexa.gguf.nexa_inference_text import NexaTextInference
+from utils import suppress_stdout_stderr
 from utils import call_function, add_integer, get_weather
 from utils import system_prompt
 
@@ -43,30 +44,34 @@ tool_add_integer = {
 if __name__ == "__main__":
 
     tools = [tool_get_weather, tool_add_integer]
-
-    model = NexaTextInference(
-        model_path="Meta-Llama-3.1-8B-Instruct:q4_0", function_calling=True)
-
+    with suppress_stdout_stderr():
+        model = NexaTextInference(
+            model_path="Meta-Llama-3.1-8B-Instruct:q4_0", function_calling=True)
+    print('-' * 20)
+    print('Successfully loaded model.')
+    print('-' * 20)
     messages = [
         {"role": "system", "content": system_prompt},
-        {"role": "user", "content": "What's the weather in Paris today?"}
+        {"role": "user", "content": "What's the weather in New York today?"}
     ]
-    
+
     responses = model.function_calling(messages=messages, tools=tools)
-
-    for response in responses:
-        func_info = response['function']
-        func_name = func_info['name']
-        func_args = json.loads(func_info['arguments'])
-
-        # print(func_name)
-        # print(func_args)
-        # print(type(func_args))
-        res = call_function(func_name, **func_args)
-        messages.append({"role": "assistant", "content": None, "function_call": response['function']})
-        messages.append({"role": "function", "name": func_name, "content": str(res)})
-    
-    output = model.create_chat_completion(messages=messages)
+    print('Received function calling arguments.')
     print('-' * 20)
-    print(output['choices'][0]['message']['content'])
+    response = responses[0]
+    func_info = response['function']
+    func_name = func_info['name']
+    func_args = json.loads(func_info['arguments'])
+
+    recv = call_function(func_name, **func_args)
+
+    print('Received weather data from wttr.in api.')
     print('-' * 20)
+    print(recv)
+
+    # OpenAI-style fucntion calling
+    # messages.append({"role": "assistant", "content": None, "function_call": response['function']})
+    # messages.append({"role": "function", "name": func_name, "content": str(res)})
+    # output = model.create_chat_completion(messages=messages)
+    # print(f'Model Output: {output['choices'][0]['message']['content']}')
+    # print('-' * 20)
