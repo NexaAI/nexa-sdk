@@ -67,9 +67,10 @@ if __name__ == "__main__":
 
     print('Received weather data from wttr.in api.')
     print('-' * 20)
-    print(recv)
+    print(recv[:recv.find("Location")].strip())
 
     # OpenAI-style fucntion calling
+    
     # messages.append({"role": "assistant", "content": None, "function_call": response['function']})
     # messages.append({"role": "function", "name": func_name, "content": str(res)})
     # output = model.create_chat_completion(messages=messages)
