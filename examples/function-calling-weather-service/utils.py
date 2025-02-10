@@ -9,6 +9,60 @@ STDOUT_FILENO = 1
 STDERR_FILENO = 2
 
 
+tool_get_weather = {
+    "type": "function",
+    "function": {
+            "name": "get_weather",
+            "description": "Get current temperature for provided city.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "city": {"type": "string", "description": "A city's name."},
+                },
+                "required": ["city"],
+                "additionalProperties": False
+            },
+        "strict": True
+    }
+}
+
+tool_get_factorial = {
+    "type": "function",
+    "function": {
+            "name": "get_factorial",
+            "description": "Get the factorial of input integer.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "num": {"type": "integer", "description": "An integer."},
+                },
+                "required": ["num"],
+                "additionalProperties": False
+            },
+        "strict": True
+    }
+}
+
+
+tool_add_integer = {
+    "type": "function",
+    "function": {
+            "name": "add_integer",
+            "description": "Returns the addition of input integers.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "num1": {"type": "integer", "description": "An integer to add."},
+                    "num2": {"type": "integer", "description": "An integer to add."}
+                },
+                "required": ["number"],
+                "additionalProperties": False
+            },
+        "strict": True
+    }
+}
+
+
 class suppress_stdout_stderr(object):
     # NOTE: these must be "saved" here to avoid exceptions when using
     #       this context manager inside of a __del__ method
@@ -83,6 +137,15 @@ def call_function(func_name: str, *args, **kwargs):
 
 def add_integer(a: int, b: int):
     return a + b
+
+
+def get_factorial(n: int) -> int:
+    if n < 0:
+        raise ValueError("Factorial is not defined for negative numbers")
+    result = 1
+    for i in range(2, n + 1):
+        result *= i
+    return result
 
 
 # Fetch real-time weather data for a city using wttr.in, a simple console-based weather API.

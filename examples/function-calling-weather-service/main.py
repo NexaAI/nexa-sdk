@@ -2,53 +2,19 @@ import json
 
 from nexa.gguf.nexa_inference_text import NexaTextInference
 from utils import suppress_stdout_stderr
-from utils import call_function, add_integer, get_weather
-from utils import system_prompt
+from utils import call_function, add_integer, get_weather, get_factorial
+from utils import system_prompt, tool_get_weather, tool_add_integer, tool_get_factorial
 
-tool_get_weather = {
-    "type": "function",
-    "function": {
-            "name": "get_weather",
-            "description": "Get current temperature for provided city.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "city": {"type": "string"},
-                },
-                "required": ["city"],
-                "additionalProperties": False
-            },
-        "strict": True
-    }
-}
-
-tool_add_integer = {
-    "type": "function",
-    "function": {
-            "name": "add_integer",
-            "description": "Returns the addition of input integers.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "num1": {"type": "integer", "description": "An integer to add."},
-                    "num2": {"type": "integer", "description": "An integer to add."}
-                },
-                "required": ["number"],
-                "additionalProperties": False
-            },
-        "strict": True
-    }
-}
-
+MODEL_PATH = "Meta-Llama-3.1-8B-Instruct:q4_0"
 
 if __name__ == "__main__":
-    # Include add_integer in the available tools to check if the model could selects the correct function.
-    tools = [tool_get_weather, tool_add_integer]
+    # Include add_integer and get_factorial in the available tools as well to check if the model could selects the correct function.
+    tools = [tool_get_weather, tool_add_integer, tool_get_factorial]
     with suppress_stdout_stderr():
         model = NexaTextInference(
-            model_path="Meta-Llama-3.1-8B-Instruct:q4_0", function_calling=True)
+            model_path=MODEL_PATH, function_calling=True)
     print('-' * 20)
-    print('Successfully loaded model.')
+    print(f'Successfully loaded model: {MODEL_PATH}.')
     print('-' * 20)
     messages = [
         {"role": "system", "content": system_prompt},
