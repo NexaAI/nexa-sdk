@@ -369,8 +369,8 @@ class Task:
             else:
                 num_choice = len(test_choice)
 
-            if isinstance(test_text, int):
-                self.multiple_input = num_choice
+                if isinstance(test_text, int):
+                    self.multiple_input = num_choice
         else:
             test_choice = None
 
@@ -740,6 +740,12 @@ class Task:
         use_metric = list(self._metric_fn_list.keys())
 
         if self.OUTPUT_TYPE == "multiple_choice":
+            # Check if results is empty
+            if not results:
+                eval_logger.warning(f"Empty results received for doc {doc.get('id', 'unknown')}")
+                # Return empty/zero values for all metrics
+                return {metric: 0.0 for metric in use_metric}
+                
             lls, is_greedy = zip(*results)
 
             # retrieve choices in List[str] form, to compute choice lengths, etc.

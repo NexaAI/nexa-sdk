@@ -1142,6 +1142,7 @@ class Llama:
         logits_processor: Optional[LogitsProcessorList] = None,
         grammar: Optional[LlamaGrammar] = None,
         logit_bias: Optional[Dict[str, float]] = None,
+        eval_context_length: Optional[int] = None,
     ) -> Union[
         Iterator[CreateCompletionResponse], Iterator[CreateCompletionStreamResponse]
     ]:
@@ -1673,12 +1674,22 @@ class Llama:
                 for i, token in enumerate(all_tokens)
             ]
             all_logprobs = Llama.logits_to_logprobs(self._scores)[token_offset:]
-            # TODO: may be able to change this loop to use np.take_along_dim
+            
+            # Skip processing tokens that are part of the evaluation context
+            start_idx = 0
+            if eval_context_length is not None:
+                while start_idx < len(all_tokens) and len(
+                    self.detokenize(all_tokens[:start_idx]).decode("utf-8", errors="ignore")
+                ) < eval_context_length:
+                    start_idx += 1
+
             for idx, (token, token_str, logprobs_token) in enumerate(
-                zip(all_tokens, all_token_strs, all_logprobs)
+                zip(all_tokens[start_idx:], all_token_strs[start_idx:], all_logprobs[start_idx:]), 
+                start=start_idx
             ):
                 if token == bos_token_id:
                     continue
+
                 text_offsets.append(
                     text_offset
                     + len(
@@ -1687,13 +1698,16 @@ class Llama:
                         )
                     )
                 )
+
                 tokens.append(token_str)
+
                 sorted_logprobs = list(
                     sorted(
                         zip(logprobs_token, range(len(logprobs_token))), reverse=True
                     )
                 )
                 token_logprobs.append(logprobs_token[int(token)])
+
                 top_logprob: Optional[Dict[str, float]] = {
                     self.detokenize([i], prev_tokens=all_tokens[:idx]).decode(
                         "utf-8", errors="ignore"
@@ -1702,10 +1716,11 @@ class Llama:
                 }
                 top_logprob.update({token_str: logprobs_token[int(token)]})
                 top_logprobs.append(top_logprob)
+
             # Weird idosincracy of the OpenAI API where
             # token_logprobs and top_logprobs are null for
             # the first token.
-            if echo and len(all_tokens) > 0:
+            if echo and len(all_tokens) > 0 and eval_context_length is None:
                 token_logprobs[0] = None
                 top_logprobs[0] = None
             logprobs_or_none = {
@@ -1762,6 +1777,7 @@ class Llama:
         logits_processor: Optional[LogitsProcessorList] = None,
         grammar: Optional[LlamaGrammar] = None,
         logit_bias: Optional[Dict[str, float]] = None,
+        eval_context_length: Optional[int] = None,
     ) -> Union[CreateCompletionResponse, Iterator[CreateCompletionStreamResponse]]:
         """Generate text from a prompt.
 
@@ -1825,6 +1841,7 @@ class Llama:
             logits_processor=logits_processor,
             grammar=grammar,
             logit_bias=logit_bias,
+            eval_context_length=eval_context_length,
         )
         if stream:
             chunks: Iterator[CreateCompletionStreamResponse] = completion_or_chunks

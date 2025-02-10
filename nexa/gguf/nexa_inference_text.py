@@ -132,6 +132,7 @@ class NexaTextInference:
                     n_ctx=self.params.get("nctx", 2048),
                     n_gpu_layers=n_gpu_layers,
                     lora_path=self.params.get("lora_path", ""),
+                    logits_all=self.params.get("logits_all", False),
                 )
             except Exception as e:
                 logging.error(
@@ -143,6 +144,7 @@ class NexaTextInference:
                     n_ctx=self.params.get("nctx", 2048),
                     n_gpu_layers=0,  # hardcode to use CPU
                     lora_path=self.params.get("lora_path", ""),
+                    logits_all=self.params.get("logits_all", False),
                 )
 
         load_time = time.time() - start_time

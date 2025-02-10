@@ -368,6 +368,7 @@ DEFAULT_TEXT_GEN_PARAMS = {
     "nctx": 2048,
     "top_k": 50,
     "top_p": 1.0,
+    "logits_all": False,
 }
 
 # FLUX vae and clip model paths on Nexa Model Hub
