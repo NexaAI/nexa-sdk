@@ -11,8 +11,6 @@ STDOUT_FILENO = 1
 STDERR_FILENO = 2
 
 
-# Adapted from llama-cpp-python/llama_cpp/_utils.py
-# Full credit to the original authors.
 class suppress_stdout_stderr(object):
     # NOTE: these must be "saved" here to avoid exceptions when using
     #       this context manager inside of a __del__ method
