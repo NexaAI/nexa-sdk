@@ -14,7 +14,7 @@ By running the LLM model locally, this approach minimizes reliance on external L
     conda create -n function-calling python=3.12
     conda activate function-calling
     ```
-2. Install the Nexa SDK by following the instructions in the main repository's README.
+2. Install Nexa SDK by following the instructions in the main repository's README.
 3. Run the demo script:
     ```bash
     python main.py
