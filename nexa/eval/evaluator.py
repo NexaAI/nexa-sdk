@@ -153,7 +153,6 @@ def nexa_evaluate(
                 req.resps.append(x)
     else:
         # Multiprocessing logic
-        # Define the task queue, result queue, and stop event
         task_queue = multiprocessing.JoinableQueue()
         result_queue = multiprocessing.Queue()
         stop_event = multiprocessing.Event()
@@ -179,23 +178,41 @@ def nexa_evaluate(
         # Create progress bar in the main process
         pbar = tqdm(total=len(requests))
 
-        # Collect results and update progress bar
+        # Track worker status
+        active_workers = len(processes)
         results_received = 0
         total_results = len(requests)
-        while results_received < total_results:
+        
+        while (active_workers > 0 or not task_queue.empty() or not result_queue.empty()) and results_received < total_results:
             try:
-                # Get result from result queue
+                # Get result from result queue with timeout
                 idx, resp = result_queue.get(timeout=1)
                 req = idx_to_req[idx]
                 req.resps.append(resp)
                 results_received += 1
                 pbar.update(1)
             except queue.Empty:
+                # Check for crashed/finished workers
+                alive_workers = sum(1 for p in processes if p.is_alive())
+                if alive_workers < active_workers:
+                    eval_logger.warning(f"Detected worker crash/exit: {active_workers - alive_workers} workers stopped")
+                    active_workers = alive_workers
+                    # If no workers are left and we haven't received all results, we need to break
+                    if active_workers == 0 and results_received < total_results:
+                        eval_logger.warning("All workers crashed/exited before completing tasks")
+                        break
                 continue
-            except Exception:
+            except Exception as e:
+                eval_logger.warning(f"Error processing result: {str(e)}")
                 continue
-            
+
         pbar.close()
+
+        # Log if we missed any results
+        if results_received < total_results:
+            eval_logger.warning(
+                f"Some results were not collected: received {results_received}/{total_results} results"
+            )
 
         # Ensure all processes have finished
         stop_event.set()
