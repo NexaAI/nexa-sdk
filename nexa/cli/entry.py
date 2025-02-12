@@ -292,10 +292,19 @@ def run_eval_tasks(args):
 
         kwargs = {k: v for k, v in vars(args).items() if v is not None}
         model_path = kwargs.pop("model_path")
+        is_local_path = kwargs.pop("local_path", False)
+
+        local_path = None
+        if is_local_path:
+            local_path = os.path.abspath(model_path)
+            model_path = local_path
+        else:  # Model Hub
+            from nexa.general import pull_model
+            local_path, _ = pull_model(model_path)
 
         from nexa.eval.nexa_eval import NexaEval
-        evaluator = NexaEval(model_path, args.tasks,
-                             args.limit, args.nctx, args.num_workers)
+        evaluator = NexaEval(model_path = model_path, local_path = local_path, tasks = args.tasks,
+                             limit = args.limit, nctx = args.nctx, num_workers = args.num_workers)
         if not args.tasks:
             evaluator.run_perf_eval(args.device, args.new_tokens)
         else:
@@ -772,6 +781,8 @@ def main():
         "eval", help="Evaluate models on specified tasks.")
     eval_parser.add_argument(
         "model_path", type=str, help="Path or identifier for the model in Nexa Model Hub")
+    eval_parser.add_argument(
+        "-lp", "--local_path", action="store_true", help="Indicate that the model path provided is the local path")
 
     # General evaluation options
     general_eval_group = eval_parser.add_argument_group(
