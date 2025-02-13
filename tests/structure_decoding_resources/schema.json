@@ -1,0 +1,54 @@
+{
+    "type": "object",
+    "properties": {
+        "owner": {
+            "type": "object",
+            "properties": {
+                "firstName": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "age": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "firstName",
+                "lastName",
+                "age"
+            ]
+        },
+        "car": {
+            "type": "object",
+            "properties": {
+                "make": {
+                    "type": "string"
+                },
+                "model": {
+                    "type": "string"
+                },
+                "year": {
+                    "type": "integer"
+                },
+                "colors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "required": [
+                "make",
+                "model",
+                "year",
+                "colors"
+            ]
+        }
+    },
+    "required": [
+        "owner",
+        "car"
+    ]
+}

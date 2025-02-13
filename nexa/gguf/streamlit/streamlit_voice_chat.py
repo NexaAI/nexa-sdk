@@ -27,31 +27,37 @@ except IndexError:
     st.error("Missing required command line arguments.")
     sys.exit(1)  # terminate with an error
 
+
 @st.cache_resource(show_spinner=False)
 def load_model(model_path, is_local=False, is_hf=False):
     """Load model with model mapping logic."""
     try:
         if is_local:
             # for local paths, use the path directly:
-            nexa_model = NexaVoiceInference(model_path=model_path, local_path=model_path)
+            nexa_model = NexaVoiceInference(
+                model_path=model_path, local_path=model_path)
         else:
             # for non-local paths:
             if is_hf:
                 local_path, _ = pull_model(model_path, hf=True)
-                nexa_model = NexaVoiceInference(model_path=model_path, local_path=local_path)
+                nexa_model = NexaVoiceInference(
+                    model_path=model_path, local_path=local_path)
             else:
                 # handle Model Hub models:
                 if model_path in NEXA_RUN_MODEL_MAP_VOICE:
                     real_model_path = NEXA_RUN_MODEL_MAP_VOICE[model_path]
                     local_path, _ = pull_model(real_model_path)
-                    nexa_model = NexaVoiceInference(model_path=real_model_path, local_path=local_path)
+                    nexa_model = NexaVoiceInference(
+                        model_path=real_model_path, local_path=local_path)
                 else:
                     local_path, _ = pull_model(model_path)
-                    nexa_model = NexaVoiceInference(model_path=model_path, local_path=local_path)
+                    nexa_model = NexaVoiceInference(
+                        model_path=model_path, local_path=local_path)
         return nexa_model
     except Exception as e:
         st.error(f"Error loading model: {str(e)}")
         return None
+
 
 def transcribe_audio(nexa_model, audio_file):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio:
@@ -76,6 +82,7 @@ def transcribe_audio(nexa_model, audio_file):
     finally:
         os.unlink(temp_audio_path)
 
+
 # UI setup:
 st.set_page_config(page_title="Nexa AI Voice Transcription", layout="wide")
 st.title("Nexa AI Voice Transcription")
@@ -83,13 +90,15 @@ st.caption("Powered by Nexa AI SDK🐙")
 
 # force refresh model options on every page load:
 if 'model_options' not in st.session_state:
-    st.session_state.model_options = get_model_options(specified_run_type, model_map)
+    st.session_state.model_options = get_model_options(
+        specified_run_type, model_map)
 else:
     update_model_options(specified_run_type, model_map)
 
 # init session state variables:
 if 'initialized' not in st.session_state:
-    st.session_state.model_options = get_model_options(specified_run_type, model_map)
+    st.session_state.model_options = get_model_options(
+        specified_run_type, model_map)
     st.session_state.current_model_path = default_model
     st.session_state.current_local_path = None
     st.session_state.current_hub_model = None
@@ -111,7 +120,8 @@ if 'initialized' not in st.session_state:
     elif hf:
         try:
             with st.spinner(f"Loading HuggingFace model: {default_model}"):
-                st.session_state.nexa_model = load_model(default_model, is_hf=True)
+                st.session_state.nexa_model = load_model(
+                    default_model, is_hf=True)
                 if st.session_state.nexa_model:
                     st.session_state.current_hub_model = default_model
                     st.session_state.current_model_path = default_model
@@ -134,12 +144,15 @@ if 'initialized' not in st.session_state:
 st.sidebar.header("Model Configuration")
 
 # update selectbox index based on current model:
-current_index = st.session_state.model_options.index("Use Model From Nexa Model Hub 🔍")
+current_index = st.session_state.model_options.index(
+    "Use Model From Nexa Model Hub 🔍")
 if 'nexa_model' in st.session_state:
     if st.session_state.current_model_path in st.session_state.model_options:
-        current_index = st.session_state.model_options.index(st.session_state.current_model_path)
+        current_index = st.session_state.model_options.index(
+            st.session_state.current_model_path)
     elif st.session_state.current_hub_model:
-        current_index = st.session_state.model_options.index("Use Model From Nexa Model Hub 🔍")
+        current_index = st.session_state.model_options.index(
+            "Use Model From Nexa Model Hub 🔍")
     elif st.session_state.current_local_path:
         current_index = st.session_state.model_options.index("Local Model 📁")
 
@@ -153,7 +166,8 @@ selected_option = st.sidebar.selectbox(
 if selected_option == "Local Model 📁":
     model_path = st.sidebar.text_input(
         "Enter local model path",
-        value=st.session_state.current_local_path if hasattr(st.session_state, 'current_local_path') else "",
+        value=st.session_state.current_local_path if hasattr(
+            st.session_state, 'current_local_path') else "",
         help="Enter the full path to your local model directory (e.g., /home/user/.cache/nexa/hub/official/model-name)"
     )
 
@@ -162,13 +176,13 @@ if selected_option == "Local Model 📁":
         st.stop()
 
     if (not hasattr(st.session_state, 'current_local_path') or
-        st.session_state.current_local_path != model_path):
+            st.session_state.current_local_path != model_path):
         with st.spinner("Loading local model..."):
             st.session_state.nexa_model = load_model(
-                    model_path,  # use the user input path
-                    is_local=True,
-                    is_hf=hf
-                )
+                model_path,  # use the user input path
+                is_local=True,
+                is_hf=hf
+            )
             if st.session_state.nexa_model:
                 st.session_state.current_local_path = model_path
                 st.session_state.current_model_path = model_path
@@ -176,7 +190,8 @@ if selected_option == "Local Model 📁":
 elif selected_option == "Use Model From Nexa Model Hub 🔍":
     model_path = st.sidebar.text_input(
         "Enter model name from Nexa Model Hub",
-        value=st.session_state.current_hub_model if hasattr(st.session_state, 'current_hub_model') else default_model
+        value=st.session_state.current_hub_model if hasattr(
+            st.session_state, 'current_hub_model') else default_model
     )
     if not model_path:
         st.warning("""
@@ -196,18 +211,21 @@ elif selected_option == "Use Model From Nexa Model Hub 🔍":
 
     if (not hasattr(st.session_state, 'current_hub_model') or st.session_state.current_hub_model != model_path):
         with st.spinner("Loading model from hub..."):
-            st.session_state.nexa_model = load_model(model_path, is_local=False, is_hf=False)
+            st.session_state.nexa_model = load_model(
+                model_path, is_local=False, is_hf=False)
             if st.session_state.nexa_model:
                 st.session_state.current_hub_model = model_path
                 st.session_state.current_model_path = model_path
-                st.session_state.current_local_path = None  # clear local path state when switching to hub model
+                # clear local path state when switching to hub model
+                st.session_state.current_local_path = None
 
 else:
     model_path = selected_option
     if (not hasattr(st.session_state, 'current_model_path') or
-        st.session_state.current_model_path != model_path):
+            st.session_state.current_model_path != model_path):
         with st.spinner(f"Loading model: {model_path}"):
-            st.session_state.nexa_model = load_model(model_path, is_local=False, is_hf=False)
+            st.session_state.nexa_model = load_model(
+                model_path, is_local=False, is_hf=False)
             if st.session_state.nexa_model:
                 st.session_state.current_model_path = model_path
                 st.session_state.current_local_path = None
@@ -243,14 +261,16 @@ if hasattr(st.session_state, 'nexa_model') and st.session_state.nexa_model:
 
     # Option 1: Upload Audio File
     st.header("Option 1: Upload Audio File")
-    uploaded_file = st.file_uploader("Choose an audio file", type=["wav", "mp3"])
+    uploaded_file = st.file_uploader(
+        "Choose an audio file", type=["wav", "mp3"])
 
     if uploaded_file is not None:
         st.audio(uploaded_file, format="audio/wav")
 
         if st.button("Transcribe Uploaded Audio"):
             with st.spinner("Transcribing audio..."):
-                transcription = transcribe_audio(st.session_state.nexa_model, uploaded_file)
+                transcription = transcribe_audio(
+                    st.session_state.nexa_model, uploaded_file)
 
             if transcription:
                 st.subheader("Transcription:")
@@ -276,7 +296,8 @@ if hasattr(st.session_state, 'nexa_model') and st.session_state.nexa_model:
     if wav_audio_data:
         if st.button("Transcribe Recorded Audio"):
             with st.spinner("Transcribing audio..."):
-                transcription = transcribe_audio(st.session_state.nexa_model, io.BytesIO(wav_audio_data))
+                transcription = transcribe_audio(
+                    st.session_state.nexa_model, io.BytesIO(wav_audio_data))
 
             if transcription:
                 st.subheader("Transcription:")
@@ -293,6 +314,7 @@ if hasattr(st.session_state, 'nexa_model') and st.session_state.nexa_model:
             else:
                 st.error("Transcription failed. Please try recording again.")
     else:
-        st.warning("No audio recorded. Please record some audio before transcribing.")
+        st.warning(
+            "No audio recorded. Please record some audio before transcribing.")
 else:
     st.warning("Please select or load a model to proceed.")

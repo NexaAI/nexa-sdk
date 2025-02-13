@@ -15,6 +15,7 @@ from nexa.gguf.llama import omni_vlm_cpp
 from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
 from nexa.general import pull_model
 
+
 class NexaOmniVlmInference:
     """
     A class used for vision language model inference.
@@ -29,7 +30,8 @@ class NexaOmniVlmInference:
         **kwargs,
     ):
         if model_path is None and local_path is None:
-            raise ValueError("Either model_path or local_path must be provided.")
+            raise ValueError(
+                "Either model_path or local_path must be provided.")
 
         self.model = None
         self.projector = None
@@ -50,35 +52,42 @@ class NexaOmniVlmInference:
                 # Construct corresponding projector path
                 self.projector_path = f"{base_name}:projector-{model_type}"
                 self.downloaded_path, _ = pull_model(self.model_path, **kwargs)
-                self.projector_downloaded_path, _ = pull_model(self.projector_path, **kwargs)
+                self.projector_downloaded_path, _ = pull_model(
+                    self.projector_path, **kwargs)
                 self.omni_vlm_version = self._determine_vlm_version(model_path)
 
         else:
             # Handle other path formats and model loading scenarios
-            self.projector_path = NEXA_RUN_OMNI_VLM_PROJECTOR_MAP.get(model_path, None)
+            self.projector_path = NEXA_RUN_OMNI_VLM_PROJECTOR_MAP.get(
+                model_path, None)
             self.downloaded_path = local_path
             self.projector_downloaded_path = projector_local_path
 
             if self.downloaded_path is not None and self.projector_downloaded_path is not None:
                 # when running from local, both path should be provided
-                self.omni_vlm_version = self._determine_vlm_version(str(self.downloaded_path))
+                self.omni_vlm_version = self._determine_vlm_version(
+                    str(self.downloaded_path))
             elif self.downloaded_path is not None:
                 if model_path in NEXA_RUN_OMNI_VLM_MAP:
                     self.projector_path = NEXA_RUN_OMNI_VLM_PROJECTOR_MAP[model_path]
-                    self.projector_downloaded_path, _ = pull_model(self.projector_path, **kwargs)
-                    self.omni_vlm_version = self._determine_vlm_version(model_path)
+                    self.projector_downloaded_path, _ = pull_model(
+                        self.projector_path, **kwargs)
+                    self.omni_vlm_version = self._determine_vlm_version(
+                        model_path)
             elif model_path in NEXA_RUN_OMNI_VLM_MAP:
                 self.model_path = NEXA_RUN_OMNI_VLM_MAP[model_path]
                 self.projector_path = NEXA_RUN_OMNI_VLM_PROJECTOR_MAP[model_path]
                 self.downloaded_path, _ = pull_model(self.model_path, **kwargs)
-                self.projector_downloaded_path, _ = pull_model(self.projector_path, **kwargs)
+                self.projector_downloaded_path, _ = pull_model(
+                    self.projector_path, **kwargs)
                 self.omni_vlm_version = self._determine_vlm_version(model_path)
             elif Path(model_path).parent.exists():
                 local_dir = Path(model_path).parent
                 model_name = Path(model_path).name
                 tag_and_ext = model_name.split(":")[-1]
                 self.downloaded_path = local_dir / f"model-{tag_and_ext}"
-                self.projector_downloaded_path = local_dir / f"projector-{tag_and_ext}"
+                self.projector_downloaded_path = local_dir / \
+                    f"projector-{tag_and_ext}"
                 if not (
                     self.downloaded_path.exists()
                     and self.projector_downloaded_path.exists()
@@ -92,12 +101,12 @@ class NexaOmniVlmInference:
             else:
                 logging.error("VLM user model from hub is not supported yet.")
                 exit(1)
-        
+
         # Override version if specified in kwargs
         if 'omni_vlm_version' in kwargs:
             self.omni_vlm_version = kwargs.get('omni_vlm_version')
         print(f"Using omni-vlm-version: {self.omni_vlm_version}")
-            
+
         with suppress_stdout_stderr():
             self._load_model()
 
@@ -108,21 +117,25 @@ class NexaOmniVlmInference:
         elif 'preview' in path_str:
             return "nano-vlm-instruct"
         return "vlm-81-instruct"
-    
+
     @SpinningCursorAnimation()
     def _load_model(self):
         try:
-            self.ctx_params_model = ctypes.c_char_p(self.downloaded_path.encode("utf-8"))
-            self.ctx_params_mmproj = ctypes.c_char_p(self.projector_downloaded_path.encode("utf-8"))
-            self.ctx_params_omni_vlm_version = ctypes.c_char_p(self.omni_vlm_version.encode("utf-8"))
-            omni_vlm_cpp.omnivlm_init(self.ctx_params_model, self.ctx_params_mmproj, self.ctx_params_omni_vlm_version)
+            self.ctx_params_model = ctypes.c_char_p(
+                self.downloaded_path.encode("utf-8"))
+            self.ctx_params_mmproj = ctypes.c_char_p(
+                self.projector_downloaded_path.encode("utf-8"))
+            self.ctx_params_omni_vlm_version = ctypes.c_char_p(
+                self.omni_vlm_version.encode("utf-8"))
+            omni_vlm_cpp.omnivlm_init(
+                self.ctx_params_model, self.ctx_params_mmproj, self.ctx_params_omni_vlm_version)
         except Exception as e:
             logging.error(f"Error loading model: {e}")
             raise
-        
+
     def run(self):
         from nexa.gguf.llama._utils_spinner import start_spinner, stop_spinner
-        
+
         while True:
             try:
                 image_path = nexa_prompt("Image Path (required): ")
@@ -149,7 +162,8 @@ class NexaOmniVlmInference:
                 print("\nExiting...")
                 break
             except Exception as e:
-                logging.error(f"\nError during audio generation: {e}", exc_info=True)
+                logging.error(
+                    f"\nError during audio generation: {e}", exc_info=True)
             print("\n")
 
     def inference(self, prompt: str, image_path: str):
@@ -157,11 +171,12 @@ class NexaOmniVlmInference:
             prompt = ctypes.c_char_p(prompt.encode("utf-8"))
             image_path = ctypes.c_char_p(image_path.encode("utf-8"))
             response = omni_vlm_cpp.omnivlm_inference(prompt, image_path)
-            
+
             decoded_response = response.decode('utf-8')
             if '<|im_start|>assistant' in decoded_response:
-                decoded_response = decoded_response.replace('<|im_start|>assistant', '').strip()
-                
+                decoded_response = decoded_response.replace(
+                    '<|im_start|>assistant', '').strip()
+
             return decoded_response
 
     def inference_streaming(self, prompt: str, image_path: str):
@@ -178,24 +193,25 @@ class NexaOmniVlmInference:
                 continue
             yield res_str
 
-
     def close(self) -> None:
         self.__del__()
 
     def __del__(self):
         omni_vlm_cpp.omnivlm_free()
 
-    def run_streamlit(self, model_path: str, is_local_path = False, hf = False, projector_local_path = None):
+    def run_streamlit(self, model_path: str, is_local_path=False, hf=False, projector_local_path=None):
         """
         Run the Streamlit UI.
         """
         logging.info("Running Streamlit UI...")
 
         streamlit_script_path = (
-            Path(os.path.abspath(__file__)).parent / "streamlit" / "streamlit_vlm_omni.py"
+            Path(os.path.abspath(__file__)).parent /
+            "streamlit" / "streamlit_vlm_omni.py"
         )
 
-        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, str(is_local_path), str(hf), str(projector_local_path)]
+        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, str(
+            is_local_path), str(hf), str(projector_local_path)]
         sys.exit(stcli.main())
 
 

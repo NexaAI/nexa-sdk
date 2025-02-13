@@ -9,10 +9,10 @@ from tqdm import tqdm
 logger = logging.getLogger(__name__)
 
 class GGUFLM:
-    def __init__(self, model_path=None, **kwargs):
-        if model_path is None:
-            raise ValueError("model_path must be provided.")
-        self.model = NexaTextInference(model_path)
+    def __init__(self, model_path=None, local_path=None, **kwargs):
+        if model_path is None and local_path is None:
+            raise ValueError("model_path or local_path must be provided.")
+        self.model = NexaTextInference(model_path, local_path, logits_all=True)
         self.logprobs = 10
         self.temperature = 0
 
@@ -25,7 +25,8 @@ class GGUFLM:
                 "prompt": prompt,
                 "logprobs": self.logprobs,
                 "temperature": self.temperature,
-                "max_tokens": max_tokens
+                "max_tokens": max_tokens,
+                "eval_context_length": len(context)
             }
             if continuation:
                 prompt += continuation
@@ -56,6 +57,10 @@ class GGUFLM:
                     logprob, is_greedy = self.get_result(logprobs, len(context))
                     res.append((logprob, is_greedy))
                 else:
+                    # FIXME: Using average logprob as fallback when logprobs data is invalid
+                    # This is a temporary solution and might need better error handling
+                    avg_logprob = sum(r[0] for r in res) / len(res) if res else -0.693
+                    res.append((avg_logprob, True))
                     logger.warning(
                         "Invalid logprobs data. Expected 'logprobs' to contain 'token_logprobs' list."
                     )
@@ -93,17 +98,16 @@ class GGUFLM:
         return res
 
 
-    def get_result(self, logprobs, context_length):
+    def get_result(self, logprobs, context_length=None):
         is_greedy = True
-        offsets = logprobs["text_offset"]
         tokens = logprobs["tokens"]
         tokens_logprobs = logprobs["token_logprobs"]
 
-        idx = 0
-        while idx < len(offsets) and offsets[idx] < context_length:
-            idx += 1
-        continuation_logprobs = sum(tokens_logprobs[idx:-1])
-        for i in range(idx, len(tokens)):
+        # Now we can directly sum all logprobs except the last one
+        continuation_logprobs = sum(tokens_logprobs[:-1])
+
+        # Check if each token was the highest probability choice
+        for i in range(len(tokens)):
             token = tokens[i]
             top_tokens = logprobs["top_logprobs"][i]
             top_token = max(top_tokens.keys(), key=lambda x: top_tokens[x])

@@ -11,6 +11,7 @@ from nexa.onnx.nexa_inference_text import NexaTextInference
 default_model = sys.argv[1]
 is_local_path = False if sys.argv[2] == "False" else True
 
+
 @st.cache_resource
 def load_model(model_path):
     if is_local_path:
@@ -21,8 +22,9 @@ def load_model(model_path):
         model_path = local_path
     else:
         local_path, run_type = pull_model(model_path)
-        
-    nexa_model = NexaTextInference(model_path=model_path, local_path=local_path)
+
+    nexa_model = NexaTextInference(
+        model_path=model_path, local_path=local_path)
 
     if nexa_model.downloaded_onnx_folder is None:
         st.error("Failed to download the model. Please check the model path.")
@@ -48,7 +50,8 @@ def generate_response(nexa_model, prompt):
 
     inputs = nexa_model.tokenizer(full_prompt, return_tensors="pt")
     inputs = {k: v.to(nexa_model.device) for k, v in inputs.items()}
-    streamer = TextIteratorStreamer(nexa_model.tokenizer, skip_special_tokens=True)
+    streamer = TextIteratorStreamer(
+        nexa_model.tokenizer, skip_special_tokens=True)
 
     generation_kwargs = dict(
         **inputs,
@@ -97,7 +100,8 @@ max_new_tokens = st.sidebar.slider(
 min_new_tokens = st.sidebar.slider(
     "Min New Tokens", 1, 100, st.session_state.nexa_model.params["min_new_tokens"]
 )
-top_k = st.sidebar.slider("Top K", 1, 100, st.session_state.nexa_model.params["top_k"])
+top_k = st.sidebar.slider(
+    "Top K", 1, 100, st.session_state.nexa_model.params["top_k"])
 top_p = st.sidebar.slider(
     "Top P", 0.0, 1.0, st.session_state.nexa_model.params["top_p"]
 )
@@ -130,7 +134,9 @@ if prompt := st.chat_input("Say something..."):
         full_response = ""
         for token in generate_response(st.session_state.nexa_model, prompt):
             full_response += token
-            response_placeholder.markdown(full_response, unsafe_allow_html=True)
+            response_placeholder.markdown(
+                full_response, unsafe_allow_html=True)
         response_placeholder.markdown(full_response)
 
-    st.session_state.messages.append({"role": "assistant", "content": full_response})
+    st.session_state.messages.append(
+        {"role": "assistant", "content": full_response})

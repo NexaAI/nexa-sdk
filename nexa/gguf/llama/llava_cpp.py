@@ -36,8 +36,9 @@ if TYPE_CHECKING:
 
 # Specify the base name of the shared library to load
 _libllava_base_name = "llava_shared"
+_lib_subdir_name = "llama"
 # Load the library
-_libllava = load_library(_libllava_base_name)
+_libllava = load_library(_libllava_base_name, _lib_subdir_name)
 
 ctypes_function = ctypes_function_for_shared_library(_libllava)
 

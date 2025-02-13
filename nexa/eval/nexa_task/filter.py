@@ -111,8 +111,11 @@ class TakeFirstFilter(Filter):
     def apply(self, resps, docs):
         """
         Assuming each entry of `resps` is a list of model responses, we discard all but the first response.
+        Handles empty response lists by returning None.
         """
-        return map(lambda r: r[0], resps)
+        def safe_take_first(r):
+            return r[0] if r else None
+        return map(safe_take_first, resps)
 
 
 @dataclass

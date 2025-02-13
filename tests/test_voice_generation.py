@@ -4,6 +4,7 @@ from pathlib import Path
 from nexa.gguf import NexaVoiceInference
 from unittest.mock import patch, MagicMock
 
+
 def test_voice_generation():
     # Initialize the NexaVoiceInference
     voice_inference = NexaVoiceInference(
@@ -43,7 +44,8 @@ def test_voice_generation():
     )
 
     # Check if the transcription was saved
-    transcription_files = list(Path(voice_inference.params["output_dir"]).glob("transcription_*.txt"))
+    transcription_files = list(
+        Path(voice_inference.params["output_dir"]).glob("transcription_*.txt"))
     assert len(transcription_files) == 1, "Transcription file was not created"
 
     # Check the content of the transcription file
@@ -52,6 +54,7 @@ def test_voice_generation():
     assert content == "This is a test transcription. It works perfectly.", "Transcription content is incorrect"
 
     print("Voice generation test passed successfully!")
+
 
 if __name__ == "__main__":
     test_voice_generation()

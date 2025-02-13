@@ -3,7 +3,8 @@ from pathlib import Path
 from enum import Enum
 
 # Paths for caching, model hub, and tokens
-NEXA_CACHE_ROOT = Path(os.getenv("NEXA_CACHE_ROOT") or "~/.cache/nexa").expanduser()
+NEXA_CACHE_ROOT = Path(os.getenv("NEXA_CACHE_ROOT")
+                       or "~/.cache/nexa").expanduser()
 NEXA_TOKEN_PATH = NEXA_CACHE_ROOT / "token"
 NEXA_MODELS_HUB_DIR = NEXA_CACHE_ROOT / "hub"
 NEXA_MODEL_EVAL_RESULTS_PATH = NEXA_CACHE_ROOT / "eval"
@@ -358,7 +359,8 @@ NEXA_RUN_MODEL_PRECISION_MAP = {
 EXIT_COMMANDS = ["/exit", "/quit", "/bye"]
 EXIT_REMINDER = f"Please use Ctrl + d or one of {EXIT_COMMANDS} to exit.\n"
 
-NEXA_STOP_WORDS_MAP = {"octopus-v2": ["<nexa_end>"], "octopus-v4": ["<nexa_end>"]}
+NEXA_STOP_WORDS_MAP = {
+    "octopus-v2": ["<nexa_end>"], "octopus-v4": ["<nexa_end>"]}
 
 DEFAULT_TEXT_GEN_PARAMS = {
     "temperature": 0.7,
@@ -366,7 +368,17 @@ DEFAULT_TEXT_GEN_PARAMS = {
     "nctx": 2048,
     "top_k": 50,
     "top_p": 1.0,
+    "logits_all": False,
 }
+
+# FLUX vae and clip model paths on Nexa Model Hub
+FLUX_VAE_PATH = "FLUX.1-schnell:ae-fp16"
+FLUX_CLIP_L_PATH = "FLUX.1-schnell:clip_l-fp16"
+
+# image generation retry attempts
+IMAGE_GEN_RETRY_ATTEMPTS = (
+    3  # a temporary fix for the issue of segmentation fault for stable-diffusion-cpp
+)
 
 DEFAULT_IMG_GEN_PARAMS = {
     "num_inference_steps": 20,
@@ -382,8 +394,26 @@ DEFAULT_IMG_GEN_PARAMS_LCM = {
     "height": 512,
     "width": 512,
     "guidance_scale": 1.0,
-    "output_path": "generated_images/image.png",
+    "output_path": "generated_images/lcm_image.png",
     "random_seed": 0,
+}
+
+DEFAULT_IMG_GEN_PARAMS_FLUX = {
+    "num_inference_steps": 4,
+    "height": 512,
+    "width": 512,
+    "guidance_scale": 1.0,
+    "output_path": "generated_images/flux_image.png",
+    "random_seed": 42,
+}
+
+DEFAULT_IMG_GEN_PARAMS_SD_3_5 = {
+    "num_inference_steps": 10,
+    "height": 512,
+    "width": 512,
+    "guidance_scale": 4.5,
+    "output_path": "generated_images/sd3.5_image.png",
+    "random_seed": 42,
 }
 
 DEFAULT_IMG_GEN_PARAMS_TURBO = {
@@ -391,7 +421,7 @@ DEFAULT_IMG_GEN_PARAMS_TURBO = {
     "height": 512,
     "width": 512,
     "guidance_scale": 5.0,
-    "output_path": "generated_images/image.png",
+    "output_path": "generated_images/turbo_image.png",
     "random_seed": 0,
 }
 

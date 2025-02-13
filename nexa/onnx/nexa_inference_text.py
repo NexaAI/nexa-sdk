@@ -36,8 +36,9 @@ class NexaTextInference:
 
     def __init__(self, model_path=None, local_path=None, **kwargs):
         if model_path is None and local_path is None:
-            raise ValueError("Either model_path or local_path must be provided.")
-        
+            raise ValueError(
+                "Either model_path or local_path must be provided.")
+
         self.model_path = NEXA_RUN_MODEL_MAP_ONNX.get(model_path, model_path)
         self.params = {
             "temperature": 0.5,
@@ -53,9 +54,10 @@ class NexaTextInference:
         self.downloaded_onnx_folder = local_path
         self.timings = kwargs.get("timings", False)
         self.device = "cpu"
-        
+
         if self.downloaded_onnx_folder is None:
-            self.downloaded_onnx_folder, _ = pull_model(self.model_path, **kwargs)
+            self.downloaded_onnx_folder, _ = pull_model(
+                self.model_path, **kwargs)
 
         if self.downloaded_onnx_folder is None:
             logging.error(
@@ -70,7 +72,8 @@ class NexaTextInference:
     def _load_model_and_tokenizer(self):
         logging.debug(f"Loading model from {self.downloaded_onnx_folder}")
         start_time = time.time()
-        self.tokenizer = AutoTokenizer.from_pretrained(self.downloaded_onnx_folder)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.downloaded_onnx_folder)
 
         if self.model is None:
             logging.debug(f"Loading model from {self.downloaded_onnx_folder}")
@@ -82,7 +85,8 @@ class NexaTextInference:
                     self.tokenizer, skip_prompt=True, skip_special_tokens=True
                 )
             except Exception as e:
-                logging.error(f"Error loading with ORTModel: {e}", exc_info=True)
+                logging.error(
+                    f"Error loading with ORTModel: {e}", exc_info=True)
                 return
 
         load_time = time.time() - start_time
@@ -100,7 +104,8 @@ class NexaTextInference:
                 start_time = time.time()
 
                 if chat_mode:
-                    conversation_history.append({"role": "user", "content": user_input})
+                    conversation_history.append(
+                        {"role": "user", "content": user_input})
                     full_prompt = self.tokenizer.apply_chat_template(
                         conversation_history,
                         chat_template=chat_template,
@@ -135,7 +140,8 @@ class NexaTextInference:
 
                 if self.timings:
                     logging.info("Timing statistics:")
-                    logging.info(f"Total inference time: {total_inference_time:.2f}s")
+                    logging.info(
+                        f"Total inference time: {total_inference_time:.2f}s")
                     logging.info(
                         f"Prefill speed: {prefill_token_count/prefill_time:.2f} tokens/s"
                     )
@@ -153,7 +159,8 @@ class NexaTextInference:
             except KeyboardInterrupt:
                 print("\n")
             except Exception as e:
-                logging.error(f"Error during text generation: {e}", exc_info=True)
+                logging.error(
+                    f"Error during text generation: {e}", exc_info=True)
 
     def run(self):
         # Check if Streamlit mode should be run first
@@ -173,7 +180,7 @@ class NexaTextInference:
 
             self.start(chat_mode=chat_mode)
 
-    def run_streamlit(self, model_path: str, is_local_path = False):
+    def run_streamlit(self, model_path: str, is_local_path=False):
         """
         Run the Streamlit UI.
         """
@@ -181,10 +188,12 @@ class NexaTextInference:
         from streamlit.web import cli as stcli
 
         streamlit_script_path = (
-            Path(__file__).resolve().parent / "streamlit" / "streamlit_text_chat.py"
+            Path(__file__).resolve().parent /
+            "streamlit" / "streamlit_text_chat.py"
         )
 
-        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, str(is_local_path)]
+        sys.argv = ["streamlit", "run", str(
+            streamlit_script_path), model_path, str(is_local_path)]
         sys.exit(stcli.main())
 
 

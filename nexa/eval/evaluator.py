@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from nexa.eval.nexa_task.task import Task
 
 # Define the worker function at the global scope
-def worker(task_queue, result_queue, stop_event, model_path):
+def worker(task_queue, result_queue, stop_event, model_path, local_path):
     # Disable tqdm in worker processes
     import sys
     import os
@@ -47,7 +47,7 @@ def worker(task_queue, result_queue, stop_event, model_path):
     sys.stderr = open(os.devnull, 'w')
 
     # Initialize the model in each process
-    lm_worker = GGUFLM(model_path)
+    lm_worker = GGUFLM(model_path, local_path)
     while not stop_event.is_set():
         try:
             item = task_queue.get(timeout=0.1)
@@ -68,6 +68,7 @@ def worker(task_queue, result_queue, stop_event, model_path):
 
 def nexa_evaluate(
     model_path,
+    local_path,
     tasks: Optional[List[str]] = None,
     num_fewshot: Optional[int] = None,
     limit: Optional[Union[int, float]] = None,
@@ -140,7 +141,7 @@ def nexa_evaluate(
     # Run LM on inputs, get all outputs
     if num_workers == 1:
         # Without multiprocessing
-        lm = GGUFLM(model_path)
+        lm = GGUFLM(model_path, local_path)
         eval_logger.info(f"Running requests with a single worker")
         reqs_by_type = defaultdict(list)
         for idx, req in indexed_requests:
@@ -153,7 +154,6 @@ def nexa_evaluate(
                 req.resps.append(x)
     else:
         # Multiprocessing logic
-        # Define the task queue, result queue, and stop event
         task_queue = multiprocessing.JoinableQueue()
         result_queue = multiprocessing.Queue()
         stop_event = multiprocessing.Event()
@@ -171,7 +171,7 @@ def nexa_evaluate(
         for _ in range(num_workers):
             p = multiprocessing.Process(
                 target=worker,
-                args=(task_queue, result_queue, stop_event, model_path),
+                args=(task_queue, result_queue, stop_event, model_path, local_path),
             )
             p.start()
             processes.append(p)
@@ -179,23 +179,41 @@ def nexa_evaluate(
         # Create progress bar in the main process
         pbar = tqdm(total=len(requests))
 
-        # Collect results and update progress bar
+        # Track worker status
+        active_workers = len(processes)
         results_received = 0
         total_results = len(requests)
-        while results_received < total_results:
+        
+        while (active_workers > 0 or not task_queue.empty() or not result_queue.empty()) and results_received < total_results:
             try:
-                # Get result from result queue
+                # Get result from result queue with timeout
                 idx, resp = result_queue.get(timeout=1)
                 req = idx_to_req[idx]
                 req.resps.append(resp)
                 results_received += 1
                 pbar.update(1)
             except queue.Empty:
+                # Check for crashed/finished workers
+                alive_workers = sum(1 for p in processes if p.is_alive())
+                if alive_workers < active_workers:
+                    eval_logger.warning(f"Detected worker crash/exit: {active_workers - alive_workers} workers stopped")
+                    active_workers = alive_workers
+                    # If no workers are left and we haven't received all results, we need to break
+                    if active_workers == 0 and results_received < total_results:
+                        eval_logger.warning("All workers crashed/exited before completing tasks")
+                        break
                 continue
-            except Exception:
+            except Exception as e:
+                eval_logger.warning(f"Error processing result: {str(e)}")
                 continue
-            
+
         pbar.close()
+
+        # Log if we missed any results
+        if results_received < total_results:
+            eval_logger.warning(
+                f"Some results were not collected: received {results_received}/{total_results} results"
+            )
 
         # Ensure all processes have finished
         stop_event.set()
@@ -317,6 +335,7 @@ def nexa_evaluate(
 
     results_dict["config"] = {
         "model": model_path,
+        "local_path": local_path,
         "limit": limit,
         "num_workers": num_workers,
         "bootstrap_iters": bootstrap_iters,

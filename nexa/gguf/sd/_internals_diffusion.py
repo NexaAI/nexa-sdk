@@ -21,6 +21,7 @@ class _StableDiffusionModel:
         self,
         model_path: str,
         clip_l_path: str,
+        clip_g_path: str,
         t5xxl_path: str,
         diffusion_model_path: str,
         vae_path: str,
@@ -31,7 +32,6 @@ class _StableDiffusionModel:
         stacked_id_embed_dir: str,
         vae_decode_only: bool,
         vae_tiling: bool,
-        free_params_immediately: bool,
         n_threads: int,
         wtype: int,
         rng_type: int,
@@ -39,10 +39,12 @@ class _StableDiffusionModel:
         keep_clip_on_cpu: bool,
         keep_control_net_cpu: bool,
         keep_vae_on_cpu: bool,
+        diffusion_flash_attn: bool,
         verbose: bool,
     ):
         self.model_path = model_path
         self.clip_l_path = clip_l_path
+        self.clip_g_path = clip_g_path
         self.t5xxl_path = t5xxl_path
         self.diffusion_model_path = diffusion_model_path
         self.vae_path = vae_path
@@ -53,7 +55,6 @@ class _StableDiffusionModel:
         self.stacked_id_embed_dir = stacked_id_embed_dir
         self.vae_decode_only = vae_decode_only
         self.vae_tiling = vae_tiling
-        self.free_params_immediately = free_params_immediately
         self.n_threads = n_threads
         self.wtype = wtype
         self.rng_type = rng_type
@@ -61,7 +62,9 @@ class _StableDiffusionModel:
         self.keep_clip_on_cpu = keep_clip_on_cpu
         self.keep_control_net_cpu = keep_control_net_cpu
         self.keep_vae_on_cpu = keep_vae_on_cpu
+        self.diffusion_flash_attn = diffusion_flash_attn
         self.verbose = verbose
+
         self._exit_stack = ExitStack()
 
         self.model = None
@@ -76,7 +79,8 @@ class _StableDiffusionModel:
 
         if diffusion_model_path:
             if not os.path.exists(diffusion_model_path):
-                raise ValueError(f"Diffusion model path does not exist: {diffusion_model_path}")
+                raise ValueError(
+                    f"Diffusion model path does not exist: {diffusion_model_path}")
 
         if model_path or diffusion_model_path:
             with suppress_stdout_stderr(disable=verbose):
@@ -84,6 +88,7 @@ class _StableDiffusionModel:
                 self.model = sd_cpp.new_sd_ctx(
                     self.model_path.encode("utf-8"),
                     self.clip_l_path.encode("utf-8"),
+                    self.clip_g_path.encode("utf-8"),
                     self.t5xxl_path.encode("utf-8"),
                     self.diffusion_model_path.encode("utf-8"),
                     self.vae_path.encode("utf-8"),
@@ -94,19 +99,21 @@ class _StableDiffusionModel:
                     self.stacked_id_embed_dir.encode("utf-8"),
                     self.vae_decode_only,
                     self.vae_tiling,
-                    self.free_params_immediately,
+                    False,  # Free params immediately (unload model)
                     self.n_threads,
                     self.wtype,
                     self.rng_type,
                     self.schedule,
                     self.keep_clip_on_cpu,
                     self.keep_control_net_cpu,
+                    self.diffusion_flash_attn,
                     self.keep_vae_on_cpu,
                 )
 
             # Check if the model was loaded successfully
             if self.model is None:
-                raise ValueError(f"Failed to load model from file: {model_path}")
+                raise ValueError(
+                    f"Failed to load model from file: {model_path}")
 
         def free_ctx():
             """Free the model from memory."""
@@ -140,12 +147,10 @@ class _UpscalerModel:
         self,
         upscaler_path: str,
         n_threads: int,
-        wtype: int,
         verbose: bool,
     ):
         self.upscaler_path = upscaler_path
         self.n_threads = n_threads
-        self.wtype = wtype
         self.verbose = verbose
         self._exit_stack = ExitStack()
 
@@ -158,14 +163,17 @@ class _UpscalerModel:
             self._free_upscaler_ctx = sd_cpp._lib.free_upscaler_ctx
 
             if not os.path.exists(upscaler_path):
-                raise ValueError(f"Upscaler model path does not exist: {upscaler_path}")
+                raise ValueError(
+                    f"Upscaler model path does not exist: {upscaler_path}")
 
             # Load the image upscaling model ctx
-            self.upscaler = sd_cpp.new_upscaler_ctx(upscaler_path.encode("utf-8"), self.n_threads, self.wtype)
+            self.upscaler = sd_cpp.new_upscaler_ctx(
+                upscaler_path.encode("utf-8"), self.n_threads)
 
             # Check if the model was loaded successfully
             if self.upscaler is None:
-                raise ValueError(f"Failed to load upscaler model from file: {upscaler_path}")
+                raise ValueError(
+                    f"Failed to load upscaler model from file: {upscaler_path}")
 
         def free_ctx():
             """Free the model from memory."""

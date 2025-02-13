@@ -42,8 +42,9 @@ class NexaVoiceInference:
 
     def __init__(self, model_path=None, local_path=None, **kwargs):
         if model_path is None and local_path is None:
-            raise ValueError("Either model_path or local_path must be provided.")
-        
+            raise ValueError(
+                "Either model_path or local_path must be provided.")
+
         self.model_path = model_path
         self.downloaded_path = local_path
         self.params = DEFAULT_VOICE_GEN_PARAMS.copy()
@@ -89,7 +90,8 @@ class NexaVoiceInference:
 
     # for StreamASRProcessor
     def live_transcribe(self, audio, prompt=""):
-        segments, info = self.model.transcribe(audio, language=self.params["language"], beam_size=self.params["beam_size"], word_timestamps=True, condition_on_previous_text=True, initial_prompt=prompt)
+        segments, info = self.model.transcribe(
+            audio, language=self.params["language"], beam_size=self.params["beam_size"], word_timestamps=True, condition_on_previous_text=True, initial_prompt=prompt)
         return list(segments)
 
     def ts_words(self, segments):
@@ -101,7 +103,7 @@ class NexaVoiceInference:
             for w in seg.words:
                 words.append((w.start, w.end, w.word))
         return words
-    
+
     def insert_audio_chunk(self, audio):
         self.audio_buffer = np.append(self.audio_buffer, audio)
 
@@ -130,7 +132,7 @@ class NexaVoiceInference:
         beg = self.commited[0][0] + self.buffer_time_offset
         end = self.commited[-1][1] + self.buffer_time_offset
         return (beg, end, text)
-        
+
     def run(self):
         from nexa.gguf.llama._utils_spinner import start_spinner, stop_spinner
 
@@ -142,15 +144,16 @@ class NexaVoiceInference:
                     style="default",
                     message=""
                 )
-            
+
                 self._transcribe_audio(audio_path)
 
                 stop_spinner(stop_event, spinner_thread)
-                
+
             except KeyboardInterrupt:
                 print(EXIT_REMINDER)
             except Exception as e:
-                logging.error(f"Error during text generation: {e}", exc_info=True)
+                logging.error(
+                    f"Error during text generation: {e}", exc_info=True)
 
     def transcribe(self, audio, **kwargs):
         """
@@ -231,7 +234,7 @@ class NexaVoiceInference:
             audio,
             **kwargs,
         )
-    
+
     def stream_transcription(self, audio_path, chunk_duration=1.0):
         """
         Simulate streaming by processing the audio in small increments of time.
@@ -239,7 +242,8 @@ class NexaVoiceInference:
         """
         import librosa
         SAMPLING_RATE = 16000
-        audio, sr = librosa.load(audio_path, sr=SAMPLING_RATE, dtype=np.float32)
+        audio, sr = librosa.load(
+            audio_path, sr=SAMPLING_RATE, dtype=np.float32)
         duration = len(audio) / SAMPLING_RATE
 
         start = time.time()
@@ -249,13 +253,14 @@ class NexaVoiceInference:
             # Simulate waiting for real-time
             if now < beg + chunk_duration:
                 time.sleep((beg + chunk_duration) - now)
-            
+
             end = time.time() - start
             if end > duration:
                 end = duration
 
             chunk_samples = int((end - beg)*SAMPLING_RATE)
-            chunk_audio = audio[int(beg*SAMPLING_RATE):int(beg*SAMPLING_RATE)+chunk_samples]
+            chunk_audio = audio[int(beg*SAMPLING_RATE)
+                                    :int(beg*SAMPLING_RATE)+chunk_samples]
             beg = end
 
             # Process incrementally
@@ -314,7 +319,7 @@ class NexaVoiceInference:
         logging.info(f"Transcription saved to: {output_path}")
         return output_path
 
-    def run_streamlit(self, model_path: str, is_local_path = False, hf = False):
+    def run_streamlit(self, model_path: str, is_local_path=False, hf=False):
         """
         Run the Streamlit UI.
         """
@@ -322,20 +327,24 @@ class NexaVoiceInference:
         from streamlit.web import cli as stcli
 
         streamlit_script_path = (
-            Path(__file__).resolve().parent / "streamlit" / "streamlit_voice_chat.py"
+            Path(__file__).resolve().parent /
+            "streamlit" / "streamlit_voice_chat.py"
         )
 
-        sys.argv = ["streamlit", "run", str(streamlit_script_path), model_path, str(is_local_path), str(hf)]
+        sys.argv = ["streamlit", "run", str(
+            streamlit_script_path), model_path, str(is_local_path), str(hf)]
         sys.exit(stcli.main())
 
     def close(self) -> None:
         self.model.model.unload_model()
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Run voice transcription with a specified model"
     )
-    parser.add_argument("model_path", type=str, help="Path or identifier for the model")
+    parser.add_argument("model_path", type=str,
+                        help="Path or identifier for the model")
     parser.add_argument(
         "-o",
         "--output_dir",
