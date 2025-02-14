@@ -215,15 +215,15 @@ endif()
 # bark_cpp project
 option(BARK_BUILD "Build bark.cpp" ON)
 if(BARK_BUILD)
-    # Filter out HIPBLAS and Vulkan options for bark.cpp since it doesn't support them
+    # Filter out HIPBLAS, Vulkan and SYCL options for bark.cpp since it doesn't support them
     set(BARK_CMAKE_OPTIONS ${USER_DEFINED_OPTIONS})
-    list(FILTER BARK_CMAKE_OPTIONS EXCLUDE REGEX "GGML_HIPBLAS|GGML_VULKAN")
+    list(FILTER BARK_CMAKE_OPTIONS EXCLUDE REGEX "GGML_HIPBLAS|GGML_VULKAN|GGML_SYCL")
     
     ExternalProject_Add(bark_project
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dependency/bark.cpp
         BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/bark_build
         CMAKE_ARGS
-            ${USER_DEFINED_OPTIONS}
+            ${BARK_CMAKE_OPTIONS}
             ${COMMON_CMAKE_OPTIONS}
             -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/bark_install
             -DCMAKE_BUILD_TYPE=Release
