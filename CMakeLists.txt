@@ -141,6 +141,7 @@ if(STABLE_DIFFUSION_BUILD)
             ${USER_DEFINED_OPTIONS}
             ${COMMON_CMAKE_OPTIONS}
             -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_install
+            -DCMAKE_BUILD_TYPE=Release
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
             -DCMAKE_CXX_STANDARD=17
             -DSD_BUILD_SHARED_LIBS=ON
@@ -173,26 +174,38 @@ if(LLAMA_BUILD)
         add_compile_definitions(LLAMA_DISABLE_CXXABI)
     endif()
 
+    set(LLAMA_CMAKE_ARGS
+        ${USER_DEFINED_OPTIONS}
+        ${COMMON_CMAKE_OPTIONS}
+        -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/llama_install
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+        -DCMAKE_CXX_STANDARD=17
+        -DCMAKE_BUILD_TYPE=Release
+        -DBUILD_SHARED_LIBS=ON
+        -DGGML_CUDA=${GGML_CUDA}
+        -DGGML_METAL=${GGML_METAL}
+        -DCMAKE_C_FLAGS=${OpenMP_C_FLAGS}
+        -DCMAKE_CXX_FLAGS=${OpenMP_CXX_FLAGS}
+        -DCMAKE_EXE_LINKER_FLAGS=${OpenMP_EXE_LINKER_FLAGS}
+        -DGGML_AVX=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
+        -DGGML_AVX2=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
+        -DGGML_FMA=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
+        -DGGML_F16C=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
+        -DGGML_METAL_EMBED_LIBRARY=$<IF:$<PLATFORM_ID:Darwin>,ON,OFF>
+    )
+
+    if (GGML_SYCL)
+        list(APPEND LLAMA_CMAKE_ARGS
+            -DGGML_SYCL=ON
+            -DCMAKE_C_COMPILER=cl
+            -DCMAKE_CXX_COMPILER=icx
+        )
+    endif()
+
     ExternalProject_Add(llama_project
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dependency/llama.cpp
         BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/llama_build
-        CMAKE_ARGS
-            ${USER_DEFINED_OPTIONS}
-            ${COMMON_CMAKE_OPTIONS}
-            -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/llama_install
-            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-            -DCMAKE_CXX_STANDARD=17
-            -DBUILD_SHARED_LIBS=ON
-            -DGGML_CUDA=${GGML_CUDA}
-            -DGGML_METAL=${GGML_METAL}
-            -DCMAKE_C_FLAGS=${OpenMP_C_FLAGS}
-            -DCMAKE_CXX_FLAGS=${OpenMP_CXX_FLAGS}
-            -DCMAKE_EXE_LINKER_FLAGS=${OpenMP_EXE_LINKER_FLAGS}
-            -DGGML_AVX=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
-            -DGGML_AVX2=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
-            -DGGML_FMA=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
-            -DGGML_F16C=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
-            -DGGML_METAL_EMBED_LIBRARY=$<IF:$<PLATFORM_ID:Darwin>,ON,OFF>
+        CMAKE_ARGS ${LLAMA_CMAKE_ARGS}
         BUILD_ALWAYS 1
         BUILD_COMMAND ${CMAKE_COMMAND} --build . --config Release -- ${MSBUILD_ARGS}
         INSTALL_COMMAND ${CMAKE_COMMAND} --build . --config Release --target install
@@ -213,6 +226,7 @@ if(BARK_BUILD)
             ${USER_DEFINED_OPTIONS}
             ${COMMON_CMAKE_OPTIONS}
             -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/bark_install
+            -DCMAKE_BUILD_TYPE=Release
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
             -DCMAKE_CXX_STANDARD=17
             -DGGML_CUDA=${GGML_CUDA}
