@@ -1,44 +1,21 @@
 cmake_minimum_required(VERSION 3.16)
 project(nexa_gguf)
 
-message(WARNING "CMAKE_ARGS Check:")
-message(WARNING "  GGML_SYCL: ${GGML_SYCL}")
-message(WARNING "  CMAKE_C_COMPILER: ${CMAKE_C_COMPILER}")
-message(WARNING "  CMAKE_CXX_COMPILER: ${CMAKE_CXX_COMPILER}")
-message(WARNING "  CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
-
 include(ExternalProject)
 
-# Platform-specific settings
+# Windows-specific settings
 if(WIN32)
     # Windows-specific settings
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-    # OpenMP is optional on Windows
-    find_package(OpenMP QUIET)
-    if(NOT OpenMP_FOUND)
-        message(STATUS "OpenMP not found - OpenMP support will be disabled")
-        set(OpenMP_C_FLAGS "")
-        set(OpenMP_CXX_FLAGS "")
-        set(OpenMP_EXE_LINKER_FLAGS "")
-    endif()
-elseif(APPLE)
-    # macOS-specific settings
-    find_package(OpenMP QUIET)
-    if(NOT OpenMP_FOUND)
-        message(STATUS "OpenMP not found - OpenMP support will be disabled")
-        set(OpenMP_C_FLAGS "")
-        set(OpenMP_CXX_FLAGS "")
-        set(OpenMP_EXE_LINKER_FLAGS "")
-    endif()
-else()
-    # Linux and other Unix systems
-    find_package(OpenMP QUIET)
-    if(NOT OpenMP_FOUND)
-        message(STATUS "OpenMP not found - OpenMP support will be disabled")
-        set(OpenMP_C_FLAGS "")
-        set(OpenMP_CXX_FLAGS "")
-        set(OpenMP_EXE_LINKER_FLAGS "")
-    endif()
+endif()
+
+# Common OpenMP handling for all platforms
+find_package(OpenMP QUIET)
+if(NOT OpenMP_FOUND)
+    message(STATUS "OpenMP not found - OpenMP support will be disabled")
+    set(OpenMP_C_FLAGS "")
+    set(OpenMP_CXX_FLAGS "")
+    set(OpenMP_EXE_LINKER_FLAGS "")
 endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -64,7 +41,7 @@ function(get_all_options output_var)
     set(${output_var} ${options} PARENT_SCOPE)
 endfunction()
 
-# Create empty file if GGML_CUDA or GGML_METAL is ON
+# Create empty file if GGML_CUDA, GGML_METAL or GGML_SYCL is ON
 if (GGML_CUDA OR GGML_METAL OR GGML_HIPBLAS OR GGML_VULKAN OR GGML_SYCL)
     set(SOURCE_EMPTY_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib/empty_file.txt")
     add_custom_command(
@@ -81,23 +58,14 @@ if (GGML_CUDA OR GGML_METAL OR GGML_HIPBLAS OR GGML_VULKAN OR GGML_SYCL)
     add_custom_target(create_empty_file ALL DEPENDS ${SOURCE_EMPTY_FILE_PATH} ${WHEEL_EMPTY_FILE_PATH})
 endif()
 
-if(WIN32 AND GGML_CUDA)
-    set(BUILD_PARALLEL_LEVEL "2" CACHE STRING "Number of parallel jobs for MSBuild in CUDA compilation")
-    set(MSBUILD_ARGS "/m:${BUILD_PARALLEL_LEVEL}")
-else()
-    set(MSBUILD_ARGS "")
-endif()
-
-
-# # Function to set up common installation paths
-# function(setup_install_paths target install_dir)
-#     install(
-#         TARGETS ${target}
-#         LIBRARY DESTINATION ${install_dir}
-#         RUNTIME DESTINATION ${install_dir}
-#         ARCHIVE DESTINATION ${install_dir}
-#     )
-# endfunction()
+# if(WIN32 AND GGML_CUDA)
+#     set(BUILD_PARALLEL_LEVEL "2" CACHE STRING "Number of parallel jobs for MSBuild in CUDA compilation")
+#     set(MSBUILD_ARGS "/m:${BUILD_PARALLEL_LEVEL}")
+# else()
+#     set(MSBUILD_ARGS "")
+# endif()
+set(BUILD_PARALLEL_LEVEL "4" CACHE STRING "Number of parallel jobs for MSBuild")
+set(MSBUILD_ARGS "/m" "${BUILD_PARALLEL_LEVEL}")
 
 # Collect all user-defined options
 get_all_options(USER_DEFINED_OPTIONS)
@@ -134,24 +102,37 @@ endif()
 # stable_diffusion_cpp project
 option(STABLE_DIFFUSION_BUILD "Build stable-diffusion.cpp" ON)
 if(STABLE_DIFFUSION_BUILD)
+
+    set(SD_CMAKE_ARGS
+        ${USER_DEFINED_OPTIONS}
+        ${COMMON_CMAKE_OPTIONS}
+        -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_install
+        -DCMAKE_BUILD_TYPE=Release
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+        -DCMAKE_CXX_STANDARD=17
+        -DSD_BUILD_SHARED_LIBS=ON
+        -DBUILD_SHARED_LIBS=ON
+        -DSD_METAL=${GGML_METAL}
+        -DSD_CUBLAS=${GGML_CUDA}
+        -DSD_CUDA=${GGML_CUDA} 
+        -DSD_HIPBLAS=${GGML_HIPBLAS}
+        -DSD_VULKAN=${GGML_VULKAN}
+        -DSD_SYCL=${GGML_SYCL}
+    )
+
+    if (GGML_SYCL)
+        list(APPEND SD_CMAKE_ARGS
+            -G "Ninja"
+            -DGGML_SYCL=ON
+            -DCMAKE_C_COMPILER=cl
+            -DCMAKE_CXX_COMPILER=icx
+        )
+    endif()
+
     ExternalProject_Add(stable_diffusion_project
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dependency/stable-diffusion.cpp
         BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build
-        CMAKE_ARGS
-            ${USER_DEFINED_OPTIONS}
-            ${COMMON_CMAKE_OPTIONS}
-            -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_install
-            -DCMAKE_BUILD_TYPE=Release
-            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-            -DCMAKE_CXX_STANDARD=17
-            -DSD_BUILD_SHARED_LIBS=ON
-            -DBUILD_SHARED_LIBS=ON
-            -DSD_METAL=${GGML_METAL}
-            -DSD_CUBLAS=${GGML_CUDA}
-            -DSD_CUDA=${GGML_CUDA} 
-            -DSD_HIPBLAS=${GGML_HIPBLAS}
-            -DSD_VULKAN=${GGML_VULKAN}
-            -DSD_SYCL=${GGML_SYCL}
+        CMAKE_ARGS ${SD_CMAKE_ARGS}  
         BUILD_ALWAYS 1
         BUILD_COMMAND ${CMAKE_COMMAND} --build . --config Release -- ${MSBUILD_ARGS}
         INSTALL_COMMAND ${CMAKE_COMMAND} --build . --config Release --target install
@@ -161,18 +142,6 @@ endif()
 # llama_cpp project
 option(LLAMA_BUILD "Build llama.cpp" ON)
 if(LLAMA_BUILD)
-
-    if(WIN32)
-        # Add Windows-specific definitions and flags for llama.cpp
-        list(APPEND COMMON_CMAKE_OPTIONS
-            -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON
-            -DLLAMA_NATIVE=OFF           # Disable native CPU optimizations on Windows
-            -DLLAMA_DISABLE_CXXABI=ON    # Disable cxxabi.h dependency
-        )
-
-        # Add compile definition for all targets
-        add_compile_definitions(LLAMA_DISABLE_CXXABI)
-    endif()
 
     set(LLAMA_CMAKE_ARGS
         ${USER_DEFINED_OPTIONS}
@@ -196,10 +165,22 @@ if(LLAMA_BUILD)
 
     if (GGML_SYCL)
         list(APPEND LLAMA_CMAKE_ARGS
+            -G "Ninja"
             -DGGML_SYCL=ON
             -DCMAKE_C_COMPILER=cl
             -DCMAKE_CXX_COMPILER=icx
         )
+    endif()
+
+    if(WIN32)
+        # Add Windows-specific definitions and flags for llama.cpp
+        list(APPEND LLAMA_CMAKE_ARGS
+            -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON
+            -DLLAMA_NATIVE=OFF           # Disable native CPU optimizations on Windows
+            -DLLAMA_DISABLE_CXXABI=ON    # Disable cxxabi.h dependency
+        )
+        # Add compile definition for all targets
+        add_compile_definitions(LLAMA_DISABLE_CXXABI)
     endif()
 
     ExternalProject_Add(llama_project
@@ -251,6 +232,7 @@ macro(install_libraries TARGET DIRS)
             PATTERN "*.dylib"
             PATTERN "cmake*" EXCLUDE
             PATTERN "pkgconfig*" EXCLUDE
+            PATTERN "encodec*" EXCLUDE
         )
         install(
             DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${DIR}
@@ -262,21 +244,24 @@ macro(install_libraries TARGET DIRS)
             PATTERN "*.dylib"
             PATTERN "cmake*" EXCLUDE
             PATTERN "pkgconfig*" EXCLUDE
+            PATTERN "encodec*" EXCLUDE
         )
     endforeach()
 endmacro()
 
-# if(CMAKE_CONFIGURATION_TYPES)  # Multi-config generators like MSBuild
-#     set(BUILD_SUBDIR "bin/Release/")
-# else()  # Single-config generators like Ninja and Make
-#     set(BUILD_SUBDIR "bin/")
-# endif()
+if(CMAKE_CONFIGURATION_TYPES)  # Multi-config generators like MSBuild
+    set(BUILD_SUBDIR "Release/")
+else()  # Single-config generators like Ninja and Make
+    set(BUILD_SUBDIR "")
+endif()
 
-# install_libraries(stable_diffusion "stable_diffusion_build/${BUILD_SUBDIR}")
-# install_libraries(llama "llama_install/${BUILD_SUBDIR}")
-# install_libraries(bark.cpp "bark_install/${BUILD_SUBDIR}" "bark_install/" "bark_install/Release/")
+install_libraries(stable_diffusion "stable_diffusion_build/bin/${BUILD_SUBDIR}")
 
-
-install_libraries(stable_diffusion "stable_diffusion_build/bin/")
-install_libraries(llama "llama_install/lib/")
-install_libraries(bark.cpp "bark_install/lib/")
+if (WIN32)
+    install_libraries(bark.cpp "bark_build/bin/${BUILD_SUBDIR}")
+    install_libraries(bark.cpp "bark_build/${BUILD_SUBDIR}")
+    install_libraries(llama "llama_build/bin/${BUILD_SUBDIR}")
+else()
+    install_libraries(bark.cpp "bark_install/lib/${BUILD_SUBDIR}")
+    install_libraries(llama "llama_install/lib/${BUILD_SUBDIR}")
+endif()
