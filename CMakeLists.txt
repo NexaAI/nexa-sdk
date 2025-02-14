@@ -58,15 +58,6 @@ if (GGML_CUDA OR GGML_METAL OR GGML_HIPBLAS OR GGML_VULKAN OR GGML_SYCL)
     add_custom_target(create_empty_file ALL DEPENDS ${SOURCE_EMPTY_FILE_PATH} ${WHEEL_EMPTY_FILE_PATH})
 endif()
 
-# if(WIN32 AND GGML_CUDA)
-#     set(BUILD_PARALLEL_LEVEL "2" CACHE STRING "Number of parallel jobs for MSBuild in CUDA compilation")
-#     set(MSBUILD_ARGS "/m:${BUILD_PARALLEL_LEVEL}")
-# else()
-#     set(MSBUILD_ARGS "")
-# endif()
-set(BUILD_PARALLEL_LEVEL "4" CACHE STRING "Number of parallel jobs for MSBuild")
-set(MSBUILD_ARGS "/m" "${BUILD_PARALLEL_LEVEL}")
-
 # Collect all user-defined options
 get_all_options(USER_DEFINED_OPTIONS)
 
@@ -91,7 +82,7 @@ if(WIN32)
             -DCMAKE_SYSTEM_VERSION=${CMAKE_SYSTEM_VERSION}
         )
     endif()
-    
+
     if(CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION)
         list(APPEND COMMON_CMAKE_OPTIONS
             -DCMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION=${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}
@@ -117,15 +108,11 @@ if(STABLE_DIFFUSION_BUILD)
         -DSD_CUDA=${GGML_CUDA} 
         -DSD_HIPBLAS=${GGML_HIPBLAS}
         -DSD_VULKAN=${GGML_VULKAN}
-        -DSD_SYCL=${GGML_SYCL}
     )
 
     if (GGML_SYCL)
         list(APPEND SD_CMAKE_ARGS
-            -G "Ninja"
-            -DGGML_SYCL=ON
-            -DCMAKE_C_COMPILER=cl
-            -DCMAKE_CXX_COMPILER=icx
+            -DSD_SYCL=ON
         )
     endif()
 
@@ -165,10 +152,7 @@ if(LLAMA_BUILD)
 
     if (GGML_SYCL)
         list(APPEND LLAMA_CMAKE_ARGS
-            -G "Ninja"
             -DGGML_SYCL=ON
-            -DCMAKE_C_COMPILER=cl
-            -DCMAKE_CXX_COMPILER=icx
         )
     endif()
 
@@ -199,7 +183,7 @@ if(BARK_BUILD)
     # Filter out HIPBLAS, Vulkan and SYCL options for bark.cpp since it doesn't support them
     set(BARK_CMAKE_OPTIONS ${USER_DEFINED_OPTIONS})
     list(FILTER BARK_CMAKE_OPTIONS EXCLUDE REGEX "GGML_HIPBLAS|GGML_VULKAN|GGML_SYCL")
-    
+
     ExternalProject_Add(bark_project
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dependency/bark.cpp
         BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/bark_build

@@ -142,6 +142,27 @@ CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp" pip install nexaai
 
 </details>
 
+<details> <summary><strong style="font-size: 1.2em;">Intel GPU (SYCL)</strong></summary>
+
+To build Nexa SDK with SYCL support, make sure you have the following installed:
+* Latest [Intel GPU driver](https://www.intel.com/content/www/us/en/products/docs/discrete-gpus/arc/software/drivers.html)
+* Microsoft Visual Studio (required for building on Windows)
+* Intel [oneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit.html#gs.kds46v)
+* [Ninja](https://ninja-build.org/)
+
+For **Windows**:
+```bash
+.\scripts\windows-build-sycl.bat
+```
+
+For **Linux**:
+
+```bash
+./scripts/linux-build-sycl.sh
+```
+
+</details>
+
 <details> <summary><strong style="font-size: 1.2em;">AMD GPU (ROCm)</strong></summary>
 
 To install with ROCm support, make sure you have [ROCm 6.2.1 or later](https://rocm.docs.amd.com/projects/install-on-linux/en/docs-6.2.1/install/quick-start.html) installed.
