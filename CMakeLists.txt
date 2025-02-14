@@ -65,7 +65,7 @@ function(get_all_options output_var)
 endfunction()
 
 # Create empty file if GGML_CUDA or GGML_METAL is ON
-if (GGML_CUDA OR GGML_METAL OR GGML_HIPBLAS OR GGML_VULKAN)
+if (GGML_CUDA OR GGML_METAL OR GGML_HIPBLAS OR GGML_VULKAN OR GGML_SYCL)
     set(SOURCE_EMPTY_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib/empty_file.txt")
     add_custom_command(
         OUTPUT ${SOURCE_EMPTY_FILE_PATH}
@@ -89,15 +89,15 @@ else()
 endif()
 
 
-# Function to set up common installation paths
-function(setup_install_paths target install_dir)
-    install(
-        TARGETS ${target}
-        LIBRARY DESTINATION ${install_dir}
-        RUNTIME DESTINATION ${install_dir}
-        ARCHIVE DESTINATION ${install_dir}
-    )
-endfunction()
+# # Function to set up common installation paths
+# function(setup_install_paths target install_dir)
+#     install(
+#         TARGETS ${target}
+#         LIBRARY DESTINATION ${install_dir}
+#         RUNTIME DESTINATION ${install_dir}
+#         ARCHIVE DESTINATION ${install_dir}
+#     )
+# endfunction()
 
 # Collect all user-defined options
 get_all_options(USER_DEFINED_OPTIONS)
@@ -150,6 +150,7 @@ if(STABLE_DIFFUSION_BUILD)
             -DSD_CUDA=${GGML_CUDA} 
             -DSD_HIPBLAS=${GGML_HIPBLAS}
             -DSD_VULKAN=${GGML_VULKAN}
+            -DSD_SYCL=${GGML_SYCL}
         BUILD_ALWAYS 1
         BUILD_COMMAND ${CMAKE_COMMAND} --build . --config Release -- ${MSBUILD_ARGS}
         INSTALL_COMMAND ${CMAKE_COMMAND} --build . --config Release --target install
@@ -159,8 +160,6 @@ endif()
 # llama_cpp project
 option(LLAMA_BUILD "Build llama.cpp" ON)
 if(LLAMA_BUILD)
-    set(LLAMA_CUDA ${GGML_CUDA})
-    set(LLAMA_METAL ${GGML_METAL})
 
     if(WIN32)
         # Add Windows-specific definitions and flags for llama.cpp
@@ -184,8 +183,8 @@ if(LLAMA_BUILD)
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
             -DCMAKE_CXX_STANDARD=17
             -DBUILD_SHARED_LIBS=ON
-            -DLLAMA_CUDA=${LLAMA_CUDA}
-            -DLLAMA_METAL=${LLAMA_METAL}
+            -DGGML_CUDA=${GGML_CUDA}
+            -DGGML_METAL=${GGML_METAL}
             -DCMAKE_C_FLAGS=${OpenMP_C_FLAGS}
             -DCMAKE_CXX_FLAGS=${OpenMP_CXX_FLAGS}
             -DCMAKE_EXE_LINKER_FLAGS=${OpenMP_EXE_LINKER_FLAGS}
@@ -201,7 +200,6 @@ if(LLAMA_BUILD)
 endif()
 
 # bark_cpp project
-# Temporarily disabled since version v0.0.9.3
 option(BARK_BUILD "Build bark.cpp" ON)
 if(BARK_BUILD)
     # Filter out HIPBLAS and Vulkan options for bark.cpp since it doesn't support them
@@ -227,121 +225,44 @@ if(BARK_BUILD)
     )
 endif()
 
-# Install the built libraries to the final destination
-if(WIN32)
-    install(
-        DIRECTORY
-            ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/Release/
-        DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib/stable_diffusion
-        USE_SOURCE_PERMISSIONS
-        FILES_MATCHING
+macro(install_libraries TARGET DIRS)
+    foreach(DIR ${DIRS})
+        install(
+            DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${DIR}
+            DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib/${TARGET}
+            USE_SOURCE_PERMISSIONS
+            FILES_MATCHING
+            PATTERN "*.dll" 
+            PATTERN "*.so"   
+            PATTERN "*.dylib"
+            PATTERN "cmake*" EXCLUDE
+            PATTERN "pkgconfig*" EXCLUDE
+        )
+        install(
+            DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${DIR}
+            DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib/${TARGET}
+            USE_SOURCE_PERMISSIONS
+            FILES_MATCHING
             PATTERN "*.dll"
-    )
-
-    install(
-        DIRECTORY
-            ${CMAKE_CURRENT_BINARY_DIR}/llama_build/bin/Release/
-        DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib/llama
-        USE_SOURCE_PERMISSIONS
-        FILES_MATCHING
-            PATTERN "*.dll"
-    )
-
-    install(
-        DIRECTORY
-            ${CMAKE_CURRENT_BINARY_DIR}/bark_build/bin/Release/
-            ${CMAKE_CURRENT_BINARY_DIR}/bark_build/Release/
-        DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib/bark.cpp
-        USE_SOURCE_PERMISSIONS
-        FILES_MATCHING
-            PATTERN "*.dll"
-    )
-
-    install(
-        DIRECTORY
-            ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/Release/
-        DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib/stable_diffusion
-        USE_SOURCE_PERMISSIONS
-        FILES_MATCHING
-            PATTERN "*.dll"
-    )
-
-    install(
-        DIRECTORY
-            ${CMAKE_CURRENT_BINARY_DIR}/llama_build/bin/Release/
-        DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib/llama
-        USE_SOURCE_PERMISSIONS
-        FILES_MATCHING
-            PATTERN "*.dll"
-    )
-
-    install(
-        DIRECTORY
-            ${CMAKE_CURRENT_BINARY_DIR}/bark_build/bin/Release/
-            ${CMAKE_CURRENT_BINARY_DIR}/bark_build/Release/
-        DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib/bark.cpp
-        USE_SOURCE_PERMISSIONS
-        FILES_MATCHING
-            PATTERN "*.dll"
-    )
-else()
-    install(
-        DIRECTORY
-            ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/
-        DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib/stable_diffusion
-        USE_SOURCE_PERMISSIONS
-        FILES_MATCHING
             PATTERN "*.so"
             PATTERN "*.dylib"
-    )
+            PATTERN "cmake*" EXCLUDE
+            PATTERN "pkgconfig*" EXCLUDE
+        )
+    endforeach()
+endmacro()
 
-    install(
-        DIRECTORY
-            ${CMAKE_CURRENT_BINARY_DIR}/llama_install/lib/
-        DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib/llama
-        USE_SOURCE_PERMISSIONS
-        FILES_MATCHING
-            PATTERN "*.so"
-            PATTERN "*.dylib"
-    )
+# if(CMAKE_CONFIGURATION_TYPES)  # Multi-config generators like MSBuild
+#     set(BUILD_SUBDIR "bin/Release/")
+# else()  # Single-config generators like Ninja and Make
+#     set(BUILD_SUBDIR "bin/")
+# endif()
 
-    install(
-        DIRECTORY
-            ${CMAKE_CURRENT_BINARY_DIR}/bark_install/lib/
-        DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib/bark.cpp
-        USE_SOURCE_PERMISSIONS
-        FILES_MATCHING
-            PATTERN "*.so"
-            PATTERN "*.dylib"
-    )
+# install_libraries(stable_diffusion "stable_diffusion_build/${BUILD_SUBDIR}")
+# install_libraries(llama "llama_install/${BUILD_SUBDIR}")
+# install_libraries(bark.cpp "bark_install/${BUILD_SUBDIR}" "bark_install/" "bark_install/Release/")
 
-    install(
-        DIRECTORY
-            ${CMAKE_CURRENT_BINARY_DIR}/stable_diffusion_build/bin/
-        DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib/stable_diffusion
-        USE_SOURCE_PERMISSIONS
-        FILES_MATCHING
-            PATTERN "*.so"
-            PATTERN "*.dylib"
-    )
 
-    install(
-        DIRECTORY
-            ${CMAKE_CURRENT_BINARY_DIR}/llama_install/lib/
-        DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib/llama
-        USE_SOURCE_PERMISSIONS
-        FILES_MATCHING
-            PATTERN "*.so"
-            PATTERN "*.dylib"
-    )
-
-    install(
-        DIRECTORY
-            ${CMAKE_CURRENT_BINARY_DIR}/bark_install/lib/
-        DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib/bark.cpp
-        USE_SOURCE_PERMISSIONS
-        FILES_MATCHING
-            PATTERN "*.so"
-            PATTERN "*.dylib"
-    )
-endif()
+install_libraries(stable_diffusion "stable_diffusion_build/bin/")
+install_libraries(llama "llama_install/lib/")
+install_libraries(bark.cpp "bark_install/lib/")
