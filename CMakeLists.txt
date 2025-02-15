@@ -42,21 +42,21 @@ function(get_all_options output_var)
 endfunction()
 
 # Create empty file if GGML_CUDA, GGML_METAL or GGML_SYCL is ON
-if (GGML_CUDA OR GGML_METAL OR GGML_HIPBLAS OR GGML_VULKAN OR GGML_SYCL)
-    set(SOURCE_EMPTY_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib/empty_file.txt")
-    add_custom_command(
-        OUTPUT ${SOURCE_EMPTY_FILE_PATH}
-        COMMAND ${CMAKE_COMMAND} -E touch ${SOURCE_EMPTY_FILE_PATH}
-        COMMENT "Creating an empty file to source folder because gpu option is ON"
-    )
-    set(WHEEL_EMPTY_FILE_PATH "${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib/empty_file.txt")
-    add_custom_command(
-        OUTPUT ${WHEEL_EMPTY_FILE_PATH}
-        COMMAND ${CMAKE_COMMAND} -E touch ${WHEEL_EMPTY_FILE_PATH}
-        COMMENT "Creating an empty file to lib folder because gpu option is ON"
-    )    
-    add_custom_target(create_empty_file ALL DEPENDS ${SOURCE_EMPTY_FILE_PATH} ${WHEEL_EMPTY_FILE_PATH})
-endif()
+# if (GGML_CUDA OR GGML_METAL OR GGML_HIPBLAS OR GGML_VULKAN OR GGML_SYCL)
+#     set(SOURCE_EMPTY_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib/empty_file.txt")
+#     add_custom_command(
+#         OUTPUT ${SOURCE_EMPTY_FILE_PATH}
+#         COMMAND ${CMAKE_COMMAND} -E touch ${SOURCE_EMPTY_FILE_PATH}
+#         COMMENT "Creating an empty file to source folder because gpu option is ON"
+#     )
+#     set(WHEEL_EMPTY_FILE_PATH "${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib/empty_file.txt")
+#     add_custom_command(
+#         OUTPUT ${WHEEL_EMPTY_FILE_PATH}
+#         COMMAND ${CMAKE_COMMAND} -E touch ${WHEEL_EMPTY_FILE_PATH}
+#         COMMENT "Creating an empty file to lib folder because gpu option is ON"
+#     )    
+#     add_custom_target(create_empty_file ALL DEPENDS ${SOURCE_EMPTY_FILE_PATH} ${WHEEL_EMPTY_FILE_PATH})
+# endif()
 
 # Collect all user-defined options
 get_all_options(USER_DEFINED_OPTIONS)
@@ -91,7 +91,7 @@ if(WIN32)
 endif()
 
 # stable_diffusion_cpp project
-option(STABLE_DIFFUSION_BUILD "Build stable-diffusion.cpp" ON)
+option(STABLE_DIFFUSION_BUILD "Build stable-diffusion.cpp" OFF)
 if(STABLE_DIFFUSION_BUILD)
 
     set(SD_CMAKE_ARGS
@@ -137,6 +137,9 @@ if(LLAMA_BUILD)
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
         -DCMAKE_CXX_STANDARD=17
         -DCMAKE_BUILD_TYPE=Release
+        -DLLAMA_BUILD_EXAMPLES=OFF
+        -DLLAMA_BUILD_TESTS=OFF
+        -DLLAMA_BUILD_SERVER=OFF
         -DBUILD_SHARED_LIBS=ON
         -DGGML_CUDA=${GGML_CUDA}
         -DGGML_METAL=${GGML_METAL}
