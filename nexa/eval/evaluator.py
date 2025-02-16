@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from nexa.eval.nexa_task.task import Task
 
 # Define the worker function at the global scope
-def worker(task_queue, result_queue, stop_event, model_path):
+def worker(task_queue, result_queue, stop_event, model_path, local_path):
     # Disable tqdm in worker processes
     import sys
     import os
@@ -47,7 +47,7 @@ def worker(task_queue, result_queue, stop_event, model_path):
     sys.stderr = open(os.devnull, 'w')
 
     # Initialize the model in each process
-    lm_worker = GGUFLM(model_path)
+    lm_worker = GGUFLM(model_path, local_path)
     while not stop_event.is_set():
         try:
             item = task_queue.get(timeout=0.1)
@@ -68,6 +68,7 @@ def worker(task_queue, result_queue, stop_event, model_path):
 
 def nexa_evaluate(
     model_path,
+    local_path,
     tasks: Optional[List[str]] = None,
     num_fewshot: Optional[int] = None,
     limit: Optional[Union[int, float]] = None,
@@ -140,7 +141,7 @@ def nexa_evaluate(
     # Run LM on inputs, get all outputs
     if num_workers == 1:
         # Without multiprocessing
-        lm = GGUFLM(model_path)
+        lm = GGUFLM(model_path, local_path)
         eval_logger.info(f"Running requests with a single worker")
         reqs_by_type = defaultdict(list)
         for idx, req in indexed_requests:
@@ -170,7 +171,7 @@ def nexa_evaluate(
         for _ in range(num_workers):
             p = multiprocessing.Process(
                 target=worker,
-                args=(task_queue, result_queue, stop_event, model_path),
+                args=(task_queue, result_queue, stop_event, model_path, local_path),
             )
             p.start()
             processes.append(p)
@@ -334,6 +335,7 @@ def nexa_evaluate(
 
     results_dict["config"] = {
         "model": model_path,
+        "local_path": local_path,
         "limit": limit,
         "num_workers": num_workers,
         "bootstrap_iters": bootstrap_iters,

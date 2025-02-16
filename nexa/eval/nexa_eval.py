@@ -1,10 +1,8 @@
 import argparse
-import multiprocessing
 import time
-import requests
 import sys
+import os
 import json
-import socket
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -24,12 +22,19 @@ from nexa.eval.nexa_perf import (
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class NexaEval:
-    def __init__(self, model_path: str, tasks: str = None, limit: float = None, nctx: int = None, num_workers: int = None):
+    def __init__(self, model_path: str, local_path: str = None, tasks: str = None, limit: float = None, nctx: int = None, num_workers: int = None):
         model_path = NEXA_RUN_MODEL_MAP.get(model_path, model_path)
         self.model_path = model_path
-        
-        self.model_name = model_path.split(":")[0].lower()
-        self.model_tag = model_path.split(":")[1].lower()
+        self.local_path = local_path
+
+        if local_path:
+            model_filename = os.path.basename(local_path)
+            self.model_name = os.path.splitext(model_filename)[0]
+            self.model_tag = 'local'
+        else:
+            self.model_name = model_path.split(":")[0].lower()
+            self.model_tag = model_path.split(":")[1].lower() if ":" in model_path else "default"
+
         self.limit = limit
         self.tasks = tasks
         self.num_workers = num_workers if num_workers is not None else 1
@@ -39,6 +44,7 @@ class NexaEval:
             output_path = output_path / self.tasks.replace(',', '_')
         self.eval_args = {
             "model_path": self.model_path,
+            "local_path": self.local_path,
             "tasks": self.tasks,
             "limit": self.limit,
             "num_workers": self.num_workers,
@@ -65,6 +71,7 @@ class NexaEval:
         try:
             results = evaluator.nexa_evaluate(
                 model_path=args.model_path,
+                local_path=args.local_path,
                 limit=args.limit,
                 num_workers=args.num_workers,
                 tasks=task_names,

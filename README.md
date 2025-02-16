@@ -21,6 +21,8 @@
 
 ## Latest News 🔥
 
+- Optimize the benchmark system for GGUF benchmark evaluation, now **at least 50x faster** than lm-eval-harness in GGUF benchmark with 8 workers:
+  `nexa eval <model_path> --tasks gpqa --num_workers 8`
 - Support Nexa AI's own vision language model (0.9B parameters): `nexa run omniVLM` and audio language model (2.9B parameters): `nexa run omniaudio`
 - Support audio language model: `nexa run qwen2audio`, **we are the first open-source toolkit to support audio language model with GGML tensor library.**
 - Support iOS Swift binding for local inference on **iOS mobile** devices.
@@ -33,13 +35,13 @@ Welcome to submit your requests through [issues](https://github.com/NexaAI/nexa-
 ## Install Option 1: Executable Installer
 
 <p>
-    <a href="https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-sdk-0.0.9.8-macos-installer.pkg">
+    <a href="https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-sdk-0.1.0.0-macos-installer.pkg">
         <img src="./assets/mac.png" style="height: 1em; width: auto" /> <strong> macOS Installer </strong>
     </a>
 </p>
 
 <p>
-    <a href="https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-sdk-0.0.9.8-windows-setup.exe">
+    <a href="https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-sdk-0.1.0.0-windows-setup.exe">
         <img src="./assets/windows.png" style="height: 1em; width: auto" /> <strong>Windows Installer</strong>
     </a>
 </p>
@@ -349,6 +351,14 @@ For detailed information on CLI commands and usage, please refer to the [CLI Ref
 
 To start a local server using models on your local computer, you can use the `nexa server` command.
 For detailed information on server setup, API endpoints, and usage examples, please refer to the [Server Reference](SERVER.md) document.
+
+### Benchmark
+
+Install [Nexa Python package](https://github.com/NexaAI/nexa-sdk?tab=readme-ov-file#install-option-2-python-package), and install Nexa benchmark tool with `pip install "nexaai[eval]"`, then evaluate the benchmark of a model with the following command:
+
+```bash
+nexa eval <model_path> --tasks <task> --num_workers <num_workers>
+```
 
 ### Swift Package
 
