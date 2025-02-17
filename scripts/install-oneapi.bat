@@ -9,7 +9,8 @@
 set URL=%1
 set COMPONENTS=%2
 
-curl.exe --output %TEMP%\webimage.exe --url %URL% --retry 5 --retry-delay 5
+@REM curl.exe --output %TEMP%\webimage.exe --url %URL% --retry 5 --retry-delay 5
+wget -O %TEMP%\webimage.exe --tries=5 --wait=5 "%URL%"
 start /b /wait %TEMP%\webimage.exe -s -x -f webimage_extracted --log extract.log
 del %TEMP%\webimage.exe
 if "%COMPONENTS%"=="" (

@@ -1,4 +1,4 @@
-name: Build Wheels (Vulkan) (Windows)
+name: Build Wheels (SYCL) (Windows)
 on:
   workflow_dispatch:
   push:
@@ -16,10 +16,12 @@ jobs:
     steps:
       - name: Define Job Output
         id: set-matrix
+        
+        # 'pyver' = @("3.8", "3.9", "3.10", "3.11", "3.12")
         run: |
           $matrix = @{
               'os' = @('sdk-windows-8-core')
-              'pyver' = @("3.8", "3.9", "3.10", "3.11", "3.12")
+              'pyver' = @("3.12")
               'vulkan_version' = @("1.3.261.1")
               'releasetag' = @("basic")
           }
