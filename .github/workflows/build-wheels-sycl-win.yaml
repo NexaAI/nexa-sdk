@@ -67,7 +67,7 @@ jobs:
 
       - name: Install SYCL dependencies
         run:  |
-          scripts/install-oneapi.bat $WINDOWS_BASEKIT_URL $WINDOWS_DPCPP_MKL
+          scripts/install-oneapi.bat "${{ env.WINDOWS_BASEKIT_URL }}" "{{ env.WINDOWS_DPCPP_MKL }}"
 
       - name: Install Python Dependencies
         run: |
