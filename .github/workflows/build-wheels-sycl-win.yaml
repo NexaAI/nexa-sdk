@@ -53,23 +53,28 @@ jobs:
         with:
           submodules: "recursive"
 
-      - name: Install SYCL dependencies
-        run:  |
-          scripts/install-oneapi.bat $WINDOWS_BASEKIT_URL $WINDOWS_DPCPP_MKL
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.pyver }}
           architecture: 'x64'
           cache: "pip"
+
       - name: Install Ninja Build System
-        run: choco install ninja -y
-      - name: Install Build Dependencies
+        run: |
+            choco install ninja -y
+            choco install wget -y
+
+      - name: Install SYCL dependencies
+        run:  |
+          scripts/install-oneapi.bat $WINDOWS_BASEKIT_URL $WINDOWS_DPCPP_MKL
+
+      - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install build wheel setuptools cmake
           python -m pip install scikit-build
+
       - name: Build Wheel
         run: |
           # Add choco bin path to PATH, necessary for using Ninja
@@ -80,11 +85,13 @@ jobs:
           
           # Build the wheel
           python -m build --wheel
+
       - name: Upload Wheel Artifact
         uses: actions/upload-artifact@v4
         with:
           path: dist/*.whl
           name: llama-vulkan-wheel-python${{ matrix.pyver }}.whl
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
