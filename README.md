@@ -146,19 +146,39 @@ CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp" pip install nexaai
 
 <details> <summary><strong style="font-size: 1.2em;">Intel GPU (SYCL)</strong></summary>
 
-To build Nexa SDK with SYCL support, make sure you have the following installed:
+For **Windows**:
+
+Make sure you have the following installed:
 * Latest [Intel GPU driver](https://www.intel.com/content/www/us/en/products/docs/discrete-gpus/arc/software/drivers.html)
 * Microsoft Visual Studio (required for building on Windows)
 * Intel [oneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit.html#gs.kds46v)
 * [Ninja](https://ninja-build.org/)
-
-For **Windows**:
+* Then install Nexa SDK:
 ```bash
 .\scripts\windows-build-sycl.bat
 ```
 
 For **Linux**:
 
+Follow the following steps to setup SYCL environment on Linux:
+* Install latest [Intel GPU driver](https://dgpu-docs.intel.com/driver/installation.html#ubuntu-install-steps)
+* Once installed, add the user(s) to the `video` and `render` groups.
+```bash
+sudo usermod -aG render $USER
+sudo usermod -aG video $USER
+```
+Verify installation through `clinfo`:
+```bash
+sudo apt install clinfo
+sudo clinfo -l
+```
+* Install Intel [oneAPI toolkit](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit.html)
+* Verify installation
+```bash
+source /opt/intel/oneapi/setvars.sh
+sycl-ls
+```
+* Then install Nexa SDK:
 ```bash
 ./scripts/linux-build-sycl.sh
 ```

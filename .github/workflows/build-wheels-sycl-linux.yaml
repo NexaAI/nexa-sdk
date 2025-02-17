@@ -79,8 +79,7 @@ jobs:
 
       - name: Build Wheel
         run: |
-          source /opt/intel/oneapi/setvars.sh
-          python -m build --wheel
+          ./scripts/workflow-linux-build-sycl.sh
 
       - name: Upload Wheel Artifact
         uses: actions/upload-artifact@v4
