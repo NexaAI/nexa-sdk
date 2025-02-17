@@ -6,4 +6,6 @@ set "CMAKE_ARGS=-DGGML_SYCL=ON -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=icx"
 @REM echo ----------------------------------------
 @REM sycl-ls
 @REM echo ----------------------------------------
-pip install -e nexaai --prefer-binary --index-url https://github.nexa.ai/whl/sycl --extra-index-url https://pypi.org/simple --no-cache-dir
+
+pip install -e .
+@REM pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/sycl --extra-index-url https://pypi.org/simple --no-cache-dir

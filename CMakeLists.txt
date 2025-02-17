@@ -5,29 +5,26 @@ include(ExternalProject)
 
 # Windows-specific settings
 if(WIN32)
-    # Windows-specific settings
-    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+    add_definitions(
+        -D_CRT_SECURE_NO_WARNINGS  # Suppress security warnings
+        -DNOMINMAX                 # Prevent Windows.h from defining min/max macros
+        -D_WIN32_WINNT=0x0A00      # Target Windows 10 or later
+    )
+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
-# Common OpenMP handling for all platforms
+# Find OpenMP and configure settings accordingly
 find_package(OpenMP QUIET)
 if(NOT OpenMP_FOUND)
-    message(STATUS "OpenMP not found - OpenMP support will be disabled")
+    message(STATUS "OpenMP not found - disabling OpenMP support")
     set(OpenMP_C_FLAGS "")
     set(OpenMP_CXX_FLAGS "")
     set(OpenMP_EXE_LINKER_FLAGS "")
 endif()
 
+# General project settings
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_STANDARD 17)
-
-# Windows-specific configurations
-if(WIN32)
-    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-    add_definitions(-DNOMINMAX)
-    add_definitions(-D_WIN32_WINNT=0x0A00)  # Target Windows 10 or later
-    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
-endif()
 
 # Collect all user-defined options
 function(get_all_options output_var)
@@ -41,7 +38,8 @@ function(get_all_options output_var)
     set(${output_var} ${options} PARENT_SCOPE)
 endfunction()
 
-# Create empty file if GGML_CUDA, GGML_METAL or GGML_SYCL is ON
+# Generate an empty file if GGML_CUDA, GGML_METAL, or GGML_SYCL is enabled.
+# This file serves as a runtime flag for the SDK to check if least one GPU backend is supported.
 if (GGML_CUDA OR GGML_METAL OR GGML_HIPBLAS OR GGML_VULKAN OR GGML_SYCL)
     set(SOURCE_EMPTY_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib/empty_file.txt")
     add_custom_command(
@@ -143,6 +141,7 @@ if(LLAMA_BUILD)
         -DBUILD_SHARED_LIBS=ON
         -DGGML_CUDA=${GGML_CUDA}
         -DGGML_METAL=${GGML_METAL}
+        -DGGML_VULKAN=${GGML_VULKAN}
         -DCMAKE_C_FLAGS=${OpenMP_C_FLAGS}
         -DCMAKE_CXX_FLAGS=${OpenMP_CXX_FLAGS}
         -DCMAKE_EXE_LINKER_FLAGS=${OpenMP_EXE_LINKER_FLAGS}
@@ -159,8 +158,8 @@ if(LLAMA_BUILD)
         )
     endif()
 
+    # Add Windows-specific definitions and flags for llama.cpp
     if(WIN32)
-        # Add Windows-specific definitions and flags for llama.cpp
         list(APPEND LLAMA_CMAKE_ARGS
             -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON
             -DLLAMA_NATIVE=OFF           # Disable native CPU optimizations on Windows
@@ -183,9 +182,9 @@ endif()
 # bark.cpp project
 option(BARK_BUILD "Build bark.cpp" ON)
 if(BARK_BUILD)
-    # Filter out HIPBLAS, Vulkan and SYCL options for bark.cpp since it doesn't support them
+    # Filter out HIPBLAS, Metal, Vulkan and SYCL options for bark.cpp since it doesn't support them
     set(BARK_CMAKE_OPTIONS ${USER_DEFINED_OPTIONS})
-    list(FILTER BARK_CMAKE_OPTIONS EXCLUDE REGEX "GGML_HIPBLAS|GGML_VULKAN|GGML_SYCL")
+    list(FILTER BARK_CMAKE_OPTIONS EXCLUDE REGEX "GGML_HIPBLAS|GGML_METAL|GGML_VULKAN|GGML_SYCL")
 
     ExternalProject_Add(bark_project
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dependency/bark.cpp
@@ -198,7 +197,6 @@ if(BARK_BUILD)
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
             -DCMAKE_CXX_STANDARD=17
             -DGGML_CUDA=${GGML_CUDA}
-            -DGGML_METAL=OFF
             -DBUILD_SHARED_LIBS=ON
             -DBARK_BUILD_EXAMPLES=OFF
         BUILD_ALWAYS 1
@@ -207,6 +205,10 @@ if(BARK_BUILD)
     )
 endif()
 
+# Macro to install shared libraries for a given target.
+# There exist two install locations:
+# 1. ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib/ : for Python packaging
+# 2. ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib/ : for local development (installed via `pip install -e`)
 macro(install_libraries TARGET DIR)
     install(
         DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${DIR}
