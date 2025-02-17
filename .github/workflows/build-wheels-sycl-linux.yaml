@@ -1,6 +1,7 @@
-name: Build Wheels (SYCL) (Windows)
+name: Build Wheels (SYCL) (Linux)
 on:
   workflow_dispatch:
+  push:
 
 permissions:
   contents: write
@@ -8,7 +9,7 @@ permissions:
 jobs:
   define_matrix:
     name: Define Build Matrix
-    runs-on: sdk-windows-8-core
+    runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     defaults:
@@ -17,10 +18,11 @@ jobs:
     steps:
       - name: Define Job Output
         id: set-matrix
+        # 'pyver' = @("3.8", "3.9", "3.10", "3.11", "3.12")
         run: |
           $matrix = @{
-              'os' = @('sdk-windows-8-core')
-              'pyver' = @("3.8", "3.9", "3.10", "3.11", "3.12")
+              'os' = @('ubuntu-20.04')
+              'pyver' = @("3.10")
               'releasetag' = @("basic")
           }
           $matrixOut = ConvertTo-Json $matrix -Compress
@@ -35,21 +37,32 @@ jobs:
     defaults:
       run:
         shell: pwsh
-    env:
-      WINDOWS_BASEKIT_URL: https://registrationcenter-download.intel.com/akdlm/IRC_NAS/b380d914-366b-4b77-a74a-05e3c38b3514/intel-oneapi-base-toolkit-2025.0.0.882_offline.exe
-      WINDOWS_DPCPP_MKL: intel.oneapi.win.cpp-dpcpp-common:intel.oneapi.win.mkl.devel:intel.oneapi.win.dnnl:intel.oneapi.win.tbb.devel
     steps:
-      - name: Add MSBuild to PATH
-        if: runner.os == 'Windows'
-        uses: microsoft/setup-msbuild@v2
-        with:
-          vs-version: "[16.11,16.12)"
-          msbuild-architecture: x64
 
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           submodules: "recursive"
+
+      - name: add oneAPI to apt
+        shell: bash
+        run: |
+          cd /tmp
+          wget https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
+          sudo apt-key add GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
+          rm GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
+          sudo add-apt-repository "deb https://apt.repos.intel.com/oneapi all main"
+
+      - name: install oneAPI dpcpp compiler
+        shell: bash
+        run: |
+          sudo apt update
+          sudo apt install intel-oneapi-compiler-dpcpp-cpp
+
+      - name: install oneAPI MKL library
+        shell: bash
+        run: |
+          sudo apt install intel-oneapi-mkl-devel
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -57,15 +70,6 @@ jobs:
           python-version: ${{ matrix.pyver }}
           architecture: 'x64'
           cache: "pip"
-
-      - name: Install Ninja Build System
-        run: |
-            choco install ninja -y
-            # choco install wget -y
-
-      - name: Install SYCL dependencies
-        run:  |
-          scripts/install-oneapi.bat "${{ env.WINDOWS_BASEKIT_URL }}" "${{ env.WINDOWS_DPCPP_MKL }}"
 
       - name: Install Python Dependencies
         run: |
@@ -75,15 +79,8 @@ jobs:
 
       - name: Build Wheel
         run: |
-          # Add choco bin path to PATH, necessary for using Ninja
-          $env:PATH="C:\ProgramData\chocolatey\bin;$env:PATH"	
-          
-          # On Windows, SYCL must be built with Ninja and icx compiler
-          # $env:CMAKE_ARGS="-DGGML_SYCL=ON -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=icx"
-          
-          # Build the wheel
-          # python -m build --wheel
-          scripts/workflow-win-build-sycl.bat
+          source /opt/intel/oneapi/setvars.sh
+          python -m build --wheel
 
       - name: Upload Wheel Artifact
         uses: actions/upload-artifact@v4
