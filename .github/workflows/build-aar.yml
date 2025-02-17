@@ -2,6 +2,7 @@ name: Build Android AAR
 
 on:
   workflow_dispatch:
+  # AAR pre-build task temporarily disabled
   # push:
   #   branches:
   #     - main

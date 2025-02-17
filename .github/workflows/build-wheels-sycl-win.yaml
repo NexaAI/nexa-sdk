@@ -85,7 +85,7 @@ jobs:
           
           # Build the wheel
           # python -m build --wheel
-          scripts/win-build-sycl-workflow.bat
+          scripts/workflow-win-build-sycl.bat
 
       - name: Upload Wheel Artifact
         uses: actions/upload-artifact@v4
