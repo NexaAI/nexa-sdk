@@ -207,33 +207,31 @@ if(BARK_BUILD)
     )
 endif()
 
-macro(install_libraries TARGET DIRS)
-    foreach(DIR ${DIRS})
-        install(
-            DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${DIR}
-            DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib/${TARGET}
-            USE_SOURCE_PERMISSIONS
-            FILES_MATCHING
-            PATTERN "*.dll" 
-            PATTERN "*.so"   
-            PATTERN "*.dylib"
-            PATTERN "cmake*" EXCLUDE
-            PATTERN "pkgconfig*" EXCLUDE
-            PATTERN "encodec*" EXCLUDE
-        )
-        install(
-            DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${DIR}
-            DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib/${TARGET}
-            USE_SOURCE_PERMISSIONS
-            FILES_MATCHING
-            PATTERN "*.dll"
-            PATTERN "*.so"
-            PATTERN "*.dylib"
-            PATTERN "cmake*" EXCLUDE
-            PATTERN "pkgconfig*" EXCLUDE
-            PATTERN "encodec*" EXCLUDE
-        )
-    endforeach()
+macro(install_libraries TARGET DIR)
+    install(
+        DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${DIR}
+        DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib/${TARGET}
+        USE_SOURCE_PERMISSIONS
+        FILES_MATCHING
+        PATTERN "*.dll" 
+        PATTERN "*.so"   
+        PATTERN "*.dylib"
+        PATTERN "cmake*" EXCLUDE
+        PATTERN "pkgconfig*" EXCLUDE
+        PATTERN "encodec*" EXCLUDE
+    )
+    install(
+        DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${DIR}
+        DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib/${TARGET}
+        USE_SOURCE_PERMISSIONS
+        FILES_MATCHING
+        PATTERN "*.dll"
+        PATTERN "*.so"
+        PATTERN "*.dylib"
+        PATTERN "cmake*" EXCLUDE
+        PATTERN "pkgconfig*" EXCLUDE
+        PATTERN "encodec*" EXCLUDE
+    )
 endmacro()
 
 if(CMAKE_CONFIGURATION_TYPES)  # Multi-config generators like MSBuild

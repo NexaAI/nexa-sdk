@@ -1,0 +1,89 @@
+name: Build Wheels (Vulkan) (Windows)
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  define_matrix:
+    name: Define Build Matrix
+    runs-on: sdk-windows-8-core
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Define Job Output
+        id: set-matrix
+        run: |
+          $matrix = @{
+              'os' = @('sdk-windows-8-core')
+              'pyver' = @("3.8", "3.9", "3.10", "3.11", "3.12")
+              'vulkan_version' = @("1.3.261.1")
+              'releasetag' = @("basic")
+          }
+          $matrixOut = ConvertTo-Json $matrix -Compress
+          Write-Output ('matrix=' + $matrixOut) >> $env:GITHUB_OUTPUT
+  build_wheels:
+    name: Build Wheel ${{ matrix.os }} Python ${{ matrix.pyver }}
+    needs: define_matrix
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix: ${{ fromJSON(needs.define_matrix.outputs.matrix) }}
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      WINDOWS_BASEKIT_URL: https://registrationcenter-download.intel.com/akdlm/IRC_NAS/b380d914-366b-4b77-a74a-05e3c38b3514/intel-oneapi-base-toolkit-2025.0.0.882_offline.exe
+      WINDOWS_DPCPP_MKL: intel.oneapi.win.cpp-dpcpp-common:intel.oneapi.win.mkl.devel:intel.oneapi.win.dnnl:intel.oneapi.win.tbb.devel
+      ONEAPI_ROOT: "C:/Program Files (x86)/Intel/oneAPI"
+    steps:
+      - name: Add MSBuild to PATH
+        if: runner.os == 'Windows'
+        uses: microsoft/setup-msbuild@v2
+        with:
+          vs-version: "[16.11,16.12)"
+          msbuild-architecture: x64
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+
+      - name: Install SYCL dependencies
+        run:  |
+          scripts/install-oneapi.bat $WINDOWS_BASEKIT_URL $WINDOWS_DPCPP_MKL
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.pyver }}
+          architecture: 'x64'
+          cache: "pip"
+      - name: Install Ninja Build System
+        run: choco install ninja -y
+      - name: Install Build Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build wheel setuptools cmake
+          python -m pip install scikit-build
+      - name: Build Wheel
+        run: |
+          # Set environment variables
+          $env:PATH="C:\ProgramData\chocolatey\bin;$env:PATH"	
+          $env:CMAKE_ARGS="-DGGML_SYCL=ON -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=icx"
+          
+          # Build the wheel
+          python -m build --wheel
+      - name: Upload Wheel Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: dist/*.whl
+          name: llama-vulkan-wheel-python${{ matrix.pyver }}.whl
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          tag_name: ${{ github.ref_name }}-sycl
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

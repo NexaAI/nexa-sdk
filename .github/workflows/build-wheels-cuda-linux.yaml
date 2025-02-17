@@ -71,15 +71,6 @@ jobs:
           $cudaVersion = $env:CUDAVER
           mamba install -y 'cuda' -c nvidia/label/cuda-$cudaVersion
           python -m pip install build wheel
-      
-      # - name: Debug GLIBC Issues
-      #   run: |
-      #     echo "Check GCC"
-      #     gcc --version
-      #     which gcc
-
-      #     echo "## Checking if libdl and librt are available"
-      #     ldconfig -p | grep -E "libdl|librt" || echo "Missing libdl or librt!"
 
       - name: Build Wheel
         run: |
