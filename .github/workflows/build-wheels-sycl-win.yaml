@@ -39,7 +39,7 @@ jobs:
     env:
       WINDOWS_BASEKIT_URL: https://registrationcenter-download.intel.com/akdlm/IRC_NAS/b380d914-366b-4b77-a74a-05e3c38b3514/intel-oneapi-base-toolkit-2025.0.0.882_offline.exe
       WINDOWS_DPCPP_MKL: intel.oneapi.win.cpp-dpcpp-common:intel.oneapi.win.mkl.devel:intel.oneapi.win.dnnl:intel.oneapi.win.tbb.devel
-      ONEAPI_ROOT: "C:/Program Files (x86)/Intel/oneAPI"
+      # ONEAPI_ROOT: "C:/Program Files (x86)/Intel/oneAPI"
     steps:
       - name: Add MSBuild to PATH
         if: runner.os == 'Windows'
@@ -81,10 +81,11 @@ jobs:
           $env:PATH="C:\ProgramData\chocolatey\bin;$env:PATH"	
           
           # On Windows, SYCL must be built with Ninja and icx compiler
-          $env:CMAKE_ARGS="-DGGML_SYCL=ON -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=icx"
+          # $env:CMAKE_ARGS="-DGGML_SYCL=ON -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=icx"
           
           # Build the wheel
-          python -m build --wheel
+          # python -m build --wheel
+          scripts/win-build-sycl-workflow.bat
 
       - name: Upload Wheel Artifact
         uses: actions/upload-artifact@v4
