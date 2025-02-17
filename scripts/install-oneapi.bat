@@ -4,7 +4,7 @@
 
 ::  This script is originally from the llama.cpp repository.
 ::  Credit to the llama.cpp project and contributors.
-::  Source: https://github.com/ggerganov/llama.cpp
+::  Source: https://github.com/ggml-org/llama.cpp/blob/master/scripts/install-oneapi.bat
 
 set URL=%1
 set COMPONENTS=%2
@@ -13,7 +13,6 @@ echo URL: %URL%
 echo COMPONENTS: %COMPONENTS%
 
 curl.exe --output %TEMP%\webimage.exe --url %URL% --retry 5 --retry-delay 5
-@REM wget -O %TEMP%\webimage.exe --tries=5 --wait=5 "%URL%"
 start /b /wait %TEMP%\webimage.exe -s -x -f webimage_extracted --log extract.log
 del %TEMP%\webimage.exe
 if "%COMPONENTS%"=="" (
