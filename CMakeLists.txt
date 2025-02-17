@@ -29,7 +29,7 @@ if(WIN32)
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
-# Function to collect all user-defined options
+# Collect all user-defined options
 function(get_all_options output_var)
     get_cmake_property(variables VARIABLES)
     set(options)
@@ -47,13 +47,13 @@ if (GGML_CUDA OR GGML_METAL OR GGML_HIPBLAS OR GGML_VULKAN OR GGML_SYCL)
     add_custom_command(
         OUTPUT ${SOURCE_EMPTY_FILE_PATH}
         COMMAND ${CMAKE_COMMAND} -E touch ${SOURCE_EMPTY_FILE_PATH}
-        COMMENT "Creating an empty file to source folder because gpu option is ON"
+        COMMENT "Generating an empty file in the source folder to indicate that GPU support is enabled."
     )
     set(WHEEL_EMPTY_FILE_PATH "${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib/empty_file.txt")
     add_custom_command(
         OUTPUT ${WHEEL_EMPTY_FILE_PATH}
         COMMAND ${CMAKE_COMMAND} -E touch ${WHEEL_EMPTY_FILE_PATH}
-        COMMENT "Creating an empty file to lib folder because gpu option is ON"
+        COMMENT "Generating an empty file in the source folder to indicate that GPU support is enabled."
     )    
     add_custom_target(create_empty_file ALL DEPENDS ${SOURCE_EMPTY_FILE_PATH} ${WHEEL_EMPTY_FILE_PATH})
 endif()
@@ -90,7 +90,7 @@ if(WIN32)
     endif()
 endif()
 
-# stable_diffusion_cpp project
+# stable_diffusion.cpp project
 option(STABLE_DIFFUSION_BUILD "Build stable-diffusion.cpp" ON)
 if(STABLE_DIFFUSION_BUILD)
 
@@ -126,7 +126,7 @@ if(STABLE_DIFFUSION_BUILD)
     )
 endif()
 
-# llama_cpp project
+# llama.cpp project
 option(LLAMA_BUILD "Build llama.cpp" ON)
 if(LLAMA_BUILD)
 
@@ -180,7 +180,7 @@ if(LLAMA_BUILD)
     )
 endif()
 
-# bark_cpp project
+# bark.cpp project
 option(BARK_BUILD "Build bark.cpp" ON)
 if(BARK_BUILD)
     # Filter out HIPBLAS, Vulkan and SYCL options for bark.cpp since it doesn't support them

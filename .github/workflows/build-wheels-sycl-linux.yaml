@@ -1,7 +1,7 @@
 name: Build Wheels (SYCL) (Linux)
 on:
   workflow_dispatch:
-  push:
+  # push:
 
 permissions:
   contents: write
