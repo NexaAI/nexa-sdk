@@ -9,8 +9,8 @@
 set URL=%1
 set COMPONENTS=%2
 
-echo URL: %URL%
-echo COMPONENTS: %COMPONENTS%
+@REM echo URL: %URL%
+@REM echo COMPONENTS: %COMPONENTS%
 
 curl.exe --output %TEMP%\webimage.exe --url %URL% --retry 5 --retry-delay 5
 start /b /wait %TEMP%\webimage.exe -s -x -f webimage_extracted --log extract.log
