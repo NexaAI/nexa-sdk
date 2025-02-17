@@ -63,7 +63,7 @@ jobs:
       - name: Install Ninja Build System
         run: |
             choco install ninja -y
-            choco install wget -y
+            # choco install wget -y
 
       - name: Install SYCL dependencies
         run:  |
