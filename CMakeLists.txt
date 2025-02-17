@@ -135,7 +135,7 @@ if(LLAMA_BUILD)
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
         -DCMAKE_CXX_STANDARD=17
         -DCMAKE_BUILD_TYPE=Release
-        -DLLAMA_BUILD_EXAMPLES=OFF
+        -DLLAMA_BUILD_EXAMPLES=ON
         -DLLAMA_BUILD_TESTS=OFF
         -DLLAMA_BUILD_SERVER=OFF
         -DBUILD_SHARED_LIBS=ON
@@ -210,30 +210,26 @@ endif()
 # 1. ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib/ : for Python packaging
 # 2. ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib/ : for local development (installed via `pip install -e`)
 macro(install_libraries TARGET DIR)
-    install(
-        DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${DIR}
-        DESTINATION ${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib/${TARGET}
-        USE_SOURCE_PERMISSIONS
-        FILES_MATCHING
-        PATTERN "*.dll" 
-        PATTERN "*.so"   
-        PATTERN "*.dylib"
-        PATTERN "cmake*" EXCLUDE
-        PATTERN "pkgconfig*" EXCLUDE
-        PATTERN "encodec*" EXCLUDE
+    # Define the list of installation destinations
+    set(DESTINATIONS
+        "${SKBUILD_PLATLIB_DIR}/nexa/gguf/lib/${TARGET}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib/${TARGET}"
     )
-    install(
-        DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${DIR}
-        DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/nexa/gguf/lib/${TARGET}
-        USE_SOURCE_PERMISSIONS
-        FILES_MATCHING
-        PATTERN "*.dll"
-        PATTERN "*.so"
-        PATTERN "*.dylib"
-        PATTERN "cmake*" EXCLUDE
-        PATTERN "pkgconfig*" EXCLUDE
-        PATTERN "encodec*" EXCLUDE
-    )
+
+    foreach(DEST ${DESTINATIONS})
+        install(
+            DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${DIR}
+            DESTINATION ${DEST}
+            USE_SOURCE_PERMISSIONS  # Preserve original file permissions
+            FILES_MATCHING  # Match only the following file patterns
+            PATTERN "*.dll"  # Windows shared library
+            PATTERN "*.so"  # Linux shared library
+            PATTERN "*.dylib"  # macOS shared library
+            PATTERN "cmake*" EXCLUDE  # Exclude CMake-related folders
+            PATTERN "pkgconfig*" EXCLUDE  # Exclude pkgconfig folders
+            PATTERN "encodec*" EXCLUDE  # Exclude encodec-related folders
+        )
+    endforeach()
 endmacro()
 
 if(CMAKE_CONFIGURATION_TYPES)  # Multi-config generators like MSBuild
