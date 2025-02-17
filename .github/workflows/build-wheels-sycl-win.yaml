@@ -1,9 +1,10 @@
 name: Build Wheels (SYCL) (Windows)
 on:
   workflow_dispatch:
-  push:
+
 permissions:
   contents: write
+ 
 jobs:
   define_matrix:
     name: Define Build Matrix
@@ -16,17 +17,16 @@ jobs:
     steps:
       - name: Define Job Output
         id: set-matrix
-        
-        # 'pyver' = @("3.8", "3.9", "3.10", "3.11", "3.12")
         run: |
           $matrix = @{
               'os' = @('sdk-windows-8-core')
-              'pyver' = @("3.12")
+              'pyver' = @("3.8", "3.9", "3.10", "3.11", "3.12")
               'vulkan_version' = @("1.3.261.1")
               'releasetag' = @("basic")
           }
           $matrixOut = ConvertTo-Json $matrix -Compress
           Write-Output ('matrix=' + $matrixOut) >> $env:GITHUB_OUTPUT
+
   build_wheels:
     name: Build Wheel ${{ matrix.os }} Python ${{ matrix.pyver }}
     needs: define_matrix
@@ -39,7 +39,6 @@ jobs:
     env:
       WINDOWS_BASEKIT_URL: https://registrationcenter-download.intel.com/akdlm/IRC_NAS/b380d914-366b-4b77-a74a-05e3c38b3514/intel-oneapi-base-toolkit-2025.0.0.882_offline.exe
       WINDOWS_DPCPP_MKL: intel.oneapi.win.cpp-dpcpp-common:intel.oneapi.win.mkl.devel:intel.oneapi.win.dnnl:intel.oneapi.win.tbb.devel
-      # ONEAPI_ROOT: "C:/Program Files (x86)/Intel/oneAPI"
     steps:
       - name: Add MSBuild to PATH
         if: runner.os == 'Windows'
