@@ -106,25 +106,25 @@ To install with CUDA support, make sure you have [CUDA Toolkit 12.0 or later](ht
 For **Linux**:
 
 ```bash
-CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUDA=ON" pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 For **Windows PowerShell**:
 
 ```bash
-$env:CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON"; pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+$env:CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUDA=ON"; pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 For **Windows Command Prompt**:
 
 ```bash
-set CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" & pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+set CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUDA=ON" & pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 For **Windows Git Bash**:
 
 ```bash
-CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUBLAS=ON" pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
+CMAKE_ARGS="-DGGML_CUDA=ON -DSD_CUDA=ON" pip install nexaai --prefer-binary --index-url https://github.nexa.ai/whl/cu124 --extra-index-url https://pypi.org/simple --no-cache-dir
 ```
 
 <details>
