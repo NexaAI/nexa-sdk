@@ -72,8 +72,10 @@ jobs:
           python -m pip install scikit-build
       - name: Build Wheel
         run: |
-          # Set environment variables
+          # Add choco bin path to PATH, necessary for using Ninja
           $env:PATH="C:\ProgramData\chocolatey\bin;$env:PATH"	
+          
+          # On Windows, SYCL must be built with Ninja and icx compiler
           $env:CMAKE_ARGS="-DGGML_SYCL=ON -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=icx"
           
           # Build the wheel
