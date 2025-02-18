@@ -13,6 +13,15 @@ if(WIN32)
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
+# On Windows with CUDA backend, building the SDK with too many threads lead to out-of-memory crash.  
+# To prevent this, limit the maximum number of parallel jobs to 2.
+if(WIN32 AND GGML_CUDA)
+    set(BUILD_PARALLEL_LEVEL "2" CACHE STRING "Number of parallel jobs for MSBuild in CUDA compilation")
+    set(MSBUILD_ARGS "/m:${BUILD_PARALLEL_LEVEL}")
+else()
+    set(MSBUILD_ARGS "")
+endif()
+
 # Find OpenMP and configure settings accordingly
 find_package(OpenMP QUIET)
 if(NOT OpenMP_FOUND)
@@ -103,16 +112,11 @@ if(STABLE_DIFFUSION_BUILD)
         -DBUILD_SHARED_LIBS=ON
         -DSD_METAL=${GGML_METAL}
         -DSD_CUBLAS=${GGML_CUDA}
-        -DSD_CUDA=${GGML_CUDA} 
+        -DSD_CUDA=${GGML_CUDA}
+        -DSD_SYCL=${GGML_SYCL}
         -DSD_HIPBLAS=${GGML_HIPBLAS}
         -DSD_VULKAN=${GGML_VULKAN}
     )
-
-    if (GGML_SYCL)
-        list(APPEND SD_CMAKE_ARGS
-            -DSD_SYCL=ON
-        )
-    endif()
 
     ExternalProject_Add(stable_diffusion_project
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dependency/stable-diffusion.cpp
@@ -135,13 +139,14 @@ if(LLAMA_BUILD)
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
         -DCMAKE_CXX_STANDARD=17
         -DCMAKE_BUILD_TYPE=Release
-        -DLLAMA_BUILD_EXAMPLES=ON
+        -DLLAMA_BUILD_EXAMPLES=ON # Must be set to ON to build omni model libs
         -DLLAMA_BUILD_TESTS=OFF
         -DLLAMA_BUILD_SERVER=OFF
         -DBUILD_SHARED_LIBS=ON
         -DGGML_CUDA=${GGML_CUDA}
         -DGGML_METAL=${GGML_METAL}
         -DGGML_VULKAN=${GGML_VULKAN}
+        -DGGML_SYCL=${GGML_SYCL}
         -DCMAKE_C_FLAGS=${OpenMP_C_FLAGS}
         -DCMAKE_CXX_FLAGS=${OpenMP_CXX_FLAGS}
         -DCMAKE_EXE_LINKER_FLAGS=${OpenMP_EXE_LINKER_FLAGS}
@@ -151,12 +156,6 @@ if(LLAMA_BUILD)
         -DGGML_F16C=$<IF:$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},arm64>>>,OFF,ON>
         -DGGML_METAL_EMBED_LIBRARY=$<IF:$<PLATFORM_ID:Darwin>,ON,OFF>
     )
-
-    if (GGML_SYCL)
-        list(APPEND LLAMA_CMAKE_ARGS
-            -DGGML_SYCL=ON
-        )
-    endif()
 
     # Add Windows-specific definitions and flags for llama.cpp
     if(WIN32)
