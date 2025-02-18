@@ -1,7 +1,6 @@
 name: Build Wheels (SYCL) (Windows)
 on:
   workflow_dispatch:
-  push:
 
 permissions:
   contents: write

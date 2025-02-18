@@ -2,6 +2,8 @@
 
 set "CMAKE_GENERATOR=Ninja"
 set "CMAKE_ARGS=-DGGML_SYCL=ON -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=icx"
+
+@REM Uncomment the following lines to check if oneAPI is properly installed.
 @REM echo Detecting available SYCL devices
 @REM echo ----------------------------------------
 @REM sycl-ls

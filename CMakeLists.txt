@@ -10,6 +10,7 @@ if(WIN32)
         -DNOMINMAX                 # Prevent Windows.h from defining min/max macros
         -D_WIN32_WINNT=0x0A00      # Target Windows 10 or later
     )
+    # Auto-export all symbols in shared libraries on Windows
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
@@ -35,15 +36,25 @@ endif()
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_STANDARD 17)
 
-# Collect all user-defined options
+# Function to collect all user-defined CMake options
 function(get_all_options output_var)
-    get_cmake_property(variables VARIABLES)
+    # Retrieve all currently defined CMake variables
+    get_cmake_property(variables VARIABLES)    
+    # Initialize an empty list to store the user-defined options
     set(options)
+
     foreach(var ${variables})
+        # Check if the variable:
+        # 1. Starts with an uppercase letter (to exclude internal lowercase variables)
+        # 2. Does NOT start with "CMAKE_" (to exclude built-in CMake variables)
+        # 3. Does NOT start with "_" (to exclude internal/private variables)
         if(var MATCHES "^[A-Z]" AND NOT var MATCHES "^CMAKE_" AND NOT var MATCHES "^_")
+            # Append the variable as a CMake command-line definition (-DVAR=VALUE)
             list(APPEND options "-D${var}=${${var}}")
         endif()
     endforeach()
+    
+    # Store the collected options in the output variable and make them accessible to the parent scope
     set(${output_var} ${options} PARENT_SCOPE)
 endfunction()
 
