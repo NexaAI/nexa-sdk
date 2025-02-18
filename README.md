@@ -21,10 +21,13 @@
 
 ## Latest News 🔥
 
+- Support SYCL backend for Intel GPU on Windows
+- Support GPU acceleration for FLUX and other Computer Vision models
 - Optimize the benchmark system for GGUF benchmark evaluation, now **at least 50x faster** than lm-eval-harness in GGUF benchmark with 8 workers:
   `nexa eval <model_path> --tasks gpqa --num_workers 8`
 - Support Nexa AI's own vision language model (0.9B parameters): `nexa run omniVLM` and audio language model (2.9B parameters): `nexa run omniaudio`
 - Support audio language model: `nexa run qwen2audio`, **we are the first open-source toolkit to support audio language model with GGML tensor library.**
+- Support Android Kotlin binding for local inference on **Android** devices.
 - Support iOS Swift binding for local inference on **iOS mobile** devices.
 - Support embedding model: `nexa embed <model_path> <prompt>`
 - Support pull and run supported Computer Vision models in GGUF format from HuggingFace or ModelScope: `nexa run -hf <hf_model_id> -mt COMPUTER_VISION` or `nexa run -ms <ms_model_id> -mt COMPUTER_VISION`
