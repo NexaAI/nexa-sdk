@@ -122,6 +122,7 @@ if [ "$version" == "cpu" ]; then
     echo "    <a href=\"cu124/\">CUDA 12.4</a><br>" >> "$root_dir/index.html"
     echo "    <a href=\"rocm621/\">ROCm 6.2.1</a><br>" >> "$root_dir/index.html"
     echo "    <a href=\"vulkan/\">Vulkan</a><br>" >> "$root_dir/index.html"
+    echo "    <a href=\"sycl/\">SYCL</a><br>" >> "$root_dir/index.html"
     echo "  </body>" >> "$root_dir/index.html"
     echo "</html>" >> "$root_dir/index.html"
 fi
