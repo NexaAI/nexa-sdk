@@ -69,8 +69,13 @@ endif()
 get_all_options(USER_DEFINED_OPTIONS)
 
 if(APPLE)
+    # On macOS, use @loader_path to set the runtime path relative to the executable.
+    # This means shared libraries will be searched in the same directory as the executable.
     set(CMAKE_INSTALL_RPATH "@loader_path")
 else()
+    # On Linux and other platforms, use $ORIGIN to set the runtime path relative to the executable.
+    # This ensures that shared libraries are found relative to the executable's location,
+    # improving portability and preventing conflicts with system-wide libraries.
     set(CMAKE_INSTALL_RPATH "$ORIGIN")
 endif()
 
@@ -89,7 +94,9 @@ if(WIN32)
             -DCMAKE_SYSTEM_VERSION=${CMAKE_SYSTEM_VERSION}
         )
     endif()
-
+    
+    # Specifies the Windows SDK version being used in Visual Studio.
+    # Ensures that the build system uses the correct SDK version for Windows applications.
     if(CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION)
         list(APPEND COMMON_CMAKE_OPTIONS
             -DCMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION=${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}
@@ -237,8 +244,11 @@ else()  # Single-config generators like Ninja and Make
     set(BUILD_SUBDIR "")
 endif()
 
-install_libraries(stable_diffusion "stable_diffusion_build/bin/${BUILD_SUBDIR}")
 
+# TODO: Currently, compiled libraries are placed in different paths on different platforms.
+#       This inconsistency makes the following commands messy and harder to maintain.
+#       Refactor in the future to unify library installation paths across platforms.
+install_libraries(stable_diffusion "stable_diffusion_build/bin/${BUILD_SUBDIR}")
 if (WIN32)
     install_libraries(bark.cpp "bark_build/bin/${BUILD_SUBDIR}")
     install_libraries(bark.cpp "bark_build/${BUILD_SUBDIR}")
