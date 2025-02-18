@@ -1,11 +1,13 @@
 name: Build Android AAR
 
 on:
-  push:
-    branches:
-      - main
-      - android-sdk
-  pull_request:
+  workflow_dispatch:
+  # AAR pre-build task temporarily disabled
+  # push:
+  #   branches:
+  #     - main
+  #     - android-sdk
+  # pull_request:
 
 jobs:
   build:

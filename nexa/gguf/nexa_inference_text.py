@@ -114,7 +114,7 @@ class NexaTextInference:
     @SpinningCursorAnimation()
     def _load_model(self):
         logging.debug(
-            f"Loading model from {self.downloaded_path}, use_cuda_or_metal : {is_gpu_available()}")
+            f"Loading model from {self.downloaded_path}, use gpu : {is_gpu_available()}")
         start_time = time.time()
         with suppress_stdout_stderr():
             from nexa.gguf.llama.llama import Llama
