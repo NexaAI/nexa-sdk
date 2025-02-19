@@ -213,7 +213,7 @@ if(BARK_BUILD)
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
             -DCMAKE_CXX_STANDARD=17
             # bark.cpp relies on an older GGML version, which uses GGML_CUBLAS instead of GGML_CUDA for enabling CUDA inference.
-            -DSD_CUBLAS=${GGML_CUDA} 
+            -DGGML_CUBLAS=${GGML_CUDA} 
             -DBUILD_SHARED_LIBS=ON
             -DBARK_BUILD_EXAMPLES=OFF
         BUILD_ALWAYS 1
