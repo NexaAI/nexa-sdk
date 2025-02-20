@@ -45,7 +45,7 @@ from nexa.gguf.llama.llama_chat_format import (
     NanoLlavaChatHandler,
 )
 from nexa.gguf.llama._utils_transformers import suppress_stdout_stderr
-from nexa.general import add_model_to_list, default_use_processes, download_file_with_progress, get_model_info, is_model_exists, pull_model
+from nexa.general import add_model_to_list, default_use_processes, download_file_with_progress, get_model_info, is_model_exists, pull_model, remove_model
 from nexa.gguf.llama.llama import Llama
 from faster_whisper import WhisperModel
 import numpy as np
@@ -101,7 +101,6 @@ is_huggingface = False
 is_modelscope = False
 projector_path = None
 SAMPLING_RATE = 16000
-
 
 # Request Classes
 class GenerationRequest(BaseModel):
@@ -272,6 +271,8 @@ class DownloadModelRequest(BaseModel):
         "protected_namespaces": ()
     }
 
+class DeleteModelRequest(BaseModel):
+    model_path: str
 
 class ActionRequest(BaseModel):
     prompt: str = ""
@@ -1228,6 +1229,13 @@ async def list_models():
         logging.error(f"Error listing models: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.delete("/v1/delete_model", tags=["Model"])
+async def delete_model(request: DeleteModelRequest):
+    """Delete a model from local model list"""
+    deleted_model_path = remove_model(request.model_path)
+    if not deleted_model_path:
+        raise HTTPException(status_code=404, detail=f"Model not found: {request.model_path}")
+    return JSONResponse(content={"status": "success", "message": f"Successfully deleted model: {request.model_path}"})
 
 @app.post("/v1/completions", tags=["NLP"])
 async def generate_text(request: GenerationRequest):
