@@ -129,7 +129,6 @@ if(STABLE_DIFFUSION_BUILD)
         -DSD_BUILD_SHARED_LIBS=ON
         -DBUILD_SHARED_LIBS=ON
         -DSD_METAL=${GGML_METAL}
-        -DSD_CUBLAS=${GGML_CUDA}
         -DSD_CUDA=${GGML_CUDA}
         -DSD_SYCL=${GGML_SYCL}
         -DSD_HIPBLAS=${GGML_HIPBLAS}
@@ -213,7 +212,8 @@ if(BARK_BUILD)
             -DCMAKE_BUILD_TYPE=Release
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
             -DCMAKE_CXX_STANDARD=17
-            -DGGML_CUDA=${GGML_CUDA}
+            # bark.cpp relies on an older GGML version, which uses GGML_CUBLAS instead of GGML_CUDA for enabling CUDA inference.
+            -DGGML_CUBLAS=${GGML_CUDA} 
             -DBUILD_SHARED_LIBS=ON
             -DBARK_BUILD_EXAMPLES=OFF
         BUILD_ALWAYS 1
