@@ -1,6 +1,8 @@
 name: Build Wheels (CUDA) (Linux)
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+  push:
 
 permissions:
   contents: write
