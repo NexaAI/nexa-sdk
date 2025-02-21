@@ -19,9 +19,10 @@ jobs:
       - name: Define Job Output
         id: set-matrix
         run: |
+          # 'pyver' = @("3.7", "3.8", "3.9", "3.10", "3.11", "3.12")
           $matrix = @{
               'os' = @('ubuntu-20.04')
-              'pyver' = @("3.7", "3.8", "3.9", "3.10", "3.11", "3.12")
+              'pyver' = @("3.10")
               'cuda' = @("12.4.1")
               'releasetag' = @("basic")
           }
@@ -71,30 +72,39 @@ jobs:
           $cudaVersion = $env:CUDAVER
           mamba install -y 'cuda' -c nvidia/label/cuda-$cudaVersion
           python -m pip install build wheel
-
-      - name: Build Wheel
+      
+      - name: Output CUDA Environment
         run: |
-          $cudaVersion = $env:CUDAVER.Remove($env:CUDAVER.LastIndexOf('.')).Replace('.','')
-          $env:CUDA_PATH = $env:CONDA_PREFIX
-          $env:CUDA_HOME = $env:CONDA_PREFIX
-          $env:CUDA_TOOLKIT_ROOT_DIR = $env:CONDA_PREFIX
-          if ($IsLinux) {
-            $env:LD_LIBRARY_PATH = $env:CONDA_PREFIX + '/lib:' + $env:LD_LIBRARY_PATH
-          }
-          $env:VERBOSE = '1'
+          echo "CUDA Environment Info:"
+          echo "----------------------"
+          which nvcc || echo "nvcc not found"
+          nvcc --version || echo "nvcc command failed"
+          nvidia-smi || echo "nvidia-smi command failed"
+          echo "CUDA Home: $env:CUDA_HOME"
+          echo "LD_LIBRARY_PATH: $env:LD_LIBRARY_PATH"
+          echo "PATH: $env:PATH"
 
-          $env:CMAKE_BUILD_PARALLEL_LEVEL = $(nproc)
-          $env:CMAKE_ARGS = '-DSD_CUDA=ON -DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=all'
-          $env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DGGML_CUDA_FORCE_MMQ=ON -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_F16C=OFF'
+      # - name: Build Wheel
+      #   run: |
+      #     $cudaVersion = $env:CUDAVER.Remove($env:CUDAVER.LastIndexOf('.')).Replace('.','')
+      #     $env:CUDA_PATH = $env:CONDA_PREFIX
+      #     $env:CUDA_HOME = $env:CONDA_PREFIX
+      #     $env:CUDA_TOOLKIT_ROOT_DIR = $env:CONDA_PREFIX
+      #     $env:LD_LIBRARY_PATH = $env:CONDA_PREFIX + '/lib:' + $env:LD_LIBRARY_PATH
+      #     $env:VERBOSE = '1'
 
-          python -m build --wheel
-          # write the build tag to the output
-          Write-Output "CUDA_VERSION=$cudaVersion" >> $env:GITHUB_ENV
+      #     $env:CMAKE_BUILD_PARALLEL_LEVEL = $(nproc)
+      #     $env:CMAKE_ARGS = '-DSD_CUDA=ON -DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=all'
+      #     $env:CMAKE_ARGS = $env:CMAKE_ARGS + ' -DGGML_CUDA_FORCE_MMQ=ON -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_F16C=OFF'
 
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
-          # Set tag_name to <tag>-cu<cuda_version>
-          tag_name: ${{ github.ref_name }}-cu${{ env.CUDA_VERSION }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #     python -m build --wheel
+      #     # write the build tag to the output
+      #     Write-Output "CUDA_VERSION=$cudaVersion" >> $env:GITHUB_ENV
+
+      # - uses: softprops/action-gh-release@v2
+      #   with:
+      #     files: dist/*
+      #     # Set tag_name to <tag>-cu<cuda_version>
+      #     tag_name: ${{ github.ref_name }}-cu${{ env.CUDA_VERSION }}
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
