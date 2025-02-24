@@ -679,6 +679,17 @@ def add_model_to_list(model_name, model_location, model_type, run_type):
         if tag_name.startswith("model-"):
             tag_name = tag_name[6:]
             model_name = f"{model_name.split(':')[0]}:{tag_name}"
+        else:
+            return
+
+    # For Computer Vision Flux model, should remove the "flux1-schnell-" prefix from the tag name
+    if run_type == "Computer Vision":
+        tag_name = model_name.split(":")[1]
+        if tag_name.startswith("flux1-schnell-"):
+            tag_name = tag_name[14:]
+            model_name = f"{model_name.split(':')[0]}:{tag_name}"
+        else:
+            return
 
     model_list[model_name] = {
         "type": model_type,
