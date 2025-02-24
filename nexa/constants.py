@@ -3,8 +3,7 @@ from pathlib import Path
 from enum import Enum
 
 # Paths for caching, model hub, and tokens
-NEXA_CACHE_ROOT = Path(os.getenv("NEXA_CACHE_ROOT")
-                       or "~/.cache/nexa").expanduser()
+NEXA_CACHE_ROOT = Path(os.getenv("NEXA_CACHE_ROOT") or "~/.cache/nexa").expanduser()
 NEXA_TOKEN_PATH = NEXA_CACHE_ROOT / "token"
 NEXA_MODELS_HUB_DIR = NEXA_CACHE_ROOT / "hub"
 NEXA_MODEL_EVAL_RESULTS_PATH = NEXA_CACHE_ROOT / "eval"
@@ -266,10 +265,15 @@ NEXA_RUN_MODEL_MAP_IMAGE = {
 NEXA_RUN_MODEL_MAP_FLUX = {
     "flux": "FLUX.1-schnell:flux1-schnell-q4_0",
     "FLUX.1-schnell:q4_0": "FLUX.1-schnell:flux1-schnell-q4_0",
+    "FLUX.1-schnell:flux1-schnell-q4_0": "FLUX.1-schnell:flux1-schnell-q4_0",
     "FLUX.1-schnell:q5_0": "FLUX.1-schnell:flux1-schnell-q5_0",
+    "FLUX.1-schnell:flux1-schnell-q5_0": "FLUX.1-schnell:flux1-schnell-q5_0",
     "FLUX.1-schnell:q5_1": "FLUX.1-schnell:flux1-schnell-q5_1",
+    "FLUX.1-schnell:flux1-schnell-q5_1": "FLUX.1-schnell:flux1-schnell-q5_1",
     "FLUX.1-schnell:q8_0": "FLUX.1-schnell:flux1-schnell-q8_0",
+    "FLUX.1-schnell:flux1-schnell-q8_0": "FLUX.1-schnell:flux1-schnell-q8_0",
     "FLUX.1-schnell:fp16": "FLUX.1-schnell:flux1-schnell-fp16",
+    "FLUX.1-schnell:flux1-schnell-fp16": "FLUX.1-schnell:flux1-schnell-fp16",
 }
 
 NEXA_RUN_MODEL_MAP_TEXT_EMBEDDING = {
@@ -359,8 +363,7 @@ NEXA_RUN_MODEL_PRECISION_MAP = {
 EXIT_COMMANDS = ["/exit", "/quit", "/bye"]
 EXIT_REMINDER = f"Please use Ctrl + d or one of {EXIT_COMMANDS} to exit.\n"
 
-NEXA_STOP_WORDS_MAP = {
-    "octopus-v2": ["<nexa_end>"], "octopus-v4": ["<nexa_end>"]}
+NEXA_STOP_WORDS_MAP = {"octopus-v2": ["<nexa_end>"], "octopus-v4": ["<nexa_end>"]}
 
 DEFAULT_TEXT_GEN_PARAMS = {
     "temperature": 0.7,
