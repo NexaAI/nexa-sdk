@@ -244,10 +244,15 @@ NEXA_RUN_AUDIO_LM_PROJECTOR_MAP = {
 NEXA_RUN_T5XXL_MAP = {
     "flux": "FLUX.1-schnell:t5xxl-q4_0",
     "FLUX.1-schnell:q4_0": "FLUX.1-schnell:t5xxl-q4_0",
+    "FLUX.1-schnell:flux1-schnell-q4_0": "FLUX.1-schnell:t5xxl-q4_0",
     "FLUX.1-schnell:q5_0": "FLUX.1-schnell:t5xxl-q5_0",
+    "FLUX.1-schnell:flux1-schnell-q5_0": "FLUX.1-schnell:t5xxl-q5_0",
     "FLUX.1-schnell:q5_1": "FLUX.1-schnell:t5xxl-q5_1",
+    "FLUX.1-schnell:flux1-schnell-q5_1": "FLUX.1-schnell:t5xxl-q5_1",
     "FLUX.1-schnell:q8_0": "FLUX.1-schnell:t5xxl-q8_0",
+    "FLUX.1-schnell:flux1-schnell-q8_0": "FLUX.1-schnell:t5xxl-q8_0",
     "FLUX.1-schnell:fp16": "FLUX.1-schnell:t5xxl-fp16",
+    "FLUX.1-schnell:flux1-schnell-fp16": "FLUX.1-schnell:t5xxl-fp16",
 }
 
 NEXA_RUN_MODEL_MAP_IMAGE = {
