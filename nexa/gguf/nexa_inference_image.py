@@ -99,6 +99,7 @@ class NexaImageInference:
             if self.clip_l_path:
                 self.clip_l_downloaded_path, _ = pull_model(
                     self.clip_l_path, **kwargs)
+                
         if "lcm-dreamshaper" in self.model_path:
             # print('Loading lcm default arguments')
             self.params = DEFAULT_IMG_GEN_PARAMS_LCM.copy()

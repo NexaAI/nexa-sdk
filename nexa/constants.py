@@ -244,10 +244,15 @@ NEXA_RUN_AUDIO_LM_PROJECTOR_MAP = {
 NEXA_RUN_T5XXL_MAP = {
     "flux": "FLUX.1-schnell:t5xxl-q4_0",
     "FLUX.1-schnell:q4_0": "FLUX.1-schnell:t5xxl-q4_0",
+    "FLUX.1-schnell:flux1-schnell-q4_0": "FLUX.1-schnell:t5xxl-q4_0",
     "FLUX.1-schnell:q5_0": "FLUX.1-schnell:t5xxl-q5_0",
+    "FLUX.1-schnell:flux1-schnell-q5_0": "FLUX.1-schnell:t5xxl-q5_0",
     "FLUX.1-schnell:q5_1": "FLUX.1-schnell:t5xxl-q5_1",
+    "FLUX.1-schnell:flux1-schnell-q5_1": "FLUX.1-schnell:t5xxl-q5_1",
     "FLUX.1-schnell:q8_0": "FLUX.1-schnell:t5xxl-q8_0",
+    "FLUX.1-schnell:flux1-schnell-q8_0": "FLUX.1-schnell:t5xxl-q8_0",
     "FLUX.1-schnell:fp16": "FLUX.1-schnell:t5xxl-fp16",
+    "FLUX.1-schnell:flux1-schnell-fp16": "FLUX.1-schnell:t5xxl-fp16",
 }
 
 NEXA_RUN_MODEL_MAP_IMAGE = {
@@ -546,3 +551,10 @@ NEXA_OFFICIAL_MODELS_TYPE = {
     "all-MiniLM-L6-v2": ModelType.TEXT_EMBEDDING,
     "all-MiniLM-L12-v2": ModelType.TEXT_EMBEDDING,
 }
+
+NEXA_LIST_FILTERED_MODEL_PREFIXES = [
+    'projector',
+    't5xxl-',
+    'ae-',
+    'clip_l-'
+]

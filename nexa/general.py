@@ -7,6 +7,7 @@ import requests
 import concurrent.futures
 import time
 import os
+import re
 from tqdm import tqdm
 import platform
 import tempfile
@@ -23,6 +24,7 @@ from nexa.constants import (
     NEXA_RUN_MODEL_MAP,
     NEXA_TOKEN_PATH,
     NEXA_OFFICIAL_MODELS_TYPE,
+    NEXA_LIST_FILTERED_MODEL_PREFIXES
 )
 from nexa.constants import ModelType
 
@@ -679,8 +681,6 @@ def add_model_to_list(model_name, model_location, model_type, run_type):
         if tag_name.startswith("model-"):
             tag_name = tag_name[6:]
             model_name = f"{model_name.split(':')[0]}:{tag_name}"
-        else:
-            return
 
     # For Computer Vision Flux model, should remove the "flux1-schnell-" prefix from the tag name
     if run_type == "Computer Vision":
@@ -688,8 +688,6 @@ def add_model_to_list(model_name, model_location, model_type, run_type):
         if tag_name.startswith("flux1-schnell-"):
             tag_name = tag_name[14:]
             model_name = f"{model_name.split(':')[0]}:{tag_name}"
-        else:
-            return
 
     model_list[model_name] = {
         "type": model_type,
@@ -737,7 +735,8 @@ def list_models():
         filtered_list = {
             model_name: model_info
             for model_name, model_info in model_list.items()
-            if ':' not in model_name or not model_name.split(':')[1].startswith('projector')
+            if ':' not in model_name or
+            not any(model_name.split(':')[1].startswith(prefix) for prefix in NEXA_LIST_FILTERED_MODEL_PREFIXES)
         }
 
         table = [
@@ -812,7 +811,7 @@ def remove_model(model_path):
         else:
             print(f"Warning: Model location not found: {model_path}")
 
-        # Delete projectors only if model was successfully deleted
+        # Delete projectors or flux related files only if model was successfully deleted
         if model_deleted:
             parent_dir = model_path.parent
             gguf_files = list(parent_dir.glob("*.gguf"))
@@ -833,6 +832,46 @@ def remove_model(model_path):
                         else:
                             shutil.rmtree(projector_location)
                         print(f"Deleted projector: {projector_location}")
+
+            # Check if the model path contains "flux"
+            if 'flux' in str(model_path).lower():
+                model_path_parts = str(model_path).split(":")
+                tag_name = None
+
+                for part in model_path_parts:
+                    match = re.search(r'q\d_|fp16', part)
+                    if match:
+                        tag_name = part[match.start():]
+                        break
+                    else:
+                        raise ValueError(
+                            "Invalid model path. Expected a tag name in the model path.")
+
+                if tag_name:
+                    # First delete files matching tag_name
+                    for item in parent_dir.glob(f"*{tag_name}*"):
+                        if item.exists():
+                            if item.is_file():
+                                item.unlink()
+                            else:
+                                shutil.rmtree(item)
+                            print(f"Deleted flux-related file: {item}")
+                    
+                    # Check remaining files: ae- and clip_l- files
+                    remaining_files = list(parent_dir.glob("*"))
+                    if len(remaining_files) == 2:
+                        file_names = [f.name.lower() for f in remaining_files]
+                        has_ae = any(name.startswith("ae-") for name in file_names)
+                        has_clip = any(name.startswith("clip_l-") for name in file_names)
+                        
+                        if has_ae and has_clip:
+                            for item in remaining_files:
+                                if item.exists():
+                                    if item.is_file():
+                                        item.unlink()
+                                    else:
+                                        shutil.rmtree(item)
+                                    print(f"Deleted additional file: {item}")
 
         # Update the model list file
         with open(NEXA_MODEL_LIST_PATH, "w") as f:
