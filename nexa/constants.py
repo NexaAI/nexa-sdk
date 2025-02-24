@@ -551,3 +551,10 @@ NEXA_OFFICIAL_MODELS_TYPE = {
     "all-MiniLM-L6-v2": ModelType.TEXT_EMBEDDING,
     "all-MiniLM-L12-v2": ModelType.TEXT_EMBEDDING,
 }
+
+NEXA_LIST_FILTERED_MODEL_PREFIXES = [
+    'projector',
+    't5xxl-',
+    'ae-',
+    'clip_l-'
+]
