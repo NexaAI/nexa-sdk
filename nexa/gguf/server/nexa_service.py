@@ -194,6 +194,7 @@ class TextToSpeechRequest(BaseModel):
     seed: int = 42
     sampling_rate: int = 24000
     language: Optional[str] = "en"  # Only for 'outetts'
+    output_dir: Optional[str] = "nexa_server_output"
 
 
 class FunctionCallRequest(BaseModel):
@@ -1541,6 +1542,7 @@ async def txt2img(
         height: Optional[int] = Form(512),
         sample_steps: Optional[int] = Form(20, description="set to 4 when using Flux for optimal results"),
         seed: Optional[int] = Form(42),
+        output_dir: Optional[str] = Form("nexa_server_output", description="Directory to save generated images"),
 ):
     try:
         if model_type != "Computer Vision":
@@ -1554,12 +1556,13 @@ async def txt2img(
 
         resp = {"created": time.time(), "data": []}
 
+        # Create output directory if it doesn't exist
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
         for image in generated_images:
             id = int(time.time())
-            if not os.path.exists("nexa_server_output"):
-                os.makedirs("nexa_server_output")
-            image_path = os.path.join(
-                "nexa_server_output", f"txt2img_{id}.png")
+            image_path = os.path.join(output_dir, f"txt2img_{id}.png")
             image.save(image_path)
             img = ImageResponse(base64=base64_encode_image(
                 image_path), url=os.path.abspath(image_path))
@@ -1583,6 +1586,7 @@ async def img2img(
     height: Optional[int] = Form(512),
     sample_steps: Optional[int] = Form(20, description="set to 4 when using Flux for optimal results"),
     seed: Optional[int] = Form(42),
+    output_dir: Optional[str] = Form("nexa_server_output", description="Directory to save generated images"),
 ):
     try:
         if model_type != "Computer Vision":
@@ -1603,12 +1607,13 @@ async def img2img(
 
         resp = {"created": time.time(), "data": []}
 
+        # Create output directory if it doesn't exist
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
         for image in generated_images:
             id = int(time.time())
-            if not os.path.exists("nexa_server_output"):
-                os.makedirs("nexa_server_output")
-            image_path = os.path.join(
-                "nexa_server_output", f"img2img_{id}.png")
+            image_path = os.path.join(output_dir, f"img2img_{id}.png")
             image.save(image_path)
             img = ImageResponse(base64=base64_encode_image(
                 image_path), url=os.path.abspath(image_path))
@@ -1650,8 +1655,11 @@ async def txt2speech(request: TextToSpeechRequest):
             )
 
         audio_data = model.audio_generation(request.text)
-        output_dir = "nexa_server_output"
+        
+        # Create output directory if it doesn't exist
+        output_dir = request.output_dir if hasattr(request, 'output_dir') else "nexa_server_output"
         os.makedirs(output_dir, exist_ok=True)
+        
         file_path = model._save_audio(
             audio_data, request.sampling_rate, output_dir)
 
