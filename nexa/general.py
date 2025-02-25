@@ -762,6 +762,7 @@ def list_models():
 
 def remove_model(model_path):
     model_path = NEXA_RUN_MODEL_MAP.get(model_path, model_path)
+    model_name = model_path.split(":")[0] if ":" in model_path else model_path
 
     if not NEXA_MODEL_LIST_PATH.exists():
         print("No models found.")
@@ -841,7 +842,13 @@ def remove_model(model_path):
                 for part in model_path_parts:
                     match = re.search(r'q\d_|fp16', part)
                     if match:
-                        tag_name = part[match.start():]
+                        # Get the substring from match start
+                        tag_substring = part[match.start():]
+                        # Remove .gguf if present at the end
+                        if tag_substring.endswith('.gguf'):
+                            tag_name = tag_substring[:-5]  # remove '.gguf'
+                        else:
+                            tag_name = tag_substring
                         break
                     else:
                         raise ValueError(
@@ -856,6 +863,16 @@ def remove_model(model_path):
                             else:
                                 shutil.rmtree(item)
                             print(f"Deleted flux-related file: {item}")
+                    
+                    # Remove the t5xxl entry from model_list
+                    t5xxl_key = f"{model_name}:t5xxl-{tag_name}"
+                    print(f"Removing t5xxl entry: {t5xxl_key}")
+                    removed_t5xxl = model_list.pop(t5xxl_key, None)
+                    if removed_t5xxl:
+                        print(f"Removed from model_list: {t5xxl_key}")
+                    else:
+                        raise ValueError(
+                            "Failed to remove the t5xxl entry from model_list.")
                     
                     # Check remaining files: ae- and clip_l- files
                     remaining_files = list(parent_dir.glob("*"))
@@ -872,6 +889,16 @@ def remove_model(model_path):
                                     else:
                                         shutil.rmtree(item)
                                     print(f"Deleted additional file: {item}")
+                                    
+                                    # Remove corresponding entries from model_list
+                                    prefix = item.name.split('-')[0].lower()
+                                    key_to_remove = f"{model_name}:{prefix}-fp16"
+                                    removed_item = model_list.pop(key_to_remove, None)
+                                    if removed_item:
+                                        print(f"Removed from model_list: {key_to_remove}")
+                                    else:
+                                        raise ValueError(
+                                            f"Failed to remove the {prefix} entry from model_list.")
 
         # Update the model list file
         with open(NEXA_MODEL_LIST_PATH, "w") as f:
