@@ -17,13 +17,13 @@ class GGUFLM:
         self.temperature = 0
 
     def gguf_completion(
-        self, context, max_tokens = None, continuation = None, stop=None
+        self, context, max_tokens = None, continuation = None, stop=None, benchmark_disable_logprobs=False
     ):
         try:
             prompt = context
             params = {
                 "prompt": prompt,
-                "logprobs": self.logprobs,
+                "logprobs": self.logprobs if not benchmark_disable_logprobs else None,
                 "temperature": self.temperature,
                 "max_tokens": max_tokens,
                 "eval_context_length": len(context)
@@ -81,7 +81,7 @@ class GGUFLM:
             request_args = request[1]
             until = request_args.get("until", ["</s>"])
             max_tokens = request_args.get("max_gen_toks", None)
-            response = self.gguf_completion(context=inp, stop=until, max_tokens=max_tokens)
+            response = self.gguf_completion(context=inp, stop=until, max_tokens=max_tokens, benchmark_disable_logprobs=True)
             if response and "choices" in response and response["choices"]:
                 choice = response["choices"][0]
                 if "text" in choice:
