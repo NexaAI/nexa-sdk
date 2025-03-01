@@ -1,6 +1,7 @@
 # Files
 *.safetensors
 *.gguf
+*.onnx
 *.bin
 *.mp3
 *.wav

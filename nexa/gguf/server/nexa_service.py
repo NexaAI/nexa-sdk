@@ -1737,7 +1737,6 @@ async def process_audio(
         task_params = {
             "beam_size": beam_size,
             "temperature": temperature,
-            "vad_filter": True,
             "task": task
         }
 
