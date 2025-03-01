@@ -36,6 +36,7 @@ from nexa.constants import (
     NEXA_RUN_MODEL_MAP_FUNCTION_CALLING,
     NEXA_MODEL_LIST_PATH,
     NEXA_OFFICIAL_BUCKET,
+    NEXA_LIST_FILTERED_MODEL_PREFIXES,
 )
 
 from nexa.gguf.lib_utils import is_gpu_available
@@ -156,7 +157,7 @@ class ChatCompletionRequest(BaseModel):
 class VLMChatCompletionRequest(BaseModel):
     messages: List[Message] = [
         {"role": "user", "content": [
-            {"type": "text", "text": "What’s in this image?"},
+            {"type": "text", "text": "What's in this image?"},
             {"type": "image_url", "image_url": {
                 "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"
             }}
@@ -1223,9 +1224,19 @@ async def list_models():
         if NEXA_MODEL_LIST_PATH.exists():
             with open(NEXA_MODEL_LIST_PATH, "r") as f:
                 model_list = json.load(f)
+                
+            # Apply the same filtering logic as in nexa/general.py
+            filtered_list = {
+                model_name: model_info
+                for model_name, model_info in model_list.items()
+                if ':' not in model_name or
+                not any(model_name.split(':')[1].startswith(prefix) for prefix in NEXA_LIST_FILTERED_MODEL_PREFIXES)
+            }
+            
+            return JSONResponse(content=filtered_list)
         else:
             model_list = {}
-        return JSONResponse(content=model_list)
+            return JSONResponse(content=model_list)
     except Exception as e:
         logging.error(f"Error listing models: {e}")
         raise HTTPException(status_code=500, detail=str(e))
