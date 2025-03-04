@@ -20,23 +20,28 @@ GGML_LOG_LEVEL_TO_LOGGING_LEVEL = {
     4: logging.DEBUG,
     5: logging.DEBUG,
 }
-# Mapping ggml log levels to Python logging levels
-GGML_LOG_LEVEL_TO_LOGGING_LEVEL = {
-    2: logging.ERROR,
-    3: logging.WARNING,
-    4: logging.INFO,
-    5: logging.DEBUG,
-}
 
-# Initialize the logger for llama-cpp-python
-logger = logging.getLogger("nexa-transformers")
+logger = logging.getLogger("nexa-sdk")
 
-# Utility function to set verbosity
+_last_log_level = GGML_LOG_LEVEL_TO_LOGGING_LEVEL[0]
+
+# typedef void (*ggml_log_callback)(enum ggml_log_level level, const char * text, void * user_data);
+@llama_cpp.llama_log_callback
+def llama_log_callback(
+    level: int,
+    text: bytes,
+    user_data: ctypes.c_void_p,
+):
+    # TODO: Correctly implement continue previous log
+    global _last_log_level
+    log_level = GGML_LOG_LEVEL_TO_LOGGING_LEVEL[level] if level != 5 else _last_log_level
+    if logger.level <= GGML_LOG_LEVEL_TO_LOGGING_LEVEL[level]:
+        print(text.decode("utf-8"), end="", flush=True, file=sys.stderr)
+    _last_log_level = log_level
+
+
+llama_cpp.llama_log_set(llama_log_callback, ctypes.c_void_p(0))
+
+
 def set_verbose(verbose: bool):
     logger.setLevel(logging.DEBUG if verbose else logging.ERROR)
-
-# Example usage
-if __name__ == "__main__":
-    # Set the verbosity based on a condition or user input
-    set_verbose(False)
-    # Rest of your application code here
