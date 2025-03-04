@@ -40,5 +40,6 @@ def test_tts_generation_outetts():
 
 if __name__ == "__main__":
     test_tts_generation_barkcpp()
+    print('Bark TTS test completed')
     test_tts_generation_outetts()
     print("TTS generation test completed successfully!")
