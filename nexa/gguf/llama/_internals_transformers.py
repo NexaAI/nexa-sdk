@@ -717,9 +717,10 @@ class LlamaSamplingContext:
         self.prev.append(id)
 
 
+import typing
 from typing import List, Callable, Optional, Union
 import ctypes
-import llama_cpp
+import nexa.gguf.llama.llama_cpp as llama_cpp
 
 
 class CustomSampler:
