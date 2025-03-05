@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 
 try:
     from nexa.gguf.llama.llama import Llama
-    from nexa.gguf.llama.llama_cpp import llama_token_is_eog
+    from nexa.gguf.llama.llama_cpp import llama_vocab_is_eog, llama_model_get_vocab
     _GGUF_AVAILABLE = True
 except ImportError:
     _GGUF_AVAILABLE = False
@@ -50,7 +50,7 @@ class GGUFModel:
         ):
             tokens.append(token)
             token_value = token[0] if isinstance(token, tuple) else token
-            if (llama_token_is_eog(self.model._model.model, token_value) or 
+            if (llama_vocab_is_eog(llama_model_get_vocab(self.model._model.model), token_value) or 
                 len(tokens) >= config.max_length):
                 break
         return tokens

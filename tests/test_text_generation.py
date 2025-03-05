@@ -66,7 +66,7 @@ def test_create_embedding():
         embedding=True,
     )
     embeddings = model.create_embedding("Hello, world!")
-    print("Embeddings:\n", embeddings)
+    # print("Embeddings:\n", embeddings)
 
 
 # Main execution

@@ -104,5 +104,5 @@ def test_function_calling():
 
 
 if __name__ == "__main__":
-    # test_structural_output()
+    test_structural_output()
     test_function_calling()

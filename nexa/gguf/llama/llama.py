@@ -94,6 +94,7 @@ class Llama:
         offload_kqv: bool = True,
         flash_attn: bool = False,
         # Sampling Params
+        no_perf: bool = False,
         last_n_tokens_size: int = 64,
         # LoRA Params
         lora_base: Optional[str] = None,
@@ -173,6 +174,7 @@ class Llama:
             embedding: Embedding mode only.
             offload_kqv: Offload K, Q, V to GPU.
             flash_attn: Use flash attention.
+            no_perf: Measure performance timings.
             last_n_tokens_size: Maximum number of tokens to keep in the last_n_tokens deque.
             lora_base: Optional path to base model, useful if using a quantized base model and you want to apply LoRA to an f16 model.
             lora_path: Path to a LoRA file to apply to the model.
@@ -351,6 +353,7 @@ class Llama:
         if type_v is not None:
             self.context_params.type_v = type_v
         # Sampling Params
+        self.context_params.no_perf = no_perf
         self.last_n_tokens_size = last_n_tokens_size
 
         self.cache: Optional[BaseLlamaCache] = None
@@ -406,10 +409,10 @@ class Llama:
             )
         )
 
-        self._lora_adapter: Optional[llama_cpp.llama_lora_adapter_p] = None
+        self._lora_adapter: Optional[llama_cpp.llama_adapter_lora_p] = None
 
         if self.lora_path:
-            self._lora_adapter = llama_cpp.llama_lora_adapter_init(
+            self._lora_adapter = llama_cpp.llama_adapter_lora_init(
                 self._model.model,
                 self.lora_path.encode("utf-8"),
             )
@@ -421,12 +424,12 @@ class Llama:
             def free_lora_adapter():
                 if self._lora_adapter is None:
                     return
-                llama_cpp.llama_lora_adapter_free(self._lora_adapter)
+                llama_cpp.llama_adapter_lora_free(self._lora_adapter)
                 self._lora_adapter = None
 
             self._stack.callback(free_lora_adapter)
 
-            if llama_cpp.llama_lora_adapter_set(
+            if llama_cpp.llama_set_adapter_lora(
                 self._ctx.ctx, self._lora_adapter, self.lora_scale
             ):
                 raise RuntimeError(
@@ -1141,8 +1144,7 @@ class Llama:
         stopping_criteria: Optional[StoppingCriteriaList] = None,
         logits_processor: Optional[LogitsProcessorList] = None,
         grammar: Optional[LlamaGrammar] = None,
-        logit_bias: Optional[Dict[str, float]] = None,
-        eval_context_length: Optional[int] = None,
+        logit_bias: Optional[Dict[int, float]] = None,
     ) -> Union[
         Iterator[CreateCompletionResponse], Iterator[CreateCompletionStreamResponse]
     ]:
@@ -1153,9 +1155,9 @@ class Llama:
         bos_token_id: int = self.token_bos()
         cls_token_id: int = self._model.token_cls()
         sep_token_id: int = self._model.token_sep()
-        prefix_token_id: int = self._model.token_prefix()
-        middle_token_id: int = self._model.token_middle()
-        suffix_token_id: int = self._model.token_suffix()
+        prefix_token_id: int = 0 # self._model.token_prefix() # TODO: Fix
+        middle_token_id: int = 0 # self._model.token_middle() # TODO: Fix
+        suffix_token_id: int = 0 # self._model.token_suffix() # TODO: Fix
         add_space_prefix: bool = (
             self.metadata.get("tokenizer.ggml.add_space_prefix", "true") == "true"
         )
@@ -1333,7 +1335,7 @@ class Llama:
             logits_processor=logits_processor,
             grammar=grammar,
         ):
-            if llama_cpp.llama_token_is_eog(self._model.model, token):
+            if llama_cpp.llama_token_is_eog(self._model.vocab, token):
                 text = self.detokenize(completion_tokens, prev_tokens=prompt_tokens)
                 finish_reason = "stop"
                 break
@@ -1674,22 +1676,12 @@ class Llama:
                 for i, token in enumerate(all_tokens)
             ]
             all_logprobs = Llama.logits_to_logprobs(self._scores)[token_offset:]
-            
-            # Skip processing tokens that are part of the evaluation context
-            start_idx = 0
-            if eval_context_length is not None:
-                while start_idx < len(all_tokens) and len(
-                    self.detokenize(all_tokens[:start_idx]).decode("utf-8", errors="ignore")
-                ) < eval_context_length:
-                    start_idx += 1
-
+            # TODO: may be able to change this loop to use np.take_along_dim
             for idx, (token, token_str, logprobs_token) in enumerate(
-                zip(all_tokens[start_idx:], all_token_strs[start_idx:], all_logprobs[start_idx:]), 
-                start=start_idx
+                zip(all_tokens, all_token_strs, all_logprobs)
             ):
                 if token == bos_token_id:
                     continue
-
                 text_offsets.append(
                     text_offset
                     + len(
@@ -1698,16 +1690,13 @@ class Llama:
                         )
                     )
                 )
-
                 tokens.append(token_str)
-
                 sorted_logprobs = list(
                     sorted(
                         zip(logprobs_token, range(len(logprobs_token))), reverse=True
                     )
                 )
                 token_logprobs.append(logprobs_token[int(token)])
-
                 top_logprob: Optional[Dict[str, float]] = {
                     self.detokenize([i], prev_tokens=all_tokens[:idx]).decode(
                         "utf-8", errors="ignore"
@@ -1716,11 +1705,10 @@ class Llama:
                 }
                 top_logprob.update({token_str: logprobs_token[int(token)]})
                 top_logprobs.append(top_logprob)
-
             # Weird idosincracy of the OpenAI API where
             # token_logprobs and top_logprobs are null for
             # the first token.
-            if echo and len(all_tokens) > 0 and eval_context_length is None:
+            if echo and len(all_tokens) > 0:
                 token_logprobs[0] = None
                 top_logprobs[0] = None
             logprobs_or_none = {
@@ -1776,8 +1764,7 @@ class Llama:
         stopping_criteria: Optional[StoppingCriteriaList] = None,
         logits_processor: Optional[LogitsProcessorList] = None,
         grammar: Optional[LlamaGrammar] = None,
-        logit_bias: Optional[Dict[str, float]] = None,
-        eval_context_length: Optional[int] = None,
+        logit_bias: Optional[Dict[int, float]] = None,
     ) -> Union[CreateCompletionResponse, Iterator[CreateCompletionStreamResponse]]:
         """Generate text from a prompt.
 
@@ -1841,7 +1828,6 @@ class Llama:
             logits_processor=logits_processor,
             grammar=grammar,
             logit_bias=logit_bias,
-            eval_context_length=eval_context_length,
         )
         if stream:
             chunks: Iterator[CreateCompletionStreamResponse] = completion_or_chunks
@@ -1875,7 +1861,7 @@ class Llama:
         stopping_criteria: Optional[StoppingCriteriaList] = None,
         logits_processor: Optional[LogitsProcessorList] = None,
         grammar: Optional[LlamaGrammar] = None,
-        logit_bias: Optional[Dict[str, float]] = None,
+        logit_bias: Optional[Dict[int, float]] = None,
     ) -> Union[CreateCompletionResponse, Iterator[CreateCompletionStreamResponse]]:
         """Generate text from a prompt.
 
@@ -1968,7 +1954,7 @@ class Llama:
         model: Optional[str] = None,
         logits_processor: Optional[LogitsProcessorList] = None,
         grammar: Optional[LlamaGrammar] = None,
-        logit_bias: Optional[Dict[str, float]] = None,
+        logit_bias: Optional[Dict[int, float]] = None,
         logprobs: Optional[bool] = None,
         top_logprobs: Optional[int] = None,
     ) -> Union[
@@ -2090,7 +2076,7 @@ class Llama:
             use_mlock=self.model_params.use_mlock,
             kv_overrides=self.kv_overrides,
             # Context Params
-            seed=self.context_params.seed,
+            seed=self._seed,
             n_ctx=self.context_params.n_ctx,
             n_batch=self.n_batch,
             n_ubatch=self.context_params.n_ubatch,
@@ -2110,6 +2096,7 @@ class Llama:
             offload_kqv=self.context_params.offload_kqv,
             flash_attn=self.context_params.flash_attn,
             # Sampling Params
+            no_perf=self.context_params.no_perf,
             last_n_tokens_size=self.last_n_tokens_size,
             # LoRA Params
             lora_base=self.lora_base,
