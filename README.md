@@ -38,13 +38,13 @@ Welcome to submit your requests through [issues](https://github.com/NexaAI/nexa-
 ## Install Option 1: Executable Installer
 
 <p>
-    <a href="https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-sdk-0.1.0.0-macos-installer.pkg">
+    <a href="https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-sdk-0.1.1.0-macos-installer.pkg">
         <img src="./assets/mac.png" style="height: 1em; width: auto" /> <strong> macOS Installer </strong>
     </a>
 </p>
 
 <p>
-    <a href="https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-sdk-0.1.0.0-windows-setup.exe">
+    <a href="https://public-storage.nexa4ai.com/nexa-sdk-executable-installer/nexa-sdk-0.1.1.0-windows-setup.exe">
         <img src="./assets/windows.png" style="height: 1em; width: auto" /> <strong>Windows Installer</strong>
     </a>
 </p>
@@ -152,14 +152,17 @@ CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-fopenmp" pip install nexaai
 For **Windows**:
 
 Make sure you have the following installed:
-* Latest [Intel GPU driver](https://www.intel.com/content/www/us/en/products/docs/discrete-gpus/arc/software/drivers.html)
-* Microsoft Visual Studio
-* Intel [oneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit.html#gs.kds46v)
-* [Ninja](https://ninja-build.org/) (SYCL on Windows only support Ninja build.)
-* Then install Nexa SDK:
+
+- Latest [Intel GPU driver](https://www.intel.com/content/www/us/en/products/docs/discrete-gpus/arc/software/drivers.html)
+- Microsoft Visual Studio
+- Intel [oneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit.html#gs.kds46v)
+- [Ninja](https://ninja-build.org/) (SYCL on Windows only support Ninja build.)
+- Then install Nexa SDK:
+
 ```bash
 .\scripts\windows-build-sycl.bat
 ```
+
 </details>
 
 <details> <summary><strong style="font-size: 1.2em;">AMD GPU (ROCm)</strong></summary>
