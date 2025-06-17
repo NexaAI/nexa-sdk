@@ -1,9 +1,7 @@
-# nexasdk-go
+# README
 
-## setup
+```bash
 
-```
-cd runner
 # build dependence
 make build
 
@@ -11,8 +9,5 @@ make build
 make run
 # run cli with other model file
 make run MODEL=./path/to/model
+
 ```
-
-## code design
-
-## Roadmap
