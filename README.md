@@ -27,9 +27,11 @@ make run MODEL=./path/to/model
     - `nexa run`, keep model loading alive for 5 min.
 - [ ] Release nexa sdk as an App to download on windows & macos.
     - Add `launcher` for auto-update
-- [ ] Integrate more backend
-    - mlx-c
-    - onnx-c
-    - coreml-c
 
 ## Code Design
+
+
+## GO optimization
+- c-go binding optmization
+- go server optimization
+- cross-compile optimization and environment setup
