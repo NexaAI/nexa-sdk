@@ -6,8 +6,9 @@ import (
 	"os"
 	"path"
 
-	"github.com/NexaAI/nexa-sdk/internal/types"
 	"github.com/bytedance/sonic"
+
+	"github.com/NexaAI/nexa-sdk/internal/types"
 )
 
 func (s *Store) List() ([]types.Model, error) {

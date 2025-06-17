@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -13,6 +14,16 @@ func pull() *cobra.Command {
 	pullCmd := &cobra.Command{}
 	pullCmd.Use = "pull"
 
+	pullCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
+
+	pullCmd.Run = func(cmd *cobra.Command, args []string) {
+		s := store.NewStore()
+		e := s.Pull(args[0])
+		if e != nil {
+			fmt.Println(e)
+		}
+	}
+
 	return pullCmd
 }
 
@@ -22,9 +33,12 @@ func remove() *cobra.Command {
 
 	removeCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
 
-	removeCmd.RunE = func(cmd *cobra.Command, args []string) error {
+	removeCmd.Run = func(cmd *cobra.Command, args []string) {
 		s := store.NewStore()
-		return s.Remove(args[0])
+		e := s.Remove(args[0])
+		if e != nil {
+			fmt.Println(e)
+		}
 	}
 
 	return removeCmd
@@ -34,9 +48,12 @@ func clean() *cobra.Command {
 	cleanCmd := &cobra.Command{}
 	cleanCmd.Use = "clean"
 
-	cleanCmd.RunE = func(cmd *cobra.Command, args []string) error {
+	cleanCmd.Run = func(cmd *cobra.Command, args []string) {
 		s := store.NewStore()
-		return s.Clean()
+		e := s.Clean()
+		if e != nil {
+			fmt.Println(e)
+		}
 	}
 
 	return cleanCmd
@@ -46,11 +63,12 @@ func list() *cobra.Command {
 	listCmd := &cobra.Command{}
 	listCmd.Use = "list"
 
-	listCmd.RunE = func(cmd *cobra.Command, args []string) error {
+	listCmd.Run = func(cmd *cobra.Command, args []string) {
 		s := store.NewStore()
 		models, e := s.List()
 		if e != nil {
-			return e
+			fmt.Println(e)
+			return
 		}
 
 		tw := table.NewWriter()
@@ -58,11 +76,9 @@ func list() *cobra.Command {
 		tw.SetStyle(table.StyleLight)
 		tw.AppendHeader(table.Row{"NAME", "SIZE"})
 		for _, model := range models {
-			tw.AppendRow(table.Row{model.Name, -1})
+			tw.AppendRow(table.Row{model.Name, model.Size})
 		}
 		tw.Render()
-
-		return nil
 	}
 
 	return listCmd
