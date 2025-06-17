@@ -1,3 +1,0 @@
-[submodule "runner/nexa-sdk/llama.cpp"]
-	path = runner/nexa-sdk/llama.cpp
-	url = git@github.com:ggml-org/llama.cpp.git

@@ -1,8 +1,8 @@
 package nexa_sdk
 
 /*
-#cgo CFLAGS: -I../build/include
-#cgo LDFLAGS: -lbinding -lllama -L../build/lib
+#cgo CFLAGS: -I../../build/include
+#cgo LDFLAGS: -lbinding  -L../../build/lib
 
 #include <stdlib.h>
 #include "binding.h"
@@ -34,7 +34,9 @@ func (p LLMPipeline) LoadModel(path string) error {
 }
 
 func (p LLMPipeline) Generate(user string) (string, int, error) {
-	count := C.llm_pipeline_generate(p.pointer, C.CString(user), p.buffer)
+	user_c := C.CString(user)
+	count := C.llm_pipeline_generate(p.pointer, user_c, p.buffer)
+	C.free(unsafe.Pointer(user_c))
 	if count <= 0 {
 		return "", 0, errors.New("Generate error")
 	}
