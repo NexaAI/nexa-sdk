@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/NexaAI/nexa-sdk/internal/store"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
 )
 
@@ -16,11 +17,11 @@ func infer() *cobra.Command {
 	inferCmd := &cobra.Command{}
 	inferCmd.Use = "infer"
 
-	model := inferCmd.Flags().StringP("model", "m", "", "path to gguf model file")
-	stream := inferCmd.Flags().BoolP("stream", "s", false, "enable stream mode")
+	inferCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
 	inferCmd.Run = func(cmd *cobra.Command, args []string) {
+		s := store.NewStore()
 		p := nexa_sdk.NewLLMPipeline()
-		p.LoadModel(*model)
+		p.LoadModel(s.ModelfilePath(args[0]))
 
 		r := bufio.NewReader(os.Stdin)
 		for {
@@ -34,34 +35,25 @@ func infer() *cobra.Command {
 
 			start := time.Now()
 			var token_count int
-			if *stream {
-				e := p.GenerateStream(txt)
+
+			e = p.GenerateStream(txt)
+			if e != nil {
+				fmt.Printf("GenerateStream Error: %s\n", e)
+				break
+			}
+
+			token_count = 0
+			fmt.Print("\033[33m")
+			for {
+				token, e := p.GenerateNextToken()
 				if e != nil {
-					fmt.Printf("GenerateStream Error: %s\n", e)
+					fmt.Printf("GenerateNextToken Error: %s\n", e)
+				}
+				if token == "" {
 					break
 				}
-
-				token_count = 0
-				fmt.Print("\033[33m")
-				for {
-					token, e := p.GenerateNextToken()
-					if e != nil {
-						fmt.Printf("GenerateNextToken Error: %s\n", e)
-					}
-					if token == "" {
-						break
-					}
-					fmt.Print(token)
-					token_count += 1
-				}
-
-			} else {
-				fmt.Print("\033[33m")
-				_, token_count, e = p.Generate(txt)
-				if e != nil {
-					fmt.Printf("Generat Error: %s\n", e)
-					break
-				}
+				fmt.Print(token)
+				token_count += 1
 			}
 
 			duration := time.Since(start).Seconds()
