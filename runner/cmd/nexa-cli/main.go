@@ -1,26 +1,21 @@
 package main
 
-import (
-	"github.com/spf13/cobra"
-)
+import "github.com/spf13/cobra"
 
-func server() *cobra.Command {
-	serverCmd := &cobra.Command{
-		Use:   "server",
-		Short: "Run the Nexa AI Service",
-		Run: func(cmd *cobra.Command, args []string) {
-
-		},
-	}
-	return serverCmd
-}
-
+// TODO: fill description
 func root() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use: "nexa",
 	}
-	rootCmd.AddCommand(server())
+
+	rootCmd.AddCommand(pull())
+	rootCmd.AddCommand(remove())
+	rootCmd.AddCommand(clean())
+	rootCmd.AddCommand(list())
+
 	rootCmd.AddCommand(infer())
+
+	rootCmd.AddCommand(serve())
 	return rootCmd
 }
 
