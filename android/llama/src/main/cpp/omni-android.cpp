@@ -97,13 +97,13 @@ Java_com_nexa_NexaOmniVlmInference_sampler_1init(JNIEnv *env, jobject /* this */
     system_prompt = params.prompt.substr(0, image_pos);
     user_prompt = params.prompt.substr(image_pos + std::string("<|image_pad|>").length());
 
-    params.sparams.top_k = 1;
-    params.sparams.top_p = 1.0f;
+    params.sampling.top_k = 1;
+    params.sampling.top_p = 1.0f;
     eval_string(ctx_omnivlm->ctx_llama, system_prompt.c_str(), params.n_batch, n_past, true);
     omnivlm_eval_image_embed(ctx_omnivlm->ctx_llama, image_embed, params.n_batch, n_past);
     eval_string(ctx_omnivlm->ctx_llama, user_prompt.c_str(), params.n_batch, n_past, false);
 
-    struct common_sampler * smpl = common_sampler_init(ctx_omnivlm->model, params.sparams);
+    struct common_sampler * smpl = common_sampler_init(ctx_omnivlm->model, params.sampling);
 
     return reinterpret_cast<jlong>(smpl);
 }

@@ -150,9 +150,9 @@ Java_com_nexa_NexaVlmInference_update_1params(JNIEnv *env, jobject /* this */, j
     float top_p = (float) jtopP;
     float temp = (float) jtemp;
     const auto params = reinterpret_cast<common_params*>(jparams);
-    params->sparams.top_k = top_k;
-    params->sparams.top_p = top_p;
-    params->sparams.temp = temp;
+    params->sampling.top_k = top_k;
+    params->sampling.top_p = top_p;
+    params->sampling.temp = temp;
 
 
 }
@@ -313,7 +313,7 @@ Java_com_nexa_NexaVlmInference_llava_1sampler_1init(JNIEnv *env, jobject /* this
     try {
         auto* params = reinterpret_cast<common_params*>(jparams);
         auto* ctx_llava = reinterpret_cast<llava_context *>(llava_ctx_pointer);
-        struct common_sampler * smpl = common_sampler_init(ctx_llava->model,params->sparams);
+        struct common_sampler * smpl = common_sampler_init(ctx_llava->model,params->sampling);
 
         if (smpl == nullptr) {
             throwJavaException(env, "java/lang/RuntimeException", "Failed to initialize llava ctx");

@@ -146,7 +146,7 @@ Java_com_nexa_NexaAudioInference_init_1sampler(JNIEnv *env, jobject /* this */, 
     omni_eval_audio_embed(ctx_omni->ctx_llama, audio_embed, all_params->gpt.n_batch, n_past);
     eval_string(ctx_omni->ctx_llama, user_prompt.c_str(), all_params->gpt.n_batch, n_past, false);
 
-    struct common_sampler * ctx_sampling = common_sampler_init(ctx_omni->model, all_params->gpt.sparams);
+    struct common_sampler * ctx_sampling = common_sampler_init(ctx_omni->model, all_params->gpt.sampling);
 
     return reinterpret_cast<jlong>(ctx_sampling);
 }
