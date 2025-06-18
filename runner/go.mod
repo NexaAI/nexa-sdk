@@ -1,6 +1,6 @@
 module github.com/NexaAI/nexa-sdk
 
-go 1.24.3
+go 1.21
 
 require (
 	github.com/bytedance/sonic v1.13.3

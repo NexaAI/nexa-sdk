@@ -11,22 +11,21 @@ do with `make build`, or follow manually steps.
 #### Build llama.cpp
 
 1. download llama.cpp
-   1. `mkdir -p build/{include,lib}`
+   1. `mkdir -p build/include build/lib`
    1. `git clone https://github.com/ggml-org/llama.cpp.git build/llama.cpp`
-1. static compile llama.cpp
-   1. `cmake -B build/llama.cpp-build build/llama.cpp -DBUILD_SHARED_LIBS=OFF -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_TOOLS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_SERVER=OFF`
+1. compile llama.cpp
+   1. `cmake -B build/llama.cpp-build build/llama.cpp -DBUILD_SHARED_LIBS=ON -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_TOOLS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_SERVER=OFF`
    1. `cmake --build build/llama.cpp-build -j --config Release`
-1. copy static lib and header files
+1. copy shared lib and header files
    1. `cp ./build/llama.cpp/include/llama.h ./build/include`
    1. `cp ./build/llama.cpp/ggml/include/*.h ./build/include`
-   1. `cp ./build/llama.cpp-build/src/*.a ./build/lib`
-   1. `cp ./build/llama.cpp-build/ggml/src/*.a ./build/lib`
+   1. `cp ./build/llama.cpp-build/bin/*.so ./build/lib`
 
 #### Build nexa-sdk-binding
 
 1. compile shared lib
    1. `mkdir -p build/binding-build`
-   1. `g++ -O2 -fPIC -shared -I./build/include -L./lib -lgomp -o ./build/binding-build/libbinding.so ./binding/binding.cpp -Wl,--whole-archive ./build/lib/*.a -Wl,--no-whole-archive`
+   1. `g++ -O2 -fPIC -shared -I./build/include -L./build/lib -lllama -o ./build/binding-build/libbinding.so ./binding/binding.cpp`
 2. copy shared lib and header file
    1. `cp ./build/binding-build/*.so ./build/lib/`
    1. `cp ./binding/binding.h ./build/include`
@@ -115,7 +114,7 @@ do with `make build`, or follow manually steps.
   - [atomic](https://pkg.go.dev/sync/atomic) lightweight mutex replacement
   - [sonic](https://github.com/bytedance/sonic) fast json library, but amd64/arm64 only
   - use [c.Request.Body](https://pkg.go.dev/net/http#Request) directly when body is large
-- ## cross-compile optimization and environment setup
+- cross-compile optimization and environment setup
   - set `GOPATH` env, go will download dependencies here
   - cross-compile pure go
     - `CGO_ENABLED=0` disable cgo, then c compiler is no need
