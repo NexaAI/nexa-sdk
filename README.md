@@ -4,7 +4,11 @@
 
 do with `make build`, or follow manually steps.
 
-for darwin users, `make -f Makefile.darwin build`
+for darwin users, upgrade go to 1.24 then run:
+```
+brew install go@1.24
+make -f Makefile.darwin build
+```
 
 ### nexa-sdk-binding
 
@@ -45,6 +49,31 @@ for darwin users, `make -f Makefile.darwin build`
       1. run models `LD_LIBRARY_PATH=./build/lib ./build/nexa infer Qwen/Qwen3-0.6B-GGUF`
 3. `nexa-launcher`
    1. TODO
+
+## Run project
+on Linux:
+```shell
+# helper manual
+LD_LIBRARY_PATH=./build/lib ./build/nexa -h
+
+# download model
+LD_LIBRARY_PATH=./build/lib ./build/nexa pull Qwen/Qwen3-0.6B-GGUF
+
+# inference
+LD_LIBRARY_PATH=./build/lib ./build/nexa infer Qwen/Qwen3-0.6B-GGUF
+```
+
+On Mac:
+```shell
+# helper manual
+DYLD_LIBRARY_PATH=./build/lib ./build/nexa -h
+
+# download model
+DYLD_LIBRARY_PATH=./build/lib ./build/nexa pull Qwen/Qwen3-0.6B-GGUF
+
+# inference
+DYLD_LIBRARY_PATH=./build/lib ./build/nexa infer Qwen/Qwen3-0.6B-GGUF
+```
 
 ## Roadmap
 
