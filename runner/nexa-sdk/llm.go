@@ -2,7 +2,8 @@ package nexa_sdk
 
 /*
 #cgo CFLAGS: -I../../build/include
-#cgo LDFLAGS: -lbinding  -L../../build/lib -Wl,--unresolved-symbols=ignore-in-shared-libs
+#cgo LDFLAGS: -L../../build/lib -lbinding
+#cgo LDFLAGS: -Wl,--unresolved-symbols=ignore-in-shared-libs
 
 #include <stdlib.h>
 #include "binding.h"

@@ -80,6 +80,7 @@ func (s *Store) Pull(name string) error {
 	if e != nil {
 		return e
 	}
+	defer modelfile.Close()
 
 	reqDownload, e := http.NewRequest(
 		http.MethodGet,
@@ -112,5 +113,4 @@ func (s *Store) Pull(name string) error {
 	}
 
 	return nil
-
 }
