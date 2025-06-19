@@ -15,7 +15,7 @@ build: build/llama.cpp
 	cp ./build/llama.cpp-build/bin/*.dylib ./build/lib
 
 	mkdir -p build/binding-build
-	g++ -O2 -fPIC -shared -I./build/include -L./build/lib -o ./build/binding-build/libbinding.dylib ./binding/binding.cpp -lllama -lggml -lggml-base
+	g++ -std=c++11 -O2 -fPIC -shared -I./build/include -L./build/lib -o ./build/binding-build/libbinding.dylib ./binding/binding.cpp -lllama -lggml -lggml-base
 	cp ./build/binding-build/*.dylib ./build/lib/
 	cp ./binding/binding.h ./build/include
 
