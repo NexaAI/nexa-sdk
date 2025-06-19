@@ -4,6 +4,8 @@
 
 do with `make build`, or follow manually steps.
 
+for darwin users, `make -f Makefile.darwin build`
+
 ### nexa-sdk-binding
 
 `nexa-sdk-binding` is hosted in this repository. It will be moved out in the future, currently requires manually compiling.
