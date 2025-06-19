@@ -8,7 +8,7 @@ run:
 build: build/llama.cpp
 	mkdir -p build/include build/lib
 
-	cmake -B build/llama.cpp-build build/llama.cpp -DBUILD_SHARED_LIBS=ON -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_TOOLS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_SERVER=OFF
+	cmake -B build/llama.cpp-build build/llama.cpp -DBUILD_SHARED_LIBS=ON -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_TOOLS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_SERVER=OFF -DLLAMA_CURL=OFF
 	cmake --build build/llama.cpp-build -j --config Release
 	cp ./build/llama.cpp/include/llama.h ./build/include
 	cp ./build/llama.cpp/ggml/include/*.h ./build/include

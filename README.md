@@ -14,7 +14,7 @@ do with `make build`, or follow manually steps.
    1. `mkdir -p build/include build/lib`
    1. `git clone https://github.com/ggml-org/llama.cpp.git build/llama.cpp`
 1. compile llama.cpp
-   1. `cmake -B build/llama.cpp-build build/llama.cpp -DBUILD_SHARED_LIBS=ON -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_TOOLS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_SERVER=OFF`
+   1. `cmake -B build/llama.cpp-build build/llama.cpp -DBUILD_SHARED_LIBS=ON -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_TOOLS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_SERVER=OFF -DLLAMA_CURL=OFF`
    1. `cmake --build build/llama.cpp-build -j --config Release`
 1. copy shared lib and header files
    1. `cp ./build/llama.cpp/include/llama.h ./build/include`
@@ -35,9 +35,13 @@ do with `make build`, or follow manually steps.
 1. download binding library (skip currently) (choose one)
    - `make download`
    - download dist from [nexa-sdk-binding release page](), then put file in `build` like `build/include/binding.h` and `build/lib/libbinding.so`
-2. build `nexa-cli`
-   1. `cd runner && go build -o ../build/nexa ./cmd/nexa-cli`
-3. build `nexa-launcher`
+2. `nexa-cli`
+   1. build `cd runner && go build -o ../build/nexa ./cmd/nexa-cli`
+   1. run with `LD_LIBRARY_PATH=./build/lib ./build/nexa`, will show usage
+      1. pull model `LD_LIBRARY_PATH=./build/lib ./build/nexa pull Qwen/Qwen3-Embedding-0.6B-GGUF`
+      1. list models `LD_LIBRARY_PATH=./build/lib ./build/nexa list`
+      1. run models `LD_LIBRARY_PATH=./build/lib ./build/nexa infer Qwen/Qwen3-Embedding-0.6B-GGUF`
+3. `nexa-launcher`
    1. TODO
 
 ## Roadmap
