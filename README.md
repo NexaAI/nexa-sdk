@@ -38,9 +38,9 @@ do with `make build`, or follow manually steps.
 2. `nexa-cli`
    1. build `cd runner && go build -o ../build/nexa ./cmd/nexa-cli`
    1. run with `LD_LIBRARY_PATH=./build/lib ./build/nexa`, will show usage
-      1. pull model `LD_LIBRARY_PATH=./build/lib ./build/nexa pull Qwen/Qwen3-Embedding-0.6B-GGUF`
+      1. pull model `LD_LIBRARY_PATH=./build/lib ./build/nexa pull Qwen/Qwen3-0.6B-GGUF`
       1. list models `LD_LIBRARY_PATH=./build/lib ./build/nexa list`
-      1. run models `LD_LIBRARY_PATH=./build/lib ./build/nexa infer Qwen/Qwen3-Embedding-0.6B-GGUF`
+      1. run models `LD_LIBRARY_PATH=./build/lib ./build/nexa infer Qwen/Qwen3-0.6B-GGUF`
 3. `nexa-launcher`
    1. TODO
 
