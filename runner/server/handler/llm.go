@@ -8,6 +8,7 @@ import (
 
 	"github.com/NexaAI/nexa-sdk/internal/store"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
+	"github.com/NexaAI/nexa-sdk/server/service"
 )
 
 func Completions(c *gin.Context) {
@@ -17,14 +18,20 @@ func Completions(c *gin.Context) {
 	}
 
 	s := store.NewStore()
-	p := nexa_sdk.NewLLM(s.ModelfilePath(string(param.Model)), nil, 4096, nil)
-	defer p.Destroy()
+	p := service.KeepAliveGet(string(param.Model), func() nexa_sdk.LLM {
+		return nexa_sdk.NewLLM(s.ModelfilePath(string(param.Model)), nil, 4096, nil)
+	})
 
-	res, err := p.Generate(param.Prompt.OfString.String())
+	data, err := p.Generate(param.Prompt.OfString.String())
+	choice := openai.CompletionChoice{}
+	choice.Text = data
+	res := openai.Completion{
+		Choices: []openai.CompletionChoice{choice},
+	}
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err})
 	} else {
-		c.JSON(http.StatusOK, map[string]any{"test": res})
+		c.JSON(http.StatusOK, res)
 	}
 }
 

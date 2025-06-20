@@ -7,7 +7,8 @@ import (
 )
 
 type Config struct {
-	Host string
+	Host      string
+	KeepAlive int64
 }
 
 var config *Config
@@ -20,6 +21,7 @@ func Get() *Config {
 
 func init() {
 	viper.SetDefault("host", "127.0.0.1:18181")
+	viper.SetDefault("keepalive", 300)
 
 }
 

@@ -6,7 +6,7 @@ run:
 	LD_LIBRARY_PATH=./build/lib ./build/nexa infer $(MODEL)
 
 build:
-	cd runner && go build -o ../build/nexa ./cmd/nexa-cli
+	cd runner && go build -tags="sonic avx" -o ../build/nexa ./cmd/nexa-cli
 
 
 download:
