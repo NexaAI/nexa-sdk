@@ -12,23 +12,27 @@ import (
 	"unsafe"
 )
 
+// LLMRole represents different roles in a chat conversation
 type LLMRole string
 
 const (
-	LLMRoleSystem    = "system"
-	LLMRoleUser      = "user"
-	LLMRoleAssistant = "assistant"
+	LLMRoleSystem    = "system"    // System role for instructions
+	LLMRoleUser      = "user"      // User role for queries
+	LLMRoleAssistant = "assistant" // Assistant role for responses
 )
 
+// ChatMessage represents a single message in a chat conversation
 type ChatMessage struct {
-	Role    LLMRole
-	Content string
+	Role    LLMRole // The role of the message sender
+	Content string  // The actual message content
 }
 
+// LLM wraps the C library LLM structure and provides Go interface
 type LLM struct {
-	pointer *C.struct_ml_LLM
+	pointer *C.struct_ml_LLM // Pointer to the underlying C LLM structure
 }
 
+// NewLLM creates a new LLM instance with the specified model and configuration
 func NewLLM(model string, tokenizer *string, ctxLen int32, devices *string) LLM {
 	cModel := C.CString(model)
 	defer C.free(unsafe.Pointer(cModel))
@@ -38,15 +42,18 @@ func NewLLM(model string, tokenizer *string, ctxLen int32, devices *string) LLM 
 	}
 }
 
+// Destroy frees the memory allocated for the LLM instance
 func (p *LLM) Destroy() {
 	C.ml_llm_destroy(p.pointer)
 	p.pointer = nil
 }
 
+// Reset clears the LLM's internal state and context
 func (p *LLM) Reset() {
 	C.ml_llm_reset(p.pointer)
 }
 
+// Encode converts a text message into token IDs using the model's tokenizer
 func (p *LLM) Encode(msg string) ([]int32, error) {
 	cMsg := C.CString(msg)
 	defer C.free(unsafe.Pointer(cMsg))
@@ -58,12 +65,14 @@ func (p *LLM) Encode(msg string) ([]int32, error) {
 	}
 	defer C.free(unsafe.Pointer(res))
 
+	// Copy C array to Go slice
 	ids := make([]int32, resLen)
 	copy(ids, (*[1 << 30]int32)(unsafe.Pointer(res))[:resLen])
 
 	return ids, nil
 }
 
+// Decode converts token IDs back into text using the model's tokenizer
 func (p *LLM) Decode(ids []int32) (string, error) {
 	var res *C.char
 	resLen := C.ml_llm_decode(
@@ -79,6 +88,7 @@ func (p *LLM) Decode(ids []int32) (string, error) {
 	return C.GoString(res), nil
 }
 
+// SaveKVCache saves the model's key-value cache to disk for later reuse
 func (p *LLM) SaveKVCache(path string) error {
 	cPath := C.CString(path)
 	defer C.free(unsafe.Pointer(cPath))
@@ -90,6 +100,7 @@ func (p *LLM) SaveKVCache(path string) error {
 	return nil
 }
 
+// LoadKVCache loads a previously saved key-value cache from disk
 func (p *LLM) LoadKVCache(path string) error {
 	cPath := C.CString(path)
 	defer C.free(unsafe.Pointer(cPath))
@@ -101,6 +112,7 @@ func (p *LLM) LoadKVCache(path string) error {
 	return nil
 }
 
+// Generate produces text completion for the given prompt
 func (p *LLM) Generate(prompt string) (string, error) {
 	cPrompt := C.CString(prompt)
 	defer C.free(unsafe.Pointer(cPrompt))
@@ -115,6 +127,7 @@ func (p *LLM) Generate(prompt string) (string, error) {
 	return C.GoString(res), nil
 }
 
+// GetChatTemplate retrieves the chat template for formatting conversations
 func (p *LLM) GetChatTemplate(name *string) (string, error) {
 	var cName *C.char
 	if name != nil {
@@ -131,10 +144,11 @@ func (p *LLM) GetChatTemplate(name *string) (string, error) {
 	return C.GoString(res), nil
 }
 
-// deprecated
+// ApplyChatTemplate formats chat messages using the model's chat template
 func (p *LLM) ApplyChatTemplate(msgs []ChatMessage) (string, error) {
 	cMsgs := make([]C.ml_ChatMessage, len(msgs))
 
+	// Convert Go chat messages to C structures
 	for i, msg := range msgs {
 		cMsg := &cMsgs[i]
 		cMsg.role = C.CString(string(msg.Role))
@@ -153,20 +167,28 @@ func (p *LLM) ApplyChatTemplate(msgs []ChatMessage) (string, error) {
 	return C.GoString(res), nil
 }
 
-// TODO: global channel mapping
+// Global channel for streaming - TODO: implement proper channel mapping for concurrent streams
 var channel chan<- string
 
+// go_generate_stream_on_token is the callback function called by C code during streaming
+// It sends each generated token to the Go channel
+//
 //export go_generate_stream_on_token
 func go_generate_stream_on_token(token *C.char, _ *C.void) {
 	channel <- C.GoString(token)
 }
 
+// GenerateStream generates text in streaming mode, returning tokens as they are produced
+// Returns two channels: one for receiving tokens and one for errors
+// Note: Currently does not support parallel streaming due to global channel usage
 func (p *LLM) GenerateStream(prompt string) (<-chan string, <-chan error) {
 	cPrompt := C.CString(prompt)
 
+	// Configure generation parameters
 	config := C.ml_GenerationConfig{}
 	config.max_tokens = 32
 
+	// Create channels for streaming output
 	stream := make(chan string, 10)
 	err := make(chan error, 1)
 	if channel != nil {
@@ -174,14 +196,14 @@ func (p *LLM) GenerateStream(prompt string) (<-chan string, <-chan error) {
 	}
 	channel = stream
 
-	// Start a goroutine to handle the streaming
+	// Start streaming in a separate goroutine
 	go func() {
 		defer func() { channel = nil }()
 		defer close(stream)
 		defer close(err)
 		defer C.free(unsafe.Pointer(cPrompt))
 
-		// Call the C function to start streaming
+		// Call C function to start streaming generation
 		resLen := C.ml_llm_generate_stream(p.pointer, cPrompt, &config,
 			(C.ml_llm_token_callback)(C.go_generate_stream_on_token), nil, nil)
 		if resLen < 0 {
