@@ -31,6 +31,7 @@ export LD_LIBRARY_PATH=./build/lib
 # inference
 ./build/nexa infer Qwen/Qwen3-0.6B-GGUF
 ```
+Note that the model will be downloaded to `~/.cache/nexa/models/` with base64 encoded name.
 
 On Mac:
 The only change is to export `DYLD_LIBRARY_PATH` instead of `LD_LIBRARY_PATH`
@@ -138,7 +139,8 @@ export LD_LIBRARY_PATH=./build/lib
 ## dependencies
 - [cobra](https://pkg.go.dev/github.com/spf13/cobra) is a commander providing a simple interface to create powerful modern CLI interfaces
 - [viper](https://github.com/spf13/viper) is a library for reading configuration files
-
+- [sonic](https://github.com/bytedance/sonic) A blazingly fast JSON serializing & deserializing library, accelerated by JIT (just-in-time compiling) and SIMD (single-instruction-multiple-data).
+- [gin](https://github.com/gin-gonic/gin) is a HTTP web framework
 
 ## GO optimization
 

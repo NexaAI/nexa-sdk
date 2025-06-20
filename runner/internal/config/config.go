@@ -15,6 +15,7 @@ var config *Config
 var once sync.Once
 
 // Get returns the singleton configuration instance.
+// Uses sync.Once to ensure configuration is loaded only once.
 func Get() *Config {
 	once.Do(get)
 	return config
