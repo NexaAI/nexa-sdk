@@ -10,6 +10,8 @@ import (
 	"github.com/NexaAI/nexa-sdk/internal/store"
 )
 
+// pull creates a command to download and cache a model by name.
+// Usage: nexa pull <model-name>
 func pull() *cobra.Command {
 	pullCmd := &cobra.Command{}
 	pullCmd.Use = "pull"
@@ -27,6 +29,8 @@ func pull() *cobra.Command {
 	return pullCmd
 }
 
+// remove creates a command to delete a cached model by name.
+// Usage: nexa remove <model-name>
 func remove() *cobra.Command {
 	removeCmd := &cobra.Command{}
 	removeCmd.Use = "remove"
@@ -44,6 +48,8 @@ func remove() *cobra.Command {
 	return removeCmd
 }
 
+// clean creates a command to remove all cached models and free up storage.
+// Usage: nexa clean
 func clean() *cobra.Command {
 	cleanCmd := &cobra.Command{}
 	cleanCmd.Use = "clean"
@@ -59,6 +65,9 @@ func clean() *cobra.Command {
 	return cleanCmd
 }
 
+// list creates a command to display all cached models in a formatted table.
+// Shows model names and their storage sizes.
+// Usage: nexa list
 func list() *cobra.Command {
 	listCmd := &cobra.Command{}
 	listCmd.Use = "list"
@@ -71,6 +80,7 @@ func list() *cobra.Command {
 			return
 		}
 
+		// Create formatted table output
 		tw := table.NewWriter()
 		tw.SetOutputMirror(os.Stdout)
 		tw.SetStyle(table.StyleLight)

@@ -8,15 +8,20 @@ import (
 	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
 )
 
+// KeepAliveGet retrieves a model from the keepalive cache or creates it if not found
+// This avoids the overhead of repeatedly loading/unloading models from disk
 func KeepAliveGet(name string, createFunc func() nexa_sdk.LLM) nexa_sdk.LLM {
 	return keepAlive.get(name, createFunc)
 }
 
+// keepable interface defines objects that can be managed by the keepalive service
+// Objects must support cleanup and reset operations
 type keepable interface {
 	Destroy()
 	Reset()
 }
 
+// modelKeepInfo holds metadata for a cached model instance
 type modelKeepInfo struct {
 	model    nexa_sdk.LLM
 	param    map[string]any // TODO: Reload when param change
@@ -26,10 +31,10 @@ type modelKeepInfo struct {
 // current only support keepalive one model
 // TODO: unload model due to free ram/vram
 type keepAliveService struct {
-	models map[string]*modelKeepInfo
-	stopCh chan<- struct{}
+	models map[string]*modelKeepInfo // Map of model name to model info
+	stopCh chan<- struct{}           // Channel to stop the cleanup goroutine
 
-	sync.Mutex
+	sync.Mutex // Protects concurrent access to models map
 }
 
 var keepAlive keepAliveService
@@ -40,6 +45,8 @@ func NewKeepAlive() keepAliveService {
 	}
 }
 
+// start begins the background cleanup process that removes unused models
+// Runs a ticker every 5 seconds to check for models that exceed the keepalive timeout
 func (k *keepAliveService) start() {
 	stopCh := make(chan struct{})
 	k.stopCh = stopCh
@@ -48,7 +55,7 @@ func (k *keepAliveService) start() {
 		t := time.NewTicker(5 * time.Second)
 		for {
 			select {
-
+			// Stop signal received - cleanup all models and exit
 			case <-stopCh:
 				k.Lock()
 				for name, model := range k.models {
@@ -58,6 +65,7 @@ func (k *keepAliveService) start() {
 				k.Unlock()
 				return
 
+			// Periodic cleanup - remove models that haven't been used recently
 			case <-t.C:
 				k.Lock()
 				for name, model := range k.models {
@@ -68,16 +76,18 @@ func (k *keepAliveService) start() {
 				}
 				k.Unlock()
 			}
-
 		}
 	}()
 }
 
-// TODO: use generic type
+// get retrieves a cached model or creates a new one if not found
+// Ensures only one model is kept in memory at a time by clearing others
+// TODO: use generic type for better type safety
 func (k *keepAliveService) get(name string, create func() nexa_sdk.LLM) nexa_sdk.LLM {
 	k.Lock()
 	defer k.Unlock()
 
+	// Check if model already exists in cache
 	model, ok := k.models[name]
 	if ok {
 		model.model.Reset()
@@ -85,12 +95,14 @@ func (k *keepAliveService) get(name string, create func() nexa_sdk.LLM) nexa_sdk
 		return model.model
 	}
 
-	// clear old make sure only one is in memory
+	// Clear existing models to ensure only one is in memory
+	// This prevents memory overflow but limits to single model usage
 	for name, model := range k.models {
 		model.model.Destroy()
 		delete(k.models, name)
 	}
 
+	// Create new model and add to cache
 	model = &modelKeepInfo{
 		model:    create(),
 		lastTime: time.Now(),
@@ -100,6 +112,7 @@ func (k *keepAliveService) get(name string, create func() nexa_sdk.LLM) nexa_sdk
 	return model.model
 }
 
+// stop signals the cleanup goroutine to terminate
 func (k *keepAliveService) stop() {
 	k.stopCh <- struct{}{}
 }
