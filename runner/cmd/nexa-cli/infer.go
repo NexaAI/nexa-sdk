@@ -22,6 +22,7 @@ func infer() *cobra.Command {
 	inferCmd.Run = func(cmd *cobra.Command, args []string) {
 		s := store.NewStore()
 		nexa_sdk.Init()
+
 		p := nexa_sdk.NewLLM(s.ModelfilePath(args[0]), nil, 4096, nil)
 
 		var history []nexa_sdk.ChatMessage
@@ -75,6 +76,7 @@ func infer() *cobra.Command {
 		}
 
 		p.Destroy()
+		nexa_sdk.DeInit()
 	}
 	return inferCmd
 }

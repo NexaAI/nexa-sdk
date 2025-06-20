@@ -1,25 +1,31 @@
 package config
 
 import (
-	"os"
 	"sync"
+
+	"github.com/spf13/viper"
 )
 
 type Config struct {
-	Host    string
-	HFToken string
+	Host string
 }
 
 var config *Config
 var once sync.Once
 
 func Get() *Config {
-	once.Do(config.get)
+	once.Do(get)
 	return config
 }
 
-func (c *Config) get() {
-	c = &Config{}
+func init() {
+	viper.SetDefault("host", "127.0.0.1:18181")
 
-	c.HFToken, _ = os.LookupEnv("HF_TOKEN")
+}
+
+func get() {
+	config = &Config{}
+
+	viper.AutomaticEnv()
+	viper.Unmarshal(config)
 }

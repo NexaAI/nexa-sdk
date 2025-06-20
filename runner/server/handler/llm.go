@@ -1,13 +1,19 @@
 package handler
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/openai/openai-go"
 )
 
-func Generate(c *gin.Context) {
+func Completions(c *gin.Context) {
+	param := openai.CompletionNewParams{}
+	c.ShouldBindJSON(param)
+	c.JSON(http.StatusOK, nil)
 
-	openai.Completion
-	openai.ChatCompletion
+}
 
+func ChatCompletions(c *gin.Context) {
+	c.JSON(http.StatusOK, nil)
 }
