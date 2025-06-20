@@ -17,30 +17,58 @@ do with `make build`, or follow manually steps.
 
 ## Run project
 
-on Linux/WSL:
+### Test inference
 
+On Linux/WSL:
 ```shell
+# Export the library path once
+export LD_LIBRARY_PATH=./build/lib
+
 # helper manual
-LD_LIBRARY_PATH=./build/lib ./build/nexa -h
-
+./build/nexa -h
 # download model
-LD_LIBRARY_PATH=./build/lib ./build/nexa pull Qwen/Qwen3-0.6B-GGUF
-
+./build/nexa pull Qwen/Qwen3-0.6B-GGUF
 # inference
-LD_LIBRARY_PATH=./build/lib ./build/nexa infer Qwen/Qwen3-0.6B-GGUF
+./build/nexa infer Qwen/Qwen3-0.6B-GGUF
 ```
 
 On Mac:
+The only change is to export `DYLD_LIBRARY_PATH` instead of `LD_LIBRARY_PATH`
+```shell
+export DYLD_LIBRARY_PATH=./build/lib
+```
+
+### Test server
+On Linux/WSL:
 
 ```shell
-# helper manual
-DYLD_LIBRARY_PATH=./build/lib ./build/nexa -h
+# Export the library path once
+export LD_LIBRARY_PATH=./build/lib
 
-# download model
-DYLD_LIBRARY_PATH=./build/lib ./build/nexa pull Qwen/Qwen3-0.6B-GGUF
+# server
+./build/nexa serve
 
-# inference
-DYLD_LIBRARY_PATH=./build/lib ./build/nexa infer Qwen/Qwen3-0.6B-GGUF
+# Test server
+curl -X POST http://127.0.0.1:8080/v1/completions \
+-H "Content-Type: application/json" \
+-d '{
+  "model": "Qwen/Qwen3-0.6B-GGUF",
+  "prompt": "Write a hello world program in Python",
+  "max_tokens": 150
+}'
+```
+
+We can also set environment variables
+```shell
+# Setup environment variables (need prefix `NEXA_`)
+# Set custom host and port
+export NEXA_HOST="0.0.0.0:8080"
+# Set custom keep-alive timeout (in seconds)
+export NEXA_KEEPALIVE=600
+
+# Run server
+export LD_LIBRARY_PATH=./build/lib
+./build/nexa serve
 ```
 
 ## Roadmap
@@ -106,6 +134,11 @@ DYLD_LIBRARY_PATH=./build/lib ./build/nexa infer Qwen/Qwen3-0.6B-GGUF
 ├── Makefile                    # build, test, package commands
 └── go.mod                      # go dependencies file
 ```
+
+## dependencies
+- [cobra](https://pkg.go.dev/github.com/spf13/cobra) is a commander providing a simple interface to create powerful modern CLI interfaces
+- [viper](https://github.com/spf13/viper) is a library for reading configuration files
+
 
 ## GO optimization
 
