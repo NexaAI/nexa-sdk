@@ -76,9 +76,9 @@ export LD_LIBRARY_PATH=./build/lib
 
 - [x] `nexa infer`, `nexa pull`, `nexa list`, `nexa clean` works E2E for LLM model
   - [x] `nexa infer` will eject resource after inference finishes
-  - [ ] multiple round conversation with kv cache (default behavior)
-  - []download model from huggingface
-  - list all local downloadable models, saved in user cache dir, print in table format
+  - [x] multiple round conversation with kv cache (default behavior)
+  - [x] download model from huggingface
+  - [x] list all local downloadable models, saved in user cache dir, print in table format
 - [ ] Remove submodule link, automatically pull dynamic C-lib based on device OS (windows, linux, macos) and architecture (x86, arm64), and GO binding works E2E for LLM model
   - Prepare `llama.cpp` shared c-lib in `nexa-sdk-internal` repo with Github Action
   - Setup shellscript to pull shared lib to local path
