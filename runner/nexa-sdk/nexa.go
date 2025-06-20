@@ -6,7 +6,7 @@ package nexa_sdk
 #cgo linux LDFLAGS: -Wl,--unresolved-symbols=ignore-in-shared-libs
 
 #include <stdlib.h>
-#include "../../build/include/ml.h"
+#include "ml.h"
 
 extern void go_log_wrap(char *msg);
 */

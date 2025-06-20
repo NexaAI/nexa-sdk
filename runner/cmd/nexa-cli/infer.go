@@ -26,6 +26,7 @@ func infer() *cobra.Command {
 		p := nexa_sdk.NewLLM(s.ModelfilePath(args[0]), nil, 4096, nil)
 
 		var history []nexa_sdk.ChatMessage
+		var lastLen int
 
 		r := bufio.NewReader(os.Stdin)
 		for {
@@ -49,7 +50,7 @@ func infer() *cobra.Command {
 			var full strings.Builder
 
 			fmt.Print("\033[33m")
-			dataCh, errCh := p.GenerateStream(formatted)
+			dataCh, errCh := p.GenerateStream(formatted[lastLen:])
 			for r := range dataCh {
 				full.WriteString(r)
 				fmt.Print(r)
@@ -73,6 +74,13 @@ func infer() *cobra.Command {
 			fmt.Print("\033[0m")
 
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: full.String()})
+
+			formatted, e = p.ApplyChatTemplate(history)
+			if e != nil {
+				fmt.Printf("ApplyChatTemplat Error: %s\n", e)
+				break
+			}
+			lastLen = len(formatted)
 		}
 
 		p.Destroy()

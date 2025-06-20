@@ -12,7 +12,7 @@ func Serve() {
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.Default()
 
-	RegisterAPIV1(engine)
+	RegisterAPIv1(engine)
 
 	// NEXA_HOST=127.0.0.1:18181 nexa serve
 	err := engine.Run(config.Get().Host)

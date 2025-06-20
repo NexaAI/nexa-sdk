@@ -6,7 +6,7 @@ import (
 	"github.com/NexaAI/nexa-sdk/server/handler"
 )
 
-func RegisterAPIV1(r *gin.Engine) {
+func RegisterAPIv1(r *gin.Engine) {
 	g := r.Group("/v1")
 
 	g.POST("/completions", handler.Completions)
