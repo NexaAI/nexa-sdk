@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -20,8 +21,12 @@ func infer() *cobra.Command {
 	inferCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
 	inferCmd.Run = func(cmd *cobra.Command, args []string) {
 		s := store.NewStore()
-		p := nexa_sdk.NewLLMPipeline()
-		p.LoadModel(s.ModelfilePath(args[0]))
+		nexa_sdk.Init()
+
+		p := nexa_sdk.NewLLM(s.ModelfilePath(args[0]), nil, 4096, nil)
+
+		var history []nexa_sdk.ChatMessage
+		var lastLen int
 
 		r := bufio.NewReader(os.Stdin)
 		for {
@@ -32,42 +37,54 @@ func infer() *cobra.Command {
 				fmt.Printf("ReadString Error: %s\n", e)
 				break
 			}
+			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: txt})
 
-			start := time.Now()
-			var token_count int
-
-			e = p.GenerateStream(txt)
+			formatted, e := p.ApplyChatTemplate(history)
 			if e != nil {
-				fmt.Printf("GenerateStream Error: %s\n", e)
+				fmt.Printf("ApplyChatTemplat Error: %s\n", e)
 				break
 			}
 
-			token_count = 0
+			start := time.Now()
+			var count int
+			var full strings.Builder
+
 			fmt.Print("\033[33m")
-			for {
-				token, e := p.GenerateNextToken()
-				if e != nil {
-					fmt.Printf("GenerateNextToken Error: %s\n", e)
-				}
-				if token == "" {
-					break
-				}
-				fmt.Print(token)
-				token_count += 1
+			dataCh, errCh := p.GenerateStream(formatted[lastLen:])
+			for r := range dataCh {
+				full.WriteString(r)
+				fmt.Print(r)
+				count++
+			}
+			fmt.Print("\033[0m\n")
+
+			e, ok := <-errCh
+			if ok {
+				fmt.Printf("GenerateStream Error: %s\n", e)
+				return
 			}
 
 			duration := time.Since(start).Seconds()
 			fmt.Print("\033[34m")
 			fmt.Printf("\nGenerate %d token in %f s, speed is %f token/s\n",
-				token_count,
+				count,
 				duration,
-				float64(token_count)/duration)
+				float64(count)/duration)
 
 			fmt.Print("\033[0m")
+
+			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: full.String()})
+
+			formatted, e = p.ApplyChatTemplate(history)
+			if e != nil {
+				fmt.Printf("ApplyChatTemplat Error: %s\n", e)
+				break
+			}
+			lastLen = len(formatted)
 		}
 
-		p.Close()
 		p.Destroy()
+		nexa_sdk.DeInit()
 	}
 	return inferCmd
 }

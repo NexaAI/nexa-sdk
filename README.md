@@ -4,54 +4,21 @@
 
 do with `make build`, or follow manually steps.
 
-for darwin users, upgrade go to 1.24 then run:
-```
-brew install go@1.24
-make -f Makefile.darwin build
-```
+> for darwin users, upgrade go to 1.24 `brew install go@1.24`
+> for windows users, use [WSL](https://learn.microsoft.com/en-us/windows/wsl/), `ubuntu 22.04` is official support
 
-### nexa-sdk-binding
-
-`nexa-sdk-binding` is hosted in this repository. It will be moved out in the future, currently requires manually compiling.
-
-#### Build llama.cpp
-
-1. download llama.cpp
-   1. `mkdir -p build/include build/lib`
-   1. `git clone https://github.com/ggml-org/llama.cpp.git build/llama.cpp`
-1. compile llama.cpp
-   1. `cmake -B build/llama.cpp-build build/llama.cpp -DBUILD_SHARED_LIBS=ON -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_TOOLS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_SERVER=OFF -DLLAMA_CURL=OFF`
-   1. `cmake --build build/llama.cpp-build -j --config Release`
-1. copy shared lib and header files
-   1. `cp ./build/llama.cpp/include/llama.h ./build/include`
-   1. `cp ./build/llama.cpp/ggml/include/*.h ./build/include`
-   1. `cp ./build/llama.cpp-build/bin/*.so ./build/lib`
-
-#### Build nexa-sdk-binding
-
-1. compile shared lib
-   1. `mkdir -p build/binding-build`
-   1. `g++ -O2 -fPIC -shared -I./build/include -L./build/lib -lllama -o ./build/binding-build/libbinding.so ./binding/binding.cpp`
-2. copy shared lib and header file
-   1. `cp ./build/binding-build/*.so ./build/lib/`
-   1. `cp ./binding/binding.h ./build/include`
-
-### runner
-
-1. download binding library (skip currently) (choose one)
+1. download binding library (choose one)
    - `make download`
-   - download dist from [nexa-sdk-binding release page](), then put file in `build` like `build/include/binding.h` and `build/lib/libbinding.so`
-2. `nexa-cli`
-   1. build `cd runner && go build -o ../build/nexa ./cmd/nexa-cli`
-   1. run with `LD_LIBRARY_PATH=./build/lib ./build/nexa`, will show usage
-      1. pull model `LD_LIBRARY_PATH=./build/lib ./build/nexa pull Qwen/Qwen3-0.6B-GGUF`
-      1. list models `LD_LIBRARY_PATH=./build/lib ./build/nexa list`
-      1. run models `LD_LIBRARY_PATH=./build/lib ./build/nexa infer Qwen/Qwen3-0.6B-GGUF`
-3. `nexa-launcher`
+   - download dist from [nexasdk-bridge release page](), then put file in `build` like `build/include/ml.h` and `build/lib/libnexa_bridge.so/dylib`
+2. build app
+   1. `cd runner`
+   1. build nexa-cli `go build -o ../build/nexa ./cmd/nexa-cli`
    1. TODO
 
 ## Run project
-on Linux:
+
+on Linux/WSL:
+
 ```shell
 # helper manual
 LD_LIBRARY_PATH=./build/lib ./build/nexa -h
@@ -64,6 +31,7 @@ LD_LIBRARY_PATH=./build/lib ./build/nexa infer Qwen/Qwen3-0.6B-GGUF
 ```
 
 On Mac:
+
 ```shell
 # helper manual
 DYLD_LIBRARY_PATH=./build/lib ./build/nexa -h
