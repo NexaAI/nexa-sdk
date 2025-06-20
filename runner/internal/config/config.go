@@ -26,6 +26,7 @@ func init() {
 func get() {
 	config = &Config{}
 
+	viper.SetEnvPrefix("nexa")
 	viper.AutomaticEnv()
 	viper.Unmarshal(config)
 }
