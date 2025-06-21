@@ -20,6 +20,7 @@ func run() *cobra.Command {
 	runCmd.Use = "run"
 
 	runCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
+	stream := runCmd.Flags().BoolP("stream", "s", false, "enable stream mode")
 	runCmd.Run = func(cmd *cobra.Command, args []string) {
 		client := openai.NewClient(
 			option.WithBaseURL(fmt.Sprintf("http://%s/v1", config.Get().Host)),
@@ -49,57 +50,68 @@ func run() *cobra.Command {
 				fmt.Printf("ReadString Error: %s\n", e)
 				break
 			}
+
 			history = append(history, openai.UserMessage(txt))
 
-			//start := time.Now()
-			//chatCompletion, err := client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
-			//	Messages: history,
-			//	Model:    args[0],
-			//})
-			//if err != nil {
-			//	fmt.Printf("Request Error: %s\n", e)
-			//	break
-			//}
-			//content := chatCompletion.Choices[0].Message.Content
-			//fmt.Print("\033[33m")
-			//println(content)
-			//fmt.Print("\033[0m\n")
-			//duration := time.Since(start).Seconds()
-			//fmt.Print("\033[34m")
-			//fmt.Printf("\nGenerate in %f s\n", duration)
-			//fmt.Print("\033[0m")
+			if *stream {
+				start := time.Now()
+				var count int
 
-			start := time.Now()
-			var count int
-			acc := openai.ChatCompletionAccumulator{}
-			stream := client.Chat.Completions.NewStreaming(context.TODO(), openai.ChatCompletionNewParams{
-				Messages: history,
-				Model:    args[0],
-			})
-			fmt.Print("\033[33m")
-			for stream.Next() {
-				chunk := stream.Current()
-				acc.AddChunk(chunk)
-				if len(chunk.Choices) > 0 {
-					fmt.Print(chunk.Choices[0].Delta.Content)
-					count += 1
+				acc := openai.ChatCompletionAccumulator{}
+				stream := client.Chat.Completions.NewStreaming(context.TODO(), openai.ChatCompletionNewParams{
+					Messages: history,
+					Model:    args[0],
+				})
+
+				fmt.Print("\033[33m")
+				for stream.Next() {
+					chunk := stream.Current()
+					acc.AddChunk(chunk)
+					if len(chunk.Choices) > 0 {
+						fmt.Print(chunk.Choices[0].Delta.Content)
+						count += 1
+					}
 				}
-			}
-			if stream.Err() != nil {
-				fmt.Printf("\nGenerate error: %s\n", stream.Err())
-				return
-			}
-			fmt.Print("\033[0m\n")
-			duration := time.Since(start).Seconds()
-			fmt.Print("\033[34m")
+				if stream.Err() != nil {
+					fmt.Printf("\nGenerate error: %s\n", stream.Err())
+					return
+				}
+				fmt.Print("\033[0m\n")
+				duration := time.Since(start).Seconds()
 
-			fmt.Printf("\nGenerate %d token in %f s, speed is %f token/s\n",
-				count,
-				duration,
-				float64(count)/duration)
-			fmt.Print("\033[0m")
+				fmt.Print("\033[34m")
+				fmt.Printf("\nGenerate %d token in %f s, speed is %f token/s\n",
+					count,
+					duration,
+					float64(count)/duration)
+				fmt.Print("\033[0m")
 
-			history = append(history, openai.AssistantMessage(acc.Choices[0].Message.Content))
+				history = append(history, openai.AssistantMessage(acc.Choices[0].Message.Content))
+
+			} else {
+
+				start := time.Now()
+				chatCompletion, err := client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
+					Messages: history,
+					Model:    args[0],
+				})
+				if err != nil {
+					fmt.Printf("Request Error: %s\n", e)
+					break
+				}
+				content := chatCompletion.Choices[0].Message.Content
+				fmt.Print("\033[33m")
+				println(content)
+				fmt.Print("\033[0m\n")
+
+				duration := time.Since(start).Seconds()
+				fmt.Print("\033[34m")
+				fmt.Printf("\nGenerate in %f s\n", duration)
+				fmt.Print("\033[0m")
+
+				history = append(history, openai.AssistantMessage(content))
+			}
+
 		}
 	}
 	return runCmd

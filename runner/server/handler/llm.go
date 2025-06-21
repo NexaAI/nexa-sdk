@@ -38,8 +38,17 @@ func Completions(c *gin.Context) {
 	}
 }
 
+type ChatCompletionRequest struct {
+	Stream   bool   `json:"stream"`
+	Model    string `json:"model"`
+	Messages []struct {
+		Role    string `json:"role"`
+		Content string `json:"Content"`
+	} `json:"messages"`
+}
+
 func ChatCompletions(c *gin.Context) {
-	param := openai.ChatCompletionNewParams{}
+	param := ChatCompletionRequest{}
 	if err := c.ShouldBindJSON(&param); err != nil {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 	}
@@ -59,14 +68,10 @@ func ChatCompletions(c *gin.Context) {
 
 	messages := make([]nexa_sdk.ChatMessage, 0, len(param.Messages))
 	for _, msg := range param.Messages {
-		content, ok := msg.GetContent().AsAny().(*string)
-		if !ok {
-			fmt.Printf("skip support content: %v\n", content)
-			continue
-		}
+		content := msg.Content
 		messages = append(messages, nexa_sdk.ChatMessage{
-			Role:    nexa_sdk.LLMRole(*msg.GetRole()),
-			Content: *content,
+			Role:    nexa_sdk.LLMRole(msg.Role),
+			Content: content,
 		})
 	}
 
@@ -76,7 +81,7 @@ func ChatCompletions(c *gin.Context) {
 		return
 	}
 
-	if true {
+	if param.Stream {
 		dataCh, errCh := p.GenerateStream(formatted)
 
 		c.Stream(func(w io.Writer) bool {
