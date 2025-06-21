@@ -93,7 +93,7 @@ func (p *LLM) SaveKVCache(path string) error {
 	cPath := C.CString(path)
 	defer C.free(unsafe.Pointer(cPath))
 
-	res := C.ml_llm_save_kv_cache(p.pointer, cPath, 0)
+	res := C.ml_llm_save_kv_cache(p.pointer, cPath)
 	if res < 0 {
 		return ErrCommon
 	}
@@ -105,7 +105,7 @@ func (p *LLM) LoadKVCache(path string) error {
 	cPath := C.CString(path)
 	defer C.free(unsafe.Pointer(cPath))
 
-	res := C.ml_llm_load_kv_cache(p.pointer, cPath, 0)
+	res := C.ml_llm_load_kv_cache(p.pointer, cPath)
 	if res < 0 {
 		return ErrCommon
 	}
@@ -186,7 +186,7 @@ func (p *LLM) GenerateStream(prompt string) (<-chan string, <-chan error) {
 
 	// Configure generation parameters
 	config := C.ml_GenerationConfig{}
-	config.max_tokens = 32
+	config.max_tokens = 512
 
 	// Create channels for streaming output
 	stream := make(chan string, 10)
