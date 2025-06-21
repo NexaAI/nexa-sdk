@@ -5,11 +5,15 @@
 do with `make build`, or follow manually steps.
 
 > for darwin users, upgrade go to 1.24 `brew install go@1.24`
+>
 > for windows users, use [WSL](https://learn.microsoft.com/en-us/windows/wsl/), `ubuntu 22.04` is official support
 
 1. download binding library (choose one)
    - `make download`
-   - download dist from [nexasdk-bridge release page](), then put file in `build` like `build/include/ml.h` and `build/lib/libnexa_bridge.so/dylib`
+   - manual download
+     1. download dist from [nexasdk-bridge release page](https://github.com/NexaAI/nexasdk-bridge/releases)
+     2. put file in `build`
+     3. check `build/include/ml.h` and `build/lib/libnexa_bridge.[so|dylib]`
 2. build app
    1. `cd runner`
    1. build nexa-cli `go build -o ../build/nexa ./cmd/nexa-cli`
@@ -20,6 +24,7 @@ do with `make build`, or follow manually steps.
 ### Test inference
 
 On Linux/WSL:
+
 ```shell
 # Export the library path once
 export LD_LIBRARY_PATH=./build/lib
@@ -31,15 +36,18 @@ export LD_LIBRARY_PATH=./build/lib
 # inference
 ./build/nexa infer Qwen/Qwen3-0.6B-GGUF
 ```
+
 Note that the model will be downloaded to `~/.cache/nexa/models/` with base64 encoded name.
 
 On Mac:
 The only change is to export `DYLD_LIBRARY_PATH` instead of `LD_LIBRARY_PATH`
+
 ```shell
 export DYLD_LIBRARY_PATH=./build/lib
 ```
 
 ### Test server
+
 On Linux/WSL:
 
 ```shell
@@ -60,6 +68,7 @@ curl -X POST http://127.0.0.1:8080/v1/completions \
 ```
 
 We can also set environment variables
+
 ```shell
 # Setup environment variables (need prefix `NEXA_`)
 # Set custom host and port
@@ -137,6 +146,7 @@ export LD_LIBRARY_PATH=./build/lib
 ```
 
 ## dependencies
+
 - [cobra](https://pkg.go.dev/github.com/spf13/cobra) is a commander providing a simple interface to create powerful modern CLI interfaces
 - [viper](https://github.com/spf13/viper) is a library for reading configuration files
 - [sonic](https://github.com/bytedance/sonic) A blazingly fast JSON serializing & deserializing library, accelerated by JIT (just-in-time compiling) and SIMD (single-instruction-multiple-data).

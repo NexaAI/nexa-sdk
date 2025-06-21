@@ -90,7 +90,9 @@ func (k *keepAliveService) get(name string, create func() nexa_sdk.LLM) nexa_sdk
 	// Check if model already exists in cache
 	model, ok := k.models[name]
 	if ok {
+		//model.model.SaveKVCache("./cache")
 		model.model.Reset()
+		//model.model.LoadKVCache("./cache")
 		model.lastTime = time.Now()
 		return model.model
 	}

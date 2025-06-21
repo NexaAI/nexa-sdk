@@ -56,7 +56,7 @@ func TestSaveKVCache(t *testing.T) {
 
 // SKIP_TestLoadKVCache tests loading a previously saved key-value cache
 // Currently skipped (TODO) - likely due to implementation issues
-func SKIP_TestLoadKVCache(t *testing.T) {
+func TestLoadKVCache(t *testing.T) {
 	e := llm.LoadKVCache(path.Join(nexaPath, "kvcache"))
 	if e != nil {
 		t.Error(e)
