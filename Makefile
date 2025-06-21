@@ -8,7 +8,6 @@ run:
 build:
 	cd runner && go build -tags="sonic avx" -o ../build/nexa ./cmd/nexa-cli
 
-
 download:
 	mkdir -p build/include build/lib
 

@@ -13,7 +13,6 @@ import (
 	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
 )
 
-// TODO: remove test
 func infer() *cobra.Command {
 	inferCmd := &cobra.Command{}
 	inferCmd.Use = "infer"
