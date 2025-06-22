@@ -15,9 +15,35 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: remilia/dev-zack
+          ref: remilia/dev
 
-      - name: Echo test
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.24.3
+          cache-dependency-path: runner/go.sum
+
+      - name: Download Nexa Bridge
+        uses: Legion2/download-release-action@v2.1.0
+        with:
+          repository: NexaAI/nexasdk-bridge
+          tag: zack-dev-cpu
+          path: build
+          file: libnexa_bridge-ubuntu-22.04.so
+          token: ${{ secrets.ZACK_ACCESS_TOKEN }}
+
+      - name: Build Nexa Cli
         run: |
-          echo hello
-          echo world
+          ls -lh build
+          tree build
+          mkdir -p build/include build/lib
+          mv build/libnexa_bridge-ubuntu-22.04.so build/lib/libnexa_bridge.so
+          cd runner
+          go mod tidy
+          go build -tags="sonic avx" -o ../build/nexa ./cmd/nexa-cli
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexa-cli_${{ matrix.os }}
+          path: ./build/nexa
