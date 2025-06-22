@@ -97,13 +97,16 @@ func ChatCompletions(c *gin.Context) {
 				return true
 			}
 			c.SSEvent("", "[DONE]")
-
-			e, ok := <-errCh
-			if ok {
-				fmt.Printf("GenerateStream Error: %s\n", e)
-			}
 			return false
 		})
+		// drop left token
+		for range dataCh {
+		}
+
+		e, ok := <-errCh
+		if ok {
+			fmt.Printf("GenerateStream Error: %s\n", e)
+		}
 
 	} else {
 		data, err := p.Generate(formatted)

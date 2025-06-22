@@ -14,7 +14,10 @@ import (
 // Usage: nexa pull <model-name>
 func pull() *cobra.Command {
 	pullCmd := &cobra.Command{}
-	pullCmd.Use = "pull"
+	pullCmd.Use = "pull <model-name>"
+
+	pullCmd.Short = "Pull model from HuggingFace"
+	pullCmd.Long = "Download and cache a model by name."
 
 	pullCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
 
