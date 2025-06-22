@@ -11,6 +11,7 @@ import (
 	_ "github.com/NexaAI/nexa-sdk/internal/config"
 	"github.com/NexaAI/nexa-sdk/internal/types"
 	"github.com/bytedance/sonic"
+	"github.com/schollz/progressbar/v3"
 )
 
 const HF_ENDPOINT = "https://huggingface.co"
@@ -102,7 +103,11 @@ func (s *Store) Pull(name string) error {
 	defer resDownload.Body.Close()
 
 	// Copy downloaded content to local file
-	_, e = io.Copy(modelfile, resDownload.Body)
+	bar := progressbar.DefaultBytes(
+		int64(file.Size),
+		"downloading",
+	)
+	_, e = io.Copy(modelfile, io.TeeReader(resDownload.Body, bar))
 	if e != nil {
 		return e
 	}

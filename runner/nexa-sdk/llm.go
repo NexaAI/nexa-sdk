@@ -3,14 +3,13 @@ package nexa_sdk
 /*
 #include <stdlib.h>
 #include "ml.h"
-
-extern bool go_generate_stream_on_token(char*, void*);
+extern void go_generate_stream_on_token(char*, void*);
 */
 import "C"
 
 import (
 	"context"
-	"fmt"
+	// "fmt"
 	"unsafe"
 )
 
@@ -177,13 +176,11 @@ var streamTokenCtx context.Context
 // It sends each generated token to the Go channel
 //
 //export go_generate_stream_on_token
-func go_generate_stream_on_token(token *C.char, _ *C.void) C.bool {
+func go_generate_stream_on_token(token *C.char, _ *C.void) {
 	select {
 	case streamTokenCh <- C.GoString(token):
-		return true
 	case <-streamTokenCtx.Done():
-		fmt.Println("cancel")
-		return false
+		// TODO: maybe we need to call some C function to stop the generation
 	}
 }
 
