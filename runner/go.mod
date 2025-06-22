@@ -1,8 +1,8 @@
 module github.com/NexaAI/nexa-sdk
 
-go 1.22
+go 1.21.0
 
-toolchain go1.24.4
+toolchain go1.24.3
 
 require (
 	github.com/briandowns/spinner v1.23.2
