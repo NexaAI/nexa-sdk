@@ -9,13 +9,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [remilia/dev-zack]
+        os: [sdk-linux-16-core]
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: remilia/dev
+          ref: remilia/dev-zack
 
       - name: Echo test
         run: |
