@@ -9,7 +9,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu22.04]
+        os: [remilia/dev-zack]
 
     steps:
       - name: Checkout repository
