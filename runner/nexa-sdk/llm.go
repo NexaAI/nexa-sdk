@@ -4,11 +4,13 @@ package nexa_sdk
 #include <stdlib.h>
 #include "ml.h"
 
-extern void go_generate_stream_on_token(char*, void*);
+extern bool go_generate_stream_on_token(char*, void*);
 */
 import "C"
 
 import (
+	"context"
+	"fmt"
 	"unsafe"
 )
 
@@ -167,38 +169,50 @@ func (p *LLM) ApplyChatTemplate(msgs []ChatMessage) (string, error) {
 	return C.GoString(res), nil
 }
 
-// Global channel for streaming - TODO: implement proper channel mapping for concurrent streams
-var channel chan<- string
+// Global streamTokenCh for streaming - TODO: implement proper streamTokenCh mapping for concurrent streams
+var streamTokenCh chan<- string
+var streamTokenCtx context.Context
 
 // go_generate_stream_on_token is the callback function called by C code during streaming
 // It sends each generated token to the Go channel
 //
 //export go_generate_stream_on_token
-func go_generate_stream_on_token(token *C.char, _ *C.void) {
-	channel <- C.GoString(token)
+func go_generate_stream_on_token(token *C.char, _ *C.void) C.bool {
+	select {
+	case streamTokenCh <- C.GoString(token):
+		return true
+	case <-streamTokenCtx.Done():
+		fmt.Println("cancel")
+		return false
+	}
 }
 
 // GenerateStream generates text in streaming mode, returning tokens as they are produced
 // Returns two channels: one for receiving tokens and one for errors
 // Note: Currently does not support parallel streaming due to global channel usage
-func (p *LLM) GenerateStream(prompt string) (<-chan string, <-chan error) {
+func (p *LLM) GenerateStream(ctx context.Context, prompt string) (<-chan string, <-chan error) {
 	cPrompt := C.CString(prompt)
 
 	// Configure generation parameters
 	config := C.ml_GenerationConfig{}
 	config.max_tokens = 512
 
+	// check parallel call
+	if streamTokenCh != nil {
+		panic("not support GenerateStream in parallel")
+	}
 	// Create channels for streaming output
 	stream := make(chan string, 10)
 	err := make(chan error, 1)
-	if channel != nil {
-		panic("not support GenerateStream in parallel")
-	}
-	channel = stream
+	streamTokenCh = stream
+	streamTokenCtx = ctx
 
 	// Start streaming in a separate goroutine
 	go func() {
-		defer func() { channel = nil }()
+		defer func() {
+			streamTokenCh = nil
+			streamTokenCtx = nil
+		}()
 		defer close(stream)
 		defer close(err)
 		defer C.free(unsafe.Pointer(cPrompt))

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -49,7 +50,7 @@ func infer() *cobra.Command {
 			var full strings.Builder
 
 			fmt.Print("\033[33m")
-			dataCh, errCh := p.GenerateStream(formatted[lastLen:])
+			dataCh, errCh := p.GenerateStream(context.Background(), formatted[lastLen:])
 			for r := range dataCh {
 				full.WriteString(r)
 				fmt.Print(r)
