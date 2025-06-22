@@ -1,0 +1,23 @@
+name: build-cli-linux
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-cli:
+    name: Build cli on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [sdk-linux-16-core]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: remilia/dev-zack
+
+      - name: Echo test
+        run: |
+          echo hello
+          echo world

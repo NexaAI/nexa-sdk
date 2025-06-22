@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -82,7 +83,8 @@ func ChatCompletions(c *gin.Context) {
 	}
 
 	if param.Stream {
-		dataCh, errCh := p.GenerateStream(formatted)
+		ctx, cancel := context.WithCancel(context.Background())
+		dataCh, errCh := p.GenerateStream(ctx, formatted)
 
 		c.Stream(func(w io.Writer) bool {
 			r, ok := <-dataCh
@@ -97,17 +99,15 @@ func ChatCompletions(c *gin.Context) {
 				return true
 			}
 			c.SSEvent("", "[DONE]")
+
 			return false
 		})
-		// drop left token
-		for range dataCh {
-		}
+		cancel()
 
 		e, ok := <-errCh
 		if ok {
 			fmt.Printf("GenerateStream Error: %s\n", e)
 		}
-
 	} else {
 		data, err := p.Generate(formatted)
 		if err != nil {

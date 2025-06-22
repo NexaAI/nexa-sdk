@@ -35,7 +35,6 @@ func DeInit() {
 
 // go_log_wrap is exported to C and handles log messages from the C library
 // It converts C strings to Go strings and prints them to stdout
-//
 //export go_log_wrap
 func go_log_wrap(msg *C.char) {
 	fmt.Println(C.GoString(msg))

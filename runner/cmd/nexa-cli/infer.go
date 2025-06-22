@@ -2,7 +2,9 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -33,7 +35,15 @@ func infer() *cobra.Command {
 
 			txt, e := r.ReadString('\n')
 			if e != nil {
+				if e == io.EOF {
+					fmt.Println()
+					break
+				}
 				fmt.Printf("ReadString Error: %s\n", e)
+				break
+			}
+			txt = strings.TrimSpace(txt)
+			if txt == "/exit" {
 				break
 			}
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: txt})
@@ -49,7 +59,7 @@ func infer() *cobra.Command {
 			var full strings.Builder
 
 			fmt.Print("\033[33m")
-			dataCh, errCh := p.GenerateStream(formatted[lastLen:])
+			dataCh, errCh := p.GenerateStream(context.Background(), formatted[lastLen:])
 			for r := range dataCh {
 				full.WriteString(r)
 				fmt.Print(r)
