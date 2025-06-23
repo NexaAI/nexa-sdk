@@ -1,16 +1,18 @@
-MODEL?=Qwen/Qwen3-0.6B-GGUF
+ARGS?=infer Qwen/Qwen3-0.6B-GGUF
 
 .PHONY: run build download clean
 
 run:
-	LD_LIBRARY_PATH=./build/lib ./build/nexa infer $(MODEL)
+	./build/nexa $(ARGS)
 
 build:
-	cd runner && go build -tags="sonic avx" -o ../build/nexa ./cmd/nexa-cli
+	cd runner && CGO_ENABLED=0 go build -o ../build/nexa ./cmd/nexa-launcher
+	cd runner && go build -tags="sonic avx" -o ../build/nexa-cli ./cmd/nexa-cli
 
 download:
 	mkdir -p build/include build/lib
 
 clean:
 	rm -rf build/nexa
+	rm -rf build/nexa-cli
 

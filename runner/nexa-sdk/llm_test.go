@@ -1,6 +1,7 @@
 package nexa_sdk
 
 import (
+	"context"
 	"fmt"
 	"path"
 	"testing"
@@ -120,7 +121,7 @@ func TestChat(t *testing.T) {
 // TestGenerateStream tests streaming text generation functionality
 // Measures generation speed and verifies that tokens are streamed properly
 func TestGenerateStream(t *testing.T) {
-	dataCh, errCh := llm.GenerateStream("i am lihua, ")
+	dataCh, errCh := llm.GenerateStream(context.Background(), "i am lihua, ")
 
 	start := time.Now()
 	count := 0

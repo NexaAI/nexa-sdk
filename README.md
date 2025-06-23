@@ -14,21 +14,22 @@ do with `make build`, or follow manually steps.
      1. download dist from [nexasdk-bridge release page](https://github.com/NexaAI/nexasdk-bridge/releases)
      2. put file in `build`
      3. check `build/include/ml.h` and `build/lib/libnexa_bridge.[so|dylib]`
-2. build app
-   1. `cd runner`
-   1. build nexa-cli `go build -o ../build/nexa ./cmd/nexa-cli`
-   1. TODO
+2. build app (choose one)
+   - `make build`
+   - manual build
+     1. `cd runner`
+     1. build nexa-launcher `CGO_ENABLED=0 go build -o ../build/nexa ./cmd/nexa-launcher`
+     1. build nexa-cli `go build -o ../build/nexa ./cmd/nexa-cli`
 
 ## Run project
+
+do with `make run ARGS="serve"`, or follow steps bellow.
 
 ### Test inference
 
 On Linux/WSL:
 
 ```shell
-# Export the library path once
-export LD_LIBRARY_PATH=./build/lib
-
 # helper manual
 ./build/nexa -h
 # download model
@@ -39,21 +40,13 @@ export LD_LIBRARY_PATH=./build/lib
 
 Note that the model will be downloaded to `~/.cache/nexa/models/` with base64 encoded name.
 
-On Mac:
-The only change is to export `DYLD_LIBRARY_PATH` instead of `LD_LIBRARY_PATH`
-
-```shell
-export DYLD_LIBRARY_PATH=./build/lib
-```
+````
 
 ### Test server
 
 On Linux/WSL:
 
 ```shell
-# Export the library path once
-export LD_LIBRARY_PATH=./build/lib
-
 # server
 ./build/nexa serve
 
@@ -65,7 +58,7 @@ curl -X POST http://127.0.0.1:8080/v1/completions \
   "prompt": "Write a hello world program in Python",
   "max_tokens": 150
 }'
-```
+````
 
 We can also set environment variables
 
@@ -77,7 +70,6 @@ export NEXA_HOST="0.0.0.0:8080"
 export NEXA_KEEPALIVE=600
 
 # Run server
-export LD_LIBRARY_PATH=./build/lib
 ./build/nexa serve
 ```
 

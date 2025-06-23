@@ -1,12 +1,13 @@
 module github.com/NexaAI/nexa-sdk
 
-go 1.21.0
+go 1.22
 
 toolchain go1.24.3
 
 require (
 	github.com/briandowns/spinner v1.23.2
 	github.com/bytedance/sonic v1.13.3
+	github.com/chzyer/readline v1.5.1
 	github.com/gin-gonic/gin v1.10.1
 	github.com/jedib0t/go-pretty/v6 v6.6.7
 	github.com/openai/openai-go v1.6.0
