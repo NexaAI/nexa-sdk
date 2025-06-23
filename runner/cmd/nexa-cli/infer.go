@@ -26,10 +26,14 @@ func inferFunc(cmd *cobra.Command, args []string) {
 	var lastLen int
 
 	repl(ReplConfig{
-		Stream:      true,
-		Reset:       p.Reset,
-		SaveKVCache: nil,
-		LoadKVCache: nil,
+		Stream: true,
+		Clear:  p.Reset,
+		SaveKVCache: func(path string) error {
+			return p.SaveKVCache(path)
+		},
+		LoadKVCache: func(path string) error {
+			return p.LoadKVCache(path)
+		},
 		runStream: func(ctx context.Context, prompt string, dataCh chan<- string, errCh chan<- error) {
 			defer close(errCh)
 			defer close(dataCh)

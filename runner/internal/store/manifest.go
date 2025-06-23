@@ -13,7 +13,7 @@ import (
 
 // List returns all locally stored models by reading their manifest files
 func (s *Store) List() ([]types.Model, error) {
-	dir := s.modelDir()
+	dir := path.Join(s.home, "models")
 	names, e := os.ReadDir(dir)
 	if e != nil {
 		return nil, e
@@ -51,10 +51,10 @@ func (s *Store) List() ([]types.Model, error) {
 
 // Remove deletes a specific model and all its files
 func (s *Store) Remove(name string) error {
-	return os.RemoveAll(path.Join(s.modelDir(), s.encodeName(name)))
+	return os.RemoveAll(path.Join(s.home, "models", s.encodeName(name)))
 }
 
 // Clean removes all stored models and the models directory
 func (s *Store) Clean() error {
-	return os.RemoveAll(s.modelDir())
+	return os.RemoveAll(path.Join(s.home, "models"))
 }

@@ -5,8 +5,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/NexaAI/nexa-sdk/internal/config"
 	"github.com/spf13/cobra"
+
+	"github.com/NexaAI/nexa-sdk/internal/config"
 )
 
 // TODO: fill description

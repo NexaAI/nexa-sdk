@@ -19,7 +19,7 @@ var completer = readline.NewPrefixCompleter(
 
 	readline.PcItem("/exit"),
 
-	readline.PcItem("/reset"),
+	readline.PcItem("/clear"),
 	readline.PcItem("/load", readline.PcItemDynamic(listFiles("./"))),
 	readline.PcItem("/save", readline.PcItemDynamic(listFiles("./"))),
 )
@@ -39,7 +39,7 @@ func listFiles(path string) func(string) []string {
 type ReplConfig struct {
 	Stream bool
 
-	Reset       func()
+	Clear       func()
 	SaveKVCache func(path string) error
 	LoadKVCache func(path string) error
 
@@ -74,83 +74,98 @@ func repl(cfg ReplConfig) {
 			break
 		}
 
-		txt := strings.TrimSpace(line)
+		if strings.HasPrefix(line, "/") {
+			fileds := strings.Fields(strings.TrimSpace(line))
 
-		switch txt {
-		case "/?", "/h", "/help":
-			fmt.Println("Commands:")
-			fmt.Println(completer.Tree("    ")) // TODO: add description
+			switch fileds[0] {
+			case "/?", "/h", "/help":
+				fmt.Println("Commands:")
+				fmt.Println(completer.Tree("    ")) // TODO: add description
 
-		case "/reset":
-			cfg.Reset()
+			case "/clear":
+				cfg.Clear()
+				fmt.Print("\033[H\033[2J")
 
-		case "/load":
-			err := cfg.LoadKVCache(txt)
-			if err != nil {
-				fmt.Println(text.FgRed.Sprintf("Error: %s", err))
-				return
-			}
-
-		case "/save":
-			err := cfg.SaveKVCache(txt)
-			if err != nil {
-				fmt.Println(text.FgRed.Sprintf("Error: %s", err))
-				return
-			}
-
-		case "/exit":
-			break
-
-		default:
-			if cfg.Stream {
-				start := time.Now()
-				var count int
-
-				// run async
-				dataCh := make(chan string, 10)
-				errCh := make(chan error, 1)
-				go cfg.runStream(context.TODO(), txt, dataCh, errCh)
-
-				// print stream
-				fmt.Print(text.FgYellow.EscapeSeq())
-				for r := range dataCh {
-					fmt.Print(r)
-					count++
+			case "/load":
+				if len(fileds) != 2 {
+					fmt.Println(text.FgRed.Sprintf("Usage: /load <filename>"))
 				}
-				fmt.Print(text.Reset.EscapeSeq())
-				fmt.Println()
-
-				// check error
-				e, ok := <-errCh
-				if ok {
-					fmt.Println(text.FgRed.Sprintf("Error: %s", e))
-					return
-				}
-
-				// print duration
-				duration := time.Since(start).Seconds()
-				fmt.Println(text.FgBlue.Sprintf(
-					"Generate %d token in %f s, speed is %f token/s",
-					count, duration, float64(count)/duration,
-				))
-			} else {
-				start := time.Now()
-
-				res, err := cfg.run(txt)
-				fmt.Println(text.FgYellow.Sprint(res))
-
+				cfg.Clear()
+				err := cfg.LoadKVCache(fileds[1])
 				if err != nil {
 					fmt.Println(text.FgRed.Sprintf("Error: %s", err))
 					return
 				}
 
-				// print duration
-				duration := time.Since(start).Seconds()
-				fmt.Println(text.FgBlue.Sprintf(
-					"Generate in %f s",
-					duration,
-				))
+			case "/save":
+				if len(fileds) != 2 {
+					fmt.Println(text.FgRed.Sprintf("Usage: /save <filename>"))
+				}
+				err := cfg.SaveKVCache(fileds[1])
+				if err != nil {
+					fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+					return
+				}
+
+			case "/exit":
+				break
+
+			default:
+				fmt.Println(text.FgRed.Sprintf("Unknown command: %s", fileds[0]))
 			}
+
+			continue
+		}
+
+		// chat
+		if cfg.Stream {
+			start := time.Now()
+			var count int
+
+			// run async
+			dataCh := make(chan string, 10)
+			errCh := make(chan error, 1)
+			go cfg.runStream(context.TODO(), line, dataCh, errCh)
+
+			// print stream
+			fmt.Print(text.FgYellow.EscapeSeq())
+			for r := range dataCh {
+				fmt.Print(r)
+				count++
+			}
+			fmt.Print(text.Reset.EscapeSeq())
+			fmt.Println()
+
+			// check error
+			e, ok := <-errCh
+			if ok {
+				fmt.Println(text.FgRed.Sprintf("Error: %s", e))
+				return
+			}
+
+			// print duration
+			duration := time.Since(start).Seconds()
+			fmt.Println(text.FgBlue.Sprintf(
+				"Generate %d token in %f s, speed is %f token/s",
+				count, duration, float64(count)/duration,
+			))
+		} else {
+			start := time.Now()
+
+			res, err := cfg.run(line)
+			fmt.Println(text.FgYellow.Sprint(res))
+
+			if err != nil {
+				fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+				return
+			}
+
+			// print duration
+			duration := time.Since(start).Seconds()
+			fmt.Println(text.FgBlue.Sprintf(
+				"Generate in %f s",
+				duration,
+			))
 		}
 	}
 }

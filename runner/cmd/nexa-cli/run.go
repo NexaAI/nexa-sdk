@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -14,6 +15,8 @@ import (
 )
 
 func runFunc(cmd *cobra.Command, args []string) {
+	model := args[0]
+
 	client := openai.NewClient(
 		option.WithBaseURL(fmt.Sprintf("http://%s/v1", config.Get().Host)),
 	)
@@ -23,7 +26,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 	spin.Start()
 	_, err := client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
 		Messages: nil,
-		Model:    args[0],
+		Model:    model,
 	})
 	spin.Stop()
 	if err != nil {
@@ -36,16 +39,28 @@ func runFunc(cmd *cobra.Command, args []string) {
 	repl(ReplConfig{
 		Stream: *runStream,
 
-		Reset: func() {
-			panic("TODO")
+		Clear: func() {
+			history = nil
+			client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
+				Messages: nil,
+				Model:    model,
+			})
 		},
 
 		SaveKVCache: func(path string) error {
-			panic("TODO")
+			return errors.New("not support")
+			//return client.Post(context.TODO(), "/saveKVCache", nil, nil,
+			//	option.WithJSONSet("model", model),
+			//	option.WithJSONSet("name", path),
+			//)
 		},
 
 		LoadKVCache: func(path string) error {
-			panic("TODO")
+			return errors.New("not support")
+			//return client.Post(context.TODO(), "/loadKVCache", nil, nil,
+			//	option.WithJSONSet("model", model),
+			//	option.WithJSONSet("name", path),
+			//)
 		},
 
 		run: func(prompt string) (string, error) {
@@ -53,7 +68,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 
 			chatCompletion, err := client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
 				Messages: history,
-				Model:    args[0],
+				Model:    model,
 			})
 			if err != nil {
 				return "", err
@@ -73,7 +88,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 
 			stream := client.Chat.Completions.NewStreaming(ctx, openai.ChatCompletionNewParams{
 				Messages: history,
-				Model:    args[0],
+				Model:    model,
 			})
 
 			for stream.Next() {

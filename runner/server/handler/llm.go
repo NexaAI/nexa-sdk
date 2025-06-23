@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -15,16 +16,21 @@ import (
 	"github.com/NexaAI/nexa-sdk/server/service"
 )
 
+func createLLM(name string) func() nexa_sdk.LLM {
+	return func() nexa_sdk.LLM {
+		time.Sleep(2 * time.Second) // TODO: remove test code
+		s := store.NewStore()
+		return nexa_sdk.NewLLM(s.ModelfilePath(name), nil, 4096, nil)
+	}
+}
+
 func Completions(c *gin.Context) {
 	param := openai.CompletionNewParams{}
 	if err := c.ShouldBindJSON(&param); err != nil {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 	}
 
-	s := store.NewStore()
-	p := service.KeepAliveGet(string(param.Model), func() nexa_sdk.LLM {
-		return nexa_sdk.NewLLM(s.ModelfilePath(string(param.Model)), nil, 4096, nil)
-	})
+	p := service.KeepAliveGet(string(param.Model), createLLM(string(param.Model)))
 
 	data, err := p.Generate(param.Prompt.OfString.String())
 	choice := openai.CompletionChoice{}
@@ -55,14 +61,11 @@ func ChatCompletions(c *gin.Context) {
 	}
 
 	// get llm
-	s := store.NewStore()
-	p := service.KeepAliveGet(string(param.Model), func() nexa_sdk.LLM {
-		time.Sleep(2 * time.Second) // TODO: remove test code
-		return nexa_sdk.NewLLM(s.ModelfilePath(string(param.Model)), nil, 4096, nil)
-	})
+	p := service.KeepAliveGet(string(param.Model), createLLM(string(param.Model)))
 
 	// emtry request for warm up
 	if len(param.Messages) == 0 {
+		p.Reset()
 		c.JSON(http.StatusOK, nil)
 		return
 	}
@@ -122,5 +125,54 @@ func ChatCompletions(c *gin.Context) {
 		}
 		c.JSON(http.StatusOK, res)
 		return
+	}
+}
+
+type KVCacheRequest struct {
+	Model string
+	Name  string
+}
+
+func SaveKVCache(c *gin.Context) {
+	param := KVCacheRequest{}
+	if err := c.ShouldBindJSON(&param); err != nil {
+		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
+	}
+
+	dir, _ := path.Split(param.Name)
+	if dir != "" {
+		c.JSON(http.StatusBadRequest, map[string]any{"error": "name invalid"})
+	}
+
+	p := service.KeepAliveGet(param.Model, createLLM(param.Model))
+	s := store.NewStore()
+	if err := p.SaveKVCache(s.CachefilePath(param.Name)); err != nil {
+		c.JSON(http.StatusBadRequest, map[string]any{"error": err})
+	} else {
+		c.JSON(http.StatusOK, nil)
+	}
+
+	c.JSON(http.StatusOK, nil)
+
+}
+
+func LoadKVCache(c *gin.Context) {
+	param := KVCacheRequest{}
+	if err := c.ShouldBindJSON(&param); err != nil {
+		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
+	}
+
+	dir, _ := path.Split(param.Name)
+	if dir != "" {
+		c.JSON(http.StatusBadRequest, map[string]any{"error": "name invalid"})
+	}
+
+	p := service.KeepAliveGet(param.Model, createLLM(param.Model))
+	s := store.NewStore()
+	p.Reset()
+	if err := p.LoadKVCache(s.CachefilePath(param.Name)); err != nil {
+		c.JSON(http.StatusBadRequest, map[string]any{"error": err})
+	} else {
+		c.JSON(http.StatusOK, nil)
 	}
 }

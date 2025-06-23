@@ -89,14 +89,14 @@ func (s *Store) Pull(ctx context.Context, name string) (infoCh <-chan types.Down
 
 		// Create model directory structure
 		encName := s.encodeName(name)
-		e = os.MkdirAll(path.Join(s.modelDir(), encName), 0770)
+		e = os.MkdirAll(path.Join(s.home, "models", encName), 0770)
 		if e != nil {
 			errC <- e
 			return
 		}
 
 		// Create modelfile for storing downloaded content
-		modelfile, e := os.Create(path.Join(s.modelDir(), encName, "modelfile"))
+		modelfile, e := os.Create(path.Join(s.home, "models", encName, "modelfile"))
 		if e != nil {
 			errC <- e
 			return
@@ -144,7 +144,7 @@ func (s *Store) Pull(ctx context.Context, name string) (infoCh <-chan types.Down
 			Name: name,
 			Size: file.Size,
 		}
-		manifestPath := path.Join(s.modelDir(), encName, "manifest")
+		manifestPath := path.Join(s.home, "models", encName, "manifest")
 		manifestData, _ := sonic.Marshal(model) // JSON marshal won't fail, ignore error
 		e = os.WriteFile(manifestPath, manifestData, 0664)
 		if e != nil {
