@@ -108,7 +108,7 @@ func repl(cfg ReplConfig) {
 
 				// run async
 				dataCh := make(chan string, 10)
-				errCh := make(chan error)
+				errCh := make(chan error, 1)
 				go cfg.runStream(context.TODO(), txt, dataCh, errCh)
 
 				// print stream

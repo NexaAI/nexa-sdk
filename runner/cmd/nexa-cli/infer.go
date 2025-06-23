@@ -32,11 +32,11 @@ func inferFunc(cmd *cobra.Command, args []string) {
 		LoadKVCache: nil,
 		runStream: func(ctx context.Context, prompt string, dataCh chan<- string, errCh chan<- error) {
 			defer close(errCh)
+			defer close(dataCh)
 
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
 			formatted, e := p.ApplyChatTemplate(history)
 			if e != nil {
-				close(dataCh)
 				errCh <- e
 				return
 			}
@@ -47,7 +47,6 @@ func inferFunc(cmd *cobra.Command, args []string) {
 				full.WriteString(r)
 				dataCh <- r
 			}
-			close(dataCh)
 			for e := range eCh {
 				errCh <- e
 				return

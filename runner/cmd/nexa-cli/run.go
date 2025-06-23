@@ -66,6 +66,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 
 		runStream: func(ctx context.Context, prompt string, dataCh chan<- string, errCh chan<- error) {
 			defer close(errCh)
+			defer close(dataCh)
 
 			acc := openai.ChatCompletionAccumulator{}
 			history = append(history, openai.UserMessage(prompt))
@@ -83,7 +84,6 @@ func runFunc(cmd *cobra.Command, args []string) {
 					acc.AddChunk(chunk)
 				}
 			}
-			close(dataCh)
 
 			if stream.Err() != nil {
 				errCh <- stream.Err()

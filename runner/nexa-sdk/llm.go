@@ -213,8 +213,8 @@ func (p *LLM) GenerateStream(ctx context.Context, prompt string) (<-chan string,
 			streamTokenCh = nil
 			streamTokenCtx = nil
 		}()
-		defer close(stream)
 		defer close(err)
+		defer close(stream)
 		defer C.free(unsafe.Pointer(cPrompt))
 
 		// Call C function to start streaming generation
