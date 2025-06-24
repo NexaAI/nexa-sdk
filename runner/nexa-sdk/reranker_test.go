@@ -1,9 +1,8 @@
-//go:build rerank
+//go:build reranker
 
 package nexa_sdk
 
 import (
-	"path"
 	"testing"
 )
 
@@ -11,8 +10,9 @@ var reranker Reranker
 
 func initReranker() {
 	reranker = NewReranker(
-		path.Join(nexaPath, "models", "UXdlbi9Rd2VuMy0wLjZCLUdHVUY=", "modelfile"),
-		nil, nil,
+		"/home/remilia/Workspace/github/nexasdk-bridge/modelfiles/jina-reranker-v2-base-multilingual.F16.gguf",
+		"/home/remilia/Workspace/github/nexasdk-bridge/modelfiles/jina_rerank_tokenizer.json",
+		nil,
 	)
 
 }

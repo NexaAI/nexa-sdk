@@ -7,7 +7,6 @@ package nexa_sdk
 import "C"
 
 import (
-	"fmt"
 	"unsafe"
 )
 

@@ -1,4 +1,4 @@
-//go:build rerank
+//go:build reranker
 
 package nexa_sdk
 
@@ -16,12 +16,14 @@ type Reranker struct {
 	ptr *C.ml_Reranker
 }
 
-func NewReranker(model string, tokenizer *string, devices *string) Reranker {
+func NewReranker(model string, tokenizer string, devices *string) Reranker {
 	cModel := C.CString(model)
 	defer C.free(unsafe.Pointer(cModel))
+	cTokenizer := C.CString(tokenizer)
+	defer C.free(unsafe.Pointer(cTokenizer))
 
 	return Reranker{
-		ptr: C.ml_reranker_create(cModel, nil, nil),
+		ptr: C.ml_reranker_create(cModel, cTokenizer, nil),
 	}
 }
 
