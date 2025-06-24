@@ -21,12 +21,16 @@ func TestMain(m *testing.M) {
 	// Initialize SDK and LLM for testing
 	Init()
 	initLLM()
+	initEmbeder()
+	//initReranker()
 
 	// Run all tests
 	code := m.Run()
 
 	// Clean up resources after testing
 	deinitLLM()
+	deinitEmbeder()
+	//deinitReranker()
 	DeInit()
 	os.Exit(code)
 }
