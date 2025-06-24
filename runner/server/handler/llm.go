@@ -67,6 +67,7 @@ type ChatCompletionRequest struct {
 
 var toolCallRegex = regexp.MustCompile("<tool_call>([\\s\\S]+)<\\/tool_call>")
 
+// curl -v http://localhost:18181/v1/chat/completions -d '{ "model": "Qwen/Qwen2.5-1.5B-Instruct-GGUF", "messages": [ { "role": "user", "content": "What is the weather like in Boston today?" } ], "tools": [ { "type": "function", "function": { "name": "get_current_weather", "description": "Get the current weather in a given location", "parameters": { "type": "object", "properties": { "location": { "type": "string", "description": "The city and state, e.g. San Francisco, CA" }, "unit": { "type": "string", "enum": ["celsius", "fahrenheit"] } }, "required": ["location"] } } } ] }'
 func ChatCompletions(c *gin.Context) {
 	param := ChatCompletionRequest{}
 	if err := c.ShouldBindJSON(&param); err != nil {
@@ -127,7 +128,7 @@ func ChatCompletions(c *gin.Context) {
 		toolCall := openai.ChatCompletionMessageToolCall{Type: constant.Function("")}
 		err = sonic.UnmarshalString(match[1], &toolCall.Function)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, map[string]any{"error": err})
+			c.JSON(http.StatusInternalServerError, map[string]any{"error": err, "data": match[1]})
 			return
 		}
 
