@@ -1,0 +1,47 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "Nexa AI Server",
+        "contact": {},
+        "version": "0.0.0"
+    },
+    "basePath": "/v1",
+    "paths": {
+        "/completions": {
+            "post": {
+                "description": "legancy completion",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "completion",
+                "parameters": [
+                    {
+                        "description": "example",
+                        "name": "model",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.ChatCompletionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "handler.ChatCompletionRequest": {
+            "type": "object"
+        }
+    }
+}

@@ -26,10 +26,18 @@ func createLLM(name string) func() nexa_sdk.LLM {
 	}
 }
 
+// @Router /completions [post]
+// @Summary completion
+// @Description legancy completion
+// @Accept    json
+// @Param     model    body        ChatCompletionRequest   true   "example"
+// @Produce   json
+// @Success   200      {string}    Helloworld
 func Completions(c *gin.Context) {
 	param := openai.CompletionNewParams{}
 	if err := c.ShouldBindJSON(&param); err != nil {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
+		return
 	}
 
 	p := service.KeepAliveGet(string(param.Model), createLLM(string(param.Model)))

@@ -6,6 +6,7 @@ run:
 	./build/nexa $(ARGS)
 
 build:
+	swag init -d ./runner/server -g ./server.go -o ./runner/server/docs
 	cd runner && CGO_ENABLED=0 go build -o ../build/nexa ./cmd/nexa-launcher
 	cd runner && go build -tags="sonic avx" -o ../build/nexa-cli ./cmd/nexa-cli
 
