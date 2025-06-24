@@ -12,6 +12,9 @@ build:
 download:
 	mkdir -p build/include build/lib
 
+test:
+	cd runner && LD_LIBRARY_PATH=$(PWD)/build/lib go test -v $(ARGS)
+
 clean:
 	rm -rf build/nexa
 	rm -rf build/nexa-cli

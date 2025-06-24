@@ -3,6 +3,8 @@ package nexa_sdk
 /*
 #cgo CFLAGS: -I../../build/include
 #cgo LDFLAGS: -L../../build/lib -lnexa_bridge
+#cgo linux LDFLAGS: -Wl,-rpath,${SRCDIR}/../../build/lib
+#cgo darwin LDFLAGS: -Wl,-rpath,${SRCDIR}/../../build/lib
 
 #include <stdlib.h>
 #include "ml.h"
@@ -13,6 +15,7 @@ import "C"
 import (
 	"errors"
 	"log"
+	"strings"
 )
 
 var (
@@ -38,5 +41,5 @@ func DeInit() {
 //
 //export go_log_wrap
 func go_log_wrap(msg *C.char) {
-	log.Default().Println(C.GoString(msg))
+	log.Default().Println(strings.TrimSpace(C.GoString(msg)))
 }

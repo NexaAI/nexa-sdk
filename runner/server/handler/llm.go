@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"path"
+	"regexp"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/gin-gonic/gin"
 	"github.com/openai/openai-go"
+	"github.com/openai/openai-go/shared/constant"
 
 	"github.com/NexaAI/nexa-sdk/internal/store"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
@@ -52,7 +54,10 @@ type ChatCompletionRequest struct {
 		Role    string `json:"role"`
 		Content string `json:"Content"`
 	} `json:"messages"`
+	Tools []openai.ChatCompletionToolParam `json:"tools"`
 }
+
+var toolCallRegex = regexp.MustCompile("<tool_call>([\\s\\S]+)<\\/tool_call>")
 
 func ChatCompletions(c *gin.Context) {
 	param := ChatCompletionRequest{}
@@ -79,100 +84,152 @@ func ChatCompletions(c *gin.Context) {
 		})
 	}
 
-	formatted, err := p.ApplyChatTemplate(messages)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err})
-		return
-	}
-
-	if param.Stream {
-		ctx, cancel := context.WithCancel(context.Background())
-		dataCh, errCh := p.GenerateStream(ctx, formatted)
-
-		c.Stream(func(w io.Writer) bool {
-			r, ok := <-dataCh
-			if ok {
-				chunk := openai.ChatCompletionChunk{}
-				chunk.Choices = append(chunk.Choices, openai.ChatCompletionChunkChoice{
-					Delta: openai.ChatCompletionChunkChoiceDelta{
-						Content: r,
-					},
-				})
-				c.SSEvent("", chunk)
-				return true
-			}
-			c.SSEvent("", "[DONE]")
-
-			return false
-		})
-		cancel()
-
-		e, ok := <-errCh
-		if ok {
-			fmt.Printf("GenerateStream Error: %s\n", e)
+	if len(param.Tools) > 0 {
+		tools := make([]nexa_sdk.ChatTool, 0, len(param.Tools))
+		for _, tool := range param.Tools {
+			tools = append(tools, nexa_sdk.ChatTool{
+				Type: string(tool.Type),
+				Function: nexa_sdk.ChatToolFunction{
+					Name: tool.Function.Name,
+				},
+			})
 		}
-	} else {
+		param := nexa_sdk.ChatTemplateParam{
+			Messages: messages,
+			Tools:    tools,
+		}
+		formatted, err := p.ApplyJinjaTemplate(param)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, map[string]any{"error": err})
+			return
+		}
+
 		data, err := p.Generate(formatted)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, map[string]any{"error": err})
 			return
 		}
 
+		// parse result
+		match := toolCallRegex.FindStringSubmatch(data)
+		if len(match) <= 1 {
+			c.JSON(http.StatusInternalServerError, map[string]any{"error": "not match"})
+			return
+		}
+		toolCall := openai.ChatCompletionMessageToolCall{Type: constant.Function("")}
+		err = sonic.UnmarshalString(match[1], &toolCall.Function)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, map[string]any{"error": err})
+			return
+		}
+
 		choice := openai.ChatCompletionChoice{}
-		choice.Message.Content = data
+		choice.Message.Role = constant.Assistant("")
+		choice.Message.ToolCalls = []openai.ChatCompletionMessageToolCall{toolCall}
 		res := openai.ChatCompletion{
 			Choices: []openai.ChatCompletionChoice{choice},
 		}
 		c.JSON(http.StatusOK, res)
 		return
-	}
-}
 
-type KVCacheRequest struct {
-	Model string
-	Name  string
-}
-
-func SaveKVCache(c *gin.Context) {
-	param := KVCacheRequest{}
-	if err := c.ShouldBindJSON(&param); err != nil {
-		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
-	}
-
-	dir, _ := path.Split(param.Name)
-	if dir != "" {
-		c.JSON(http.StatusBadRequest, map[string]any{"error": "name invalid"})
-	}
-
-	p := service.KeepAliveGet(param.Model, createLLM(param.Model))
-	s := store.NewStore()
-	if err := p.SaveKVCache(s.CachefilePath(param.Name)); err != nil {
-		c.JSON(http.StatusBadRequest, map[string]any{"error": err})
 	} else {
-		c.JSON(http.StatusOK, nil)
+
+		formatted, err := p.ApplyChatTemplate(messages)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, map[string]any{"error": err})
+			return
+		}
+
+		if param.Stream {
+			ctx, cancel := context.WithCancel(context.Background())
+			dataCh, errCh := p.GenerateStream(ctx, formatted)
+
+			c.Stream(func(w io.Writer) bool {
+				r, ok := <-dataCh
+				if ok {
+					chunk := openai.ChatCompletionChunk{}
+					chunk.Choices = append(chunk.Choices, openai.ChatCompletionChunkChoice{
+						Delta: openai.ChatCompletionChunkChoiceDelta{
+							Content: r,
+						},
+					})
+					c.SSEvent("", chunk)
+					return true
+				}
+				c.SSEvent("", "[DONE]")
+
+				return false
+			})
+			cancel()
+
+			e, ok := <-errCh
+			if ok {
+				fmt.Printf("GenerateStream Error: %s\n", e)
+			}
+		} else {
+			data, err := p.Generate(formatted)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, map[string]any{"error": err})
+				return
+			}
+
+			choice := openai.ChatCompletionChoice{}
+			choice.Message.Role = constant.Assistant(openai.MessageRoleAssistant)
+			choice.Message.Content = data
+			res := openai.ChatCompletion{
+				Choices: []openai.ChatCompletionChoice{choice},
+			}
+			c.JSON(http.StatusOK, res)
+			return
+		}
 	}
-
-	c.JSON(http.StatusOK, nil)
-
 }
 
-func LoadKVCache(c *gin.Context) {
-	param := KVCacheRequest{}
-	if err := c.ShouldBindJSON(&param); err != nil {
-		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
-	}
-
-	dir, _ := path.Split(param.Name)
-	if dir != "" {
-		c.JSON(http.StatusBadRequest, map[string]any{"error": "name invalid"})
-	}
-
-	p := service.KeepAliveGet(param.Model, createLLM(param.Model))
-	s := store.NewStore()
-	p.Reset()
-	if err := p.LoadKVCache(s.CachefilePath(param.Name)); err != nil {
-		c.JSON(http.StatusBadRequest, map[string]any{"error": err})
-	} else {
-		c.JSON(http.StatusOK, nil)
-	}
-}
+//type KVCacheRequest struct {
+//	Model string
+//	Name  string
+//}
+//
+//func SaveKVCache(c *gin.Context) {
+//	param := KVCacheRequest{}
+//	if err := c.ShouldBindJSON(&param); err != nil {
+//		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
+//	}
+//
+//	dir, _ := path.Split(param.Name)
+//	if dir != "" {
+//		c.JSON(http.StatusBadRequest, map[string]any{"error": "name invalid"})
+//	}
+//
+//	p := service.KeepAliveGet(param.Model, createLLM(param.Model))
+//	s := store.NewStore()
+//	if err := p.SaveKVCache(s.CachefilePath(param.Name)); err != nil {
+//		c.JSON(http.StatusBadRequest, map[string]any{"error": err})
+//	} else {
+//		c.JSON(http.StatusOK, nil)
+//	}
+//
+//	c.JSON(http.StatusOK, nil)
+//
+//}
+//
+//func LoadKVCache(c *gin.Context) {
+//	param := KVCacheRequest{}
+//	if err := c.ShouldBindJSON(&param); err != nil {
+//		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
+//	}
+//
+//	dir, _ := path.Split(param.Name)
+//	if dir != "" {
+//		c.JSON(http.StatusBadRequest, map[string]any{"error": "name invalid"})
+//	}
+//
+//	p := service.KeepAliveGet(param.Model, createLLM(param.Model))
+//	s := store.NewStore()
+//	p.Reset()
+//	if err := p.LoadKVCache(s.CachefilePath(param.Name)); err != nil {
+//		c.JSON(http.StatusBadRequest, map[string]any{"error": err})
+//	} else {
+//		c.JSON(http.StatusOK, nil)
+//	}
+//}

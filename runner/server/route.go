@@ -12,8 +12,8 @@ func RegisterAPIv1(r *gin.Engine) {
 
 	g.Use(middleware.GIL)
 
-	g.POST("/saveKVCache", handler.SaveKVCache)
-	g.POST("/loadKVCache", handler.LoadKVCache)
+	//g.POST("/saveKVCache", handler.SaveKVCache)
+	//g.POST("/loadKVCache", handler.LoadKVCache)
 
 	g.POST("/completions", handler.Completions)
 	g.POST("/chat/completions", handler.ChatCompletions)

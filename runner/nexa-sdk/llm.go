@@ -12,6 +12,10 @@ import (
 	"context"
 	"fmt"
 	"unsafe"
+
+	"github.com/bytedance/sonic"
+	"github.com/nikolalohinski/gonja/v2"
+	"github.com/nikolalohinski/gonja/v2/exec"
 )
 
 // LLMRole represents different roles in a chat conversation
@@ -25,8 +29,25 @@ const (
 
 // ChatMessage represents a single message in a chat conversation
 type ChatMessage struct {
-	Role    LLMRole // The role of the message sender
-	Content string  // The actual message content
+	Role    LLMRole `json:"role"`    // The role of the message sender
+	Content string  `json:"content"` // The actual message content
+}
+
+type ChatToolFunction struct {
+	Name        string         `json:"name"`
+	Description string         `json:"description,omitempty"`
+	Parameters  map[string]any `json:"parameters,omitempty"`
+	Strict      bool           `json:"strict,omitempty"`
+}
+
+type ChatTool struct {
+	Type     string           `json:"type"`
+	Function ChatToolFunction `json:"function"`
+}
+
+type ChatTemplateParam struct {
+	Messages []ChatMessage `json:"messages,omitempty"`
+	Tools    []ChatTool    `json:"tools,omitempty"`
 }
 
 // LLM wraps the C library LLM structure and provides Go interface
@@ -167,6 +188,25 @@ func (p *LLM) ApplyChatTemplate(msgs []ChatMessage) (string, error) {
 	defer C.free(unsafe.Pointer(res))
 
 	return C.GoString(res), nil
+}
+
+// ApplyChatTemplate formats chat messages using the model's chat template
+func (p *LLM) ApplyJinjaTemplate(param ChatTemplateParam) (string, error) {
+	chatTmpl, e := p.GetChatTemplate(nil)
+	if e != nil {
+		return "", e
+	}
+
+	tmpl, e := gonja.FromString(chatTmpl)
+	if e != nil {
+		return "", e
+	}
+
+	msgData, _ := sonic.Marshal(param) // won't fail
+	m := make(map[string]any)
+	sonic.Unmarshal(msgData, &m) // won't fail
+
+	return tmpl.ExecuteToString(exec.NewContext(m))
 }
 
 // Global streamTokenCh for streaming - TODO: implement proper streamTokenCh mapping for concurrent streams
