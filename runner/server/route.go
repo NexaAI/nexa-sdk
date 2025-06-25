@@ -13,6 +13,7 @@ import (
 
 // @BasePath /v1
 
+// http://localhost:18181/docs/index.html
 func RegisterSwagger(r *gin.Engine) {
 	docs.SwaggerInfo.BasePath = "/v1"
 	g := r.Group("/docs")
@@ -33,4 +34,6 @@ func RegisterAPIv1(r *gin.Engine) {
 	g.POST("/chat/completions", handler.ChatCompletions)
 
 	g.POST("/embeddings", handler.Embeddings)
+
+	g.POST("/reranking", handler.Reranking)
 }

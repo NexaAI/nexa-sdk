@@ -1,5 +1,3 @@
-//go:build reranker
-
 package nexa_sdk
 
 /*
