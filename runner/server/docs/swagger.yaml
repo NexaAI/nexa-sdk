@@ -1,0 +1,30 @@
+basePath: /v1
+definitions:
+  handler.ChatCompletionRequest:
+    type: object
+info:
+  contact: {}
+  title: Nexa AI Server
+  version: 0.0.0
+paths:
+  /completions:
+    post:
+      consumes:
+      - application/json
+      description: legancy completion
+      parameters:
+      - description: example
+        in: body
+        name: model
+        required: true
+        schema:
+          $ref: '#/definitions/handler.ChatCompletionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: completion
+swagger: "2.0"

@@ -1,9 +1,10 @@
 package nexa_sdk
 
 /*
-#cgo CFLAGS: -I../../build/include
-#cgo LDFLAGS: -L../../build/lib -lnexa_bridge
-#cgo linux LDFLAGS: -Wl,--unresolved-symbols=ignore-in-shared-libs
+#cgo CFLAGS: -I./stub
+#cgo LDFLAGS: -L./stub -lnexa_bridge
+#cgo linux LDFLAGS: -Wl,-rpath,${SRCDIR}/../../build/lib
+#cgo darwin LDFLAGS: -Wl,-rpath,${SRCDIR}/../../build/lib
 
 #include <stdlib.h>
 #include "ml.h"
@@ -13,7 +14,8 @@ extern void go_log_wrap(char *msg);
 import "C"
 import (
 	"errors"
-	"fmt"
+	"log"
+	"strings"
 )
 
 var (
@@ -25,6 +27,7 @@ var (
 // This must be called before using any other SDK functions
 func Init() {
 	C.ml_init()
+	C.ml_set_log((C.ml_log_callback)(C.go_log_wrap))
 }
 
 // DeInit cleans up resources allocated by the Nexa SDK
@@ -35,7 +38,8 @@ func DeInit() {
 
 // go_log_wrap is exported to C and handles log messages from the C library
 // It converts C strings to Go strings and prints them to stdout
+//
 //export go_log_wrap
 func go_log_wrap(msg *C.char) {
-	fmt.Println(C.GoString(msg))
+	log.Default().Println(strings.TrimSpace(C.GoString(msg)))
 }

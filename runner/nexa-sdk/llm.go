@@ -12,6 +12,10 @@ import (
 	"context"
 	"fmt"
 	"unsafe"
+
+	"github.com/bytedance/sonic"
+	"github.com/nikolalohinski/gonja/v2"
+	"github.com/nikolalohinski/gonja/v2/exec"
 )
 
 // LLMRole represents different roles in a chat conversation
@@ -25,13 +29,30 @@ const (
 
 // ChatMessage represents a single message in a chat conversation
 type ChatMessage struct {
-	Role    LLMRole // The role of the message sender
-	Content string  // The actual message content
+	Role    LLMRole `json:"role"`    // The role of the message sender
+	Content string  `json:"content"` // The actual message content
+}
+
+type ChatToolFunction struct {
+	Name        string         `json:"name"`
+	Description string         `json:"description,omitempty"`
+	Parameters  map[string]any `json:"parameters,omitempty"`
+	Strict      bool           `json:"strict,omitempty"`
+}
+
+type ChatTool struct {
+	Type     string           `json:"type"`
+	Function ChatToolFunction `json:"function"`
+}
+
+type ChatTemplateParam struct {
+	Messages []ChatMessage `json:"messages,omitempty"`
+	Tools    []ChatTool    `json:"tools,omitempty"`
 }
 
 // LLM wraps the C library LLM structure and provides Go interface
 type LLM struct {
-	pointer *C.struct_ml_LLM // Pointer to the underlying C LLM structure
+	ptr *C.ml_LLM // Pointer to the underlying C LLM structure
 }
 
 // NewLLM creates a new LLM instance with the specified model and configuration
@@ -40,19 +61,19 @@ func NewLLM(model string, tokenizer *string, ctxLen int32, devices *string) LLM 
 	defer C.free(unsafe.Pointer(cModel))
 
 	return LLM{
-		pointer: C.ml_llm_create(cModel, nil, C.int32_t(ctxLen), nil),
+		ptr: C.ml_llm_create(cModel, nil, C.int32_t(ctxLen), nil),
 	}
 }
 
 // Destroy frees the memory allocated for the LLM instance
 func (p *LLM) Destroy() {
-	C.ml_llm_destroy(p.pointer)
-	p.pointer = nil
+	C.ml_llm_destroy(p.ptr)
+	p.ptr = nil
 }
 
 // Reset clears the LLM's internal state and context
 func (p *LLM) Reset() {
-	C.ml_llm_reset(p.pointer)
+	C.ml_llm_reset(p.ptr)
 }
 
 // Encode converts a text message into token IDs using the model's tokenizer
@@ -61,7 +82,7 @@ func (p *LLM) Encode(msg string) ([]int32, error) {
 	defer C.free(unsafe.Pointer(cMsg))
 
 	var res *C.int32_t
-	resLen := C.ml_llm_encode(p.pointer, cMsg, &res)
+	resLen := C.ml_llm_encode(p.ptr, cMsg, &res)
 	if resLen < 0 {
 		return nil, ErrCommon
 	}
@@ -78,7 +99,7 @@ func (p *LLM) Encode(msg string) ([]int32, error) {
 func (p *LLM) Decode(ids []int32) (string, error) {
 	var res *C.char
 	resLen := C.ml_llm_decode(
-		p.pointer,
+		p.ptr,
 		(*C.int32_t)(unsafe.Pointer(&ids[0])),
 		C.int32_t(len(ids)),
 		&res)
@@ -95,7 +116,7 @@ func (p *LLM) SaveKVCache(path string) error {
 	cPath := C.CString(path)
 	defer C.free(unsafe.Pointer(cPath))
 
-	res := C.ml_llm_save_kv_cache(p.pointer, cPath)
+	res := C.ml_llm_save_kv_cache(p.ptr, cPath)
 	if res < 0 {
 		return ErrCommon
 	}
@@ -107,7 +128,7 @@ func (p *LLM) LoadKVCache(path string) error {
 	cPath := C.CString(path)
 	defer C.free(unsafe.Pointer(cPath))
 
-	res := C.ml_llm_load_kv_cache(p.pointer, cPath)
+	res := C.ml_llm_load_kv_cache(p.ptr, cPath)
 	if res < 0 {
 		return ErrCommon
 	}
@@ -120,7 +141,7 @@ func (p *LLM) Generate(prompt string) (string, error) {
 	defer C.free(unsafe.Pointer(cPrompt))
 
 	var res *C.char
-	resLen := C.ml_llm_generate(p.pointer, cPrompt, nil, &res)
+	resLen := C.ml_llm_generate(p.ptr, cPrompt, nil, &res)
 	if resLen <= 0 {
 		return "", ErrCommon
 	}
@@ -138,7 +159,7 @@ func (p *LLM) GetChatTemplate(name *string) (string, error) {
 	}
 
 	var res *C.char
-	resLen := C.ml_llm_get_chat_template(p.pointer, cName, &res)
+	resLen := C.ml_llm_get_chat_template(p.ptr, cName, &res)
 	if resLen < 0 {
 		return "", ErrCommon
 	}
@@ -160,13 +181,32 @@ func (p *LLM) ApplyChatTemplate(msgs []ChatMessage) (string, error) {
 	}
 
 	var res *C.char
-	resLen := C.ml_llm_apply_chat_template(p.pointer, &cMsgs[0], C.int32_t(len(msgs)), &res)
+	resLen := C.ml_llm_apply_chat_template(p.ptr, &cMsgs[0], C.int32_t(len(msgs)), &res)
 	if resLen < 0 {
 		return "", ErrCommon
 	}
 	defer C.free(unsafe.Pointer(res))
 
 	return C.GoString(res), nil
+}
+
+// ApplyChatTemplate formats chat messages using the model's chat template
+func (p *LLM) ApplyJinjaTemplate(param ChatTemplateParam) (string, error) {
+	chatTmpl, e := p.GetChatTemplate(nil)
+	if e != nil {
+		return "", e
+	}
+
+	tmpl, e := gonja.FromString(chatTmpl)
+	if e != nil {
+		return "", e
+	}
+
+	msgData, _ := sonic.Marshal(param) // won't fail
+	m := make(map[string]any)
+	sonic.Unmarshal(msgData, &m) // won't fail
+
+	return tmpl.ExecuteToString(exec.NewContext(m))
 }
 
 // Global streamTokenCh for streaming - TODO: implement proper streamTokenCh mapping for concurrent streams
@@ -213,12 +253,12 @@ func (p *LLM) GenerateStream(ctx context.Context, prompt string) (<-chan string,
 			streamTokenCh = nil
 			streamTokenCtx = nil
 		}()
-		defer close(stream)
 		defer close(err)
+		defer close(stream)
 		defer C.free(unsafe.Pointer(cPrompt))
 
 		// Call C function to start streaming generation
-		resLen := C.ml_llm_generate_stream(p.pointer, cPrompt, &config,
+		resLen := C.ml_llm_generate_stream(p.ptr, cPrompt, &config,
 			(C.ml_llm_token_callback)(C.go_generate_stream_on_token), nil, nil)
 		if resLen < 0 {
 			err <- ErrCommon

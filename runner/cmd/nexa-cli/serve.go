@@ -1,8 +1,11 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
+	"github.com/NexaAI/nexa-sdk/internal/config"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
 	"github.com/NexaAI/nexa-sdk/server"
 )
@@ -18,6 +21,8 @@ func serve() *cobra.Command {
 	serveCmd.Short = "Run the Nexa AI Service"
 
 	serveCmd.Run = func(cmd *cobra.Command, args []string) {
+		fmt.Printf("Start Nexa AI Server on http://%s\n", config.Get().Host)
+
 		// Initialize SDK resources and prepare AI models for serving
 		nexa_sdk.Init()
 

@@ -9,27 +9,27 @@ import (
 )
 
 var (
-	// llm is the global LLM instance used across all tests
-	llm LLM
+	// vlm is the global vlm instance used across all tests
+	vlm VLM
 )
 
-// initLLM creates a new LLM instance for testing with a predefined model
+// initvlm creates a new vlm instance for testing with a predefined model
 // Uses the Qwen3-0.6B-GGUF model from the local cache
-func initLLM() {
-	llm = NewLLM(
-		path.Join(nexaPath, "models", "UXdlbi9Rd2VuMy0wLjZCLUdHVUY=", "modelfile"),
+func initVLM() {
+	vlm = NewVLM(
+		path.Join(nexaPath, "models", "bXJhZGVybWFjaGVyL1ZMTS1SMS1Rd2VuMi41VkwtM0ItT1ZELTAzMjEtaTEtR0dVRg==", "modelfile"),
 		nil, 4096, nil)
 }
 
-// deinitLLM cleans up the LLM instance after testing
-func deinitLLM() {
-	llm.Destroy()
+// deinitvlm cleans up the vlm instance after testing
+func deinitVLM() {
+	vlm.Destroy()
 }
 
 // TestEncode tests the tokenization functionality
 // Verifies that text can be converted to token IDs
-func TestEncode(t *testing.T) {
-	ids, e := llm.Encode("hello world")
+func TestVLMEncode(t *testing.T) {
+	ids, e := vlm.Encode("hello world")
 	if e != nil {
 		t.Error(e)
 	}
@@ -38,36 +38,18 @@ func TestEncode(t *testing.T) {
 
 // TestDecode tests the detokenization functionality
 // Verifies that token IDs can be converted back to text
-func TestDecode(t *testing.T) {
-	res, e := llm.Decode([]int32{14990, 1879})
+func TestVLMDecode(t *testing.T) {
+	res, e := vlm.Decode([]int32{14990, 1879})
 	if e != nil {
 		t.Error(e)
 	}
 	t.Log(res)
 }
 
-// TestSaveKVCache tests saving the key-value cache to disk
-// This can improve performance for subsequent generations
-func TestSaveKVCache(t *testing.T) {
-	e := llm.SaveKVCache(path.Join(nexaPath, "kvcache"))
-	if e != nil {
-		t.Error(e)
-	}
-}
-
-// SKIP_TestLoadKVCache tests loading a previously saved key-value cache
-// Currently skipped (TODO) - likely due to implementation issues
-func TestLoadKVCache(t *testing.T) {
-	e := llm.LoadKVCache(path.Join(nexaPath, "kvcache"))
-	if e != nil {
-		t.Error(e)
-	}
-}
-
 // TestApplyChatTemplate tests the chat template formatting functionality
 // Verifies that chat messages can be properly formatted for the model
-func TestApplyChatTemplate(t *testing.T) {
-	msg, e := llm.ApplyChatTemplate([]ChatMessage{
+func TestVLMApplyChatTemplate(t *testing.T) {
+	msg, e := vlm.ApplyChatTemplate([]ChatMessage{
 		{LLMRoleUser, "hello"},
 		{LLMRoleAssistant, "yes, you are a so cute cat"},
 		{LLMRoleUser, "can you give me a new cute name"},
@@ -81,18 +63,19 @@ func TestApplyChatTemplate(t *testing.T) {
 
 // TestGenerate tests basic text generation functionality
 // Verifies that the model can complete a given prompt
-func TestGenerate(t *testing.T) {
-	res, e := llm.Generate("i am lihua, ")
-	if e != nil {
-		t.Error(e)
-	}
-	t.Log(res)
-}
+//func TestVLMGenerate(t *testing.T) {
+//	pic := "~/Pictures/ScreenShot/20200201_182517.png"
+//	res, e := vlm.Generate("what does the picture say", &pic)
+//	if e != nil {
+//		t.Error(e)
+//	}
+//	t.Log(res)
+//}
 
 // TestGetChatTemplate tests retrieval of the model's chat template
 // Verifies that the default chat template can be obtained
-func TestGetChatTemplate(t *testing.T) {
-	msg, e := llm.GetChatTemplate(nil)
+func TestVLMGetChatTemplate(t *testing.T) {
+	msg, e := vlm.GetChatTemplate(nil)
 	if e != nil {
 		t.Error(e)
 	}
@@ -101,17 +84,18 @@ func TestGetChatTemplate(t *testing.T) {
 
 // TestChat tests end-to-end chat functionality
 // Combines chat template application with text generation
-func TestChat(t *testing.T) {
+func TestVLMChat(t *testing.T) {
 	// Format the user message using chat template
-	msg, e := llm.ApplyChatTemplate([]ChatMessage{
-		{LLMRoleUser, "i am lihua, i am a cat"},
+	msg, e := vlm.ApplyChatTemplate([]ChatMessage{
+		{LLMRoleUser, "what does the picture say"},
 	})
 	if e != nil {
 		t.Error(e)
 	}
 
 	// Generate response using the formatted prompt
-	res, e := llm.Generate(msg)
+	pic := "~/Pictures/ScreenShot/20200201_182517.png"
+	res, e := vlm.Generate(msg, &pic)
 	if e != nil {
 		t.Error(e)
 	}
@@ -120,8 +104,9 @@ func TestChat(t *testing.T) {
 
 // TestGenerateStream tests streaming text generation functionality
 // Measures generation speed and verifies that tokens are streamed properly
-func TestGenerateStream(t *testing.T) {
-	dataCh, errCh := llm.GenerateStream(context.Background(), "i am lihua, ")
+func TestVLMGenerateStream(t *testing.T) {
+	pic := "~/Pictures/ScreenShot/20200201_182517.png"
+	dataCh, errCh := vlm.GenerateStream(context.Background(), "what does the picture say", &pic)
 
 	start := time.Now()
 	count := 0

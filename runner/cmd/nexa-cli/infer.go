@@ -1,99 +1,81 @@
 package main
 
 import (
-	"bufio"
 	"context"
-	"fmt"
-	"io"
-	"os"
 	"strings"
 	"time"
 
+	"github.com/briandowns/spinner"
 	"github.com/spf13/cobra"
 
 	"github.com/NexaAI/nexa-sdk/internal/store"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
 )
 
-func infer() *cobra.Command {
-	inferCmd := &cobra.Command{}
-	inferCmd.Use = "infer"
+func inferFunc(cmd *cobra.Command, args []string) {
+	s := store.NewStore()
 
-	inferCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
-	inferCmd.Run = func(cmd *cobra.Command, args []string) {
-		s := store.NewStore()
-		nexa_sdk.Init()
+	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model..."))
+	spin.Start()
+	nexa_sdk.Init()
+	p := nexa_sdk.NewLLM(s.ModelfilePath(args[0]), nil, 4096, nil)
+	time.Sleep(time.Second) // TODO: remove test code
+	spin.Stop()
 
-		p := nexa_sdk.NewLLM(s.ModelfilePath(args[0]), nil, 4096, nil)
+	var history []nexa_sdk.ChatMessage
+	var lastLen int
 
-		var history []nexa_sdk.ChatMessage
-		var lastLen int
+	repl(ReplConfig{
+		Stream: true,
+		Clear:  p.Reset,
+		SaveKVCache: func(path string) error {
+			return p.SaveKVCache(path)
+		},
+		LoadKVCache: func(path string) error {
+			return p.LoadKVCache(path)
+		},
+		runStream: func(ctx context.Context, prompt string, dataCh chan<- string, errCh chan<- error) {
+			defer close(errCh)
+			defer close(dataCh)
 
-		r := bufio.NewReader(os.Stdin)
-		for {
-			fmt.Print("\nEnter text: ")
-
-			txt, e := r.ReadString('\n')
-			if e != nil {
-				if e == io.EOF {
-					fmt.Println()
-					break
-				}
-				fmt.Printf("ReadString Error: %s\n", e)
-				break
-			}
-			txt = strings.TrimSpace(txt)
-			if txt == "/exit" {
-				break
-			}
-			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: txt})
-
+			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
 			formatted, e := p.ApplyChatTemplate(history)
 			if e != nil {
-				fmt.Printf("ApplyChatTemplat Error: %s\n", e)
-				break
-			}
-
-			start := time.Now()
-			var count int
-			var full strings.Builder
-
-			fmt.Print("\033[33m")
-			dataCh, errCh := p.GenerateStream(context.Background(), formatted[lastLen:])
-			for r := range dataCh {
-				full.WriteString(r)
-				fmt.Print(r)
-				count++
-			}
-			fmt.Print("\033[0m\n")
-
-			e, ok := <-errCh
-			if ok {
-				fmt.Printf("GenerateStream Error: %s\n", e)
+				errCh <- e
 				return
 			}
 
-			duration := time.Since(start).Seconds()
-			fmt.Print("\033[34m")
-			fmt.Printf("\nGenerate %d token in %f s, speed is %f token/s\n",
-				count,
-				duration,
-				float64(count)/duration)
-
-			fmt.Print("\033[0m")
+			var full strings.Builder
+			dCh, eCh := p.GenerateStream(ctx, formatted[lastLen:])
+			for r := range dCh {
+				full.WriteString(r)
+				dataCh <- r
+			}
+			for e := range eCh {
+				errCh <- e
+				return
+			}
 
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: full.String()})
 
 			formatted, e = p.ApplyChatTemplate(history)
 			if e != nil {
-				fmt.Printf("ApplyChatTemplat Error: %s\n", e)
-				break
+				errCh <- e
+				return
 			}
 			lastLen = len(formatted)
-		}
+		},
+	})
 
-		p.Destroy()
-		nexa_sdk.DeInit()
-	}
+	p.Destroy()
+	nexa_sdk.DeInit()
+}
+
+func infer() *cobra.Command {
+	inferCmd := &cobra.Command{}
+	inferCmd.Use = "infer"
+
+	inferCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
+	inferCmd.Run = inferFunc
 	return inferCmd
 }

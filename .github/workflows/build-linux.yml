@@ -1,15 +1,23 @@
-name: build-cli-linux
+name: build-cli
 
 on:
   workflow_dispatch:
 
 jobs:
   build-cli:
-    name: Build cli on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    name: Build cli on ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
-        os: [ubuntu22.04]
+        include:
+          - name: ubuntu_22.04
+            runner: sdk-linux-16-core
+          - name: macos_13
+            runner: macos-13
+          - name: macos_14
+            runner: macos-14
+          - name: macos_15
+            runner: macos-15
 
     steps:
       - name: Checkout repository
@@ -17,7 +25,22 @@ jobs:
         with:
           ref: remilia/dev
 
-      - name: Echo test
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.24.3
+          cache-dependency-path: runner/go.sum
+
+      - name: Build Nexa Cli
+        run: make build
+
+      - name: Download runtime
         run: |
-          echo hello
-          echo world
+          make download
+          mv build nexasdk
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexasdk_${{ matrix.name }}
+          path: ./nexasdk

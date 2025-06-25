@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 
 	"github.com/NexaAI/nexa-sdk/internal/store"
@@ -23,9 +26,22 @@ func pull() *cobra.Command {
 
 	pullCmd.Run = func(cmd *cobra.Command, args []string) {
 		s := store.NewStore()
-		e := s.Pull(args[0])
-		if e != nil {
-			fmt.Println(e)
+
+		// TODO: replace with go-pretty
+		bar := progressbar.DefaultBytes(
+			-1,
+			"downloading",
+		)
+		pgCh, errCh := s.Pull(context.TODO(), args[0])
+		for pg := range pgCh {
+			if bar.GetMax64() != int64(pg.Size) {
+				bar.ChangeMax64(int64(pg.Size))
+			}
+			bar.Set64(int64(pg.Downloaded))
+		}
+
+		for err := range errCh {
+			fmt.Println(text.FgRed.Sprintf("Error: %s", err))
 		}
 	}
 
