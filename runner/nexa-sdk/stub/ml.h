@@ -70,7 +70,7 @@ typedef struct {
     ml_Path grammar_path;       /* Optional grammar file path */
 } ml_SamplerConfig;
 
-/** Text generation configuration */
+/** LLM / VLM generation configuration */
 typedef struct {
     int32_t          max_tokens;         /* Maximum tokens to generate */
     float            temperature;        /* Sampling temperature */
@@ -80,6 +80,7 @@ typedef struct {
     const char**     stop;               /* Array of stop sequences */
     int32_t          stop_count;         /* Number of stop sequences */
     ml_SamplerConfig sampler_config;     /* Advanced sampling config */
+    ml_Path          image_path;         /* Optional image path for VLM, assume 1 image only */
 } ml_GenerationConfig;
 
 /** Chat message structure */
@@ -130,39 +131,40 @@ int32_t ml_llm_generate_stream(ml_LLM* handle, const char* prompt_utf8, const ml
 /*                              MULTIMODAL MODELS (VLM)                          */
 /* ========================================================================== */
 
-typedef struct ml_VLM ml_VLM;  /* Opaque VLM handle */
+typedef struct ml_VLM ml_VLM; /* Opaque VLM handle */
 
 /* ====================  Lifecycle Management  ============================== */
 ml_VLM* ml_vlm_create(ml_Path model_path, ml_Path mmproj_path, int32_t context_length, const char* device);
 void    ml_vlm_destroy(ml_VLM* handle);
-void    ml_vlm_reset(ml_VLM* handle);  /* Reset internal state */
+void    ml_vlm_reset(ml_VLM* handle); /* Reset internal state */
 
 /* ====================  Tokenization  ====================================== */
 int32_t ml_vlm_encode(const ml_VLM* handle, const char* text_utf8, int32_t** out_tokens);
-int32_t ml_vlm_decode(const ml_VLM* handle, const int32_t* token_ids, 
-                      int32_t length, char** out_text);
+int32_t ml_vlm_decode(const ml_VLM* handle, const int32_t* token_ids, int32_t length, char** out_text);
 
 /* ====================  Sampling Configuration  =========================== */
 void ml_vlm_set_sampler(ml_VLM* handle, const ml_SamplerConfig* config);
 void ml_vlm_reset_sampler(ml_VLM* handle);
 
 /* ====================  Text Generation  ================================== */
-int32_t ml_vlm_generate(ml_VLM* handle, const char* prompt_utf8, 
-                        const ml_GenerationConfig* config, char** out_text);
-int32_t ml_vlm_get_chat_template(ml_VLM* handle, const char* template_name, 
-                                 const char** out_template);
-int32_t ml_vlm_apply_chat_template(ml_VLM* handle, ml_ChatMessage* messages, 
-                                   int32_t message_count, char** out_text);
+// Updated to support image path via config or explicit parameter
+int32_t ml_vlm_generate(ml_VLM* handle, const char* prompt_utf8, const ml_GenerationConfig* config, char** out_text);
+// Explicit multimodal generation with image path
+int32_t ml_vlm_generate_multimodal(
+    ml_VLM* handle, const char* prompt_utf8, ml_Path image_path, const ml_GenerationConfig* config, char** out_text);
+int32_t ml_vlm_get_chat_template(ml_VLM* handle, const char* template_name, const char** out_template);
+int32_t ml_vlm_apply_chat_template(ml_VLM* handle, ml_ChatMessage* messages, int32_t message_count, char** out_text);
 
 /* ====================  Embedding Generation  ============================= */
-int32_t ml_vlm_embed(ml_VLM* handle, const char** texts_utf8, 
-                     int32_t text_count, float** out_embeddings);
+int32_t ml_vlm_embed(ml_VLM* handle, const char** texts_utf8, int32_t text_count, float** out_embeddings);
 
 /* ====================  Streaming Generation  ============================= */
-int32_t ml_vlm_generate_stream(ml_VLM* handle, const char* prompt_utf8,
-                               const ml_GenerationConfig* config,
-                               ml_llm_token_callback on_token, void* user_data,
-                               char** out_full_text);
+// Updated to support image path via config or explicit parameter
+int32_t ml_vlm_generate_stream(ml_VLM* handle, const char* prompt_utf8, const ml_GenerationConfig* config,
+    ml_llm_token_callback on_token, void* user_data, char** out_full_text);
+// Explicit multimodal streaming with image path
+int32_t ml_vlm_generate_stream_multimodal(ml_VLM* handle, const char* prompt_utf8, ml_Path image_path,
+    const ml_GenerationConfig* config, ml_llm_token_callback on_token, void* user_data, char** out_full_text);
 
 /* ========================================================================== */
 /*                              EMBEDDING MODELS                               */
