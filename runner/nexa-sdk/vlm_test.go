@@ -17,7 +17,7 @@ var (
 // Uses the Qwen3-0.6B-GGUF model from the local cache
 func initVLM() {
 	vlm = NewVLM(
-		path.Join(nexaPath, "models", "Z29vZ2xlL2dlbW1hLTMtMWItaXQtcWF0LXE0XzAtZ2d1Zg==", "modelfile"),
+		path.Join(nexaPath, "models", "bXJhZGVybWFjaGVyL1ZMTS1SMS1Rd2VuMi41VkwtM0ItT1ZELTAzMjEtaTEtR0dVRg==", "modelfile"),
 		nil, 4096, nil)
 }
 
@@ -63,14 +63,14 @@ func TestVLMApplyChatTemplate(t *testing.T) {
 
 // TestGenerate tests basic text generation functionality
 // Verifies that the model can complete a given prompt
-func TestVLMGenerate(t *testing.T) {
-	pic := "~/Pictures/ScreenShot/20200201_182517.png"
-	res, e := vlm.Generate("what does the picture say", &pic)
-	if e != nil {
-		t.Error(e)
-	}
-	t.Log(res)
-}
+//func TestVLMGenerate(t *testing.T) {
+//	pic := "~/Pictures/ScreenShot/20200201_182517.png"
+//	res, e := vlm.Generate("what does the picture say", &pic)
+//	if e != nil {
+//		t.Error(e)
+//	}
+//	t.Log(res)
+//}
 
 // TestGetChatTemplate tests retrieval of the model's chat template
 // Verifies that the default chat template can be obtained

@@ -9,7 +9,6 @@ import (
 	"path"
 	"strings"
 
-	"github.com/NexaAI/nexa-sdk/internal/config"
 	"github.com/NexaAI/nexa-sdk/internal/types"
 	"github.com/bytedance/sonic"
 )
@@ -50,7 +49,7 @@ func (s *Store) Pull(ctx context.Context, name string) (infoCh <-chan types.Down
 			errC <- e
 			return
 		}
-		req.Header.Set("Authorization", config.Get().HFToken) // TODO: auth support
+		//req.Header.Set("Authorization", config.Get().HFToken) // TODO: auth support
 
 		// Execute API request
 		r, e := http.DefaultClient.Do(req)

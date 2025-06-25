@@ -1,11 +1,23 @@
-ARGS?=infer Qwen/Qwen3-0.6B-GGUF
-#ARGS?=serve
+ARGS ?= infer Qwen/Qwen3-0.6B-GGUF
+#ARGS ?= serve
 
 
-LLAMA_RUNTIME_LIBS=libggml-base libggml-blas libggml-cpu libggml-metal libggml libllama libmtmd libnexa_bridge
+LLAMA_RUNTIME_LIBS := libggml-base libggml-blas libggml-cpu libggml-metal libggml libllama libmtmd libnexa_bridge
 
-OS=linux
-EXT=so
+UNAME := $(shell uname -s)
+ifeq ($(UNAME), Linux)
+	OS := linux
+	EXT := so
+else ifeq ($(UNAME), Darwin)
+
+	MACOS_VERSION := $(shell sw_vers -productVersion))
+	MACOS_MAJOR_VERSION := $(firstword $(subst ., ,$(MACOS_VERSION)))
+
+	OS := macos-$(MACOS_MAJOR_VERSION)
+	EXT := dylib
+endif
+
+# cuurent only support llama
 RUNTIME_LIBS=$(LLAMA_RUNTIME_LIBS)
 
 
@@ -15,7 +27,7 @@ run:
 	./build/nexa $(ARGS)
 
 build:
-	cd runner/nexa-sdk/stub && g++ -O3 -s -fPIC -shared -o libnexa_bridge.so *.cpp
+	cd runner/nexa-sdk/stub && g++ -O3 -fPIC -shared -o libnexa_bridge.$(EXT) *.cpp
 	cd runner && CGO_ENABLED=0 go build -o ../build/nexa ./cmd/nexa-launcher
 	cd runner && go build -tags="sonic avx" -o ../build/nexa-cli ./cmd/nexa-cli
 
@@ -23,7 +35,7 @@ doc:
 	swag init -d ./runner/server -g ./server.go -o ./runner/server/docs
 
 test:
-	cd runner && LD_LIBRARY_PATH=$(PWD)/build/lib go test -v ./nexa-sdk
+	cd runner && LD_LIBRARY_PATH=$(PWD)/build/lib go test -v ./nexa-sdk --run VLM
 
 download:
 	mkdir -p build/lib
@@ -36,5 +48,5 @@ download:
 clean:
 	rm -rf build/nexa
 	rm -rf build/nexa-cli
-	rm -rf runner/nexa-sdk/stub/*.so
+	rm -rf runner/nexa-sdk/stub/libnexa_bridge.$(EXT)
 

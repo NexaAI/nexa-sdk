@@ -71,7 +71,7 @@ var toolCallRegex = regexp.MustCompile("<tool_call>([\\s\\S]+)<\\/tool_call>")
 // curl -v http://localhost:18181/v1/chat/completions -d '{ "model": "Qwen/Qwen2.5-1.5B-Instruct-GGUF", "messages": [ { "role": "user", "content": "What is the weather like in Boston today?" } ], "tools": [ { "type": "function", "function": { "name": "get_current_weather", "description": "Get the current weather in a given location", "parameters": { "type": "object", "properties": { "location": { "type": "string", "description": "The city and state, e.g. San Francisco, CA" }, "unit": { "type": "string", "enum": ["celsius", "fahrenheit"] } }, "required": ["location"] } } } ] }'
 //
 // VLM
-// curl -v http://localhost:18181/v1/chat/completions -d '{ "model": "google/gemma-3-1b-it-qat-q4_0-gguf", "messages": [ { "role": "user", "content": [ { "type": "text", "text": "what is main color of the picture" }, { "type": "image_url", "image_url": "/home/remilia/Pictures/ScreenShot/20200201_182517.png" } ] } ] }'
+// curl -v http://localhost:18181/v1/chat/completions -d '{ "model": "mradermacher/VLM-R1-Qwen2.5VL-3B-OVD-0321-i1-GGUF", "messages": [ { "role": "user", "content": [ { "type": "text", "text": "what is main color of the picture" }, { "type": "image_url", "image_url": "/home/remilia/Pictures/ScreenShot/20200201_182517.png" } ] } ] }'
 func ChatCompletions(c *gin.Context) {
 	param := ChatCompletionRequest{}
 	if err := c.ShouldBindJSON(&param); err != nil {
