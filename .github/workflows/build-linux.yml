@@ -5,11 +5,19 @@ on:
 
 jobs:
   build-cli:
-    name: Build cli on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    name: Build cli on ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
-        os: [sdk-linux-16-core]
+        include:
+          - name: ubuntu_22.04
+            runner: sdk-linux-16-core
+          #- name: macos_13
+          #  runner: macos-13
+          #- name: macos_14
+          #  runner: macos-14
+          #- name: macos_15
+          #  runner: macos-15
 
     steps:
       - name: Checkout repository
@@ -23,27 +31,14 @@ jobs:
           go-version: 1.24.3
           cache-dependency-path: runner/go.sum
 
-      - name: Download Nexa Bridge
-        uses: Legion2/download-release-action@v2.1.0
-        with:
-          repository: NexaAI/nexasdk-bridge
-          tag: zack-dev-cpu
-          path: build
-          file: libnexa_bridge-ubuntu-22.04.so
-          token: ${{ secrets.ZACK_ACCESS_TOKEN }}
-
       - name: Build Nexa Cli
-        run: |
-          ls -lh build
-          tree build
-          mkdir -p build/include build/lib
-          mv build/libnexa_bridge-ubuntu-22.04.so build/lib/libnexa_bridge.so
-          cd runner
-          go mod tidy
-          go build -tags="sonic avx" -o ../build/nexa ./cmd/nexa-cli
+        run: make build
+
+      - name: Download runtime
+        run: make download
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nexa-cli_${{ matrix.os }}
-          path: ./build/nexa
+          name: nexasdk_${{ matrix.name }}
+          path: ./build/*

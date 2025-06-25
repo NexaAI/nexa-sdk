@@ -1,8 +1,8 @@
 package nexa_sdk
 
 /*
-#cgo CFLAGS: -I../../build/include
-#cgo LDFLAGS: -L../../build/lib -lnexa_bridge
+#cgo CFLAGS: -I./stub
+#cgo LDFLAGS: -L./stub -lnexa_bridge
 #cgo linux LDFLAGS: -Wl,-rpath,${SRCDIR}/../../build/lib
 #cgo darwin LDFLAGS: -Wl,-rpath,${SRCDIR}/../../build/lib
 
