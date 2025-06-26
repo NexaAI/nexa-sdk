@@ -15,7 +15,7 @@ else ifeq ($(UNAME), Darwin)
 	EXT := dylib
 endif
 
-.PHONY: run build download clean
+.PHONY: run build doc test download clean
 
 run:
 	./build/nexa $(ARGS)
@@ -32,19 +32,19 @@ test:
 	cd runner && LD_LIBRARY_PATH=$(PWD)/build/lib go test -v ./nexa-sdk --run VLM
 
 download:
+	rm -rf build/lib
 	mkdir -p build/lib
 	@echo "====> Download runtime"
-	@for file in $(RUNTIME_LIBS); do \
-		echo "OS: $(OS)"; \
-		echo "BACKEND: $(BRIDGE_BACKEND)"; \
-		echo "VERSION: $(BRIDGE_VERSION)"; \
-		curl -L -o build/nexasdk-bridge.zip \
-			https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexasdk/$(BRIDGE_VERSION)/$(BRIDGE_BACKEND/)$(OS)/nexasdk-bridge.zip; \
-		rm build/nexasdk-bridge.zip; \
-	done
+	@echo "OS: $(OS)"
+	@echo "BACKEND: $(BRIDGE_BACKEND)"
+	@echo "VERSION: $(BRIDGE_VERSION)"
+	curl -L -o build/nexasdk-bridge.zip https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexasdk/$(BRIDGE_VERSION)/$(BRIDGE_BACKEND)/$(OS)/nexasdk-bridge.zip
+	cd build/lib && unzip ../nexasdk-bridge.zip
+	rm build/nexasdk-bridge.zip
 
 clean:
 	rm -rf build/nexa
 	rm -rf build/nexa-cli
+	rm -rf build/lib
 	rm -rf runner/nexa-sdk/stub/libnexa_bridge.$(EXT)
 
