@@ -28,17 +28,17 @@ func pull() *cobra.Command {
 		s := store.NewStore()
 
 		// TODO: replace with go-pretty
-		bar := progressbar.DefaultBytes(
-			-1,
-			"downloading",
-		)
+		bar := progressbar.DefaultBytes(-1, "downloading")
 		pgCh, errCh := s.Pull(context.TODO(), args[0])
 		for pg := range pgCh {
-			if bar.GetMax64() != int64(pg.Size) {
-				bar.ChangeMax64(int64(pg.Size))
+			if pg.CurrentSize != bar.GetMax64() {
+				bar.Reset()
+				bar.Describe("download " + pg.CurrentName)
+				bar.ChangeMax64(pg.CurrentSize)
 			}
-			bar.Set64(int64(pg.Downloaded))
+			bar.Set64(pg.CurrentDownloaded)
 		}
+		bar.Exit()
 
 		for err := range errCh {
 			bar.Clear()

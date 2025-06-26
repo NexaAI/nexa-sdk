@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 	"regexp"
 	"time"
 
@@ -75,7 +76,7 @@ var toolCallRegex = regexp.MustCompile("<tool_call>([\\s\\S]+)<\\/tool_call>")
 // curl -v http://localhost:18181/v1/chat/completions -d '{ "model": "Qwen/Qwen2.5-1.5B-Instruct-GGUF", "messages": [ { "role": "user", "content": "What is the weather like in Boston today?" } ], "tools": [ { "type": "function", "function": { "name": "get_current_weather", "description": "Get the current weather in a given location", "parameters": { "type": "object", "properties": { "location": { "type": "string", "description": "The city and state, e.g. San Francisco, CA" }, "unit": { "type": "string", "enum": ["celsius", "fahrenheit"] } }, "required": ["location"] } } } ] }'
 //
 // VLM
-// curl -v http://localhost:18181/v1/chat/completions -d '{ "model": "mradermacher/VLM-R1-Qwen2.5VL-3B-OVD-0321-i1-GGUF", "messages": [ { "role": "user", "content": [ { "type": "text", "text": "what is main color of the picture" }, { "type": "image_url", "image_url": "/home/remilia/Pictures/ScreenShot/20200201_182517.png" } ] } ] }'
+// curl -v http://localhost:18181/v1/chat/completions -d '{ "model": "nexaml/nexaml-models", "messages": [ { "role": "user", "content": [ { "type": "text", "text": "what is main color of the picture" }, { "type": "image_url", "image_url": "/home/remilia/Pictures/ScreenShot/20200201_182517.png" } ] } ], "stream": true }'
 func ChatCompletions(c *gin.Context) {
 	param := ChatCompletionRequest{}
 	if err := c.ShouldBindJSON(&param); err != nil {
@@ -222,7 +223,9 @@ func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err})
 		return
 	}
-	p := nexa_sdk.NewVLM(file, nil, 4096, nil)
+
+	mmproj := path.Join(path.Dir(file), "mmproj-model-f16.gguf") // TODO
+	p := nexa_sdk.NewVLM(file, &mmproj, 4096, nil)
 	defer p.Destroy()
 
 	// emtry request for warm up
@@ -265,13 +268,13 @@ func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 		}
 		formatted, err := p.ApplyJinjaTemplate(param)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, map[string]any{"error": err})
+			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 			return
 		}
 
 		data, err := p.Generate(formatted, &imageUrl)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, map[string]any{"error": err})
+			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 			return
 		}
 
@@ -301,7 +304,7 @@ func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 
 		formatted, err := p.ApplyChatTemplate(messages)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, map[string]any{"error": err})
+			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 			return
 		}
 
@@ -334,7 +337,7 @@ func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 		} else {
 			data, err := p.Generate(formatted, &imageUrl)
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, map[string]any{"error": err})
+				c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 				return
 			}
 

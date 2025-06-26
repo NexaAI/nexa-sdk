@@ -20,7 +20,7 @@ const HF_ENDPOINT = "https://huggingface.co"
 type HFFileInfo struct {
 	Type string `json:"type"`
 	OId  string `json:"oid"`
-	Size uint64 `json:"size"`
+	Size int64  `json:"size"`
 	Path string `json:"path"`
 	LFS  struct {
 		OId string `json:"oid"`
@@ -30,7 +30,6 @@ type HFFileInfo struct {
 
 // Pull downloads a model from HuggingFace and stores it locally
 // It fetches the model tree, finds .gguf files, downloads them, and saves metadata
-// TODO: multi gguf file support
 func (s *Store) Pull(ctx context.Context, name string) (infoCh <-chan types.DownloadInfo, errCh <-chan error) {
 
 	infoC := make(chan types.DownloadInfo, 10)
@@ -38,16 +37,43 @@ func (s *Store) Pull(ctx context.Context, name string) (infoCh <-chan types.Down
 	errC := make(chan error, 1)
 	errCh = errC
 
-	go func() {
-		client := resty.New()
+	var totalSize int64
+	client := resty.New()
+	client.SetResponseMiddlewares(
+		func(c *resty.Client, r *resty.Response) error {
+			if r.StatusCode() >= 400 {
+				return fmt.Errorf("HTTPError: [%d] %s", r.StatusCode(), r.String())
+			}
+			return nil
+		},
+		func(c *resty.Client, r *resty.Response) error {
+			dInfo := types.DownloadInfo{}
+			dInfo.TotalSize = totalSize
+			dInfo.CurrentSize = r.RawResponse.ContentLength
+			dInfo.CurrentName = path.Base(r.Request.OutputFileName)
+			r.Body = &types.FuncReadCloser{
+				Raw: r.Body,
+				// TODO: reduce channel message
+				F: func(b []byte) {
+					dInfo.TotalDownloaded += int64(len(b))
+					dInfo.CurrentDownloaded += int64(len(b))
+					infoC <- dInfo
+				},
+			}
+			return nil
+		},
+		resty.AutoParseResponseMiddleware,
+		resty.SaveToFileResponseMiddleware,
+	)
 
+	go func() {
 		defer close(errC)
 		defer close(infoC)
 		defer client.Close()
 
 		files := make([]HFFileInfo, 0)
 		_, err := client.R().
-			EnableDebug().
+			//EnableDebug().
 			SetAuthToken(config.Get().HFToken).
 			SetResult(&files).
 			Get(fmt.Sprintf("%s/api/models/%s/tree/main", HF_ENDPOINT, name))
@@ -56,10 +82,9 @@ func (s *Store) Pull(ctx context.Context, name string) (infoCh <-chan types.Down
 			return
 		}
 
-		dInfo := types.DownloadInfo{}
 		var mainName string
 		for _, f := range files {
-			dInfo.Size += f.Size
+			totalSize += f.Size
 
 			// Find first npz then first .gguf file in the model
 			f.Path = path.Base(f.Path)
@@ -75,36 +100,22 @@ func (s *Store) Pull(ctx context.Context, name string) (infoCh <-chan types.Down
 
 		// Create model directory structure
 		encName := s.encodeName(name)
-		e := os.MkdirAll(path.Join(s.home, "models", encName), 0770)
-		if e != nil {
-			errC <- e
+		err = os.MkdirAll(path.Join(s.home, "models", encName), 0770)
+		if err != nil {
+			errC <- err
 			return
 		}
-
-		client.SetResponseMiddlewares(
-			func(c *resty.Client, r *resty.Response) error {
-				r.Body = &types.FuncReadCloser{
-					Raw: r.Body,
-					// TODO: reduce channel message
-					F: func(b []byte) {
-						dInfo.Downloaded += uint64(len(b))
-						infoC <- dInfo
-					},
-				}
-				return nil
-			},
-			resty.SaveToFileResponseMiddleware,
-		)
 
 		// Create modelfile for storing downloaded content
 		for _, file := range files {
 			_, err = client.R().
+				SetDoNotParseResponse(true).
 				SetSaveResponse(true).
 				SetOutputFileName(path.Join(s.home, "models", encName, path.Base(file.Path))).
 				SetAuthToken(config.Get().HFToken).
 				Get(fmt.Sprintf("%s/%s/resolve/main/%s?download=true", HF_ENDPOINT, name, file.Path))
 			if err != nil {
-				errC <- e
+				errC <- err
 				return
 			}
 		}
@@ -112,14 +123,14 @@ func (s *Store) Pull(ctx context.Context, name string) (infoCh <-chan types.Down
 		// Create and save model manifest with metadata
 		model := types.Model{
 			Name:      name,
-			Size:      dInfo.Size,
+			Size:      totalSize,
 			ModelFile: mainName,
 		}
 		manifestPath := path.Join(s.home, "models", encName, "nexa.manifest")
 		manifestData, _ := sonic.Marshal(model) // JSON marshal won't fail, ignore error
-		e = os.WriteFile(manifestPath, manifestData, 0664)
-		if e != nil {
-			errC <- e
+		err = os.WriteFile(manifestPath, manifestData, 0664)
+		if err != nil {
+			errC <- err
 			return
 		}
 	}()
