@@ -32,6 +32,8 @@ func RootCmd() *cobra.Command {
 	// Server command to run AI service
 	rootCmd.AddCommand(serve())
 	rootCmd.AddCommand(run())
+
+	rootCmd.AddCommand(tool())
 	return rootCmd
 }
 

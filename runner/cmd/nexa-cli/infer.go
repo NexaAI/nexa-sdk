@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 
 	"github.com/NexaAI/nexa-sdk/internal/store"
@@ -18,7 +20,14 @@ func inferFunc(cmd *cobra.Command, args []string) {
 	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model..."))
 	spin.Start()
 	nexa_sdk.Init()
-	p := nexa_sdk.NewLLM(s.ModelfilePath(args[0]), nil, 4096, nil)
+	defer nexa_sdk.DeInit()
+	file, err := s.ModelfilePath(args[0])
+	if err != nil {
+		fmt.Println(text.FgRed.Sprintf("parse manifest error: %s", err))
+
+	}
+	p := nexa_sdk.NewLLM(file, nil, 4096, nil)
+	defer p.Destroy()
 	time.Sleep(time.Second) // TODO: remove test code
 	spin.Stop()
 
@@ -66,9 +75,6 @@ func inferFunc(cmd *cobra.Command, args []string) {
 			lastLen = len(formatted)
 		},
 	})
-
-	p.Destroy()
-	nexa_sdk.DeInit()
 }
 
 func infer() *cobra.Command {

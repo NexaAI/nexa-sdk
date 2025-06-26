@@ -2,7 +2,6 @@ package store
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path"
 
@@ -22,28 +21,13 @@ func (s *Store) List() ([]types.Model, error) {
 	// Parse each model directory's manifest
 	res := make([]types.Model, 0, len(names))
 	for _, name := range names {
-		// Skip non-directory entries
-		if !name.IsDir() {
-			log.Printf("parse [%s] error: %s", name.Name(), fmt.Errorf("not a dir"))
+		model, err := s.getManifest(name.Name())
+		if err != nil {
+			fmt.Printf("getManifest error: %s\n", err)
 			continue
 		}
 
-		// Read manifest file
-		data, e := os.ReadFile(path.Join(dir, name.Name(), "manifest"))
-		if e != nil {
-			log.Printf("parse [%s] error: %s", name.Name(), e)
-			continue
-		}
-
-		// Parse manifest JSON
-		model := types.Model{}
-		e = sonic.Unmarshal(data, &model)
-		if e != nil {
-			log.Printf("parse [%s] error: %s", name.Name(), e)
-			continue
-		}
-
-		res = append(res, model)
+		res = append(res, *model)
 	}
 
 	return res, nil
@@ -57,4 +41,30 @@ func (s *Store) Remove(name string) error {
 // Clean removes all stored models and the models directory
 func (s *Store) Clean() error {
 	return os.RemoveAll(path.Join(s.home, "models"))
+}
+
+// ModelfilePath returns the full path to a model's data file
+func (s *Store) ModelfilePath(name string) (string, error) {
+	model, err := s.getManifest(s.encodeName(name))
+	if err != nil {
+		return "", err
+	}
+	return path.Join(s.home, "models", s.encodeName(name), model.ModelFile), nil
+}
+
+func (s *Store) getManifest(encName string) (*types.Model, error) {
+	dir := path.Join(s.home, "models")
+	// Read manifest file
+	data, e := os.ReadFile(path.Join(dir, encName, "nexa.manifest"))
+	if e != nil {
+		return nil, e
+	}
+
+	// Parse manifest JSON
+	model := types.Model{}
+	e = sonic.Unmarshal(data, &model)
+	if e != nil {
+		return nil, e
+	}
+	return &model, nil
 }

@@ -19,7 +19,12 @@ func Embeddings(c *gin.Context) {
 
 	s := store.NewStore()
 
-	p := nexa_sdk.NewEmbedder(s.ModelfilePath(param.Model), nil, nil)
+	file, err := s.ModelfilePath(param.Model)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": err})
+		return
+	}
+	p := nexa_sdk.NewEmbedder(file, nil, nil)
 	defer p.Destroy()
 
 	res, err := p.Embed(param.Input.OfArrayOfStrings)

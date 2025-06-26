@@ -5,19 +5,27 @@ on:
 
 jobs:
   build-cli:
-    name: Build cli on ${{ matrix.name }}
+    name: Build cli on ${{ matrix.name }} with ${{ matrix.backend }}
     runs-on: ${{ matrix.runner }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - name: ubuntu_22.04
             runner: sdk-linux-16-core
+            backend: llama
           - name: macos_13
             runner: macos-13
+            backend: mlx
           - name: macos_14
             runner: macos-14
+            backend: mlx
           - name: macos_15
             runner: macos-15
+            backend: mlx
+          - name: macos_15
+            runner: macos-15
+            backend: llama
 
     steps:
       - name: Checkout repository
@@ -36,11 +44,11 @@ jobs:
 
       - name: Download runtime
         run: |
-          make download
+          make download BRIDGE_BACKEND=${{ matrix.backend }}
           mv build nexasdk
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nexasdk_${{ matrix.name }}
-          path: ./nexasdk
+          name: nexasdk_${{ matrix.name }}_${{ matrix.backend }}
+          path: ./nexasdk/

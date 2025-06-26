@@ -16,9 +16,10 @@ var (
 // initvlm creates a new vlm instance for testing with a predefined model
 // Uses the Qwen3-0.6B-GGUF model from the local cache
 func initVLM() {
+	mmproj := path.Join(nexaPath, "models", "bmV4YW1sL25leGFtbC1tb2RlbHM=", "mmproj-model-f16.gguf")
 	vlm = NewVLM(
-		path.Join(nexaPath, "models", "bXJhZGVybWFjaGVyL1ZMTS1SMS1Rd2VuMi41VkwtM0ItT1ZELTAzMjEtaTEtR0dVRg==", "modelfile"),
-		nil, 4096, nil)
+		path.Join(nexaPath, "models", "bmV4YW1sL25leGFtbC1tb2RlbHM=", "gemma-3-4b-it-Q8_0.gguf"),
+		&mmproj, 4096, nil)
 }
 
 // deinitvlm cleans up the vlm instance after testing
@@ -39,7 +40,7 @@ func TestVLMEncode(t *testing.T) {
 // TestDecode tests the detokenization functionality
 // Verifies that token IDs can be converted back to text
 func TestVLMDecode(t *testing.T) {
-	res, e := vlm.Decode([]int32{14990, 1879})
+	res, e := vlm.Decode([]int32{2, 23391, 1902})
 	if e != nil {
 		t.Error(e)
 	}
@@ -105,7 +106,7 @@ func TestVLMChat(t *testing.T) {
 // TestGenerateStream tests streaming text generation functionality
 // Measures generation speed and verifies that tokens are streamed properly
 func TestVLMGenerateStream(t *testing.T) {
-	pic := "~/Pictures/ScreenShot/20200201_182517.png"
+	pic := "/home/remilia/Pictures/ScreenShot/20200201_182517.png"
 	dataCh, errCh := vlm.GenerateStream(context.Background(), "what does the picture say", &pic)
 
 	start := time.Now()

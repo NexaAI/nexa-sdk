@@ -13,7 +13,7 @@ do with `make build`, or follow manually steps.
    - manual download
      1. download dist from [nexasdk-bridge release page](https://github.com/NexaAI/nexasdk-bridge/releases)
      2. put file in `build`
-     3. check `build/include/ml.h` and `build/lib/libnexa_bridge.[so|dylib]`
+     3. check `build/lib/libnexa_bridge.[so|dylib]`
 2. build app (choose one)
    - `make build`
    - manual build

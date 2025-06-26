@@ -26,9 +26,14 @@ type VLM struct {
 func NewVLM(model string, tokenizer *string, ctxLen int32, devices *string) VLM {
 	cModel := C.CString(model)
 	defer C.free(unsafe.Pointer(cModel))
+	var cTokenizer *C.char
+	if tokenizer != nil {
+		cTokenizer = C.CString(*tokenizer)
+		defer C.free(unsafe.Pointer(cTokenizer))
+	}
 
 	return VLM{
-		ptr: C.ml_vlm_create(cModel, nil, C.int32_t(ctxLen), nil),
+		ptr: C.ml_vlm_create(cModel, cTokenizer, C.int32_t(ctxLen), nil),
 	}
 }
 
@@ -171,7 +176,6 @@ func (p *VLM) GenerateStream(ctx context.Context, prompt string, image *string) 
 	config.max_tokens = 512
 	if image != nil {
 		config.image_path = C.CString(*image)
-		defer C.free(unsafe.Pointer(config.image_path))
 	}
 
 	// check parallel call
@@ -193,10 +197,14 @@ func (p *VLM) GenerateStream(ctx context.Context, prompt string, image *string) 
 		defer close(err)
 		defer close(stream)
 		defer C.free(unsafe.Pointer(cPrompt))
+		if image != nil {
+			defer C.free(unsafe.Pointer(config.image_path))
+		}
 
 		// Call C function to start streaming generation
 		resLen := C.ml_vlm_generate_stream(p.ptr, cPrompt, &config,
-			(C.ml_llm_token_callback)(C.go_generate_stream_on_token), nil, nil)
+			(C.ml_llm_token_callback)(C.go_generate_stream_on_token),
+			nil, nil)
 		if resLen < 0 {
 			err <- ErrCommon
 		}
