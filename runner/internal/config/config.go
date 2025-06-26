@@ -9,6 +9,7 @@ import (
 type Config struct {
 	Host      string // Server host and port (default: "127.0.0.1:18181")
 	KeepAlive int64  // Connection keep-alive timeout in seconds (default: 300)
+	HFToken   string
 
 	Debug bool // Enable backend log
 }
@@ -30,6 +31,7 @@ func init() {
 
 	viper.SetDefault("host", "127.0.0.1:18181") // Default server address
 	viper.SetDefault("keepalive", 300)          // Default 5-minute timeout
+	viper.SetDefault("hftoken", "")             // Default 5-minute timeout
 }
 
 // get initializes the configuration by reading from environment variables.

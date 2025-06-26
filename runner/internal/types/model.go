@@ -1,6 +1,12 @@
 package types
 
 type Model struct {
+	Name      string
+	Size      uint64
+	ModelFile string
+}
+
+type ModelFile struct {
 	Name string
 	Size uint64
 }

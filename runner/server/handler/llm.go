@@ -22,7 +22,11 @@ func createLLM(name string) func() nexa_sdk.LLM {
 	return func() nexa_sdk.LLM {
 		time.Sleep(2 * time.Second) // TODO: remove test code
 		s := store.NewStore()
-		return nexa_sdk.NewLLM(s.ModelfilePath(name), nil, 4096, nil)
+		file, err := s.ModelfilePath(name)
+		if err != nil {
+			panic(err) // TODO: fix signature
+		}
+		return nexa_sdk.NewLLM(file, nil, 4096, nil)
 	}
 }
 
@@ -213,7 +217,12 @@ func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 	// get llm
 
 	s := store.NewStore()
-	p := nexa_sdk.NewVLM(s.ModelfilePath(param.Model), nil, 4096, nil)
+	file, err := s.ModelfilePath(param.Model)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": err})
+		return
+	}
+	p := nexa_sdk.NewVLM(file, nil, 4096, nil)
 	defer p.Destroy()
 
 	// emtry request for warm up

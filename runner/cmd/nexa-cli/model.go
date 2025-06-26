@@ -41,6 +41,7 @@ func pull() *cobra.Command {
 		}
 
 		for err := range errCh {
+			bar.Clear()
 			fmt.Println(text.FgRed.Sprintf("Error: %s", err))
 		}
 	}
