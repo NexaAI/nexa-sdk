@@ -10,6 +10,7 @@ import "C"
 
 import (
 	"context"
+	"path"
 	"unsafe"
 
 	"github.com/bytedance/sonic"
@@ -26,6 +27,12 @@ type VLM struct {
 func NewVLM(model string, tokenizer *string, ctxLen int32, devices *string) VLM {
 	cModel := C.CString(model)
 	defer C.free(unsafe.Pointer(cModel))
+
+	mmproj := path.Join(path.Dir(model), "mmproj-model-f16.gguf") // TODO: fix mmprj
+	if tokenizer == nil {
+		tokenizer = &mmproj
+	}
+
 	var cTokenizer *C.char
 	if tokenizer != nil {
 		cTokenizer = C.CString(*tokenizer)
@@ -193,13 +200,11 @@ func (p *VLM) GenerateStream(ctx context.Context, prompt string, image *string) 
 		defer func() {
 			streamTokenCh = nil
 			streamTokenCtx = nil
+			close(err)
+			close(stream)
+			C.free(unsafe.Pointer(cPrompt))
+			C.free(unsafe.Pointer(config.image_path))
 		}()
-		defer close(err)
-		defer close(stream)
-		defer C.free(unsafe.Pointer(cPrompt))
-		if image != nil {
-			defer C.free(unsafe.Pointer(config.image_path))
-		}
 
 		// Call C function to start streaming generation
 		resLen := C.ml_vlm_generate_stream(p.ptr, cPrompt, &config,

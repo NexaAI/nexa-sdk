@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"path"
 	"regexp"
 	"time"
 
@@ -70,7 +69,7 @@ type ChatCompletionRequest struct {
 	Tools []openai.ChatCompletionToolParam `json:"tools"`
 }
 
-var toolCallRegex = regexp.MustCompile("<tool_call>([\\s\\S]+)<\\/tool_call>")
+var toolCallRegex = regexp.MustCompile(`<tool_call>([\s\S]+)<\/tool_call>`)
 
 // Function Call
 // curl -v http://localhost:18181/v1/chat/completions -d '{ "model": "Qwen/Qwen2.5-1.5B-Instruct-GGUF", "messages": [ { "role": "user", "content": "What is the weather like in Boston today?" } ], "tools": [ { "type": "function", "function": { "name": "get_current_weather", "description": "Get the current weather in a given location", "parameters": { "type": "object", "properties": { "location": { "type": "string", "description": "The city and state, e.g. San Francisco, CA" }, "unit": { "type": "string", "enum": ["celsius", "fahrenheit"] } }, "required": ["location"] } } } ] }'
@@ -224,8 +223,7 @@ func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 		return
 	}
 
-	mmproj := path.Join(path.Dir(file), "mmproj-model-f16.gguf") // TODO
-	p := nexa_sdk.NewVLM(file, &mmproj, 4096, nil)
+	p := nexa_sdk.NewVLM(file, nil, 4096, nil)
 	defer p.Destroy()
 
 	// emtry request for warm up

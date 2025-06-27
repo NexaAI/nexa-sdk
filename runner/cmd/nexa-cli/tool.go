@@ -72,6 +72,7 @@ func reranking() *cobra.Command {
 	return cmd
 }
 
+// Embedding, Reranking
 func tool() *cobra.Command {
 	toolCmd := &cobra.Command{}
 	toolCmd.Use = "tool <command>"

@@ -22,6 +22,9 @@ var completer = readline.NewPrefixCompleter(
 	readline.PcItem("/clear"),
 	readline.PcItem("/load", readline.PcItemDynamic(listFiles("./"))),
 	readline.PcItem("/save", readline.PcItemDynamic(listFiles("./"))),
+
+	readline.PcItem("/image", readline.PcItemDynamic(listFiles("./"))),
+	readline.PcItem("/audio", readline.PcItemDynamic(listFiles("./"))),
 )
 
 // TODO: support sub dir
@@ -36,6 +39,7 @@ func listFiles(path string) func(string) []string {
 	}
 }
 
+// LLM, VLM
 type ReplConfig struct {
 	Stream bool
 
@@ -43,12 +47,45 @@ type ReplConfig struct {
 	SaveKVCache func(path string) error
 	LoadKVCache func(path string) error
 
-	run       func(prompt string) (string, error)
-	runStream func(ctx context.Context, prompt string, dataCh chan<- string, errCh chan<- error) // need close dataCh first
+	Run       func(prompt string) (string, error)
+	RunStream func(ctx context.Context, prompt string, dataCh chan<- string, errCh chan<- error)
+	Image     func(file string) error
+	Audio     func(file string) error
+}
+
+func (cfg *ReplConfig) fill() {
+	var notSupport = fmt.Errorf("notSupport")
+
+	if cfg.Clear == nil {
+		cfg.Clear = func() {}
+	}
+	if cfg.SaveKVCache == nil {
+		cfg.SaveKVCache = func(string) error { return notSupport }
+	}
+	if cfg.LoadKVCache == nil {
+		cfg.LoadKVCache = func(string) error { return notSupport }
+	}
+	if cfg.Run == nil {
+		cfg.Run = func(string) (string, error) { return "", notSupport }
+	}
+	if cfg.RunStream == nil {
+		cfg.RunStream = func(ctx context.Context, prompt string, dataCh chan<- string, errCh chan<- error) {
+			close(dataCh)
+			errCh <- notSupport
+			close(errCh)
+		}
+	}
+	if cfg.Image == nil {
+		cfg.Image = func(string) error { return notSupport }
+	}
+	if cfg.Audio == nil {
+		cfg.Audio = func(string) error { return notSupport }
+	}
 }
 
 func repl(cfg ReplConfig) {
 	fmt.Println(text.FgBlue.Sprintf("Send a message, press /? for help"))
+	cfg.fill()
 
 	l, err := readline.NewEx(&readline.Config{
 		Prompt:          text.Colors{text.FgGreen, text.Bold}.Sprint("> "),
@@ -82,6 +119,9 @@ func repl(cfg ReplConfig) {
 				fmt.Println("Commands:")
 				fmt.Println(completer.Tree("    ")) // TODO: add description
 
+			case "/exit":
+				break
+
 			case "/clear":
 				cfg.Clear()
 				fmt.Print("\033[H\033[2J")
@@ -94,21 +134,39 @@ func repl(cfg ReplConfig) {
 				err := cfg.LoadKVCache(fileds[1])
 				if err != nil {
 					fmt.Println(text.FgRed.Sprintf("Error: %s", err))
-					return
 				}
 
 			case "/save":
 				if len(fileds) != 2 {
 					fmt.Println(text.FgRed.Sprintf("Usage: /save <filename>"))
+					continue
 				}
 				err := cfg.SaveKVCache(fileds[1])
 				if err != nil {
 					fmt.Println(text.FgRed.Sprintf("Error: %s", err))
-					return
 				}
 
-			case "/exit":
-				break
+			case "/image":
+				if len(fileds) != 2 {
+					fmt.Println(text.FgRed.Sprintf("Usage: /image <filename>"))
+					continue
+				}
+				err := cfg.Image(fileds[1])
+				if err != nil {
+					fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+				}
+				fmt.Println(text.FgBlue.Sprintf("will pass image file in next message"))
+
+			case "/audio":
+				if len(fileds) != 2 {
+					fmt.Println(text.FgRed.Sprintf("Usage: /audio <filename>"))
+					continue
+				}
+				err := cfg.Audio(fileds[1])
+				if err != nil {
+					fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+				}
+				fmt.Println(text.FgBlue.Sprintf("will pass audio file in next message"))
 
 			default:
 				fmt.Println(text.FgRed.Sprintf("Unknown command: %s", fileds[0]))
@@ -125,7 +183,7 @@ func repl(cfg ReplConfig) {
 			// run async
 			dataCh := make(chan string, 10)
 			errCh := make(chan error, 1)
-			go cfg.runStream(context.TODO(), line, dataCh, errCh)
+			go cfg.RunStream(context.TODO(), line, dataCh, errCh)
 
 			// print stream
 			fmt.Print(text.FgYellow.EscapeSeq())
@@ -136,29 +194,23 @@ func repl(cfg ReplConfig) {
 			fmt.Print(text.Reset.EscapeSeq())
 			fmt.Println()
 
-			// check error
-			e, ok := <-errCh
-			if ok {
-				fmt.Println(text.FgRed.Sprintf("Error: %s", e))
-				return
-			}
-
 			// print duration
 			duration := time.Since(start).Seconds()
 			fmt.Println(text.FgBlue.Sprintf(
 				"Generate %d token in %f s, speed is %f token/s",
 				count, duration, float64(count)/duration,
 			))
+
+			// check error
+			e, ok := <-errCh
+			if ok {
+				fmt.Println(text.FgRed.Sprintf("Error: %s", e))
+			}
 		} else {
 			start := time.Now()
 
-			res, err := cfg.run(line)
+			res, err := cfg.Run(line)
 			fmt.Println(text.FgYellow.Sprint(res))
-
-			if err != nil {
-				fmt.Println(text.FgRed.Sprintf("Error: %s", err))
-				return
-			}
 
 			// print duration
 			duration := time.Since(start).Seconds()
@@ -166,6 +218,10 @@ func repl(cfg ReplConfig) {
 				"Generate in %f s",
 				duration,
 			))
+
+			if err != nil {
+				fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+			}
 		}
 	}
 }

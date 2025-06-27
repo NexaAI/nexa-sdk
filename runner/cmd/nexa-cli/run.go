@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -13,6 +12,19 @@ import (
 
 	"github.com/NexaAI/nexa-sdk/internal/config"
 )
+
+var runStream *bool
+
+func run() *cobra.Command {
+	runCmd := &cobra.Command{}
+	runCmd.Use = "run"
+
+	runCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
+	runStream = runCmd.Flags().BoolP("stream", "s", false, "enable stream mode")
+
+	runCmd.Run = runFunc
+	return runCmd
+}
 
 func runFunc(cmd *cobra.Command, args []string) {
 	model := args[0]
@@ -47,23 +59,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			})
 		},
 
-		SaveKVCache: func(path string) error {
-			return errors.New("not support")
-			//return client.Post(context.TODO(), "/saveKVCache", nil, nil,
-			//	option.WithJSONSet("model", model),
-			//	option.WithJSONSet("name", path),
-			//)
-		},
-
-		LoadKVCache: func(path string) error {
-			return errors.New("not support")
-			//return client.Post(context.TODO(), "/loadKVCache", nil, nil,
-			//	option.WithJSONSet("model", model),
-			//	option.WithJSONSet("name", path),
-			//)
-		},
-
-		run: func(prompt string) (string, error) {
+		Run: func(prompt string) (string, error) {
 			history = append(history, openai.UserMessage(prompt))
 
 			chatCompletion, err := client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
@@ -79,7 +75,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			return content, err
 		},
 
-		runStream: func(ctx context.Context, prompt string, dataCh chan<- string, errCh chan<- error) {
+		RunStream: func(ctx context.Context, prompt string, dataCh chan<- string, errCh chan<- error) {
 			defer close(errCh)
 			defer close(dataCh)
 
@@ -107,19 +103,4 @@ func runFunc(cmd *cobra.Command, args []string) {
 			history = append(history, openai.AssistantMessage(acc.Choices[0].Message.Content))
 		},
 	})
-}
-
-var runStream *bool
-var runTools *string
-
-func run() *cobra.Command {
-	runCmd := &cobra.Command{}
-	runCmd.Use = "run"
-
-	runCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
-	runStream = runCmd.Flags().BoolP("stream", "s", false, "enable stream mode")
-	runTools = runCmd.Flags().StringP("tools", "t", "", "function call tools")
-
-	runCmd.Run = runFunc
-	return runCmd
 }

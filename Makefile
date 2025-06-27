@@ -2,7 +2,7 @@ AGS ?= infer Qwen/Qwen3-0.6B-GGUF
 #ARGS ?= serve
 
 BRIDGE_VERSION ?= latest
-BRIDGE_BACKEND ?= llama
+BRIDGE_BACKEND ?= llama-cpp-cpu
 
 UNAME := $(shell uname -s)
 ifeq ($(UNAME), Linux)

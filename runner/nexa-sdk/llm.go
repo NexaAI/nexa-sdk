@@ -252,10 +252,10 @@ func (p *LLM) GenerateStream(ctx context.Context, prompt string) (<-chan string,
 		defer func() {
 			streamTokenCh = nil
 			streamTokenCtx = nil
+			close(err)
+			close(stream)
+			C.free(unsafe.Pointer(cPrompt))
 		}()
-		defer close(err)
-		defer close(stream)
-		defer C.free(unsafe.Pointer(cPrompt))
 
 		// Call C function to start streaming generation
 		resLen := C.ml_llm_generate_stream(p.ptr, cPrompt, &config,
