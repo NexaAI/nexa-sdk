@@ -30,15 +30,15 @@ func Reranking(c *gin.Context) {
 	s := store.NewStore()
 	file, err := s.ModelfilePath(param.Model)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err})
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 		return
 	}
-	p := nexa_sdk.NewReranker(file, "", nil)
+	p := nexa_sdk.NewReranker(file, nil, nil)
 	defer p.Destroy()
 
 	res, err := p.Rerank(param.Query, param.Documents)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err})
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 	} else {
 		c.JSON(http.StatusOK, RerankResponse{Result: res})
 	}

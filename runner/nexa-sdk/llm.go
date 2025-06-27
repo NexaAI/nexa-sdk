@@ -56,11 +56,11 @@ type LLM struct {
 }
 
 // NewLLM creates a new LLM instance with the specified model and configuration
-func NewLLM(model string, tokenizer *string, ctxLen int32, devices *string) LLM {
+func NewLLM(model string, tokenizer *string, ctxLen int32, devices *string) *LLM {
 	cModel := C.CString(model)
 	defer C.free(unsafe.Pointer(cModel))
 
-	return LLM{
+	return &LLM{
 		ptr: C.ml_llm_create(cModel, nil, C.int32_t(ctxLen), nil),
 	}
 }

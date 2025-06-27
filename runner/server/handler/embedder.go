@@ -21,7 +21,7 @@ func Embeddings(c *gin.Context) {
 
 	file, err := s.ModelfilePath(param.Model)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err})
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 		return
 	}
 	p := nexa_sdk.NewEmbedder(file, nil, nil)
@@ -29,7 +29,7 @@ func Embeddings(c *gin.Context) {
 
 	res, err := p.Embed(param.Input.OfArrayOfStrings)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err})
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 	} else {
 		embeddings := make([]float64, len(res))
 		for i := range res {

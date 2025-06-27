@@ -10,7 +10,7 @@ import (
 
 var (
 	// llm is the global LLM instance used across all tests
-	llm LLM
+	llm *LLM
 )
 
 // initLLM creates a new LLM instance for testing with a predefined model

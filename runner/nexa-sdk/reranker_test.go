@@ -4,12 +4,13 @@ import (
 	"testing"
 )
 
-var reranker Reranker
+var reranker *Reranker
 
 func initReranker() {
+	tokenizer := "/home/remilia/Workspace/github/nexasdk-bridge/modelfiles/jina_rerank_tokenizer.json"
 	reranker = NewReranker(
 		"/home/remilia/Workspace/github/nexasdk-bridge/modelfiles/jina-reranker-v2-base-multilingual.F16.gguf",
-		"/home/remilia/Workspace/github/nexasdk-bridge/modelfiles/jina_rerank_tokenizer.json",
+		&tokenizer,
 		nil,
 	)
 

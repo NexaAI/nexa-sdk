@@ -14,23 +14,28 @@ type Reranker struct {
 	ptr *C.ml_Reranker
 }
 
-func NewReranker(model string, tokenizer string, devices *string) Reranker {
+func NewReranker(model string, tokenizer *string, devices *string) *Reranker {
 	cModel := C.CString(model)
 	defer C.free(unsafe.Pointer(cModel))
-	cTokenizer := C.CString(tokenizer)
+	cTokenizer := C.CString(*tokenizer) //TODO
 	defer C.free(unsafe.Pointer(cTokenizer))
 
-	return Reranker{
+	return &Reranker{
 		ptr: C.ml_reranker_create(cModel, cTokenizer, nil),
 	}
 }
 
-func (p Reranker) Destroy() {
+func (p *Reranker) Destroy() {
 	C.ml_reranker_destroy(p.ptr)
 	p.ptr = nil
 }
 
-func (p Reranker) Rerank(query string, texts []string) ([]float32, error) {
+// Reset implements service.keepable.
+func (p *Reranker) Reset() {
+	panic("unimplemented")
+}
+
+func (p *Reranker) Rerank(query string, texts []string) ([]float32, error) {
 	cQuery := C.CString(query)
 	defer C.free(unsafe.Pointer(cQuery))
 

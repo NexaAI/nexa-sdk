@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-var embedder Embedder
+var embedder *Embedder
 
 func initEmbeder() {
 	embedder = NewEmbedder(
