@@ -5,7 +5,7 @@ on:
 
 jobs:
   build-cli:
-    name: NexaCLI ${{ matrix.name }} with ${{ matrix.backend }}
+    name: ${{ matrix.name }} - ${{ matrix.backend }}
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false

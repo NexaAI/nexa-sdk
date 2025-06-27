@@ -239,12 +239,15 @@ func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 	for _, msg := range param.Messages {
 		for _, ct := range msg.Content.([]any) {
 			ct := ct.(map[string]any)
-			if ct["type"] == "text" {
+			switch ct["type"] {
+			case "text":
 				messages = append(messages, nexa_sdk.ChatMessage{
 					Role:    nexa_sdk.LLMRole(msg.Role),
 					Content: ct["text"].(string),
 				})
-			} else {
+			case "input_audio":
+				imageUrl = ct["input_audio"].(string)
+			case "image_url":
 				imageUrl = ct["image_url"].(string)
 			}
 		}

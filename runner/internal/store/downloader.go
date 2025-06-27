@@ -51,13 +51,14 @@ func (s *Store) Pull(ctx context.Context, name string) (infoCh <-chan types.Down
 			dInfo.TotalSize = totalSize
 			dInfo.CurrentSize = r.RawResponse.ContentLength
 			dInfo.CurrentName = path.Base(r.Request.OutputFileName)
-			r.Body = &types.FuncReadCloser{
+			r.Body = &types.TeeReadCloserF{
 				Raw: r.Body,
 				// TODO: reduce channel message
-				F: func(b []byte) {
+				WriterF: func(b []byte) (int, error) {
 					dInfo.TotalDownloaded += int64(len(b))
 					dInfo.CurrentDownloaded += int64(len(b))
 					infoC <- dInfo
+					return len(b), nil
 				},
 			}
 			return nil

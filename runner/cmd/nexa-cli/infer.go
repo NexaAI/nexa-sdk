@@ -110,7 +110,7 @@ func inferVLM(file string) {
 	spin.Stop()
 
 	var history []nexa_sdk.ChatMessage
-	var lastImage *string
+	var lastFile *string
 	var lastLen int
 
 	repl(ReplConfig{
@@ -130,7 +130,7 @@ func inferVLM(file string) {
 			}
 
 			var full strings.Builder
-			dCh, eCh := p.GenerateStream(ctx, formatted[lastLen:], lastImage)
+			dCh, eCh := p.GenerateStream(ctx, formatted[lastLen:], lastFile)
 			for r := range dCh {
 				full.WriteString(r)
 				dataCh <- r
@@ -139,7 +139,7 @@ func inferVLM(file string) {
 				errCh <- e
 				return
 			}
-			lastImage = nil
+			lastFile = nil
 
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: full.String()})
 
@@ -152,7 +152,12 @@ func inferVLM(file string) {
 		},
 
 		Image: func(file string) error {
-			lastImage = &file
+			lastFile = &file
+			return nil
+		},
+
+		Audio: func(file string) error {
+			lastFile = &file
 			return nil
 		},
 	})

@@ -84,6 +84,7 @@ typedef struct {
     int32_t          n_past;             /* Number of past tokens to consider */
     ml_SamplerConfig sampler_config;     /* Advanced sampling config */
     ml_Path          image_path;         /* Optional image path for VLM, assume 1 image only */
+    ml_Path          audio_path;         /* Optional audio path for VLM, assume 1 audio only */
 } ml_GenerationConfig;
 
 /** Chat message structure */
@@ -130,9 +131,16 @@ int32_t ml_llm_embed(ml_LLM* handle, const char** texts_utf8, int32_t text_count
 int32_t ml_llm_generate_stream(ml_LLM* handle, const char* prompt_utf8, const ml_GenerationConfig* config,
     ml_llm_token_callback on_token, void* user_data, char** out_full_text);
 
-// align with nexaML design
+// align with nexaML design as below:
 // int Pipeline::generate_next_token(const std::vector<int32_t> &input_ids, int n_past)
-int32_t ml_llm_generate_next_token(ml_LLM* handle, const int32_t* input_ids, int32_t input_length, int32_t n_past);
+// Returns:
+//   >0 : The generated token id (when a new token is produced)
+//    0 : No token generated (prefill or EOS reached)
+//   -1 : Invalid arguments (handle, input_ids, input_length, or n_past is NULL)
+//   -2 : Prefill decode failed (llama_decode error during prefill)
+//   -3 : Decode failed after generating token (llama_decode error during next token step)
+//   -4 : Invalid input_length (must be >=1)
+int32_t ml_llm_generate_next_token(ml_LLM* handle, int32_t** input_ids, int32_t* input_length, int32_t* n_past);
 
 /* ========================================================================== */
 /*                              MULTIMODAL MODELS (VLM)                          */
