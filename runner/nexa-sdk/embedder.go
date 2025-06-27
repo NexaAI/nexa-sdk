@@ -30,7 +30,6 @@ func (p *Embedder) Destroy() {
 
 // Reset implements service.keepable.
 func (p *Embedder) Reset() {
-	panic("unimplemented")
 }
 
 func (p *Embedder) Embed(texts []string) ([]float32, error) {

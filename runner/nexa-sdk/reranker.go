@@ -7,6 +7,7 @@ package nexa_sdk
 import "C"
 
 import (
+	"path"
 	"unsafe"
 )
 
@@ -17,8 +18,20 @@ type Reranker struct {
 func NewReranker(model string, tokenizer *string, devices *string) *Reranker {
 	cModel := C.CString(model)
 	defer C.free(unsafe.Pointer(cModel))
-	cTokenizer := C.CString(*tokenizer) //TODO
-	defer C.free(unsafe.Pointer(cTokenizer))
+
+	var cTokenizer *C.char
+
+	// TODO: remove hardcode
+	if tokenizer == nil {
+		t := path.Join(path.Dir(model), "jina_rerank_tokenizer.json")
+		tokenizer = &t
+	}
+
+	if tokenizer != nil {
+		cTokenizer = C.CString(*tokenizer)
+		defer C.free(unsafe.Pointer(cTokenizer))
+
+	}
 
 	return &Reranker{
 		ptr: C.ml_reranker_create(cModel, cTokenizer, nil),
@@ -32,7 +45,6 @@ func (p *Reranker) Destroy() {
 
 // Reset implements service.keepable.
 func (p *Reranker) Reset() {
-	panic("unimplemented")
 }
 
 func (p *Reranker) Rerank(query string, texts []string) ([]float32, error) {

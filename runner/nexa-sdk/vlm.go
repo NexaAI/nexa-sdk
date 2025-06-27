@@ -36,7 +36,6 @@ func NewVLM(model string, tokenizer *string, ctxLen int32, devices *string) *VLM
 	} else {
 		mmproj = path.Join(path.Dir(model), "mmproj-model-f16.gguf") // TODO: fix mmprj
 	}
-
 	if tokenizer == nil {
 		tokenizer = &mmproj
 	}

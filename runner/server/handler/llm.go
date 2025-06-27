@@ -12,7 +12,6 @@ import (
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/shared/constant"
 
-	"github.com/NexaAI/nexa-sdk/internal/store"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
 	"github.com/NexaAI/nexa-sdk/server/service"
 )
@@ -90,7 +89,7 @@ func chatLLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 	// get llm
 	p, err := service.KeepAliveGet[nexa_sdk.LLM](
 		string(param.Model),
-		service.ModelParam{Tokenizer: nil, Device: nil, CtxLen: 4096},
+		service.ModelParam{CtxLen: 4096},
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
@@ -217,15 +216,14 @@ func chatLLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 	// get llm
 
-	s := store.NewStore()
-	file, err := s.ModelfilePath(param.Model)
+	p, err := service.KeepAliveGet[nexa_sdk.VLM](
+		string(param.Model),
+		service.ModelParam{CtxLen: 4096},
+	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 		return
 	}
-
-	p := nexa_sdk.NewVLM(file, nil, 4096, nil)
-	defer p.Destroy()
 
 	// emtry request for warm up
 	if len(param.Messages) == 0 {

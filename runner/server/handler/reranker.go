@@ -5,8 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/NexaAI/nexa-sdk/internal/store"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
+	"github.com/NexaAI/nexa-sdk/server/service"
 )
 
 type RerankingRequest struct {
@@ -27,14 +27,14 @@ func Reranking(c *gin.Context) {
 		return
 	}
 
-	s := store.NewStore()
-	file, err := s.ModelfilePath(param.Model)
+	p, err := service.KeepAliveGet[nexa_sdk.Reranker](
+		string(param.Model),
+		service.ModelParam{},
+	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 		return
 	}
-	p := nexa_sdk.NewReranker(file, nil, nil)
-	defer p.Destroy()
 
 	res, err := p.Rerank(param.Query, param.Documents)
 	if err != nil {
