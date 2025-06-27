@@ -1,8 +1,13 @@
 AGS ?= infer Qwen/Qwen3-0.6B-GGUF
 #ARGS ?= serve
 
-BRIDGE_VERSION ?= latest
+# ubuntu 22.04: llama-cpp-cpu llama-cpp-cuda
+# macos 13: llama-cpp-metal
+# macos 14: llama-cpp-metal mlx
+# macos 15: llama-cpp-metal mlx
+# windows: llama-cpp-cpu llama-cpp-vulkan llama-cpp-cuda
 BRIDGE_BACKEND ?= llama-cpp-cpu
+BRIDGE_VERSION ?= latest
 
 UNAME := $(shell uname -s)
 ifeq ($(UNAME), Linux)

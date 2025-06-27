@@ -5,33 +5,42 @@ on:
 
 jobs:
   build-cli:
-    name: Build cli on ${{ matrix.name }} with ${{ matrix.backend }}
+    name: NexaCLI ${{ matrix.name }} with ${{ matrix.backend }}
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
+        # ubuntu 22.04: llama-cpp-cpu llama-cpp-cuda
+        # macos 13: llama-cpp-metal
+        # macos 14: llama-cpp-metal mlx
+        # macos 15: llama-cpp-metal mlx
+        # windows: llama-cpp-cpu llama-cpp-vulkan llama-cpp-cuda
         include:
           - name: ubuntu_22.04
             runner: sdk-linux-16-core
-            backend: llama
+            backend: llama-cpp-cpu
+          - name: ubuntu_22.04
+            runner: sdk-linux-16-core
+            backend: llama-cpp-cuda
           - name: macos_13
             runner: macos-13
-            backend: mlx
+            backend: llama-cpp-metal
+          - name: macos_14
+            runner: macos-14
+            backend: llama-cpp-metal
           - name: macos_14
             runner: macos-14
             backend: mlx
           - name: macos_15
             runner: macos-15
-            backend: mlx
+            backend: llama-cpp-metal
           - name: macos_15
             runner: macos-15
-            backend: llama
+            backend: mlx
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          ref: remilia/dev
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -45,10 +54,9 @@ jobs:
       - name: Download runtime
         run: |
           make download BRIDGE_BACKEND=${{ matrix.backend }}
-          mv build nexasdk
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nexasdk_${{ matrix.name }}_${{ matrix.backend }}
-          path: ./nexasdk/
+          name: nexasdk-cli_${{ matrix.name }}_${{ matrix.backend }}
+          path: ./build
