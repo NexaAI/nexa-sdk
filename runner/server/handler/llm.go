@@ -17,13 +17,13 @@ import (
 	"github.com/NexaAI/nexa-sdk/server/service"
 )
 
-// @Router /completions [post]
-// @Summary completion
-// @Description legancy completion
-// @Accept    json
-// @Param     model    body        ChatCompletionRequest   true   "example"
-// @Produce   json
-// @Success   200      {string}    Helloworld
+// @Router			/completions [post]
+// @Summary		completion
+// @Description	Legacy completion endpoint for text generation. It is recommended to use the Chat Completions endpoint for new applications.
+// @Accept			json
+// @Param			request	body	openai.CompletionNewParams	true	"Completion request"
+// @Produce		json
+// @Success		200	{object}	openai.Completion
 func Completions(c *gin.Context) {
 	param := openai.CompletionNewParams{}
 	if err := c.ShouldBindJSON(&param); err != nil {
@@ -53,18 +53,36 @@ func Completions(c *gin.Context) {
 	}
 }
 
+// ChatCompletionMessage defines a single message in a chat conversation.
+type ChatCompletionMessage struct {
+	Role    string `json:"role"`
+	Content any    `json:"content"`
+}
+
+// ChatCompletionRequest defines the request body for the chat completions API.
+// example: { "model": "nexaml/nexaml-models", "messages": [ { "role": "user", "content": "why is the sky blue?" } ] }
 type ChatCompletionRequest struct {
-	Stream   bool   `json:"stream"`
-	Model    string `json:"model"`
-	Messages []struct {
-		Role    string `json:"role"`
-		Content any    `json:"content"`
-	} `json:"messages"`
-	Tools []openai.ChatCompletionToolParam `json:"tools"`
+	Stream   bool                             `json:"stream"`
+	Model    string                           `json:"model"`
+	Messages []ChatCompletionMessage          `json:"messages"`
+	Tools    []openai.ChatCompletionToolParam `json:"tools"`
 }
 
 var toolCallRegex = regexp.MustCompile(`<tool_call>([\s\S]+)<\/tool_call>`)
 
+// Function Call
+// curl -v http://localhost:18181/v1/chat/completions -d '{ "model": "Qwen/Qwen2.5-1.5B-Instruct-GGUF", "messages": [ { "role": "user", "content": "What is the weather like in Boston today?" } ], "tools": [ { "type": "function", "function": { "name": "get_current_weather", "description": "Get the current weather in a given location", "parameters": { "type": "object", "properties": { "location": { "type": "string", "description": "The city and state, e.g. San Francisco, CA" }, "unit": { "type": "string", "enum": ["celsius", "fahrenheit"] } }, "required": ["location"] } } } ] }'
+//
+// VLM
+// curl -v http://localhost:18181/v1/chat/completions -d '{ "model": "nexaml/nexaml-models", "messages": [ { "role": "user", "content": [ { "type": "text", "text": "what is main color of the picture" }, { "type": "image_url", "image_url": "1.jpg" } ] } ], "stream": true }'
+//
+//	@Router			/chat/completions [post]
+//	@Summary		Creates a model response for the given chat conversation.
+//	@Description	This endpoint generates a model response for a given conversation, which can include text and images. It supports both single-turn and multi-turn conversations and can be used for various tasks like question answering, code generation, and function calling.
+//	@Accept			json
+//	@Param			request	body	ChatCompletionRequest	true	"Chat completion request"
+//	@Produce		json
+//	@Success		200	{object}	openai.ChatCompletion	"Successful response for non-streaming requests."
 func ChatCompletions(c *gin.Context) {
 	param := ChatCompletionRequest{}
 	if err := c.ShouldBindJSON(&param); err != nil {
