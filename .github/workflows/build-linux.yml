@@ -1,4 +1,4 @@
-name: build-cli
+name: Build NexaCLI on Linux
 
 on:
   workflow_dispatch:
