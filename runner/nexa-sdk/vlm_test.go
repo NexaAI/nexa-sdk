@@ -10,7 +10,7 @@ import (
 
 var (
 	// vlm is the global vlm instance used across all tests
-	vlm VLM
+	vlm *VLM
 )
 
 // initvlm creates a new vlm instance for testing with a predefined model

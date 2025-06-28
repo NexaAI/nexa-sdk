@@ -37,6 +37,8 @@ typedef struct {
     int32_t channels; /* Color channels: 3=RGB, 4=RGBA */
 } ml_Image;
 
+void ml_image_free(ml_Image* image);
+
 /** Audio data structure */
 typedef struct {
     float*  data;        /* Audio samples: num_samples × channels */
@@ -44,6 +46,8 @@ typedef struct {
     int32_t channels;    /* Audio channels: 1=mono, 2=stereo */
     int32_t num_samples; /* Number of samples per channel */
 } ml_Audio;
+
+void ml_audio_free(ml_Audio* audio);
 
 /** Video data structure */
 typedef struct {
@@ -53,6 +57,8 @@ typedef struct {
     int32_t channels;   /* Color channels per frame */
     int32_t num_frames; /* Number of video frames */
 } ml_Video;
+
+void ml_video_free(ml_Video* video);
 
 /* ========================================================================== */
 /*                              LANGUAGE MODELS (LLM)                          */
@@ -73,14 +79,12 @@ typedef struct {
 /** LLM / VLM generation configuration */
 typedef struct {
     int32_t          max_tokens;         /* Maximum tokens to generate */
-    float            temperature;        /* Sampling temperature */
-    float            top_p;              /* Nucleus sampling parameter */
-    int32_t          top_k;              /* Top-k sampling parameter */
-    float            repetition_penalty; /* Repetition penalty */
     const char**     stop;               /* Array of stop sequences */
     int32_t          stop_count;         /* Number of stop sequences */
+    int32_t          n_past;             /* Number of past tokens to consider */
     ml_SamplerConfig sampler_config;     /* Advanced sampling config */
     ml_Path          image_path;         /* Optional image path for VLM, assume 1 image only */
+    ml_Path          audio_path;         /* Optional audio path for VLM, assume 1 audio only */
 } ml_GenerationConfig;
 
 /** Chat message structure */
@@ -126,6 +130,17 @@ int32_t ml_llm_embed(ml_LLM* handle, const char** texts_utf8, int32_t text_count
 /* ====================  Streaming Generation  ============================= */
 int32_t ml_llm_generate_stream(ml_LLM* handle, const char* prompt_utf8, const ml_GenerationConfig* config,
     ml_llm_token_callback on_token, void* user_data, char** out_full_text);
+
+// align with nexaML design as below:
+// int Pipeline::generate_next_token(const std::vector<int32_t> &input_ids, int n_past)
+// Returns:
+//   >0 : The generated token id (when a new token is produced)
+//    0 : No token generated (prefill or EOS reached)
+//   -1 : Invalid arguments (handle, input_ids, input_length, or n_past is NULL)
+//   -2 : Prefill decode failed (llama_decode error during prefill)
+//   -3 : Decode failed after generating token (llama_decode error during next token step)
+//   -4 : Invalid input_length (must be >=1)
+int32_t ml_llm_generate_next_token(ml_LLM* handle, int32_t** input_ids, int32_t* input_length, int32_t* n_past);
 
 /* ========================================================================== */
 /*                              MULTIMODAL MODELS (VLM)                          */
@@ -234,14 +249,14 @@ typedef struct {
 
 /** Image generation configuration */
 typedef struct {
-    const char*           prompt;          /* Required positive prompt */
-    const char*           negative_prompt; /* Optional negative prompt */
-    int32_t               height;          /* Output image height */
-    int32_t               width;           /* Output image width */
-    ml_ImageSamplerConfig sampler_config;  /* Sampling parameters */
-    int32_t               lora_id;         /* LoRA ID (-1 for none) */
-    const ml_Image*       init_image;      /* Initial image (NULL for txt2img) */
-    float                 strength;        /* Denoising strength for img2img */
+    const char**          prompts;          /* Required positive prompts */
+    const char**          negative_prompts; /* Optional negative prompts */
+    int32_t               height;           /* Output image height */
+    int32_t               width;            /* Output image width */
+    ml_ImageSamplerConfig sampler_config;   /* Sampling parameters */
+    int32_t               lora_id;          /* LoRA ID (-1 for none) */
+    const ml_Image*       init_image;       /* Initial image (NULL for txt2img) */
+    float                 strength;         /* Denoising strength for img2img */
 } ml_ImageGenerationConfig;
 
 /** Diffusion scheduler configuration */
@@ -251,6 +266,10 @@ typedef struct {
     float       beta_start;          /* Beta schedule start */
     float       beta_end;            /* Beta schedule end */
     const char* beta_schedule;       /* Beta schedule: "scaled_linear" */
+    const char* prediction_type;     /* Prediction type: "epsilon", "v_prediction" */
+    const char* timestep_type;       /* Timestep type: "discrete", "continuous" */
+    const char* timestep_spacing;    /* Timestep spacing: "linspace", "leading", "trailing" */
+    const char* interpolation_type;  /* Interpolation type: "linear", "exponential" */
     ml_Path     config_path;         /* Optional config file path */
 } ml_SchedulerConfig;
 

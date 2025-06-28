@@ -54,7 +54,7 @@ func reranking() *cobra.Command {
 			fmt.Println(text.FgRed.Sprintf("Error: %s", err))
 			return
 		}
-		p := nexa_sdk.NewReranker(file, args[1], nil)
+		p := nexa_sdk.NewReranker(file, &args[1], nil)
 		defer p.Destroy()
 
 		res, err := p.Rerank(args[2], args[3:])
@@ -72,6 +72,7 @@ func reranking() *cobra.Command {
 	return cmd
 }
 
+// Embedding, Reranking
 func tool() *cobra.Command {
 	toolCmd := &cobra.Command{}
 	toolCmd.Use = "tool <command>"

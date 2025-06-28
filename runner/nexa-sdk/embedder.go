@@ -14,21 +14,25 @@ type Embedder struct {
 	ptr *C.ml_Embedder
 }
 
-func NewEmbedder(model string, tokenizer *string, devices *string) Embedder {
+func NewEmbedder(model string, tokenizer *string, devices *string) *Embedder {
 	cModel := C.CString(model)
 	defer C.free(unsafe.Pointer(cModel))
 
-	return Embedder{
+	return &Embedder{
 		ptr: C.ml_embedder_create(cModel, nil, nil),
 	}
 }
 
-func (p Embedder) Destroy() {
+func (p *Embedder) Destroy() {
 	C.ml_embedder_destroy(p.ptr)
 	p.ptr = nil
 }
 
-func (p Embedder) Embed(texts []string) ([]float32, error) {
+// Reset implements service.keepable.
+func (p *Embedder) Reset() {
+}
+
+func (p *Embedder) Embed(texts []string) ([]float32, error) {
 	cTexts := make([]*C.char, len(texts))
 	for i, text := range texts {
 		cText := &cTexts[i]

@@ -5,31 +5,16 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"path"
 	"regexp"
-	"time"
 
 	"github.com/bytedance/sonic"
 	"github.com/gin-gonic/gin"
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/shared/constant"
 
-	"github.com/NexaAI/nexa-sdk/internal/store"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
 	"github.com/NexaAI/nexa-sdk/server/service"
 )
-
-func createLLM(name string) func() nexa_sdk.LLM {
-	return func() nexa_sdk.LLM {
-		time.Sleep(2 * time.Second) // TODO: remove test code
-		s := store.NewStore()
-		file, err := s.ModelfilePath(name)
-		if err != nil {
-			panic(err) // TODO: fix signature
-		}
-		return nexa_sdk.NewLLM(file, nil, 4096, nil)
-	}
-}
 
 // @Router /completions [post]
 // @Summary completion
@@ -45,7 +30,14 @@ func Completions(c *gin.Context) {
 		return
 	}
 
-	p := service.KeepAliveGet(string(param.Model), createLLM(string(param.Model)))
+	p, err := service.KeepAliveGet[nexa_sdk.LLM](
+		string(param.Model),
+		service.ModelParam{Tokenizer: nil, Device: nil, CtxLen: 4096},
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		return
+	}
 
 	data, err := p.Generate(param.Prompt.OfString.String())
 	choice := openai.CompletionChoice{}
@@ -54,7 +46,7 @@ func Completions(c *gin.Context) {
 		Choices: []openai.CompletionChoice{choice},
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err})
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 	} else {
 		c.JSON(http.StatusOK, res)
 	}
@@ -70,7 +62,7 @@ type ChatCompletionRequest struct {
 	Tools []openai.ChatCompletionToolParam `json:"tools"`
 }
 
-var toolCallRegex = regexp.MustCompile("<tool_call>([\\s\\S]+)<\\/tool_call>")
+var toolCallRegex = regexp.MustCompile(`<tool_call>([\s\S]+)<\/tool_call>`)
 
 // Function Call
 // curl -v http://localhost:18181/v1/chat/completions -d '{ "model": "Qwen/Qwen2.5-1.5B-Instruct-GGUF", "messages": [ { "role": "user", "content": "What is the weather like in Boston today?" } ], "tools": [ { "type": "function", "function": { "name": "get_current_weather", "description": "Get the current weather in a given location", "parameters": { "type": "object", "properties": { "location": { "type": "string", "description": "The city and state, e.g. San Francisco, CA" }, "unit": { "type": "string", "enum": ["celsius", "fahrenheit"] } }, "required": ["location"] } } } ] }'
@@ -95,7 +87,14 @@ func ChatCompletions(c *gin.Context) {
 
 func chatLLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 	// get llm
-	p := service.KeepAliveGet(string(param.Model), createLLM(string(param.Model)))
+	p, err := service.KeepAliveGet[nexa_sdk.LLM](
+		string(param.Model),
+		service.ModelParam{CtxLen: 4096},
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		return
+	}
 
 	// emtry request for warm up
 	if len(param.Messages) == 0 {
@@ -129,13 +128,13 @@ func chatLLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 		}
 		formatted, err := p.ApplyJinjaTemplate(param)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, map[string]any{"error": err})
+			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 			return
 		}
 
 		data, err := p.Generate(formatted)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, map[string]any{"error": err})
+			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 			return
 		}
 
@@ -148,7 +147,7 @@ func chatLLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 		toolCall := openai.ChatCompletionMessageToolCall{Type: constant.Function("")}
 		err = sonic.UnmarshalString(match[1], &toolCall.Function)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, map[string]any{"error": err, "data": match[1]})
+			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "data": match[1]})
 			return
 		}
 
@@ -165,7 +164,7 @@ func chatLLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 
 		formatted, err := p.ApplyChatTemplate(messages)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, map[string]any{"error": err})
+			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 			return
 		}
 
@@ -198,7 +197,7 @@ func chatLLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 		} else {
 			data, err := p.Generate(formatted)
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, map[string]any{"error": err})
+				c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 				return
 			}
 
@@ -217,16 +216,14 @@ func chatLLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 	// get llm
 
-	s := store.NewStore()
-	file, err := s.ModelfilePath(param.Model)
+	p, err := service.KeepAliveGet[nexa_sdk.VLM](
+		string(param.Model),
+		service.ModelParam{CtxLen: 4096},
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err})
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 		return
 	}
-
-	mmproj := path.Join(path.Dir(file), "mmproj-model-f16.gguf") // TODO
-	p := nexa_sdk.NewVLM(file, &mmproj, 4096, nil)
-	defer p.Destroy()
 
 	// emtry request for warm up
 	if len(param.Messages) == 0 {
@@ -241,12 +238,15 @@ func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 	for _, msg := range param.Messages {
 		for _, ct := range msg.Content.([]any) {
 			ct := ct.(map[string]any)
-			if ct["type"] == "text" {
+			switch ct["type"] {
+			case "text":
 				messages = append(messages, nexa_sdk.ChatMessage{
 					Role:    nexa_sdk.LLMRole(msg.Role),
 					Content: ct["text"].(string),
 				})
-			} else {
+			case "input_audio":
+				imageUrl = ct["input_audio"].(string)
+			case "image_url":
 				imageUrl = ct["image_url"].(string)
 			}
 		}

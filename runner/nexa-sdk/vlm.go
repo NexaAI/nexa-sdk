@@ -10,6 +10,8 @@ import "C"
 
 import (
 	"context"
+	"path"
+	"strings"
 	"unsafe"
 
 	"github.com/bytedance/sonic"
@@ -23,16 +25,28 @@ type VLM struct {
 }
 
 // NewLLM creates a new VLM instance with the specified model and configuration
-func NewVLM(model string, tokenizer *string, ctxLen int32, devices *string) VLM {
+func NewVLM(model string, tokenizer *string, ctxLen int32, devices *string) *VLM {
 	cModel := C.CString(model)
 	defer C.free(unsafe.Pointer(cModel))
+
+	// TODO: hardcode
+	var mmproj string
+	if strings.Contains(model, "Qwen") {
+		mmproj = path.Join(path.Dir(model), "mmproj-Qwen2.5-Omni-3B-f16.gguf") // TODO: fix mmprj
+	} else {
+		mmproj = path.Join(path.Dir(model), "mmproj-model-f16.gguf") // TODO: fix mmprj
+	}
+	if tokenizer == nil {
+		tokenizer = &mmproj
+	}
+
 	var cTokenizer *C.char
 	if tokenizer != nil {
 		cTokenizer = C.CString(*tokenizer)
 		defer C.free(unsafe.Pointer(cTokenizer))
 	}
 
-	return VLM{
+	return &VLM{
 		ptr: C.ml_vlm_create(cModel, cTokenizer, C.int32_t(ctxLen), nil),
 	}
 }
@@ -193,13 +207,11 @@ func (p *VLM) GenerateStream(ctx context.Context, prompt string, image *string) 
 		defer func() {
 			streamTokenCh = nil
 			streamTokenCtx = nil
+			close(err)
+			close(stream)
+			C.free(unsafe.Pointer(cPrompt))
+			C.free(unsafe.Pointer(config.image_path))
 		}()
-		defer close(err)
-		defer close(stream)
-		defer C.free(unsafe.Pointer(cPrompt))
-		if image != nil {
-			defer C.free(unsafe.Pointer(config.image_path))
-		}
 
 		// Call C function to start streaming generation
 		resLen := C.ml_vlm_generate_stream(p.ptr, cPrompt, &config,

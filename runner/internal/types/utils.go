@@ -2,17 +2,17 @@ package types
 
 import "io"
 
-type FuncReadCloser struct {
-	Raw io.ReadCloser
-	F   func(p []byte)
+type TeeReadCloserF struct {
+	Raw     io.ReadCloser
+	WriterF func(p []byte) (int, error)
 }
 
-func (w *FuncReadCloser) Read(p []byte) (n int, err error) {
+func (w *TeeReadCloserF) Read(p []byte) (n int, err error) {
 	n, err = w.Raw.Read(p)
-	w.F(p[:n])
+	w.WriterF(p[:n])
 	return
 }
 
-func (w *FuncReadCloser) Close() error {
+func (w *TeeReadCloserF) Close() error {
 	return w.Raw.Close()
 }

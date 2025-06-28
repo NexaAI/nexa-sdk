@@ -56,11 +56,11 @@ type LLM struct {
 }
 
 // NewLLM creates a new LLM instance with the specified model and configuration
-func NewLLM(model string, tokenizer *string, ctxLen int32, devices *string) LLM {
+func NewLLM(model string, tokenizer *string, ctxLen int32, devices *string) *LLM {
 	cModel := C.CString(model)
 	defer C.free(unsafe.Pointer(cModel))
 
-	return LLM{
+	return &LLM{
 		ptr: C.ml_llm_create(cModel, nil, C.int32_t(ctxLen), nil),
 	}
 }
@@ -252,10 +252,10 @@ func (p *LLM) GenerateStream(ctx context.Context, prompt string) (<-chan string,
 		defer func() {
 			streamTokenCh = nil
 			streamTokenCtx = nil
+			close(err)
+			close(stream)
+			C.free(unsafe.Pointer(cPrompt))
 		}()
-		defer close(err)
-		defer close(stream)
-		defer C.free(unsafe.Pointer(cPrompt))
 
 		// Call C function to start streaming generation
 		resLen := C.ml_llm_generate_stream(p.ptr, cPrompt, &config,
