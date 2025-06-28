@@ -76,40 +76,56 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/embeddings": {
+            "post": {
+                "description": "Creates an embedding for the given input.",
+                "consumes": [
+                    "application/json"
+                ],
+                "summary": "Creates an embedding for the given input.",
+                "parameters": [
+                    {
+                        "description": "Embedding request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/openai.EmbeddingNewParams"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/reranking": {
+            "post": {
+                "description": "Reranks the given documents for the given query.",
+                "consumes": [
+                    "application/json"
+                ],
+                "summary": "Reranks the given documents for the given query.",
+                "parameters": [
+                    {
+                        "description": "Reranking request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.RerankingRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
         }
     },
     "definitions": {
-        "handler.ChatCompletionMessage": {
-            "type": "object",
-            "properties": {
-                "content": {},
-                "role": {
-                    "type": "string"
-                }
-            }
-        },
         "handler.ChatCompletionRequest": {
-            "type": "object",
-            "properties": {
-                "messages": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/handler.ChatCompletionMessage"
-                    }
-                },
-                "model": {
-                    "type": "string"
-                },
-                "stream": {
-                    "type": "boolean"
-                },
-                "tools": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/openai.ChatCompletionToolParam"
-                    }
-                }
-            }
+            "type": "object"
+        },
+        "handler.RerankingRequest": {
+            "type": "object"
         },
         "openai.ChatCompletion": {
             "type": "object",
@@ -432,19 +448,6 @@ const docTemplate = `{
                 },
                 "token": {
                     "description": "The token.",
-                    "type": "string"
-                }
-            }
-        },
-        "openai.ChatCompletionToolParam": {
-            "type": "object",
-            "properties": {
-                "any": {},
-                "function": {
-                    "$ref": "#/definitions/shared.FunctionDefinitionParam"
-                },
-                "type": {
-                    "description": "The type of the tool. Currently, only ` + "`" + `function` + "`" + ` is supported.\n\nThis field can be elided, and will marshal its zero value as \"function\".",
                     "type": "string"
                 }
             }
@@ -822,6 +825,106 @@ const docTemplate = `{
                 }
             }
         },
+        "openai.EmbeddingModel": {
+            "type": "string",
+            "enum": [
+                "text-embedding-ada-002",
+                "text-embedding-3-small",
+                "text-embedding-3-large"
+            ],
+            "x-enum-varnames": [
+                "EmbeddingModelTextEmbeddingAda002",
+                "EmbeddingModelTextEmbedding3Small",
+                "EmbeddingModelTextEmbedding3Large"
+            ]
+        },
+        "openai.EmbeddingNewParams": {
+            "type": "object",
+            "properties": {
+                "any": {},
+                "dimensions": {
+                    "description": "The number of dimensions the resulting output embeddings should have. Only\nsupported in ` + "`" + `text-embedding-3` + "`" + ` and later models.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/param.Opt-int64"
+                        }
+                    ]
+                },
+                "encoding_format": {
+                    "description": "The format to return the embeddings in. Can be either ` + "`" + `float` + "`" + ` or\n[` + "`" + `base64` + "`" + `](https://pypi.org/project/pybase64/).\n\nAny of \"float\", \"base64\".",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/openai.EmbeddingNewParamsEncodingFormat"
+                        }
+                    ]
+                },
+                "input": {
+                    "description": "Input text to embed, encoded as a string or array of tokens. To embed multiple\ninputs in a single request, pass an array of strings or array of token arrays.\nThe input must not exceed the max input tokens for the model (8192 tokens for\nall embedding models), cannot be an empty string, and any array must be 2048\ndimensions or less.\n[Example Python code](https://cookbook.openai.com/examples/how_to_count_tokens_with_tiktoken)\nfor counting tokens. In addition to the per-input token limit, all embedding\nmodels enforce a maximum of 300,000 tokens summed across all inputs in a single\nrequest.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/openai.EmbeddingNewParamsInputUnion"
+                        }
+                    ]
+                },
+                "model": {
+                    "description": "ID of the model to use. You can use the\n[List models](https://platform.openai.com/docs/api-reference/models/list) API to\nsee all of your available models, or see our\n[Model overview](https://platform.openai.com/docs/models) for descriptions of\nthem.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/openai.EmbeddingModel"
+                        }
+                    ]
+                },
+                "user": {
+                    "description": "A unique identifier representing your end-user, which can help OpenAI to monitor\nand detect abuse.\n[Learn more](https://platform.openai.com/docs/guides/safety-best-practices#end-user-ids).",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/param.Opt-string"
+                        }
+                    ]
+                }
+            }
+        },
+        "openai.EmbeddingNewParamsEncodingFormat": {
+            "type": "string",
+            "enum": [
+                "float",
+                "base64"
+            ],
+            "x-enum-varnames": [
+                "EmbeddingNewParamsEncodingFormatFloat",
+                "EmbeddingNewParamsEncodingFormatBase64"
+            ]
+        },
+        "openai.EmbeddingNewParamsInputUnion": {
+            "type": "object",
+            "properties": {
+                "any": {},
+                "ofArrayOfStrings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ofArrayOfTokenArrays": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "ofArrayOfTokens": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "ofString": {
+                    "$ref": "#/definitions/param.Opt-string"
+                }
+            }
+        },
         "param.Opt-bool": {
             "type": "object",
             "properties": {
@@ -853,44 +956,6 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
-        },
-        "shared.FunctionDefinitionParam": {
-            "type": "object",
-            "properties": {
-                "any": {},
-                "description": {
-                    "description": "A description of what the function does, used by the model to choose when and\nhow to call the function.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/param.Opt-string"
-                        }
-                    ]
-                },
-                "name": {
-                    "description": "The name of the function to be called. Must be a-z, A-Z, 0-9, or contain\nunderscores and dashes, with a maximum length of 64.",
-                    "type": "string"
-                },
-                "parameters": {
-                    "description": "The parameters the functions accepts, described as a JSON Schema object. See the\n[guide](https://platform.openai.com/docs/guides/function-calling) for examples,\nand the\n[JSON Schema reference](https://json-schema.org/understanding-json-schema/) for\ndocumentation about the format.\n\nOmitting ` + "`" + `parameters` + "`" + ` defines a function with an empty parameter list.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/shared.FunctionParameters"
-                        }
-                    ]
-                },
-                "strict": {
-                    "description": "Whether to enable strict schema adherence when generating the function call. If\nset to true, the model will follow the exact schema defined in the ` + "`" + `parameters` + "`" + `\nfield. Only a subset of JSON Schema is supported when ` + "`" + `strict` + "`" + ` is ` + "`" + `true` + "`" + `. Learn\nmore about Structured Outputs in the\n[function calling guide](docs/guides/function-calling).",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/param.Opt-bool"
-                        }
-                    ]
-                }
-            }
-        },
-        "shared.FunctionParameters": {
-            "type": "object",
-            "additionalProperties": {}
         }
     }
 }`

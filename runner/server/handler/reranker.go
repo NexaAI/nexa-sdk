@@ -11,15 +11,22 @@ import (
 )
 
 type RerankingRequest struct {
-	Model     string   `json:"model"`
-	Query     string   `json:"query"`
-	Documents []string `json:"documents"`
+	Model     string   `json:"model" default:"Qwen/Qwen3-0.6B-GGUF"`
+	Query     string   `json:"query" default:"hi"`
+	Documents []string `json:"documents" default:"hello,world"`
 }
 
 type RerankResponse struct {
-	Result []float32 `json:"result"`
+	Result []float32 `json:"result" default:"[0.1,0.2,0.3]"`
 }
 
+// curl -v http://localhost:18181/v1/reranking -d '{ "model": "Qwen/Qwen3-0.6B-GGUF", "query" : "hi", "documents": ["hello","world"] }'
+//
+//	@Router			/reranking [post]
+//	@Summary		Reranks the given documents for the given query.
+//	@Description	Reranks the given documents for the given query.
+//	@Accept			json
+//	@Param			request	body	RerankingRequest	true	"Reranking request"
 func Reranking(c *gin.Context) {
 	param := RerankingRequest{}
 	if err := c.ShouldBindJSON(&param); err != nil {

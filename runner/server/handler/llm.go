@@ -55,15 +55,15 @@ func Completions(c *gin.Context) {
 
 // ChatCompletionMessage defines a single message in a chat conversation.
 type ChatCompletionMessage struct {
-	Role    string `json:"role"`
-	Content any    `json:"content"`
+	Role    string `json:"role" default:"user"`
+	Content any    `json:"content" default:"user"`
 }
 
 // ChatCompletionRequest defines the request body for the chat completions API.
 // example: { "model": "nexaml/nexaml-models", "messages": [ { "role": "user", "content": "why is the sky blue?" } ] }
 type ChatCompletionRequest struct {
-	Stream   bool                             `json:"stream"`
-	Model    string                           `json:"model"`
+	Stream   bool                             `json:"stream" default:"false"`
+	Model    string                           `json:"model" default:"nexaml/nexaml-models"`
 	Messages []ChatCompletionMessage          `json:"messages"`
 	Tools    []openai.ChatCompletionToolParam `json:"tools"`
 }
