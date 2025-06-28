@@ -23,6 +23,9 @@ jobs:
           go-version: 1.24.3
           cache-dependency-path: runner/go.sum
 
+      - name: Setup MinGW
+        run: choco install mingw -y
+
       - name: Build Nexa Cli
         run: make build
 
