@@ -2,7 +2,6 @@ AGS ?= infer Qwen/Qwen3-0.6B-GGUF
 #ARGS ?= serve
 
 # ubuntu 22.04: llama-cpp-cpu llama-cpp-cuda
-# macos 13: llama-cpp-metal
 # macos 14: llama-cpp-metal mlx
 # macos 15: llama-cpp-metal mlx
 # windows: llama-cpp-cpu llama-cpp-vulkan llama-cpp-cuda
@@ -52,4 +51,3 @@ clean:
 	rm -rf build/nexa-cli
 	rm -rf build/lib
 	rm -rf runner/nexa-sdk/stub/libnexa_bridge.$(EXT)
-
