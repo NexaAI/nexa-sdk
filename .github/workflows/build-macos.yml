@@ -1,4 +1,4 @@
-name: build-cli
+name: Build NexaCLI on MacOS
 
 on:
   workflow_dispatch:
@@ -10,8 +10,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-14, macos-15]
+        os: [macos-13, macos-14, macos-15]
         backend: [llama-cpp-metal, mlx]
+        exclude:
+          - os: macos-13
+            backend: mlx
 
     steps:
       - name: Checkout repository
