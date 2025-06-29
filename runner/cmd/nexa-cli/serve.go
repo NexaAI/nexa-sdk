@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/NexaAI/nexa-sdk/internal/config"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
@@ -33,5 +34,12 @@ func serve() *cobra.Command {
 		// Clean up SDK resources and free memory when server stops
 		nexa_sdk.DeInit()
 	}
+
+	serveCmd.Flags().String("host", "127.0.0.1:18181", "Default server address (env: NEXA_HOST)")
+	serveCmd.Flags().Int("keepalive", 300, "Keepalive seconds (env: NEXA_KEEPALIVE)")
+
+	viper.BindPFlag("host", serveCmd.Flags().Lookup("host"))
+	viper.BindPFlag("keepalive", serveCmd.Flags().Lookup("keepalive"))
+
 	return serveCmd
 }
