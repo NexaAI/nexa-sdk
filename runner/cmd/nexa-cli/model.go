@@ -116,9 +116,9 @@ func list() *cobra.Command {
 		tw := table.NewWriter()
 		tw.SetOutputMirror(os.Stdout)
 		tw.SetStyle(table.StyleLight)
-		tw.AppendHeader(table.Row{"NAME", "SIZE"})
+		tw.AppendHeader(table.Row{"NAME", "TYPE", "SIZE"})
 		for _, model := range models {
-			tw.AppendRow(table.Row{model.Name, model.Size})
+			tw.AppendRow(table.Row{model.Name, model.ModelType, model.Size})
 		}
 		tw.Render()
 	}

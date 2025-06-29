@@ -86,7 +86,7 @@ func (s *Store) Pull(ctx context.Context, name string, opt PullOption) (infoCh <
 		defer client.Close()
 
 		if !slices.Contains([]types.ModelType{
-			types.ModelTypeLLM, types.ModelTypeVLM, types.ModelTypeEmbed, types.ModelTypeRerank,
+			types.ModelTypeLLM, types.ModelTypeVLM, types.ModelTypeEmbedder, types.ModelTypeReranker,
 		}, opt.ModelType) {
 			errC <- fmt.Errorf("not support model type: %s", opt.ModelType)
 			return

@@ -22,9 +22,6 @@ var completer = readline.NewPrefixCompleter(
 	readline.PcItem("/clear"),
 	readline.PcItem("/load", readline.PcItemDynamic(listFiles("./"))),
 	readline.PcItem("/save", readline.PcItemDynamic(listFiles("./"))),
-
-	readline.PcItem("/image", readline.PcItemDynamic(listFiles("./"))),
-	readline.PcItem("/audio", readline.PcItemDynamic(listFiles("./"))),
 )
 
 // TODO: support sub dir
@@ -49,8 +46,6 @@ type ReplConfig struct {
 
 	Run       func(prompt string) (string, error)
 	RunStream func(ctx context.Context, prompt string, dataCh chan<- string, errCh chan<- error)
-	Image     func(file string) error
-	Audio     func(file string) error
 }
 
 func (cfg *ReplConfig) fill() {
@@ -74,12 +69,6 @@ func (cfg *ReplConfig) fill() {
 			errCh <- notSupport
 			close(errCh)
 		}
-	}
-	if cfg.Image == nil {
-		cfg.Image = func(string) error { return notSupport }
-	}
-	if cfg.Audio == nil {
-		cfg.Audio = func(string) error { return notSupport }
 	}
 }
 
@@ -145,28 +134,6 @@ func repl(cfg ReplConfig) {
 				if err != nil {
 					fmt.Println(text.FgRed.Sprintf("Error: %s", err))
 				}
-
-			case "/image":
-				if len(fileds) != 2 {
-					fmt.Println(text.FgRed.Sprintf("Usage: /image <filename>"))
-					continue
-				}
-				err := cfg.Image(fileds[1])
-				if err != nil {
-					fmt.Println(text.FgRed.Sprintf("Error: %s", err))
-				}
-				fmt.Println(text.FgBlue.Sprintf("will pass image file in next message"))
-
-			case "/audio":
-				if len(fileds) != 2 {
-					fmt.Println(text.FgRed.Sprintf("Usage: /audio <filename>"))
-					continue
-				}
-				err := cfg.Audio(fileds[1])
-				if err != nil {
-					fmt.Println(text.FgRed.Sprintf("Error: %s", err))
-				}
-				fmt.Println(text.FgBlue.Sprintf("will pass audio file in next message"))
 
 			default:
 				fmt.Println(text.FgRed.Sprintf("Unknown command: %s", fileds[0]))

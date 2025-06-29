@@ -3,10 +3,10 @@ package types
 type ModelType string
 
 const (
-	ModelTypeLLM    = "llm"
-	ModelTypeVLM    = "vlm"
-	ModelTypeEmbed  = "embed"
-	ModelTypeRerank = "rerank"
+	ModelTypeLLM      = "llm"
+	ModelTypeVLM      = "vlm"
+	ModelTypeEmbedder = "embedder"
+	ModelTypeReranker = "reranker"
 )
 
 type Model struct {

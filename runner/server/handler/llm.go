@@ -65,11 +65,6 @@ type ChatCompletionRequest struct {
 
 var toolCallRegex = regexp.MustCompile(`<tool_call>([\s\S]+)<\/tool_call>`)
 
-// Function Call
-// curl -v http://localhost:18181/v1/chat/completions -d '{ "model": "Qwen/Qwen2.5-1.5B-Instruct-GGUF", "messages": [ { "role": "user", "content": "What is the weather like in Boston today?" } ], "tools": [ { "type": "function", "function": { "name": "get_current_weather", "description": "Get the current weather in a given location", "parameters": { "type": "object", "properties": { "location": { "type": "string", "description": "The city and state, e.g. San Francisco, CA" }, "unit": { "type": "string", "enum": ["celsius", "fahrenheit"] } }, "required": ["location"] } } } ] }'
-//
-// VLM
-// curl -v http://localhost:18181/v1/chat/completions -d '{ "model": "nexaml/nexaml-models", "messages": [ { "role": "user", "content": [ { "type": "text", "text": "what is main color of the picture" }, { "type": "image_url", "image_url": "/home/remilia/Pictures/ScreenShot/20200201_182517.png" } ] } ], "stream": true }'
 func ChatCompletions(c *gin.Context) {
 	param := ChatCompletionRequest{}
 	if err := c.ShouldBindJSON(&param); err != nil {
@@ -233,7 +228,7 @@ func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 		return
 	}
 
-	var imageUrl string
+	var imageUrl *string
 
 	messages := make([]nexa_sdk.ChatMessage, 0, len(param.Messages))
 	for _, msg := range param.Messages {
@@ -246,9 +241,11 @@ func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 					Content: ct["text"].(string),
 				})
 			case "input_audio":
-				imageUrl = ct["input_audio"].(string)
+				t := ct["input_audio"].(string)
+				imageUrl = &t
 			case "image_url":
-				imageUrl = ct["image_url"].(string)
+				t := ct["image_url"].(string)
+				imageUrl = &t
 			}
 		}
 	}
@@ -273,7 +270,7 @@ func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 			return
 		}
 
-		data, err := p.Generate(formatted, &imageUrl)
+		data, err := p.Generate(formatted, imageUrl)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 			return
@@ -311,7 +308,7 @@ func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 
 		if param.Stream {
 			ctx, cancel := context.WithCancel(context.Background())
-			dataCh, errCh := p.GenerateStream(ctx, formatted, &imageUrl)
+			dataCh, errCh := p.GenerateStream(ctx, formatted, imageUrl)
 
 			c.Stream(func(w io.Writer) bool {
 				r, ok := <-dataCh
@@ -336,7 +333,7 @@ func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 				fmt.Printf("GenerateStream Error: %s\n", e)
 			}
 		} else {
-			data, err := p.Generate(formatted, &imageUrl)
+			data, err := p.Generate(formatted, imageUrl)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 				return

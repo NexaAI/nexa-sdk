@@ -11,7 +11,6 @@ import (
 	"github.com/NexaAI/nexa-sdk/server/service"
 )
 
-// curl -v http://localhost:18181/v1/embeddings -d '{ "model": "Qwen/Qwen3-0.6B-GGUF", "input": ["hello","world"] }'
 func Embeddings(c *gin.Context) {
 	param := openai.EmbeddingNewParams{}
 	if err := c.ShouldBindJSON(&param); err != nil {

@@ -1,6 +1,7 @@
 package store
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
 	"path"
@@ -20,8 +21,15 @@ func (s *Store) List() ([]types.Model, error) {
 
 	// Parse each model directory's manifest
 	res := make([]types.Model, 0, len(names))
-	for _, name := range names {
-		model, err := s.GetManifest(name.Name())
+	for _, encName := range names {
+
+		name, err := base64.URLEncoding.DecodeString(encName.Name())
+		if err != nil {
+			fmt.Printf("getManifest error: %s\n", err)
+			continue
+		}
+
+		model, err := s.GetManifest(string(name))
 		if err != nil {
 			fmt.Printf("getManifest error: %s\n", err)
 			continue

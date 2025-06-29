@@ -15,22 +15,36 @@ import (
 	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
 )
 
+var (
+	//disableStream *bool
+	tool         []string
+	image, audio string
+	prompt       []string
+	query        string
+	document     []string
+)
+
 func infer() *cobra.Command {
 	inferCmd := &cobra.Command{}
 	inferCmd.Use = "infer <model-name>"
 
 	inferCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
-	image := inferCmd.Flags().StringP("image file", "i", "", "pass image file to vlm")
-	audio := inferCmd.Flags().StringP("audio file", "a", "", "pass audio file to vlm")
-	prompts := inferCmd.Flags().StringSliceP("prompt", "p", nil, "embed only")
-	query := inferCmd.Flags().StringP("query", "q", "", "rerank only")
-	documents := inferCmd.Flags().StringSliceP("document", "d", nil, "rerank only")
+
+	inferCmd.Flags().BoolVarP(&disableStream, "disable-stream", "s", false, "disable stream mode in llm/vlm")
+	inferCmd.Flags().StringSliceVarP(&tool, "tool", "t", nil, "add tool to make function call")
+	inferCmd.Flags().StringVarP(&image, "image", "i", "", "pass image file to vlm")
+	inferCmd.Flags().StringVarP(&audio, "audio", "a", "", "pass audio file to vlm")
+	inferCmd.Flags().StringSliceVarP(&prompt, "prompt", "p", nil, "pass prompt to vlm/embedder")
+	inferCmd.Flags().StringVarP(&query, "query", "q", "", "rerank only")
+	inferCmd.Flags().StringSliceVarP(&document, "document", "d", nil, "rerank only")
+
 	inferCmd.Run = func(cmd *cobra.Command, args []string) {
 		s := store.NewStore()
 		model := args[0]
 		manifest, err := s.GetManifest(model)
 		if err != nil {
 			fmt.Println(text.FgRed.Sprintf("parse manifest error: %s", err))
+			return
 		}
 
 		nexa_sdk.Init()
@@ -45,13 +59,16 @@ func infer() *cobra.Command {
 
 		switch manifest.ModelType {
 		case types.ModelTypeLLM:
-			inferLLM(modelfile, tokenizer)
+			if len(tool) == 0 {
+				inferLLM(modelfile, tokenizer)
+			} else {
+			}
 		case types.ModelTypeVLM:
-			inferVLM(modelfile, tokenizer, image, audio)
-		case types.ModelTypeEmbed:
-			inferEmbed(modelfile, tokenizer, *prompts)
-		case types.ModelTypeRerank:
-			inferRerank(modelfile, tokenizer, *query, *documents)
+			inferVLM(modelfile, tokenizer)
+		case types.ModelTypeEmbedder:
+			inferEmbed(modelfile, tokenizer)
+		case types.ModelTypeReranker:
+			inferRerank(modelfile, tokenizer)
 		default:
 			panic("not support model type")
 		}
@@ -72,7 +89,7 @@ func inferLLM(model string, tokenizer *string) {
 	var lastLen int
 
 	repl(ReplConfig{
-		Stream: true,
+		Stream: !disableStream,
 
 		Clear: p.Reset,
 
@@ -82,6 +99,30 @@ func inferLLM(model string, tokenizer *string) {
 
 		LoadKVCache: func(path string) error {
 			return p.LoadKVCache(path)
+		},
+
+		Run: func(prompt string) (string, error) {
+			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
+
+			formatted, err := p.ApplyChatTemplate(history)
+			if err != nil {
+				return "", err
+			}
+
+			res, err := p.Generate(prompt)
+			if err != nil {
+				return "", err
+			}
+
+			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: res})
+
+			formatted, err = p.ApplyChatTemplate(history)
+			if err != nil {
+				return "", err
+			}
+			lastLen = len(formatted)
+
+			return res, nil
 		},
 
 		RunStream: func(ctx context.Context, prompt string, dataCh chan<- string, errCh chan<- error) {
@@ -118,7 +159,7 @@ func inferLLM(model string, tokenizer *string) {
 	})
 }
 
-func inferVLM(model string, tokenizer *string, image *string, audio *string) {
+func inferVLM(model string, tokenizer *string) {
 	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model..."))
 	spin.Start()
 	p := nexa_sdk.NewVLM(model, tokenizer, 4096, nil)
@@ -126,90 +167,94 @@ func inferVLM(model string, tokenizer *string, image *string, audio *string) {
 
 	spin.Stop()
 
-	var history []nexa_sdk.ChatMessage
-	var lastFile *string
-	var lastLen int
+	if len(prompt) != 1 {
+		fmt.Println(text.FgRed.Sprintf("only 1 text prompt is accept"))
+		return
+	}
 
-	repl(ReplConfig{
-		Stream: true,
-
-		Clear: p.Reset,
-
-		RunStream: func(ctx context.Context, prompt string, dataCh chan<- string, errCh chan<- error) {
-			defer close(errCh)
-			defer close(dataCh)
-
-			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
-			formatted, e := p.ApplyChatTemplate(history)
-			if e != nil {
-				errCh <- e
-				return
-			}
-
-			var full strings.Builder
-			dCh, eCh := p.GenerateStream(ctx, formatted[lastLen:], lastFile)
-			for r := range dCh {
-				full.WriteString(r)
-				dataCh <- r
-			}
-			for e := range eCh {
-				errCh <- e
-				return
-			}
-			lastFile = nil
-
-			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: full.String()})
-
-			formatted, e = p.ApplyChatTemplate(history)
-			if e != nil {
-				errCh <- e
-				return
-			}
-			lastLen = len(formatted)
-		},
-
-		Image: func(file string) error {
-			lastFile = &file
-			return nil
-		},
-
-		Audio: func(file string) error {
-			lastFile = &file
-			return nil
-		},
+	formatted, err := p.ApplyChatTemplate([]nexa_sdk.ChatMessage{
+		{Role: nexa_sdk.LLMRoleUser, Content: prompt[0]},
 	})
+	if err != nil {
+		fmt.Println(text.FgRed.Sprintf("apply chat template: %s", err))
+		return
+	}
+
+	var file *string
+	if image != "" {
+		file = &image
+	}
+	if audio != "" {
+		file = &audio
+	}
+
+	if !disableStream {
+		fmt.Print(text.FgYellow.EscapeSeq())
+		dCh, eCh := p.GenerateStream(context.TODO(), formatted, file)
+		for r := range dCh {
+			fmt.Print(r)
+		}
+		fmt.Print(text.Reset.EscapeSeq())
+		fmt.Println()
+
+		for e := range eCh {
+			fmt.Println(text.FgRed.Sprintf("Error: %s", e))
+		}
+	} else {
+		res, err := p.Generate(formatted, file)
+		fmt.Println(text.FgYellow.Sprint(res))
+
+		if err != nil {
+			fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+		}
+
+	}
 }
 
-func inferEmbed(modelfile string, tokenizer *string, prompts []string) {
+func inferEmbed(modelfile string, tokenizer *string) {
 	p := nexa_sdk.NewEmbedder(modelfile, tokenizer, nil)
 	defer p.Destroy()
 
-	res, err := p.Embed(prompts)
+	if len(prompt) == 0 {
+		fmt.Println(text.FgRed.Sprintf("at least 1 text prompt is accept"))
+		return
+	}
+
+	res, err := p.Embed(prompt)
 	if err != nil {
 		fmt.Println(text.FgRed.Sprintf("Error: %s", err))
 		return
 	} else {
-		nEmbed := len(res) / len(prompts)
+		nEmbed := len(res) / len(prompt)
 		for i := range res {
 			if i%nEmbed == 0 {
-				fmt.Print(text.FgYellow.Sprintf("\n===> %d\n", i))
+				fmt.Print(text.FgYellow.Sprintf("\n===> %d\n", i/nEmbed))
 			}
 			fmt.Print(text.FgYellow.Sprintf("%f ", res[i]))
 		}
 	}
 }
 
-func inferRerank(modelfile string, tokenizer *string, query string, documents []string) {
+func inferRerank(modelfile string, tokenizer *string) {
 	p := nexa_sdk.NewReranker(modelfile, tokenizer, nil)
 	defer p.Destroy()
 
-	res, err := p.Rerank(query, documents)
+	if len(query) == 0 {
+		fmt.Println(text.FgRed.Sprintf("at least 1 query is accept"))
+		return
+	}
+	if len(document) == 0 {
+		fmt.Println(text.FgRed.Sprintf("at least 1 document is accept"))
+		return
+	}
+
+	res, err := p.Rerank(query, document)
 	if err != nil {
 		fmt.Println(text.FgRed.Sprintf("Error: %s", err))
 		return
 	} else {
 		for i := range res {
-			fmt.Println(text.FgYellow.Sprintf("%f", res[i]))
+			fmt.Println(text.FgYellow.Sprintf("%d => %f", i, res[i]))
 		}
 	}
 }

@@ -20,7 +20,6 @@ type RerankResponse struct {
 	Result []float32 `json:"result"`
 }
 
-// curl -v http://localhost:18181/v1/reranking -d '{ "model": "Qwen/Qwen3-0.6B-GGUF", "query" : "hi", "documents": ["hello","world"] }'
 func Reranking(c *gin.Context) {
 	param := RerankingRequest{}
 	if err := c.ShouldBindJSON(&param); err != nil {
