@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
-	"path"
+	"os/exec"
+	"path/filepath"
 	"runtime"
-	"syscall"
 )
 
 var (
@@ -15,51 +15,51 @@ var (
 )
 
 func initPath() {
-	var err error
-	filePath, err = os.Executable()
+	exe, err := os.Executable()
 	if err != nil {
 		panic(err)
 	}
+	filePath = exe
+	baseDir := filepath.Dir(filePath)
 
-	libPath = path.Join(path.Dir(filePath), "lib")
-	binPath = path.Join(path.Dir(filePath), "nexa-cli")
+	libPath = filepath.Join(baseDir, "lib")
+	binPath = filepath.Join(baseDir, "nexa-cli")
+}
+
+func prependPath(envKey, newPath string) {
+	old := os.Getenv(envKey)
+	if old == "" {
+		_ = os.Setenv(envKey, newPath)
+	} else {
+		sep := string(os.PathListSeparator) // ';' on Windows, ':' on *nix
+		_ = os.Setenv(envKey, newPath+sep+old)
+	}
 }
 
 func setRuntimeEnv() {
 	switch runtime.GOOS {
 	case "windows":
-		panic("unsupport os :" + runtime.GOOS)
-
+		libPath = filepath.Join(libPath, "cpu")
+		prependPath("PATH", libPath)
 	case "linux":
-		rpath := os.Getenv("LD_LIBRARY_PATH")
-		if rpath == "" {
-			rpath = libPath
-		} else {
-			rpath = fmt.Sprintf("%s:%s", libPath, rpath)
-		}
-		os.Setenv("LD_LIBRARY_PATH", rpath)
-
+		prependPath("LD_LIBRARY_PATH", libPath)
 	case "darwin":
-		rpath := os.Getenv("DYLD_LIBRARY_PATH")
-		if rpath == "" {
-			rpath = libPath
-		} else {
-			rpath = fmt.Sprintf("%s:%s", libPath, rpath)
-		}
-		os.Setenv("DYLD_LIBRARY_PATH", rpath)
-
+		prependPath("DYLD_LIBRARY_PATH", libPath)
 	default:
-		panic("unsupport os :" + runtime.GOOS)
+		panic("unsupported OS: " + runtime.GOOS)
 	}
 }
 
 func main() {
 	initPath()
 	setRuntimeEnv()
-	os.Args[0] = binPath
-	fmt.Printf("execute %s %v\n", binPath, os.Args)
-	err := syscall.Exec(binPath, os.Args, os.Environ())
-	if err != nil {
-		panic(err)
+
+	cmd := exec.Command(binPath, os.Args[1:]...)
+	cmd.Env = os.Environ()
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "run %s failed: %v\n", binPath, err)
+		os.Exit(1)
 	}
 }
