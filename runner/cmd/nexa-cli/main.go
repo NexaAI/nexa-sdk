@@ -18,31 +18,25 @@ import (
 func RootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use: "nexa",
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if config.Get().Debug {
+				log.SetOutput(os.Stderr)
+			} else {
+				log.SetOutput(io.Discard)
+			}
+			return nil
+		},
 	}
 
-	// Model management commands
-	rootCmd.AddCommand(pull())
-	rootCmd.AddCommand(remove())
-	rootCmd.AddCommand(clean())
-	rootCmd.AddCommand(list())
+	rootCmd.AddCommand(pull(), remove(), clean(), list(),
+		infer(), serve(), run(), tool())
 
-	// Inference command for interactive chat
-	rootCmd.AddCommand(infer())
-
-	// Server command to run AI service
-	rootCmd.AddCommand(serve())
-	rootCmd.AddCommand(run())
-
-	rootCmd.AddCommand(tool())
 	return rootCmd
 }
 
 // main is the entry point that executes the root command.
 func main() {
-	if config.Get().Debug {
-		log.SetOutput(os.Stderr)
-	} else {
-		log.SetOutput(io.Discard)
+	if err := RootCmd().Execute(); err != nil {
+		os.Exit(1)
 	}
-	RootCmd().Execute()
 }
