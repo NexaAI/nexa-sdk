@@ -21,7 +21,7 @@ func (s *Store) List() ([]types.Model, error) {
 	// Parse each model directory's manifest
 	res := make([]types.Model, 0, len(names))
 	for _, name := range names {
-		model, err := s.getManifest(name.Name())
+		model, err := s.GetManifest(name.Name())
 		if err != nil {
 			fmt.Printf("getManifest error: %s\n", err)
 			continue
@@ -43,19 +43,10 @@ func (s *Store) Clean() error {
 	return os.RemoveAll(path.Join(s.home, "models"))
 }
 
-// ModelfilePath returns the full path to a model's data file
-func (s *Store) ModelfilePath(name string) (string, error) {
-	model, err := s.getManifest(s.encodeName(name))
-	if err != nil {
-		return "", err
-	}
-	return path.Join(s.home, "models", s.encodeName(name), model.ModelFile), nil
-}
-
-func (s *Store) getManifest(encName string) (*types.Model, error) {
+func (s *Store) GetManifest(name string) (*types.Model, error) {
 	dir := path.Join(s.home, "models")
 	// Read manifest file
-	data, e := os.ReadFile(path.Join(dir, encName, "nexa.manifest"))
+	data, e := os.ReadFile(path.Join(dir, s.encodeName(name), "nexa.manifest"))
 	if e != nil {
 		return nil, e
 	}
@@ -67,4 +58,9 @@ func (s *Store) getManifest(encName string) (*types.Model, error) {
 		return nil, e
 	}
 	return &model, nil
+}
+
+// ModelfilePath returns the full path to a model's data file
+func (s *Store) ModelfilePath(name string, file string) string {
+	return path.Join(s.home, "models", s.encodeName(name), file)
 }

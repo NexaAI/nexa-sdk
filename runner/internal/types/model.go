@@ -1,14 +1,25 @@
 package types
 
+type ModelType string
+
+const (
+	ModelTypeLLM    = "llm"
+	ModelTypeVLM    = "vlm"
+	ModelTypeEmbed  = "embed"
+	ModelTypeRerank = "rerank"
+)
+
 type Model struct {
-	Name      string
-	Size      int64
-	ModelFile string
+	Name          string
+	Size          int64
+	ModelType     ModelType
+	ModelFile     string
+	TokenizerFile string
 }
 
-type ModelFile struct {
-	Name string
-	Size int64
+type ModelParam struct {
+	Device *string
+	CtxLen int32
 }
 
 type DownloadInfo struct {

@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/openai/openai-go"
 
+	"github.com/NexaAI/nexa-sdk/internal/types"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
 	"github.com/NexaAI/nexa-sdk/server/service"
 )
@@ -20,7 +21,7 @@ func Embeddings(c *gin.Context) {
 
 	p, err := service.KeepAliveGet[nexa_sdk.Embedder](
 		string(param.Model),
-		service.ModelParam{},
+		types.ModelParam{},
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
