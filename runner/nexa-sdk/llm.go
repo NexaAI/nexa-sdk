@@ -11,6 +11,7 @@ import "C"
 import (
 	"context"
 	"fmt"
+	"strings"
 	"unsafe"
 
 	"github.com/bytedance/sonic"
@@ -197,6 +198,12 @@ func (p *LLM) ApplyJinjaTemplate(param ChatTemplateParam) (string, error) {
 		return "", e
 	}
 
+	// TODO: Remove replace when gonja fixed.
+	// Workaround for gonja template issues:
+	// - https://github.com/NikolaLohinski/gonja/issues/48: wrap messages|length in parentheses
+	// - https://github.com/NikolaLohinski/gonja/issues/49: ensure space after 'not('
+	chatTmpl = strings.ReplaceAll(chatTmpl, `messages|length`, `(messages|length)`)
+	chatTmpl = strings.ReplaceAll(chatTmpl, `not(`, `not (`)
 	tmpl, e := gonja.FromString(chatTmpl)
 	if e != nil {
 		return "", e
