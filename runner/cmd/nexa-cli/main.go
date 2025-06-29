@@ -28,8 +28,12 @@ func RootCmd() *cobra.Command {
 		},
 	}
 
-	rootCmd.AddCommand(pull(), remove(), clean(), list(),
-		infer(), serve(), run(), tool())
+	rootCmd.AddCommand(
+		pull(), remove(), clean(), list(),
+		infer(),
+		serve(), run(),
+		tool(),
+	)
 
 	return rootCmd
 }

@@ -22,8 +22,7 @@ func serve() *cobra.Command {
 	serveCmd.Short = "Run the Nexa AI Service"
 
 	serveCmd.Run = func(cmd *cobra.Command, args []string) {
-		cfg := config.Get()
-		fmt.Printf("Start Nexa AI Server on http://%s\n", cfg.Host)
+		fmt.Printf("Start Nexa AI Server on http://%s\n", config.Get().Host)
 
 		// Initialize SDK resources and prepare AI models for serving
 		nexa_sdk.Init()
