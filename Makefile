@@ -6,7 +6,6 @@ AGS ?= infer Qwen/Qwen3-0.6B-GGUF
 # macos 14: llama-cpp-metal mlx
 # macos 15: llama-cpp-metal mlx
 # windows: llama-cpp-cpu llama-cpp-vulkan llama-cpp-cuda
-BRIDGE_BACKEND ?= llama-cpp-cpu
 BRIDGE_VERSION ?= latest
 
 ifeq ($(OS), Windows_NT)
@@ -16,19 +15,24 @@ ifeq ($(OS), Windows_NT)
 	EXE := .exe
 	RM := powershell Remove-Item -Recurse -Force -Path
 	MKDIR := powershell New-Item -ItemType Directory -Force -Path
+
+	BRIDGE_BACKEND ?= llama-cpp-cpu
 else
 	UNAME := $(shell uname -s)
 	ifeq ($(UNAME), Linux)
 		OS := linux
 		LIB := lib
 		EXT := so
+		BRIDGE_BACKEND ?= llama-cpp-cpu
 	else ifeq ($(UNAME), Darwin)
 		MACOS_VERSION := $(shell sw_vers -productVersion))
 		MACOS_MAJOR_VERSION := $(firstword $(subst ., ,$(MACOS_VERSION)))
 		OS := macos-$(MACOS_MAJOR_VERSION)
 		LIB := lib
 		EXT := dylib
+		BRIDGE_BACKEND ?= llama-cpp-metal
 	endif
+
 	EXE :=
 	RM := rm -rf
 	MKDIR := mkdir -p
@@ -55,8 +59,8 @@ download:
 	$(MKDIR) ./build/lib
 	@echo "====> Download runtime"
 	@echo "OS: $(OS)"
-	@echo "BACKEND: $(BRIDGE_BACKEND)"
-	@echo "VERSION: $(BRIDGE_VERSION)"
+	@echo "BRIDGE_BACKEND: $(BRIDGE_BACKEND)"
+	@echo "BRIDGE_VERSION: $(BRIDGE_VERSION)"
 	curl -L -o build/nexasdk-bridge.zip https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexasdk/$(BRIDGE_VERSION)/$(BRIDGE_BACKEND)/$(OS)/nexasdk-bridge.zip
 	cd ./build/lib && unzip ../nexasdk-bridge.zip
 	-$(RM) ./build/nexasdk-bridge.zip
