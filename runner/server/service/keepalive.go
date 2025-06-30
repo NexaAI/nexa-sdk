@@ -8,18 +8,13 @@ import (
 
 	"github.com/NexaAI/nexa-sdk/internal/config"
 	"github.com/NexaAI/nexa-sdk/internal/store"
+	"github.com/NexaAI/nexa-sdk/internal/types"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
 )
 
-type ModelParam struct {
-	Tokenizer *string
-	Device    *string
-	CtxLen    int32
-}
-
 // KeepAliveGet retrieves a model from the keepalive cache or creates it if not found
 // This avoids the overhead of repeatedly loading/unloading models from disk
-func KeepAliveGet[T any](name string, param ModelParam) (*T, error) {
+func KeepAliveGet[T any](name string, param types.ModelParam) (*T, error) {
 	t, err := keepAliveGet[T](name, param)
 	return t.(*T), err
 }
@@ -37,7 +32,7 @@ type keepAliveService struct {
 // modelKeepInfo holds metadata for a cached model instance
 type modelKeepInfo struct {
 	model    keepable
-	param    ModelParam
+	param    types.ModelParam
 	lastTime time.Time
 }
 
@@ -85,7 +80,7 @@ func (keepAlive *keepAliveService) start() {
 
 // keepAliveGet retrieves a cached model or creates a new one if not found
 // Ensures only one model is kept in memory at a time by clearing others
-func keepAliveGet[T any](name string, param ModelParam) (any, error) {
+func keepAliveGet[T any](name string, param types.ModelParam) (any, error) {
 	keepAlive.Lock()
 	defer keepAlive.Unlock()
 
@@ -106,25 +101,30 @@ func keepAliveGet[T any](name string, param ModelParam) (any, error) {
 	}
 
 	s := store.NewStore()
-	encName, err := s.ModelfilePath(name)
+	manifest, err := s.GetManifest(name)
 	if err != nil {
 		return nil, err
+	}
+	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile)
+	var tokenizer *string
+	if manifest.TokenizerFile != "" {
+		t := s.ModelfilePath(manifest.Name, manifest.TokenizerFile)
+		tokenizer = &t
 	}
 
 	var t keepable
 	switch reflect.TypeFor[T]() {
 	case reflect.TypeFor[nexa_sdk.LLM]():
-		t = nexa_sdk.NewLLM(encName, param.Tokenizer, param.CtxLen, param.Device)
+		t = nexa_sdk.NewLLM(modelfile, tokenizer, param.CtxLen, param.Device)
 	case reflect.TypeFor[nexa_sdk.VLM]():
-		t = nexa_sdk.NewVLM(encName, param.Tokenizer, param.CtxLen, param.Device)
+		t = nexa_sdk.NewVLM(modelfile, tokenizer, param.CtxLen, param.Device)
 	case reflect.TypeFor[nexa_sdk.Embedder]():
-		t = nexa_sdk.NewEmbedder(encName, param.Tokenizer, param.Device)
+		t = nexa_sdk.NewEmbedder(modelfile, tokenizer, param.Device)
 	case reflect.TypeFor[nexa_sdk.Reranker]():
-		t = nexa_sdk.NewReranker(encName, param.Tokenizer, param.Device)
+		t = nexa_sdk.NewReranker(modelfile, tokenizer, param.Device)
 	default:
 		panic(fmt.Sprintf("not support type: %+#v", t))
 	}
-	time.Sleep(time.Second) // TODO: for test
 	if t == nil {
 		return nil, fmt.Errorf("create failed")
 	}

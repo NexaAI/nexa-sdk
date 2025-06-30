@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"slices"
 	"strings"
 
 	"github.com/bytedance/sonic"
@@ -28,10 +29,18 @@ type HFFileInfo struct {
 	XetHash string `json:"xetHash"`
 }
 
+type PullOption struct {
+	ModelType types.ModelType
+	Model     string
+	Tokenizer string
+	Extra     []string
+	ALl       bool // download all file
+}
+
 // Pull downloads a model from HuggingFace and stores it locally
 // It fetches the model tree, finds .gguf files, downloads them, and saves metadata
-func (s *Store) Pull(ctx context.Context, name string) (infoCh <-chan types.DownloadInfo, errCh <-chan error) {
-
+// if model not specify, all is set true, and autodetect true
+func (s *Store) Pull(ctx context.Context, name string, opt PullOption) (infoCh <-chan types.DownloadInfo, errCh <-chan error) {
 	infoC := make(chan types.DownloadInfo, 10)
 	infoCh = infoC
 	errC := make(chan error, 1)
@@ -50,7 +59,11 @@ func (s *Store) Pull(ctx context.Context, name string) (infoCh <-chan types.Down
 			dInfo := types.DownloadInfo{}
 			dInfo.TotalSize = totalSize
 			dInfo.CurrentSize = r.RawResponse.ContentLength
-			dInfo.CurrentName = path.Base(r.Request.OutputFileName)
+			if r.Request.OutputFileName != "" {
+				dInfo.CurrentName = path.Base(r.Request.OutputFileName)
+			} else {
+				dInfo.CurrentName = "filelist"
+			}
 			r.Body = &types.TeeReadCloserF{
 				Raw: r.Body,
 				// TODO: reduce channel message
@@ -72,31 +85,62 @@ func (s *Store) Pull(ctx context.Context, name string) (infoCh <-chan types.Down
 		defer close(infoC)
 		defer client.Close()
 
-		files := make([]HFFileInfo, 0)
+		if !slices.Contains([]types.ModelType{
+			types.ModelTypeLLM, types.ModelTypeVLM, types.ModelTypeEmbedder, types.ModelTypeReranker,
+		}, opt.ModelType) {
+			errC <- fmt.Errorf("not support model type: %s", opt.ModelType)
+			return
+		}
+		if opt.Model == "" {
+			opt.ALl = true
+		}
+
+		fileInfos := make([]HFFileInfo, 0)
 		_, err := client.R().
 			//EnableDebug().
 			SetAuthToken(config.Get().HFToken).
-			SetResult(&files).
+			SetResult(&fileInfos).
 			Get(fmt.Sprintf("%s/api/models/%s/tree/main", HF_ENDPOINT, name))
 		if err != nil {
 			errC <- err
 			return
 		}
 
-		var mainName string
-		for _, f := range files {
-			totalSize += f.Size
+		// filter download file
+		var needs []string
+		if opt.Model != "" {
+			needs = append(opt.Extra, opt.Model)
+		}
+		if opt.Tokenizer != "" {
+			needs = append(needs, opt.Tokenizer)
+		}
 
-			// Find first npz then first .gguf file in the model
-			f.Path = path.Base(f.Path)
-			if mainName == "" {
-				if strings.HasSuffix(f.Path, ".gguf") || strings.HasSuffix(f.Path, ".npz") {
-					mainName = f.Path
+		if !opt.ALl {
+			res := make([]HFFileInfo, 0, 2)
+
+			for _, file := range fileInfos {
+				if slices.Contains(needs, file.Path) {
+					res = append(res, file)
 				}
 			}
-			if strings.HasSuffix(f.Path, "npz") && strings.HasSuffix(mainName, ".gguf") {
-				mainName = f.Path
+			fileInfos = res
+		}
+
+		// check model and tokenizer exist
+		exist := 0
+		hasManifest := false
+		for _, file := range fileInfos {
+			if slices.Contains(needs, file.Path) {
+				exist += 1
 			}
+			if !hasManifest && file.Path == "nexa.manifest" {
+				hasManifest = true
+			}
+			totalSize += file.Size
+		}
+		if exist != len(needs) {
+			errC <- fmt.Errorf("some files not found on huggingface repo, check you file name")
+			return
 		}
 
 		// Create model directory structure
@@ -108,11 +152,16 @@ func (s *Store) Pull(ctx context.Context, name string) (infoCh <-chan types.Down
 		}
 
 		// Create modelfile for storing downloaded content
-		for _, file := range files {
+		for _, file := range fileInfos {
+			// skip subdir
+			if path.Base(file.Path) != file.Path {
+				errC <- fmt.Errorf("not support subdir: %s", file.Path)
+				return
+			}
 			_, err = client.R().
 				SetDoNotParseResponse(true).
 				SetSaveResponse(true).
-				SetOutputFileName(path.Join(s.home, "models", encName, path.Base(file.Path))).
+				SetOutputFileName(path.Join(s.home, "models", encName, file.Path)).
 				SetAuthToken(config.Get().HFToken).
 				Get(fmt.Sprintf("%s/%s/resolve/main/%s?download=true", HF_ENDPOINT, name, file.Path))
 			if err != nil {
@@ -122,17 +171,36 @@ func (s *Store) Pull(ctx context.Context, name string) (infoCh <-chan types.Down
 		}
 
 		// Create and save model manifest with metadata
-		model := types.Model{
-			Name:      name,
-			Size:      totalSize,
-			ModelFile: mainName,
-		}
-		manifestPath := path.Join(s.home, "models", encName, "nexa.manifest")
-		manifestData, _ := sonic.Marshal(model) // JSON marshal won't fail, ignore error
-		err = os.WriteFile(manifestPath, manifestData, 0664)
-		if err != nil {
-			errC <- err
-			return
+		if !hasManifest {
+			// detect main model file when not specify
+			if opt.Model == "" {
+				for _, f := range fileInfos {
+					// Find first npz then first .gguf file in the model
+					if opt.Model == "" {
+						if strings.HasSuffix(f.Path, ".gguf") || strings.HasSuffix(f.Path, ".npz") {
+							opt.Model = f.Path
+						}
+					}
+					if strings.HasSuffix(f.Path, "npz") && strings.HasSuffix(opt.Model, ".gguf") {
+						opt.Model = f.Path
+					}
+				}
+			}
+
+			model := types.Model{
+				Name:          name,
+				Size:          totalSize,
+				ModelType:     opt.ModelType,
+				ModelFile:     opt.Model,
+				TokenizerFile: opt.Tokenizer,
+			}
+			manifestPath := path.Join(s.home, "models", encName, "nexa.manifest")
+			manifestData, _ := sonic.Marshal(model) // JSON marshal won't fail, ignore error
+			err = os.WriteFile(manifestPath, manifestData, 0664)
+			if err != nil {
+				errC <- err
+				return
+			}
 		}
 	}()
 

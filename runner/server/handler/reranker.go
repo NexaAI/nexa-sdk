@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/NexaAI/nexa-sdk/internal/types"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
 	"github.com/NexaAI/nexa-sdk/server/service"
 )
@@ -19,7 +20,6 @@ type RerankResponse struct {
 	Result []float32 `json:"result"`
 }
 
-// curl -v http://localhost:18181/v1/reranking -d '{ "model": "Qwen/Qwen3-0.6B-GGUF", "query" : "hi", "documents": ["hello","world"] }'
 func Reranking(c *gin.Context) {
 	param := RerankingRequest{}
 	if err := c.ShouldBindJSON(&param); err != nil {
@@ -29,7 +29,7 @@ func Reranking(c *gin.Context) {
 
 	p, err := service.KeepAliveGet[nexa_sdk.Reranker](
 		string(param.Model),
-		service.ModelParam{},
+		types.ModelParam{},
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})

@@ -13,14 +13,14 @@ import (
 	"github.com/NexaAI/nexa-sdk/internal/config"
 )
 
-var runStream *bool
+var disableStream bool
 
 func run() *cobra.Command {
 	runCmd := &cobra.Command{}
 	runCmd.Use = "run"
 
 	runCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
-	runStream = runCmd.Flags().BoolP("stream", "s", false, "enable stream mode")
+	runCmd.Flags().BoolVarP(&disableStream, "disable-stream", "s", false, "disable stream mode")
 
 	runCmd.Run = runFunc
 	return runCmd
@@ -49,7 +49,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 	// repl
 	var history []openai.ChatCompletionMessageParamUnion
 	repl(ReplConfig{
-		Stream: *runStream,
+		Stream: !disableStream,
 
 		Clear: func() {
 			history = nil
