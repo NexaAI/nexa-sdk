@@ -92,12 +92,12 @@ func repl(cfg ReplConfig) {
 		line, err := l.Readline()
 		if err == readline.ErrInterrupt {
 			if len(line) == 0 {
-				break
+				return
 			} else {
 				continue
 			}
 		} else if err == io.EOF {
-			break
+			return
 		}
 
 		if strings.HasPrefix(line, "/") {
@@ -109,7 +109,7 @@ func repl(cfg ReplConfig) {
 				fmt.Println(completer.Tree("    ")) // TODO: add description
 
 			case "/exit":
-				break
+				return
 
 			case "/clear":
 				cfg.Clear()
