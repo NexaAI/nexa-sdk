@@ -79,6 +79,107 @@ func TestApplyChatTemplate(t *testing.T) {
 	t.Log(msg)
 }
 
+func TestApplyJinjaTemplate(t *testing.T) {
+	tests := []struct {
+		name    string
+		param   ChatTemplateParam
+		wantErr bool
+	}{
+		{
+			name: "No tools, multiple messages",
+			param: ChatTemplateParam{
+				Messages: []ChatMessage{
+					{Role: LLMRoleUser, Content: "hello"},
+					{Role: LLMRoleAssistant, Content: "yes, you are a so cute cat"},
+					{Role: LLMRoleUser, Content: "can you give me a new cute name"},
+				},
+			},
+		},
+		{
+			name: "No tools, single message",
+			param: ChatTemplateParam{
+				Messages: []ChatMessage{
+					{Role: LLMRoleUser, Content: "hello"},
+				},
+			},
+		},
+		{
+			name:    "No tools, empty message list",
+			param:   ChatTemplateParam{},
+			wantErr: true,
+		},
+		{
+			name: "With tools, multiple messages",
+			param: ChatTemplateParam{
+				Messages: []ChatMessage{
+					{Role: LLMRoleUser, Content: "hello"},
+					{Role: LLMRoleUser, Content: "what is the weather"},
+				},
+				Tools: []ChatTool{
+					{
+						Type: "function",
+						Function: ChatToolFunction{
+							Name:        "get_weather",
+							Description: "Get current weather info",
+							Parameters: map[string]interface{}{
+								"location": map[string]string{"type": "string"},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "With tools, single message",
+			param: ChatTemplateParam{
+				Messages: []ChatMessage{
+					{Role: LLMRoleUser, Content: "get temperature"},
+				},
+				Tools: []ChatTool{
+					{
+						Type: "function",
+						Function: ChatToolFunction{
+							Name:        "get_temp",
+							Description: "Get current temperature",
+							Parameters:  map[string]interface{}{},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "With tools, empty messages",
+			param: ChatTemplateParam{
+				Messages: []ChatMessage{},
+				Tools: []ChatTool{
+					{
+						Type: "function",
+						Function: ChatToolFunction{
+							Name:        "noop",
+							Description: "do nothing",
+							Parameters:  map[string]interface{}{},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			msg, err := llm.ApplyJinjaTemplate(tt.param)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ApplyJinjaTemplate() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err == nil {
+				t.Logf("Generated template:\n%s\n", msg)
+			}
+		})
+	}
+}
+
 // TestGenerate tests basic text generation functionality
 // Verifies that the model can complete a given prompt
 func TestGenerate(t *testing.T) {
