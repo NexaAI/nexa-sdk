@@ -39,7 +39,6 @@ func prependPath(envKey, newPath string) {
 func setRuntimeEnv() {
 	switch runtime.GOOS {
 	case "windows":
-		libPath = filepath.Join(libPath, "cpu")
 		prependPath("PATH", libPath)
 	case "linux":
 		prependPath("LD_LIBRARY_PATH", libPath)
