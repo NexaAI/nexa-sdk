@@ -35,3 +35,4 @@ jobs:
         with:
           name: nexasdk-cli_${{ matrix.os }}_${{ matrix.backend }}
           path: ./build
+          include-hidden-files: true
