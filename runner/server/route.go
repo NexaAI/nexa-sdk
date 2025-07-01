@@ -1,8 +1,6 @@
 package server
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 
 	"github.com/NexaAI/nexa-sdk/server/docs"
@@ -17,11 +15,6 @@ func RegisterSwagger(r *gin.Engine) {
 	g := r.Group("/docs")
 
 	g.GET("/swagger.yaml", docs.SwaggerYAMLHandler())
-
-	g.GET("/", func(c *gin.Context) {
-		c.Redirect(http.StatusMovedPermanently, "/docs/ui/")
-	})
-
 	g.StaticFS("/ui", docs.FS)
 }
 func RegisterAPIv1(r *gin.Engine) {

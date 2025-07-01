@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-//go:embed swagger-ui/*
+//go:embed ui/*
 var StaticFiles embed.FS
 
 //go:embed swagger.yaml
@@ -28,10 +28,7 @@ func (e embedFileSystem) Exists(prefix string, path string) bool {
 }
 
 func getSwaggerSubFS() fs.FS {
-	sub, err := fs.Sub(StaticFiles, "swagger-ui")
-	if err != nil {
-		panic(err)
-	}
+	sub, _ := fs.Sub(StaticFiles, "ui")
 	return sub
 }
 
