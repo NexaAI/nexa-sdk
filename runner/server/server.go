@@ -9,9 +9,9 @@ import (
 	"github.com/NexaAI/nexa-sdk/server/service"
 )
 
-// @Title Nexa AI Server
-// @Version 0.0.0
-// @BasePath /v1
+// @Title		Nexa AI Server
+// @Version	0.0.0
+// @BasePath	/v1
 func Serve() {
 	service.Init()
 	defer service.DeInit()
