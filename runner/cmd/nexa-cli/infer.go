@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -42,7 +44,11 @@ func infer() *cobra.Command {
 		s := store.NewStore()
 		model := args[0]
 		manifest, err := s.GetManifest(model)
-		if err != nil {
+
+		if errors.Is(err, os.ErrNotExist) {
+			fmt.Println(text.FgBlue.Sprintf("model not found, start download"))
+			pull().Run(cmd, args)
+		} else if err != nil {
 			fmt.Println(text.FgRed.Sprintf("parse manifest error: %s", err))
 			return
 		}
