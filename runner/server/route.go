@@ -5,9 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/NexaAI/nexa-sdk/server/docs"
 	"github.com/NexaAI/nexa-sdk/server/handler"
 	"github.com/NexaAI/nexa-sdk/server/middleware"
-	swagger_ui "github.com/NexaAI/nexa-sdk/server/swagger-ui"
 )
 
 // @BasePath /v1
@@ -16,13 +16,13 @@ import (
 func RegisterSwagger(r *gin.Engine) {
 	g := r.Group("/docs")
 
-	g.GET("/swagger.json", swagger_ui.SwaggerJSONHandler())
+	g.GET("/swagger.yaml", docs.SwaggerYAMLHandler())
 
 	g.GET("/", func(c *gin.Context) {
 		c.Redirect(http.StatusMovedPermanently, "/docs/ui/")
 	})
 
-	g.StaticFS("/ui", swagger_ui.FS)
+	g.StaticFS("/ui", docs.FS)
 }
 func RegisterAPIv1(r *gin.Engine) {
 	g := r.Group("/v1")

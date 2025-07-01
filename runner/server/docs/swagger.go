@@ -1,4 +1,4 @@
-package swagger_ui
+package docs
 
 import (
 	"embed"
@@ -7,11 +7,13 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/swaggo/swag/example/basic/docs"
 )
 
-//go:embed dist/*
+//go:embed swagger-ui/*
 var StaticFiles embed.FS
+
+//go:embed swagger.yaml
+var StaticYAML []byte
 
 type embedFileSystem struct {
 	http.FileSystem
@@ -25,9 +27,8 @@ func (e embedFileSystem) Exists(prefix string, path string) bool {
 	return err == nil
 }
 
-// 获取 dist 子目录的 fs.FS
 func getSwaggerSubFS() fs.FS {
-	sub, err := fs.Sub(StaticFiles, "dist")
+	sub, err := fs.Sub(StaticFiles, "swagger-ui")
 	if err != nil {
 		panic(err)
 	}
@@ -36,12 +37,9 @@ func getSwaggerSubFS() fs.FS {
 
 var FS = embedFileSystem{http.FS(getSwaggerSubFS())}
 
-// SwaggerJSONHandler 处理 swagger.json 请求
-func SwaggerJSONHandler() gin.HandlerFunc {
+func SwaggerYAMLHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		docs.SwaggerInfo.BasePath = "/v1"
-		c.Header("Content-Type", "application/json")
-		swaggerJSON := docs.SwaggerInfo.ReadDoc()
-		c.Data(http.StatusOK, "application/json", []byte(swaggerJSON))
+		c.Header("Content-Type", "application/x-yaml")
+		c.Data(http.StatusOK, "application/x-yaml", StaticYAML)
 	}
 }

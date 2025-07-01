@@ -38,7 +38,7 @@ else
 	MKDIR := mkdir -p
 endif
 
-.PHONY: run build doc test download clean swagger-ui
+.PHONY: run build doc test download clean
 
 run:
 	./build/nexa $(ARGS)
@@ -47,9 +47,6 @@ build:
 	cd ./runner/nexa-sdk/stub && g++ -O3 -fPIC -shared -o $(LIB)nexa_bridge.$(EXT) *.cpp
 	cd ./runner && go build -o ../build/nexa$(EXE) ./cmd/nexa-launcher
 	cd ./runner && go build -tags="sonic avx" -o ../build/nexa-cli$(EXE) ./cmd/nexa-cli
-
-doc:
-	swag init --parseDependency --parseDepth 1 -d ./runner/server -g ./server.go -o ./runner/server/docs
 
 test:
 	cd runner && LD_LIBRARY_PATH=$(PWD)/build/lib go test -v ./nexa-sdk --run VLM
@@ -64,16 +61,6 @@ download:
 	curl -L -o build/nexasdk-bridge.zip https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexasdk/$(BRIDGE_VERSION)/$(BRIDGE_BACKEND)/$(OS)/nexasdk-bridge.zip
 	cd ./build/lib && unzip ../nexasdk-bridge.zip
 	-$(RM) ./build/nexasdk-bridge.zip
-
-swagger-ui:
-	-$(RM) ./runner/server/swagger-ui/dist
-	$(MKDIR) ./runner/server/swagger-ui/dist
-	@echo "====> Download Swagger UI dist"
-	$(eval SWAGGER_VERSION := $(shell curl -s https://api.github.com/repos/swagger-api/swagger-ui/releases/latest | grep '"tag_name"' | sed 's/.*"tag_name": "v\([^"]*\)".*/\1/'))
-	curl -L https://github.com/swagger-api/swagger-ui/archive/refs/tags/v$(SWAGGER_VERSION).tar.gz | tar -xz --strip-components=2 -C ./runner/server/swagger-ui/dist --wildcards swagger-ui-$(SWAGGER_VERSION)/dist/*
-	@echo "====> Configure Swagger UI"
-	@sed -i 's|https://petstore.swagger.io/v2/swagger.json|/docs/swagger.json|g' ./runner/server/swagger-ui/dist/swagger-initializer.js
-	@echo "====> Swagger UI dist downloaded and configured successfully"
 
 clean:
 	-$(RM) ./build/nexa{,.exe}
