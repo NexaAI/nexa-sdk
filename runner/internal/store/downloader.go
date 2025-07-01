@@ -89,6 +89,13 @@ func (s *Store) Pull(ctx context.Context, name string, opt PullOption) (infoCh <
 	errC := make(chan error, 1)
 	errCh = errC
 
+	if err := s.TryLockModel(name); err != nil {
+		errC <- err
+		close(errC)
+		close(infoC)
+		return
+	}
+
 	var totalSize int64
 
 	client := resty.New()
@@ -117,6 +124,8 @@ func (s *Store) Pull(ctx context.Context, name string, opt PullOption) (infoCh <
 	)
 
 	go func() {
+		defer s.UnlockModel(name)
+
 		defer close(errC)
 		defer close(infoC)
 		defer client.Close()

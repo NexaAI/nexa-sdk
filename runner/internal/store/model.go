@@ -43,15 +43,59 @@ func (s *Store) List() ([]types.ModelManifest, error) {
 
 // Remove deletes a specific model and all its files
 func (s *Store) Remove(name string) error {
+	err := s.TryLockModel(name)
+	if err != nil {
+		return err
+	}
+	defer s.UnlockModel(name)
 	return os.RemoveAll(path.Join(s.home, "models", s.encodeName(name)))
 }
 
 // Clean removes all stored models and the models directory
 func (s *Store) Clean() error {
-	return os.RemoveAll(path.Join(s.home, "models"))
+	modelsDir := s.GetModelsDir()
+	entries, err := os.ReadDir(modelsDir)
+	if err != nil {
+		// If models directory doesn't exist, nothing to clean
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	// Get list of all model names to remove
+	var modelNames []string
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		modelName, err := base64.URLEncoding.DecodeString(entry.Name())
+		if err != nil {
+			continue // Skip corrupted directory names
+		}
+
+		modelNames = append(modelNames, string(modelName))
+	}
+
+	// Remove each model using the Remove function
+	// This ensures proper lock handling and consistency
+	for _, modelName := range modelNames {
+		if err := s.Remove(modelName); err != nil {
+			return fmt.Errorf("failed to remove model '%s': %w", modelName, err)
+		}
+	}
+
+	return nil
 }
 
 func (s *Store) GetManifest(name string) (*types.ModelManifest, error) {
+	err := s.TryLockModel(name)
+	if err != nil {
+		return nil, err
+	}
+	defer s.UnlockModel(name)
+
 	dir := path.Join(s.home, "models")
 	// Read manifest file
 	data, e := os.ReadFile(path.Join(dir, s.encodeName(name), "nexa.manifest"))
