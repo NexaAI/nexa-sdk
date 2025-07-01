@@ -31,6 +31,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 
 	client := openai.NewClient(
 		option.WithBaseURL(fmt.Sprintf("http://%s/v1", config.Get().Host)),
+		// option.WithRequestTimeout(time.Second*15),
 	)
 
 	// warm up
@@ -42,7 +43,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 	})
 	spin.Stop()
 	if err != nil {
-		fmt.Printf("Request Error: %s\n", err)
+		fmt.Printf("Is server running? Please check your network. \n\t%s\n", err)
 		return
 	}
 
