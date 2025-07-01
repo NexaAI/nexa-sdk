@@ -9,8 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/huh"
 	"github.com/chzyer/readline"
 	"github.com/jedib0t/go-pretty/v6/text"
+
+	"github.com/NexaAI/nexa-sdk/internal/types"
 )
 
 var completer = readline.NewPrefixCompleter(
@@ -246,4 +249,88 @@ func parseFiles(prompt string) (string, []string) {
 	}
 	return strings.TrimSpace(prompt), res
 
+}
+
+func chooseFiles(files []string) (modelType types.ModelType, model, tokenizer string, extras []string, err error) {
+	var confirm bool
+	var modelTypeString string
+
+	for !confirm {
+		err = huh.NewForm(
+			huh.NewGroup(
+				huh.NewSelect[string]().
+					Title("Choose model type").
+					Options(
+						huh.NewOption(types.ModelTypeLLM, types.ModelTypeLLM),
+						huh.NewOption(types.ModelTypeVLM, types.ModelTypeVLM),
+						huh.NewOption(types.ModelTypeEmbedder, types.ModelTypeEmbedder),
+						huh.NewOption(types.ModelTypeReranker, types.ModelTypeReranker),
+					).
+					Value(&modelTypeString),
+			),
+			huh.NewGroup(
+				huh.NewSelect[string]().
+					Title("Pick main modelfile").
+					OptionsFunc(func() []huh.Option[string] {
+						opts := make([]huh.Option[string], 0, len(files))
+						for _, file := range files {
+							opts = append(opts, huh.NewOption(file, file))
+						}
+						return opts
+					}, &files).
+					Value(&model),
+			),
+			huh.NewGroup(
+				huh.NewSelect[string]().
+					Title("Pick tokenizer").
+					OptionsFunc(func() []huh.Option[string] {
+						opts := make([]huh.Option[string], 0, len(files))
+						opts = append(opts, huh.NewOption("(without tokenzier)", ""))
+						for _, file := range files {
+							if file == model {
+								continue
+							}
+							opts = append(opts, huh.NewOption(file, file))
+						}
+						return opts
+					}, &model).
+					Value(&tokenizer),
+			),
+			huh.NewGroup(
+				huh.NewMultiSelect[string]().
+					Title("Pick extra files").
+					OptionsFunc(func() []huh.Option[string] {
+						opts := make([]huh.Option[string], 0, len(files))
+						for _, file := range files {
+							if file == model || file == tokenizer {
+								continue
+							}
+							opts = append(opts, huh.NewOption(file, file))
+						}
+						return opts
+					}, []any{&model, &tokenizer}).
+					Value(&extras),
+			),
+			huh.NewGroup(
+				huh.NewConfirm().
+					TitleFunc(func() string {
+						return "Confirm the config\n" +
+							text.Colors{text.Reset, text.FgWhite}.Sprintf("ModelType:  %s\n", modelTypeString) +
+							text.Colors{text.Reset, text.FgWhite}.Sprintf("ModelFile:  %s\n", model) +
+							text.Colors{text.Reset, text.FgWhite}.Sprintf("Tokenizer:  %s\n", tokenizer) +
+							text.Colors{text.Reset, text.FgWhite}.Sprintf("ExtraFiles:  %s\n", strings.Join(extras, ","))
+					}, []any{&modelTypeString, &model, &tokenizer, &extras}).
+					Affirmative("Yes!").
+					Negative("No.").
+					Value(&confirm),
+			),
+		).Run()
+
+		if err != nil {
+			return
+		}
+	}
+
+	modelType = types.ModelType(modelTypeString)
+	return
 }

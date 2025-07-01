@@ -4,14 +4,16 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
+	"time"
 
+	"github.com/briandowns/spinner"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 
 	"github.com/NexaAI/nexa-sdk/internal/store"
-	"github.com/NexaAI/nexa-sdk/internal/types"
 )
 
 // pull creates a command to download and cache a model by name.
@@ -24,23 +26,43 @@ func pull() *cobra.Command {
 	pullCmd.Long = "Download and cache a model by name."
 
 	pullCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
-	_type := pullCmd.Flags().StringP("type", "t", types.ModelTypeLLM, "specify the model type, must be one of <llm|vlm|embed|rerank>")
-	model := pullCmd.Flags().StringP("model", "m", "", "specify the main model file")
-	tokenizer := pullCmd.Flags().StringP("tokenizer", "k", "", "specify the tokenizer file")
-	extra := pullCmd.Flags().StringSliceP("extra-files", "e", nil, "specify extra files need download")
-	all := pullCmd.Flags().BoolP("all", "a", false, "download all file even specify the model file")
 
 	pullCmd.Run = func(cmd *cobra.Command, args []string) {
 		s := store.NewStore()
 
+		// make nexaml repo as default
+		if !strings.Contains(args[0], "/") {
+			args[0] += "nexaml/"
+		}
+
+		// download manifest
+		spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("download manifest..."))
+		spin.Start()
+		manifest, files, err := s.HFRepoFiles(context.TODO(), args[0])
+		spin.Stop()
+		if err != nil {
+			fmt.Println(text.FgRed.Sprintf("Get manifest from huggingface error: %s", err))
+			return
+		}
+
+		opt := store.PullOption{}
+		if manifest != nil {
+			// use preset manifest
+			opt.ModelType = manifest.ModelType
+			opt.ModelFile = manifest.ModelFile
+			opt.TokenizerFile = manifest.TokenizerFile
+			opt.ExtraFiles = manifest.ExtraFiles
+		} else {
+			// interactive choose
+			var err error
+			opt.ModelType, opt.ModelFile, opt.TokenizerFile, opt.ExtraFiles, err = chooseFiles(files)
+			if err != nil {
+				return
+			}
+		}
+
 		// TODO: replace with go-pretty
-		pgCh, errCh := s.Pull(context.TODO(), args[0], store.PullOption{
-			ModelType: types.ModelType(*_type),
-			Model:     *model,
-			Tokenizer: *tokenizer,
-			Extra:     *extra,
-			ALl:       *all,
-		})
+		pgCh, errCh := s.Pull(context.TODO(), args[0], opt)
 		bar := progressbar.DefaultBytes(-1, "downloading")
 		for pg := range pgCh {
 			if pg.CurrentSize != bar.GetMax64() {
@@ -71,6 +93,11 @@ func remove() *cobra.Command {
 
 	removeCmd.Run = func(cmd *cobra.Command, args []string) {
 		s := store.NewStore()
+		// make nexaml repo as default
+		if !strings.Contains(args[0], "/") {
+			args[0] += "nexaml/"
+		}
+
 		e := s.Remove(args[0])
 		if e != nil {
 			fmt.Println(e)

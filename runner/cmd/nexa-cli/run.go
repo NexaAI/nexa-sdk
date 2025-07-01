@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -27,6 +28,10 @@ func run() *cobra.Command {
 }
 
 func runFunc(cmd *cobra.Command, args []string) {
+	// make nexaml repo as default
+	if !strings.Contains(args[0], "/") {
+		args[0] += "nexaml/"
+	}
 	model := args[0]
 
 	client := openai.NewClient(

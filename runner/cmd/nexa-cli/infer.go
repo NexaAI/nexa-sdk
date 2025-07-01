@@ -42,6 +42,10 @@ func infer() *cobra.Command {
 
 	inferCmd.Run = func(cmd *cobra.Command, args []string) {
 		s := store.NewStore()
+		// make nexaml repo as default
+		if !strings.Contains(args[0], "/") {
+			args[0] += "nexaml/"
+		}
 		model := args[0]
 		manifest, err := s.GetManifest(model)
 
