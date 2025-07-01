@@ -48,9 +48,6 @@ build:
 	cd ./runner && go build -o ../build/nexa$(EXE) ./cmd/nexa-launcher
 	cd ./runner && go build -tags="sonic avx" -o ../build/nexa-cli$(EXE) ./cmd/nexa-cli
 
-doc:
-	swag init --parseDependency --parseDepth 1 -d ./runner/server -g ./server.go -o ./runner/server/docs
-
 test:
 	cd runner && LD_LIBRARY_PATH=$(PWD)/build/lib go test -v ./nexa-sdk --run VLM
 

@@ -3,25 +3,20 @@ package server
 import (
 	"github.com/gin-gonic/gin"
 
-	swaggerfiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger" // gin-swagger middleware
-
-	docs "github.com/NexaAI/nexa-sdk/server/docs"
+	"github.com/NexaAI/nexa-sdk/server/docs"
 	"github.com/NexaAI/nexa-sdk/server/handler"
 	"github.com/NexaAI/nexa-sdk/server/middleware"
 )
 
 // @BasePath /v1
 
-// http://localhost:18181/docs/index.html
+// http://localhost:18181/docs/ui/
 func RegisterSwagger(r *gin.Engine) {
-	docs.SwaggerInfo.BasePath = "/v1"
 	g := r.Group("/docs")
 
-	g.GET("/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
-
+	g.GET("/swagger.yaml", docs.SwaggerYAMLHandler())
+	g.StaticFS("/ui", docs.FS)
 }
-
 func RegisterAPIv1(r *gin.Engine) {
 	g := r.Group("/v1")
 
