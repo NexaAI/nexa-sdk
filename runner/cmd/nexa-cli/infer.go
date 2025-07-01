@@ -137,6 +137,8 @@ func inferLLM(model string, tokenizer *string) {
 			}
 
 			var full strings.Builder
+			//fmt.Printf(text.FgBlack.Sprint(formatted[:lastLen]))
+			//fmt.Printf(text.FgCyan.Sprint(formatted[lastLen:]))
 			dCh, eCh := p.GenerateStream(ctx, formatted[lastLen:])
 			for r := range dCh {
 				full.WriteString(r)
@@ -148,13 +150,7 @@ func inferLLM(model string, tokenizer *string) {
 			}
 
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: full.String()})
-
-			formatted, e = p.ApplyChatTemplate(history)
-			if e != nil {
-				errCh <- e
-				return
-			}
-			lastLen = len(formatted)
+			lastLen = len(formatted) + len(full.String())
 		},
 	})
 }
