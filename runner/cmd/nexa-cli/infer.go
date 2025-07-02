@@ -50,11 +50,14 @@ func infer() *cobra.Command {
 			args[0] = "nexaml/" + args[0]
 		}
 		model := args[0]
-		manifest, err := s.GetManifest(model)
 
+		manifest, err := s.GetManifest(model)
+		//if errors.Is(err, os.ErrNotExist) {
+		//	fmt.Println(text.FgBlue.Sprintf("model not found, start download"))
+		//	pull().Run(cmd, args)
+		//} else if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			fmt.Println(text.FgBlue.Sprintf("model not found, start download"))
-			pull().Run(cmd, args)
+			fmt.Println(text.FgRed.Sprintf("model not found, please download first"))
 		} else if err != nil {
 			fmt.Println(text.FgRed.Sprintf("parse manifest error: %s", err))
 			return
