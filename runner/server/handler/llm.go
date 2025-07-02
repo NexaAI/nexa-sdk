@@ -53,19 +53,14 @@ func Completions(c *gin.Context) {
 	}
 }
 
-// ChatCompletionMessage defines a single message in a chat conversation.
-type ChatCompletionMessage struct {
-	Role    string `json:"role" default:"user"`
-	Content any    `json:"content" default:"user"`
-}
+type ChatCompletionNewParams openai.ChatCompletionNewParams
 
 // ChatCompletionRequest defines the request body for the chat completions API.
 // example: { "model": "nexaml/nexaml-models", "messages": [ { "role": "user", "content": "why is the sky blue?" } ] }
 type ChatCompletionRequest struct {
-	Stream   bool                             `json:"stream" default:"false"`
-	Model    string                           `json:"model" default:"nexaml/nexaml-models"`
-	Messages []ChatCompletionMessage          `json:"messages"`
-	Tools    []openai.ChatCompletionToolParam `json:"tools"`
+	Stream bool `json:"stream" default:"false"`
+
+	ChatCompletionNewParams
 }
 
 var toolCallRegex = regexp.MustCompile(`<tool_call>([\s\S]+)<\/tool_call>`)
@@ -91,7 +86,7 @@ func ChatCompletions(c *gin.Context) {
 	}
 
 	for _, msg := range param.Messages {
-		if _, ok := msg.Content.(string); !ok {
+		if _, ok := msg.GetContent().AsAny().(string); !ok {
 			chatVLMCompletions(c, param)
 			return
 		}
@@ -119,10 +114,9 @@ func chatLLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 
 	messages := make([]nexa_sdk.ChatMessage, 0, len(param.Messages))
 	for _, msg := range param.Messages {
-		content := msg.Content.(string)
 		messages = append(messages, nexa_sdk.ChatMessage{
-			Role:    nexa_sdk.LLMRole(msg.Role),
-			Content: content,
+			Role:    nexa_sdk.LLMRole(*msg.GetRole()),
+			Content: *msg.GetContent().AsAny().(*string),
 		})
 	}
 
@@ -250,20 +244,18 @@ func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 
 	messages := make([]nexa_sdk.ChatMessage, 0, len(param.Messages))
 	for _, msg := range param.Messages {
-		for _, ct := range msg.Content.([]any) {
-			ct := ct.(map[string]any)
-			switch ct["type"] {
+		content := msg.GetContent().AsAny().(*[]openai.ChatCompletionContentPartUnionParam)
+		for _, ct := range *content {
+			switch *ct.GetType() {
 			case "text":
 				messages = append(messages, nexa_sdk.ChatMessage{
-					Role:    nexa_sdk.LLMRole(msg.Role),
-					Content: ct["text"].(string),
+					Role:    nexa_sdk.LLMRole(*msg.GetRole()),
+					Content: *ct.GetText(),
 				})
 			case "input_audio":
-				t := ct["input_audio"].(string)
-				imageUrl = &t
+				imageUrl = &ct.GetInputAudio().Data
 			case "image_url":
-				t := ct["image_url"].(string)
-				imageUrl = &t
+				imageUrl = &ct.GetImageURL().URL
 			}
 		}
 	}
