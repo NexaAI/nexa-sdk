@@ -86,7 +86,7 @@ func ChatCompletions(c *gin.Context) {
 	}
 
 	for _, msg := range param.Messages {
-		if _, ok := msg.GetContent().AsAny().(string); !ok {
+		if _, ok := msg.GetContent().AsAny().(*string); !ok {
 			chatVLMCompletions(c, param)
 			return
 		}
