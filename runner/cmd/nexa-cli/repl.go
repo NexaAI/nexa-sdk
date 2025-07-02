@@ -119,49 +119,49 @@ func repl(cfg ReplConfig) {
 			line, images, audios = parseFiles(line)
 		}
 
-		if strings.HasPrefix(line, "/") {
+		if len(images) == 0 && len(audio) == 0 && strings.HasPrefix(line, "/") {
+
 			fileds := strings.Fields(strings.TrimSpace(line))
-			if len(files) == 0 {
-				switch fileds[0] {
-				case "/?", "/h", "/help":
-					fmt.Println("Commands:")
-					for _, h := range help {
-						fmt.Printf("  %-25s %s\n", h[0], h[1])
-					}
 
-				case "/exit":
-					return
-
-				case "/clear":
-					cfg.Clear()
-					fmt.Print("\033[H\033[2J")
-
-				case "/load":
-					if len(fileds) != 2 {
-						fmt.Println(text.FgRed.Sprintf("Usage: /load <filename>"))
-					}
-					cfg.Clear()
-					err := cfg.LoadKVCache(fileds[1])
-					if err != nil {
-						fmt.Println(text.FgRed.Sprintf("Error: %s", err))
-					}
-
-				case "/save":
-					if len(fileds) != 2 {
-						fmt.Println(text.FgRed.Sprintf("Usage: /save <filename>"))
-						continue
-					}
-					err := cfg.SaveKVCache(fileds[1])
-					if err != nil {
-						fmt.Println(text.FgRed.Sprintf("Error: %s", err))
-					}
-
-				default:
-					fmt.Println(text.FgRed.Sprintf("Unknown command: %s", fileds[0]))
+			switch fileds[0] {
+			case "/?", "/h", "/help":
+				fmt.Println("Commands:")
+				for _, h := range help {
+					fmt.Printf("  %-25s %s\n", h[0], h[1])
 				}
 
-				continue
+			case "/exit":
+				return
+
+			case "/clear":
+				cfg.Clear()
+				fmt.Print("\033[H\033[2J")
+
+			case "/load":
+				if len(fileds) != 2 {
+					fmt.Println(text.FgRed.Sprintf("Usage: /load <filename>"))
+				}
+				cfg.Clear()
+				err := cfg.LoadKVCache(fileds[1])
+				if err != nil {
+					fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+				}
+
+			case "/save":
+				if len(fileds) != 2 {
+					fmt.Println(text.FgRed.Sprintf("Usage: /save <filename>"))
+					continue
+				}
+				err := cfg.SaveKVCache(fileds[1])
+				if err != nil {
+					fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+				}
+
+			default:
+				fmt.Println(text.FgRed.Sprintf("Unknown command: %s", fileds[0]))
 			}
+
+			continue
 		}
 
 		// chat
