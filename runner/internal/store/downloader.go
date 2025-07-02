@@ -89,7 +89,7 @@ func (s *Store) Pull(ctx context.Context, name string, opt PullOption) (infoCh <
 	errC := make(chan error, 1)
 	errCh = errC
 
-	if err := s.TryLockModel(name); err != nil {
+	if err := s.LockModel(name); err != nil {
 		errC <- err
 		close(errC)
 		close(infoC)

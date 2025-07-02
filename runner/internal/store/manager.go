@@ -59,7 +59,7 @@ func (s *Store) init() {
 }
 
 func (s *Store) Close() error {
-	s.modelLocks.Range(func(key, value interface{}) bool {
+	s.modelLocks.Range(func(key, value any) bool {
 		fl := value.(*flock.Flock)
 		if fl != nil {
 			fl.Unlock()
@@ -100,7 +100,7 @@ func (s *Store) cleanCorruptedDirectories() {
 				continue
 			}
 
-			if err := s.TryLockModel(string(modelName)); err != nil {
+			if err := s.LockModel(string(modelName)); err != nil {
 				if err == ErrModelLocked {
 					fmt.Printf("Skipping cleanup of directory %s: model is being accessed by another process\n", dirName)
 					continue
@@ -125,16 +125,11 @@ func (s *Store) isCorruptedModelDirectory(dirName, dirPath string) bool {
 	}
 
 	manifestPath := path.Join(dirPath, "nexa.manifest")
-	if !s.fileExists(manifestPath) {
+	if _, err := os.Stat(manifestPath); err != nil {
 		return true
 	}
 
 	// TDOD: Check Manifest file should be valid JSON and parseable
 
 	return false
-}
-
-func (s *Store) fileExists(filePath string) bool {
-	_, err := os.Stat(filePath)
-	return err == nil
 }

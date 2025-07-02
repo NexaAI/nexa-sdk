@@ -7,7 +7,7 @@ import (
 	"github.com/gofrs/flock"
 )
 
-func (s *Store) TryLockModel(modelName string) error {
+func (s *Store) LockModel(modelName string) error {
 	if modelName == "" {
 		return ErrModelLocked
 	}
