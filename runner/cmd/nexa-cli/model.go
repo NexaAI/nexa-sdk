@@ -32,11 +32,15 @@ func pull() *cobra.Command {
 
 		// make nexaml repo as default
 		if !strings.Contains(args[0], "/") {
-			args[0] += "nexaml/"
+			args[0] = "nexaml/" + args[0]
 		}
 
 		// download manifest
-		spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("download manifest..."))
+		spin := spinner.New(
+			spinner.CharSets[39],
+			100*time.Millisecond,
+			spinner.WithSuffix("download manifest from: "+args[0]),
+		)
 		spin.Start()
 		manifest, files, err := s.HFRepoFiles(context.TODO(), args[0])
 		spin.Stop()
@@ -95,7 +99,7 @@ func remove() *cobra.Command {
 		s := store.NewStore()
 		// make nexaml repo as default
 		if !strings.Contains(args[0], "/") {
-			args[0] += "nexaml/"
+			args[0] = "nexaml/" + args[0]
 		}
 
 		e := s.Remove(args[0])
