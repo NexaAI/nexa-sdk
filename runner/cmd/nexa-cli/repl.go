@@ -113,12 +113,15 @@ func repl(cfg ReplConfig) {
 			return
 		}
 
+		// paser file
+		var files []string
+		if cfg.ParseFile {
+			line, files = parseFiles(line)
+		}
+
 		if strings.HasPrefix(line, "/") {
 			fileds := strings.Fields(strings.TrimSpace(line))
-
-			if strings.Count(fileds[0], "/") > 1 || strings.ContainsRune(fileds[0], '.') {
-				// Maybe input is file path, but must not be command.
-			} else {
+			if len(files) == 0 {
 				switch fileds[0] {
 				case "/?", "/h", "/help":
 					fmt.Println("Commands:")
@@ -159,12 +162,6 @@ func repl(cfg ReplConfig) {
 
 				continue
 			}
-		}
-
-		// paser file
-		var files []string
-		if cfg.ParseFile {
-			line, files = parseFiles(line)
 		}
 
 		// chat
