@@ -28,7 +28,7 @@ func pull() *cobra.Command {
 	pullCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
 
 	pullCmd.Run = func(cmd *cobra.Command, args []string) {
-		s := store.NewStore()
+		s := store.Get()
 
 		// make nexaml repo as default
 		if !strings.Contains(args[0], "/") {
@@ -99,12 +99,12 @@ func remove() *cobra.Command {
 	removeCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
 
 	removeCmd.Run = func(cmd *cobra.Command, args []string) {
-		s := store.NewStore()
 		// make nexaml repo as default
 		if !strings.Contains(args[0], "/") {
 			args[0] = "nexaml/" + args[0]
 		}
 
+		s := store.Get()
 		e := s.Remove(args[0])
 		if e != nil {
 			fmt.Println(e)
@@ -124,7 +124,7 @@ func clean() *cobra.Command {
 	}
 
 	cleanCmd.Run = func(cmd *cobra.Command, args []string) {
-		s := store.NewStore()
+		s := store.Get()
 		e := s.Clean()
 		if e != nil {
 			fmt.Println(e)
@@ -145,7 +145,7 @@ func list() *cobra.Command {
 	}
 
 	listCmd.Run = func(cmd *cobra.Command, args []string) {
-		s := store.NewStore()
+		s := store.Get()
 		models, e := s.List()
 		if e != nil {
 			fmt.Println(e)

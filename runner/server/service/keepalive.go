@@ -109,7 +109,7 @@ func keepAliveGet[T any](name string, param types.ModelParam) (any, error) {
 		delete(keepAlive.models, name)
 	}
 
-	s := store.NewStore()
+	s := store.Get()
 	manifest, err := s.GetManifest(name)
 	if err != nil {
 		return nil, err

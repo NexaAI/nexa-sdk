@@ -10,6 +10,7 @@ require (
 	github.com/charmbracelet/huh v0.7.0
 	github.com/chzyer/readline v1.5.1
 	github.com/gin-gonic/gin v1.10.1
+	github.com/gofrs/flock v0.12.1
 	github.com/jedib0t/go-pretty/v6 v6.6.7
 	github.com/nikolalohinski/gonja/v2 v2.3.4
 	github.com/openai/openai-go v1.6.0
@@ -66,7 +67,6 @@ require (
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect
-	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/sagikazarmark/locafero v0.7.0 // indirect
@@ -92,6 +92,5 @@ require (
 	golang.org/x/term v0.29.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 	google.golang.org/protobuf v1.36.1 // indirect
-	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

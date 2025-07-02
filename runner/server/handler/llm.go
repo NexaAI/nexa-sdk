@@ -383,7 +383,7 @@ func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 //	}
 //
 //	p := service.KeepAliveGet(param.Model, createLLM(param.Model))
-//	s := store.NewStore()
+//	s := store.Get()
 //	if err := p.SaveKVCache(s.CachefilePath(param.Name)); err != nil {
 //		c.JSON(http.StatusBadRequest, map[string]any{"error": err})
 //	} else {
@@ -406,7 +406,7 @@ func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 //	}
 //
 //	p := service.KeepAliveGet(param.Model, createLLM(param.Model))
-//	s := store.NewStore()
+//	s := store.Get()
 //	p.Reset()
 //	if err := p.LoadKVCache(s.CachefilePath(param.Name)); err != nil {
 //		c.JSON(http.StatusBadRequest, map[string]any{"error": err})
