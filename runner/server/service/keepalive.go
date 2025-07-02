@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -83,6 +84,11 @@ func (keepAlive *keepAliveService) start() {
 func keepAliveGet[T any](name string, param types.ModelParam) (any, error) {
 	keepAlive.Lock()
 	defer keepAlive.Unlock()
+
+	// make nexaml repo as default
+	if !strings.Contains(name, "/") {
+		name = "nexaml/" + name
+	}
 
 	// Check if model already exists in cache
 	model, ok := keepAlive.models[name]
