@@ -86,8 +86,11 @@ func pull() *cobra.Command {
 // remove creates a command to delete a cached model by name.
 // Usage: nexa remove <model-name>
 func remove() *cobra.Command {
-	removeCmd := &cobra.Command{}
-	removeCmd.Use = "remove"
+	removeCmd := &cobra.Command{
+		Use:   "remove <model-name>",
+		Short: "Remove cached model",
+		Long:  "Delete a cached model by name. This will remove the model files from the local cache.",
+	}
 
 	removeCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
 
@@ -110,8 +113,11 @@ func remove() *cobra.Command {
 // clean creates a command to remove all cached models and free up storage.
 // Usage: nexa clean
 func clean() *cobra.Command {
-	cleanCmd := &cobra.Command{}
-	cleanCmd.Use = "clean"
+	cleanCmd := &cobra.Command{
+		Use:   "clean",
+		Short: "remove all cached models",
+		Long:  "Remove all cached models and free up storage. This will delete all model files from the local cache.",
+	}
 
 	cleanCmd.Run = func(cmd *cobra.Command, args []string) {
 		s := store.NewStore()
@@ -128,8 +134,11 @@ func clean() *cobra.Command {
 // Shows model names and their storage sizes.
 // Usage: nexa list
 func list() *cobra.Command {
-	listCmd := &cobra.Command{}
-	listCmd.Use = "list"
+	listCmd := &cobra.Command{
+		Use:   "list",
+		Short: "List all cached models",
+		Long:  "Display all cached models in a formatted table, showing model names, types, and sizes.",
+	}
 
 	listCmd.Run = func(cmd *cobra.Command, args []string) {
 		s := store.NewStore()

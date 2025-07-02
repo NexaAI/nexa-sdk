@@ -17,8 +17,11 @@ import (
 var disableStream bool
 
 func run() *cobra.Command {
-	runCmd := &cobra.Command{}
-	runCmd.Use = "run"
+	runCmd := &cobra.Command{
+		Use:   "run <model-name>",
+		Short: "Run a model in REPL mode",
+		Long:  "Run a model in REPL mode. The server must be running and the model should be downloaded and cached locally.",
+	}
 
 	runCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
 	runCmd.Flags().BoolVarP(&disableStream, "disable-stream", "s", false, "disable stream mode")
@@ -36,6 +39,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 
 	client := openai.NewClient(
 		option.WithBaseURL(fmt.Sprintf("http://%s/v1", config.Get().Host)),
+		// option.WithRequestTimeout(time.Second*15),
 	)
 
 	// warm up
@@ -47,7 +51,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 	})
 	spin.Stop()
 	if err != nil {
-		fmt.Printf("Request Error: %s\n", err)
+		fmt.Printf("Is server running? Please check your network. \n\t%s\n", err)
 		return
 	}
 

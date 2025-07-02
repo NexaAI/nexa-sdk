@@ -27,8 +27,11 @@ var (
 )
 
 func infer() *cobra.Command {
-	inferCmd := &cobra.Command{}
-	inferCmd.Use = "infer <model-name>"
+	inferCmd := &cobra.Command{
+		Use:   "infer <model-name>",
+		Short: "Infer with a model",
+		Long:  "Run inference with a specified model. The model must be downloaded and cached locally.",
+	}
 
 	inferCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
 

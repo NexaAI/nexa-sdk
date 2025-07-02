@@ -28,6 +28,14 @@ var completer = readline.NewPrefixCompleter(
 	readline.PcItem("/save", readline.PcItemDynamic(listFiles("./"))),
 )
 
+var help = [][2]string{
+	{"/?, /h, /help", "Show this help message"},
+	{"/exit", "Exit the REPL"},
+	{"/clear", "Clear the screen and conversation history"},
+	{"/load <filename>", "Load conversation history from a file"},
+	{"/save <filename>", "Save conversation history to a file"},
+}
+
 // TODO: support sub dir
 func listFiles(path string) func(string) []string {
 	return func(line string) []string {
@@ -111,7 +119,9 @@ func repl(cfg ReplConfig) {
 			switch fileds[0] {
 			case "/?", "/h", "/help":
 				fmt.Println("Commands:")
-				fmt.Println(completer.Tree("    ")) // TODO: add description
+				for _, h := range help {
+					fmt.Printf("  %-25s %s\n", h[0], h[1])
+				}
 
 			case "/exit":
 				return
