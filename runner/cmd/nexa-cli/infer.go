@@ -52,13 +52,15 @@ func infer() *cobra.Command {
 		model := args[0]
 
 		manifest, err := s.GetManifest(model)
-		//if errors.Is(err, os.ErrNotExist) {
-		//	fmt.Println(text.FgBlue.Sprintf("model not found, start download"))
-		//	pull().Run(cmd, args)
-		//} else if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			fmt.Println(text.FgRed.Sprintf("model not found, please download first"))
-		} else if err != nil {
+			fmt.Println(text.FgBlue.Sprintf("model not found, start download"))
+
+			pull().Run(cmd, args)
+			// check agin
+			manifest, err = s.GetManifest(model)
+		}
+
+		if err != nil {
 			fmt.Println(text.FgRed.Sprintf("parse manifest error: %s", err))
 			return
 		}
@@ -118,7 +120,7 @@ func inferLLM(model string, tokenizer *string) {
 			return p.LoadKVCache(path)
 		},
 
-		Run: func(prompt string, files []string) (string, error) {
+		Run: func(prompt string, _, _ []string) (string, error) {
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
 
 			formatted, err := p.ApplyChatTemplate(history)
@@ -137,7 +139,7 @@ func inferLLM(model string, tokenizer *string) {
 			return res, nil
 		},
 
-		RunStream: func(ctx context.Context, prompt string, files []string, dataCh chan<- string, errCh chan<- error) {
+		RunStream: func(ctx context.Context, prompt string, _, _ []string, dataCh chan<- string, errCh chan<- error) {
 			defer close(errCh)
 			defer close(dataCh)
 
@@ -185,19 +187,14 @@ func inferVLM(model string, tokenizer *string) {
 
 		Clear: p.Reset,
 
-		Run: func(prompt string, files []string) (string, error) {
-			var file *string
-			if len(files) > 0 {
-				file = &files[0]
-			}
-
+		Run: func(prompt string, images, audios []string) (string, error) {
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
 			formatted, err := p.ApplyChatTemplate(history)
 			if err != nil {
 				return "", err
 			}
 
-			res, err := p.Generate(prompt, file)
+			res, err := p.Generate(prompt, images, audios)
 			if err != nil {
 				return "", err
 			}
@@ -208,14 +205,9 @@ func inferVLM(model string, tokenizer *string) {
 			return res, nil
 		},
 
-		RunStream: func(ctx context.Context, prompt string, files []string, dataCh chan<- string, errCh chan<- error) {
+		RunStream: func(ctx context.Context, prompt string, images, audios []string, dataCh chan<- string, errCh chan<- error) {
 			defer close(errCh)
 			defer close(dataCh)
-
-			var file *string
-			if len(files) > 0 {
-				file = &files[0]
-			}
 
 			//fmt.Println(text.FgBlack.Sprint(prompt))
 
@@ -227,7 +219,7 @@ func inferVLM(model string, tokenizer *string) {
 			}
 
 			var full strings.Builder
-			dCh, eCh := p.GenerateStream(ctx, formatted[lastLen:], file)
+			dCh, eCh := p.GenerateStream(ctx, formatted[lastLen:], images, audios)
 			for r := range dCh {
 				full.WriteString(r)
 				dataCh <- r

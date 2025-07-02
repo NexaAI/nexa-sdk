@@ -1,5 +1,7 @@
 #include "ml.h"
 
+extern "C" {
+
 /* ====================  Lifecycle Management  ============================== */
 ml_LLM* ml_llm_create(ml_Path model_path, ml_Path tokenizer_path, int32_t context_length, const char* device) {
     return nullptr;
@@ -44,3 +46,5 @@ int32_t ml_llm_generate_stream(ml_LLM* handle, const char* prompt_utf8, const ml
     ml_llm_token_callback on_token, void* user_data, char** out_full_text) {
     return -255;
 };
+
+}

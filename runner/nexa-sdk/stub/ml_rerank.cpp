@@ -1,5 +1,7 @@
 #include "ml.h"
 
+extern "C" {
+
 /* ====================  Lifecycle Management  ============================== */
 ml_Reranker* ml_reranker_create(ml_Path model_path, ml_Path tokenizer_path, const char* device) { return nullptr; };
 void         ml_reranker_destroy(ml_Reranker* handle) {};
@@ -9,3 +11,5 @@ int32_t ml_reranker_rerank(ml_Reranker* handle, const char* query, const char** 
     const ml_RerankConfig* config, float** out) {
     return -255;
 };
+
+}
