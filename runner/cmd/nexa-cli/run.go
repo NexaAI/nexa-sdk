@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/http"
 	"strings"
 	"time"
 
@@ -50,8 +52,19 @@ func runFunc(cmd *cobra.Command, args []string) {
 		Model:    model,
 	})
 	spin.Stop()
-	if err != nil {
+
+	if _, ok := err.(net.Error); ok {
 		fmt.Printf("Is server running? Please check your network. \n\t%s\n", err)
+		return
+	} else if e, ok := err.(*openai.Error); ok {
+		if e.StatusCode == http.StatusNotFound {
+			fmt.Printf("Model not found, please download first")
+		} else {
+			fmt.Printf("%s\n", err)
+		}
+		return
+	} else if err != nil {
+		fmt.Printf("%s\n", err)
 		return
 	}
 

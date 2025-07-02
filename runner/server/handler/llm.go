@@ -2,9 +2,11 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"regexp"
 
 	"github.com/bytedance/sonic"
@@ -100,7 +102,10 @@ func chatLLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 		string(param.Model),
 		types.ModelParam{CtxLen: 4096},
 	)
-	if err != nil {
+	if errors.Is(err, os.ErrNotExist) {
+		c.JSON(http.StatusNotFound, map[string]any{"error": "model not found"})
+		return
+	} else if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 		return
 	}
