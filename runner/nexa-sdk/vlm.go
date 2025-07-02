@@ -10,8 +10,6 @@ import "C"
 
 import (
 	"context"
-	"path"
-	"strings"
 	"unsafe"
 
 	"github.com/bytedance/sonic"
@@ -28,17 +26,6 @@ type VLM struct {
 func NewVLM(model string, tokenizer *string, ctxLen int32, devices *string) *VLM {
 	cModel := C.CString(model)
 	defer C.free(unsafe.Pointer(cModel))
-
-	// TODO: hardcode
-	var mmproj string
-	if strings.Contains(model, "Qwen") {
-		mmproj = path.Join(path.Dir(model), "mmproj-Qwen2.5-Omni-3B-f16.gguf") // TODO: fix mmprj
-	} else {
-		mmproj = path.Join(path.Dir(model), "mmproj-model-f16.gguf") // TODO: fix mmprj
-	}
-	if tokenizer == nil {
-		tokenizer = &mmproj
-	}
 
 	var cTokenizer *C.char
 	if tokenizer != nil {

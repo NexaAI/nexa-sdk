@@ -5,11 +5,15 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/huh"
 	"github.com/chzyer/readline"
 	"github.com/jedib0t/go-pretty/v6/text"
+
+	"github.com/NexaAI/nexa-sdk/internal/types"
 )
 
 var completer = readline.NewPrefixCompleter(
@@ -38,14 +42,15 @@ func listFiles(path string) func(string) []string {
 
 // LLM, VLM
 type ReplConfig struct {
-	Stream bool
+	Stream    bool
+	ParseFile bool
 
 	Clear       func()
 	SaveKVCache func(path string) error
 	LoadKVCache func(path string) error
 
-	Run       func(prompt string) (string, error)
-	RunStream func(ctx context.Context, prompt string, dataCh chan<- string, errCh chan<- error)
+	Run       func(prompt string, files []string) (string, error)
+	RunStream func(ctx context.Context, prompt string, files []string, dataCh chan<- string, errCh chan<- error)
 }
 
 func (cfg *ReplConfig) fill() {
@@ -61,10 +66,10 @@ func (cfg *ReplConfig) fill() {
 		cfg.LoadKVCache = func(string) error { return notSupport }
 	}
 	if cfg.Run == nil {
-		cfg.Run = func(string) (string, error) { return "", notSupport }
+		cfg.Run = func(string, []string) (string, error) { return "", notSupport }
 	}
 	if cfg.RunStream == nil {
-		cfg.RunStream = func(ctx context.Context, prompt string, dataCh chan<- string, errCh chan<- error) {
+		cfg.RunStream = func(ctx context.Context, prompt string, files []string, dataCh chan<- string, errCh chan<- error) {
 			close(dataCh)
 			errCh <- notSupport
 			close(errCh)
@@ -142,6 +147,12 @@ func repl(cfg ReplConfig) {
 			continue
 		}
 
+		// paser file
+		var files []string
+		if cfg.ParseFile {
+			line, files = parseFiles(line)
+		}
+
 		// chat
 		if cfg.Stream {
 			start := time.Now()
@@ -150,7 +161,7 @@ func repl(cfg ReplConfig) {
 			// run async
 			dataCh := make(chan string, 10)
 			errCh := make(chan error, 1)
-			go cfg.RunStream(context.TODO(), line, dataCh, errCh)
+			go cfg.RunStream(context.TODO(), line, files, dataCh, errCh)
 
 			// print stream
 			fmt.Print(text.FgYellow.EscapeSeq())
@@ -176,7 +187,7 @@ func repl(cfg ReplConfig) {
 		} else {
 			start := time.Now()
 
-			res, err := cfg.Run(line)
+			res, err := cfg.Run(line, files)
 			fmt.Println(text.FgYellow.Sprint(res))
 
 			// print duration
@@ -191,4 +202,135 @@ func repl(cfg ReplConfig) {
 			}
 		}
 	}
+}
+
+var fileRegex = regexp.MustCompile(`(?:[a-zA-Z]:)?(?:\./|/|\\)[\S\\ ]+?\.(?i:jpg|jpeg|png|webp|mp3|wav)\b`)
+
+func parseFiles(prompt string) (string, []string) {
+	files := fileRegex.FindAllString(prompt, -1)
+	res := make([]string, 0, len(files))
+
+	for _, file := range files {
+		realFile := strings.NewReplacer(
+			"\\ ", " ",
+			"\\(", "(",
+			"\\)", ")",
+			"\\[", "[",
+			"\\]", "]",
+			"\\{", "{",
+			"\\}", "}",
+			"\\$", "$",
+			"\\&", "&",
+			"\\;", ";",
+			"\\'", "'",
+			"\\\\", "\\",
+			"\\*", "*",
+			"\\?", "?",
+			"\\~", "~",
+		).Replace(file)
+
+		_, err := os.Stat(realFile)
+		if err != nil {
+			fmt.Println(text.FgRed.Sprintf("parse file error: [%s] %s", realFile, err))
+			continue
+		}
+		switch realFile[len(realFile)-3:] {
+		case "mp3", "wav":
+			fmt.Println(text.FgBlue.Sprintf("add audio: %s", realFile))
+		default:
+			fmt.Println(text.FgBlue.Sprintf("add image: %s", realFile))
+		}
+
+		res = append(res, realFile)
+
+		prompt = strings.ReplaceAll(prompt, "'"+realFile+"'", "")
+		prompt = strings.ReplaceAll(prompt, "'"+file+"'", "")
+		prompt = strings.ReplaceAll(prompt, file, "")
+	}
+	return strings.TrimSpace(prompt), res
+
+}
+
+func chooseFiles(files []string) (modelType types.ModelType, model, tokenizer string, extras []string, err error) {
+	var confirm bool
+	var modelTypeString string
+
+	for !confirm {
+		err = huh.NewForm(
+			huh.NewGroup(
+				huh.NewSelect[string]().
+					Title("Choose model type").
+					Options(
+						huh.NewOption(types.ModelTypeLLM, types.ModelTypeLLM),
+						huh.NewOption(types.ModelTypeVLM, types.ModelTypeVLM),
+						huh.NewOption(types.ModelTypeEmbedder, types.ModelTypeEmbedder),
+						huh.NewOption(types.ModelTypeReranker, types.ModelTypeReranker),
+					).
+					Value(&modelTypeString),
+			),
+			huh.NewGroup(
+				huh.NewSelect[string]().
+					Title("Pick main modelfile").
+					OptionsFunc(func() []huh.Option[string] {
+						opts := make([]huh.Option[string], 0, len(files))
+						for _, file := range files {
+							opts = append(opts, huh.NewOption(file, file))
+						}
+						return opts
+					}, &files).
+					Value(&model),
+			),
+			huh.NewGroup(
+				huh.NewSelect[string]().
+					Title("Pick tokenizer").
+					OptionsFunc(func() []huh.Option[string] {
+						opts := make([]huh.Option[string], 0, len(files))
+						opts = append(opts, huh.NewOption("(without tokenzier)", ""))
+						for _, file := range files {
+							if file == model {
+								continue
+							}
+							opts = append(opts, huh.NewOption(file, file))
+						}
+						return opts
+					}, &model).
+					Value(&tokenizer),
+			),
+			huh.NewGroup(
+				huh.NewMultiSelect[string]().
+					Title("Pick extra files").
+					OptionsFunc(func() []huh.Option[string] {
+						opts := make([]huh.Option[string], 0, len(files))
+						for _, file := range files {
+							if file == model || file == tokenizer {
+								continue
+							}
+							opts = append(opts, huh.NewOption(file, file))
+						}
+						return opts
+					}, []any{&model, &tokenizer}).
+					Value(&extras),
+			),
+			huh.NewGroup(
+				huh.NewConfirm().
+					TitleFunc(func() string {
+						return "Confirm the config\n" +
+							text.Colors{text.Reset, text.FgWhite}.Sprintf("ModelType:  %s\n", modelTypeString) +
+							text.Colors{text.Reset, text.FgWhite}.Sprintf("ModelFile:  %s\n", model) +
+							text.Colors{text.Reset, text.FgWhite}.Sprintf("Tokenizer:  %s\n", tokenizer) +
+							text.Colors{text.Reset, text.FgWhite}.Sprintf("ExtraFiles:  %s\n", strings.Join(extras, ","))
+					}, []any{&modelTypeString, &model, &tokenizer, &extras}).
+					Affirmative("Yes!").
+					Negative("No.").
+					Value(&confirm),
+			),
+		).Run()
+
+		if err != nil {
+			return
+		}
+	}
+
+	modelType = types.ModelType(modelTypeString)
+	return
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -27,6 +28,10 @@ func run() *cobra.Command {
 }
 
 func runFunc(cmd *cobra.Command, args []string) {
+	// make nexaml repo as default
+	if !strings.Contains(args[0], "/") {
+		args[0] += "nexaml/"
+	}
 	model := args[0]
 
 	client := openai.NewClient(
@@ -49,7 +54,8 @@ func runFunc(cmd *cobra.Command, args []string) {
 	// repl
 	var history []openai.ChatCompletionMessageParamUnion
 	repl(ReplConfig{
-		Stream: !disableStream,
+		Stream:    !disableStream,
+		ParseFile: false,
 
 		Clear: func() {
 			history = nil
@@ -59,7 +65,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			})
 		},
 
-		Run: func(prompt string) (string, error) {
+		Run: func(prompt string, files []string) (string, error) {
 			history = append(history, openai.UserMessage(prompt))
 
 			chatCompletion, err := client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
@@ -75,7 +81,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			return content, err
 		},
 
-		RunStream: func(ctx context.Context, prompt string, dataCh chan<- string, errCh chan<- error) {
+		RunStream: func(ctx context.Context, prompt string, files []string, dataCh chan<- string, errCh chan<- error) {
 			defer close(errCh)
 			defer close(dataCh)
 

@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -40,9 +42,17 @@ func infer() *cobra.Command {
 
 	inferCmd.Run = func(cmd *cobra.Command, args []string) {
 		s := store.NewStore()
+		// make nexaml repo as default
+		if !strings.Contains(args[0], "/") {
+			args[0] += "nexaml/"
+		}
 		model := args[0]
 		manifest, err := s.GetManifest(model)
-		if err != nil {
+
+		if errors.Is(err, os.ErrNotExist) {
+			fmt.Println(text.FgBlue.Sprintf("model not found, start download"))
+			pull().Run(cmd, args)
+		} else if err != nil {
 			fmt.Println(text.FgRed.Sprintf("parse manifest error: %s", err))
 			return
 		}
@@ -89,7 +99,8 @@ func inferLLM(model string, tokenizer *string) {
 	var lastLen int
 
 	repl(ReplConfig{
-		Stream: !disableStream,
+		Stream:    !disableStream,
+		ParseFile: false,
 
 		Clear: p.Reset,
 
@@ -101,7 +112,7 @@ func inferLLM(model string, tokenizer *string) {
 			return p.LoadKVCache(path)
 		},
 
-		Run: func(prompt string) (string, error) {
+		Run: func(prompt string, files []string) (string, error) {
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
 
 			formatted, err := p.ApplyChatTemplate(history)
@@ -115,17 +126,12 @@ func inferLLM(model string, tokenizer *string) {
 			}
 
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: res})
-
-			formatted, err = p.ApplyChatTemplate(history)
-			if err != nil {
-				return "", err
-			}
-			lastLen = len(formatted)
+			lastLen = len(formatted) + len(res)
 
 			return res, nil
 		},
 
-		RunStream: func(ctx context.Context, prompt string, dataCh chan<- string, errCh chan<- error) {
+		RunStream: func(ctx context.Context, prompt string, files []string, dataCh chan<- string, errCh chan<- error) {
 			defer close(errCh)
 			defer close(dataCh)
 
@@ -137,6 +143,8 @@ func inferLLM(model string, tokenizer *string) {
 			}
 
 			var full strings.Builder
+			//fmt.Printf(text.FgBlack.Sprint(formatted[:lastLen]))
+			//fmt.Printf(text.FgCyan.Sprint(formatted[lastLen:]))
 			dCh, eCh := p.GenerateStream(ctx, formatted[lastLen:])
 			for r := range dCh {
 				full.WriteString(r)
@@ -148,13 +156,7 @@ func inferLLM(model string, tokenizer *string) {
 			}
 
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: full.String()})
-
-			formatted, e = p.ApplyChatTemplate(history)
-			if e != nil {
-				errCh <- e
-				return
-			}
-			lastLen = len(formatted)
+			lastLen = len(formatted) + len(full.String())
 		},
 	})
 }
@@ -162,53 +164,77 @@ func inferLLM(model string, tokenizer *string) {
 func inferVLM(model string, tokenizer *string) {
 	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model..."))
 	spin.Start()
+
 	p := nexa_sdk.NewVLM(model, tokenizer, 4096, nil)
 	defer p.Destroy()
 
 	spin.Stop()
 
-	if len(prompt) != 1 {
-		fmt.Println(text.FgRed.Sprintf("only 1 text prompt is accept"))
-		return
-	}
+	var history []nexa_sdk.ChatMessage
+	var lastLen int
 
-	formatted, err := p.ApplyChatTemplate([]nexa_sdk.ChatMessage{
-		{Role: nexa_sdk.LLMRoleUser, Content: prompt[0]},
+	repl(ReplConfig{
+		Stream:    !disableStream,
+		ParseFile: true,
+
+		Clear: p.Reset,
+
+		Run: func(prompt string, files []string) (string, error) {
+			var file *string
+			if len(files) > 0 {
+				file = &files[0]
+			}
+
+			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
+			formatted, err := p.ApplyChatTemplate(history)
+			if err != nil {
+				return "", err
+			}
+
+			res, err := p.Generate(prompt, file)
+			if err != nil {
+				return "", err
+			}
+
+			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: res})
+			lastLen = len(formatted) + len(res)
+
+			return res, nil
+		},
+
+		RunStream: func(ctx context.Context, prompt string, files []string, dataCh chan<- string, errCh chan<- error) {
+			defer close(errCh)
+			defer close(dataCh)
+
+			var file *string
+			if len(files) > 0 {
+				file = &files[0]
+			}
+
+			//fmt.Println(text.FgBlack.Sprint(prompt))
+
+			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
+			formatted, e := p.ApplyChatTemplate(history)
+			if e != nil {
+				errCh <- e
+				return
+			}
+
+			var full strings.Builder
+			dCh, eCh := p.GenerateStream(ctx, formatted[lastLen:], file)
+			for r := range dCh {
+				full.WriteString(r)
+				dataCh <- r
+			}
+			for e := range eCh {
+				errCh <- e
+				return
+			}
+
+			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: full.String()})
+			lastLen = len(formatted) + len(full.String())
+		},
 	})
-	if err != nil {
-		fmt.Println(text.FgRed.Sprintf("apply chat template: %s", err))
-		return
-	}
-
-	var file *string
-	if image != "" {
-		file = &image
-	}
-	if audio != "" {
-		file = &audio
-	}
-
-	if !disableStream {
-		fmt.Print(text.FgYellow.EscapeSeq())
-		dCh, eCh := p.GenerateStream(context.TODO(), formatted, file)
-		for r := range dCh {
-			fmt.Print(r)
-		}
-		fmt.Print(text.Reset.EscapeSeq())
-		fmt.Println()
-
-		for e := range eCh {
-			fmt.Println(text.FgRed.Sprintf("Error: %s", e))
-		}
-	} else {
-		res, err := p.Generate(formatted, file)
-		fmt.Println(text.FgYellow.Sprint(res))
-
-		if err != nil {
-			fmt.Println(text.FgRed.Sprintf("Error: %s", err))
-		}
-
-	}
 }
 
 func inferEmbed(modelfile string, tokenizer *string) {

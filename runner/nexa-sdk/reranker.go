@@ -7,7 +7,6 @@ package nexa_sdk
 import "C"
 
 import (
-	"path"
 	"unsafe"
 )
 
@@ -20,12 +19,6 @@ func NewReranker(model string, tokenizer *string, devices *string) *Reranker {
 	defer C.free(unsafe.Pointer(cModel))
 
 	var cTokenizer *C.char
-
-	// TODO: remove hardcode
-	if tokenizer == nil {
-		t := path.Join(path.Dir(model), "jina_rerank_tokenizer.json")
-		tokenizer = &t
-	}
 
 	if tokenizer != nil {
 		cTokenizer = C.CString(*tokenizer)
