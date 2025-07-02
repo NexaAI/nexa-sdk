@@ -85,7 +85,7 @@ func (p *LLM) Encode(msg string) ([]int32, error) {
 	var res *C.int32_t
 	resLen := C.ml_llm_encode(p.ptr, cMsg, &res)
 	if resLen < 0 {
-		return nil, ErrCommon
+		return nil, ErrSDK
 	}
 	defer C.free(unsafe.Pointer(res))
 
@@ -105,7 +105,7 @@ func (p *LLM) Decode(ids []int32) (string, error) {
 		C.int32_t(len(ids)),
 		&res)
 	if resLen < 0 {
-		return "", ErrCommon
+		return "", ErrSDK
 	}
 	defer C.free(unsafe.Pointer(res))
 
@@ -119,7 +119,7 @@ func (p *LLM) SaveKVCache(path string) error {
 
 	res := C.ml_llm_save_kv_cache(p.ptr, cPath)
 	if res < 0 {
-		return ErrCommon
+		return ErrSDK
 	}
 	return nil
 }
@@ -131,7 +131,7 @@ func (p *LLM) LoadKVCache(path string) error {
 
 	res := C.ml_llm_load_kv_cache(p.ptr, cPath)
 	if res < 0 {
-		return ErrCommon
+		return ErrSDK
 	}
 	return nil
 }
@@ -144,7 +144,7 @@ func (p *LLM) Generate(prompt string) (string, error) {
 	var res *C.char
 	resLen := C.ml_llm_generate(p.ptr, cPrompt, nil, &res)
 	if resLen <= 0 {
-		return "", ErrCommon
+		return "", ErrSDK
 	}
 	defer C.free(unsafe.Pointer(res))
 
@@ -162,7 +162,7 @@ func (p *LLM) GetChatTemplate(name *string) (string, error) {
 	var res *C.char
 	resLen := C.ml_llm_get_chat_template(p.ptr, cName, &res)
 	if resLen < 0 {
-		return "", ErrCommon
+		return "", ErrSDK
 	}
 
 	return C.GoString(res), nil
@@ -184,7 +184,7 @@ func (p *LLM) ApplyChatTemplate(msgs []ChatMessage) (string, error) {
 	var res *C.char
 	resLen := C.ml_llm_apply_chat_template(p.ptr, &cMsgs[0], C.int32_t(len(msgs)), &res)
 	if resLen < 0 {
-		return "", ErrCommon
+		return "", ErrSDK
 	}
 	defer C.free(unsafe.Pointer(res))
 
@@ -225,6 +225,13 @@ var streamTokenCtx context.Context
 //
 //export go_generate_stream_on_token
 func go_generate_stream_on_token(token *C.char, _ *C.void) C.bool {
+	select {
+	case <-streamTokenCtx.Done():
+		fmt.Println("context done")
+		return false
+	default:
+	}
+
 	select {
 	case streamTokenCh <- C.GoString(token):
 		return true
@@ -268,7 +275,7 @@ func (p *LLM) GenerateStream(ctx context.Context, prompt string) (<-chan string,
 		resLen := C.ml_llm_generate_stream(p.ptr, cPrompt, &config,
 			(C.ml_llm_token_callback)(C.go_generate_stream_on_token), nil, nil)
 		if resLen < 0 {
-			err <- ErrCommon
+			err <- ErrSDK
 		}
 	}()
 

@@ -56,7 +56,7 @@ func (p *Reranker) Rerank(query string, texts []string) ([]float32, error) {
 	var res *C.float
 	resLen := C.ml_reranker_rerank(p.ptr, cQuery, &cTexts[0], C.int32_t(len(cTexts)), &config, &res)
 	if resLen <= 0 {
-		return nil, ErrCommon
+		return nil, ErrSDK
 	}
 	defer C.free(unsafe.Pointer(res))
 
