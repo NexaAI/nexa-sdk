@@ -16,7 +16,10 @@ import (
 // This avoids the overhead of repeatedly loading/unloading models from disk
 func KeepAliveGet[T any](name string, param types.ModelParam) (*T, error) {
 	t, err := keepAliveGet[T](name, param)
-	return t.(*T), err
+	if err != nil {
+		return nil, err
+	}
+	return t.(*T), nil
 }
 
 var keepAlive keepAliveService
