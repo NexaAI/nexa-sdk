@@ -43,7 +43,7 @@ func (s *Store) List() ([]types.ModelManifest, error) {
 
 // Remove deletes a specific model and all its files
 func (s *Store) Remove(name string) error {
-	err := s.TryLockModel(name)
+	err := s.LockModel(name)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func (s *Store) Clean() error {
 }
 
 func (s *Store) GetManifest(name string) (*types.ModelManifest, error) {
-	err := s.TryLockModel(name)
+	err := s.LockModel(name)
 	if err != nil {
 		return nil, err
 	}

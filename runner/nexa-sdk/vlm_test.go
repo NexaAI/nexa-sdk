@@ -96,7 +96,7 @@ func TestVLMChat(t *testing.T) {
 
 	// Generate response using the formatted prompt
 	pic := "~/Pictures/ScreenShot/20200201_182517.png"
-	res, e := vlm.Generate(msg, &pic)
+	res, e := vlm.Generate(msg, []string{pic}, nil)
 	if e != nil {
 		t.Error(e)
 	}
@@ -107,7 +107,7 @@ func TestVLMChat(t *testing.T) {
 // Measures generation speed and verifies that tokens are streamed properly
 func TestVLMGenerateStream(t *testing.T) {
 	pic := "/home/remilia/Pictures/ScreenShot/20200201_182517.png"
-	dataCh, errCh := vlm.GenerateStream(context.Background(), "what does the picture say", &pic)
+	dataCh, errCh := vlm.GenerateStream(context.Background(), "what does the picture say", []string{pic}, nil)
 
 	start := time.Now()
 	count := 0

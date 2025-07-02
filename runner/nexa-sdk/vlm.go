@@ -10,6 +10,7 @@ import "C"
 
 import (
 	"context"
+	"runtime"
 	"unsafe"
 
 	"github.com/bytedance/sonic"
@@ -85,16 +86,36 @@ func (p *VLM) Decode(ids []int32) (string, error) {
 }
 
 // Generate produces text completion for the given prompt
-func (p *VLM) Generate(prompt string, image *string) (string, error) {
+func (p *VLM) Generate(prompt string, images []string, audios []string) (string, error) {
 	cPrompt := C.CString(prompt)
 	defer C.free(unsafe.Pointer(cPrompt))
 
+	var pinnner runtime.Pinner
+	defer pinnner.Unpin()
 	// Configure generation parameters
 	config := C.ml_GenerationConfig{}
 	config.max_tokens = 512
-	if image != nil {
-		config.image_path = C.CString(*image)
-		defer C.free(unsafe.Pointer(config.image_path))
+	if len(images) > 0 {
+		cImages := make([]C.ml_Path, len(images))
+		for i, image := range images {
+			cImage := C.CString(string(image))
+			cImages[i] = cImage
+			defer C.free(unsafe.Pointer(cImage))
+		}
+		config.image_paths = &cImages[0]
+		config.image_count = C.int32_t(len(images))
+		pinnner.Pin(&cImages[0])
+	}
+	if len(audios) > 0 {
+		cAudios := make([]C.ml_Path, len(audios))
+		for i, audio := range audios {
+			cAudio := C.CString(string(audio))
+			cAudios[i] = cAudio
+			defer C.free(unsafe.Pointer(cAudio))
+		}
+		config.audio_paths = &cAudios[0]
+		config.audio_count = C.int32_t(len(audios))
+		pinnner.Pin(&cAudios[0])
 	}
 
 	var res *C.char
@@ -169,15 +190,8 @@ func (p *VLM) ApplyJinjaTemplate(param ChatTemplateParam) (string, error) {
 // GenerateStream generates text in streaming mode, returning tokens as they are produced
 // Returns two channels: one for receiving tokens and one for errors
 // Note: Currently does not support parallel streaming due to global channel usage
-func (p *VLM) GenerateStream(ctx context.Context, prompt string, image *string) (<-chan string, <-chan error) {
+func (p *VLM) GenerateStream(ctx context.Context, prompt string, images []string, audios []string) (<-chan string, <-chan error) {
 	cPrompt := C.CString(prompt)
-
-	// Configure generation parameters
-	config := C.ml_GenerationConfig{}
-	config.max_tokens = 512
-	if image != nil {
-		config.image_path = C.CString(*image)
-	}
 
 	// check parallel call
 	if streamTokenCh != nil {
@@ -197,8 +211,35 @@ func (p *VLM) GenerateStream(ctx context.Context, prompt string, image *string) 
 			close(err)
 			close(stream)
 			C.free(unsafe.Pointer(cPrompt))
-			C.free(unsafe.Pointer(config.image_path))
 		}()
+
+		var pinnner runtime.Pinner
+		defer pinnner.Unpin()
+		// Configure generation parameters
+		config := C.ml_GenerationConfig{}
+		config.max_tokens = 512
+		if len(images) > 0 {
+			cImages := make([]C.ml_Path, len(images))
+			for i, image := range images {
+				cImage := C.CString(string(image))
+				cImages[i] = cImage
+				defer C.free(unsafe.Pointer(cImage))
+			}
+			config.image_paths = &cImages[0]
+			config.image_count = C.int32_t(len(images))
+			pinnner.Pin(&cImages[0])
+		}
+		if len(audios) > 0 {
+			cAudios := make([]C.ml_Path, len(audios))
+			for i, audio := range audios {
+				cAudio := C.CString(string(audio))
+				cAudios[i] = cAudio
+				defer C.free(unsafe.Pointer(cAudio))
+			}
+			config.audio_paths = &cAudios[0]
+			config.audio_count = C.int32_t(len(audios))
+			pinnner.Pin(&cAudios[0])
+		}
 
 		// Call C function to start streaming generation
 		resLen := C.ml_vlm_generate_stream(p.ptr, cPrompt, &config,

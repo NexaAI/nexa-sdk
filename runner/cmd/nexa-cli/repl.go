@@ -57,8 +57,8 @@ type ReplConfig struct {
 	SaveKVCache func(path string) error
 	LoadKVCache func(path string) error
 
-	Run       func(prompt string, files []string) (string, error)
-	RunStream func(ctx context.Context, prompt string, files []string, dataCh chan<- string, errCh chan<- error)
+	Run       func(prompt string, images, audios []string) (string, error)
+	RunStream func(ctx context.Context, prompt string, images, audios []string, dataCh chan<- string, errCh chan<- error)
 }
 
 func (cfg *ReplConfig) fill() {
@@ -74,10 +74,10 @@ func (cfg *ReplConfig) fill() {
 		cfg.LoadKVCache = func(string) error { return notSupport }
 	}
 	if cfg.Run == nil {
-		cfg.Run = func(string, []string) (string, error) { return "", notSupport }
+		cfg.Run = func(string, []string, []string) (string, error) { return "", notSupport }
 	}
 	if cfg.RunStream == nil {
-		cfg.RunStream = func(ctx context.Context, prompt string, files []string, dataCh chan<- string, errCh chan<- error) {
+		cfg.RunStream = func(ctx context.Context, prompt string, images, audios []string, dataCh chan<- string, errCh chan<- error) {
 			close(dataCh)
 			errCh <- notSupport
 			close(errCh)
@@ -114,54 +114,54 @@ func repl(cfg ReplConfig) {
 		}
 
 		// paser file
-		var files []string
+		var images, audios []string
 		if cfg.ParseFile {
-			line, files = parseFiles(line)
+			line, images, audios = parseFiles(line)
 		}
 
-		if strings.HasPrefix(line, "/") {
+		if len(images) == 0 && len(audio) == 0 && strings.HasPrefix(line, "/") {
+
 			fileds := strings.Fields(strings.TrimSpace(line))
-			if len(files) == 0 {
-				switch fileds[0] {
-				case "/?", "/h", "/help":
-					fmt.Println("Commands:")
-					for _, h := range help {
-						fmt.Printf("  %-25s %s\n", h[0], h[1])
-					}
 
-				case "/exit":
-					return
-
-				case "/clear":
-					cfg.Clear()
-					fmt.Print("\033[H\033[2J")
-
-				case "/load":
-					if len(fileds) != 2 {
-						fmt.Println(text.FgRed.Sprintf("Usage: /load <filename>"))
-					}
-					cfg.Clear()
-					err := cfg.LoadKVCache(fileds[1])
-					if err != nil {
-						fmt.Println(text.FgRed.Sprintf("Error: %s", err))
-					}
-
-				case "/save":
-					if len(fileds) != 2 {
-						fmt.Println(text.FgRed.Sprintf("Usage: /save <filename>"))
-						continue
-					}
-					err := cfg.SaveKVCache(fileds[1])
-					if err != nil {
-						fmt.Println(text.FgRed.Sprintf("Error: %s", err))
-					}
-
-				default:
-					fmt.Println(text.FgRed.Sprintf("Unknown command: %s", fileds[0]))
+			switch fileds[0] {
+			case "/?", "/h", "/help":
+				fmt.Println("Commands:")
+				for _, h := range help {
+					fmt.Printf("  %-25s %s\n", h[0], h[1])
 				}
 
-				continue
+			case "/exit":
+				return
+
+			case "/clear":
+				cfg.Clear()
+				fmt.Print("\033[H\033[2J")
+
+			case "/load":
+				if len(fileds) != 2 {
+					fmt.Println(text.FgRed.Sprintf("Usage: /load <filename>"))
+				}
+				cfg.Clear()
+				err := cfg.LoadKVCache(fileds[1])
+				if err != nil {
+					fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+				}
+
+			case "/save":
+				if len(fileds) != 2 {
+					fmt.Println(text.FgRed.Sprintf("Usage: /save <filename>"))
+					continue
+				}
+				err := cfg.SaveKVCache(fileds[1])
+				if err != nil {
+					fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+				}
+
+			default:
+				fmt.Println(text.FgRed.Sprintf("Unknown command: %s", fileds[0]))
 			}
+
+			continue
 		}
 
 		// chat
@@ -172,7 +172,7 @@ func repl(cfg ReplConfig) {
 			// run async
 			dataCh := make(chan string, 10)
 			errCh := make(chan error, 1)
-			go cfg.RunStream(context.TODO(), line, files, dataCh, errCh)
+			go cfg.RunStream(context.TODO(), line, images, audios, dataCh, errCh)
 
 			// print stream
 			fmt.Print(text.FgYellow.EscapeSeq())
@@ -198,7 +198,7 @@ func repl(cfg ReplConfig) {
 		} else {
 			start := time.Now()
 
-			res, err := cfg.Run(line, files)
+			res, err := cfg.Run(line, images, audios)
 			fmt.Println(text.FgYellow.Sprint(res))
 
 			// print duration
@@ -217,9 +217,10 @@ func repl(cfg ReplConfig) {
 
 var fileRegex = regexp.MustCompile(`(?:[a-zA-Z]:)?(?:\./|/|\\)[\S\\ ]+?\.(?i:jpg|jpeg|png|webp|mp3|wav)\b`)
 
-func parseFiles(prompt string) (string, []string) {
+func parseFiles(prompt string) (string, []string, []string) {
 	files := fileRegex.FindAllString(prompt, -1)
-	res := make([]string, 0, len(files))
+	images := make([]string, 0, len(files))
+	audios := make([]string, 0, len(files))
 
 	for _, file := range files {
 		realFile := strings.NewReplacer(
@@ -247,18 +248,18 @@ func parseFiles(prompt string) (string, []string) {
 		}
 		switch realFile[len(realFile)-3:] {
 		case "mp3", "wav":
+			audios = append(audios, realFile)
 			fmt.Println(text.FgBlue.Sprintf("add audio: %s", realFile))
 		default:
+			images = append(images, realFile)
 			fmt.Println(text.FgBlue.Sprintf("add image: %s", realFile))
 		}
-
-		res = append(res, realFile)
 
 		prompt = strings.ReplaceAll(prompt, "'"+realFile+"'", "")
 		prompt = strings.ReplaceAll(prompt, "'"+file+"'", "")
 		prompt = strings.ReplaceAll(prompt, file, "")
 	}
-	return strings.TrimSpace(prompt), res
+	return strings.TrimSpace(prompt), images, audios
 
 }
 

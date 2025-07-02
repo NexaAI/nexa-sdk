@@ -245,7 +245,7 @@ func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 		return
 	}
 
-	var imageUrl *string
+	var images, audios []string
 
 	messages := make([]nexa_sdk.ChatMessage, 0, len(param.Messages))
 	for _, msg := range param.Messages {
@@ -258,9 +258,9 @@ func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 					Content: *ct.GetText(),
 				})
 			case "input_audio":
-				imageUrl = &ct.GetInputAudio().Data
+				audios = append(audios, ct.GetInputAudio().Data)
 			case "image_url":
-				imageUrl = &ct.GetImageURL().URL
+				images = append(images, ct.GetImageURL().URL)
 			}
 		}
 	}
@@ -285,7 +285,7 @@ func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 			return
 		}
 
-		data, err := p.Generate(formatted, imageUrl)
+		data, err := p.Generate(formatted, images, audios)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 			return
@@ -323,7 +323,7 @@ func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 
 		if param.Stream {
 			ctx, cancel := context.WithCancel(context.Background())
-			dataCh, errCh := p.GenerateStream(ctx, formatted, imageUrl)
+			dataCh, errCh := p.GenerateStream(ctx, formatted, images, audios)
 
 			c.Stream(func(w io.Writer) bool {
 				r, ok := <-dataCh
@@ -348,7 +348,7 @@ func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 				fmt.Printf("GenerateStream Error: %s\n", e)
 			}
 		} else {
-			data, err := p.Generate(formatted, imageUrl)
+			data, err := p.Generate(formatted, images, audios)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 				return

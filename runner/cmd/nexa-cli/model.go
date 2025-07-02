@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
+	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/schollz/progressbar/v3"
@@ -158,7 +159,7 @@ func list() *cobra.Command {
 		tw.SetStyle(table.StyleLight)
 		tw.AppendHeader(table.Row{"NAME", "TYPE", "SIZE"})
 		for _, model := range models {
-			tw.AppendRow(table.Row{model.Name, model.ModelType, model.Size})
+			tw.AppendRow(table.Row{model.Name, model.ModelType, humanize.IBytes(uint64(model.Size))})
 		}
 		tw.Render()
 	}
