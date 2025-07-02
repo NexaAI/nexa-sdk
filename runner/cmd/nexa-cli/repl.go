@@ -116,45 +116,49 @@ func repl(cfg ReplConfig) {
 		if strings.HasPrefix(line, "/") {
 			fileds := strings.Fields(strings.TrimSpace(line))
 
-			switch fileds[0] {
-			case "/?", "/h", "/help":
-				fmt.Println("Commands:")
-				for _, h := range help {
-					fmt.Printf("  %-25s %s\n", h[0], h[1])
+			if strings.Count(fileds[0], "/") > 1 || strings.ContainsRune(fileds[0], '.') {
+				// Maybe input is file path, but must not be command.
+			} else {
+				switch fileds[0] {
+				case "/?", "/h", "/help":
+					fmt.Println("Commands:")
+					for _, h := range help {
+						fmt.Printf("  %-25s %s\n", h[0], h[1])
+					}
+
+				case "/exit":
+					return
+
+				case "/clear":
+					cfg.Clear()
+					fmt.Print("\033[H\033[2J")
+
+				case "/load":
+					if len(fileds) != 2 {
+						fmt.Println(text.FgRed.Sprintf("Usage: /load <filename>"))
+					}
+					cfg.Clear()
+					err := cfg.LoadKVCache(fileds[1])
+					if err != nil {
+						fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+					}
+
+				case "/save":
+					if len(fileds) != 2 {
+						fmt.Println(text.FgRed.Sprintf("Usage: /save <filename>"))
+						continue
+					}
+					err := cfg.SaveKVCache(fileds[1])
+					if err != nil {
+						fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+					}
+
+				default:
+					fmt.Println(text.FgRed.Sprintf("Unknown command: %s", fileds[0]))
 				}
 
-			case "/exit":
-				return
-
-			case "/clear":
-				cfg.Clear()
-				fmt.Print("\033[H\033[2J")
-
-			case "/load":
-				if len(fileds) != 2 {
-					fmt.Println(text.FgRed.Sprintf("Usage: /load <filename>"))
-				}
-				cfg.Clear()
-				err := cfg.LoadKVCache(fileds[1])
-				if err != nil {
-					fmt.Println(text.FgRed.Sprintf("Error: %s", err))
-				}
-
-			case "/save":
-				if len(fileds) != 2 {
-					fmt.Println(text.FgRed.Sprintf("Usage: /save <filename>"))
-					continue
-				}
-				err := cfg.SaveKVCache(fileds[1])
-				if err != nil {
-					fmt.Println(text.FgRed.Sprintf("Error: %s", err))
-				}
-
-			default:
-				fmt.Println(text.FgRed.Sprintf("Unknown command: %s", fileds[0]))
+				continue
 			}
-
-			continue
 		}
 
 		// paser file
