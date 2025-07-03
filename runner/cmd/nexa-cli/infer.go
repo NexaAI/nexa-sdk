@@ -44,12 +44,9 @@ func infer() *cobra.Command {
 	inferCmd.Flags().StringSliceVarP(&document, "document", "d", nil, "rerank only")
 
 	inferCmd.Run = func(cmd *cobra.Command, args []string) {
+		model := normalizeModelName(args[0])
+
 		s := store.Get()
-		// make nexaml repo as default
-		if !strings.Contains(args[0], "/") {
-			args[0] = "nexaml/" + args[0]
-		}
-		model := args[0]
 
 		manifest, err := s.GetManifest(model)
 		if errors.Is(err, os.ErrNotExist) {

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -33,11 +32,7 @@ func run() *cobra.Command {
 }
 
 func runFunc(cmd *cobra.Command, args []string) {
-	// make nexaml repo as default
-	if !strings.Contains(args[0], "/") {
-		args[0] = "nexaml/" + args[0]
-	}
-	model := args[0]
+	model := normalizeModelName(args[0])
 
 	client := openai.NewClient(
 		option.WithBaseURL(fmt.Sprintf("http://%s/v1", config.Get().Host)),

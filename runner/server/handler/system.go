@@ -9,3 +9,7 @@ func ListModels(c *gin.Context) {
 func RetrieveModel(c *gin.Context) {
 
 }
+
+func PullModel(c *gin.Context) {
+
+}

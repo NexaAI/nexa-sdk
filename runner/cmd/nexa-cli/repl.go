@@ -263,86 +263,119 @@ func parseFiles(prompt string) (string, []string, []string) {
 
 }
 
-func chooseFiles(files []string) (modelType types.ModelType, model, tokenizer string, extras []string, err error) {
-	var confirm bool
+var quantRegix = regexp.MustCompile(``)
+
+func chooseFiles(name string, files []string) (res types.ModelManifest, err error) {
+	if len(files) == 0 {
+		err = fmt.Errorf("repo is empty")
+		return
+	}
+
+	res.Name = name
+
+	// choose model type
 	var modelTypeString string
+	if err = huh.NewSelect[string]().
+		Title("Choose model type").
+		Options(
+			huh.NewOption(types.ModelTypeLLM, types.ModelTypeLLM),
+			huh.NewOption(types.ModelTypeVLM, types.ModelTypeVLM),
+			huh.NewOption(types.ModelTypeEmbedder, types.ModelTypeEmbedder),
+			huh.NewOption(types.ModelTypeReranker, types.ModelTypeReranker),
+		).
+		Value(&modelTypeString).
+		Run(); err != nil {
+		return
+	}
 
-	for !confirm {
-		err = huh.NewForm(
-			huh.NewGroup(
-				huh.NewSelect[string]().
-					Title("Choose model type").
-					Options(
-						huh.NewOption(types.ModelTypeLLM, types.ModelTypeLLM),
-						huh.NewOption(types.ModelTypeVLM, types.ModelTypeVLM),
-						huh.NewOption(types.ModelTypeEmbedder, types.ModelTypeEmbedder),
-						huh.NewOption(types.ModelTypeReranker, types.ModelTypeReranker),
-					).
-					Value(&modelTypeString),
-			),
-			huh.NewGroup(
-				huh.NewSelect[string]().
-					Title("Pick main modelfile").
-					OptionsFunc(func() []huh.Option[string] {
-						opts := make([]huh.Option[string], 0, len(files))
-						for _, file := range files {
-							opts = append(opts, huh.NewOption(file, file))
-						}
-						return opts
-					}, &files).
-					Value(&model),
-			),
-			huh.NewGroup(
-				huh.NewSelect[string]().
-					Title("Pick tokenizer").
-					OptionsFunc(func() []huh.Option[string] {
-						opts := make([]huh.Option[string], 0, len(files))
-						opts = append(opts, huh.NewOption("(without tokenzier)", ""))
-						for _, file := range files {
-							if file == model {
-								continue
-							}
-							opts = append(opts, huh.NewOption(file, file))
-						}
-						return opts
-					}, &model).
-					Value(&tokenizer),
-			),
-			huh.NewGroup(
-				huh.NewMultiSelect[string]().
-					Title("Pick extra files").
-					OptionsFunc(func() []huh.Option[string] {
-						opts := make([]huh.Option[string], 0, len(files))
-						for _, file := range files {
-							if file == model || file == tokenizer {
-								continue
-							}
-							opts = append(opts, huh.NewOption(file, file))
-						}
-						return opts
-					}, []any{&model, &tokenizer}).
-					Value(&extras),
-			),
-			huh.NewGroup(
-				huh.NewConfirm().
-					TitleFunc(func() string {
-						return "Confirm the config\n" +
-							text.Colors{text.Reset, text.FgWhite}.Sprintf("ModelType:  %s\n", modelTypeString) +
-							text.Colors{text.Reset, text.FgWhite}.Sprintf("ModelFile:  %s\n", model) +
-							text.Colors{text.Reset, text.FgWhite}.Sprintf("Tokenizer:  %s\n", tokenizer) +
-							text.Colors{text.Reset, text.FgWhite}.Sprintf("ExtraFiles:  %s\n", strings.Join(extras, ","))
-					}, []any{&modelTypeString, &model, &tokenizer, &extras}).
-					Affirmative("Yes!").
-					Negative("No.").
-					Value(&confirm),
-			),
-		).Run()
-
-		if err != nil {
-			return
+	// check gguf
+	var ggufs, mmprojs []string
+	for _, file := range files {
+		lower := strings.ToLower(file)
+		if strings.HasSuffix(lower, ".gguf") {
+			if strings.HasPrefix(lower, "mmproj") {
+				mmprojs = append(mmprojs, file)
+			} else {
+				ggufs = append(ggufs, file)
+			}
 		}
 	}
 
-	modelType = types.ModelType(modelTypeString)
+	// choose model file
+	if len(ggufs) > 0 || len(mmprojs) > 0 {
+		// detect gguf
+		switch len(ggufs) {
+		case 0:
+			err = fmt.Errorf("can no detect model file in repo")
+			return
+		case 1:
+			res.ModelFile = ggufs[0]
+		default:
+			// interactive choose
+			var useDefault bool
+
+			var file string
+			// select default gguf
+
+			if err = huh.NewSelect[bool]().
+				Title("Choose a version to download").
+				Options(
+					huh.NewOption(fmt.Sprintf("default (%s)", file), true),
+					huh.NewOption("choose a quant version", false),
+				).
+				Value(&useDefault).
+				Run(); err != nil {
+				return
+			}
+
+			if !useDefault {
+				options := make([]huh.Option[string], len(ggufs))
+				for i := range ggufs {
+					options[i] = huh.NewOption(ggufs[i], ggufs[i])
+				}
+
+				if err = huh.NewSelect[string]().
+					Title("Choose a quant version to download").
+					Options(options...).
+					Value(&file).
+					Run(); err != nil {
+					return
+				}
+
+			}
+
+		}
+
+		// detect mmproj
+		switch len(mmprojs) {
+		case 0:
+		case 1:
+			res.TokenizerFile = mmprojs[0]
+		default:
+			// match biggest
+		}
+
+	} else {
+		// other format
+
+		// detect main model file
+		// add other files
+		for _, file := range files {
+			if res.ModelFile == "" {
+				lower := strings.ToLower(file)
+				if strings.HasSuffix(lower, "safetensors") || strings.HasSuffix(lower, "npz") {
+					res.ModelFile = file
+					continue
+				}
+			}
+			res.ExtraFiles = append(res.ExtraFiles, file)
+		}
+		// fallback to first file
+		if res.ModelFile == "" {
+			res.ModelFile = files[0]
+			res.ExtraFiles = res.ExtraFiles[1:]
+		}
+	}
+
 	return
 }
