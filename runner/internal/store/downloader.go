@@ -33,6 +33,8 @@ type PullOption struct {
 	ModelFile     string
 	TokenizerFile string
 	ExtraFiles    []string
+
+	ParallelWorkers int
 }
 
 func (s *Store) HFRepoFiles(ctx context.Context, name string) (*types.ModelManifest, []string, error) {
@@ -98,37 +100,11 @@ func (s *Store) Pull(ctx context.Context, name string, opt PullOption) (infoCh <
 
 	var totalSize int64
 
-	client := resty.New()
-	client.SetResponseMiddlewares(
-		httpCodeToError,
-		func(c *resty.Client, r *resty.Response) error {
-			dInfo := types.DownloadInfo{}
-			dInfo.CurrentSize = r.RawResponse.ContentLength
-			if r.Request.OutputFileName != "" {
-				dInfo.CurrentName = path.Base(r.Request.OutputFileName)
-			} else {
-				dInfo.CurrentName = "filelist"
-			}
-			r.Body = &types.TeeReadCloserF{
-				Raw: r.Body,
-				// TODO: reduce channel message
-				WriterF: func(b []byte) (int, error) {
-					dInfo.CurrentDownloaded += int64(len(b))
-					infoC <- dInfo
-					return len(b), nil
-				},
-			}
-			return nil
-		},
-		resty.SaveToFileResponseMiddleware,
-	)
-
 	go func() {
 		defer s.UnlockModel(name)
 
 		defer close(errC)
 		defer close(infoC)
-		defer client.Close()
 
 		if !slices.Contains([]types.ModelType{
 			types.ModelTypeLLM, types.ModelTypeVLM, types.ModelTypeEmbedder, types.ModelTypeReranker,
@@ -155,17 +131,22 @@ func (s *Store) Pull(ctx context.Context, name string, opt PullOption) (infoCh <
 
 		// Create modelfile for storing downloaded content
 		for _, file := range needs {
-			res, err := client.R().
-				SetDoNotParseResponse(true).
-				SetSaveResponse(true).
-				SetOutputFileName(path.Join(s.home, "models", encName, file)).
-				SetAuthToken(config.Get().HFToken).
-				Get(fmt.Sprintf("%s/%s/resolve/main/%s?download=true", HF_ENDPOINT, name, file))
+			outputPath := path.Join(s.home, "models", encName, file)
+			downloadURL := fmt.Sprintf("%s/%s/resolve/main/%s?download=true", HF_ENDPOINT, name, file)
+
+			pgetDownloader := NewPgetDownloader(opt.ParallelWorkers)
+			err := pgetDownloader.DownloadWithProgress(ctx, downloadURL, outputPath, config.Get().HFToken, infoC)
 			if err != nil {
 				errC <- err
 				return
 			}
-			totalSize += res.Size()
+
+			stat, err := os.Stat(outputPath)
+			if err != nil {
+				errC <- err
+				return
+			}
+			totalSize += stat.Size()
 		}
 
 		model := types.ModelManifest{

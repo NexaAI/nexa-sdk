@@ -50,7 +50,9 @@ func pull() *cobra.Command {
 			return
 		}
 
-		opt := store.PullOption{}
+		opt := store.PullOption{
+			ParallelWorkers: 8,
+		}
 		if manifest != nil {
 			// use preset manifest
 			opt.ModelType = manifest.ModelType
