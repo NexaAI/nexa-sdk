@@ -139,7 +139,7 @@ func (s *Store) Pull(ctx context.Context, name string, opt PullOption) (infoCh <
 			downloadURL := fmt.Sprintf("%s/%s/resolve/main/%s?download=true", HF_ENDPOINT, name, file)
 
 			pgetDownloader := NewPgetDownloader()
-			err := pgetDownloader.DownloadWithProgress(ctx, downloadURL, outputPath, config.Get().HFToken, infoC)
+			err := pgetDownloader.DownloadWithProgress(ctx, downloadURL, config.Get().HFToken, outputPath, infoC)
 			if err != nil {
 				errC <- err
 				return

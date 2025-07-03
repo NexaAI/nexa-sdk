@@ -20,8 +20,8 @@ type PgetDownloader struct {
 
 func NewPgetDownloader() *PgetDownloader {
 	return &PgetDownloader{options: download.Options{
-		MaxConcurrency: 8,
-		ChunkSize:      16 << 20, // 16 MiB
+		MaxConcurrency: 16,
+		ChunkSize:      1 << 20, // 1 MiB
 		Client: client.Options{
 			MaxRetries: 2,
 			Transport:  &authTransport{Base: http.DefaultTransport},
@@ -29,7 +29,11 @@ func NewPgetDownloader() *PgetDownloader {
 	}}
 }
 
-func (pd *PgetDownloader) DownloadWithProgress(ctx context.Context, url, outputPath, authToken string, progressCh chan<- types.DownloadInfo) error {
+func (pd *PgetDownloader) DownloadWithProgress(
+	ctx context.Context,
+	url, authToken, outputPath string,
+	progressCh chan<- types.DownloadInfo,
+) error {
 	pd.options.Client.Transport.(*authTransport).AuthToken = authToken
 
 	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
