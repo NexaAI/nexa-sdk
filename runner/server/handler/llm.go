@@ -71,7 +71,7 @@ var toolCallRegex = regexp.MustCompile(`<tool_call>([\s\S]+)<\/tool_call>`)
 // curl -v http://localhost:18181/v1/chat/completions -d '{ "model": "Qwen/Qwen2.5-1.5B-Instruct-GGUF", "messages": [ { "role": "user", "content": "What is the weather like in Boston today?" } ], "tools": [ { "type": "function", "function": { "name": "get_current_weather", "description": "Get the current weather in a given location", "parameters": { "type": "object", "properties": { "location": { "type": "string", "description": "The city and state, e.g. San Francisco, CA" }, "unit": { "type": "string", "enum": ["celsius", "fahrenheit"] } }, "required": ["location"] } } } ] }'
 //
 // VLM
-// curl -v http://localhost:18181/v1/chat/completions -d '{ "model": "nexaml/nexaml-models", "messages": [ { "role": "user", "content": [ { "type": "text", "text": "what is main color of the picture" }, { "type": "image_url", "image_url": "1.jpg" } ] } ], "stream": true }'
+// curl -v http://localhost:18181/v1/chat/completions -d '{ "model": "nexaml/nexaml-models", "messages": [ { "role": "user", "content": [ { "type": "text", "text": "what is main color of the picture" }, { "type": "image_url", { "url": "1.jpg" } } ] } ], "stream": true }'
 //
 //	@Router			/chat/completions [post]
 //	@Summary		Creates a model response for the given chat conversation.
@@ -227,7 +227,7 @@ func chatLLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 }
 
 func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
-	// get llm
+	// get vlm
 
 	p, err := service.KeepAliveGet[nexa_sdk.VLM](
 		string(param.Model),
