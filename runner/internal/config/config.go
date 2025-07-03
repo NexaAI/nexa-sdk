@@ -27,11 +27,11 @@ func Get() *Config {
 // init sets up default configuration values using Viper.
 // These defaults are used if no environment variables are provided.
 func init() {
-	viper.SetDefault("debug", false) // Default 5-minute timeout
+	viper.SetDefault("debug", false) // Default debug mode off
 
 	viper.SetDefault("host", "127.0.0.1:18181") // Default server address
 	viper.SetDefault("keepalive", 300)          // Default 5-minute timeout
-	viper.SetDefault("hftoken", "")             // Default 5-minute timeout
+	viper.SetDefault("hftoken", "")             // Default empty token
 }
 
 // get initializes the configuration by reading from environment variables.
