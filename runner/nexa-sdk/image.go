@@ -9,12 +9,14 @@ extern bool go_generate_stream_on_token(char*, void*);
 import "C"
 
 import (
+	"errors"
 	"fmt"
 	"image"
 	"image/draw"
 	_ "image/jpeg" // Register JPEG format
 	_ "image/png"  // Register PNG format
 	"os"
+	"slices"
 	"unsafe"
 )
 
@@ -179,7 +181,6 @@ func (ig *ImageGen) Txt2Img(prompt string, config ImageGenerationConfig) (*Image
 	if cImage.data == nil {
 		return nil, ErrSDK
 	}
-
 	return &Image{ptr: &cImage}, nil
 }
 
@@ -221,28 +222,23 @@ func (ig *ImageGen) convertImageGenerationConfig(config ImageGenerationConfig) (
 	cConfig := &C.ml_ImageGenerationConfig{}
 	var cleanupFuncs []func()
 
-	// Convert prompts
 	if len(config.Prompts) > 0 {
-		cPrompts := make([]*C.char, len(config.Prompts))
-		for i, prompt := range config.Prompts {
-			cPrompts[i] = C.CString(prompt)
-			cleanupFuncs = append(cleanupFuncs, func(p *C.char) func() {
-				return func() { C.free(unsafe.Pointer(p)) }
-			}(cPrompts[i]))
+		cprompts, clean, err := stringSliceToC(config.Prompts)
+		if err != nil {
+			panic(fmt.Sprintf("failed to convert prompts: %v", err))
 		}
-		cConfig.prompts = &cPrompts[0]
+		cConfig.prompts = cprompts
+		cleanupFuncs = append(cleanupFuncs, clean)
 	}
 
 	// Convert negative prompts
 	if len(config.NegativePrompts) > 0 {
-		cNegativePrompts := make([]*C.char, len(config.NegativePrompts))
-		for i, prompt := range config.NegativePrompts {
-			cNegativePrompts[i] = C.CString(prompt)
-			cleanupFuncs = append(cleanupFuncs, func(p *C.char) func() {
-				return func() { C.free(unsafe.Pointer(p)) }
-			}(cNegativePrompts[i]))
+		cprompts, clean, err := stringSliceToC(config.NegativePrompts)
+		if err != nil {
+			panic(fmt.Sprintf("failed to convert prompts: %v", err))
 		}
-		cConfig.negative_prompts = &cNegativePrompts[0]
+		cConfig.prompts = cprompts
+		cleanupFuncs = append(cleanupFuncs, clean)
 	}
 
 	// Set basic parameters
@@ -278,81 +274,147 @@ func (ig *ImageGen) convertImageGenerationConfig(config ImageGenerationConfig) (
 	return cConfig, cleanup
 }
 
+func stringSliceToC(goStrings []string) (**C.char, func(), error) {
+	l := len(goStrings)
+	if l == 0 {
+		return nil, func() {}, nil
+	}
+
+	cArr := C.malloc(C.size_t(l+1) * C.size_t(unsafe.Sizeof(uintptr(0))))
+	if cArr == nil {
+		return nil, nil, errors.New("failed to allocate memory")
+	}
+
+	cleanupFuncs := make([]func(), 0, l+1)
+	cleanupFuncs = append(cleanupFuncs, func() { C.free(unsafe.Pointer(cArr)) })
+	cArrSlice := (*[1 << 30]*C.char)(cArr)[:l+1]
+	for i, s := range goStrings {
+		cs := C.CString(s)
+		cleanupFuncs = append(cleanupFuncs, func() { C.free(unsafe.Pointer(cs)) })
+		cArrSlice[i] = cs
+	}
+	cArrSlice[l] = nil
+
+	clean := func() {
+		for _, fn := range slices.Backward(cleanupFuncs) {
+			fn()
+		}
+	}
+	return (**C.char)(unsafe.Pointer(cArr)), clean, nil
+}
+
 // Image represents an image structure
 type Image struct {
 	ptr *C.ml_Image // Pointer to the underlying C Image structure
 }
 
 // NewImage creates a new Image instance from the specified file path
-func NewImage(path string) (Image, error) {
+func NewImage(path string) (*Image, error) {
 	// Open the image file
 	file, err := os.Open(path)
 	if err != nil {
-		return Image{}, fmt.Errorf("failed to open image file: %w", err)
+		return nil, fmt.Errorf("failed to open image[%s]: %w", path, err)
 	}
 	defer file.Close()
 
 	// Decode the image
-	img, _, err := image.Decode(file)
+	img, format, err := image.Decode(file)
 	if err != nil {
-		return Image{}, fmt.Errorf("failed to decode image: %w", err)
+		return nil, fmt.Errorf("failed to decode image: %s (format: %s): %w", path, format, err)
 	}
 
 	// Get image dimensions
 	bounds := img.Bounds()
 	width := bounds.Dx()
 	height := bounds.Dy()
-	channels := 3 // RGB
 
-	// Convert to RGBA if needed
-	var rgbaImg *image.RGBA
-	if rgba, ok := img.(*image.RGBA); ok {
-		rgbaImg = rgba
-		channels = 4 // RGBA
-	} else {
-		// Convert to RGBA
-		rgbaImg = image.NewRGBA(bounds)
-		draw.Draw(rgbaImg, bounds, img, bounds.Min, draw.Src)
-		channels = 4 // RGBA
+	// Validate image dimensions
+	if width <= 0 || height <= 0 {
+		return nil, fmt.Errorf("invalid image dimensions: %dx%d", width, height)
+	}
+
+	// Determine optimal format and channels
+	var channels int
+	var pixelData []uint8
+
+	// Try to preserve original format when possible
+	switch srcImg := img.(type) {
+	case *image.RGBA:
+		channels = 4
+		pixelData = srcImg.Pix
+	case *image.NRGBA:
+		channels = 4
+		// Convert NRGBA to RGBA
+		rgbaImg := image.NewRGBA(bounds)
+		draw.Draw(rgbaImg, bounds, srcImg, bounds.Min, draw.Src)
+		pixelData = rgbaImg.Pix
+	case *image.Gray:
+		channels = 1
+		pixelData = srcImg.Pix
+	default:
+		// Convert other formats to RGB (3 channels)
+		channels = 3
+		rgbImg := image.NewRGBA(bounds)
+		draw.Draw(rgbImg, bounds, img, bounds.Min, draw.Src)
+
+		// Extract RGB channels (skip alpha)
+		pixelData = make([]uint8, width*height*3)
+		for i := 0; i < len(rgbImg.Pix); i += 4 {
+			rgbIdx := (i / 4) * 3
+			pixelData[rgbIdx] = rgbImg.Pix[i]     // R
+			pixelData[rgbIdx+1] = rgbImg.Pix[i+1] // G
+			pixelData[rgbIdx+2] = rgbImg.Pix[i+2] // B
+		}
+	}
+
+	// Calculate data size
+	dataSize := width * height * channels
+	if len(pixelData) != dataSize {
+		return nil, fmt.Errorf("pixel data size mismatch: expected %d, got %d", dataSize, len(pixelData))
 	}
 
 	// Allocate C memory for image data
-	dataSize := width * height * channels
 	cData := (*C.float)(C.malloc(C.size_t(dataSize * 4))) // 4 bytes per float32
 	if cData == nil {
-		return Image{}, fmt.Errorf("failed to allocate memory for image data")
+		return nil, fmt.Errorf("failed to allocate memory for image data")
 	}
 
-	// Convert pixel data to float32 array
-	floatData := (*[1 << 30]C.float)(unsafe.Pointer(cData))[:dataSize:dataSize]
-	pixels := rgbaImg.Pix
+	// Create cleanup function for error cases
+	cleanupData := func() {
+		C.free(unsafe.Pointer(cData))
+	}
 
-	for i := 0; i < dataSize; i++ {
+	// Convert pixel data to float32 array (optimized)
+	floatData := (*[1 << 30]C.float)(unsafe.Pointer(cData))[:dataSize:dataSize]
+	for i, pixel := range pixelData {
 		// Normalize pixel values from [0, 255] to [0.0, 1.0]
-		floatData[i] = C.float(float32(pixels[i]) / 255.0)
+		floatData[i] = C.float(float32(pixel) / 255.0)
 	}
 
 	// Create C.ml_Image structure
 	cImage := (*C.ml_Image)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_Image{}))))
 	if cImage == nil {
-		C.free(unsafe.Pointer(cData))
-		return Image{}, fmt.Errorf("failed to allocate memory for ml_Image")
+		cleanupData()
+		return nil, fmt.Errorf("failed to allocate memory for ml_Image")
 	}
 
+	// Initialize the C structure
 	cImage.data = cData
 	cImage.width = C.int32_t(width)
 	cImage.height = C.int32_t(height)
 	cImage.channels = C.int32_t(channels)
 
-	return Image{ptr: cImage}, nil
+	return &Image{ptr: cImage}, nil
 }
 
 func (img *Image) Save(path string) error {
-	if img.ptr != nil {
-		return fmt.Errorf("%w: save image failed: %s,", ErrSDK, path)
+	if img.ptr == nil {
+		return fmt.Errorf("image pointer is nil")
 	}
 
-	C.ml_image_free(img.ptr)
+	cPath := C.CString(path)
+	defer C.free(unsafe.Pointer(cPath))
+	C.ml_image_save(img.ptr, cPath)
 	img.ptr = nil
 	return nil
 }
