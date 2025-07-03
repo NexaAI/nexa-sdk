@@ -15,6 +15,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.6.7
 	github.com/nikolalohinski/gonja/v2 v2.3.4
 	github.com/openai/openai-go v1.6.0
+	github.com/rs/zerolog v1.33.0
 	github.com/schollz/progressbar/v3 v3.18.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
@@ -26,7 +27,6 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.7 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
-	github.com/rs/zerolog v1.33.0 // indirect
 	github.com/ulikunitz/xz v0.5.12 // indirect
 )
 
