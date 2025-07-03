@@ -18,12 +18,11 @@ import (
 )
 
 var (
-	//disableStream *bool
-	tool         []string
-	image, audio string
-	prompt       []string
-	query        string
-	document     []string
+	//disableStream *bool // reuse in run.go
+	tool     []string
+	prompt   []string
+	query    string
+	document []string
 )
 
 func infer() *cobra.Command {
@@ -37,9 +36,7 @@ func infer() *cobra.Command {
 
 	inferCmd.Flags().BoolVarP(&disableStream, "disable-stream", "s", false, "disable stream mode in llm/vlm")
 	inferCmd.Flags().StringSliceVarP(&tool, "tool", "t", nil, "add tool to make function call")
-	inferCmd.Flags().StringVarP(&image, "image", "i", "", "pass image file to vlm")
-	inferCmd.Flags().StringVarP(&audio, "audio", "a", "", "pass audio file to vlm")
-	inferCmd.Flags().StringSliceVarP(&prompt, "prompt", "p", nil, "pass prompt to vlm/embedder")
+	inferCmd.Flags().StringSliceVarP(&prompt, "prompt", "p", nil, "pass prompt to embedder")
 	inferCmd.Flags().StringVarP(&query, "query", "q", "", "rerank only")
 	inferCmd.Flags().StringSliceVarP(&document, "document", "d", nil, "rerank only")
 

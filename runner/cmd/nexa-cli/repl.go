@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -119,7 +120,7 @@ func repl(cfg ReplConfig) {
 			line, images, audios = parseFiles(line)
 		}
 
-		if len(images) == 0 && len(audio) == 0 && strings.HasPrefix(line, "/") {
+		if len(images) == 0 && len(audios) == 0 && strings.HasPrefix(line, "/") {
 
 			fileds := strings.Fields(strings.TrimSpace(line))
 
@@ -215,6 +216,8 @@ func repl(cfg ReplConfig) {
 	}
 }
 
+// =============== file name parse ===============
+
 var fileRegex = regexp.MustCompile(`(?:[a-zA-Z]:)?(?:\./|/|\\)[\S\\ ]+?\.(?i:jpg|jpeg|png|webp|mp3|wav)\b`)
 
 func parseFiles(prompt string) (string, []string, []string) {
@@ -263,7 +266,42 @@ func parseFiles(prompt string) (string, []string, []string) {
 
 }
 
-var quantRegix = regexp.MustCompile(``)
+// =============== quant name parse ===============
+
+// (f32|f16|q4_k_m|q4_1).gguf
+var quantRegix = regexp.MustCompile(`\b([qQ][0-9]+(_[A-Z0-9]+)*|[fF][0-9]+)`)
+
+// order big to small
+func quantGreaterThan(a, b string, order []string) bool {
+	// empty
+	if a == "" || b == "" {
+		return a != ""
+	}
+
+	a = strings.ToUpper(a)
+	b = strings.ToUpper(b)
+
+	// same
+	if a == b {
+		return false
+	}
+
+	// order
+	ca := slices.Index(order, a)
+	cb := slices.Index(order, b)
+	if ca >= 0 && cb >= 0 {
+		return ca < cb
+	} else if ca >= 0 || cb >= 0 {
+		return ca >= 0
+	}
+
+	// normal
+	if a[0] == b[0] {
+		return a > b
+	} else {
+		return a[0] == 'F'
+	}
+}
 
 func chooseFiles(name string, files []string) (res types.ModelManifest, err error) {
 	if len(files) == 0 {
@@ -287,6 +325,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 		Run(); err != nil {
 		return
 	}
+	res.ModelType = types.ModelType(modelTypeString)
 
 	// check gguf
 	var ggufs, mmprojs []string
@@ -312,47 +351,64 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 			res.ModelFile = ggufs[0]
 		default:
 			// interactive choose
-			var useDefault bool
 
-			var file string
+			var file, quant string
 			// select default gguf
+			for _, gguf := range ggufs {
+				ggufQuant := quantRegix.FindString(gguf)
+				if quantGreaterThan(ggufQuant, quant, []string{"Q4_K_M", "Q4_0", "Q8_0"}) {
+					quant = ggufQuant
+					file = gguf
+				}
+			}
 
-			if err = huh.NewSelect[bool]().
-				Title("Choose a version to download").
-				Options(
-					huh.NewOption(fmt.Sprintf("default (%s)", file), true),
-					huh.NewOption("choose a quant version", false),
-				).
-				Value(&useDefault).
+			options := make([]huh.Option[string], 0, len(ggufs)+1)
+			if file != "" {
+				options = append(options, huh.NewOption(fmt.Sprintf("default (%s)", quant), file))
+			}
+			for i := range ggufs {
+				quant := quantRegix.FindString(ggufs[i])
+				if quant != "" && file != ggufs[i] {
+					options = append(options, huh.NewOption(quant, ggufs[i]))
+				}
+			}
+
+			if len(options) == 0 {
+				err = fmt.Errorf("no valid gguf found")
+				return
+			}
+
+			if err = huh.NewSelect[string]().
+				Title("Choose a quant version to download").
+				Options(options...).
+				Value(&file).
 				Run(); err != nil {
 				return
 			}
 
-			if !useDefault {
-				options := make([]huh.Option[string], len(ggufs))
-				for i := range ggufs {
-					options[i] = huh.NewOption(ggufs[i], ggufs[i])
-				}
-
-				if err = huh.NewSelect[string]().
-					Title("Choose a quant version to download").
-					Options(options...).
-					Value(&file).
-					Run(); err != nil {
-					return
-				}
-
-			}
-
+			res.ModelFile = file
 		}
 
-		// detect mmproj
-		switch len(mmprojs) {
-		case 0:
-		case 1:
-			res.TokenizerFile = mmprojs[0]
-		default:
-			// match biggest
+		if res.ModelType == types.ModelTypeVLM {
+			// detect mmproj
+			switch len(mmprojs) {
+			case 0:
+			case 1:
+				res.TokenizerFile = mmprojs[0]
+			default:
+				// match biggest
+				var file, quant string
+
+				for _, mmproj := range mmprojs {
+					mmprojQuant := quantRegix.FindString(mmproj)
+					if quantGreaterThan(mmprojQuant, quant, nil) {
+						quant = mmprojQuant
+						file = mmproj
+					}
+				}
+
+				res.TokenizerFile = file
+			}
 		}
 
 	} else {
