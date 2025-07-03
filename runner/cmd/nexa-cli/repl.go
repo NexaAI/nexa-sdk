@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -119,7 +120,7 @@ func repl(cfg ReplConfig) {
 			line, images, audios = parseFiles(line)
 		}
 
-		if len(images) == 0 && len(audio) == 0 && strings.HasPrefix(line, "/") {
+		if len(images) == 0 && len(audios) == 0 && strings.HasPrefix(line, "/") {
 
 			fileds := strings.Fields(strings.TrimSpace(line))
 
@@ -215,6 +216,8 @@ func repl(cfg ReplConfig) {
 	}
 }
 
+// =============== file name parse ===============
+
 var fileRegex = regexp.MustCompile(`(?:[a-zA-Z]:)?(?:\./|/|\\)[\S\\ ]+?\.(?i:jpg|jpeg|png|webp|mp3|wav)\b`)
 
 func parseFiles(prompt string) (string, []string, []string) {
@@ -263,86 +266,172 @@ func parseFiles(prompt string) (string, []string, []string) {
 
 }
 
-func chooseFiles(files []string) (modelType types.ModelType, model, tokenizer string, extras []string, err error) {
-	var confirm bool
+// =============== quant name parse ===============
+
+// (f32|f16|q4_k_m|q4_1).gguf
+var quantRegix = regexp.MustCompile(`\b([qQ][0-9]+(_[A-Z0-9]+)*|[fF][0-9]+)`)
+
+// order big to small
+func quantGreaterThan(a, b string, order []string) bool {
+	// empty
+	if a == "" || b == "" {
+		return a != ""
+	}
+
+	a = strings.ToUpper(a)
+	b = strings.ToUpper(b)
+
+	// same
+	if a == b {
+		return false
+	}
+
+	// order
+	ca := slices.Index(order, a)
+	cb := slices.Index(order, b)
+	if ca >= 0 && cb >= 0 {
+		return ca < cb
+	} else if ca >= 0 || cb >= 0 {
+		return ca >= 0
+	}
+
+	// normal
+	if a[0] == b[0] {
+		return a > b
+	} else {
+		return a[0] == 'F'
+	}
+}
+
+func chooseFiles(name string, files []string) (res types.ModelManifest, err error) {
+	if len(files) == 0 {
+		err = fmt.Errorf("repo is empty")
+		return
+	}
+
+	res.Name = name
+
+	// choose model type
 	var modelTypeString string
+	if err = huh.NewSelect[string]().
+		Title("Choose model type").
+		Options(
+			huh.NewOption(types.ModelTypeLLM, types.ModelTypeLLM),
+			huh.NewOption(types.ModelTypeVLM, types.ModelTypeVLM),
+			huh.NewOption(types.ModelTypeEmbedder, types.ModelTypeEmbedder),
+			huh.NewOption(types.ModelTypeReranker, types.ModelTypeReranker),
+		).
+		Value(&modelTypeString).
+		Run(); err != nil {
+		return
+	}
+	res.ModelType = types.ModelType(modelTypeString)
 
-	for !confirm {
-		err = huh.NewForm(
-			huh.NewGroup(
-				huh.NewSelect[string]().
-					Title("Choose model type").
-					Options(
-						huh.NewOption(types.ModelTypeLLM, types.ModelTypeLLM),
-						huh.NewOption(types.ModelTypeVLM, types.ModelTypeVLM),
-						huh.NewOption(types.ModelTypeEmbedder, types.ModelTypeEmbedder),
-						huh.NewOption(types.ModelTypeReranker, types.ModelTypeReranker),
-					).
-					Value(&modelTypeString),
-			),
-			huh.NewGroup(
-				huh.NewSelect[string]().
-					Title("Pick main modelfile").
-					OptionsFunc(func() []huh.Option[string] {
-						opts := make([]huh.Option[string], 0, len(files))
-						for _, file := range files {
-							opts = append(opts, huh.NewOption(file, file))
-						}
-						return opts
-					}, &files).
-					Value(&model),
-			),
-			huh.NewGroup(
-				huh.NewSelect[string]().
-					Title("Pick tokenizer").
-					OptionsFunc(func() []huh.Option[string] {
-						opts := make([]huh.Option[string], 0, len(files))
-						opts = append(opts, huh.NewOption("(without tokenzier)", ""))
-						for _, file := range files {
-							if file == model {
-								continue
-							}
-							opts = append(opts, huh.NewOption(file, file))
-						}
-						return opts
-					}, &model).
-					Value(&tokenizer),
-			),
-			huh.NewGroup(
-				huh.NewMultiSelect[string]().
-					Title("Pick extra files").
-					OptionsFunc(func() []huh.Option[string] {
-						opts := make([]huh.Option[string], 0, len(files))
-						for _, file := range files {
-							if file == model || file == tokenizer {
-								continue
-							}
-							opts = append(opts, huh.NewOption(file, file))
-						}
-						return opts
-					}, []any{&model, &tokenizer}).
-					Value(&extras),
-			),
-			huh.NewGroup(
-				huh.NewConfirm().
-					TitleFunc(func() string {
-						return "Confirm the config\n" +
-							text.Colors{text.Reset, text.FgWhite}.Sprintf("ModelType:  %s\n", modelTypeString) +
-							text.Colors{text.Reset, text.FgWhite}.Sprintf("ModelFile:  %s\n", model) +
-							text.Colors{text.Reset, text.FgWhite}.Sprintf("Tokenizer:  %s\n", tokenizer) +
-							text.Colors{text.Reset, text.FgWhite}.Sprintf("ExtraFiles:  %s\n", strings.Join(extras, ","))
-					}, []any{&modelTypeString, &model, &tokenizer, &extras}).
-					Affirmative("Yes!").
-					Negative("No.").
-					Value(&confirm),
-			),
-		).Run()
-
-		if err != nil {
-			return
+	// check gguf
+	var ggufs, mmprojs []string
+	for _, file := range files {
+		lower := strings.ToLower(file)
+		if strings.HasSuffix(lower, ".gguf") {
+			if strings.HasPrefix(lower, "mmproj") {
+				mmprojs = append(mmprojs, file)
+			} else {
+				ggufs = append(ggufs, file)
+			}
 		}
 	}
 
-	modelType = types.ModelType(modelTypeString)
+	// choose model file
+	if len(ggufs) > 0 || len(mmprojs) > 0 {
+		// detect gguf
+		switch len(ggufs) {
+		case 0:
+			err = fmt.Errorf("can no detect model file in repo")
+			return
+		case 1:
+			res.ModelFile = ggufs[0]
+		default:
+			// interactive choose
+
+			var file, quant string
+			// select default gguf
+			for _, gguf := range ggufs {
+				ggufQuant := quantRegix.FindString(gguf)
+				if quantGreaterThan(ggufQuant, quant, []string{"Q4_K_M", "Q4_0", "Q8_0"}) {
+					quant = ggufQuant
+					file = gguf
+				}
+			}
+
+			options := make([]huh.Option[string], 0, len(ggufs)+1)
+			if file != "" {
+				options = append(options, huh.NewOption(fmt.Sprintf("default (%s)", quant), file))
+			}
+			for i := range ggufs {
+				quant := quantRegix.FindString(ggufs[i])
+				if quant != "" && file != ggufs[i] {
+					options = append(options, huh.NewOption(quant, ggufs[i]))
+				}
+			}
+
+			if len(options) == 0 {
+				err = fmt.Errorf("no valid gguf found")
+				return
+			}
+
+			if err = huh.NewSelect[string]().
+				Title("Choose a quant version to download").
+				Options(options...).
+				Value(&file).
+				Run(); err != nil {
+				return
+			}
+
+			res.ModelFile = file
+		}
+
+		if res.ModelType == types.ModelTypeVLM {
+			// detect mmproj
+			switch len(mmprojs) {
+			case 0:
+			case 1:
+				res.TokenizerFile = mmprojs[0]
+			default:
+				// match biggest
+				var file, quant string
+
+				for _, mmproj := range mmprojs {
+					mmprojQuant := quantRegix.FindString(mmproj)
+					if quantGreaterThan(mmprojQuant, quant, nil) {
+						quant = mmprojQuant
+						file = mmproj
+					}
+				}
+
+				res.TokenizerFile = file
+			}
+		}
+
+	} else {
+		// other format
+
+		// detect main model file
+		// add other files
+		for _, file := range files {
+			if res.ModelFile == "" {
+				lower := strings.ToLower(file)
+				if strings.HasSuffix(lower, "safetensors") || strings.HasSuffix(lower, "npz") {
+					res.ModelFile = file
+					continue
+				}
+			}
+			res.ExtraFiles = append(res.ExtraFiles, file)
+		}
+		// fallback to first file
+		if res.ModelFile == "" {
+			res.ModelFile = files[0]
+			res.ExtraFiles = res.ExtraFiles[1:]
+		}
+	}
+
 	return
 }

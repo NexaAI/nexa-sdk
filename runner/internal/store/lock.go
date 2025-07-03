@@ -9,7 +9,7 @@ import (
 
 func (s *Store) LockModel(modelName string) error {
 	if modelName == "" {
-		return ErrModelLocked
+		return ErrModelNameEmpty
 	}
 
 	encName := s.encodeName(modelName)
