@@ -24,7 +24,7 @@ func NewPgetDownloader() *PgetDownloader {
 		ChunkSize:      16 << 20, // 16 MiB
 		Client: client.Options{
 			MaxRetries: 2,
-			Transport:  &authTransport{},
+			Transport:  &authTransport{Base: http.DefaultTransport},
 		},
 	}}
 }
