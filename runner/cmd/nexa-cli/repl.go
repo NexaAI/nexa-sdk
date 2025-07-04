@@ -167,8 +167,12 @@ func repl(cfg ReplConfig) {
 
 		// chat
 		if cfg.Stream {
-			start := time.Now()
 			var count int
+			var tokenStart time.Time
+			var firstToken bool
+
+			// track RunStream start time for TTFT calculation
+			runStreamStart := time.Now()
 
 			// run async
 			dataCh := make(chan string, 10)
@@ -178,18 +182,29 @@ func repl(cfg ReplConfig) {
 			// print stream
 			fmt.Print(text.FgYellow.EscapeSeq())
 			for r := range dataCh {
+				if !firstToken {
+					tokenStart = time.Now()
+					firstToken = true
+				}
 				fmt.Print(r)
 				count++
 			}
 			fmt.Print(text.Reset.EscapeSeq())
 			fmt.Println()
+      
+			// print metrics
+			if firstToken {
+				ttft := tokenStart.Sub(runStreamStart).Seconds()
+				tokenDuration := time.Since(tokenStart).Seconds()
+				tokensPerSecond := float64(count) / tokenDuration
 
-			// print duration
-			duration := time.Since(start).Seconds()
-			fmt.Println(text.FgBlue.Sprintf(
-				"Generate %d token in %f s, speed is %f token/s\n",
-				count, duration, float64(count)/duration,
-			))
+				fmt.Println(text.FgBlue.Sprintf(
+					"TTFT: %f s, Generated %d tokens at %f token/s",
+					ttft, count, tokensPerSecond,
+				))
+			} else {
+				fmt.Println(text.FgBlue.Sprintf("(no tokens generated)"))
+			}
 
 			// check error
 			e, ok := <-errCh
