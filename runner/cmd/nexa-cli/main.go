@@ -36,16 +36,10 @@ func RootCmd() *cobra.Command {
 		pull(), remove(), clean(), list(),
 		infer(), genImage(),
 		serve(), run(),
+		version(),
 	)
 
 	return rootCmd
-}
-
-// main is the entry point that executes the root command.
-func main() {
-	if err := RootCmd().Execute(); err != nil {
-		os.Exit(1)
-	}
 }
 
 func normalizeModelName(name string) string {
@@ -61,5 +55,11 @@ func normalizeModelName(name string) string {
 	}
 
 	return name
+}
 
+// main is the entry point that executes the root command.
+func main() {
+	if err := RootCmd().Execute(); err != nil {
+		os.Exit(1)
+	}
 }
