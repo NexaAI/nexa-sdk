@@ -172,32 +172,33 @@ func repl(cfg ReplConfig) {
 		// chat
 		if cfg.Stream {
 			var count int
-			var tokenStart time.Time
-			var firstToken bool
-
-			// track RunStream start time for TTFT calculation
-			runStreamStart := time.Now()
+			var runStreamStart, tokenStart time.Time
+			firstToken := true
 
 			// run async
 			dataCh := make(chan string, 10)
 			errCh := make(chan error, 1)
+
+			// track RunStream start time for TTFT calculation
+			runStreamStart = time.Now()
+			fmt.Print(text.FgMagenta.EscapeSeq())
 			go cfg.RunStream(context.TODO(), line, images, audios, dataCh, errCh)
 
 			// print stream
-			fmt.Print(text.FgYellow.EscapeSeq())
 			for r := range dataCh {
-				if !firstToken {
+				if firstToken {
 					tokenStart = time.Now()
-					firstToken = true
+					firstToken = false
+					fmt.Print(text.FgYellow.EscapeSeq())
 				}
 				fmt.Print(r)
 				count++
 			}
 			fmt.Print(text.Reset.EscapeSeq())
 			fmt.Println()
-      
+
 			// print metrics
-			if firstToken {
+			if !firstToken {
 				ttft := tokenStart.Sub(runStreamStart).Seconds()
 				tokenDuration := time.Since(tokenStart).Seconds()
 				tokensPerSecond := float64(count) / tokenDuration
@@ -218,6 +219,7 @@ func repl(cfg ReplConfig) {
 		} else {
 			start := time.Now()
 
+			fmt.Print(text.FgMagenta.EscapeSeq())
 			res, err := cfg.Run(line, images, audios)
 			fmt.Println(text.FgYellow.Sprint(res))
 
