@@ -322,6 +322,40 @@ func quantGreaterThan(a, b string, order []string) bool {
 	}
 }
 
+// getFileSizesConcurrent fetches file sizes concurrently with a limit of 8 concurrent requests
+func getFileSizesConcurrent(name string, files []string) map[string]int64 {
+	fileSizes := make(map[string]int64, len(files))
+	if len(files) == 0 {
+		return fileSizes
+	}
+
+	// Create semaphore to limit concurrent requests to 8
+	sem := make(chan struct{}, 8)
+	var wg sync.WaitGroup
+
+	for i, file := range files {
+		wg.Add(1)
+		// Acquire semaphore
+		sem <- struct{}{}
+
+		go func(index int, filename string) {
+			defer wg.Done()
+			defer func() { <-sem }()
+
+			size, err := store.Get().HFFileSize(context.TODO(), name, filename)
+			if err != nil {
+				fmt.Println(text.FgRed.Sprintf("get filesize error: [%s] %s", filename, err))
+				return
+			}
+
+			fileSizes[filename] = size
+		}(i, file)
+	}
+
+	wg.Wait()
+	return fileSizes
+}
+
 func chooseFiles(name string, files []string) (res types.ModelManifest, err error) {
 	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model size..."))
 
@@ -350,44 +384,18 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 		// detect gguf
 		if len(ggufs) == 1 {
 			res.ModelFile = ggufs[0]
+			size, err := store.Get().HFFileSize(context.TODO(), name, ggufs[0])
+			if err != nil {
+				fmt.Println(text.FgRed.Sprintf("get filesize error: [%s] %s", ggufs[0], err))
+			} else {
+				res.Size += size
+			}
 		} else {
 			// interactive choose
 
 			// Get file sizes for display
-			fileSizes := make(map[string]int64, len(ggufs))
-			fileSizesMutex := sync.RWMutex{}
-
 			spin.Start()
-
-			// Create semaphore to limit concurrent requests to 8
-			sem := make(chan struct{}, 8)
-			var wg sync.WaitGroup
-
-			fmt.Println(
-				"ggufs", ggufs,
-			)
-			for i, gguf := range ggufs {
-				wg.Add(1)
-				go func(index int, filename string) {
-					defer wg.Done()
-
-					// Acquire semaphore
-					sem <- struct{}{}
-					defer func() { <-sem }()
-
-					size, err := store.Get().HFFileSize(context.TODO(), name, filename)
-					if err != nil {
-						fmt.Println(text.FgRed.Sprintf("get filesize error: [%s] %s", filename, err))
-						return
-					}
-
-					fileSizesMutex.Lock()
-					fileSizes[filename] = size
-					fileSizesMutex.Unlock()
-				}(i, gguf)
-			}
-
-			wg.Wait()
+			fileSizes := getFileSizesConcurrent(name, ggufs)
 			spin.Stop()
 
 			// select default gguf
@@ -440,25 +448,38 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 		case 0:
 		case 1:
 			res.MMProjFile = mmprojs[0]
+			size, err := store.Get().HFFileSize(context.TODO(), name, mmprojs[0])
+			if err != nil {
+				fmt.Println(text.FgRed.Sprintf("get filesize error: [%s] %s", mmprojs[0], err))
+			} else {
+				res.Size += size
+			}
 		default:
+			// Get mmproj file sizes for display
+			spin.Start()
+			mmprojSizes := getFileSizesConcurrent(name, mmprojs)
+			spin.Stop()
+
 			// match biggest
 			var file, quant string
+			var maxSize int64
 
 			for _, mmproj := range mmprojs {
 				mmprojQuant := quantRegix.FindString(mmproj)
-				if quantGreaterThan(mmprojQuant, quant, nil) {
+				size := mmprojSizes[mmproj]
+				if quantGreaterThan(mmprojQuant, quant, nil) || (mmprojQuant == quant && size > maxSize) {
 					quant = mmprojQuant
 					file = mmproj
+					maxSize = size
 				}
 			}
 
 			res.MMProjFile = file
+			res.Size += mmprojSizes[file]
 		}
 
 		// TODO: add mmproj size
-		spin.Start()
 		time.Sleep(time.Second)
-		spin.Stop()
 
 	} else {
 		// other format
