@@ -16,15 +16,10 @@ import (
 	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
 )
 
-var (
-	//disableStream *bool // reuse in run.go
-	tool     []string
-	prompt   []string
-	query    string
-	document []string
-)
-
 func infer() *cobra.Command {
+	var disableStream bool
+	var tool []string
+
 	inferCmd := &cobra.Command{
 		Use:   "infer <model-name>",
 		Short: "Infer with a model",
@@ -35,9 +30,6 @@ func infer() *cobra.Command {
 
 	inferCmd.Flags().BoolVarP(&disableStream, "disable-stream", "s", false, "disable stream mode in llm/vlm")
 	inferCmd.Flags().StringSliceVarP(&tool, "tool", "t", nil, "add tool to make function call")
-	inferCmd.Flags().StringSliceVarP(&prompt, "prompt", "p", nil, "pass prompt to embedder")
-	inferCmd.Flags().StringVarP(&query, "query", "q", "", "rerank only")
-	inferCmd.Flags().StringSliceVarP(&document, "document", "d", nil, "rerank only")
 
 	inferCmd.Run = func(cmd *cobra.Command, args []string) {
 		model := normalizeModelName(args[0])
@@ -215,19 +207,16 @@ func inferVLM(model string, tokenizer *string) {
 }
 
 func embed() *cobra.Command {
+	var prompt []string
+
 	embedCmd := &cobra.Command{
-		Use:   "infer <model-name>",
-		Short: "Infer with a model",
-		Long:  "Run inference with a specified model. The model must be downloaded and cached locally.",
+		Use:   "embed <model-name>",
+		Short: "infer a embed model",
 	}
 
 	embedCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
 
-	embedCmd.Flags().BoolVarP(&disableStream, "disable-stream", "s", false, "disable stream mode in llm/vlm")
-	embedCmd.Flags().StringSliceVarP(&tool, "tool", "t", nil, "add tool to make function call")
 	embedCmd.Flags().StringSliceVarP(&prompt, "prompt", "p", nil, "pass prompt to embedder")
-	embedCmd.Flags().StringVarP(&query, "query", "q", "", "rerank only")
-	embedCmd.Flags().StringSliceVarP(&document, "document", "d", nil, "rerank only")
 
 	embedCmd.Run = func(cmd *cobra.Command, args []string) {
 		model := normalizeModelName(args[0])
@@ -279,17 +268,16 @@ func embed() *cobra.Command {
 }
 
 func rerank() *cobra.Command {
+	var query string
+	var document []string
+
 	rerankCmd := &cobra.Command{
-		Use:   "infer <model-name>",
-		Short: "Infer with a model",
-		Long:  "Run inference with a specified model. The model must be downloaded and cached locally.",
+		Use:   "rerank <model-name>",
+		Short: "infer a rerank model",
 	}
 
 	rerankCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
 
-	rerankCmd.Flags().BoolVarP(&disableStream, "disable-stream", "s", false, "disable stream mode in llm/vlm")
-	rerankCmd.Flags().StringSliceVarP(&tool, "tool", "t", nil, "add tool to make function call")
-	rerankCmd.Flags().StringSliceVarP(&prompt, "prompt", "p", nil, "pass prompt to embedder")
 	rerankCmd.Flags().StringVarP(&query, "query", "q", "", "rerank only")
 	rerankCmd.Flags().StringSliceVarP(&document, "document", "d", nil, "rerank only")
 

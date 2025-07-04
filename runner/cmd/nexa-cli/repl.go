@@ -10,10 +10,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/briandowns/spinner"
 	"github.com/charmbracelet/huh"
 	"github.com/chzyer/readline"
+	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/text"
 
+	"github.com/NexaAI/nexa-sdk/internal/store"
 	"github.com/NexaAI/nexa-sdk/internal/types"
 )
 
@@ -319,6 +322,8 @@ func quantGreaterThan(a, b string, order []string) bool {
 }
 
 func chooseFiles(name string, files []string) (res types.ModelManifest, err error) {
+	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model size..."))
+
 	if len(files) == 0 {
 		err = fmt.Errorf("repo is empty")
 		return
@@ -342,17 +347,26 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 	// choose model file
 	if len(ggufs) > 0 {
 		// detect gguf
-		switch len(ggufs) {
-		case 0:
-			err = fmt.Errorf("can no detect model file in repo")
-			return
-		case 1:
+		if len(ggufs) == 1 {
 			res.ModelFile = ggufs[0]
-		default:
+		} else {
 			// interactive choose
 
-			var file, quant string
+			// Get file sizes for display
+			fileSizes := make(map[string]int64, len(ggufs))
+			spin.Start()
+			for _, gguf := range ggufs {
+				size, err := store.Get().HFFileSize(context.TODO(), name, gguf)
+				if err != nil {
+					fmt.Println(text.FgRed.Sprintf("get filesize error: [%s] %s", gguf, err))
+					return res, err
+				}
+				fileSizes[gguf] = size
+			}
+			spin.Stop()
+
 			// select default gguf
+			var file, quant string
 			for _, gguf := range ggufs {
 				ggufQuant := quantRegix.FindString(gguf)
 				if quantGreaterThan(ggufQuant, quant, []string{"Q4_K_M", "Q4_0", "Q8_0"}) {
@@ -361,14 +375,21 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 				}
 			}
 
+			// Find the longest quant name for alignment
 			options := make([]huh.Option[string], 0, len(ggufs)+1)
 			if file != "" {
-				options = append(options, huh.NewOption(fmt.Sprintf("default (%s)", quant), file))
+				sizeStr := humanize.IBytes(uint64(fileSizes[file]))
+				options = append(options, huh.NewOption(
+					fmt.Sprintf("%-10s [%7s] (default)", quant, sizeStr), file,
+				))
 			}
 			for i := range ggufs {
-				quant := quantRegix.FindString(ggufs[i])
+				quant := strings.ToUpper(quantRegix.FindString(ggufs[i]))
 				if quant != "" && file != ggufs[i] {
-					options = append(options, huh.NewOption(quant, ggufs[i]))
+					sizeStr := humanize.IBytes(uint64(fileSizes[ggufs[i]]))
+					options = append(options, huh.NewOption(
+						fmt.Sprintf("%-10s [%7s]", quant, sizeStr), ggufs[i],
+					))
 				}
 			}
 
@@ -386,29 +407,33 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 			}
 
 			res.ModelFile = file
+			res.Size += fileSizes[file]
 		}
 
-		if len(mmprojs) > 0 {
-			// detect mmproj
-			switch len(mmprojs) {
-			case 0:
-			case 1:
-				res.MMProjFile = mmprojs[0]
-			default:
-				// match biggest
-				var file, quant string
+		// detect mmproj
+		switch len(mmprojs) {
+		case 0:
+		case 1:
+			res.MMProjFile = mmprojs[0]
+		default:
+			// match biggest
+			var file, quant string
 
-				for _, mmproj := range mmprojs {
-					mmprojQuant := quantRegix.FindString(mmproj)
-					if quantGreaterThan(mmprojQuant, quant, nil) {
-						quant = mmprojQuant
-						file = mmproj
-					}
+			for _, mmproj := range mmprojs {
+				mmprojQuant := quantRegix.FindString(mmproj)
+				if quantGreaterThan(mmprojQuant, quant, nil) {
+					quant = mmprojQuant
+					file = mmproj
 				}
-
-				res.MMProjFile = file
 			}
+
+			res.MMProjFile = file
 		}
+
+		// TODO: add mmproj size
+		spin.Start()
+		time.Sleep(time.Second)
+		spin.Stop()
 
 	} else {
 		// other format
@@ -424,6 +449,14 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 				}
 			}
 			res.ExtraFiles = append(res.ExtraFiles, file)
+
+			// calc total size
+			size, err := store.Get().HFFileSize(context.TODO(), res.Name, file)
+			if err != nil {
+				fmt.Println(text.FgRed.Sprintf("get filesize error: [%s] %s", file, err))
+				return res, err
+			}
+			res.Size += size
 		}
 		// fallback to first file
 		if res.ModelFile == "" {

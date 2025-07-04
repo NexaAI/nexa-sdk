@@ -56,23 +56,17 @@ func (s *Store) HFModelInfo(ctx context.Context, name string) ([]string, error) 
 	return res, nil
 }
 
-func getHFFileSize(ctx context.Context, modelName, fileName string) (int64, error) {
+func (s *Store) HFFileSize(ctx context.Context, modelName, fileName string) (int64, error) {
 	client := resty.New()
-	client.SetResponseMiddlewares(
-		httpCodeToError,
-		resty.AutoParseResponseMiddleware,
-	)
+	client.SetResponseMiddlewares(httpCodeToError)
 	defer client.Close()
-
-	url := fmt.Sprintf("%s/%s/resolve/main/%s", HF_ENDPOINT, modelName, fileName)
 
 	resp, err := client.R().
 		SetAuthToken(config.Get().HFToken).
 		SetHeader("Range", "bytes=0-0").
-		Get(url)
-
+		Get(fmt.Sprintf("%s/%s/resolve/main/%s", HF_ENDPOINT, modelName, fileName))
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
 
 	contentRange := resp.Header().Get("Content-Range")
@@ -94,7 +88,7 @@ func getHFFileSize(ctx context.Context, modelName, fileName string) (int64, erro
 		}
 	}
 
-	return 0, fmt.Errorf("unable to determine file size")
+	return -1, fmt.Errorf("unable to determine file size")
 }
 
 // Pull downloads a model from HuggingFace and stores it locally
