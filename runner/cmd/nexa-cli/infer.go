@@ -72,12 +72,15 @@ func infer() *cobra.Command {
 			if manifest.MMProjFile == "" {
 				if len(tool) == 0 {
 					inferLLM(modelfile, nil)
+					return
 				} else {
 					panic("TODO")
 				}
+			} else {
+				// compat vlm
+				t := s.ModelfilePath(manifest.Name, manifest.MMProjFile)
+				inferVLM(modelfile, &t)
 			}
-			// compat vlm
-			fallthrough
 		case types.ModelTypeVLM:
 			t := s.ModelfilePath(manifest.Name, manifest.MMProjFile)
 			inferVLM(modelfile, &t)
@@ -107,6 +110,7 @@ func inferLLM(model string, tokenizer *string) {
 	repl(ReplConfig{
 		Stream:    !disableStream,
 		ParseFile: false,
+		ThinkCap:  true,
 
 		Clear: p.Reset,
 
@@ -126,7 +130,7 @@ func inferLLM(model string, tokenizer *string) {
 				return "", err
 			}
 
-			res, err := p.Generate(prompt)
+			res, err := p.Generate(formatted)
 			if err != nil {
 				return "", err
 			}
@@ -182,6 +186,7 @@ func inferVLM(model string, tokenizer *string) {
 	repl(ReplConfig{
 		Stream:    !disableStream,
 		ParseFile: true,
+		ThinkCap:  false,
 
 		Clear: p.Reset,
 

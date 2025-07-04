@@ -57,6 +57,7 @@ func listFiles(path string) func(string) []string {
 type ReplConfig struct {
 	Stream    bool
 	ParseFile bool
+	ThinkCap  bool
 
 	Clear       func()
 	SaveKVCache func(path string) error
@@ -171,27 +172,37 @@ func repl(cfg ReplConfig) {
 
 		// chat
 		if cfg.Stream {
-			var count int
-			var runStreamStart, tokenStart time.Time
-			firstToken := true
-
 			// run async
 			dataCh := make(chan string, 10)
 			errCh := make(chan error, 1)
 
 			// track RunStream start time for TTFT calculation
+			var count int
+			var runStreamStart, tokenStart time.Time
+			firstToken := true
+
 			runStreamStart = time.Now()
 			fmt.Print(text.FgMagenta.EscapeSeq())
 			go cfg.RunStream(context.TODO(), line, images, audios, dataCh, errCh)
 
 			// print stream
+			var full strings.Builder
 			for r := range dataCh {
 				if firstToken {
 					tokenStart = time.Now()
 					firstToken = false
+					if cfg.ThinkCap {
+						fmt.Print(text.FgBlack.EscapeSeq())
+					} else {
+						fmt.Print(text.FgYellow.EscapeSeq())
+					}
+				}
+				// recovery main color
+				if cfg.ThinkCap && full.Len() > 8 && full.String()[full.Len()-8:] == "</think>" {
 					fmt.Print(text.FgYellow.EscapeSeq())
 				}
 				fmt.Print(r)
+				full.WriteString(r)
 				count++
 			}
 			fmt.Print(text.Reset.EscapeSeq())
@@ -204,11 +215,11 @@ func repl(cfg ReplConfig) {
 				tokensPerSecond := float64(count) / tokenDuration
 
 				fmt.Println(text.FgBlue.Sprintf(
-					"TTFT: %f s, Generated %d tokens at %f token/s",
+					"TTFT: %f s, Generated %d tokens at %f token/s\n",
 					ttft, count, tokensPerSecond,
 				))
 			} else {
-				fmt.Println(text.FgBlue.Sprintf("(no tokens generated)"))
+				fmt.Println(text.FgBlue.Sprintf("(no tokens generated)\n"))
 			}
 
 			// check error
@@ -221,6 +232,9 @@ func repl(cfg ReplConfig) {
 
 			fmt.Print(text.FgMagenta.EscapeSeq())
 			res, err := cfg.Run(line, images, audios)
+			// append color to think
+			res = strings.ReplaceAll(res, "<think>", text.FgBlack.EscapeSeq()+"<thin>")
+			res = strings.ReplaceAll(res, "</think>", "</think>"+text.FgYellow.EscapeSeq())
 			fmt.Println(text.FgYellow.Sprint(res))
 
 			// print duration
