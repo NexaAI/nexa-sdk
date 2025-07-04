@@ -187,14 +187,14 @@ func repl(cfg ReplConfig) {
 			// print duration
 			duration := time.Since(start).Seconds()
 			fmt.Println(text.FgBlue.Sprintf(
-				"Generate %d token in %f s, speed is %f token/s",
+				"Generate %d token in %f s, speed is %f token/s\n",
 				count, duration, float64(count)/duration,
 			))
 
 			// check error
 			e, ok := <-errCh
 			if ok {
-				fmt.Println(text.FgRed.Sprintf("Error: %s", e))
+				fmt.Println(text.FgRed.Sprintf("Error: %s\n", e))
 			}
 		} else {
 			start := time.Now()
@@ -205,12 +205,12 @@ func repl(cfg ReplConfig) {
 			// print duration
 			duration := time.Since(start).Seconds()
 			fmt.Println(text.FgBlue.Sprintf(
-				"Generate in %f s",
+				"Generate in %f s\n",
 				duration,
 			))
 
 			if err != nil {
-				fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+				fmt.Println(text.FgRed.Sprintf("Error: %s\n", err))
 			}
 		}
 	}
