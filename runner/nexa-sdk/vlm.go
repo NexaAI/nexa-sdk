@@ -58,7 +58,7 @@ func (p *VLM) Encode(msg string) ([]int32, error) {
 	var res *C.int32_t
 	resLen := C.ml_vlm_encode(p.ptr, cMsg, &res)
 	if resLen < 0 {
-		return nil, ErrCommon
+		return nil, ErrSDK
 	}
 	defer C.free(unsafe.Pointer(res))
 
@@ -78,7 +78,7 @@ func (p *VLM) Decode(ids []int32) (string, error) {
 		C.int32_t(len(ids)),
 		&res)
 	if resLen < 0 {
-		return "", ErrCommon
+		return "", ErrSDK
 	}
 	defer C.free(unsafe.Pointer(res))
 
@@ -121,7 +121,7 @@ func (p *VLM) Generate(prompt string, images []string, audios []string) (string,
 	var res *C.char
 	resLen := C.ml_vlm_generate(p.ptr, cPrompt, &config, &res)
 	if resLen <= 0 {
-		return "", ErrCommon
+		return "", ErrSDK
 	}
 	defer C.free(unsafe.Pointer(res))
 
@@ -139,7 +139,7 @@ func (p *VLM) GetChatTemplate(name *string) (string, error) {
 	var res *C.char
 	resLen := C.ml_vlm_get_chat_template(p.ptr, cName, &res)
 	if resLen < 0 {
-		return "", ErrCommon
+		return "", ErrSDK
 	}
 
 	return C.GoString(res), nil
@@ -161,7 +161,7 @@ func (p *VLM) ApplyChatTemplate(msgs []ChatMessage) (string, error) {
 	var res *C.char
 	resLen := C.ml_vlm_apply_chat_template(p.ptr, &cMsgs[0], C.int32_t(len(msgs)), &res)
 	if resLen < 0 {
-		return "", ErrCommon
+		return "", ErrSDK
 	}
 	defer C.free(unsafe.Pointer(res))
 
@@ -241,12 +241,12 @@ func (p *VLM) GenerateStream(ctx context.Context, prompt string, images []string
 			pinnner.Pin(&cAudios[0])
 		}
 
-		// Call C function to start streaming generation
+		// Start streaming generation
 		resLen := C.ml_vlm_generate_stream(p.ptr, cPrompt, &config,
 			(C.ml_llm_token_callback)(C.go_generate_stream_on_token),
 			nil, nil)
 		if resLen < 0 {
-			err <- ErrCommon
+			err <- ErrSDK
 		}
 	}()
 

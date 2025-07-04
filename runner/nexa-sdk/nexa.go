@@ -19,8 +19,8 @@ import (
 )
 
 var (
-	// ErrCommon represents a generic error from the C library
-	ErrCommon = errors.New("error")
+	// ErrSDK represents a generic error from the C library
+	ErrSDK = errors.New("SDK Error")
 )
 
 // Init initializes the Nexa SDK by calling the underlying C library initialization
