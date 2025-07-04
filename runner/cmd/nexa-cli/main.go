@@ -19,6 +19,7 @@ import (
 // inference, and server operations.
 func RootCmd() *cobra.Command {
 	cobra.EnableCommandSorting = false
+
 	rootCmd := &cobra.Command{
 		Use: "nexa",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -33,7 +34,7 @@ func RootCmd() *cobra.Command {
 
 	rootCmd.AddCommand(
 		pull(), remove(), clean(), list(),
-		infer(), embed(), rerank(), genImage(),
+		infer(), genImage(),
 		serve(), run(),
 	)
 

@@ -25,6 +25,8 @@ func run() *cobra.Command {
 	}
 
 	runCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
+
+	runCmd.Flags().SortFlags = false
 	runCmd.Flags().BoolVarP(&disableStream, "disable-stream", "s", false, "disable stream mode")
 
 	runCmd.Run = runFunc

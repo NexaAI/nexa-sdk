@@ -21,6 +21,7 @@ func genImage() *cobra.Command {
 	var genType string
 	var scheduler string
 
+	imgCmd.Flags().SortFlags = false
 	imgCmd.Flags().StringVarP(&model, "model", "m", "stabilityai/sdxl-turbo", "Model name for image generation")
 	imgCmd.Flags().StringSliceVarP(&prompts, "prompt", "p", nil, "Prompt for image generation")
 	imgCmd.Flags().StringVarP(&genType, "type", "t", "txt2img", "Type of image generation: txt2img, img2img")
