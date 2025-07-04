@@ -51,7 +51,7 @@ run:
 	fi
 
 build:
-	cd ./runner/nexa-sdk/stub && g++ -O3 -fPIC -shared -o $(LIB)nexa_bridge.$(EXT) *.cpp
+	cd ./runner/nexa-sdk/stub && g++ -std=c++11 -O3 -fPIC -shared -o $(LIB)nexa_bridge.$(EXT) *.cpp
 	cd ./runner && go build -o ../build/nexa$(EXE) ./cmd/nexa-launcher
 	cd ./runner && go build -tags="sonic avx" -o ../build/nexa-cli$(EXE) ./cmd/nexa-cli
 
