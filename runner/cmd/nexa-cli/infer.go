@@ -211,7 +211,7 @@ func embed() *cobra.Command {
 
 	embedCmd := &cobra.Command{
 		Use:   "embed <model-name>",
-		Short: "infer a embed model",
+		Short: "Infer a embed model",
 	}
 
 	embedCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
@@ -273,7 +273,7 @@ func rerank() *cobra.Command {
 
 	rerankCmd := &cobra.Command{
 		Use:   "rerank <model-name>",
-		Short: "infer a rerank model",
+		Short: "Infer a rerank model",
 	}
 
 	rerankCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)

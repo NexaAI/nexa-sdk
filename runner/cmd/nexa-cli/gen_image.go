@@ -13,7 +13,8 @@ import (
 // TODO: use sub command
 func genImage() *cobra.Command {
 	imgCmd := &cobra.Command{
-		Use: "image",
+		Use:   "gen_image",
+		Short: "Generate image from text or image",
 	}
 	var model, input, output string
 	var prompts []string

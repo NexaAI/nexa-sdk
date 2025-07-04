@@ -18,6 +18,7 @@ import (
 // It sets up the command tree structure for model management,
 // inference, and server operations.
 func RootCmd() *cobra.Command {
+	cobra.EnableCommandSorting = false
 	rootCmd := &cobra.Command{
 		Use: "nexa",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -32,9 +33,8 @@ func RootCmd() *cobra.Command {
 
 	rootCmd.AddCommand(
 		pull(), remove(), clean(), list(),
-		infer(), embed(), rerank(),
+		infer(), embed(), rerank(), genImage(),
 		serve(), run(),
-		genImage(),
 	)
 
 	return rootCmd
