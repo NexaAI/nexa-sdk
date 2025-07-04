@@ -55,7 +55,7 @@ func pull() *cobra.Command {
 		pgCh, errCh := s.Pull(context.TODO(), manifest)
 		bar := progressbar.DefaultBytes(manifest.Size, "downloading")
 		for pg := range pgCh {
-			bar.Set64(pg.CurrentDownloaded)
+			bar.Set64(pg.TotalDownloaded)
 		}
 		bar.Exit()
 

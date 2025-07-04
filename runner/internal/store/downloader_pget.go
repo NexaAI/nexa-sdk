@@ -16,17 +16,23 @@ import (
 
 type PgetDownloader struct {
 	options download.Options
+
+	total      int64
+	downloaded int64
 }
 
-func NewPgetDownloader() *PgetDownloader {
-	return &PgetDownloader{options: download.Options{
-		MaxConcurrency: 16,
-		ChunkSize:      1 << 20, // 1 MiB
-		Client: client.Options{
-			MaxRetries: 2,
-			Transport:  &authTransport{Base: http.DefaultTransport},
+func NewPgetDownloader(total int64) *PgetDownloader {
+	return &PgetDownloader{
+		options: download.Options{
+			MaxConcurrency: 16,
+			ChunkSize:      1 << 20, // 1 MiB
+			Client: client.Options{
+				MaxRetries: 2,
+				Transport:  &authTransport{Base: http.DefaultTransport},
+			},
 		},
-	}}
+		total: total,
+	}
 }
 
 func (pd *PgetDownloader) DownloadWithProgress(
@@ -58,11 +64,14 @@ func (pd *PgetDownloader) DownloadWithProgress(
 		Raw: reader,
 		WriterF: func(p []byte) (int, error) {
 			downloaded += int64(len(p))
+			pd.downloaded += int64(len(p))
 			// TODO: reduce
 			progressCh <- types.DownloadInfo{
+				CurrentName:       filepath.Base(outputPath),
 				CurrentSize:       fileSize,
 				CurrentDownloaded: downloaded,
-				CurrentName:       filepath.Base(outputPath),
+				TotalSize:         pd.total,
+				TotalDownloaded:   pd.downloaded,
 			}
 			return len(p), nil
 		},
