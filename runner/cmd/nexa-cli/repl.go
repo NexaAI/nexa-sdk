@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -354,15 +355,39 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 
 			// Get file sizes for display
 			fileSizes := make(map[string]int64, len(ggufs))
+			fileSizesMutex := sync.RWMutex{}
+
 			spin.Start()
-			for _, gguf := range ggufs {
-				size, err := store.Get().HFFileSize(context.TODO(), name, gguf)
-				if err != nil {
-					fmt.Println(text.FgRed.Sprintf("get filesize error: [%s] %s", gguf, err))
-					return res, err
-				}
-				fileSizes[gguf] = size
+
+			// Create semaphore to limit concurrent requests to 8
+			sem := make(chan struct{}, 8)
+			var wg sync.WaitGroup
+
+			fmt.Println(
+				"ggufs", ggufs,
+			)
+			for i, gguf := range ggufs {
+				wg.Add(1)
+				go func(index int, filename string) {
+					defer wg.Done()
+
+					// Acquire semaphore
+					sem <- struct{}{}
+					defer func() { <-sem }()
+
+					size, err := store.Get().HFFileSize(context.TODO(), name, filename)
+					if err != nil {
+						fmt.Println(text.FgRed.Sprintf("get filesize error: [%s] %s", filename, err))
+						return
+					}
+
+					fileSizesMutex.Lock()
+					fileSizes[filename] = size
+					fileSizesMutex.Unlock()
+				}(i, gguf)
 			}
+
+			wg.Wait()
 			spin.Stop()
 
 			// select default gguf
