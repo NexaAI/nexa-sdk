@@ -385,8 +385,6 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 		}
 	}
 
-	spin.Start()
-
 	// choose model file
 	if len(ggufs) > 0 {
 		// detect gguf
@@ -396,7 +394,6 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 			size, err := store.Get().HFFileSize(context.TODO(), name, ggufs[0])
 			spin.Stop()
 
-			fmt.Println(text.FgBlue.Sprintf("get filesize: [%s] %s", ggufs[0], size))
 			if err != nil {
 				fmt.Println(text.FgRed.Sprintf("get filesize error: [%s] %s", ggufs[0], err))
 				return res, err
@@ -483,16 +480,11 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 			}
 
 			// match biggest
-			var file, quant string
-			var maxSize int64
-
+			var file string
+			var size int64
 			for _, mmproj := range mmprojs {
-				mmprojQuant := quantRegix.FindString(mmproj)
-				size := mmprojSizes[mmproj]
-				if quantGreaterThan(mmprojQuant, quant, nil) || (mmprojQuant == quant && size > maxSize) {
-					quant = mmprojQuant
+				if mmprojSizes[mmproj] > size {
 					file = mmproj
-					maxSize = size
 				}
 			}
 
