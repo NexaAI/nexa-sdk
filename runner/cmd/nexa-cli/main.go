@@ -18,6 +18,8 @@ import (
 // It sets up the command tree structure for model management,
 // inference, and server operations.
 func RootCmd() *cobra.Command {
+	cobra.EnableCommandSorting = false
+
 	rootCmd := &cobra.Command{
 		Use: "nexa",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -32,19 +34,12 @@ func RootCmd() *cobra.Command {
 
 	rootCmd.AddCommand(
 		pull(), remove(), clean(), list(),
-		infer(),
+		infer(), genImage(),
 		serve(), run(),
-		genImage(),
+		version(),
 	)
 
 	return rootCmd
-}
-
-// main is the entry point that executes the root command.
-func main() {
-	if err := RootCmd().Execute(); err != nil {
-		os.Exit(1)
-	}
 }
 
 func normalizeModelName(name string) string {
@@ -60,5 +55,11 @@ func normalizeModelName(name string) string {
 	}
 
 	return name
+}
 
+// main is the entry point that executes the root command.
+func main() {
+	if err := RootCmd().Execute(); err != nil {
+		os.Exit(1)
+	}
 }

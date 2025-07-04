@@ -40,8 +40,15 @@ endif
 
 .PHONY: run build doc test download clean
 
+# Allow passing arguments to run target
+# Usage: make run ARGS="pull Qwen/Qwen2.5-7B-Instruct"
+# Or use: make run pull Qwen/Qwen2.5-7B-Instruct
 run:
-	./build/nexa $(ARGS)
+	@if [ "$(filter-out run,$(MAKECMDGOALS))" != "" ]; then \
+		./build/nexa$(EXE) $(filter-out run,$(MAKECMDGOALS)); \
+	else \
+		./build/nexa$(EXE) $(ARGS); \
+	fi
 
 build:
 	cd ./runner/nexa-sdk/stub && g++ -O3 -fPIC -shared -o $(LIB)nexa_bridge.$(EXT) *.cpp

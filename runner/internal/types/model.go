@@ -11,21 +11,23 @@ const (
 )
 
 type ModelManifest struct {
-	Name          string `json:"Name"`
-	Size          int64
-	ModelType     ModelType
-	ModelFile     string
-	TokenizerFile string
-	ExtraFiles    []string
+	Name string `json:"Name"`
+	Size int64
+
+	ModelFile  string
+	MMProjFile string
+	ExtraFiles []string
 }
 
 type ModelParam struct {
-	Device *string
 	CtxLen int32
+	Device *string
 }
 
 type DownloadInfo struct {
+	CurrentName       string
 	CurrentSize       int64
 	CurrentDownloaded int64
-	CurrentName       string
+	TotalSize         int64
+	TotalDownloaded   int64
 }

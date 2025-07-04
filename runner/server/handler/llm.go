@@ -35,7 +35,7 @@ func Completions(c *gin.Context) {
 
 	p, err := service.KeepAliveGet[nexa_sdk.LLM](
 		string(param.Model),
-		types.ModelParam{Device: nil, CtxLen: 4096},
+		types.ModelParam{Device: nil, CtxLen: 40960},
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
@@ -94,7 +94,7 @@ func chatLLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 	// get llm
 	p, err := service.KeepAliveGet[nexa_sdk.LLM](
 		string(param.Model),
-		types.ModelParam{CtxLen: 4096},
+		types.ModelParam{CtxLen: 40960},
 	)
 	if errors.Is(err, os.ErrNotExist) {
 		c.JSON(http.StatusNotFound, map[string]any{"error": "model not found"})
@@ -225,7 +225,7 @@ func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 
 	p, err := service.KeepAliveGet[nexa_sdk.VLM](
 		string(param.Model),
-		types.ModelParam{CtxLen: 4096},
+		types.ModelParam{CtxLen: 40960},
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})

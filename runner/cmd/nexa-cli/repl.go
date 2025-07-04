@@ -8,12 +8,16 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/briandowns/spinner"
 	"github.com/charmbracelet/huh"
 	"github.com/chzyer/readline"
+	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/text"
 
+	"github.com/NexaAI/nexa-sdk/internal/store"
 	"github.com/NexaAI/nexa-sdk/internal/types"
 )
 
@@ -95,6 +99,7 @@ func repl(cfg ReplConfig) {
 		AutoComplete:    completer,
 		InterruptPrompt: "^C",
 		EOFPrompt:       "^D",
+		HistoryFile:     store.Get().HistoryFilePath(),
 	})
 	if err != nil {
 		panic(err)
@@ -167,43 +172,52 @@ func repl(cfg ReplConfig) {
 
 		// chat
 		if cfg.Stream {
-			var count int
-			var tokenStart time.Time
-			var firstToken bool
-
-			// track RunStream start time for TTFT calculation
-			runStreamStart := time.Now()
-
 			// run async
 			dataCh := make(chan string, 10)
 			errCh := make(chan error, 1)
+
+			// track RunStream start time for TTFT calculation
+			var count int
+			var runStreamStart, tokenStart time.Time
+			firstToken := true
+
+			runStreamStart = time.Now()
+			fmt.Print(text.FgMagenta.EscapeSeq())
 			go cfg.RunStream(context.TODO(), line, images, audios, dataCh, errCh)
 
 			// print stream
-			fmt.Print(text.FgYellow.EscapeSeq())
 			for r := range dataCh {
-				if !firstToken {
+				if firstToken {
 					tokenStart = time.Now()
-					firstToken = true
+					firstToken = false
 				}
-				fmt.Print(r)
+				switch r {
+				case "<think>":
+					fmt.Print(text.FgBlack.EscapeSeq())
+					fmt.Print(r)
+				case "</think>":
+					fmt.Print(r)
+					fmt.Print(text.FgYellow.EscapeSeq())
+				default:
+					fmt.Print(r)
+				}
 				count++
 			}
 			fmt.Print(text.Reset.EscapeSeq())
 			fmt.Println()
-      
+
 			// print metrics
-			if firstToken {
+			if !firstToken {
 				ttft := tokenStart.Sub(runStreamStart).Seconds()
 				tokenDuration := time.Since(tokenStart).Seconds()
 				tokensPerSecond := float64(count) / tokenDuration
 
 				fmt.Println(text.FgBlue.Sprintf(
-					"TTFT: %f s, Generated %d tokens at %f token/s",
+					"TTFT: %f s, Generated %d tokens at %f token/s\n",
 					ttft, count, tokensPerSecond,
 				))
 			} else {
-				fmt.Println(text.FgBlue.Sprintf("(no tokens generated)"))
+				fmt.Println(text.FgBlue.Sprintf("(no tokens generated)\n"))
 			}
 
 			// check error
@@ -214,7 +228,11 @@ func repl(cfg ReplConfig) {
 		} else {
 			start := time.Now()
 
+			fmt.Print(text.FgMagenta.EscapeSeq())
 			res, err := cfg.Run(line, images, audios)
+			// append color to think
+			res = strings.ReplaceAll(res, "<think>", text.FgBlack.EscapeSeq()+"<thin>")
+			res = strings.ReplaceAll(res, "</think>", "</think>"+text.FgYellow.EscapeSeq())
 			fmt.Println(text.FgYellow.Sprint(res))
 
 			// print duration
@@ -283,8 +301,8 @@ func parseFiles(prompt string) (string, []string, []string) {
 
 // =============== quant name parse ===============
 
-// (f32|f16|q4_k_m|q4_1).gguf
-var quantRegix = regexp.MustCompile(`\b([qQ][0-9]+(_[A-Z0-9]+)*|[fF][0-9]+)`)
+// (f32|f16|q4_k_m|q4_1|i64|i32|i16|i8|iq4_nl|iq4_xs|iq3_s|iq3_xxs|iq2_xxs|iq2_s|iq2_xs|iq1_s|iq1_m|bf16).gguf
+var quantRegix = regexp.MustCompile(`\b([qQ][0-9]+(_[A-Z0-9]+)*|[fF][0-9]+|[iI][0-9]+|[iI][qQ][0-9]+(_[A-Z0-9]+)*|[bB][fF][0-9]+)`)
 
 // order big to small
 func quantGreaterThan(a, b string, order []string) bool {
@@ -318,7 +336,47 @@ func quantGreaterThan(a, b string, order []string) bool {
 	}
 }
 
+// getFileSizesConcurrent fetches file sizes concurrently with a limit of 8 concurrent requests
+func getFileSizesConcurrent(name string, files []string) (map[string]int64, error) {
+	fileSizes := make(map[string]int64, len(files))
+	if len(files) == 0 {
+		return fileSizes, nil
+	}
+
+	// Create semaphore to limit concurrent requests to 8
+	sem := make(chan struct{}, 8)
+	var wg sync.WaitGroup
+	var firstError error
+	var errorMutex sync.Mutex
+
+	for i, file := range files {
+		wg.Add(1)
+		// Acquire semaphore
+		sem <- struct{}{}
+
+		go func(index int, filename string) {
+			defer wg.Done()
+			defer func() { <-sem }()
+
+			size, err := store.Get().HFFileSize(context.TODO(), name, filename)
+
+			errorMutex.Lock()
+			fileSizes[filename] = size
+			if err != nil && firstError == nil {
+				firstError = err
+			}
+			errorMutex.Unlock()
+		}(i, file)
+	}
+
+	wg.Wait()
+
+	return fileSizes, firstError
+}
+
 func chooseFiles(name string, files []string) (res types.ModelManifest, err error) {
+	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model size..."))
+
 	if len(files) == 0 {
 		err = fmt.Errorf("repo is empty")
 		return
@@ -326,49 +384,65 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 
 	res.Name = name
 
-	// choose model type
-	var modelTypeString string
-	if err = huh.NewSelect[string]().
-		Title("Choose model type").
-		Options(
-			huh.NewOption(types.ModelTypeLLM, types.ModelTypeLLM),
-			huh.NewOption(types.ModelTypeVLM, types.ModelTypeVLM),
-			huh.NewOption(types.ModelTypeEmbedder, types.ModelTypeEmbedder),
-			huh.NewOption(types.ModelTypeReranker, types.ModelTypeReranker),
-		).
-		Value(&modelTypeString).
-		Run(); err != nil {
-		return
-	}
-	res.ModelType = types.ModelType(modelTypeString)
-
+	// TODO: refactor
 	// check gguf
-	var ggufs, mmprojs []string
+	var mmprojs []string
+	ggufGroups := make(map[string][]string)
+	// qwen2.5-7b-instruct-q8_0-00003-of-00003.gguf original name is qwen2.5-7b-instruct-q8_0
+	// *d-of-*d like this
+	partRegix := regexp.MustCompile(`-\d+-of-\d+\.gguf$`)
 	for _, file := range files {
 		lower := strings.ToLower(file)
 		if strings.HasSuffix(lower, ".gguf") {
 			if strings.HasPrefix(lower, "mmproj") {
 				mmprojs = append(mmprojs, file)
 			} else {
-				ggufs = append(ggufs, file)
+				name := partRegix.ReplaceAllString(file, "")
+				ggufGroups[name] = append(ggufGroups[name], file)
 			}
 		}
 	}
 
-	// choose model file
-	if len(ggufs) > 0 || len(mmprojs) > 0 {
-		// detect gguf
-		switch len(ggufs) {
-		case 0:
-			err = fmt.Errorf("can no detect model file in repo")
-			return
-		case 1:
-			res.ModelFile = ggufs[0]
-		default:
-			// interactive choose
+	ggufs := make([]string, 0, len(ggufGroups))
+	for gguf := range ggufGroups {
+		ggufs = append(ggufs, gguf)
+	}
 
-			var file, quant string
+	// choose model file
+	if len(ggufs) > 0 {
+		// detect gguf
+		if len(ggufs) == 1 {
+			res.ModelFile = ggufs[0]
+			spin.Start()
+			fileSizes, err := getFileSizesConcurrent(name, ggufGroups[ggufs[0]])
+			spin.Stop()
+			if err != nil {
+				fmt.Println(text.FgRed.Sprintf("get filesize error: [%s] %s", ggufs[0], err))
+				return res, err
+			}
+			for _, size := range fileSizes {
+				res.Size += size
+			}
+		} else {
+			// interactive choose
+			// Get file sizes for display
+			spin.Start()
+			// key is gguf file name, value is file size total containts part file
+			fileSizes := make(map[string]int64)
+			for _, gguf := range ggufs {
+				sizes, err := getFileSizesConcurrent(name, ggufGroups[gguf])
+				if err != nil {
+					fmt.Println(text.FgRed.Sprintf("get filesize error: [%s] %s", gguf, err))
+					return res, err
+				}
+				for _, size := range sizes {
+					fileSizes[gguf] += size
+				}
+			}
+			spin.Stop()
+
 			// select default gguf
+			var file, quant string
 			for _, gguf := range ggufs {
 				ggufQuant := quantRegix.FindString(gguf)
 				if quantGreaterThan(ggufQuant, quant, []string{"Q4_K_M", "Q4_0", "Q8_0"}) {
@@ -377,20 +451,27 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 				}
 			}
 
+			// Find the longest quant name for alignment
 			options := make([]huh.Option[string], 0, len(ggufs)+1)
 			if file != "" {
-				options = append(options, huh.NewOption(fmt.Sprintf("default (%s)", quant), file))
+				sizeStr := humanize.IBytes(uint64(fileSizes[file]))
+				options = append(options, huh.NewOption(
+					fmt.Sprintf("%-10s [%7s] (default)", strings.ToUpper(quant), sizeStr), file,
+				))
 			}
 			for i := range ggufs {
-				quant := quantRegix.FindString(ggufs[i])
+				quant := strings.ToUpper(quantRegix.FindString(ggufs[i]))
 				if quant != "" && file != ggufs[i] {
-					options = append(options, huh.NewOption(quant, ggufs[i]))
+					sizeStr := humanize.IBytes(uint64(fileSizes[ggufs[i]]))
+					options = append(options, huh.NewOption(
+						fmt.Sprintf("%-10s [%7s]", quant, sizeStr), ggufs[i],
+					))
 				}
 			}
 
 			if len(options) == 0 {
 				err = fmt.Errorf("no valid gguf found")
-				return
+				return res, err
 			}
 
 			if err = huh.NewSelect[string]().
@@ -398,34 +479,56 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 				Options(options...).
 				Value(&file).
 				Run(); err != nil {
-				return
+				return res, err
 			}
+			// sort files by name
+			files := ggufGroups[file]
+			slices.Sort(files)
 
-			res.ModelFile = file
+			for _, file := range files {
+				res.Size += fileSizes[file]
+			}
+			res.ModelFile = files[0]
+			if len(files) > 1 {
+				res.ExtraFiles = append(res.ExtraFiles, files[1:]...)
+			}
 		}
 
-		if res.ModelType == types.ModelTypeVLM {
-			// detect mmproj
-			switch len(mmprojs) {
-			case 0:
-			case 1:
-				res.TokenizerFile = mmprojs[0]
-			default:
-				// match biggest
-				var file, quant string
+		// detect mmproj
+		switch len(mmprojs) {
+		case 0:
+		case 1:
+			res.MMProjFile = mmprojs[0]
+			spin.Start()
+			size, err := store.Get().HFFileSize(context.TODO(), name, mmprojs[0])
+			spin.Stop()
+			if err != nil {
+				fmt.Println(text.FgRed.Sprintf("get filesize error: [%s] %s", mmprojs[0], err))
+				return res, err
+			}
+			res.Size += size
+		default:
+			// Get mmproj file sizes for display
+			spin.Start()
+			mmprojSizes, err := getFileSizesConcurrent(name, mmprojs)
+			spin.Stop()
+			if err != nil {
+				fmt.Println(text.FgRed.Sprintf("get filesize error: %s", err))
+				return res, err
+			}
 
-				for _, mmproj := range mmprojs {
-					mmprojQuant := quantRegix.FindString(mmproj)
-					if quantGreaterThan(mmprojQuant, quant, nil) {
-						quant = mmprojQuant
-						file = mmproj
-					}
+			// match biggest
+			var file string
+			var size int64
+			for _, mmproj := range mmprojs {
+				if mmprojSizes[mmproj] > size {
+					file = mmproj
 				}
-
-				res.TokenizerFile = file
 			}
-		}
 
+			res.MMProjFile = file
+			res.Size += mmprojSizes[file]
+		}
 	} else {
 		// other format
 
@@ -441,6 +544,16 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 			}
 			res.ExtraFiles = append(res.ExtraFiles, file)
 		}
+
+		sizes, err := getFileSizesConcurrent(name, files)
+		if err != nil {
+			fmt.Println(text.FgRed.Sprintf("get filesize error: %s", err))
+			return res, err
+		}
+		for _, size := range sizes {
+			res.Size += size
+		}
+
 		// fallback to first file
 		if res.ModelFile == "" {
 			res.ModelFile = files[0]

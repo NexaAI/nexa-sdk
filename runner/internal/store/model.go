@@ -126,3 +126,8 @@ func (s *Store) encodeName(name string) string {
 func (s *Store) CachefilePath(name string) string {
 	return path.Join(s.home, "cache", name)
 }
+
+// modelDir returns the path to the models directory
+func (s *Store) HistoryFilePath() string {
+	return path.Join(s.home, "history")
+}

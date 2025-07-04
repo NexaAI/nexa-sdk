@@ -35,6 +35,7 @@ func serve() *cobra.Command {
 		nexa_sdk.DeInit()
 	}
 
+	serveCmd.Flags().SortFlags = false
 	serveCmd.Flags().String("host", "127.0.0.1:18181", "Default server address (env: NEXA_HOST)")
 	serveCmd.Flags().Int("keepalive", 300, "Keepalive seconds (env: NEXA_KEEPALIVE)")
 

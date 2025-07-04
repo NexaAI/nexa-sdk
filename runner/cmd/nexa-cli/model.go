@@ -36,10 +36,10 @@ func pull() *cobra.Command {
 		spin := spinner.New(
 			spinner.CharSets[39],
 			100*time.Millisecond,
-			spinner.WithSuffix("download manifest from: "+args[0]),
+			spinner.WithSuffix("download manifest from: "+name),
 		)
 		spin.Start()
-		files, err := s.HFModelInfo(context.TODO(), args[0])
+		files, err := s.HFModelInfo(context.TODO(), name)
 		spin.Stop()
 		if err != nil {
 			fmt.Println(text.FgRed.Sprintf("Get manifest from huggingface error: %s", err))
@@ -47,21 +47,15 @@ func pull() *cobra.Command {
 		}
 
 		manifest, err := chooseFiles(name, files)
-		fmt.Println(manifest)
 		if err != nil {
 			return
 		}
 
 		// TODO: replace with go-pretty
 		pgCh, errCh := s.Pull(context.TODO(), manifest)
-		bar := progressbar.DefaultBytes(-1, "downloading")
+		bar := progressbar.DefaultBytes(manifest.Size, "downloading")
 		for pg := range pgCh {
-			if pg.CurrentSize != bar.GetMax64() {
-				bar.Reset()
-				bar.Describe("download " + pg.CurrentName)
-				bar.ChangeMax64(pg.CurrentSize)
-			}
-			bar.Set64(pg.CurrentDownloaded)
+			bar.Set64(pg.TotalDownloaded)
 		}
 		bar.Exit()
 
@@ -140,9 +134,9 @@ func list() *cobra.Command {
 		tw := table.NewWriter()
 		tw.SetOutputMirror(os.Stdout)
 		tw.SetStyle(table.StyleLight)
-		tw.AppendHeader(table.Row{"NAME", "TYPE", "SIZE"})
+		tw.AppendHeader(table.Row{"NAME", "SIZE"})
 		for _, model := range models {
-			tw.AppendRow(table.Row{model.Name, model.ModelType, humanize.IBytes(uint64(model.Size))})
+			tw.AppendRow(table.Row{model.Name, humanize.IBytes(uint64(model.Size))})
 		}
 		tw.Render()
 	}

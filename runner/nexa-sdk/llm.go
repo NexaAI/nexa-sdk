@@ -249,7 +249,7 @@ func (p *LLM) GenerateStream(ctx context.Context, prompt string) (<-chan string,
 
 	// Configure generation parameters
 	config := C.ml_GenerationConfig{}
-	config.max_tokens = 512
+	config.max_tokens = 4096
 
 	// check parallel call
 	if streamTokenCh != nil {

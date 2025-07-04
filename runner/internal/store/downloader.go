@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strconv"
 
 	"github.com/bytedance/sonic"
 	"github.com/rs/zerolog"
@@ -54,6 +55,33 @@ func (s *Store) HFModelInfo(ctx context.Context, name string) ([]string, error) 
 	return res, nil
 }
 
+func (s *Store) HFFileSize(ctx context.Context, modelName, fileName string) (int64, error) {
+	client := resty.New()
+	client.SetResponseMiddlewares(httpCodeToError)
+	defer client.Close()
+
+	url := fmt.Sprintf("%s/%s/resolve/main/%s", HF_ENDPOINT, modelName, fileName)
+	resp, err := client.R().
+		SetContext(ctx).
+		SetAuthToken(config.Get().HFToken).
+		Head(url)
+	if err != nil {
+		return -1, err
+	}
+
+	length := resp.Header().Get("Content-Length")
+	if length == "" {
+		return -1, fmt.Errorf("HEAD response missing Content-Length: %s", fileName)
+	}
+
+	size, err := strconv.ParseInt(length, 10, 64)
+	if err != nil {
+		return -1, fmt.Errorf("invalid Content-Length: %w, %s", err, fileName)
+	}
+
+	return size, nil
+}
+
 // Pull downloads a model from HuggingFace and stores it locally
 // It fetches the model tree, finds .gguf files, downloads them, and saves metadata
 // if model not specify, all is set true, and autodetect true
@@ -70,8 +98,6 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 		return
 	}
 
-	var totalSize int64
-
 	go func() {
 		defer s.UnlockModel(mf.Name)
 
@@ -81,8 +107,8 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 		// filter download file
 		var needs []string
 		needs = append(needs, mf.ModelFile)
-		if mf.TokenizerFile != "" {
-			needs = append(needs, mf.TokenizerFile)
+		if mf.MMProjFile != "" {
+			needs = append(needs, mf.MMProjFile)
 		}
 		needs = append(needs, mf.ExtraFiles...)
 
@@ -95,32 +121,24 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 		}
 
 		// Create modelfile for storing downloaded content
+		pgetDownloader := NewPgetDownloader(mf.Size)
 		for _, file := range needs {
 			outputPath := path.Join(s.home, "models", encName, file)
 			downloadURL := fmt.Sprintf("%s/%s/resolve/main/%s?download=true", HF_ENDPOINT, mf.Name, file)
 
-			pgetDownloader := NewPgetDownloader()
 			err := pgetDownloader.DownloadWithProgress(ctx, downloadURL, config.Get().HFToken, outputPath, infoC)
 			if err != nil {
 				errC <- err
 				return
 			}
-
-			stat, err := os.Stat(outputPath)
-			if err != nil {
-				errC <- err
-				return
-			}
-			totalSize += stat.Size()
 		}
 
 		model := types.ModelManifest{
-			Name:          mf.Name,
-			Size:          totalSize,
-			ModelType:     mf.ModelType,
-			ModelFile:     mf.ModelFile,
-			TokenizerFile: mf.TokenizerFile,
-			ExtraFiles:    mf.ExtraFiles,
+			Name:       mf.Name,
+			Size:       mf.Size,
+			ModelFile:  mf.ModelFile,
+			MMProjFile: mf.MMProjFile,
+			ExtraFiles: mf.ExtraFiles,
 		}
 		manifestPath := path.Join(s.home, "models", encName, "nexa.manifest")
 		manifestData, _ := sonic.Marshal(model) // JSON marshal won't fail, ignore error

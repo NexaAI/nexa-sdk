@@ -19,10 +19,11 @@ import (
 
 var (
 	//disableStream *bool // reuse in run.go
-	tool     []string
-	prompt   []string
-	query    string
-	document []string
+	modelType string
+	tool      []string
+	prompt    []string
+	query     string
+	document  []string
 )
 
 func infer() *cobra.Command {
@@ -34,11 +35,13 @@ func infer() *cobra.Command {
 
 	inferCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
 
-	inferCmd.Flags().BoolVarP(&disableStream, "disable-stream", "s", false, "disable stream mode in llm/vlm")
-	inferCmd.Flags().StringSliceVarP(&tool, "tool", "t", nil, "add tool to make function call")
-	inferCmd.Flags().StringSliceVarP(&prompt, "prompt", "p", nil, "pass prompt to embedder")
-	inferCmd.Flags().StringVarP(&query, "query", "q", "", "rerank only")
-	inferCmd.Flags().StringSliceVarP(&document, "document", "d", nil, "rerank only")
+	inferCmd.Flags().SortFlags = false
+	inferCmd.Flags().StringVarP(&modelType, "model-type", "m", "llm", "specify model type [llm/vlm/embedder/reranker]")
+	inferCmd.Flags().BoolVarP(&disableStream, "disable-stream", "s", false, "[llm|vlm] disable stream mode")
+	inferCmd.Flags().StringSliceVarP(&tool, "tool", "t", nil, "[llm|vlm] add tool to make function call")
+	inferCmd.Flags().StringSliceVarP(&prompt, "prompt", "p", nil, "[embedder] pass prompt")
+	inferCmd.Flags().StringVarP(&query, "query", "q", "", "[reranker] query")
+	inferCmd.Flags().StringSliceVarP(&document, "document", "d", nil, "[reranker] documents")
 
 	inferCmd.Run = func(cmd *cobra.Command, args []string) {
 		model := normalizeModelName(args[0])
@@ -63,24 +66,28 @@ func infer() *cobra.Command {
 		defer nexa_sdk.DeInit()
 
 		modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile)
-		var tokenizer *string
-		if manifest.TokenizerFile != "" {
-			t := s.ModelfilePath(manifest.Name, manifest.TokenizerFile)
-			tokenizer = &t
-		}
 
-		switch manifest.ModelType {
+		switch modelType {
 		case types.ModelTypeLLM:
-			if len(tool) == 0 {
-				inferLLM(modelfile, tokenizer)
+			if manifest.MMProjFile == "" {
+				if len(tool) == 0 {
+					inferLLM(modelfile, nil)
+					return
+				} else {
+					panic("TODO")
+				}
 			} else {
+				// compat vlm
+				t := s.ModelfilePath(manifest.Name, manifest.MMProjFile)
+				inferVLM(modelfile, &t)
 			}
 		case types.ModelTypeVLM:
-			inferVLM(modelfile, tokenizer)
+			t := s.ModelfilePath(manifest.Name, manifest.MMProjFile)
+			inferVLM(modelfile, &t)
 		case types.ModelTypeEmbedder:
-			inferEmbed(modelfile, tokenizer)
+			inferEmbed(modelfile, nil)
 		case types.ModelTypeReranker:
-			inferRerank(modelfile, tokenizer)
+			inferRerank(modelfile, nil)
 		default:
 			panic("not support model type")
 		}
@@ -92,7 +99,7 @@ func inferLLM(model string, tokenizer *string) {
 	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model..."))
 	spin.Start()
 
-	p := nexa_sdk.NewLLM(model, tokenizer, 4096, nil)
+	p := nexa_sdk.NewLLM(model, tokenizer, 40960, nil)
 	defer p.Destroy()
 
 	spin.Stop()
@@ -122,7 +129,7 @@ func inferLLM(model string, tokenizer *string) {
 				return "", err
 			}
 
-			res, err := p.Generate(prompt)
+			res, err := p.Generate(formatted)
 			if err != nil {
 				return "", err
 			}
@@ -167,7 +174,7 @@ func inferVLM(model string, tokenizer *string) {
 	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model..."))
 	spin.Start()
 
-	p := nexa_sdk.NewVLM(model, tokenizer, 4096, nil)
+	p := nexa_sdk.NewVLM(model, tokenizer, 40960, nil)
 	defer p.Destroy()
 
 	spin.Stop()

@@ -13,13 +13,15 @@ import (
 // TODO: use sub command
 func genImage() *cobra.Command {
 	imgCmd := &cobra.Command{
-		Use: "image",
+		Use:   "gen_image",
+		Short: "Generate image from text or image",
 	}
 	var model, input, output string
 	var prompts []string
 	var genType string
 	var scheduler string
 
+	imgCmd.Flags().SortFlags = false
 	imgCmd.Flags().StringVarP(&model, "model", "m", "stabilityai/sdxl-turbo", "Model name for image generation")
 	imgCmd.Flags().StringSliceVarP(&prompts, "prompt", "p", nil, "Prompt for image generation")
 	imgCmd.Flags().StringVarP(&genType, "type", "t", "txt2img", "Type of image generation: txt2img, img2img")
