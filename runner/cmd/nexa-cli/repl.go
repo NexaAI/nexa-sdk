@@ -385,16 +385,26 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 	res.Name = name
 
 	// check gguf
-	var ggufs, mmprojs []string
+	var mmprojs []string
+	ggufGroups := make(map[string][]string)
+	// qwen2.5-7b-instruct-q8_0-00003-of-00003.gguf original name is qwen2.5-7b-instruct-q8_0
+	// *d-of-*d like this
+	partRegix := regexp.MustCompile(`-\d+-of-\d+\.gguf$`)
 	for _, file := range files {
 		lower := strings.ToLower(file)
 		if strings.HasSuffix(lower, ".gguf") {
 			if strings.HasPrefix(lower, "mmproj") {
 				mmprojs = append(mmprojs, file)
 			} else {
-				ggufs = append(ggufs, file)
+				name := partRegix.ReplaceAllString(file, "")
+				ggufGroups[name] = append(ggufGroups[name], file)
 			}
 		}
+	}
+
+	ggufs := make([]string, 0, len(ggufGroups))
+	for gguf := range ggufGroups {
+		ggufs = append(ggufs, gguf)
 	}
 
 	// choose model file
@@ -403,25 +413,32 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 		if len(ggufs) == 1 {
 			res.ModelFile = ggufs[0]
 			spin.Start()
-			size, err := store.Get().HFFileSize(context.TODO(), name, ggufs[0])
+			fileSizes, err := getFileSizesConcurrent(name, ggufGroups[ggufs[0]])
 			spin.Stop()
-
 			if err != nil {
 				fmt.Println(text.FgRed.Sprintf("get filesize error: [%s] %s", ggufs[0], err))
 				return res, err
 			}
-			res.Size += size
-
+			for _, size := range fileSizes {
+				res.Size += size
+			}
 		} else {
 			// interactive choose
 			// Get file sizes for display
 			spin.Start()
-			fileSizes, err := getFileSizesConcurrent(name, ggufs)
-			spin.Stop()
-			if err != nil {
-				fmt.Println(text.FgRed.Sprintf("get filesize error: %s", err))
-				return res, err
+			// key is gguf file name, value is file size total containts part file
+			fileSizes := make(map[string]int64)
+			for _, gguf := range ggufs {
+				sizes, err := getFileSizesConcurrent(name, ggufGroups[gguf])
+				if err != nil {
+					fmt.Println(text.FgRed.Sprintf("get filesize error: [%s] %s", gguf, err))
+					return res, err
+				}
+				for _, size := range sizes {
+					fileSizes[gguf] += size
+				}
 			}
+			spin.Stop()
 
 			// select default gguf
 			var file, quant string
@@ -463,9 +480,17 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 				Run(); err != nil {
 				return res, err
 			}
+			// sort files by name
+			files := ggufGroups[file]
+			slices.Sort(files)
 
-			res.ModelFile = file
-			res.Size += fileSizes[file]
+			for _, file := range files {
+				res.Size += fileSizes[file]
+			}
+			res.ModelFile = files[0]
+			if len(files) > 1 {
+				res.ExtraFiles = append(res.ExtraFiles, files[1:]...)
+			}
 		}
 
 		// detect mmproj
