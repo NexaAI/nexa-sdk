@@ -6,7 +6,6 @@ import (
 	"os"
 	"path"
 	"strconv"
-	"strings"
 
 	"github.com/bytedance/sonic"
 	"github.com/rs/zerolog"
@@ -61,34 +60,26 @@ func (s *Store) HFFileSize(ctx context.Context, modelName, fileName string) (int
 	client.SetResponseMiddlewares(httpCodeToError)
 	defer client.Close()
 
+	url := fmt.Sprintf("%s/%s/resolve/main/%s", HF_ENDPOINT, modelName, fileName)
 	resp, err := client.R().
+		SetContext(ctx).
 		SetAuthToken(config.Get().HFToken).
-		SetHeader("Range", "bytes=0-0").
-		Get(fmt.Sprintf("%s/%s/resolve/main/%s", HF_ENDPOINT, modelName, fileName))
+		Head(url)
 	if err != nil {
 		return -1, err
 	}
 
-	contentRange := resp.Header().Get("Content-Range")
-	if contentRange != "" {
-		// Parse Content-Range: bytes 0-0/1234567
-		parts := strings.Split(contentRange, "/")
-		if len(parts) == 2 {
-			if size, err := strconv.ParseInt(parts[1], 10, 64); err == nil {
-				return size, nil
-			}
-		}
+	length := resp.Header().Get("Content-Length")
+	if length == "" {
+		return -1, fmt.Errorf("HEAD response missing Content-Length: %s", fileName)
 	}
 
-	// Fallback to Content-Length
-	contentLength := resp.Header().Get("Content-Length")
-	if contentLength != "" {
-		if size, err := strconv.ParseInt(contentLength, 10, 64); err == nil {
-			return size, nil
-		}
+	size, err := strconv.ParseInt(length, 10, 64)
+	if err != nil {
+		return -1, fmt.Errorf("invalid Content-Length: %w, %s", err, fileName)
 	}
 
-	return -1, fmt.Errorf("unable to determine file size")
+	return size, nil
 }
 
 // Pull downloads a model from HuggingFace and stores it locally

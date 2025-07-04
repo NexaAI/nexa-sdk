@@ -384,6 +384,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 
 	res.Name = name
 
+	// TODO: refactor
 	// check gguf
 	var mmprojs []string
 	ggufGroups := make(map[string][]string)
@@ -455,7 +456,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 			if file != "" {
 				sizeStr := humanize.IBytes(uint64(fileSizes[file]))
 				options = append(options, huh.NewOption(
-					fmt.Sprintf("%-10s [%7s] (default)", quant, sizeStr), file,
+					fmt.Sprintf("%-10s [%7s] (default)", strings.ToUpper(quant), sizeStr), file,
 				))
 			}
 			for i := range ggufs {
@@ -542,15 +543,17 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 				}
 			}
 			res.ExtraFiles = append(res.ExtraFiles, file)
+		}
 
-			// calc total size
-			size, err := store.Get().HFFileSize(context.TODO(), res.Name, file)
-			if err != nil {
-				fmt.Println(text.FgRed.Sprintf("get filesize error: [%s] %s", file, err))
-				return res, err
-			}
+		sizes, err := getFileSizesConcurrent(name, files)
+		if err != nil {
+			fmt.Println(text.FgRed.Sprintf("get filesize error: %s", err))
+			return res, err
+		}
+		for _, size := range sizes {
 			res.Size += size
 		}
+
 		// fallback to first file
 		if res.ModelFile == "" {
 			res.ModelFile = files[0]
