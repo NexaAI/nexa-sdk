@@ -191,6 +191,7 @@ func repl(cfg ReplConfig) {
 			}
 			fmt.Print(text.Reset.EscapeSeq())
 			fmt.Println()
+      
 			// print metrics
 			if firstToken {
 				ttft := tokenStart.Sub(runStreamStart).Seconds()
@@ -208,7 +209,7 @@ func repl(cfg ReplConfig) {
 			// check error
 			e, ok := <-errCh
 			if ok {
-				fmt.Println(text.FgRed.Sprintf("Error: %s", e))
+				fmt.Println(text.FgRed.Sprintf("Error: %s\n", e))
 			}
 		} else {
 			start := time.Now()
@@ -219,12 +220,12 @@ func repl(cfg ReplConfig) {
 			// print duration
 			duration := time.Since(start).Seconds()
 			fmt.Println(text.FgBlue.Sprintf(
-				"Generate in %f s",
+				"Generate in %f s\n",
 				duration,
 			))
 
 			if err != nil {
-				fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+				fmt.Println(text.FgRed.Sprintf("Error: %s\n", err))
 			}
 		}
 	}

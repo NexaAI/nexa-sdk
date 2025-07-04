@@ -7,6 +7,7 @@ const (
 	ModelTypeVLM      = "vlm"
 	ModelTypeEmbedder = "embedder"
 	ModelTypeReranker = "reranker"
+	ModelTypeImageGen = "image_gen"
 )
 
 type ModelManifest struct {
