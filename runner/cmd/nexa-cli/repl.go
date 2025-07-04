@@ -57,7 +57,6 @@ func listFiles(path string) func(string) []string {
 type ReplConfig struct {
 	Stream    bool
 	ParseFile bool
-	ThinkCap  bool
 
 	Clear       func()
 	SaveKVCache func(path string) error
@@ -100,6 +99,7 @@ func repl(cfg ReplConfig) {
 		AutoComplete:    completer,
 		InterruptPrompt: "^C",
 		EOFPrompt:       "^D",
+		HistoryFile:     store.Get().HistoryFilePath(),
 	})
 	if err != nil {
 		panic(err)
@@ -186,23 +186,21 @@ func repl(cfg ReplConfig) {
 			go cfg.RunStream(context.TODO(), line, images, audios, dataCh, errCh)
 
 			// print stream
-			var full strings.Builder
 			for r := range dataCh {
 				if firstToken {
 					tokenStart = time.Now()
 					firstToken = false
-					if cfg.ThinkCap {
-						fmt.Print(text.FgBlack.EscapeSeq())
-					} else {
-						fmt.Print(text.FgYellow.EscapeSeq())
-					}
 				}
-				// recovery main color
-				if cfg.ThinkCap && full.Len() > 8 && full.String()[full.Len()-8:] == "</think>" {
+				switch r {
+				case "<think>":
+					fmt.Print(text.FgBlack.EscapeSeq())
+					fmt.Print(r)
+				case "</think>":
+					fmt.Print(r)
 					fmt.Print(text.FgYellow.EscapeSeq())
+				default:
+					fmt.Print(r)
 				}
-				fmt.Print(r)
-				full.WriteString(r)
 				count++
 			}
 			fmt.Print(text.Reset.EscapeSeq())

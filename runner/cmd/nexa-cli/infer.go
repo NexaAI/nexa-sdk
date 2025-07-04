@@ -110,7 +110,6 @@ func inferLLM(model string, tokenizer *string) {
 	repl(ReplConfig{
 		Stream:    !disableStream,
 		ParseFile: false,
-		ThinkCap:  true,
 
 		Clear: p.Reset,
 
@@ -186,7 +185,6 @@ func inferVLM(model string, tokenizer *string) {
 	repl(ReplConfig{
 		Stream:    !disableStream,
 		ParseFile: true,
-		ThinkCap:  false,
 
 		Clear: p.Reset,
 
