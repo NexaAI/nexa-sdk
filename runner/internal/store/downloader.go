@@ -107,8 +107,6 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 		return
 	}
 
-	var totalSize int64
-
 	go func() {
 		defer s.UnlockModel(mf.Name)
 
@@ -142,18 +140,11 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 				errC <- err
 				return
 			}
-
-			stat, err := os.Stat(outputPath)
-			if err != nil {
-				errC <- err
-				return
-			}
-			totalSize += stat.Size()
 		}
 
 		model := types.ModelManifest{
 			Name:       mf.Name,
-			Size:       totalSize,
+			Size:       mf.Size,
 			ModelFile:  mf.ModelFile,
 			MMProjFile: mf.MMProjFile,
 			ExtraFiles: mf.ExtraFiles,

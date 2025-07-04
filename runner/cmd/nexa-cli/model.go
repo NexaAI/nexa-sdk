@@ -53,13 +53,9 @@ func pull() *cobra.Command {
 
 		// TODO: replace with go-pretty
 		pgCh, errCh := s.Pull(context.TODO(), manifest)
-		bar := progressbar.DefaultBytes(-1, "downloading")
+		bar := progressbar.DefaultBytes(manifest.Size, "downloading")
 		for pg := range pgCh {
-			if pg.CurrentSize != bar.GetMax64() {
-				bar.Reset()
-				bar.Describe("download " + pg.CurrentName)
-				bar.ChangeMax64(pg.CurrentSize)
-			}
+			bar.Describe("download " + pg.CurrentName)
 			bar.Set64(pg.CurrentDownloaded)
 		}
 		bar.Exit()
