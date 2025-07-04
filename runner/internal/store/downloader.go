@@ -124,8 +124,8 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 		// filter download file
 		var needs []string
 		needs = append(needs, mf.ModelFile)
-		if mf.TokenizerFile != "" {
-			needs = append(needs, mf.TokenizerFile)
+		if mf.MMProjFile != "" {
+			needs = append(needs, mf.MMProjFile)
 		}
 		needs = append(needs, mf.ExtraFiles...)
 
@@ -158,12 +158,11 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 		}
 
 		model := types.ModelManifest{
-			Name:          mf.Name,
-			Size:          totalSize,
-			ModelType:     mf.ModelType,
-			ModelFile:     mf.ModelFile,
-			TokenizerFile: mf.TokenizerFile,
-			ExtraFiles:    mf.ExtraFiles,
+			Name:       mf.Name,
+			Size:       totalSize,
+			ModelFile:  mf.ModelFile,
+			MMProjFile: mf.MMProjFile,
+			ExtraFiles: mf.ExtraFiles,
 		}
 		manifestPath := path.Join(s.home, "models", encName, "nexa.manifest")
 		manifestData, _ := sonic.Marshal(model) // JSON marshal won't fail, ignore error

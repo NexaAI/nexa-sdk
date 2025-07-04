@@ -115,22 +115,22 @@ func keepAliveGet[T any](name string, param types.ModelParam) (any, error) {
 		return nil, err
 	}
 	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile)
-	var tokenizer *string
-	if manifest.TokenizerFile != "" {
-		t := s.ModelfilePath(manifest.Name, manifest.TokenizerFile)
-		tokenizer = &t
-	}
 
 	var t keepable
 	switch reflect.TypeFor[T]() {
 	case reflect.TypeFor[nexa_sdk.LLM]():
-		t = nexa_sdk.NewLLM(modelfile, tokenizer, param.CtxLen, param.Device)
+		t = nexa_sdk.NewLLM(modelfile, nil, param.CtxLen, param.Device)
 	case reflect.TypeFor[nexa_sdk.VLM]():
-		t = nexa_sdk.NewVLM(modelfile, tokenizer, param.CtxLen, param.Device)
+		if manifest.MMProjFile == "" {
+			return nil, fmt.Errorf("missing mmproj file")
+		} else {
+			mmproj := s.ModelfilePath(manifest.Name, manifest.MMProjFile)
+			t = nexa_sdk.NewVLM(modelfile, &mmproj, param.CtxLen, param.Device)
+		}
 	case reflect.TypeFor[nexa_sdk.Embedder]():
-		t = nexa_sdk.NewEmbedder(modelfile, tokenizer, param.Device)
+		t = nexa_sdk.NewEmbedder(modelfile, nil, param.Device)
 	case reflect.TypeFor[nexa_sdk.Reranker]():
-		t = nexa_sdk.NewReranker(modelfile, tokenizer, param.Device)
+		t = nexa_sdk.NewReranker(modelfile, nil, param.Device)
 	default:
 		panic(fmt.Sprintf("not support type: %+#v", t))
 	}

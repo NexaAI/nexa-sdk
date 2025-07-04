@@ -326,22 +326,6 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 
 	res.Name = name
 
-	// choose model type
-	var modelTypeString string
-	if err = huh.NewSelect[string]().
-		Title("Choose model type").
-		Options(
-			huh.NewOption(types.ModelTypeLLM, types.ModelTypeLLM),
-			huh.NewOption(types.ModelTypeVLM, types.ModelTypeVLM),
-			huh.NewOption(types.ModelTypeEmbedder, types.ModelTypeEmbedder),
-			huh.NewOption(types.ModelTypeReranker, types.ModelTypeReranker),
-		).
-		Value(&modelTypeString).
-		Run(); err != nil {
-		return
-	}
-	res.ModelType = types.ModelType(modelTypeString)
-
 	// check gguf
 	var ggufs, mmprojs []string
 	for _, file := range files {
@@ -356,7 +340,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 	}
 
 	// choose model file
-	if len(ggufs) > 0 || len(mmprojs) > 0 {
+	if len(ggufs) > 0 {
 		// detect gguf
 		switch len(ggufs) {
 		case 0:
@@ -404,12 +388,12 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 			res.ModelFile = file
 		}
 
-		if res.ModelType == types.ModelTypeVLM {
+		if len(mmprojs) > 0 {
 			// detect mmproj
 			switch len(mmprojs) {
 			case 0:
 			case 1:
-				res.TokenizerFile = mmprojs[0]
+				res.MMProjFile = mmprojs[0]
 			default:
 				// match biggest
 				var file, quant string
@@ -422,7 +406,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 					}
 				}
 
-				res.TokenizerFile = file
+				res.MMProjFile = file
 			}
 		}
 

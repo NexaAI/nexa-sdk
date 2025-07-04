@@ -13,7 +13,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/NexaAI/nexa-sdk/internal/store"
-	"github.com/NexaAI/nexa-sdk/internal/types"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
 )
 
@@ -63,26 +62,12 @@ func infer() *cobra.Command {
 		defer nexa_sdk.DeInit()
 
 		modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile)
-		var tokenizer *string
-		if manifest.TokenizerFile != "" {
-			t := s.ModelfilePath(manifest.Name, manifest.TokenizerFile)
-			tokenizer = &t
-		}
 
-		switch manifest.ModelType {
-		case types.ModelTypeLLM:
-			if len(tool) == 0 {
-				inferLLM(modelfile, tokenizer)
-			} else {
-			}
-		case types.ModelTypeVLM:
-			inferVLM(modelfile, tokenizer)
-		case types.ModelTypeEmbedder:
-			inferEmbed(modelfile, tokenizer)
-		case types.ModelTypeReranker:
-			inferRerank(modelfile, tokenizer)
-		default:
-			panic("not support model type")
+		if manifest.MMProjFile != "" {
+			t := s.ModelfilePath(manifest.Name, manifest.MMProjFile)
+			inferVLM(modelfile, &t)
+		} else {
+			inferLLM(modelfile, nil)
 		}
 	}
 	return inferCmd
@@ -229,50 +214,130 @@ func inferVLM(model string, tokenizer *string) {
 	})
 }
 
-func inferEmbed(modelfile string, tokenizer *string) {
-	p := nexa_sdk.NewEmbedder(modelfile, tokenizer, nil)
-	defer p.Destroy()
-
-	if len(prompt) == 0 {
-		fmt.Println(text.FgRed.Sprintf("at least 1 text prompt is accept"))
-		return
+func embed() *cobra.Command {
+	embedCmd := &cobra.Command{
+		Use:   "infer <model-name>",
+		Short: "Infer with a model",
+		Long:  "Run inference with a specified model. The model must be downloaded and cached locally.",
 	}
 
-	res, err := p.Embed(prompt)
-	if err != nil {
-		fmt.Println(text.FgRed.Sprintf("Error: %s", err))
-		return
-	} else {
-		nEmbed := len(res) / len(prompt)
-		for i := range res {
-			if i%nEmbed == 0 {
-				fmt.Print(text.FgYellow.Sprintf("\n===> %d\n", i/nEmbed))
-			}
-			fmt.Print(text.FgYellow.Sprintf("%f ", res[i]))
+	embedCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
+
+	embedCmd.Flags().BoolVarP(&disableStream, "disable-stream", "s", false, "disable stream mode in llm/vlm")
+	embedCmd.Flags().StringSliceVarP(&tool, "tool", "t", nil, "add tool to make function call")
+	embedCmd.Flags().StringSliceVarP(&prompt, "prompt", "p", nil, "pass prompt to embedder")
+	embedCmd.Flags().StringVarP(&query, "query", "q", "", "rerank only")
+	embedCmd.Flags().StringSliceVarP(&document, "document", "d", nil, "rerank only")
+
+	embedCmd.Run = func(cmd *cobra.Command, args []string) {
+		model := normalizeModelName(args[0])
+
+		s := store.Get()
+
+		manifest, err := s.GetManifest(model)
+		if errors.Is(err, os.ErrNotExist) {
+			fmt.Println(text.FgBlue.Sprintf("model not found, start download"))
+
+			pull().Run(cmd, args)
+			// check agin
+			manifest, err = s.GetManifest(model)
 		}
+
+		if err != nil {
+			fmt.Println(text.FgRed.Sprintf("parse manifest error: %s", err))
+			return
+		}
+
+		nexa_sdk.Init()
+		defer nexa_sdk.DeInit()
+
+		modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile)
+		p := nexa_sdk.NewEmbedder(modelfile, nil, nil)
+		defer p.Destroy()
+
+		if len(prompt) == 0 {
+			fmt.Println(text.FgRed.Sprintf("at least 1 text prompt is accept"))
+			return
+		}
+
+		res, err := p.Embed(prompt)
+		if err != nil {
+			fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+			return
+		} else {
+			nEmbed := len(res) / len(prompt)
+			for i := range res {
+				if i%nEmbed == 0 {
+					fmt.Print(text.FgYellow.Sprintf("\n===> %d\n", i/nEmbed))
+				}
+				fmt.Print(text.FgYellow.Sprintf("%f ", res[i]))
+			}
+		}
+
 	}
+	return embedCmd
 }
 
-func inferRerank(modelfile string, tokenizer *string) {
-	p := nexa_sdk.NewReranker(modelfile, tokenizer, nil)
-	defer p.Destroy()
-
-	if len(query) == 0 {
-		fmt.Println(text.FgRed.Sprintf("at least 1 query is accept"))
-		return
-	}
-	if len(document) == 0 {
-		fmt.Println(text.FgRed.Sprintf("at least 1 document is accept"))
-		return
+func rerank() *cobra.Command {
+	rerankCmd := &cobra.Command{
+		Use:   "infer <model-name>",
+		Short: "Infer with a model",
+		Long:  "Run inference with a specified model. The model must be downloaded and cached locally.",
 	}
 
-	res, err := p.Rerank(query, document)
-	if err != nil {
-		fmt.Println(text.FgRed.Sprintf("Error: %s", err))
-		return
-	} else {
-		for i := range res {
-			fmt.Println(text.FgYellow.Sprintf("%d => %f", i, res[i]))
+	rerankCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
+
+	rerankCmd.Flags().BoolVarP(&disableStream, "disable-stream", "s", false, "disable stream mode in llm/vlm")
+	rerankCmd.Flags().StringSliceVarP(&tool, "tool", "t", nil, "add tool to make function call")
+	rerankCmd.Flags().StringSliceVarP(&prompt, "prompt", "p", nil, "pass prompt to embedder")
+	rerankCmd.Flags().StringVarP(&query, "query", "q", "", "rerank only")
+	rerankCmd.Flags().StringSliceVarP(&document, "document", "d", nil, "rerank only")
+
+	rerankCmd.Run = func(cmd *cobra.Command, args []string) {
+		model := normalizeModelName(args[0])
+
+		s := store.Get()
+
+		manifest, err := s.GetManifest(model)
+		if errors.Is(err, os.ErrNotExist) {
+			fmt.Println(text.FgBlue.Sprintf("model not found, start download"))
+
+			pull().Run(cmd, args)
+			// check agin
+			manifest, err = s.GetManifest(model)
 		}
+
+		if err != nil {
+			fmt.Println(text.FgRed.Sprintf("parse manifest error: %s", err))
+			return
+		}
+
+		nexa_sdk.Init()
+		defer nexa_sdk.DeInit()
+
+		modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile)
+		p := nexa_sdk.NewReranker(modelfile, nil, nil)
+		defer p.Destroy()
+
+		if len(query) == 0 {
+			fmt.Println(text.FgRed.Sprintf("at least 1 query is accept"))
+			return
+		}
+		if len(document) == 0 {
+			fmt.Println(text.FgRed.Sprintf("at least 1 document is accept"))
+			return
+		}
+
+		res, err := p.Rerank(query, document)
+		if err != nil {
+			fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+			return
+		} else {
+			for i := range res {
+				fmt.Println(text.FgYellow.Sprintf("%d => %f", i, res[i]))
+			}
+		}
+
 	}
+	return rerankCmd
 }
