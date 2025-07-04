@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strconv"
+	"strings"
 
 	"github.com/bytedance/sonic"
 	"github.com/rs/zerolog"
@@ -52,6 +54,47 @@ func (s *Store) HFModelInfo(ctx context.Context, name string) ([]string, error) 
 	}
 
 	return res, nil
+}
+
+func getHFFileSize(ctx context.Context, modelName, fileName string) (int64, error) {
+	client := resty.New()
+	client.SetResponseMiddlewares(
+		httpCodeToError,
+		resty.AutoParseResponseMiddleware,
+	)
+	defer client.Close()
+
+	url := fmt.Sprintf("%s/%s/resolve/main/%s", HF_ENDPOINT, modelName, fileName)
+
+	resp, err := client.R().
+		SetAuthToken(config.Get().HFToken).
+		SetHeader("Range", "bytes=0-0").
+		Get(url)
+
+	if err != nil {
+		return 0, err
+	}
+
+	contentRange := resp.Header().Get("Content-Range")
+	if contentRange != "" {
+		// Parse Content-Range: bytes 0-0/1234567
+		parts := strings.Split(contentRange, "/")
+		if len(parts) == 2 {
+			if size, err := strconv.ParseInt(parts[1], 10, 64); err == nil {
+				return size, nil
+			}
+		}
+	}
+
+	// Fallback to Content-Length
+	contentLength := resp.Header().Get("Content-Length")
+	if contentLength != "" {
+		if size, err := strconv.ParseInt(contentLength, 10, 64); err == nil {
+			return size, nil
+		}
+	}
+
+	return 0, fmt.Errorf("unable to determine file size")
 }
 
 // Pull downloads a model from HuggingFace and stores it locally
