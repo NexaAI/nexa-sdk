@@ -5,19 +5,21 @@ import (
 	"strconv"
 	"time"
 
-	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
 	"github.com/spf13/cobra"
+
+	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
 )
 
+// TODO: use sub command
 func genImage() *cobra.Command {
 	imgCmd := &cobra.Command{
-		Use: "image generate",
+		Use: "image",
 	}
 	var model, input, output string
 	var prompts []string
 	var genType string
 	var scheduler string
-	// 创建图像生成器实例
+
 	imgCmd.Flags().StringVarP(&model, "model", "m", "stabilityai/sdxl-turbo", "Model name for image generation")
 	imgCmd.Flags().StringSliceVarP(&prompts, "prompt", "p", nil, "Prompt for image generation")
 	imgCmd.Flags().StringVarP(&genType, "type", "t", "txt2img", "Type of image generation: txt2img, img2img")

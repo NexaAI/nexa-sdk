@@ -45,7 +45,7 @@ func (p *Embedder) Embed(texts []string) ([]float32, error) {
 	var res *C.float
 	resLen := C.ml_embedder_embed(p.ptr, &cTexts[0], C.int32_t(len(cTexts)), &config, &res)
 	if resLen <= 0 {
-		return nil, ErrSDK
+		return nil, ErrCommon
 	}
 	defer C.free(unsafe.Pointer(res))
 
