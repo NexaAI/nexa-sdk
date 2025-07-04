@@ -241,7 +241,7 @@ func (p *VLM) GenerateStream(ctx context.Context, prompt string, images []string
 			pinnner.Pin(&cAudios[0])
 		}
 
-		// Call C function to start streaming generation
+		// Start streaming generation
 		resLen := C.ml_vlm_generate_stream(p.ptr, cPrompt, &config,
 			(C.ml_llm_token_callback)(C.go_generate_stream_on_token),
 			nil, nil)

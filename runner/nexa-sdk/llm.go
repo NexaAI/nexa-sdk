@@ -226,6 +226,13 @@ var streamTokenCtx context.Context
 //export go_generate_stream_on_token
 func go_generate_stream_on_token(token *C.char, _ *C.void) C.bool {
 	select {
+	case <-streamTokenCtx.Done():
+		fmt.Println("context done")
+		return false
+	default:
+	}
+
+	select {
 	case streamTokenCh <- C.GoString(token):
 		return true
 	case <-streamTokenCtx.Done():
