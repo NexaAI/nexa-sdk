@@ -36,10 +36,10 @@ func pull() *cobra.Command {
 		spin := spinner.New(
 			spinner.CharSets[39],
 			100*time.Millisecond,
-			spinner.WithSuffix("download manifest from: "+args[0]),
+			spinner.WithSuffix("download manifest from: "+name),
 		)
 		spin.Start()
-		files, err := s.HFModelInfo(context.TODO(), args[0])
+		files, err := s.HFModelInfo(context.TODO(), name)
 		spin.Stop()
 		if err != nil {
 			fmt.Println(text.FgRed.Sprintf("Get manifest from huggingface error: %s", err))
@@ -47,7 +47,6 @@ func pull() *cobra.Command {
 		}
 
 		manifest, err := chooseFiles(name, files)
-		fmt.Println(manifest)
 		if err != nil {
 			return
 		}
