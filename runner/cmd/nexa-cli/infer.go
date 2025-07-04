@@ -99,7 +99,7 @@ func inferLLM(model string, tokenizer *string) {
 	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model..."))
 	spin.Start()
 
-	p := nexa_sdk.NewLLM(model, tokenizer, 4096, nil)
+	p := nexa_sdk.NewLLM(model, tokenizer, 40960, nil)
 	defer p.Destroy()
 
 	spin.Stop()
@@ -174,7 +174,7 @@ func inferVLM(model string, tokenizer *string) {
 	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model..."))
 	spin.Start()
 
-	p := nexa_sdk.NewVLM(model, tokenizer, 4096, nil)
+	p := nexa_sdk.NewVLM(model, tokenizer, 40960, nil)
 	defer p.Destroy()
 
 	spin.Stop()
