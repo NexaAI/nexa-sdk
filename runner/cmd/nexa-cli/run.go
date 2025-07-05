@@ -76,7 +76,6 @@ func runFunc(cmd *cobra.Command, args []string) {
 				return
 			}
 
-			fmt.Println("start download")
 			var raw *http.Response
 			err = client.Post(context.TODO(), "/models", nil, &raw,
 				option.WithJSONSet("Name", manifest.Name),
