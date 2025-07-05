@@ -14,7 +14,7 @@ type Reranker struct {
 	ptr *C.ml_Reranker
 }
 
-func NewReranker(model string, tokenizer *string, devices *string) *Reranker {
+func NewReranker(model string, tokenizer *string, devices *string) (*Reranker, error) {
 	cModel := C.CString(model)
 	defer C.free(unsafe.Pointer(cModel))
 
@@ -26,9 +26,12 @@ func NewReranker(model string, tokenizer *string, devices *string) *Reranker {
 
 	}
 
-	return &Reranker{
-		ptr: C.ml_reranker_create(cModel, cTokenizer, nil),
+	ptr := C.ml_reranker_create(cModel, cTokenizer, nil)
+	if ptr == nil {
+		return nil, ErrCreateFailed
 	}
+
+	return &Reranker{ptr: ptr}, nil
 }
 
 func (p *Reranker) Destroy() {

@@ -57,13 +57,16 @@ type LLM struct {
 }
 
 // NewLLM creates a new LLM instance with the specified model and configuration
-func NewLLM(model string, tokenizer *string, ctxLen int32, devices *string) *LLM {
+func NewLLM(model string, tokenizer *string, ctxLen int32, devices *string) (*LLM, error) {
 	cModel := C.CString(model)
 	defer C.free(unsafe.Pointer(cModel))
 
-	return &LLM{
-		ptr: C.ml_llm_create(cModel, nil, C.ml_ModelConfig{n_ctx: C.int32_t(ctxLen)}, nil),
+	ptr := C.ml_llm_create(cModel, nil, C.ml_ModelConfig{n_ctx: C.int32_t(ctxLen)}, nil)
+	if ptr == nil {
+		return nil, ErrCreateFailed
 	}
+
+	return &LLM{ptr: ptr}, nil
 }
 
 // Destroy frees the memory allocated for the LLM instance
@@ -191,7 +194,7 @@ func (p *LLM) ApplyChatTemplate(msgs []ChatMessage) (string, error) {
 		if resLen == -1 {
 			return "", ErrChatTemplateNotFound
 		}
-		
+
 		return "", ErrCommon
 	}
 	defer C.free(unsafe.Pointer(res))

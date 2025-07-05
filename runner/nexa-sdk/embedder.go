@@ -14,13 +14,16 @@ type Embedder struct {
 	ptr *C.ml_Embedder
 }
 
-func NewEmbedder(model string, tokenizer *string, devices *string) *Embedder {
+func NewEmbedder(model string, tokenizer *string, devices *string) (*Embedder, error) {
 	cModel := C.CString(model)
 	defer C.free(unsafe.Pointer(cModel))
 
-	return &Embedder{
-		ptr: C.ml_embedder_create(cModel, nil, nil),
+	ptr := C.ml_embedder_create(cModel, nil, nil)
+	if ptr == nil {
+		return nil, ErrCreateFailed
 	}
+
+	return &Embedder{ptr: ptr}, nil
 }
 
 func (p *Embedder) Destroy() {

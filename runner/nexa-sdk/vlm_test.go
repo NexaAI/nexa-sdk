@@ -17,7 +17,7 @@ var (
 // Uses the Qwen3-0.6B-GGUF model from the local cache
 func initVLM() {
 	mmproj := path.Join(nexaPath, "models", "bmV4YW1sL25leGFtbC1tb2RlbHM=", "mmproj-model-f16.gguf")
-	vlm = NewVLM(
+	vlm, _ = NewVLM(
 		path.Join(nexaPath, "models", "bmV4YW1sL25leGFtbC1tb2RlbHM=", "gemma-3-4b-it-Q8_0.gguf"),
 		&mmproj, 4096, nil)
 }

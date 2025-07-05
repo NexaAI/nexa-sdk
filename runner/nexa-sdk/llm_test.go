@@ -16,7 +16,7 @@ var (
 // initLLM creates a new LLM instance for testing with a predefined model
 // Uses the Qwen3-0.6B-GGUF model from the local cache
 func initLLM() {
-	llm = NewLLM(
+	llm, _ = NewLLM(
 		path.Join(nexaPath, "models", "UXdlbi9Rd2VuMy0wLjZCLUdHVUY=", "modelfile"),
 		nil, 4096, nil)
 }
@@ -121,7 +121,7 @@ func TestApplyJinjaTemplate(t *testing.T) {
 						Function: ChatToolFunction{
 							Name:        "get_weather",
 							Description: "Get current weather info",
-							Parameters: map[string]interface{}{
+							Parameters: map[string]any{
 								"location": map[string]string{"type": "string"},
 							},
 						},
@@ -141,7 +141,7 @@ func TestApplyJinjaTemplate(t *testing.T) {
 						Function: ChatToolFunction{
 							Name:        "get_temp",
 							Description: "Get current temperature",
-							Parameters:  map[string]interface{}{},
+							Parameters:  map[string]any{},
 						},
 					},
 				},
@@ -157,7 +157,7 @@ func TestApplyJinjaTemplate(t *testing.T) {
 						Function: ChatToolFunction{
 							Name:        "noop",
 							Description: "do nothing",
-							Parameters:  map[string]interface{}{},
+							Parameters:  map[string]any{},
 						},
 					},
 				},
