@@ -21,6 +21,7 @@ import (
 var (
 	// ErrCommon represents a generic error from the C library
 	ErrCommon = errors.New("SDK Error")
+	ErrChatTemplateNotFound = errors.New("chat template not found")
 )
 
 // Init initializes the Nexa SDK by calling the underlying C library initialization
