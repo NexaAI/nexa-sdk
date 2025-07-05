@@ -184,6 +184,10 @@ func (p *LLM) ApplyChatTemplate(msgs []ChatMessage) (string, error) {
 	var res *C.char
 	resLen := C.ml_llm_apply_chat_template(p.ptr, &cMsgs[0], C.int32_t(len(msgs)), &res)
 	if resLen < 0 {
+		if resLen == -1 {
+			return "", ErrChatTemplateNotFound
+		}
+		
 		return "", ErrCommon
 	}
 	defer C.free(unsafe.Pointer(res))
