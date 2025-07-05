@@ -190,6 +190,7 @@ func repl(cfg ReplConfig) {
 				if firstToken {
 					tokenStart = time.Now()
 					firstToken = false
+					fmt.Print(text.FgYellow.EscapeSeq())
 				}
 				switch r {
 				case "<think>":
