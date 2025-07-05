@@ -90,7 +90,12 @@ func runFunc(cmd *cobra.Command, args []string) {
 				return "", err
 			}
 
+			if len(chatCompletion.Choices) == 0 {
+				return "", fmt.Errorf("response empty")
+			}
+
 			content := chatCompletion.Choices[0].Message.Content
+
 			history = append(history, openai.AssistantMessage(content))
 			return content, err
 		},
@@ -120,7 +125,9 @@ func runFunc(cmd *cobra.Command, args []string) {
 				errCh <- stream.Err()
 			}
 
-			history = append(history, openai.AssistantMessage(acc.Choices[0].Message.Content))
+			if len(acc.Choices) > 0 {
+				history = append(history, openai.AssistantMessage(acc.Choices[0].Message.Content))
+			}
 		},
 	})
 }

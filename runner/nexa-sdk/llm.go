@@ -141,8 +141,12 @@ func (p *LLM) Generate(prompt string) (string, error) {
 	cPrompt := C.CString(prompt)
 	defer C.free(unsafe.Pointer(cPrompt))
 
+	// Configure generation parameters
+	config := C.ml_GenerationConfig{}
+	config.max_tokens = 4096
+
 	var res *C.char
-	resLen := C.ml_llm_generate(p.ptr, cPrompt, nil, &res)
+	resLen := C.ml_llm_generate(p.ptr, cPrompt, &config, &res)
 	if resLen <= 0 {
 		return "", ErrCommon
 	}
