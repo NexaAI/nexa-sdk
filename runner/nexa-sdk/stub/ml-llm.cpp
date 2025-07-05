@@ -3,7 +3,7 @@
 extern "C" {
 
 /* ====================  Lifecycle Management  ============================== */
-ml_LLM* ml_llm_create(ml_Path model_path, ml_Path tokenizer_path, int32_t context_length, const char* device) {
+ml_LLM* ml_llm_create(ml_Path model_path, ml_Path tokenizer_path, ml_ModelConfig config, const char* device) {
     return nullptr;
 };
 void ml_llm_destroy(ml_LLM* handle) {};
