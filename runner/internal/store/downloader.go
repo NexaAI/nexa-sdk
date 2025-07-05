@@ -64,6 +64,7 @@ func (s *Store) HFFileSize(ctx context.Context, modelName, fileName string) (int
 	resp, err := client.R().
 		SetContext(ctx).
 		SetAuthToken(config.Get().HFToken).
+		SetHeader("Accept-Encoding", "").
 		Head(url)
 	if err != nil {
 		return -1, err

@@ -190,6 +190,7 @@ func repl(cfg ReplConfig) {
 				if firstToken {
 					tokenStart = time.Now()
 					firstToken = false
+					fmt.Print(text.FgYellow.EscapeSeq())
 				}
 				switch r {
 				case "<think>":
@@ -224,6 +225,7 @@ func repl(cfg ReplConfig) {
 			e, ok := <-errCh
 			if ok {
 				fmt.Println(text.FgRed.Sprintf("Error: %s\n", e))
+				return
 			}
 		} else {
 			start := time.Now()
@@ -231,7 +233,7 @@ func repl(cfg ReplConfig) {
 			fmt.Print(text.FgMagenta.EscapeSeq())
 			res, err := cfg.Run(line, images, audios)
 			// append color to think
-			res = strings.ReplaceAll(res, "<think>", text.FgBlack.EscapeSeq()+"<thin>")
+			res = strings.ReplaceAll(res, "<think>", text.FgBlack.EscapeSeq()+"<think>")
 			res = strings.ReplaceAll(res, "</think>", "</think>"+text.FgYellow.EscapeSeq())
 			fmt.Println(text.FgYellow.Sprint(res))
 
@@ -244,6 +246,7 @@ func repl(cfg ReplConfig) {
 
 			if err != nil {
 				fmt.Println(text.FgRed.Sprintf("Error: %s\n", err))
+				return
 			}
 		}
 	}
