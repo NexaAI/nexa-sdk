@@ -8,11 +8,16 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
+	"github.com/openai/openai-go/packages/ssestream"
+	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 
 	"github.com/NexaAI/nexa-sdk/internal/config"
+	"github.com/NexaAI/nexa-sdk/internal/store"
+	"github.com/NexaAI/nexa-sdk/internal/types"
 )
 
 var disableStream bool
@@ -41,26 +46,74 @@ func runFunc(cmd *cobra.Command, args []string) {
 		// option.WithRequestTimeout(time.Second*15),
 	)
 
+	// check
+	_, err := client.Models.Get(context.TODO(), model)
+	if err != nil {
+		if _, ok := err.(net.Error); ok {
+			fmt.Println(text.FgRed.Sprintf("Is server running? Please check your network. \n\t%s", err))
+			return
+		}
+		if e, ok := err.(*openai.Error); ok && e.StatusCode == http.StatusNotFound {
+			// pull model
+			fmt.Println(text.FgBlue.Sprintf("model not found, start download"))
+
+			// download manifest
+			spin := spinner.New(
+				spinner.CharSets[39],
+				100*time.Millisecond,
+				spinner.WithSuffix("download manifest from: "+model),
+			)
+			spin.Start()
+			files, err := store.Get().HFModelInfo(context.TODO(), model)
+			spin.Stop()
+			if err != nil {
+				fmt.Println(text.FgRed.Sprintf("Get manifest from huggingface error: %s", err))
+				return
+			}
+
+			manifest, err := chooseFiles(model, files)
+			if err != nil {
+				return
+			}
+
+			fmt.Println("start download")
+			var raw *http.Response
+			err = client.Post(context.TODO(), "/models", nil, &raw,
+				option.WithJSONSet("Name", manifest.Name),
+				option.WithJSONSet("Size", manifest.Size),
+				option.WithJSONSet("ModelFile", manifest.ModelFile),
+				option.WithJSONSet("MMProjFile", manifest.MMProjFile),
+				option.WithJSONSet("ExtraFiles", manifest.ExtraFiles),
+			)
+			stream := ssestream.NewStream[types.DownloadInfo](ssestream.NewDecoder(raw), err)
+			bar := progressbar.DefaultBytes(manifest.Size, "downloading")
+			for stream.Next() {
+				event := stream.Current()
+				bar.Set64(event.TotalDownloaded)
+			}
+			bar.Exit()
+
+			if stream.Err() != nil {
+				bar.Clear()
+				fmt.Println(text.FgRed.Sprintf("pull model error: %s", stream.Err().Error()))
+				return
+			}
+		} else {
+			fmt.Println(text.FgRed.Sprintf("get model error: %s", err.Error()))
+			return
+		}
+	}
+
 	// warm up
 	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model..."))
 	spin.Start()
-	_, err := client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
+	_, err = client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
 		Messages: nil,
 		Model:    model,
 	})
 	spin.Stop()
 
-	if _, ok := err.(net.Error); ok {
-		fmt.Printf("Is server running? Please check your network. \n\t%s\n", err)
-		return
-	} else if e, ok := err.(*openai.Error); ok {
-		if e.StatusCode == http.StatusNotFound {
-			fmt.Printf("Model not found, please download first")
-		} else {
-			fmt.Printf("%s\n", err)
-		}
-		return
-	} else if err != nil {
+	if err != nil {
 		fmt.Printf("%s\n", err)
 		return
 	}

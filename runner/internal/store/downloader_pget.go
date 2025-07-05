@@ -83,9 +83,11 @@ func (pd *PgetDownloader) DownloadWithProgress(
 
 	if progressCh != nil {
 		progressCh <- types.DownloadInfo{
+			CurrentName:       filepath.Base(outputPath),
 			CurrentSize:       fileSize,
 			CurrentDownloaded: fileSize,
-			CurrentName:       filepath.Base(outputPath),
+			TotalSize:         pd.total,
+			TotalDownloaded:   pd.total,
 		}
 	}
 
