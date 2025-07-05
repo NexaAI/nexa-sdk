@@ -99,13 +99,12 @@ func inferLLM(model string, tokenizer *string) {
 	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model..."))
 	spin.Start()
 
-	p := nexa_sdk.NewLLM(model, tokenizer, 40960, nil)
+	p := nexa_sdk.NewLLM(model, tokenizer, 8192, nil)
 	defer p.Destroy()
 
 	spin.Stop()
 
 	var history []nexa_sdk.ChatMessage
-	var lastLen int
 
 	repl(ReplConfig{
 		Stream:    !disableStream,
@@ -141,7 +140,6 @@ func inferLLM(model string, tokenizer *string) {
 			}
 
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: res})
-			lastLen = len(formatted) + len(res)
 
 			return res, nil
 		},
@@ -166,7 +164,7 @@ func inferLLM(model string, tokenizer *string) {
 			var full strings.Builder
 			//fmt.Printf(text.FgBlack.Sprint(formatted[:lastLen]))
 			//fmt.Printf(text.FgCyan.Sprint(formatted[lastLen:]))
-			dCh, eCh := p.GenerateStream(ctx, formatted[lastLen:])
+			dCh, eCh := p.GenerateStream(ctx, formatted)
 			for r := range dCh {
 				full.WriteString(r)
 				dataCh <- r
@@ -177,7 +175,6 @@ func inferLLM(model string, tokenizer *string) {
 			}
 
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: full.String()})
-			lastLen = len(formatted) + len(full.String())
 		},
 	})
 }

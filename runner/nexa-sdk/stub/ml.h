@@ -133,6 +133,19 @@ typedef struct {
     int32_t          audio_count;    /* Number of audios */
 } ml_GenerationConfig;
 
+/** LLM / VLM model configuration */
+typedef struct {
+    int32_t n_ctx; // text context, 0 = from model
+    int32_t n_threads; // number of threads to use for generation
+    int32_t n_threads_batch; // number of threads to use for batch processing
+    int32_t n_batch; // logical maximum batch size that can be submitted to llama_decode
+    int32_t n_ubatch; // physical maximum batch size
+    int32_t n_seq_max; // max number of sequences (i.e. distinct states for recurrent models)
+} ml_ModelConfig;
+
+/** Get default model configuration with sensible defaults */
+ML_API ml_ModelConfig ml_model_config_default(void);
+
 /** Chat message structure */
 typedef struct {
     const char* role;    /* Message role: "user", "assistant", "system" */
@@ -145,7 +158,7 @@ typedef struct ml_LLM ml_LLM; /* Opaque LLM handle */
 /* ====================  Lifecycle Management  ============================== */
 
 /** Create and initialize an LLM instance from model files */
-ML_API ml_LLM* ml_llm_create(ml_Path model_path, ml_Path tokenizer_path, int32_t context_length, const char* device);
+ML_API ml_LLM* ml_llm_create(ml_Path model_path, ml_Path tokenizer_path, ml_ModelConfig config, const char* device);
 
 /** Destroy LLM instance and free associated resources */
 ML_API void    ml_llm_destroy(ml_LLM* handle);
@@ -219,6 +232,7 @@ ML_API int32_t ml_llm_generate_stream(ml_LLM* handle, const char* prompt_utf8, c
     ml_llm_token_callback on_token, void* user_data, char** out_full_text);
 
 /** Generate next token from input IDs. Returns token ID (>0), 0 for EOS, negative for error */
+// TODO: remove this function, it is not used
 ML_API int32_t ml_llm_generate_next_token(ml_LLM* handle, int32_t** input_ids, int32_t* input_length, int32_t* n_past);
 
 /* ========================================================================== */

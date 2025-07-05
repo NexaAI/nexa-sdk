@@ -62,7 +62,7 @@ func NewLLM(model string, tokenizer *string, ctxLen int32, devices *string) *LLM
 	defer C.free(unsafe.Pointer(cModel))
 
 	return &LLM{
-		ptr: C.ml_llm_create(cModel, nil, C.int32_t(ctxLen), nil),
+		ptr: C.ml_llm_create(cModel, nil, C.ml_ModelConfig{n_ctx: C.int32_t(ctxLen)}, nil),
 	}
 }
 
