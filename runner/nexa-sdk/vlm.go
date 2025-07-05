@@ -24,7 +24,7 @@ type VLM struct {
 }
 
 // NewLLM creates a new VLM instance with the specified model and configuration
-func NewVLM(model string, tokenizer *string, ctxLen int32, devices *string) *VLM {
+func NewVLM(model string, tokenizer *string, ctxLen int32, devices *string) (*VLM, error) {
 	cModel := C.CString(model)
 	defer C.free(unsafe.Pointer(cModel))
 
@@ -34,9 +34,12 @@ func NewVLM(model string, tokenizer *string, ctxLen int32, devices *string) *VLM
 		defer C.free(unsafe.Pointer(cTokenizer))
 	}
 
-	return &VLM{
-		ptr: C.ml_vlm_create(cModel, cTokenizer, C.int32_t(ctxLen), nil),
+	ptr := C.ml_vlm_create(cModel, cTokenizer, C.int32_t(ctxLen), nil)
+	if ptr == nil {
+		return nil, ErrCreateFailed
 	}
+
+	return &VLM{ptr: ptr}, nil
 }
 
 // Destroy frees the memory allocated for the VLM instance

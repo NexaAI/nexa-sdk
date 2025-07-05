@@ -117,25 +117,26 @@ func keepAliveGet[T any](name string, param types.ModelParam) (any, error) {
 	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile)
 
 	var t keepable
+	var e error
 	switch reflect.TypeFor[T]() {
 	case reflect.TypeFor[nexa_sdk.LLM]():
-		t = nexa_sdk.NewLLM(modelfile, nil, param.CtxLen, param.Device)
+		t, e = nexa_sdk.NewLLM(modelfile, nil, param.CtxLen, param.Device)
 	case reflect.TypeFor[nexa_sdk.VLM]():
 		if manifest.MMProjFile == "" {
 			return nil, fmt.Errorf("missing mmproj file")
 		} else {
 			mmproj := s.ModelfilePath(manifest.Name, manifest.MMProjFile)
-			t = nexa_sdk.NewVLM(modelfile, &mmproj, param.CtxLen, param.Device)
+			t, e = nexa_sdk.NewVLM(modelfile, &mmproj, param.CtxLen, param.Device)
 		}
 	case reflect.TypeFor[nexa_sdk.Embedder]():
-		t = nexa_sdk.NewEmbedder(modelfile, nil, param.Device)
+		t, e = nexa_sdk.NewEmbedder(modelfile, nil, param.Device)
 	case reflect.TypeFor[nexa_sdk.Reranker]():
-		t = nexa_sdk.NewReranker(modelfile, nil, param.Device)
+		t, e = nexa_sdk.NewReranker(modelfile, nil, param.Device)
 	default:
 		panic(fmt.Sprintf("not support type: %+#v", t))
 	}
-	if t == nil {
-		return nil, fmt.Errorf("create failed")
+	if e != nil {
+		return nil, e
 	}
 	model = &modelKeepInfo{
 		model:    t,

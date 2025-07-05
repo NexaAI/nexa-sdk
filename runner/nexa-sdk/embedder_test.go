@@ -8,7 +8,7 @@ import (
 var embedder *Embedder
 
 func initEmbeder() {
-	embedder = NewEmbedder(
+	embedder, _ = NewEmbedder(
 		path.Join(nexaPath, "models", "UXdlbi9Rd2VuMy0wLjZCLUdHVUY=", "modelfile"),
 		nil, nil,
 	)

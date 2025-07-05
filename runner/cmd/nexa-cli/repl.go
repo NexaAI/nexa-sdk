@@ -548,7 +548,9 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 			res.ExtraFiles = append(res.ExtraFiles, file)
 		}
 
+		spin.Start()
 		sizes, err := getFileSizesConcurrent(name, files)
+		spin.Stop()
 		if err != nil {
 			fmt.Println(text.FgRed.Sprintf("get filesize error: %s", err))
 			return res, err

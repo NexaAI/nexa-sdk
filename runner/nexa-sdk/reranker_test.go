@@ -8,7 +8,7 @@ var reranker *Reranker
 
 func initReranker() {
 	tokenizer := "/home/remilia/Workspace/github/nexasdk-bridge/modelfiles/jina_rerank_tokenizer.json"
-	reranker = NewReranker(
+	reranker, _ = NewReranker(
 		"/home/remilia/Workspace/github/nexasdk-bridge/modelfiles/jina-reranker-v2-base-multilingual.F16.gguf",
 		&tokenizer,
 		nil,

@@ -97,12 +97,15 @@ func infer() *cobra.Command {
 
 func inferLLM(model string, tokenizer *string) {
 	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model..."))
+
 	spin.Start()
-
-	p := nexa_sdk.NewLLM(model, tokenizer, 8192, nil)
-	defer p.Destroy()
-
+	p, err := nexa_sdk.NewLLM(model, tokenizer, 8192, nil)
 	spin.Stop()
+	if err != nil {
+		fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+		return
+	}
+	defer p.Destroy()
 
 	var history []nexa_sdk.ChatMessage
 
@@ -181,12 +184,15 @@ func inferLLM(model string, tokenizer *string) {
 
 func inferVLM(model string, tokenizer *string) {
 	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model..."))
+
 	spin.Start()
-
-	p := nexa_sdk.NewVLM(model, tokenizer, 40960, nil)
-	defer p.Destroy()
-
+	p, err := nexa_sdk.NewVLM(model, tokenizer, 40960, nil)
 	spin.Stop()
+	if err != nil {
+		fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+		return
+	}
+	defer p.Destroy()
 
 	var history []nexa_sdk.ChatMessage
 	var lastLen int
@@ -246,7 +252,15 @@ func inferVLM(model string, tokenizer *string) {
 }
 
 func inferEmbed(modelfile string, tokenizer *string) {
-	p := nexa_sdk.NewEmbedder(modelfile, tokenizer, nil)
+	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model..."))
+
+	spin.Start()
+	p, err := nexa_sdk.NewEmbedder(modelfile, tokenizer, nil)
+	spin.Stop()
+	if err != nil {
+		fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+		return
+	}
 	defer p.Destroy()
 
 	if len(prompt) == 0 {
@@ -270,7 +284,15 @@ func inferEmbed(modelfile string, tokenizer *string) {
 }
 
 func inferRerank(modelfile string, tokenizer *string) {
-	p := nexa_sdk.NewReranker(modelfile, tokenizer, nil)
+	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model..."))
+
+	spin.Start()
+	p, err := nexa_sdk.NewReranker(modelfile, tokenizer, nil)
+	spin.Stop()
+	if err != nil {
+		fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+		return
+	}
 	defer p.Destroy()
 
 	if len(query) == 0 {
