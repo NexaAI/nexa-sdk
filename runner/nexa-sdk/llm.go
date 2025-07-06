@@ -10,7 +10,6 @@ import "C"
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"unsafe"
 
@@ -238,7 +237,7 @@ var streamTokenCtx context.Context
 func go_generate_stream_on_token(token *C.char, _ *C.void) C.bool {
 	select {
 	case <-streamTokenCtx.Done():
-		fmt.Println("context done")
+		//fmt.Println("context done")
 		return false
 	default:
 	}
@@ -247,7 +246,7 @@ func go_generate_stream_on_token(token *C.char, _ *C.void) C.bool {
 	case streamTokenCh <- C.GoString(token):
 		return true
 	case <-streamTokenCtx.Done():
-		fmt.Println("cancel")
+		//fmt.Println("cancel")
 		return false
 	}
 }
