@@ -23,6 +23,27 @@ type VLM struct {
 	ptr *C.ml_VLM // Pointer to the underlying C VLM structure
 }
 
+// GetProfilingData retrieves performance metrics from the VLM instance
+func (p *VLM) GetProfilingData() (*ProfilingData, error) {
+	var cData C.ml_ProfilingData
+	res := C.ml_vlm_get_profiling_data(p.ptr, &cData)
+	if res < 0 {
+		return nil, ErrCommon
+	}
+
+	return &ProfilingData{
+		TTFTMs:          float64(cData.ttft_ms),
+		TotalTokens:     int32(cData.total_tokens),
+		StopReason:      C.GoString(cData.stop_reason),
+		TokensPerSecond: float64(cData.tokens_per_second),
+		TotalTimeMs:     float64(cData.total_time_ms),
+		PromptTimeMs:    float64(cData.prompt_time_ms),
+		DecodeTimeMs:    float64(cData.decode_time_ms),
+		PromptTokens:    int32(cData.prompt_tokens),
+		GeneratedTokens: int32(cData.generated_tokens),
+	}, nil
+}
+
 // NewLLM creates a new VLM instance with the specified model and configuration
 func NewVLM(model string, tokenizer *string, ctxLen int32, devices *string) (*VLM, error) {
 	cModel := C.CString(model)

@@ -20,4 +20,7 @@ void    ml_embedder_set_lora(ml_Embedder *handle, int32_t lora_id) {};
 int32_t ml_embedder_add_lora(ml_Embedder *handle, ml_Path lora_path) { return -255; };
 void    ml_embedder_remove_lora(ml_Embedder *handle, int32_t lora_id) {};
 int32_t ml_embedder_list_loras(const ml_Embedder *handle, int32_t **out) { return -255; };
+
+/* ====================  Profiling Data  ================================ */
+int32_t ml_embedder_get_profiling_data(const ml_Embedder *handle, ml_ProfilingData *out_data) { return -255; };
 }

@@ -227,8 +227,10 @@ func (p *LLM) ApplyJinjaTemplate(param ChatTemplateParam) (string, error) {
 }
 
 // Global streamTokenCh for streaming - TODO: implement proper streamTokenCh mapping for concurrent streams
-var streamTokenCh chan<- string
-var streamTokenCtx context.Context
+var (
+	streamTokenCh  chan<- string
+	streamTokenCtx context.Context
+)
 
 // go_generate_stream_on_token is the callback function called by C code during streaming
 // It sends each generated token to the Go channel
@@ -237,7 +239,7 @@ var streamTokenCtx context.Context
 func go_generate_stream_on_token(token *C.char, _ *C.void) C.bool {
 	select {
 	case <-streamTokenCtx.Done():
-		//fmt.Println("context done")
+		// fmt.Println("context done")
 		return false
 	default:
 	}
@@ -246,7 +248,7 @@ func go_generate_stream_on_token(token *C.char, _ *C.void) C.bool {
 	case streamTokenCh <- C.GoString(token):
 		return true
 	case <-streamTokenCtx.Done():
-		//fmt.Println("cancel")
+		// fmt.Println("cancel")
 		return false
 	}
 }
@@ -290,4 +292,25 @@ func (p *LLM) GenerateStream(ctx context.Context, prompt string) (<-chan string,
 	}()
 
 	return stream, err
+}
+
+// GetProfilingData retrieves performance metrics from the LLM instance
+func (p *LLM) GetProfilingData() (*ProfilingData, error) {
+	var cData C.ml_ProfilingData
+	res := C.ml_llm_get_profiling_data(p.ptr, &cData)
+	if res < 0 {
+		return nil, ErrCommon
+	}
+
+	return &ProfilingData{
+		TTFTMs:          float64(cData.ttft_ms),
+		TotalTokens:     int32(cData.total_tokens),
+		StopReason:      C.GoString(cData.stop_reason),
+		TokensPerSecond: float64(cData.tokens_per_second),
+		TotalTimeMs:     float64(cData.total_time_ms),
+		PromptTimeMs:    float64(cData.prompt_time_ms),
+		DecodeTimeMs:    float64(cData.decode_time_ms),
+		PromptTokens:    int32(cData.prompt_tokens),
+		GeneratedTokens: int32(cData.generated_tokens),
+	}, nil
 }
