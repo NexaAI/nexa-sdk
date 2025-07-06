@@ -116,7 +116,8 @@ func repl(cfg ReplConfig) {
 			if cancel != nil {
 				cancel()
 			}
-			l.Clean()
+			l.Close()
+			os.Exit(0)
 		}
 	}()
 
