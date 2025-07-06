@@ -105,7 +105,6 @@ func printProfiling(p interface{}) {
 			profilingData.TTFTMs/1000.0,
 			strings.ToUpper(profilingData.StopReason))
 
-		fmt.Print(text.FgHiBlack.EscapeSeq())
 		fmt.Print(text.FgHiBlack.Sprint(profilingText))
 		fmt.Println(text.Reset.EscapeSeq())
 	}
