@@ -26,19 +26,6 @@ var (
 	document  []string
 )
 
-// printProfiling prints performance metrics in ollama format
-func printProfiling(p interface{}) {
-	if profilingData, err := p.(interface {
-		GetProfilingData() (*nexa_sdk.ProfilingData, error)
-	}).GetProfilingData(); err == nil && profilingData != nil {
-		fmt.Printf("\n\n\033[38;2;112;117;121m%.2f tok/sec • %d tokens • %.2fs to first token • Stop reason: %s\033[0m",
-			profilingData.TokensPerSecond,
-			profilingData.GeneratedTokens,
-			profilingData.TTFTMs/1000.0,
-			strings.ToUpper(profilingData.StopReason))
-	}
-}
-
 func infer() *cobra.Command {
 	inferCmd := &cobra.Command{
 		Use:   "infer <model-name>",
@@ -136,6 +123,8 @@ func inferLLM(model string, tokenizer *string) {
 			return p.LoadKVCache(path)
 		},
 
+		Profiler: p,
+
 		Run: func(prompt string, _, _ []string) (string, error) {
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
 
@@ -156,8 +145,6 @@ func inferLLM(model string, tokenizer *string) {
 			}
 
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: res})
-
-			printProfiling(p)
 
 			return res, nil
 		},
@@ -193,8 +180,6 @@ func inferLLM(model string, tokenizer *string) {
 			}
 
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: full.String()})
-
-			printProfiling(p)
 		},
 	})
 }
@@ -220,6 +205,8 @@ func inferVLM(model string, tokenizer *string) {
 
 		Clear: p.Reset,
 
+		Profiler: p,
+
 		Run: func(prompt string, images, audios []string) (string, error) {
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
 			formatted, err := p.ApplyChatTemplate(history)
@@ -234,8 +221,6 @@ func inferVLM(model string, tokenizer *string) {
 
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: res})
 			lastLen = len(formatted) + len(res)
-
-			printProfiling(p)
 
 			return res, nil
 		},
@@ -266,8 +251,6 @@ func inferVLM(model string, tokenizer *string) {
 
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: full.String()})
 			lastLen = len(formatted) + len(full.String())
-
-			printProfiling(p)
 		},
 	})
 }

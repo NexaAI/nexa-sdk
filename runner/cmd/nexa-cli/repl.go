@@ -21,6 +21,7 @@ import (
 
 	"github.com/NexaAI/nexa-sdk/internal/store"
 	"github.com/NexaAI/nexa-sdk/internal/types"
+	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
 )
 
 var completer = readline.NewPrefixCompleter(
@@ -66,6 +67,8 @@ type ReplConfig struct {
 
 	Run       func(prompt string, images, audios []string) (string, error)
 	RunStream func(ctx context.Context, prompt string, images, audios []string, dataCh chan<- string, errCh chan<- error)
+
+	Profiler interface{} // Interface to get profiling data
 }
 
 func (cfg *ReplConfig) fill() {
@@ -89,6 +92,22 @@ func (cfg *ReplConfig) fill() {
 			errCh <- notSupport
 			close(errCh)
 		}
+	}
+}
+
+func printProfiling(p interface{}) {
+	if profilingData, err := p.(interface {
+		GetProfilingData() (*nexa_sdk.ProfilingData, error)
+	}).GetProfilingData(); err == nil && profilingData != nil {
+		profilingText := fmt.Sprintf("%.2f tok/sec • %d tokens • %.2fs to first token • Stop reason: %s",
+			profilingData.TokensPerSecond,
+			profilingData.GeneratedTokens,
+			profilingData.TTFTMs/1000.0,
+			strings.ToUpper(profilingData.StopReason))
+
+		fmt.Print(text.FgHiBlack.EscapeSeq())
+		fmt.Print(text.FgHiBlack.Sprint(profilingText))
+		fmt.Println(text.Reset.EscapeSeq())
 	}
 }
 
@@ -208,8 +227,14 @@ func repl(cfg ReplConfig) {
 					fmt.Print(r)
 				}
 			}
-			fmt.Println(text.Reset.EscapeSeq())
+			fmt.Println()
 
+			if cfg.Profiler != nil {
+				fmt.Println()
+				printProfiling(cfg.Profiler)
+			}
+
+			fmt.Print(text.Reset.EscapeSeq())
 			// check error
 			e, ok := <-errCh
 			if ok {
@@ -224,11 +249,18 @@ func repl(cfg ReplConfig) {
 			res = strings.ReplaceAll(res, "</think>", "</think>"+text.FgYellow.EscapeSeq())
 			fmt.Println(text.FgYellow.Sprint(res))
 
+			if cfg.Profiler != nil {
+				fmt.Println()
+				printProfiling(cfg.Profiler)
+			}
+
+			fmt.Print(text.Reset.EscapeSeq())
 			if err != nil {
 				fmt.Println(text.FgRed.Sprintf("Error: %s\n", err))
 				return
 			}
 		}
+
 	}
 }
 
