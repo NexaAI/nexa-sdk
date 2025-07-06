@@ -146,7 +146,7 @@ func (p *LLM) Generate(prompt string) (string, error) {
 
 	// Configure generation parameters
 	config := C.ml_GenerationConfig{}
-	config.max_tokens = 4096
+	config.max_tokens = 2048
 
 	var res *C.char
 	resLen := C.ml_llm_generate(p.ptr, cPrompt, &config, &res)
@@ -260,7 +260,7 @@ func (p *LLM) GenerateStream(ctx context.Context, prompt string) (<-chan string,
 
 	// Configure generation parameters
 	config := C.ml_GenerationConfig{}
-	config.max_tokens = 4096
+	config.max_tokens = 2048
 
 	// check parallel call
 	if streamTokenCh != nil {

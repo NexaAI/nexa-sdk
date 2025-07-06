@@ -98,7 +98,7 @@ func (p *VLM) Generate(prompt string, images []string, audios []string) (string,
 
 	// Configure generation parameters
 	config := C.ml_GenerationConfig{}
-	config.max_tokens = 4096
+	config.max_tokens = 2048
 	if len(images) > 0 {
 		cImages := make([]C.ml_Path, len(images))
 		for i, image := range images {
@@ -221,7 +221,7 @@ func (p *VLM) GenerateStream(ctx context.Context, prompt string, images []string
 		defer pinnner.Unpin()
 		// Configure generation parameters
 		config := C.ml_GenerationConfig{}
-		config.max_tokens = 4096
+		config.max_tokens = 2048
 		if len(images) > 0 {
 			cImages := make([]C.ml_Path, len(images))
 			for i, image := range images {
