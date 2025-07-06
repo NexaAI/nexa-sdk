@@ -18,7 +18,7 @@ var (
 func initLLM() {
 	llm, _ = NewLLM(
 		path.Join(nexaPath, "models", "UXdlbi9Rd2VuMy0wLjZCLUdHVUY=", "modelfile"),
-		nil, 4096, nil)
+		nil, 8192, nil)
 }
 
 // deinitLLM cleans up the LLM instance after testing

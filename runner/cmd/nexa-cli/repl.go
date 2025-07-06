@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"regexp"
 	"slices"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -105,7 +107,19 @@ func repl(cfg ReplConfig) {
 		panic(err)
 	}
 	defer l.Close()
-	l.CaptureExitSignal()
+
+	var cancel func()
+	cSignal := make(chan os.Signal, 1)
+	signal.Notify(cSignal, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		for range cSignal {
+			if cancel != nil {
+				cancel()
+			}
+			l.Close()
+			os.Exit(0)
+		}
+	}()
 
 	for {
 		line, err := l.Readline()
@@ -183,7 +197,9 @@ func repl(cfg ReplConfig) {
 
 			runStreamStart = time.Now()
 			fmt.Print(text.FgMagenta.EscapeSeq())
-			go cfg.RunStream(context.TODO(), line, images, audios, dataCh, errCh)
+			ctx, cancelFunc := context.WithCancel(context.Background())
+			cancel = cancelFunc
+			go cfg.RunStream(ctx, line, images, audios, dataCh, errCh)
 
 			// print stream
 			for r := range dataCh {

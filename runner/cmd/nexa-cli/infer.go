@@ -186,7 +186,7 @@ func inferVLM(model string, tokenizer *string) {
 	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model..."))
 
 	spin.Start()
-	p, err := nexa_sdk.NewVLM(model, tokenizer, 40960, nil)
+	p, err := nexa_sdk.NewVLM(model, tokenizer, 8192, nil)
 	spin.Stop()
 	if err != nil {
 		fmt.Println(text.FgRed.Sprintf("Error: %s", err))

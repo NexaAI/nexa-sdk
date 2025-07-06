@@ -217,8 +217,26 @@ ML_API int32_t ml_llm_get_chat_template(ml_LLM* handle, const char* template_nam
 ML_API int32_t ml_llm_apply_chat_template(
     ml_LLM* handle, ml_ChatMessage* messages, int32_t message_count, char** out_text);
 
-/** Print detailed performance profile (sampler + context) */
-ML_API void ml_llm_print_profile(const ml_LLM *h);
+/* ====================  Profiling Data  ================================ */
+
+/** Profiling data structure for LLM/VLM performance metrics */
+typedef struct {
+    double ttft_ms;           /* Time to first token (ms) */
+    int32_t total_tokens;     /* Total tokens generated */
+    const char* stop_reason;  /* Stop reason: "eos", "length", "user", "stop_sequence" */
+    double tokens_per_second; /* Decoding speed (tokens/sec) */
+    double total_time_ms;     /* Total generation time */
+    double prompt_time_ms;    /* Prompt processing time */
+    double decode_time_ms;    /* Token generation time */
+    int32_t prompt_tokens;    /* Number of prompt tokens */
+    int32_t generated_tokens; /* Number of generated tokens */
+} ml_ProfilingData;
+
+/** Get profiling data from LLM. Returns 0 on success, negative on error */
+ML_API int32_t ml_llm_get_profiling_data(const ml_LLM* handle, ml_ProfilingData* out_data);
+
+/** Reset profiling counters for LLM */
+// ML_API void ml_llm_reset_profiling(ml_LLM* handle);
 
 /* ====================  Embedding Generation  ============================= */
 
@@ -291,6 +309,13 @@ ML_API int32_t ml_vlm_apply_chat_template(
 /** Generate embeddings for input texts. Returns 0 on success, negative on error */
 ML_API int32_t ml_vlm_embed(ml_VLM* handle, const char** texts_utf8, int32_t text_count, float** out_embeddings);
 
+/* ====================  Profiling Data  ================================ */
+
+/** Get profiling data from VLM. Returns 0 on success, negative on error */
+ML_API int32_t ml_vlm_get_profiling_data(const ml_VLM* handle, ml_ProfilingData* out_data);
+
+
+
 /* ====================  Streaming Generation  ============================= */
 
 /** Generate text with streaming token callback and multimodal inputs. Returns 0 on success, negative on error */
@@ -330,6 +355,11 @@ ML_API void         ml_embedder_destroy(ml_Embedder* handle);
 /** Generate embeddings for input texts. Returns 0 on success, negative on error */
 ML_API int32_t ml_embedder_embed(
     ml_Embedder* handle, const char** texts, int32_t text_count, const ml_EmbeddingConfig* config, float** out);
+
+/* ====================  Profiling Data  ================================ */
+
+/** Get profiling data from embedder. Returns 0 on success, negative on error */
+ML_API int32_t ml_embedder_get_profiling_data(const ml_Embedder* handle, ml_ProfilingData* out_data);
 
 /* ====================  Model Information  ================================ */
 
@@ -376,6 +406,11 @@ ML_API void         ml_reranker_destroy(ml_Reranker* handle);
 /** Rerank documents against a query. Returns 0 on success, negative on error */
 ML_API int32_t ml_reranker_rerank(ml_Reranker* handle, const char* query, const char** documents,
     int32_t documents_count, const ml_RerankConfig* config, float** out);
+
+/* ====================  Profiling Data  ================================ */
+
+/** Get profiling data from reranker. Returns 0 on success, negative on error */
+ML_API int32_t ml_reranker_get_profiling_data(const ml_Reranker* handle, ml_ProfilingData* out_data);
 
 /* ========================================================================== */
 /*                              IMAGE GENERATION                               */
