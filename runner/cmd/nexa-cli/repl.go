@@ -505,9 +505,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 			files := ggufGroups[file]
 			slices.Sort(files)
 
-			for _, file := range files {
-				res.Size += fileSizes[file]
-			}
+			res.Size += fileSizes[file]
 			res.ModelFile = files[0]
 			if len(files) > 1 {
 				res.ExtraFiles = append(res.ExtraFiles, files[1:]...)
