@@ -105,6 +105,7 @@ func printProfiling(profilingData *nexa_sdk.ProfilingData) {
 
 		fmt.Print(text.FgHiBlack.Sprint(profilingText))
 		fmt.Println(text.Reset.EscapeSeq())
+		fmt.Println()
 	}
 }
 
