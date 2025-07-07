@@ -213,7 +213,14 @@ func repl(cfg ReplConfig) {
 			go cfg.RunStream(ctx, line, images, audios, dataCh, errCh)
 
 			// print stream
+			firstToken := true
 			for r := range dataCh {
+
+				if firstToken {
+					fmt.Print(text.FgYellow.EscapeSeq())
+					firstToken = false
+				}
+
 				switch r {
 				case "<think>":
 					fmt.Print(text.FgHiBlack.EscapeSeq())
@@ -224,6 +231,7 @@ func repl(cfg ReplConfig) {
 				default:
 					fmt.Print(r)
 				}
+
 			}
 			fmt.Println()
 
