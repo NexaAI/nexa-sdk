@@ -32,6 +32,11 @@ func pull() *cobra.Command {
 
 		s := store.Get()
 
+		if _, err := s.GetManifest(name); err == nil {
+			fmt.Println(text.FgBlue.Sprint("Already downloaded, if you want to use another quant, please manual remove first"))
+			return
+		}
+
 		// download manifest
 		spin := spinner.New(
 			spinner.CharSets[39],
@@ -134,9 +139,9 @@ func list() *cobra.Command {
 		tw := table.NewWriter()
 		tw.SetOutputMirror(os.Stdout)
 		tw.SetStyle(table.StyleLight)
-		tw.AppendHeader(table.Row{"NAME", "SIZE"})
+		tw.AppendHeader(table.Row{"NAME", "QUANT", "SIZE"})
 		for _, model := range models {
-			tw.AppendRow(table.Row{model.Name, humanize.IBytes(uint64(model.Size))})
+			tw.AppendRow(table.Row{model.Name, model.Quant, humanize.IBytes(uint64(model.Size))})
 		}
 		tw.Render()
 	}

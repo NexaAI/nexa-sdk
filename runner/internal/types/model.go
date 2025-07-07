@@ -11,8 +11,9 @@ const (
 )
 
 type ModelManifest struct {
-	Name string `json:"Name"`
-	Size int64
+	Name  string
+	Size  int64
+	Quant string
 
 	ModelFile  string
 	MMProjFile string

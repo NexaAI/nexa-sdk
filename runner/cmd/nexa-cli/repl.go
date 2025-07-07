@@ -215,7 +215,7 @@ func repl(cfg ReplConfig) {
 			for r := range dataCh {
 				switch r {
 				case "<think>":
-					fmt.Print(text.FgBlack.EscapeSeq())
+					fmt.Print(text.FgHiBlack.EscapeSeq())
 					fmt.Print(r)
 				case "</think>":
 					fmt.Print(r)
@@ -504,6 +504,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 				res.ExtraFiles = append(res.ExtraFiles, files[1:]...)
 			}
 		}
+		res.Quant = strings.ToUpper(quantRegix.FindString(res.ModelFile))
 
 		// detect mmproj
 		switch len(mmprojs) {
