@@ -267,18 +267,21 @@ func inferEmbed(modelfile string, tokenizer *string) {
 	spin.Stop()
 	if err != nil {
 		fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+		fmt.Println()
 		return
 	}
 	defer p.Destroy()
 
 	if len(prompt) == 0 {
 		fmt.Println(text.FgRed.Sprintf("at least 1 text prompt is accept"))
+		fmt.Println()
 		return
 	}
 
 	res, err := p.Embed(prompt)
 	if err != nil {
 		fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+		fmt.Println()
 		return
 	} else {
 		nEmbed := len(res) / len(prompt)
@@ -288,9 +291,11 @@ func inferEmbed(modelfile string, tokenizer *string) {
 			}
 			fmt.Print(text.FgYellow.Sprintf("%f ", res[i]))
 		}
-	}
-	if data, err := p.GetProfilingData(); err == nil {
 		fmt.Println()
+	}
+	fmt.Println()
+
+	if data, err := p.GetProfilingData(); err == nil {
 		printProfiling(data)
 	}
 }
@@ -309,24 +314,29 @@ func inferRerank(modelfile string, tokenizer *string) {
 
 	if len(query) == 0 {
 		fmt.Println(text.FgRed.Sprintf("at least 1 query is accept"))
+		fmt.Println()
 		return
 	}
 	if len(document) == 0 {
 		fmt.Println(text.FgRed.Sprintf("at least 1 document is accept"))
+		fmt.Println()
 		return
 	}
 
 	res, err := p.Rerank(query, document)
 	if err != nil {
 		fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+		fmt.Println()
 		return
 	} else {
+		fmt.Println()
 		for i := range res {
 			fmt.Println(text.FgYellow.Sprintf("%d => %f", i, res[i]))
 		}
-	}
-	if data, err := p.GetProfilingData(); err == nil {
 		fmt.Println()
+	}
+
+	if data, err := p.GetProfilingData(); err == nil {
 		printProfiling(data)
 	}
 }

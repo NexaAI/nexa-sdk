@@ -121,6 +121,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 
 	// repl
 	var history []openai.ChatCompletionMessageParamUnion
+	var profileData *nexa_sdk.ProfilingData
 	repl(ReplConfig{
 		Stream:    !disableStream,
 		ParseFile: false,
@@ -134,6 +135,9 @@ func runFunc(cmd *cobra.Command, args []string) {
 		},
 
 		Run: func(prompt string, images, audios []string) (string, error) {
+			profileData = nil
+			start := time.Now()
+
 			history = append(history, openai.UserMessage(prompt))
 
 			chatCompletion, err := client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
@@ -151,12 +155,20 @@ func runFunc(cmd *cobra.Command, args []string) {
 			content := chatCompletion.Choices[0].Message.Content
 
 			history = append(history, openai.AssistantMessage(content))
+
+			profileData = &nexa_sdk.ProfilingData{
+				TotalTimeMs: float64(time.Since(start).Milliseconds()),
+			}
+
 			return content, err
 		},
 
 		RunStream: func(ctx context.Context, prompt string, images, audios []string, dataCh chan<- string, errCh chan<- error) {
 			defer close(errCh)
 			defer close(dataCh)
+
+			profileData = nil
+			start := time.Now()
 
 			acc := openai.ChatCompletionAccumulator{}
 			history = append(history, openai.UserMessage(prompt))
@@ -182,10 +194,17 @@ func runFunc(cmd *cobra.Command, args []string) {
 			if len(acc.Choices) > 0 {
 				history = append(history, openai.AssistantMessage(acc.Choices[0].Message.Content))
 			}
+
+			profileData = &nexa_sdk.ProfilingData{
+				TotalTimeMs: float64(time.Since(start).Milliseconds()),
+			}
 		},
 
 		GetProfilingData: func() (*nexa_sdk.ProfilingData, error) {
-			return nil, fmt.Errorf("todo")
+			if profileData == nil {
+				return nil, fmt.Errorf("do not have profiling data")
+			}
+			return profileData, nil
 		},
 	})
 }

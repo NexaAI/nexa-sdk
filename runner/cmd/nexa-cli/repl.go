@@ -96,16 +96,32 @@ func (cfg *ReplConfig) fill() {
 }
 
 func printProfiling(profilingData *nexa_sdk.ProfilingData) {
-	if profilingData != nil {
+	if profilingData == nil {
+		return
+	}
+
+	if profilingData.TokensPerSecond != 0 {
 		profilingText := fmt.Sprintf("%.2f tok/sec • %d tokens • %.2fs to first token • Stop reason: %s",
 			profilingData.TokensPerSecond,
 			profilingData.GeneratedTokens,
-			profilingData.TTFTMs/1000.0,
+			profilingData.TTFTMs/1e3,
 			strings.ToUpper(profilingData.StopReason))
 
 		fmt.Print(text.FgBlue.Sprint(profilingText))
 		fmt.Println(text.Reset.EscapeSeq())
 		fmt.Println()
+		return
+	}
+
+	if profilingData.TotalTimeMs != 0 {
+		profilingText := fmt.Sprintf("Total time: %.2f sec",
+			profilingData.TotalTimeMs/1e3,
+		)
+
+		fmt.Print(text.FgBlue.Sprint(profilingText))
+		fmt.Println(text.Reset.EscapeSeq())
+		fmt.Println()
+		return
 	}
 }
 
@@ -177,25 +193,30 @@ func repl(cfg ReplConfig) {
 			case "/load":
 				if len(fileds) != 2 {
 					fmt.Println(text.FgRed.Sprintf("Usage: /load <filename>"))
+					fmt.Println()
 				}
 				cfg.Clear()
 				err := cfg.LoadKVCache(fileds[1])
 				if err != nil {
 					fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+					fmt.Println()
 				}
 
 			case "/save":
 				if len(fileds) != 2 {
 					fmt.Println(text.FgRed.Sprintf("Usage: /save <filename>"))
+					fmt.Println()
 					continue
 				}
 				err := cfg.SaveKVCache(fileds[1])
 				if err != nil {
 					fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+					fmt.Println()
 				}
 
 			default:
 				fmt.Println(text.FgRed.Sprintf("Unknown command: %s", fileds[0]))
+				fmt.Println()
 			}
 
 			continue
@@ -233,18 +254,18 @@ func repl(cfg ReplConfig) {
 				}
 
 			}
+			fmt.Println(text.Reset.EscapeSeq())
 			fmt.Println()
 
 			if data, err := cfg.GetProfilingData(); err == nil {
-				fmt.Println()
 				printProfiling(data)
 			}
 
-			fmt.Print(text.Reset.EscapeSeq())
 			// check error
 			e, ok := <-errCh
 			if ok {
 				fmt.Println(text.FgRed.Sprintf("Error: %s\n", e))
+				fmt.Println()
 				return
 			}
 		} else {
@@ -254,15 +275,16 @@ func repl(cfg ReplConfig) {
 			res = strings.ReplaceAll(res, "<think>", text.FgBlack.EscapeSeq()+"<think>")
 			res = strings.ReplaceAll(res, "</think>", "</think>"+text.FgYellow.EscapeSeq())
 			fmt.Println(text.FgYellow.Sprint(res))
+			fmt.Println()
 
 			if data, err := cfg.GetProfilingData(); err == nil {
-				fmt.Println()
 				printProfiling(data)
 			}
 
 			fmt.Print(text.Reset.EscapeSeq())
 			if err != nil {
 				fmt.Println(text.FgRed.Sprintf("Error: %s\n", err))
+				fmt.Println()
 				return
 			}
 		}
