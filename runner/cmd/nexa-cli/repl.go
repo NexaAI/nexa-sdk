@@ -215,7 +215,7 @@ func repl(cfg ReplConfig) {
 			for r := range dataCh {
 				switch r {
 				case "<think>":
-					fmt.Print(text.FgBlack.EscapeSeq())
+					fmt.Print(text.FgHiBlack.EscapeSeq())
 					fmt.Print(r)
 				case "</think>":
 					fmt.Print(r)
