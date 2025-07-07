@@ -81,16 +81,6 @@ func (pd *PgetDownloader) DownloadWithProgress(
 		return fmt.Errorf("failed to download file: %w", err)
 	}
 
-	if progressCh != nil {
-		progressCh <- types.DownloadInfo{
-			CurrentName:       filepath.Base(outputPath),
-			CurrentSize:       fileSize,
-			CurrentDownloaded: fileSize,
-			TotalSize:         pd.total,
-			TotalDownloaded:   pd.total,
-		}
-	}
-
 	return nil
 }
 
