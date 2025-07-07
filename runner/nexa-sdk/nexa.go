@@ -39,6 +39,21 @@ type ProfilingData struct {
 	GeneratedTokens int32   // Number of generated tokens
 }
 
+// NewProfilingDataFromC creates a new ProfilingData from C ml_ProfilingData
+func NewProfilingDataFromC(cData C.ml_ProfilingData) *ProfilingData {
+	return &ProfilingData{
+		TTFTMs:          float64(cData.ttft_ms),
+		TotalTokens:     int32(cData.total_tokens),
+		StopReason:      C.GoString(cData.stop_reason),
+		TokensPerSecond: float64(cData.tokens_per_second),
+		TotalTimeMs:     float64(cData.total_time_ms),
+		PromptTimeMs:    float64(cData.prompt_time_ms),
+		DecodeTimeMs:    float64(cData.decode_time_ms),
+		PromptTokens:    int32(cData.prompt_tokens),
+		GeneratedTokens: int32(cData.generated_tokens),
+	}
+}
+
 // Init initializes the Nexa SDK by calling the underlying C library initialization
 // This must be called before using any other SDK functions
 func Init() {
