@@ -32,6 +32,11 @@ func pull() *cobra.Command {
 
 		s := store.Get()
 
+		if _, err := s.GetManifest(name); err == nil {
+			fmt.Println(text.FgBlue.Sprint("Already downloaded, if you want to use another quant, please manual remove first"))
+			return
+		}
+
 		// download manifest
 		spin := spinner.New(
 			spinner.CharSets[39],
