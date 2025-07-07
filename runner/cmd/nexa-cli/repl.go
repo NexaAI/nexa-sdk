@@ -21,6 +21,7 @@ import (
 
 	"github.com/NexaAI/nexa-sdk/internal/store"
 	"github.com/NexaAI/nexa-sdk/internal/types"
+	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
 )
 
 var completer = readline.NewPrefixCompleter(
@@ -66,10 +67,12 @@ type ReplConfig struct {
 
 	Run       func(prompt string, images, audios []string) (string, error)
 	RunStream func(ctx context.Context, prompt string, images, audios []string, dataCh chan<- string, errCh chan<- error)
+
+	GetProfilingData func() (*nexa_sdk.ProfilingData, error)
 }
 
 func (cfg *ReplConfig) fill() {
-	var notSupport = fmt.Errorf("notSupport")
+	notSupport := fmt.Errorf("notSupport")
 
 	if cfg.Clear == nil {
 		cfg.Clear = func() {}
@@ -89,6 +92,19 @@ func (cfg *ReplConfig) fill() {
 			errCh <- notSupport
 			close(errCh)
 		}
+	}
+}
+
+func printProfiling(profilingData *nexa_sdk.ProfilingData) {
+	if profilingData != nil {
+		profilingText := fmt.Sprintf("%.2f tok/sec • %d tokens • %.2fs to first token • Stop reason: %s",
+			profilingData.TokensPerSecond,
+			profilingData.GeneratedTokens,
+			profilingData.TTFTMs/1000.0,
+			strings.ToUpper(profilingData.StopReason))
+
+		fmt.Print(text.FgHiBlack.Sprint(profilingText))
+		fmt.Println(text.Reset.EscapeSeq())
 	}
 }
 
@@ -190,12 +206,6 @@ func repl(cfg ReplConfig) {
 			dataCh := make(chan string, 10)
 			errCh := make(chan error, 1)
 
-			// track RunStream start time for TTFT calculation
-			var count int
-			var runStreamStart, tokenStart time.Time
-			firstToken := true
-
-			runStreamStart = time.Now()
 			fmt.Print(text.FgMagenta.EscapeSeq())
 			ctx, cancelFunc := context.WithCancel(context.Background())
 			cancel = cancelFunc
@@ -203,11 +213,6 @@ func repl(cfg ReplConfig) {
 
 			// print stream
 			for r := range dataCh {
-				if firstToken {
-					tokenStart = time.Now()
-					firstToken = false
-					fmt.Print(text.FgYellow.EscapeSeq())
-				}
 				switch r {
 				case "<think>":
 					fmt.Print(text.FgBlack.EscapeSeq())
@@ -218,25 +223,15 @@ func repl(cfg ReplConfig) {
 				default:
 					fmt.Print(r)
 				}
-				count++
 			}
-			fmt.Print(text.Reset.EscapeSeq())
 			fmt.Println()
 
-			// print metrics
-			if !firstToken {
-				ttft := tokenStart.Sub(runStreamStart).Seconds()
-				tokenDuration := time.Since(tokenStart).Seconds()
-				tokensPerSecond := float64(count) / tokenDuration
-
-				fmt.Println(text.FgBlue.Sprintf(
-					"TTFT: %f s, Generated %d tokens at %f token/s\n",
-					ttft, count, tokensPerSecond,
-				))
-			} else {
-				fmt.Println(text.FgBlue.Sprintf("(no tokens generated)\n"))
+			if data, err := cfg.GetProfilingData(); err == nil {
+				fmt.Println()
+				printProfiling(data)
 			}
 
+			fmt.Print(text.Reset.EscapeSeq())
 			// check error
 			e, ok := <-errCh
 			if ok {
@@ -244,8 +239,6 @@ func repl(cfg ReplConfig) {
 				return
 			}
 		} else {
-			start := time.Now()
-
 			fmt.Print(text.FgMagenta.EscapeSeq())
 			res, err := cfg.Run(line, images, audios)
 			// append color to think
@@ -253,18 +246,18 @@ func repl(cfg ReplConfig) {
 			res = strings.ReplaceAll(res, "</think>", "</think>"+text.FgYellow.EscapeSeq())
 			fmt.Println(text.FgYellow.Sprint(res))
 
-			// print duration
-			duration := time.Since(start).Seconds()
-			fmt.Println(text.FgBlue.Sprintf(
-				"Generate in %f s\n",
-				duration,
-			))
+			if data, err := cfg.GetProfilingData(); err == nil {
+				fmt.Println()
+				printProfiling(data)
+			}
 
+			fmt.Print(text.Reset.EscapeSeq())
 			if err != nil {
 				fmt.Println(text.FgRed.Sprintf("Error: %s\n", err))
 				return
 			}
 		}
+
 	}
 }
 
@@ -315,7 +308,6 @@ func parseFiles(prompt string) (string, []string, []string) {
 		prompt = strings.ReplaceAll(prompt, file, "")
 	}
 	return strings.TrimSpace(prompt), images, audios
-
 }
 
 // =============== quant name parse ===============

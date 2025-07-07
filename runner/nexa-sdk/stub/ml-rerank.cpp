@@ -11,4 +11,7 @@ int32_t ml_reranker_rerank(ml_Reranker *handle, const char *query, const char **
     const ml_RerankConfig *config, float **out) {
     return -255;
 };
+
+/* ====================  Profiling Data  ================================ */
+int32_t ml_reranker_get_profiling_data(const ml_Reranker *handle, ml_ProfilingData *out_data) { return -255; };
 }

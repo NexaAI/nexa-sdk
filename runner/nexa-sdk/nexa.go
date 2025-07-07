@@ -12,6 +12,7 @@ package nexa_sdk
 extern void go_log_wrap(char *msg);
 */
 import "C"
+
 import (
 	"errors"
 	"log"
@@ -24,6 +25,34 @@ var (
 	ErrCreateFailed         = errors.New("Model Create Failed")
 	ErrChatTemplateNotFound = errors.New("Chat Template Not Found")
 )
+
+// ProfilingData contains performance metrics from ML operations
+type ProfilingData struct {
+	TTFTMs          float64 // Time to first token (ms)
+	TotalTokens     int32   // Total tokens generated
+	StopReason      string  // Stop reason: "eos", "length", "user", "stop_sequence"
+	TokensPerSecond float64 // Decoding speed (tokens/sec)
+	TotalTimeMs     float64 // Total generation time
+	PromptTimeMs    float64 // Prompt processing time
+	DecodeTimeMs    float64 // Token generation time
+	PromptTokens    int32   // Number of prompt tokens
+	GeneratedTokens int32   // Number of generated tokens
+}
+
+// NewProfilingDataFromC creates a new ProfilingData from C ml_ProfilingData
+func NewProfilingDataFromC(cData C.ml_ProfilingData) *ProfilingData {
+	return &ProfilingData{
+		TTFTMs:          float64(cData.ttft_ms),
+		TotalTokens:     int32(cData.total_tokens),
+		StopReason:      C.GoString(cData.stop_reason),
+		TokensPerSecond: float64(cData.tokens_per_second),
+		TotalTimeMs:     float64(cData.total_time_ms),
+		PromptTimeMs:    float64(cData.prompt_time_ms),
+		DecodeTimeMs:    float64(cData.decode_time_ms),
+		PromptTokens:    int32(cData.prompt_tokens),
+		GeneratedTokens: int32(cData.generated_tokens),
+	}
+}
 
 // Init initializes the Nexa SDK by calling the underlying C library initialization
 // This must be called before using any other SDK functions

@@ -67,3 +67,14 @@ func (p *Reranker) Rerank(query string, texts []string) ([]float32, error) {
 	copy(ret, (*[1 << 30]float32)(unsafe.Pointer(res))[:resLen])
 	return ret, nil
 }
+
+// GetProfilingData retrieves performance metrics from the Reranker instance
+func (p *Reranker) GetProfilingData() (*ProfilingData, error) {
+	var cData C.ml_ProfilingData
+	res := C.ml_reranker_get_profiling_data(p.ptr, &cData)
+	if res < 0 {
+		return nil, ErrCommon
+	}
+
+	return NewProfilingDataFromC(cData), nil
+}

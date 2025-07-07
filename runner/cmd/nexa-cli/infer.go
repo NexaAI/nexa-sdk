@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	//disableStream *bool // reuse in run.go
+	// disableStream *bool // reuse in run.go
 	modelType string
 	tool      []string
 	prompt    []string
@@ -123,6 +123,10 @@ func inferLLM(model string, tokenizer *string) {
 			return p.LoadKVCache(path)
 		},
 
+		GetProfilingData: func() (*nexa_sdk.ProfilingData, error) {
+			return p.GetProfilingData()
+		},
+
 		Run: func(prompt string, _, _ []string) (string, error) {
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
 
@@ -165,8 +169,8 @@ func inferLLM(model string, tokenizer *string) {
 			}
 
 			var full strings.Builder
-			//fmt.Printf(text.FgBlack.Sprint(formatted[:lastLen]))
-			//fmt.Printf(text.FgCyan.Sprint(formatted[lastLen:]))
+			// fmt.Printf(text.FgBlack.Sprint(formatted[:lastLen]))
+			// fmt.Printf(text.FgCyan.Sprint(formatted[lastLen:]))
 			dCh, eCh := p.GenerateStream(ctx, formatted)
 			for r := range dCh {
 				full.WriteString(r)
@@ -203,6 +207,10 @@ func inferVLM(model string, tokenizer *string) {
 
 		Clear: p.Reset,
 
+		GetProfilingData: func() (*nexa_sdk.ProfilingData, error) {
+			return p.GetProfilingData()
+		},
+
 		Run: func(prompt string, images, audios []string) (string, error) {
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
 			formatted, err := p.ApplyChatTemplate(history)
@@ -225,7 +233,7 @@ func inferVLM(model string, tokenizer *string) {
 			defer close(errCh)
 			defer close(dataCh)
 
-			//fmt.Println(text.FgBlack.Sprint(prompt))
+			// fmt.Println(text.FgBlack.Sprint(prompt))
 
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
 			formatted, e := p.ApplyChatTemplate(history)
