@@ -80,6 +80,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			err = client.Post(context.TODO(), "/models", nil, &raw,
 				option.WithJSONSet("Name", manifest.Name),
 				option.WithJSONSet("Size", manifest.Size),
+				option.WithJSONSet("Quant", manifest.Quant),
 				option.WithJSONSet("ModelFile", manifest.ModelFile),
 				option.WithJSONSet("MMProjFile", manifest.MMProjFile),
 				option.WithJSONSet("ExtraFiles", manifest.ExtraFiles),

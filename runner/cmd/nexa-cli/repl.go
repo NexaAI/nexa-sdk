@@ -504,6 +504,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 				res.ExtraFiles = append(res.ExtraFiles, files[1:]...)
 			}
 		}
+		res.Quant = strings.ToUpper(quantRegix.FindString(res.ModelFile))
 
 		// detect mmproj
 		switch len(mmprojs) {

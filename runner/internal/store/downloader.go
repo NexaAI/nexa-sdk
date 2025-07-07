@@ -137,6 +137,7 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 		model := types.ModelManifest{
 			Name:       mf.Name,
 			Size:       mf.Size,
+			Quant:      mf.Quant,
 			ModelFile:  mf.ModelFile,
 			MMProjFile: mf.MMProjFile,
 			ExtraFiles: mf.ExtraFiles,
