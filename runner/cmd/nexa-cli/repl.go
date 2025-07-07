@@ -68,7 +68,7 @@ type ReplConfig struct {
 	Run       func(prompt string, images, audios []string) (string, error)
 	RunStream func(ctx context.Context, prompt string, images, audios []string, dataCh chan<- string, errCh chan<- error)
 
-	Profiler interface{} // Interface to get profiling data
+	GetProfilingData func() (*nexa_sdk.ProfilingData, error)
 }
 
 func (cfg *ReplConfig) fill() {
@@ -95,10 +95,8 @@ func (cfg *ReplConfig) fill() {
 	}
 }
 
-func printProfiling(p interface{}) {
-	if profilingData, err := p.(interface {
-		GetProfilingData() (*nexa_sdk.ProfilingData, error)
-	}).GetProfilingData(); err == nil && profilingData != nil {
+func printProfiling(profilingData *nexa_sdk.ProfilingData) {
+	if profilingData != nil {
 		profilingText := fmt.Sprintf("%.2f tok/sec • %d tokens • %.2fs to first token • Stop reason: %s",
 			profilingData.TokensPerSecond,
 			profilingData.GeneratedTokens,
@@ -228,9 +226,9 @@ func repl(cfg ReplConfig) {
 			}
 			fmt.Println()
 
-			if cfg.Profiler != nil {
+			if data, err := cfg.GetProfilingData(); err == nil {
 				fmt.Println()
-				printProfiling(cfg.Profiler)
+				printProfiling(data)
 			}
 
 			fmt.Print(text.Reset.EscapeSeq())
@@ -248,9 +246,9 @@ func repl(cfg ReplConfig) {
 			res = strings.ReplaceAll(res, "</think>", "</think>"+text.FgYellow.EscapeSeq())
 			fmt.Println(text.FgYellow.Sprint(res))
 
-			if cfg.Profiler != nil {
+			if data, err := cfg.GetProfilingData(); err == nil {
 				fmt.Println()
-				printProfiling(cfg.Profiler)
+				printProfiling(data)
 			}
 
 			fmt.Print(text.Reset.EscapeSeq())

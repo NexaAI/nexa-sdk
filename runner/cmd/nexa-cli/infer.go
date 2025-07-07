@@ -123,7 +123,9 @@ func inferLLM(model string, tokenizer *string) {
 			return p.LoadKVCache(path)
 		},
 
-		Profiler: p,
+		GetProfilingData: func() (*nexa_sdk.ProfilingData, error) {
+			return p.GetProfilingData()
+		},
 
 		Run: func(prompt string, _, _ []string) (string, error) {
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
@@ -205,7 +207,9 @@ func inferVLM(model string, tokenizer *string) {
 
 		Clear: p.Reset,
 
-		Profiler: p,
+		GetProfilingData: func() (*nexa_sdk.ProfilingData, error) {
+			return p.GetProfilingData()
+		},
 
 		Run: func(prompt string, images, audios []string) (string, error) {
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
