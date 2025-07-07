@@ -18,6 +18,7 @@ import (
 	"github.com/NexaAI/nexa-sdk/internal/config"
 	"github.com/NexaAI/nexa-sdk/internal/store"
 	"github.com/NexaAI/nexa-sdk/internal/types"
+	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
 )
 
 var disableStream bool
@@ -181,6 +182,10 @@ func runFunc(cmd *cobra.Command, args []string) {
 			if len(acc.Choices) > 0 {
 				history = append(history, openai.AssistantMessage(acc.Choices[0].Message.Content))
 			}
+		},
+
+		GetProfilingData: func() (*nexa_sdk.ProfilingData, error) {
+			return nil, fmt.Errorf("todo")
 		},
 	})
 }
