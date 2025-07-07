@@ -103,7 +103,7 @@ func printProfiling(profilingData *nexa_sdk.ProfilingData) {
 			profilingData.TTFTMs/1000.0,
 			strings.ToUpper(profilingData.StopReason))
 
-		fmt.Print(text.FgHiBlack.Sprint(profilingText))
+		fmt.Print(text.FgBlue.Sprint(profilingText))
 		fmt.Println(text.Reset.EscapeSeq())
 		fmt.Println()
 	}
