@@ -289,6 +289,10 @@ func inferEmbed(modelfile string, tokenizer *string) {
 			fmt.Print(text.FgYellow.Sprintf("%f ", res[i]))
 		}
 	}
+	if data, err := p.GetProfilingData(); err == nil {
+		fmt.Println()
+		printProfiling(data)
+	}
 }
 
 func inferRerank(modelfile string, tokenizer *string) {
@@ -320,5 +324,9 @@ func inferRerank(modelfile string, tokenizer *string) {
 		for i := range res {
 			fmt.Println(text.FgYellow.Sprintf("%d => %f", i, res[i]))
 		}
+	}
+	if data, err := p.GetProfilingData(); err == nil {
+		fmt.Println()
+		printProfiling(data)
 	}
 }

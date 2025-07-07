@@ -105,6 +105,7 @@ func printProfiling(profilingData *nexa_sdk.ProfilingData) {
 
 		fmt.Print(text.FgHiBlack.Sprint(profilingText))
 		fmt.Println(text.Reset.EscapeSeq())
+		fmt.Println()
 	}
 }
 
@@ -212,7 +213,14 @@ func repl(cfg ReplConfig) {
 			go cfg.RunStream(ctx, line, images, audios, dataCh, errCh)
 
 			// print stream
+			firstToken := true
 			for r := range dataCh {
+
+				if firstToken {
+					fmt.Print(text.FgYellow.EscapeSeq())
+					firstToken = false
+				}
+
 				switch r {
 				case "<think>":
 					fmt.Print(text.FgHiBlack.EscapeSeq())
@@ -223,6 +231,7 @@ func repl(cfg ReplConfig) {
 				default:
 					fmt.Print(r)
 				}
+
 			}
 			fmt.Println()
 
@@ -496,9 +505,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 			files := ggufGroups[file]
 			slices.Sort(files)
 
-			for _, file := range files {
-				res.Size += fileSizes[file]
-			}
+			res.Size += fileSizes[file]
 			res.ModelFile = files[0]
 			if len(files) > 1 {
 				res.ExtraFiles = append(res.ExtraFiles, files[1:]...)
