@@ -92,18 +92,21 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 	errC := make(chan error, 1)
 	errCh = errC
 
-	if err := s.LockModel(mf.Name); err != nil {
-		errC <- err
-		close(errC)
-		close(infoC)
-		return
-	}
-
 	go func() {
-		defer s.UnlockModel(mf.Name)
-
 		defer close(errC)
 		defer close(infoC)
+
+		// clean before
+		if err := s.Remove(mf.Name); err != nil {
+			errC <- err
+			return
+		}
+
+		if err := s.LockModel(mf.Name); err != nil {
+			errC <- err
+			return
+		}
+		defer s.UnlockModel(mf.Name)
 
 		// filter download file
 		var needs []string
