@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 	"sync"
 
 	"github.com/gofrs/flock"
@@ -84,6 +85,11 @@ func (s *Store) cleanCorruptedDirectories() {
 	}
 
 	for _, entry := range entries {
+		// try to remove the lock file
+		if entry.Type().IsRegular() && strings.HasSuffix(entry.Name(), ".lock") {
+			os.Remove(path.Join(modelsDir, entry.Name()))
+		}
+
 		if !entry.IsDir() {
 			continue
 		}
