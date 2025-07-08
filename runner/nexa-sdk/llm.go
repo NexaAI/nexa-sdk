@@ -196,7 +196,8 @@ func (p *LLM) ApplyChatTemplate(msgs []ChatMessage) (string, error) {
 
 		return "", ErrCommon
 	}
-	defer C.free(unsafe.Pointer(res))
+	// TODO: fix this
+	// defer C.free(unsafe.Pointer(res))
 
 	return C.GoString(res), nil
 }
