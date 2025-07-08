@@ -13,15 +13,14 @@ func (s *Store) LockModel(modelName string) error {
 	}
 
 	encName := s.encodeName(modelName)
-	modelDir := path.Join(s.GetModelsDir(), encName)
+	modelsDir := s.GetModelsDir()
+	lockDir := path.Join(modelsDir, "."+encName+".lock")
 
-	if err := os.MkdirAll(modelDir, 0o770); err != nil {
+	if err := os.MkdirAll(lockDir, 0o770); err != nil {
 		return err
 	}
 
-	lockPath := path.Join(modelDir, ".model.lock")
-
-	fl := flock.New(lockPath)
+	fl := flock.New(path.Join(lockDir, "lock"))
 
 	locked, err := fl.TryLock()
 	if err != nil {
