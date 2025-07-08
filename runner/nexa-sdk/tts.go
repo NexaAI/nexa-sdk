@@ -7,8 +7,29 @@ package nexa_sdk
 import "C"
 
 import (
+	"encoding/binary"
+	"fmt"
+	"math"
+	"os"
 	"unsafe"
 )
+
+// WAVHeader represents the WAV file header structure
+type WAVHeader struct {
+	Riff          [4]byte // "RIFF"
+	FileSize      uint32  // File size - 8
+	Wave          [4]byte // "WAVE"
+	Fmt           [4]byte // "fmt "
+	FmtSize       uint32  // Format chunk size
+	AudioFormat   uint16  // Audio format (1 = PCM)
+	NumChannels   uint16  // Number of channels
+	SampleRate    uint32  // Sample rate
+	ByteRate      uint32  // Byte rate
+	BlockAlign    uint16  // Block align
+	BitsPerSample uint16  // Bits per sample
+	Data          [4]byte // "data"
+	DataSize      uint32  // Data chunk size
+}
 
 // TTSConfig represents TTS synthesis configuration
 type TTSConfig struct {
@@ -32,6 +53,62 @@ type TTSResult struct {
 	SampleRate      int32     // Audio sample rate in Hz
 	Channels        int32     // Number of audio channels (default: 1)
 	NumSamples      int32     // Number of audio samples
+}
+
+// SaveWAV saves the TTS result as a WAV file
+func (result *TTSResult) SaveWAV(filename string) error {
+	if result == nil || len(result.Audio) == 0 {
+		return fmt.Errorf("no audio data to save")
+	}
+
+	file, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("could not create audio file: %v", err)
+	}
+	defer file.Close()
+
+	// Prepare WAV header
+	header := WAVHeader{}
+	copy(header.Riff[:], "RIFF")
+	copy(header.Wave[:], "WAVE")
+	copy(header.Fmt[:], "fmt ")
+	copy(header.Data[:], "data")
+
+	header.FmtSize = 16
+	header.AudioFormat = 1 // PCM
+	header.NumChannels = uint16(result.Channels)
+	header.SampleRate = uint32(result.SampleRate)
+	header.BitsPerSample = 16
+	header.ByteRate = uint32(result.SampleRate) * uint32(result.Channels) * uint32(header.BitsPerSample) / 8
+	header.BlockAlign = uint16(result.Channels) * header.BitsPerSample / 8
+	header.DataSize = uint32(len(result.Audio)) * uint32(result.Channels) * uint32(header.BitsPerSample) / 8
+	header.FileSize = uint32(unsafe.Sizeof(header)) - 8 + header.DataSize
+
+	// Write header
+	err = binary.Write(file, binary.LittleEndian, header)
+	if err != nil {
+		return fmt.Errorf("failed to write WAV header: %v", err)
+	}
+
+	// Convert float samples to 16-bit PCM and write
+	pcmSamples := make([]int16, len(result.Audio)*int(result.Channels))
+	for i, sample := range result.Audio {
+		// Clamp audio values to [-1.0, 1.0] and convert to 16-bit PCM
+		clampedSample := math.Max(-1.0, math.Min(1.0, float64(sample)))
+		pcmSamples[i] = int16(clampedSample * 32767.0)
+	}
+
+	err = binary.Write(file, binary.LittleEndian, pcmSamples)
+	if err != nil {
+		return fmt.Errorf("failed to write audio data: %v", err)
+	}
+
+	// fmt.Printf("Audio saved to: %s\n", filename)
+	// fmt.Printf("  Duration: %.2f seconds\n", float64(len(result.Audio))/float64(result.SampleRate))
+	// fmt.Printf("  Sample rate: %d Hz\n", result.SampleRate)
+	// fmt.Printf("  Channels: %d\n", result.Channels)
+	// fmt.Printf("  Samples: %d\n", len(result.Audio))
+	return nil
 }
 
 // TTS wraps the C library TTS structure and provides Go interface

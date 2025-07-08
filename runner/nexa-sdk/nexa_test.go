@@ -22,7 +22,6 @@ func TestMain(m *testing.M) {
 	initEmbeder()
 	initReranker()
 	initVLM()
-	initTTS()
 
 	// Run all tests
 	code := m.Run()
@@ -32,7 +31,6 @@ func TestMain(m *testing.M) {
 	deinitEmbeder()
 	deinitReranker()
 	deinitVLM()
-	deinitTTS()
 	DeInit()
 	os.Exit(code)
 }

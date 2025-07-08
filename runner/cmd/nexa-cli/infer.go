@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 	"time"
-	"unsafe"
 
 	"github.com/briandowns/spinner"
 	"github.com/jedib0t/go-pretty/v6/text"
@@ -392,15 +391,11 @@ func inferTTS(modelfile string, tokenizer *string) {
 	}
 
 	if result != nil {
-		fmt.Printf("TTS synthesis completed: %d samples, %.2f seconds, %d Hz, %d channels\n",
-			result.NumSamples, result.DurationSeconds, result.SampleRate, result.Channels)
-
-		// Save audio to file
-		err = saveTTSResult(result, ttsOutput)
+		// fmt.Printf("TTS synthesis completed: %d samples, %.2f seconds, %d Hz, %d channels\n",
+		// 	result.NumSamples, result.DurationSeconds, result.SampleRate, result.Channels)
+		err = result.SaveWAV(ttsOutput)
 		if err != nil {
 			fmt.Println(text.FgRed.Sprintf("Error saving audio: %s", err))
-		} else {
-			fmt.Printf("Audio saved to: %s\n", ttsOutput)
 		}
 	}
 	fmt.Println()
@@ -408,86 +403,4 @@ func inferTTS(modelfile string, tokenizer *string) {
 	if data, err := p.GetProfilingData(); err == nil {
 		printProfiling(data)
 	}
-}
-
-// saveTTSResult saves TTS audio result to a WAV file
-func saveTTSResult(result *nexa_sdk.TTSResult, filename string) error {
-	if result == nil || len(result.Audio) == 0 {
-		return fmt.Errorf("no audio data to save")
-	}
-
-	// For now, we'll save as a simple binary file
-	// In a real implementation, we'd format this as WAV
-	file, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	// Write basic WAV header (simplified)
-	header := make([]byte, 44)
-	// "RIFF" chunk identifier
-	copy(header[0:4], "RIFF")
-	// File size - 8 bytes
-	fileSize := uint32(36 + len(result.Audio)*4)
-	header[4] = byte(fileSize)
-	header[5] = byte(fileSize >> 8)
-	header[6] = byte(fileSize >> 16)
-	header[7] = byte(fileSize >> 24)
-	// "WAVE" format
-	copy(header[8:12], "WAVE")
-	// "fmt " sub-chunk
-	copy(header[12:16], "fmt ")
-	// Sub-chunk size (16 for PCM)
-	header[16] = 16
-	// Audio format (1 for PCM)
-	header[20] = 1
-	// Number of channels
-	header[22] = byte(result.Channels)
-	// Sample rate
-	sampleRate := uint32(result.SampleRate)
-	header[24] = byte(sampleRate)
-	header[25] = byte(sampleRate >> 8)
-	header[26] = byte(sampleRate >> 16)
-	header[27] = byte(sampleRate >> 27)
-	// Byte rate
-	byteRate := sampleRate * uint32(result.Channels) * 4
-	header[28] = byte(byteRate)
-	header[29] = byte(byteRate >> 8)
-	header[30] = byte(byteRate >> 16)
-	header[31] = byte(byteRate >> 24)
-	// Block align
-	header[32] = byte(result.Channels * 4)
-	// Bits per sample
-	header[34] = 32
-	// "data" sub-chunk
-	copy(header[36:40], "data")
-	// Data size
-	dataSize := uint32(len(result.Audio) * 4)
-	header[40] = byte(dataSize)
-	header[41] = byte(dataSize >> 8)
-	header[42] = byte(dataSize >> 16)
-	header[43] = byte(dataSize >> 24)
-
-	// Write header
-	_, err = file.Write(header)
-	if err != nil {
-		return err
-	}
-
-	// Write audio data as 32-bit float (little endian)
-	for _, sample := range result.Audio {
-		bytes := make([]byte, 4)
-		bits := *(*uint32)(unsafe.Pointer(&sample))
-		bytes[0] = byte(bits)
-		bytes[1] = byte(bits >> 8)
-		bytes[2] = byte(bits >> 16)
-		bytes[3] = byte(bits >> 24)
-		_, err = file.Write(bytes)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
