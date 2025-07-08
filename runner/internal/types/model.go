@@ -8,6 +8,7 @@ const (
 	ModelTypeEmbedder = "embedder"
 	ModelTypeReranker = "reranker"
 	ModelTypeImageGen = "image_gen"
+	ModelTypeTTS      = "tts"
 )
 
 type ModelManifest struct {
