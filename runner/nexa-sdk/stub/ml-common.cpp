@@ -9,8 +9,12 @@ void ml_log(const char *message) {};          /* Log a message */
 void ml_free(void *ptr) {};                   /* Free allocated memory */
 
 /* ====================  Data Structures  ================================== */
-
-/** Free image data structure and its pixel data */
 void ml_image_free(ml_Image *image) {}
 void ml_image_save(const ml_Image *image, const char *filename) {}
+
+void ml_audio_free(ml_Audio *audio) {}
+void ml_audio_save(const ml_Audio *audio, const char *filename) {}
+
+void ml_video_free(ml_Video *video) {}
+void ml_video_save(const ml_Video *video, const char *filename) {}
 }
