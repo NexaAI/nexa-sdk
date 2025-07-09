@@ -118,7 +118,9 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
+          repository: zhiyuan8/homebrew-go-release
           files: ${{ steps.package.outputs.packages_path }}/*.tar.gz
+          tag_name: ${{ github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.NEXASDK_RELEASE_TOKEN }}
 
