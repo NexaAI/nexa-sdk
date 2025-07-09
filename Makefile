@@ -70,7 +70,7 @@ download:
 	-$(RM) ./build/nexasdk-bridge.zip
 
 clean:
-	-$(RM) ./build/nexa{,.exe}
-	-$(RM) ./build/nexa-cli{,.exe}
+	-$(RM) ./build/nexa$(EXE)
+	-$(RM) ./build/nexa-cli$(EXE)
 	-$(RM) ./build/lib
 	-$(RM) ./runner/nexa-sdk/stub/$(LIB)nexa_bridge.$(EXT)
