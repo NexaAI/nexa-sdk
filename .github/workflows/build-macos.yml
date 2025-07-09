@@ -140,7 +140,7 @@ jobs:
       - name: Generate Formula File
         env:
           RELEASE_TAG: ${{ github.ref_name }}
-          RELEASE_REPOSITORY: ${{ github.repository }}
+          RELEASE_REPOSITORY: 'zhiyuan8/homebrew-go-release'
           MANIFEST_DATA: ${{ steps.package.outputs.manifest }}
         run: |
           cp $GITHUB_WORKSPACE/.github/scripts/update_formula.rb .
