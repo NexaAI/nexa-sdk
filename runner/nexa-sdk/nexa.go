@@ -26,9 +26,8 @@ func (s SDKError) Error() string {
 }
 
 const (
-	SDKErrorUnknown      = SDKError(C.ML_ERROR_COMMON_UNKNOWN)
-	SDKErrorModelLoad    = SDKError(C.ML_ERROR_COMMON_MODEL_LOAD)
-	SDKErrorFileNotFound = SDKError(C.ML_ERROR_COMMON_FILE_NOT_FOUND)
+	SDKErrorUnknown   = SDKError(C.ML_ERROR_COMMON_UNKNOWN)
+	SDKErrorModelLoad = SDKError(C.ML_ERROR_COMMON_MODEL_LOAD)
 )
 
 // ProfilingData contains performance metrics from ML operations
