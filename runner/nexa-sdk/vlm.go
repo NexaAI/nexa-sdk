@@ -28,7 +28,7 @@ func (p *VLM) GetProfilingData() (*ProfilingData, error) {
 	var cData C.ml_ProfilingData
 	res := C.ml_vlm_get_profiling_data(p.ptr, &cData)
 	if res < 0 {
-		return nil, ErrCommon
+		return nil, SDKError(res)
 	}
 
 	return NewProfilingDataFromC(cData), nil
@@ -47,7 +47,7 @@ func NewVLM(model string, tokenizer *string, ctxLen int32, devices *string) (*VL
 
 	ptr := C.ml_vlm_create(cModel, cTokenizer, C.int32_t(ctxLen), nil)
 	if ptr == nil {
-		return nil, ErrCreateFailed
+		return nil, SDKErrorModelLoad
 	}
 
 	return &VLM{ptr: ptr}, nil
@@ -72,7 +72,7 @@ func (p *VLM) Encode(msg string) ([]int32, error) {
 	var res *C.int32_t
 	resLen := C.ml_vlm_encode(p.ptr, cMsg, &res)
 	if resLen < 0 {
-		return nil, ErrCommon
+		return nil, SDKError(resLen)
 	}
 	defer C.free(unsafe.Pointer(res))
 
@@ -92,7 +92,7 @@ func (p *VLM) Decode(ids []int32) (string, error) {
 		C.int32_t(len(ids)),
 		&res)
 	if resLen < 0 {
-		return "", ErrCommon
+		return "", SDKError(resLen)
 	}
 	defer C.free(unsafe.Pointer(res))
 
@@ -136,7 +136,7 @@ func (p *VLM) Generate(prompt string, images []string, audios []string) (string,
 	var res *C.char
 	resLen := C.ml_vlm_generate(p.ptr, cPrompt, &config, &res)
 	if resLen <= 0 {
-		return "", ErrCommon
+		return "", SDKError(resLen)
 	}
 	defer C.free(unsafe.Pointer(res))
 
@@ -154,7 +154,7 @@ func (p *VLM) GetChatTemplate(name *string) (string, error) {
 	var res *C.char
 	resLen := C.ml_vlm_get_chat_template(p.ptr, cName, &res)
 	if resLen < 0 {
-		return "", ErrCommon
+		return "", SDKError(resLen)
 	}
 
 	return C.GoString(res), nil
@@ -176,7 +176,7 @@ func (p *VLM) ApplyChatTemplate(msgs []ChatMessage) (string, error) {
 	var res *C.char
 	resLen := C.ml_vlm_apply_chat_template(p.ptr, &cMsgs[0], C.int32_t(len(msgs)), &res)
 	if resLen < 0 {
-		return "", ErrCommon
+		return "", SDKError(resLen)
 	}
 	defer C.free(unsafe.Pointer(res))
 
@@ -261,7 +261,7 @@ func (p *VLM) GenerateStream(ctx context.Context, prompt string, images []string
 			(C.ml_llm_token_callback)(C.go_generate_stream_on_token),
 			nil, nil)
 		if resLen < 0 {
-			err <- ErrCommon
+			err <- SDKError(resLen)
 		}
 	}()
 

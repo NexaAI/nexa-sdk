@@ -179,7 +179,7 @@ func (ig *ImageGen) Txt2Img(prompt string, config ImageGenerationConfig) (*Image
 
 	cImage := C.ml_imagegen_txt2img(ig.ptr, cPrompt, cConfig)
 	if cImage.data == nil {
-		return nil, ErrCommon
+		return nil, SDKErrorUnknown
 	}
 	return &Image{ptr: &cImage}, nil
 }
@@ -187,7 +187,7 @@ func (ig *ImageGen) Txt2Img(prompt string, config ImageGenerationConfig) (*Image
 // Img2Img generates an image from an initial image and text prompt
 func (ig *ImageGen) Img2Img(initImage *Image, prompt string, config ImageGenerationConfig) (*Image, error) {
 	if initImage == nil || initImage.ptr == nil {
-		return nil, ErrCommon
+		return nil, SDKErrorUnknown
 	}
 
 	cPrompt := C.CString(prompt)
@@ -198,7 +198,7 @@ func (ig *ImageGen) Img2Img(initImage *Image, prompt string, config ImageGenerat
 
 	cImage := C.ml_imagegen_img2img(ig.ptr, initImage.ptr, cPrompt, cConfig)
 	if cImage.data == nil {
-		return nil, ErrCommon
+		return nil, SDKErrorUnknown
 	}
 
 	return &Image{ptr: &cImage}, nil
@@ -211,7 +211,7 @@ func (ig *ImageGen) Generate(config ImageGenerationConfig) (*Image, error) {
 
 	cImage := C.ml_imagegen_generate(ig.ptr, cConfig)
 	if cImage.data == nil {
-		return nil, ErrCommon
+		return nil, SDKErrorUnknown
 	}
 
 	return &Image{ptr: &cImage}, nil

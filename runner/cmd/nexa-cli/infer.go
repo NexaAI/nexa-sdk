@@ -164,7 +164,7 @@ func inferLLM(model string, tokenizer *string) {
 
 			formatted, err := p.ApplyChatTemplate(history)
 			if err != nil {
-				if errors.Is(err, nexa_sdk.ErrChatTemplateNotFound) {
+				if errors.Is(err, nexa_sdk.SDKErrorFileNotFound) {
 					// Chat template can be not found for some non-instruct-tuned models, we directly use the original prompt in those cases.
 					formatted = prompt
 					err = nil
@@ -190,7 +190,7 @@ func inferLLM(model string, tokenizer *string) {
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
 			formatted, e := p.ApplyChatTemplate(history)
 			if e != nil {
-				if errors.Is(e, nexa_sdk.ErrChatTemplateNotFound) {
+				if errors.Is(e, nexa_sdk.SDKErrorFileNotFound) {
 					// Chat template can be not found for some non-instruct-tuned models, we directly use the original prompt in those cases.
 					formatted = prompt
 					e = nil
