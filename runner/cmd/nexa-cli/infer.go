@@ -51,10 +51,10 @@ func infer() *cobra.Command {
 	inferCmd.Flags().StringVarP(&query, "query", "q", "", "[reranker] query")
 	inferCmd.Flags().StringSliceVarP(&document, "document", "d", nil, "[reranker] documents")
 	inferCmd.Flags().StringVarP(&input, "input", "i", "", "[asr] input file (audio for asr")
-	inferCmd.Flags().StringVarP(&output, "output", "o", "", "[asr/tts] output file (audio for tts)")
+	inferCmd.Flags().StringVarP(&output, "output", "o", "", "[tts] output file (audio for tts)")
 	inferCmd.Flags().StringVarP(&voice, "voice-identifier", "", "", "[tts] voice identifier")
 	inferCmd.Flags().Float64VarP(&speed, "speech-speed", "", 1.0, "[tts] speech speed (1.0 = normal)")
-	inferCmd.Flags().StringVarP(&language, "language", "l", "", "[asr/tts] language code (e.g., en, zh, ja)")
+	inferCmd.Flags().StringVarP(&language, "language", "l", "", "[asr] language code (e.g., en, zh, ja)")
 
 	inferCmd.Run = func(cmd *cobra.Command, args []string) {
 		model := normalizeModelName(args[0])
@@ -370,16 +370,8 @@ func inferTTS(modelfile string, tokenizer *string) {
 	var inputText string
 	if len(prompt) > 0 && prompt[0] != "" {
 		inputText = prompt[0]
-	} else if input != "" {
-		// Read text from input file
-		data, err := os.ReadFile(input)
-		if err != nil {
-			fmt.Println(text.FgRed.Sprintf("Error reading input file: %s", err))
-			return
-		}
-		inputText = string(data)
 	} else {
-		fmt.Println(text.FgRed.Sprintf("text is required for TTS synthesis (use --prompt or --input)"))
+		fmt.Println(text.FgRed.Sprintf("text is required for TTS synthesis (use --prompt)"))
 		fmt.Println()
 		return
 	}
@@ -400,15 +392,13 @@ func inferTTS(modelfile string, tokenizer *string) {
 		return
 	}
 
-	if result != nil {
-		outputFile := output
-		if outputFile == "" {
-			outputFile = "output.wav"
-		}
-		err = saveWAV(result, outputFile)
+	if output != "" {
+		err = saveWAV(result, output)
 		if err != nil {
 			fmt.Println(text.FgRed.Sprintf("Error saving audio: %s", err))
 		}
+	} else {
+		fmt.Println(text.FgRed.Sprintf("output file is required for TTS synthesis (use --output)"))
 	}
 	fmt.Println()
 
@@ -459,24 +449,7 @@ func inferASR(modelfile string, tokenizer *string) {
 	}
 
 	if result != nil {
-		if output != "" {
-			err = os.WriteFile(output, []byte(result.Transcript), 0o644)
-			if err != nil {
-				fmt.Println(text.FgRed.Sprintf("Error saving transcription: %s", err))
-			}
-		} else {
-			fmt.Println(text.FgYellow.Sprint(result.Transcript))
-		}
-
-		// // Print confidence scores if available
-		// if len(result.ConfidenceScores) > 0 {
-		// 	fmt.Printf("Confidence scores: %v\n", result.ConfidenceScores)
-		// }
-
-		// // Print timestamps if available
-		// if len(result.Timestamps) > 0 {
-		// 	fmt.Printf("Timestamps: %v\n", result.Timestamps)
-		// }
+		fmt.Println(text.FgYellow.Sprint(result.Transcript))
 	}
 	fmt.Println()
 }
