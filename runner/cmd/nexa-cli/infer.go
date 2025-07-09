@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"strings"
 
@@ -18,11 +20,16 @@ import (
 
 var (
 	// disableStream *bool // reuse in run.go
-	modelType string
-	tool      []string
-	prompt    []string
-	query     string
-	document  []string
+	modelType       string
+	tool            []string
+	prompt          []string
+	query           string
+	document        []string
+	input           string
+	output          string
+	voiceIdentifier string
+	speechSpeed     float64
+	language        string
 )
 
 func infer() *cobra.Command {
@@ -35,12 +42,17 @@ func infer() *cobra.Command {
 	inferCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
 
 	inferCmd.Flags().SortFlags = false
-	inferCmd.Flags().StringVarP(&modelType, "model-type", "m", "llm", "specify model type [llm/vlm/embedder/reranker]")
+	inferCmd.Flags().StringVarP(&modelType, "model-type", "m", "llm", "specify model type [llm/vlm/embedder/reranker/tts/asr]")
 	inferCmd.Flags().BoolVarP(&disableStream, "disable-stream", "s", false, "[llm|vlm] disable stream mode")
 	inferCmd.Flags().StringSliceVarP(&tool, "tool", "t", nil, "[llm|vlm] add tool to make function call")
-	inferCmd.Flags().StringSliceVarP(&prompt, "prompt", "p", nil, "[embedder] pass prompt")
+	inferCmd.Flags().StringSliceVarP(&prompt, "prompt", "p", nil, "[embedder|tts] pass prompt")
 	inferCmd.Flags().StringVarP(&query, "query", "q", "", "[reranker] query")
 	inferCmd.Flags().StringSliceVarP(&document, "document", "d", nil, "[reranker] documents")
+	inferCmd.Flags().StringVarP(&input, "input", "i", "", "[asr] input file (audio for asr")
+	inferCmd.Flags().StringVarP(&output, "output", "o", "", "[tts] output file (audio for tts)")
+	inferCmd.Flags().StringVarP(&voiceIdentifier, "voice-identifier", "", "", "[tts] voice identifier")
+	inferCmd.Flags().Float64VarP(&speechSpeed, "speech-speed", "", 1.0, "[tts] speech speed (1.0 = normal)")
+	inferCmd.Flags().StringVarP(&language, "language", "l", "", "[asr] language code (e.g., en, zh, ja)")
 
 	inferCmd.Run = func(cmd *cobra.Command, args []string) {
 		model := normalizeModelName(args[0])
@@ -87,6 +99,10 @@ func infer() *cobra.Command {
 			inferEmbed(modelfile, nil)
 		case types.ModelTypeReranker:
 			inferRerank(modelfile, nil)
+		case types.ModelTypeTTS:
+			inferTTS(modelfile, nil)
+		case types.ModelTypeASR:
+			inferASR(modelfile, nil)
 		default:
 			panic("not support model type")
 		}
@@ -334,4 +350,237 @@ func inferRerank(modelfile string, tokenizer *string) {
 	if data, err := p.GetProfilingData(); err == nil {
 		printProfiling(data)
 	}
+}
+
+func inferTTS(modelfile string, tokenizer *string) {
+	spin := render.NewSpinner("loading model...")
+
+	spin.Start()
+	p, err := nexa_sdk.NewTTS(modelfile, tokenizer, nil)
+	spin.Stop()
+	if err != nil {
+		fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+		return
+	}
+	defer p.Destroy()
+
+	// Get text input - prioritize prompt, fallback to input file
+	var inputText string
+	if len(prompt) > 0 && prompt[0] != "" {
+		inputText = prompt[0]
+	} else {
+		fmt.Println(text.FgRed.Sprintf("text is required for TTS synthesis (use --prompt)"))
+		fmt.Println()
+		return
+	}
+
+	// Configure TTS
+	config := &nexa_sdk.TTSConfig{
+		Voice:      voiceIdentifier,
+		Speed:      float32(speechSpeed),
+		Seed:       -1,
+		SampleRate: 44100,
+	}
+
+	// Synthesize text to speech
+	result, err := p.Synthesize(inputText, config)
+	if err != nil {
+		fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+		fmt.Println()
+		return
+	}
+
+	if output != "" {
+		err = saveWAV(result, output)
+		if err != nil {
+			fmt.Println(text.FgRed.Sprintf("Error saving audio: %s", err))
+		}
+	} else {
+		fmt.Println(text.FgRed.Sprintf("output file is required for TTS synthesis (use --output)"))
+	}
+	fmt.Println()
+
+	if data, err := p.GetProfilingData(); err == nil {
+		printProfiling(data)
+	}
+}
+
+func inferASR(modelfile string, tokenizer *string) {
+	spin := render.NewSpinner("loading model...")
+
+	spin.Start()
+	p, err := nexa_sdk.NewASR(modelfile, tokenizer, &language, nil)
+	spin.Stop()
+	if err != nil {
+		fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+		return
+	}
+	defer p.Destroy()
+
+	// Check input file
+	if input == "" {
+		fmt.Println(text.FgRed.Sprintf("input audio file is required for ASR transcription"))
+		fmt.Println()
+		return
+	}
+
+	// Load audio file
+	audio, sampleRate, err := loadWavFile(input)
+	if err != nil {
+		fmt.Println(text.FgRed.Sprintf("Error loading audio file: %s", err))
+		return
+	}
+
+	// Configure ASR
+	config := &nexa_sdk.ASRConfig{
+		Timestamps: "word",
+		BeamSize:   5,
+		Stream:     false,
+	}
+
+	// Transcribe audio to text
+	result, err := p.Transcribe(audio, int32(sampleRate), config)
+	if err != nil {
+		fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+		fmt.Println()
+		return
+	}
+
+	if result != nil {
+		fmt.Println(text.FgYellow.Sprint(result.Transcript))
+	}
+	fmt.Println()
+}
+
+// WAVHeader represents the WAV file header structure
+type WAVHeader struct {
+	Riff          [4]byte // "RIFF"
+	FileSize      uint32  // File size - 8
+	Wave          [4]byte // "WAVE"
+	Fmt           [4]byte // "fmt "
+	FmtSize       uint32  // Format chunk size
+	AudioFormat   uint16  // Audio format (1 = PCM)
+	NumChannels   uint16  // Number of channels
+	SampleRate    uint32  // Sample rate
+	ByteRate      uint32  // Byte rate
+	BlockAlign    uint16  // Block align
+	BitsPerSample uint16  // Bits per sample
+	Data          [4]byte // "data"
+	DataSize      uint32  // Data chunk size
+}
+
+// saveWAV saves the TTS result as a WAV file
+func saveWAV(result *nexa_sdk.TTSResult, filename string) error {
+	if result == nil || len(result.Audio) == 0 {
+		return fmt.Errorf("no audio data to save")
+	}
+
+	file, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("could not create audio file: %v", err)
+	}
+	defer file.Close()
+
+	// Prepare WAV header
+	header := WAVHeader{}
+	copy(header.Riff[:], "RIFF")
+	copy(header.Wave[:], "WAVE")
+	copy(header.Fmt[:], "fmt ")
+	copy(header.Data[:], "data")
+
+	header.FmtSize = 16
+	header.AudioFormat = 1 // PCM
+	header.NumChannels = uint16(result.Channels)
+	header.SampleRate = uint32(result.SampleRate)
+	header.BitsPerSample = 16
+	header.ByteRate = uint32(result.SampleRate) * uint32(result.Channels) * uint32(header.BitsPerSample) / 8
+	header.BlockAlign = uint16(result.Channels) * header.BitsPerSample / 8
+	header.DataSize = uint32(len(result.Audio)) * uint32(result.Channels) * uint32(header.BitsPerSample) / 8
+	header.FileSize = uint32(binary.Size(header)) - 8 + header.DataSize
+
+	// Write header
+	err = binary.Write(file, binary.LittleEndian, header)
+	if err != nil {
+		return fmt.Errorf("failed to write WAV header: %v", err)
+	}
+
+	// Convert float samples to 16-bit PCM and write
+	pcmSamples := make([]int16, len(result.Audio)*int(result.Channels))
+	for i, sample := range result.Audio {
+		// Clamp audio values to [-1.0, 1.0] and convert to 16-bit PCM
+		clampedSample := math.Max(-1.0, math.Min(1.0, float64(sample)))
+		pcmSamples[i] = int16(clampedSample * 32767.0)
+	}
+
+	err = binary.Write(file, binary.LittleEndian, pcmSamples)
+	if err != nil {
+		return fmt.Errorf("failed to write audio data: %v", err)
+	}
+
+	return nil
+}
+
+func loadWavFile(path string) ([]float32, int, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, 0, fmt.Errorf("could not open audio file: %w", err)
+	}
+	defer f.Close()
+
+	// Read WAV header
+	var header WAVHeader
+	if err := binary.Read(f, binary.LittleEndian, &header); err != nil {
+		return nil, 0, fmt.Errorf("could not read WAV header: %w", err)
+	}
+
+	// Validate WAV header
+	if string(header.Riff[:]) != "RIFF" || string(header.Wave[:]) != "WAVE" {
+		return nil, 0, errors.New("invalid WAV file format")
+	}
+
+	if header.AudioFormat != 1 {
+		return nil, 0, errors.New("only PCM WAV files are supported")
+	}
+
+	// Calculate number of samples
+	bytesPerSample := header.BitsPerSample / 8
+	totalSamples := int(header.DataSize) / int(bytesPerSample)
+	samplesPerChannel := totalSamples / int(header.NumChannels)
+
+	// Read and convert audio data
+	var samples []float32
+
+	if header.BitsPerSample == 16 {
+		// 16-bit PCM
+		intSamples := make([]int16, totalSamples)
+		if err := binary.Read(f, binary.LittleEndian, &intSamples); err != nil {
+			return nil, 0, fmt.Errorf("could not read 16-bit PCM data: %w", err)
+		}
+
+		// Convert to float and extract first channel
+		samples = make([]float32, samplesPerChannel)
+		for i := 0; i < samplesPerChannel; i++ {
+			sampleIndex := i * int(header.NumChannels) // Take first channel
+			samples[i] = float32(intSamples[sampleIndex]) / 32768.0
+		}
+
+	} else if header.BitsPerSample == 32 {
+		// 32-bit float PCM
+		floatSamples := make([]float32, totalSamples)
+		if err := binary.Read(f, binary.LittleEndian, &floatSamples); err != nil {
+			return nil, 0, fmt.Errorf("could not read 32-bit float PCM data: %w", err)
+		}
+
+		// Extract first channel
+		samples = make([]float32, samplesPerChannel)
+		for i := 0; i < samplesPerChannel; i++ {
+			sampleIndex := i * int(header.NumChannels) // Take first channel
+			samples[i] = floatSamples[sampleIndex]
+		}
+
+	} else {
+		return nil, 0, fmt.Errorf("unsupported bits per sample: %d", header.BitsPerSample)
+	}
+
+	return samples, int(header.SampleRate), nil
 }
