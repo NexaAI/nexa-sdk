@@ -47,13 +47,13 @@ func infer() *cobra.Command {
 	inferCmd.Flags().StringVarP(&modelType, "model-type", "m", "llm", "specify model type [llm/vlm/embedder/reranker/tts/asr]")
 	inferCmd.Flags().BoolVarP(&disableStream, "disable-stream", "s", false, "[llm|vlm] disable stream mode")
 	inferCmd.Flags().StringSliceVarP(&tool, "tool", "t", nil, "[llm|vlm] add tool to make function call")
-	inferCmd.Flags().StringSliceVarP(&prompt, "prompt", "p", nil, "[embedder] pass prompt")
+	inferCmd.Flags().StringSliceVarP(&prompt, "prompt", "p", nil, "[embedder|tts] pass prompt")
 	inferCmd.Flags().StringVarP(&query, "query", "q", "", "[reranker] query")
 	inferCmd.Flags().StringSliceVarP(&document, "document", "d", nil, "[reranker] documents")
-	inferCmd.Flags().StringVarP(&input, "input", "i", "", "[asr/tts] input file (audio for asr, text for tts)")
-	inferCmd.Flags().StringVarP(&output, "output", "o", "", "[asr/tts] output file (text for asr, audio for tts)")
-	inferCmd.Flags().StringVarP(&voice, "voice", "", "", "[tts] voice identifier")
-	inferCmd.Flags().Float64VarP(&speed, "speed", "", 1.0, "[tts] speech speed (1.0 = normal)")
+	inferCmd.Flags().StringVarP(&input, "input", "i", "", "[asr] input file (audio for asr")
+	inferCmd.Flags().StringVarP(&output, "output", "o", "", "[asr/tts] output file (audio for tts)")
+	inferCmd.Flags().StringVarP(&voice, "voice-identifier", "", "", "[tts] voice identifier")
+	inferCmd.Flags().Float64VarP(&speed, "speech-speed", "", 1.0, "[tts] speech speed (1.0 = normal)")
 	inferCmd.Flags().StringVarP(&language, "language", "l", "", "[asr/tts] language code (e.g., en, zh, ja)")
 
 	inferCmd.Run = func(cmd *cobra.Command, args []string) {
