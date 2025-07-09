@@ -11,14 +11,13 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"time"
 
-	"github.com/briandowns/spinner"
 	"github.com/charmbracelet/huh"
 	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/ollama/ollama/readline"
 
+	"github.com/NexaAI/nexa-sdk/internal/render"
 	"github.com/NexaAI/nexa-sdk/internal/store"
 	"github.com/NexaAI/nexa-sdk/internal/types"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
@@ -133,7 +132,7 @@ const (
 )
 
 func repl(cfg ReplConfig) {
-	//fmt.Println(text.FgBlue.Sprintf("Send a message, press /? for help"))
+	// fmt.Println(text.FgBlue.Sprintf("Send a message, press /? for help"))
 	cfg.fill()
 
 	//l, err := readline.NewEx(&readline.Config{
@@ -152,7 +151,7 @@ func repl(cfg ReplConfig) {
 	if err != nil {
 		panic(err)
 	}
-	//defer l.Close()
+	// defer l.Close()
 
 	var cancel func()
 	cSignal := make(chan os.Signal, 1)
@@ -476,8 +475,7 @@ func getFileSizesConcurrent(name string, files []string) (map[string]int64, erro
 }
 
 func chooseFiles(name string, files []string) (res types.ModelManifest, err error) {
-	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model size..."))
-
+	spin := render.NewSpinner("loading model size...")
 	if len(files) == 0 {
 		err = fmt.Errorf("repo is empty")
 		return
