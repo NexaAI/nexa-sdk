@@ -4,12 +4,10 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
-	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 
 	"github.com/NexaAI/nexa-sdk/internal/render"
@@ -52,26 +50,10 @@ func pull() *cobra.Command {
 
 		// TODO: replace with go-pretty
 		pgCh, errCh := s.Pull(context.TODO(), manifest)
-		bar := progressbar.NewOptions64(
-			manifest.Size,
-			progressbar.OptionSetDescription("downloading"),
-			progressbar.OptionSetWriter(os.Stderr),
-			progressbar.OptionShowBytes(true),
-			progressbar.OptionShowTotalBytes(true),
-			progressbar.OptionSetWidth(10),
-			progressbar.OptionThrottle(65*time.Millisecond),
-			progressbar.OptionShowCount(),
-			progressbar.OptionOnCompletion(func() {
-				fmt.Fprint(os.Stderr, "\n")
-			}),
-			progressbar.OptionSpinnerType(14),
-			progressbar.OptionFullWidth(),
-			progressbar.OptionSetRenderBlankState(true),
-			progressbar.OptionUseANSICodes(true),
-		)
+		bar := render.NewProgressBar(manifest.Size, "downloading")
 
 		for pg := range pgCh {
-			bar.Set64(pg.TotalDownloaded)
+			bar.Set(pg.TotalDownloaded)
 		}
 		bar.Exit()
 

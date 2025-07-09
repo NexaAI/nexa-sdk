@@ -5,14 +5,12 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 	"github.com/openai/openai-go/packages/ssestream"
-	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 
 	"github.com/NexaAI/nexa-sdk/internal/config"
@@ -84,26 +82,10 @@ func runFunc(cmd *cobra.Command, args []string) {
 				option.WithJSONSet("ExtraFiles", manifest.ExtraFiles),
 			)
 			stream := ssestream.NewStream[types.DownloadInfo](ssestream.NewDecoder(raw), err)
-			bar := progressbar.NewOptions64(
-				manifest.Size,
-				progressbar.OptionSetDescription("downloading"),
-				progressbar.OptionSetWriter(os.Stderr),
-				progressbar.OptionShowBytes(true),
-				progressbar.OptionShowTotalBytes(true),
-				progressbar.OptionSetWidth(10),
-				progressbar.OptionThrottle(65*time.Millisecond),
-				progressbar.OptionShowCount(),
-				progressbar.OptionOnCompletion(func() {
-					fmt.Fprint(os.Stderr, "\n")
-				}),
-				progressbar.OptionSpinnerType(14),
-				progressbar.OptionFullWidth(),
-				progressbar.OptionSetRenderBlankState(true),
-				progressbar.OptionUseANSICodes(true),
-			)
+			bar := render.NewProgressBar(manifest.Size, "downloading")
 			for stream.Next() {
 				event := stream.Current()
-				bar.Set64(event.TotalDownloaded)
+				bar.Set(event.TotalDownloaded)
 			}
 			bar.Exit()
 
