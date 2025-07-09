@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -10,31 +11,30 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/briandowns/spinner"
 	"github.com/charmbracelet/huh"
-	"github.com/chzyer/readline"
 	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/ollama/ollama/readline"
 
 	"github.com/NexaAI/nexa-sdk/internal/store"
 	"github.com/NexaAI/nexa-sdk/internal/types"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
 )
 
-var completer = readline.NewPrefixCompleter(
-	readline.PcItem("/?"),
-	readline.PcItem("/h"),
-	readline.PcItem("/help"),
-
-	readline.PcItem("/exit"),
-
-	readline.PcItem("/clear"),
-	readline.PcItem("/load", readline.PcItemDynamic(listFiles("./"))),
-	readline.PcItem("/save", readline.PcItemDynamic(listFiles("./"))),
-)
+//var completer = readline.NewPrefixCompleter(
+//	readline.PcItem("/?"),
+//	readline.PcItem("/h"),
+//	readline.PcItem("/help"),
+//
+//	readline.PcItem("/exit"),
+//
+//	readline.PcItem("/clear"),
+//	readline.PcItem("/load", readline.PcItemDynamic(listFiles("./"))),
+//	readline.PcItem("/save", readline.PcItemDynamic(listFiles("./"))),
+//)
 
 var help = [][2]string{
 	{"/?, /h, /help", "Show this help message"},
@@ -45,16 +45,16 @@ var help = [][2]string{
 }
 
 // TODO: support sub dir
-func listFiles(path string) func(string) []string {
-	return func(line string) []string {
-		names := make([]string, 0)
-		files, _ := os.ReadDir(path)
-		for _, f := range files {
-			names = append(names, f.Name())
-		}
-		return names
-	}
-}
+//func listFiles(path string) func(string) []string {
+//	return func(line string) []string {
+//		names := make([]string, 0)
+//		files, _ := os.ReadDir(path)
+//		for _, f := range files {
+//			names = append(names, f.Name())
+//		}
+//		return names
+//	}
+//}
 
 // LLM, VLM
 type ReplConfig struct {
@@ -125,46 +125,102 @@ func printProfiling(profilingData *nexa_sdk.ProfilingData) {
 	}
 }
 
+type MultilineState int
+
+const (
+	MultilineNone MultilineState = iota
+	MultilinePrompt
+)
+
 func repl(cfg ReplConfig) {
-	fmt.Println(text.FgBlue.Sprintf("Send a message, press /? for help"))
+	//fmt.Println(text.FgBlue.Sprintf("Send a message, press /? for help"))
 	cfg.fill()
 
-	l, err := readline.NewEx(&readline.Config{
-		Prompt:          text.Colors{text.FgGreen, text.Bold}.Sprint("> "),
-		AutoComplete:    completer,
-		InterruptPrompt: "^C",
-		EOFPrompt:       "^D",
-		HistoryFile:     store.Get().HistoryFilePath(),
+	//l, err := readline.NewEx(&readline.Config{
+	//	Prompt:          text.Colors{text.FgGreen, text.Bold}.Sprint("> "),
+	//	AutoComplete:    completer,
+	//	InterruptPrompt: "^C",
+	//	EOFPrompt:       "^D",
+	//	HistoryFile:     store.Get().HistoryFilePath(),
+	//})
+	l, err := readline.New(readline.Prompt{
+		Prompt:         text.Colors{text.FgGreen, text.Bold}.Sprint("> "),
+		AltPrompt:      text.Colors{text.FgGreen, text.Bold}.Sprint(". "),
+		Placeholder:    "Send a message, press /? for help",
+		AltPlaceholder: `Use """ to end multi-line input`,
 	})
 	if err != nil {
 		panic(err)
 	}
-	defer l.Close()
+	//defer l.Close()
 
 	var cancel func()
 	cSignal := make(chan os.Signal, 1)
-	signal.Notify(cSignal, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(cSignal, os.Interrupt)
 	go func() {
 		for range cSignal {
 			if cancel != nil {
 				cancel()
 			}
-			l.Close()
-			os.Exit(0)
 		}
 	}()
 
+	var sb strings.Builder
+	var multiline MultilineState
 	for {
 		line, err := l.Readline()
-		if err == readline.ErrInterrupt {
-			if len(line) == 0 {
-				return
-			} else {
-				continue
+
+		switch {
+		case errors.Is(err, io.EOF):
+			fmt.Println()
+			return
+		case errors.Is(err, readline.ErrInterrupt):
+			if line == "" {
+				fmt.Println("\nUse Ctrl + d or /bye to exit.")
+				fmt.Println()
 			}
-		} else if err == io.EOF {
+			l.Prompt.UseAlt = false
+			sb.Reset()
+			continue
+		case err != nil:
 			return
 		}
+
+		switch {
+		case multiline != MultilineNone:
+			// check if there's a multiline terminating string
+			before, ok := strings.CutSuffix(line, `"""`)
+			sb.WriteString(before)
+			if !ok {
+				fmt.Fprintln(&sb)
+				continue
+			}
+
+			multiline = MultilineNone
+			l.Prompt.UseAlt = false
+		case strings.HasPrefix(line, `"""`):
+			line := strings.TrimPrefix(line, `"""`)
+			line, ok := strings.CutSuffix(line, `"""`)
+			sb.WriteString(line)
+			if !ok {
+				// no multiline terminating string; need more input
+				fmt.Fprintln(&sb)
+				multiline = MultilinePrompt
+				l.Prompt.UseAlt = true
+			}
+		case l.Pasting:
+			fmt.Fprintln(&sb, line)
+			continue
+		default:
+			sb.WriteString(line)
+		}
+
+		if sb.Len() == 0 || multiline != MultilineNone {
+			continue
+		}
+
+		line = sb.String()
+		sb.Reset()
 
 		// paser file
 		var images, audios []string
@@ -182,6 +238,7 @@ func repl(cfg ReplConfig) {
 				for _, h := range help {
 					fmt.Printf("  %-25s %s\n", h[0], h[1])
 				}
+				fmt.Println()
 
 			case "/exit":
 				return

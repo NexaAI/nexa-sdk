@@ -1,7 +1,6 @@
 package store
 
 import (
-	"os"
 	"path"
 
 	"github.com/gofrs/flock"
@@ -13,13 +12,8 @@ func (s *Store) LockModel(modelName string) error {
 	}
 
 	encName := s.encodeName(modelName)
-	modelDir := path.Join(s.GetModelsDir(), encName)
-
-	if err := os.MkdirAll(modelDir, 0o770); err != nil {
-		return err
-	}
-
-	lockPath := path.Join(modelDir, ".model.lock")
+	modelsDir := s.GetModelsDir()
+	lockPath := path.Join(modelsDir, "."+encName+".lock")
 
 	fl := flock.New(lockPath)
 
