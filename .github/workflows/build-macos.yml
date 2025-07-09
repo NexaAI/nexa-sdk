@@ -1,6 +1,9 @@
-name: Build NexaCLI on MacOS
+name: Build and Release NexaCLI on MacOS
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 jobs:
@@ -33,9 +36,126 @@ jobs:
         run: |
           make download BRIDGE_BACKEND=${{ matrix.backend }}
 
+      - name: Import Code-Signing Certificates
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        uses: Apple-Actions/import-codesign-certs@v1
+        with:
+          p12-file-base64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          p12-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+
+      - name: Sign binaries and libraries
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        run: |
+          find ./build/lib -maxdepth 1 -name "*.dylib" -exec codesign --force --options runtime --timestamp --deep --verify --verbose --sign "Developer ID Application: ${{ secrets.APPLE_ID_APPLICATION }}" {} \;
+          codesign --force --options runtime --timestamp --deep --verify --verbose --sign "Developer ID Application: ${{ secrets.APPLE_ID_APPLICATION }}" ./build/nexa
+          codesign --force --options runtime --timestamp --deep --verify --verbose --sign "Developer ID Application: ${{ secrets.APPLE_ID_APPLICATION }}" ./build/nexa-cli
+
+      - name: Notarize and Staple
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        run: |
+          cd build
+          zip -r ../nexa-temp.zip nexa nexa-cli lib/*.dylib
+
+          xcrun notarytool submit ../nexa-temp.zip \
+            --apple-id "${{ secrets.APPLE_ID }}" \
+            --password "${{ secrets.APPLE_ID_PASSWORD }}" \
+            --team-id "${{ secrets.APPLE_TEAM_ID }}" \
+            --wait
+
+          # Staple do not support binaries
+          # xcrun stapler staple -v nexa
+          # xcrun stapler staple -v nexa-cli
+          # find ./lib -maxdepth 1 -name "*.dylib" -exec xcrun stapler staple -v {} \;
+
+          cd ..
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: nexasdk-cli_${{ matrix.os }}_${{ matrix.backend }}
           path: ./build
           include-hidden-files: true
+
+  release-and-update-tap:
+    name: Create Release and Update Homebrew Tap
+    needs: build-cli
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare Packages and Generate Manifest
+        id: package
+        run: |
+          VERSION=${{ github.ref_name }}
+          manifest_lines=""
+          mkdir release_packages
+
+          for dir in artifacts/*/; do
+            dir_name=$(basename "$dir")
+            IFS='_' read -ra parts <<< "$dir_name"
+            os_version="${parts[1]}"
+            backend_parts=("${parts[@]:2}")
+            backend=$(IFS="-"; echo "${backend_parts[*]}")
+
+            PACKAGE_NAME="nexa-cli-${os_version}-${backend}-${VERSION}.tar.gz"
+            tar -czf "release_packages/${PACKAGE_NAME}" -C "$dir" .
+
+            SHA256=$(sha256sum "release_packages/${PACKAGE_NAME}" | awk '{ print $1 }')
+            manifest_lines+="${os_version};${backend};${PACKAGE_NAME};${SHA256}\n"
+          done
+
+          echo "manifest<<EOF" >> $GITHUB_OUTPUT
+          echo -e "${manifest_lines}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "packages_path=release_packages" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.package.outputs.packages_path }}/*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.NEXASDK_RELEASE_TOKEN }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Checkout Homebrew Tap Repository
+        uses: actions/checkout@v4
+        with:
+          repository: 'zhiyuan8/homebrew-go'
+          path: homebrew-nexa
+          token: ${{ secrets.NEXASDK_RELEASE_TOKEN }}
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.1'
+
+      - name: Generate Formula File
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_REPOSITORY: ${{ github.repository }}
+          MANIFEST_DATA: ${{ steps.package.outputs.manifest }}
+        run: |
+          cp $GITHUB_WORKSPACE/.github/scripts/update_formula.rb .
+          ruby ./update_formula.rb
+        working-directory: ./homebrew-nexa
+
+      - name: Commit and Push Formula Changes
+        working-directory: ./homebrew-nexa
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          if [[ -n $(git status -s) ]]; then
+            git add Formula/nexa.rb
+            git commit -m "Update nexa formula for release ${{ github.ref_name }}"
+            git push
+          else
+            echo "No changes to the formula file. Skipping commit."
+          fi
