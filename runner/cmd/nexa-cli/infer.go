@@ -8,9 +8,7 @@ import (
 	"math"
 	"os"
 	"strings"
-	"time"
 
-	"github.com/briandowns/spinner"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 
@@ -22,16 +20,16 @@ import (
 
 var (
 	// disableStream *bool // reuse in run.go
-	modelType string
-	tool      []string
-	prompt    []string
-	query     string
-	document  []string
-	input     string
-	output    string
-	voice     string
-	speed     float64
-	language  string
+	modelType       string
+	tool            []string
+	prompt          []string
+	query           string
+	document        []string
+	input           string
+	output          string
+	voiceIdentifier string
+	speechSpeed     float64
+	language        string
 )
 
 func infer() *cobra.Command {
@@ -52,8 +50,8 @@ func infer() *cobra.Command {
 	inferCmd.Flags().StringSliceVarP(&document, "document", "d", nil, "[reranker] documents")
 	inferCmd.Flags().StringVarP(&input, "input", "i", "", "[asr] input file (audio for asr")
 	inferCmd.Flags().StringVarP(&output, "output", "o", "", "[tts] output file (audio for tts)")
-	inferCmd.Flags().StringVarP(&voice, "voice-identifier", "", "", "[tts] voice identifier")
-	inferCmd.Flags().Float64VarP(&speed, "speech-speed", "", 1.0, "[tts] speech speed (1.0 = normal)")
+	inferCmd.Flags().StringVarP(&voiceIdentifier, "voice-identifier", "", "", "[tts] voice identifier")
+	inferCmd.Flags().Float64VarP(&speechSpeed, "speech-speed", "", 1.0, "[tts] speech speed (1.0 = normal)")
 	inferCmd.Flags().StringVarP(&language, "language", "l", "", "[asr] language code (e.g., en, zh, ja)")
 
 	inferCmd.Run = func(cmd *cobra.Command, args []string) {
@@ -355,7 +353,7 @@ func inferRerank(modelfile string, tokenizer *string) {
 }
 
 func inferTTS(modelfile string, tokenizer *string) {
-	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model..."))
+	spin := render.NewSpinner("loading model...")
 
 	spin.Start()
 	p, err := nexa_sdk.NewTTS(modelfile, tokenizer, nil)
@@ -378,8 +376,8 @@ func inferTTS(modelfile string, tokenizer *string) {
 
 	// Configure TTS
 	config := &nexa_sdk.TTSConfig{
-		Voice:      voice,
-		Speed:      float32(speed),
+		Voice:      voiceIdentifier,
+		Speed:      float32(speechSpeed),
 		Seed:       -1,
 		SampleRate: 44100,
 	}
@@ -408,7 +406,7 @@ func inferTTS(modelfile string, tokenizer *string) {
 }
 
 func inferASR(modelfile string, tokenizer *string) {
-	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model..."))
+	spin := render.NewSpinner("loading model...")
 
 	spin.Start()
 	p, err := nexa_sdk.NewASR(modelfile, tokenizer, &language, nil)
