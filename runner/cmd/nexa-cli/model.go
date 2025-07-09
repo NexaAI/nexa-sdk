@@ -4,15 +4,13 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"time"
 
-	"github.com/briandowns/spinner"
 	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
-	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 
+	"github.com/NexaAI/nexa-sdk/internal/render"
 	"github.com/NexaAI/nexa-sdk/internal/store"
 )
 
@@ -36,13 +34,7 @@ func pull() *cobra.Command {
 			fmt.Println(text.FgBlue.Sprint("Already downloaded, if you want to use another quant, please manual remove first"))
 			return
 		}
-
-		// download manifest
-		spin := spinner.New(
-			spinner.CharSets[39],
-			100*time.Millisecond,
-			spinner.WithSuffix("download manifest from: "+name),
-		)
+		spin := render.NewSpinner("download manifest from: " + name)
 		spin.Start()
 		files, err := s.HFModelInfo(context.TODO(), name)
 		spin.Stop()
@@ -58,9 +50,10 @@ func pull() *cobra.Command {
 
 		// TODO: replace with go-pretty
 		pgCh, errCh := s.Pull(context.TODO(), manifest)
-		bar := progressbar.DefaultBytes(manifest.Size, "downloading")
+		bar := render.NewProgressBar(manifest.Size, "downloading")
+
 		for pg := range pgCh {
-			bar.Set64(pg.TotalDownloaded)
+			bar.Set(pg.TotalDownloaded)
 		}
 		bar.Exit()
 

@@ -7,15 +7,14 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/briandowns/spinner"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 	"github.com/openai/openai-go/packages/ssestream"
-	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 
 	"github.com/NexaAI/nexa-sdk/internal/config"
+	"github.com/NexaAI/nexa-sdk/internal/render"
 	"github.com/NexaAI/nexa-sdk/internal/store"
 	"github.com/NexaAI/nexa-sdk/internal/types"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
@@ -59,11 +58,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			fmt.Println(text.FgBlue.Sprintf("model not found, start download"))
 
 			// download manifest
-			spin := spinner.New(
-				spinner.CharSets[39],
-				100*time.Millisecond,
-				spinner.WithSuffix("download manifest from: "+model),
-			)
+			spin := render.NewSpinner("download manifest from: " + model)
 			spin.Start()
 			files, err := store.Get().HFModelInfo(context.TODO(), model)
 			spin.Stop()
@@ -87,10 +82,10 @@ func runFunc(cmd *cobra.Command, args []string) {
 				option.WithJSONSet("ExtraFiles", manifest.ExtraFiles),
 			)
 			stream := ssestream.NewStream[types.DownloadInfo](ssestream.NewDecoder(raw), err)
-			bar := progressbar.DefaultBytes(manifest.Size, "downloading")
+			bar := render.NewProgressBar(manifest.Size, "downloading")
 			for stream.Next() {
 				event := stream.Current()
-				bar.Set64(event.TotalDownloaded)
+				bar.Set(event.TotalDownloaded)
 			}
 			bar.Exit()
 
@@ -106,7 +101,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 	}
 
 	// warm up
-	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model..."))
+	spin := render.NewSpinner("loading model...")
 	spin.Start()
 	_, err = client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
 		Messages: nil,

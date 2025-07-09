@@ -6,12 +6,11 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
-	"github.com/briandowns/spinner"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 
+	"github.com/NexaAI/nexa-sdk/internal/render"
 	"github.com/NexaAI/nexa-sdk/internal/store"
 	"github.com/NexaAI/nexa-sdk/internal/types"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
@@ -96,8 +95,7 @@ func infer() *cobra.Command {
 }
 
 func inferLLM(model string, tokenizer *string) {
-	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model..."))
-
+	spin := render.NewSpinner("loading model...")
 	spin.Start()
 	p, err := nexa_sdk.NewLLM(model, tokenizer, 8192, nil)
 	spin.Stop()
@@ -187,8 +185,7 @@ func inferLLM(model string, tokenizer *string) {
 }
 
 func inferVLM(model string, tokenizer *string) {
-	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model..."))
-
+	spin := render.NewSpinner("loading model...")
 	spin.Start()
 	p, err := nexa_sdk.NewVLM(model, tokenizer, 8192, nil)
 	spin.Stop()
@@ -260,8 +257,7 @@ func inferVLM(model string, tokenizer *string) {
 }
 
 func inferEmbed(modelfile string, tokenizer *string) {
-	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model..."))
-
+	spin := render.NewSpinner("loading model...")
 	spin.Start()
 	p, err := nexa_sdk.NewEmbedder(modelfile, tokenizer, nil)
 	spin.Stop()
@@ -301,8 +297,7 @@ func inferEmbed(modelfile string, tokenizer *string) {
 }
 
 func inferRerank(modelfile string, tokenizer *string) {
-	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model..."))
-
+	spin := render.NewSpinner("loading model...")
 	spin.Start()
 	p, err := nexa_sdk.NewReranker(modelfile, tokenizer, nil)
 	spin.Stop()
