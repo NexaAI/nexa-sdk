@@ -220,6 +220,7 @@ func repl(cfg ReplConfig) {
 		}
 
 		line = sb.String()
+		sb.Reset()
 
 		// paser file
 		var images, audios []string
@@ -237,6 +238,7 @@ func repl(cfg ReplConfig) {
 				for _, h := range help {
 					fmt.Printf("  %-25s %s\n", h[0], h[1])
 				}
+				fmt.Println()
 
 			case "/exit":
 				return
