@@ -1,4 +1,4 @@
-name: Build and Release NexaCLI on MacOS
+name: NexaCLI on MacOS
 
 on:
   push:
