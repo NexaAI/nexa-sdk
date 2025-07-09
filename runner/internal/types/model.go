@@ -9,6 +9,7 @@ const (
 	ModelTypeReranker = "reranker"
 	ModelTypeImageGen = "image_gen"
 	ModelTypeTTS      = "tts"
+	ModelTypeASR      = "asr"
 )
 
 type ModelManifest struct {
