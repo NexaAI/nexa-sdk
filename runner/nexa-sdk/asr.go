@@ -48,7 +48,7 @@ func NewASR(model string, tokenizer *string, language *string, devices *string) 
 
 	ptr := C.ml_asr_create(cModel, cTokenizer, cLanguage, nil)
 	if ptr == nil {
-		return nil, ErrCreateFailed
+		return nil, SDKErrorUnknown
 	}
 
 	return &ASR{ptr: ptr}, nil
@@ -67,7 +67,7 @@ func (p *ASR) LoadModel(modelPath string, extraData unsafe.Pointer) error {
 
 	res := C.ml_asr_load_model(p.ptr, cPath, extraData)
 	if !res {
-		return ErrCommon
+		return SDKErrorModelLoad
 	}
 	return nil
 }
@@ -80,7 +80,7 @@ func (p *ASR) Close() {
 // Transcribe converts audio to text using ASR
 func (p *ASR) Transcribe(audio []float32, sampleRate int32, config *ASRConfig) (*ASRResult, error) {
 	if len(audio) == 0 {
-		return nil, ErrCommon
+		audio = make([]float32, 0)
 	}
 
 	var cConfig C.ml_ASRConfig
@@ -104,7 +104,7 @@ func (p *ASR) Transcribe(audio []float32, sampleRate int32, config *ASRConfig) (
 	)
 
 	if res.transcript == nil {
-		return nil, ErrCommon
+		return nil, SDKErrorUnknown
 	}
 
 	// Convert C result to Go result
@@ -135,7 +135,7 @@ func (p *ASR) Transcribe(audio []float32, sampleRate int32, config *ASRConfig) (
 // TranscribeBatch processes multiple audio samples in batch mode
 func (p *ASR) TranscribeBatch(audios [][]float32, sampleRate int32, config *ASRConfig) ([]*ASRResult, error) {
 	if len(audios) == 0 {
-		return nil, ErrCommon
+		return nil, SDKErrorUnknown
 	}
 
 	// Prepare C arrays
@@ -144,7 +144,7 @@ func (p *ASR) TranscribeBatch(audios [][]float32, sampleRate int32, config *ASRC
 
 	for i, audio := range audios {
 		if len(audio) == 0 {
-			return nil, ErrCommon
+			return nil, SDKErrorUnknown
 		}
 		cAudios[i] = (*C.float)(unsafe.Pointer(&audio[0]))
 		numSamplesArray[i] = C.int32_t(len(audio))
@@ -172,7 +172,7 @@ func (p *ASR) TranscribeBatch(audios [][]float32, sampleRate int32, config *ASRC
 	)
 
 	if cRes == nil {
-		return nil, ErrCommon
+		return nil, SDKErrorUnknown
 	}
 
 	// Convert C results to Go results
@@ -215,7 +215,7 @@ func (p *ASR) TranscribeBatch(audios [][]float32, sampleRate int32, config *ASRC
 // TranscribeStep processes audio chunk for streaming transcription
 func (p *ASR) TranscribeStep(audioChunk []float32, step int32, config *ASRConfig) (*ASRResult, error) {
 	if len(audioChunk) == 0 {
-		return nil, ErrCommon
+		return nil, SDKErrorUnknown
 	}
 
 	var cConfig C.ml_ASRConfig
@@ -239,7 +239,7 @@ func (p *ASR) TranscribeStep(audioChunk []float32, step int32, config *ASRConfig
 	)
 
 	if res.transcript == nil {
-		return nil, ErrCommon
+		return nil, SDKErrorUnknown
 	}
 
 	// Convert C result to Go result
@@ -290,7 +290,7 @@ func (p *ASR) ListSupportedLanguages() ([]string, error) {
 	var count C.int32_t
 	cLanguages := C.ml_asr_list_supported_languages(p.ptr, &count)
 	if cLanguages == nil {
-		return nil, ErrCommon
+		return nil, SDKErrorUnknown
 	}
 
 	languages := make([]string, count)
