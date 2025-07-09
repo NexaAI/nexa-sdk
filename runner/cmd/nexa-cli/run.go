@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -87,7 +88,23 @@ func runFunc(cmd *cobra.Command, args []string) {
 				option.WithJSONSet("ExtraFiles", manifest.ExtraFiles),
 			)
 			stream := ssestream.NewStream[types.DownloadInfo](ssestream.NewDecoder(raw), err)
-			bar := progressbar.DefaultBytes(manifest.Size, "downloading")
+			bar := progressbar.NewOptions64(
+				manifest.Size,
+				progressbar.OptionSetDescription("downloading"),
+				progressbar.OptionSetWriter(os.Stderr),
+				progressbar.OptionShowBytes(true),
+				progressbar.OptionShowTotalBytes(true),
+				progressbar.OptionSetWidth(10),
+				progressbar.OptionThrottle(65*time.Millisecond),
+				progressbar.OptionShowCount(),
+				progressbar.OptionOnCompletion(func() {
+					fmt.Fprint(os.Stderr, "\n")
+				}),
+				progressbar.OptionSpinnerType(14),
+				progressbar.OptionFullWidth(),
+				progressbar.OptionSetRenderBlankState(true),
+				progressbar.OptionUseANSICodes(true),
+			)
 			for stream.Next() {
 				event := stream.Current()
 				bar.Set64(event.TotalDownloaded)
