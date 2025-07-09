@@ -392,12 +392,6 @@ func inferTTS(modelfile string, tokenizer *string) {
 		SampleRate: 44100,
 	}
 
-	// fmt.Printf("Synthesizing text: %s\n", inputText)
-	// if voice != "" {
-	// 	fmt.Printf("Using voice: %s\n", voice)
-	// }
-	// fmt.Printf("Speech speed: %.2f\n", speed)
-
 	// Synthesize text to speech
 	result, err := p.Synthesize(inputText, config)
 	if err != nil {
@@ -414,8 +408,6 @@ func inferTTS(modelfile string, tokenizer *string) {
 		err = saveWAV(result, outputFile)
 		if err != nil {
 			fmt.Println(text.FgRed.Sprintf("Error saving audio: %s", err))
-		} else {
-			fmt.Printf("Audio saved to: %s\n", outputFile)
 		}
 	}
 	fmt.Println()
@@ -458,12 +450,6 @@ func inferASR(modelfile string, tokenizer *string) {
 		Stream:     false,
 	}
 
-	fmt.Printf("Transcribing audio file: %s\n", input)
-	if language != "" {
-		fmt.Printf("Using language: %s\n", language)
-	}
-	fmt.Printf("Sample rate: %d Hz\n", sampleRate)
-
 	// Transcribe audio to text
 	result, err := p.Transcribe(audio, int32(sampleRate), config)
 	if err != nil {
@@ -473,29 +459,24 @@ func inferASR(modelfile string, tokenizer *string) {
 	}
 
 	if result != nil {
-		fmt.Printf("Transcription completed: %s\n", result.Transcript)
-
-		// Save transcription to file
-		outputFile := output
-		if outputFile == "" {
-			outputFile = "output.txt"
-		}
-		err = os.WriteFile(outputFile, []byte(result.Transcript), 0o644)
-		if err != nil {
-			fmt.Println(text.FgRed.Sprintf("Error saving transcription: %s", err))
+		if output != "" {
+			err = os.WriteFile(output, []byte(result.Transcript), 0o644)
+			if err != nil {
+				fmt.Println(text.FgRed.Sprintf("Error saving transcription: %s", err))
+			}
 		} else {
-			fmt.Printf("Transcription saved to: %s\n", outputFile)
+			fmt.Println(text.FgYellow.Sprint(result.Transcript))
 		}
 
-		// Print confidence scores if available
-		if len(result.ConfidenceScores) > 0 {
-			fmt.Printf("Confidence scores: %v\n", result.ConfidenceScores)
-		}
+		// // Print confidence scores if available
+		// if len(result.ConfidenceScores) > 0 {
+		// 	fmt.Printf("Confidence scores: %v\n", result.ConfidenceScores)
+		// }
 
-		// Print timestamps if available
-		if len(result.Timestamps) > 0 {
-			fmt.Printf("Timestamps: %v\n", result.Timestamps)
-		}
+		// // Print timestamps if available
+		// if len(result.Timestamps) > 0 {
+		// 	fmt.Printf("Timestamps: %v\n", result.Timestamps)
+		// }
 	}
 	fmt.Println()
 }
@@ -590,19 +571,10 @@ func loadWavFile(path string) ([]float32, int, error) {
 		return nil, 0, errors.New("only PCM WAV files are supported")
 	}
 
-	fmt.Printf("Loading WAV file:\n")
-	fmt.Printf("  Channels: %d\n", header.NumChannels)
-	fmt.Printf("  Sample rate: %d Hz\n", header.SampleRate)
-	fmt.Printf("  Bits per sample: %d\n", header.BitsPerSample)
-	fmt.Printf("  Data size: %d bytes\n", header.DataSize)
-
 	// Calculate number of samples
 	bytesPerSample := header.BitsPerSample / 8
 	totalSamples := int(header.DataSize) / int(bytesPerSample)
 	samplesPerChannel := totalSamples / int(header.NumChannels)
-
-	fmt.Printf("  Total samples: %d\n", totalSamples)
-	fmt.Printf("  Samples per channel: %d\n", samplesPerChannel)
 
 	// Read and convert audio data
 	var samples []float32
@@ -638,11 +610,6 @@ func loadWavFile(path string) ([]float32, int, error) {
 	} else {
 		return nil, 0, fmt.Errorf("unsupported bits per sample: %d", header.BitsPerSample)
 	}
-
-	fmt.Printf("Successfully loaded audio file: %s\n", path)
-	fmt.Printf("Final sample rate: %d Hz\n", header.SampleRate)
-	fmt.Printf("Final number of samples: %d\n", len(samples))
-	fmt.Printf("Duration: %.2f seconds\n", float64(len(samples))/float64(header.SampleRate))
 
 	return samples, int(header.SampleRate), nil
 }
