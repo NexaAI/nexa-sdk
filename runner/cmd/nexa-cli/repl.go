@@ -176,7 +176,7 @@ func repl(cfg ReplConfig) {
 			return
 		case errors.Is(err, readline.ErrInterrupt):
 			if line == "" {
-				fmt.Println("\nUse Ctrl + d or /bye to exit.")
+				fmt.Println("\nUse Ctrl + d or /exit to exit.")
 				fmt.Println()
 			}
 			l.Prompt.UseAlt = false
