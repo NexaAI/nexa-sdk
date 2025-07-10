@@ -1,6 +1,9 @@
 name: NexaCLI on Windows
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 jobs:
@@ -33,62 +36,6 @@ jobs:
         run: |
           make download BRIDGE_BACKEND=${{ matrix.backend }}
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: "pip"
-
-      - name: Install Python dependencies
-        run: |
-          pip install pyinstaller
-
-      - name: Build launcher with PyInstaller
-        run: |
-          pyinstaller --onefile --noconsole --name "nexa-windows-launcher" --icon="./nexa_logo.ico" nexa_windows_launcher.py
-          pwd
-          ls -al
-
-
-      - name: Download and Install Inno Setup
-        run: |
-          # Download Inno Setup
-          Invoke-WebRequest -Uri "https://jrsoftware.org/download.php/is.exe?site=1" -OutFile "innosetup.exe"
-
-          # Install Inno Setup silently with admin privileges
-          Start-Process -FilePath "powershell" -ArgumentList @(
-            "-NoProfile",
-            "-ExecutionPolicy", "Bypass",
-            "-Command",
-            "Start-Process -FilePath `"$PWD\innosetup.exe`" -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=C:\InnoSetup' -Wait -Verb RunAs"
-          ) -Wait
-        shell: pwsh
-
-      - name: Add Inno Setup to PATH
-        run: |
-          Start-Process -FilePath "powershell" -ArgumentList @(
-            "-NoProfile",
-            "-ExecutionPolicy", "Bypass",
-            "-Command",
-            "[Environment]::SetEnvironmentVariable('Path', `"$env:Path;C:\InnoSetup`", [System.EnvironmentVariableTarget]::Machine)"
-          ) -Verb RunAs -Wait
-        shell: pwsh
-
-      - name: Compile Installer
-        run: |
-          Start-Process -FilePath "powershell" -ArgumentList @(
-            "-NoProfile",
-            "-ExecutionPolicy", "Bypass",
-            "-Command",
-            "Start-Process -FilePath 'C:\InnoSetup\ISCC.exe' -ArgumentList 'nexa_installer.iss' -Wait -Verb RunAs"
-          ) -Wait
-        shell: pwsh
-
-      - name: Upload unsigned installer artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: nexa-cli-windows-setup
-          path: nexa-cli-windows-setup.exe
-
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -96,3 +43,58 @@ jobs:
           name: nexasdk-cli_${{ matrix.os }}_${{ matrix.backend }}
           path: ./build
           include-hidden-files: true
+
+
+  build-installer:
+    name: Build Windows Installer
+    runs-on: sdk-windows-8-core-2
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: build-cli
+    env:
+      VERSION: ${{ github.ref_name }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          pip install pyinstaller
+
+      - name: Build launcher with PyInstaller
+        run: |
+          pyinstaller --onefile --noconsole --distpath artifacts --name "nexa-cli-windows-launcher" --icon="./nexa_logo.ico" nexa_windows_launcher.py
+
+      - name: Compile Installer
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.6
+        with:
+          path: nexa_installer.iss
+          options: /O+
+
+      - name: Upload Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexa-cli-windows-setup-${{ VERSION}}
+          path: artifacts/nexa-cli-windows-setup-${{ VERSION}}.exe
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          repository: zhiyuan8/homebrew-go-release
+          files: |
+            artifacts/nexa-cli-windows-setup-${{ VERSION}}.exe
+            artifacts/nexasdk-cli_windows_llama-cpp-cpu/**
+            artifacts/nexasdk-cli_windows_llama-cpp-vulkan/**
+            artifacts/nexasdk-cli_windows_llama-cpp-cuda/**
+        env:
+          GITHUB_TOKEN: ${{ secrets.NEXASDK_RELEASE_TOKEN }}

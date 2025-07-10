@@ -81,6 +81,8 @@ jobs:
     needs: build-cli
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ github.ref_name }}
 
     steps:
       - name: Download all build artifacts
@@ -91,7 +93,6 @@ jobs:
       - name: Prepare Packages and Generate Manifest
         id: package
         run: |
-          VERSION=${{ github.ref_name }}
           manifest_lines=""
           mkdir release_packages
 

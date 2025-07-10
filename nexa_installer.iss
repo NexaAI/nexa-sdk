@@ -2,6 +2,7 @@
 #define MyAppVersion GetEnv('VERSION')
 #define MyAppPublisher "Nexa AI"
 #define MyAppExeName "nexa.exe"
+#define MyAppServiceName "NexaService"
 #define MyAppLauncherName "Nexa SDK Launcher.exe"
 #define MyAppAliasCmdName "nexa-exe.cmd"
 
@@ -12,8 +13,8 @@ AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 DefaultDirName={localappdata}\{#MyAppName}
 DefaultGroupName={#MyAppName}
-OutputDir=.
-OutputBaseFilename=nexa-cli-{#MyAppVersion}-windows-setup
+OutputDir=artifacts
+OutputBaseFilename=nexa-cli-windows-setup-${#MyAppVersion}
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
@@ -31,12 +32,12 @@ Source: "artifacts\nexasdk-cli_windows_llama-cpp-cuda\nexa-cli.exe"; DestDir: "{
 Source: "artifacts\nexasdk-cli_windows_llama-cpp-vulkan\nexa.exe"; DestDir: "{app}"; DestName: "nexa.exe"; Flags: ignoreversion; Check: IsVulkanSelected
 Source: "artifacts\nexasdk-cli_windows_llama-cpp-vulkan\nexa-cli.exe"; DestDir: "{app}"; DestName: "nexa-cli.exe"; Flags: ignoreversion; Check: IsVulkanSelected
 
-Source: "artifacts\nexa-windows-launcher.exe"; DestDir: "{app}"; DestName: "{#MyAppLauncherName}"; Flags: ignoreversion
+Source: "artifacts\nexa-cli-windows-launcher.exe"; DestDir: "{app}"; DestName: "{#MyAppLauncherName}"; Flags: ignoreversion
 
 ; Dependencies - with corrected exclusions
 Source: "artifacts\nexasdk-cli_windows_llama-cpp-cpu\lib\*"; DestDir: "{app}\lib"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: IsCPUSelected
-Source: "artifacts\nexasdk-cli_windows_llama-cpp-cuda\*"; DestDir: "{app}\lib"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: IsCUDASelected
-Source: "artifacts\nexasdk-cli_windows_llama-cpp-vulkan\*"; DestDir: "{app}\lib"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: IsVulkanSelected
+Source: "artifacts\nexasdk-cli_windows_llama-cpp-cuda\lib\*"; DestDir: "{app}\lib"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: IsCUDASelected
+Source: "artifacts\nexasdk-cli_windows_llama-cpp-vulkan\lib\*"; DestDir: "{app}\lib"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: IsVulkanSelected
 
 [Registry]
 ; Modified registry entries to properly handle icons and default applications
@@ -127,7 +128,14 @@ begin
 end;
 
 [Run]
-Filename: "{sys}\setx.exe"; Parameters: "PATH ""%PATH%"""; Flags: runhidden
+; Create and start the service if the user selected the task
+Filename: "{sys}\sc.exe"; Parameters: "create ""{#MyAppServiceName}"" binPath= ""{app}\{#MyAppExeName} serve"" start= auto"; Flags: runhidden; Tasks: runasservice
+Filename: "{sys}\sc.exe"; Parameters: "start ""{#MyAppServiceName}"""; Flags: runhidden; Tasks: runasservice
+
+[UninstallRun]
+; Stop and delete the service upon uninstallation
+Filename: "{sys}\sc.exe"; Parameters: "stop ""{#MyAppServiceName}"""; Flags: runhidden
+Filename: "{sys}\sc.exe"; Parameters: "delete ""{#MyAppServiceName}"""; Flags: runhidden
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppLauncherName}"
@@ -135,3 +143,4 @@ Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppLauncherName}"; Ta
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "runasservice"; Description: "Run Nexa as a background service (runs 'nexa serve' on startup)"; GroupDescription: "Service Configuration"; Flags: unchecked
