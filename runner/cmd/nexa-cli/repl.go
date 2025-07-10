@@ -153,6 +153,9 @@ func repl(cfg ReplConfig) {
 	}
 	// defer l.Close()
 
+	fmt.Print(readline.StartBracketedPaste)
+	defer fmt.Printf(readline.EndBracketedPaste)
+
 	var cancel func()
 	cSignal := make(chan os.Signal, 1)
 	signal.Notify(cSignal, os.Interrupt)
@@ -197,6 +200,7 @@ func repl(cfg ReplConfig) {
 
 			multiline = MultilineNone
 			l.Prompt.UseAlt = false
+
 		case strings.HasPrefix(line, `"""`):
 			line := strings.TrimPrefix(line, `"""`)
 			line, ok := strings.CutSuffix(line, `"""`)
@@ -207,9 +211,11 @@ func repl(cfg ReplConfig) {
 				multiline = MultilinePrompt
 				l.Prompt.UseAlt = true
 			}
+
 		case l.Pasting:
 			fmt.Fprintln(&sb, line)
 			continue
+
 		default:
 			sb.WriteString(line)
 		}
