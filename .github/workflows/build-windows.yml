@@ -33,6 +33,63 @@ jobs:
         run: |
           make download BRIDGE_BACKEND=${{ matrix.backend }}
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Python dependencies
+        run: |
+          pip install pyinstaller
+
+      - name: Build launcher with PyInstaller
+        run: |
+          pyinstaller --onefile --noconsole --name "nexa-windows-launcher" --icon="./nexa_logo.ico" nexa_windows_launcher.py
+          pwd
+          ls -al
+
+
+      - name: Download and Install Inno Setup
+        run: |
+          # Download Inno Setup
+          Invoke-WebRequest -Uri "https://jrsoftware.org/download.php/is.exe?site=1" -OutFile "innosetup.exe"
+
+          # Install Inno Setup silently with admin privileges
+          Start-Process -FilePath "powershell" -ArgumentList @(
+            "-NoProfile",
+            "-ExecutionPolicy", "Bypass",
+            "-Command",
+            "Start-Process -FilePath `"$PWD\innosetup.exe`" -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=C:\InnoSetup' -Wait -Verb RunAs"
+          ) -Wait
+        shell: pwsh
+
+      - name: Add Inno Setup to PATH
+        run: |
+          Start-Process -FilePath "powershell" -ArgumentList @(
+            "-NoProfile",
+            "-ExecutionPolicy", "Bypass",
+            "-Command",
+            "[Environment]::SetEnvironmentVariable('Path', `"$env:Path;C:\InnoSetup`", [System.EnvironmentVariableTarget]::Machine)"
+          ) -Verb RunAs -Wait
+        shell: pwsh
+
+      - name: Compile Installer
+        run: |
+          Start-Process -FilePath "powershell" -ArgumentList @(
+            "-NoProfile",
+            "-ExecutionPolicy", "Bypass",
+            "-Command",
+            "Start-Process -FilePath 'C:\InnoSetup\ISCC.exe' -ArgumentList 'nexa_installer.iss' -Wait -Verb RunAs"
+          ) -Wait
+        shell: pwsh
+
+      - name: Upload unsigned installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexa-cli-windows-setup
+          path: nexa-cli-windows-setup.exe
+
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
