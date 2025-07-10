@@ -62,7 +62,7 @@ func NewLLM(model string, tokenizer *string, ctxLen int32, devices *string) (*LL
 
 	ptr := C.ml_llm_create(cModel, nil, C.ml_ModelConfig{n_ctx: C.int32_t(ctxLen)}, nil)
 	if ptr == nil {
-		return nil, ErrCreateFailed
+		return nil, SDKErrorModelLoad
 	}
 
 	return &LLM{ptr: ptr}, nil
@@ -87,7 +87,7 @@ func (p *LLM) Encode(msg string) ([]int32, error) {
 	var res *C.int32_t
 	resLen := C.ml_llm_encode(p.ptr, cMsg, &res)
 	if resLen < 0 {
-		return nil, ErrCommon
+		return nil, SDKError(resLen)
 	}
 	defer C.free(unsafe.Pointer(res))
 
@@ -107,7 +107,7 @@ func (p *LLM) Decode(ids []int32) (string, error) {
 		C.int32_t(len(ids)),
 		&res)
 	if resLen < 0 {
-		return "", ErrCommon
+		return "", SDKError(resLen)
 	}
 	defer C.free(unsafe.Pointer(res))
 
@@ -121,7 +121,7 @@ func (p *LLM) SaveKVCache(path string) error {
 
 	res := C.ml_llm_save_kv_cache(p.ptr, cPath)
 	if res < 0 {
-		return ErrCommon
+		return SDKError(res)
 	}
 	return nil
 }
@@ -133,7 +133,7 @@ func (p *LLM) LoadKVCache(path string) error {
 
 	res := C.ml_llm_load_kv_cache(p.ptr, cPath)
 	if res < 0 {
-		return ErrCommon
+		return SDKError(res)
 	}
 	return nil
 }
@@ -150,7 +150,7 @@ func (p *LLM) Generate(prompt string) (string, error) {
 	var res *C.char
 	resLen := C.ml_llm_generate(p.ptr, cPrompt, &config, &res)
 	if resLen <= 0 {
-		return "", ErrCommon
+		return "", SDKError(resLen)
 	}
 	defer C.free(unsafe.Pointer(res))
 
@@ -168,7 +168,7 @@ func (p *LLM) GetChatTemplate(name *string) (string, error) {
 	var res *C.char
 	resLen := C.ml_llm_get_chat_template(p.ptr, cName, &res)
 	if resLen < 0 {
-		return "", ErrCommon
+		return "", SDKError(resLen)
 	}
 
 	return C.GoString(res), nil
@@ -190,11 +190,7 @@ func (p *LLM) ApplyChatTemplate(msgs []ChatMessage) (string, error) {
 	var res *C.char
 	resLen := C.ml_llm_apply_chat_template(p.ptr, &cMsgs[0], C.int32_t(len(msgs)), &res)
 	if resLen < 0 {
-		if resLen == -1 {
-			return "", ErrChatTemplateNotFound
-		}
-
-		return "", ErrCommon
+		return "", SDKError(resLen)
 	}
 	// TODO: fix this
 	defer C.free(unsafe.Pointer(res))
@@ -288,7 +284,7 @@ func (p *LLM) GenerateStream(ctx context.Context, prompt string) (<-chan string,
 		resLen := C.ml_llm_generate_stream(p.ptr, cPrompt, &config,
 			(C.ml_llm_token_callback)(C.go_generate_stream_on_token), nil, nil)
 		if resLen < 0 {
-			err <- ErrCommon
+			err <- SDKError(resLen)
 		}
 	}()
 
@@ -300,7 +296,7 @@ func (p *LLM) GetProfilingData() (*ProfilingData, error) {
 	var cData C.ml_ProfilingData
 	res := C.ml_llm_get_profiling_data(p.ptr, &cData)
 	if res < 0 {
-		return nil, ErrCommon
+		return nil, SDKError(res)
 	}
 
 	return NewProfilingDataFromC(cData), nil

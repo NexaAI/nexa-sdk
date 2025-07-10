@@ -160,8 +160,6 @@ func repl(cfg ReplConfig) {
 		for range cSignal {
 			if cancel != nil {
 				cancel()
-				fmt.Print(text.Reset.EscapeSeq())
-				os.Exit(0)
 			}
 		}
 	}()
@@ -401,8 +399,8 @@ func parseFiles(prompt string) (string, []string, []string) {
 
 // =============== quant name parse ===============
 
-// (f32|f16|q4_k_m|q4_1|i64|i32|i16|i8|iq4_nl|iq4_xs|iq3_s|iq3_xxs|iq2_xxs|iq2_s|iq2_xs|iq1_s|iq1_m|bf16).gguf
-var quantRegix = regexp.MustCompile(`\b([qQ][0-9]+(_[A-Z0-9]+)*|[fF][0-9]+|[iI][0-9]+|[iI][qQ][0-9]+(_[A-Z0-9]+)*|[bB][fF][0-9]+)`)
+// (fp32|fp16|f32|f16|q4_k_m|q4_1|i64|i32|i16|i8|iq4_nl|iq4_xs|iq3_s|iq3_xxs|iq2_xxs|iq2_s|iq2_xs|iq1_s|iq1_m|bf16).gguf
+var quantRegix = regexp.MustCompile(`\b([fF][pP][0-9]+|[qQ][0-9]+(_[A-Z0-9]+)*|[fF][0-9]+|[iI][0-9]+|[iI][qQ][0-9]+(_[A-Z0-9]+)*|[bB][fF][0-9]+)`)
 
 // order big to small
 func quantGreaterThan(a, b string, order []string) bool {

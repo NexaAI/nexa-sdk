@@ -227,6 +227,7 @@ typedef struct {
     int32_t n_batch; // logical maximum batch size that can be submitted to llama_decode
     int32_t n_ubatch; // physical maximum batch size
     int32_t n_seq_max; // max number of sequences (i.e. distinct states for recurrent models)
+    ml_Path chat_template_path; // path to chat template file, optional
 } ml_ModelConfig;
 
 /** Get default model configuration with sensible defaults */

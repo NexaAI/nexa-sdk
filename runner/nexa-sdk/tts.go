@@ -52,7 +52,7 @@ func NewTTS(model string, vocoder *string, devices *string) (*TTS, error) {
 
 	ptr := C.ml_tts_create(cModel, cVocoder, nil)
 	if ptr == nil {
-		return nil, ErrCreateFailed
+		return nil, SDKErrorUnknown
 	}
 
 	return &TTS{ptr: ptr}, nil
@@ -76,7 +76,7 @@ func (p *TTS) LoadModel(modelPath string, extraData unsafe.Pointer) error {
 
 	res := C.ml_tts_load_model(p.ptr, cPath, extraData)
 	if !res {
-		return ErrCommon
+		return SDKErrorUnknown
 	}
 	return nil
 }
@@ -126,7 +126,7 @@ func (p *TTS) Synthesize(text string, config *TTSConfig) (*TTSResult, error) {
 
 	res := C.ml_tts_synthesize(p.ptr, cText, &cConfig)
 	if res.audio == nil {
-		return nil, ErrCommon
+		return nil, SDKErrorUnknown
 	}
 
 	// Convert C result to Go result
@@ -174,7 +174,7 @@ func (p *TTS) SynthesizeBatch(texts []string, config *TTSConfig) ([]*TTSResult, 
 
 	cRes := C.ml_tts_synthesize_batch(p.ptr, &cTexts[0], C.int32_t(len(texts)), &cConfig)
 	if cRes == nil {
-		return nil, ErrCommon
+		return nil, SDKErrorUnknown
 	}
 
 	// Convert C results to Go results
@@ -226,7 +226,7 @@ func (p *TTS) ListAvailableVoices() ([]string, error) {
 	var count C.int32_t
 	cVoices := C.ml_tts_list_available_voices(p.ptr, &count)
 	if cVoices == nil {
-		return nil, ErrCommon
+		return nil, SDKErrorUnknown
 	}
 
 	voices := make([]string, int(count))

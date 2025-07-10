@@ -14,16 +14,20 @@ extern void go_log_wrap(char *msg);
 import "C"
 
 import (
-	"errors"
+	"fmt"
 	"log"
 	"strings"
 )
 
-var (
-	// ErrCommon represents a generic error from the C library
-	ErrCommon               = errors.New("SDK Error")
-	ErrCreateFailed         = errors.New("Model Create Failed")
-	ErrChatTemplateNotFound = errors.New("Chat Template Not Found")
+type SDKError int32
+
+func (s SDKError) Error() string {
+	return fmt.Sprintf("SDKError(%s)", C.GoString(C.ml_get_error_message(C.ml_ErrorCode(s))))
+}
+
+const (
+	SDKErrorUnknown   = SDKError(C.ML_ERROR_COMMON_UNKNOWN)
+	SDKErrorModelLoad = SDKError(C.ML_ERROR_COMMON_MODEL_LOAD)
 )
 
 // ProfilingData contains performance metrics from ML operations
