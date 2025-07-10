@@ -1,6 +1,9 @@
 name: NexaCLI on Windows
 
 on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
 
 jobs:
