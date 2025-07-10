@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 )
@@ -56,6 +57,13 @@ func main() {
 	cmd := exec.Command(binPath, os.Args[1:]...)
 	cmd.Env = os.Environ()
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+
+	cSignal := make(chan os.Signal, 1)
+	signal.Notify(cSignal, os.Interrupt)
+	go func() {
+		for range cSignal {
+		}
+	}()
 
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "run %s failed: %v\n", binPath, err)

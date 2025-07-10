@@ -160,8 +160,6 @@ func repl(cfg ReplConfig) {
 		for range cSignal {
 			if cancel != nil {
 				cancel()
-				fmt.Print(text.Reset.EscapeSeq())
-				os.Exit(0)
 			}
 		}
 	}()

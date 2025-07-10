@@ -566,7 +566,7 @@ func loadWavFile(path string) ([]float32, int, error) {
 
 		// Convert to float and extract first channel
 		samples = make([]float32, samplesPerChannel)
-		for i := 0; i < samplesPerChannel; i++ {
+		for i := range samplesPerChannel {
 			sampleIndex := i * int(header.NumChannels) // Take first channel
 			samples[i] = float32(intSamples[sampleIndex]) / 32768.0
 		}
@@ -580,7 +580,7 @@ func loadWavFile(path string) ([]float32, int, error) {
 
 		// Extract first channel
 		samples = make([]float32, samplesPerChannel)
-		for i := 0; i < samplesPerChannel; i++ {
+		for i := range samplesPerChannel {
 			sampleIndex := i * int(header.NumChannels) // Take first channel
 			samples[i] = floatSamples[sampleIndex]
 		}
