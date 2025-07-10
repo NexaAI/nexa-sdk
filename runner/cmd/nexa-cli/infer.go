@@ -80,7 +80,7 @@ func infer() *cobra.Command {
 
 		switch modelType {
 		case types.ModelTypeLLM:
-			if manifest.MMProjFile == "" {
+			if manifest.MMProjFile == "" && !isContainPreprocessor(manifest) {
 				if len(tool) == 0 {
 					inferLLM(modelfile, nil)
 					return
@@ -89,12 +89,20 @@ func infer() *cobra.Command {
 				}
 			} else {
 				// compat vlm
-				t := s.ModelfilePath(manifest.Name, manifest.MMProjFile)
-				inferVLM(modelfile, &t)
+				var t *string
+				if manifest.MMProjFile != "" {
+					tokenizer := s.ModelfilePath(manifest.Name, manifest.MMProjFile)
+					t = &tokenizer
+				}
+				inferVLM(modelfile, t)
 			}
 		case types.ModelTypeVLM:
-			t := s.ModelfilePath(manifest.Name, manifest.MMProjFile)
-			inferVLM(modelfile, &t)
+			var t *string
+			if manifest.MMProjFile != "" {
+				tokenizer := s.ModelfilePath(manifest.Name, manifest.MMProjFile)
+				t = &tokenizer
+			}
+			inferVLM(modelfile, t)
 		case types.ModelTypeEmbedder:
 			inferEmbed(modelfile, nil)
 		case types.ModelTypeReranker:
@@ -108,6 +116,16 @@ func infer() *cobra.Command {
 		}
 	}
 	return inferCmd
+}
+
+// isContainPreprocessor checks if the model has a preprocess.json file
+func isContainPreprocessor(m *types.ModelManifest) bool {
+	for _, file := range m.ExtraFiles {
+		if strings.Contains(file, "preprocessor") {
+			return true
+		}
+	}
+	return false
 }
 
 func inferLLM(model string, tokenizer *string) {
