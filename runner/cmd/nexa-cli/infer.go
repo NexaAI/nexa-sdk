@@ -568,7 +568,8 @@ func loadWavFile(path string) ([]float32, int, error) {
 	// Read and convert audio data
 	var samples []float32
 
-	if header.BitsPerSample == 16 {
+	switch header.BitsPerSample {
+	case 16:
 		// 16-bit PCM
 		intSamples := make([]int16, totalSamples)
 		if err := binary.Read(f, binary.LittleEndian, &intSamples); err != nil {
@@ -582,7 +583,7 @@ func loadWavFile(path string) ([]float32, int, error) {
 			samples[i] = float32(intSamples[sampleIndex]) / 32768.0
 		}
 
-	} else if header.BitsPerSample == 32 {
+	case 32:
 		// 32-bit float PCM
 		floatSamples := make([]float32, totalSamples)
 		if err := binary.Read(f, binary.LittleEndian, &floatSamples); err != nil {
@@ -596,7 +597,7 @@ func loadWavFile(path string) ([]float32, int, error) {
 			samples[i] = floatSamples[sampleIndex]
 		}
 
-	} else {
+	default:
 		return nil, 0, fmt.Errorf("unsupported bits per sample: %d", header.BitsPerSample)
 	}
 
