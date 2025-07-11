@@ -203,6 +203,7 @@ typedef struct {
     float   frequency_penalty;  /* Penalty for token frequency */
     int32_t seed;               /* Random seed (-1 for random) */
     ml_Path grammar_path;       /* Optional grammar file path */
+    const char* grammar_string; /* Optional grammar string (BNF-like format) */
 } ml_SamplerConfig;
 
 /** LLM / VLM generation configuration (IMPROVED: support multiple images and audios) */
@@ -228,6 +229,7 @@ typedef struct {
     int32_t n_ubatch; // physical maximum batch size
     int32_t n_seq_max; // max number of sequences (i.e. distinct states for recurrent models)
     ml_Path chat_template_path; // path to chat template file, optional
+    const char *chat_template_content; // content of chat template file, optional
 } ml_ModelConfig;
 
 /** Get default model configuration with sensible defaults */
@@ -352,6 +354,8 @@ typedef struct ml_VLM ml_VLM; /* Opaque VLM handle */
 
 /** Create and initialize a VLM instance from model files */
 ML_API ml_VLM* ml_vlm_create(ml_Path model_path, ml_Path mmproj_path, int32_t context_length, const char* device);
+// TODO, change to:
+// ML_API ml_VLM* ml_vlm_create(ml_Path model_path, ml_Path mmproj_path, ml_ModelConfig config, const char* device);
 
 /** Destroy VLM instance and free associated resources */
 ML_API void    ml_vlm_destroy(ml_VLM* handle);
