@@ -667,8 +667,8 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 		// quant
 		if quant := strings.ToUpper(quantRegix.FindString(name)); quant != "" {
 			res.Quant = quant
-		} else if quant, err := store.Get().GetQuantInfo(context.TODO(), name); err == nil && quant.Bits != 0 {
-			res.Quant = fmt.Sprintf("%dBIT", quant.Bits)
+		} else if quant, err := store.Get().GetQuantInfo(context.TODO(), name); err == nil && quant != 0 {
+			res.Quant = fmt.Sprintf("%dBIT", quant)
 		}
 
 		// fallback to first file
