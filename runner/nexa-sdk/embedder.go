@@ -20,7 +20,7 @@ func NewEmbedder(model string, tokenizer *string, devices *string) (*Embedder, e
 
 	ptr := C.ml_embedder_create(cModel, nil, nil)
 	if ptr == nil {
-		return nil, ErrCreateFailed
+		return nil, SDKErrorModelLoad
 	}
 
 	return &Embedder{ptr: ptr}, nil
@@ -48,7 +48,7 @@ func (p *Embedder) Embed(texts []string) ([]float32, error) {
 	var res *C.float
 	resLen := C.ml_embedder_embed(p.ptr, &cTexts[0], C.int32_t(len(cTexts)), &config, &res)
 	if resLen <= 0 {
-		return nil, ErrCommon
+		return nil, SDKError(resLen)
 	}
 	defer C.free(unsafe.Pointer(res))
 
@@ -62,7 +62,7 @@ func (p *Embedder) GetProfilingData() (*ProfilingData, error) {
 	var cData C.ml_ProfilingData
 	res := C.ml_embedder_get_profiling_data(p.ptr, &cData)
 	if res < 0 {
-		return nil, ErrCommon
+		return nil, SDKError(res)
 	}
 
 	return NewProfilingDataFromC(cData), nil

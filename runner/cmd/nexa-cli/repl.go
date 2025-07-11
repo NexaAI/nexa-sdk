@@ -11,14 +11,13 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"time"
 
-	"github.com/briandowns/spinner"
 	"github.com/charmbracelet/huh"
 	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/ollama/ollama/readline"
 
+	"github.com/NexaAI/nexa-sdk/internal/render"
 	"github.com/NexaAI/nexa-sdk/internal/store"
 	"github.com/NexaAI/nexa-sdk/internal/types"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
@@ -133,7 +132,7 @@ const (
 )
 
 func repl(cfg ReplConfig) {
-	//fmt.Println(text.FgBlue.Sprintf("Send a message, press /? for help"))
+	// fmt.Println(text.FgBlue.Sprintf("Send a message, press /? for help"))
 	cfg.fill()
 
 	//l, err := readline.NewEx(&readline.Config{
@@ -152,7 +151,10 @@ func repl(cfg ReplConfig) {
 	if err != nil {
 		panic(err)
 	}
-	//defer l.Close()
+	// defer l.Close()
+
+	fmt.Print(readline.StartBracketedPaste)
+	defer fmt.Printf(readline.EndBracketedPaste)
 
 	var cancel func()
 	cSignal := make(chan os.Signal, 1)
@@ -176,7 +178,7 @@ func repl(cfg ReplConfig) {
 			return
 		case errors.Is(err, readline.ErrInterrupt):
 			if line == "" {
-				fmt.Println("\nUse Ctrl + d or /bye to exit.")
+				fmt.Println("\nUse Ctrl + d or /exit to exit.")
 				fmt.Println()
 			}
 			l.Prompt.UseAlt = false
@@ -198,6 +200,7 @@ func repl(cfg ReplConfig) {
 
 			multiline = MultilineNone
 			l.Prompt.UseAlt = false
+
 		case strings.HasPrefix(line, `"""`):
 			line := strings.TrimPrefix(line, `"""`)
 			line, ok := strings.CutSuffix(line, `"""`)
@@ -208,9 +211,11 @@ func repl(cfg ReplConfig) {
 				multiline = MultilinePrompt
 				l.Prompt.UseAlt = true
 			}
+
 		case l.Pasting:
 			fmt.Fprintln(&sb, line)
 			continue
+
 		default:
 			sb.WriteString(line)
 		}
@@ -399,9 +404,15 @@ func parseFiles(prompt string) (string, []string, []string) {
 }
 
 // =============== quant name parse ===============
-
-// (f32|f16|q4_k_m|q4_1|i64|i32|i16|i8|iq4_nl|iq4_xs|iq3_s|iq3_xxs|iq2_xxs|iq2_s|iq2_xs|iq1_s|iq1_m|bf16).gguf
-var quantRegix = regexp.MustCompile(`\b([qQ][0-9]+(_[A-Z0-9]+)*|[fF][0-9]+|[iI][0-9]+|[iI][qQ][0-9]+(_[A-Z0-9]+)*|[bB][fF][0-9]+)`)
+var quantRegix = regexp.MustCompile(`(` + strings.Join([]string{
+	"[fF][pP][0-9]+",                 // FP32, FP16, FP64
+	"[fF][0-9]+",                     // F64, F32, F16
+	"[iI][0-9]+",                     // I64, I32, I16, I8
+	"[qQ][0-9]+(_[A-Za-z0-9]+)*",     // Q8_0, Q8_1, Q8_K, Q6_K, Q5_0, Q5_1, Q5_K, Q4_0, Q4_1, Q4_K, Q3_K, Q2_K
+	"[iI][qQ][0-9]+(_[A-Za-z0-9]+)*", // IQ4_NL, IQ4_XS, IQ3_S, IQ3_XXS, IQ2_XXS, IQ2_S, IQ2_XS, IQ1_S, IQ1_M
+	"[bB][fF][0-9]+",                 // BF16
+	"[0-9]+[bB][iI][tT]",             // 1bit, 2bit, 3bit, 4bit, 16bit, 1BIT, 16Bit, etc.
+}, "|") + `)`)
 
 // order big to small
 func quantGreaterThan(a, b string, order []string) bool {
@@ -474,8 +485,7 @@ func getFileSizesConcurrent(name string, files []string) (map[string]int64, erro
 }
 
 func chooseFiles(name string, files []string) (res types.ModelManifest, err error) {
-	spin := spinner.New(spinner.CharSets[39], 100*time.Millisecond, spinner.WithSuffix("loading model size..."))
-
+	spin := render.NewSpinner("loading model size...")
 	if len(files) == 0 {
 		err = fmt.Errorf("repo is empty")
 		return
@@ -652,6 +662,13 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 		}
 		for _, size := range sizes {
 			res.Size += size
+		}
+
+		// quant
+		if quant := strings.ToUpper(quantRegix.FindString(name)); quant != "" {
+			res.Quant = quant
+		} else if quant, err := store.Get().GetQuantInfo(context.TODO(), name); err == nil && quant != 0 {
+			res.Quant = fmt.Sprintf("%dBIT", quant)
 		}
 
 		// fallback to first file

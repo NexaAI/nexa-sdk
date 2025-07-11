@@ -91,6 +91,7 @@ TEMPLATE = <<~ERB
 
       chmod "+x", libexec/"nexa"
       chmod "+x", libexec/"nexa-cli"
+      chmod_R "+x", libexec/"lib"
 
       (bin/"nexa").write <<~EOS
         #!/bin/bash

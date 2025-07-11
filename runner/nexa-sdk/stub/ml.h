@@ -3,13 +3,13 @@
 /**
  * @file ml.h
  * @brief Unified C API for machine learning operations
- *
+ * 
  * This header provides a comprehensive C interface for various ML tasks including:
  * - Language models (LLM) and multimodal models (VLM)
  * - Text embeddings and reranking
  * - Image generation and computer vision (OCR)
  * - Speech recognition (ASR) and text-to-speech (TTS)
- *
+ * 
  * All functions return status codes where applicable, with negative values indicating errors.
  * Memory management follows RAII principles - use corresponding destroy/free functions.
  */
@@ -34,6 +34,92 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/** Error code enumeration for ML operations */
+typedef enum {
+    /* Success */
+    ML_SUCCESS = 0, /**< Operation completed successfully */
+
+    /* ====================================================================== */
+    /*                              COMMON ERRORS (100xxx)                     */
+    /* ====================================================================== */
+
+    /* General errors */
+    ML_ERROR_COMMON_UNKNOWN           = -100000, /**< Unknown error */
+    ML_ERROR_COMMON_INVALID_INPUT     = -100001, /**< Invalid input parameters or handle */
+    ML_ERROR_COMMON_MEMORY_ALLOCATION = -100003, /**< Memory allocation failed */
+    ML_ERROR_COMMON_FILE_NOT_FOUND    = -100004, /**< File not found or inaccessible */
+    ML_ERROR_COMMON_NOT_INITIALIZED   = -100007, /**< Library not initialized */
+    ML_ERROR_COMMON_NOT_SUPPORTED     = -100013, /**< Operation not supported */
+
+    /* Model errors */
+    ML_ERROR_COMMON_MODEL_LOAD    = -100201, /**< Model loading failed */
+    ML_ERROR_COMMON_MODEL_INVALID = -100203, /**< Invalid model format */
+
+    /* Embedding errors */
+    ML_ERROR_COMMON_EMBEDDING_GENERATION = -100301, /**< Embedding generation failed */
+    ML_ERROR_COMMON_EMBEDDING_DIMENSION  = -100302, /**< Invalid embedding dimension */
+
+    /* Reranking errors */
+    ML_ERROR_COMMON_RERANK_FAILED = -100401, /**< Reranking failed */
+    ML_ERROR_COMMON_RERANK_INPUT  = -100402, /**< Invalid reranking input */
+
+    /* Image generation errors */
+    ML_ERROR_COMMON_IMG_GENERATION = -100501, /**< Image generation failed */
+    ML_ERROR_COMMON_IMG_PROMPT     = -100502, /**< Invalid image prompt */
+    ML_ERROR_COMMON_IMG_DIMENSION  = -100503, /**< Invalid image dimensions */
+
+    /* ====================================================================== */
+    /*                              LLM ERRORS (200xxx)                        */
+    /* ====================================================================== */
+
+    ML_ERROR_LLM_TOKENIZATION_FAILED         = -200001, /**< Tokenization failed */
+    ML_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH = -200004, /**< Context length exceeded */
+
+    ML_ERROR_LLM_GENERATION_FAILED          = -200101, /**< Text generation failed */
+    ML_ERROR_LLM_GENERATION_PROMPT_TOO_LONG = -200103, /**< Input prompt too long */
+
+    /* ====================================================================== */
+    /*                              VLM ERRORS (300xxx)                        */
+    /* ====================================================================== */
+
+    /* Image/Audio processing */
+    ML_ERROR_VLM_IMAGE_LOAD   = -300001, /**< Image loading failed */
+    ML_ERROR_VLM_IMAGE_FORMAT = -300002, /**< Unsupported image format */
+    ML_ERROR_VLM_AUDIO_LOAD   = -300101, /**< Audio loading failed */
+    ML_ERROR_VLM_AUDIO_FORMAT = -300102, /**< Unsupported audio format */
+
+    /* Generation */
+    ML_ERROR_VLM_GENERATION_FAILED = -300201, /**< Multimodal generation failed */
+
+    /* ====================================================================== */
+    /*                              OCR ERRORS (400xxx)                        */
+    /* ====================================================================== */
+
+    ML_ERROR_OCR_DETECTION   = -400001, /**< OCR text detection failed */
+    ML_ERROR_OCR_RECOGNITION = -400002, /**< OCR text recognition failed */
+    ML_ERROR_OCR_MODEL       = -400003, /**< OCR model error */
+
+    /* ====================================================================== */
+    /*                              ASR ERRORS (500xxx)                        */
+    /* ====================================================================== */
+
+    ML_ERROR_ASR_TRANSCRIPTION = -500001, /**< ASR transcription failed */
+    ML_ERROR_ASR_AUDIO_FORMAT  = -500002, /**< Unsupported ASR audio format */
+    ML_ERROR_ASR_LANGUAGE      = -500003, /**< Unsupported ASR language */
+
+    /* ====================================================================== */
+    /*                              TTS ERRORS (600xxx)                        */
+    /* ====================================================================== */
+
+    ML_ERROR_TTS_SYNTHESIS    = -600001, /**< TTS synthesis failed */
+    ML_ERROR_TTS_VOICE        = -600002, /**< TTS voice not found */
+    ML_ERROR_TTS_AUDIO_FORMAT = -600003, /**< TTS audio format error */
+
+} ml_ErrorCode;
+
+/** Get error message string for error code */
+ML_API const char* ml_get_error_message(ml_ErrorCode error_code);
 
 /* ========================================================================== */
 /*                              CORE TYPES & UTILITIES                         */
@@ -127,20 +213,21 @@ typedef struct {
     int32_t          n_past;         /* Number of past tokens to consider */
     ml_SamplerConfig sampler_config; /* Advanced sampling config */
     // --- Improved multimodal support ---
-    ml_Path* image_paths; /* Array of image paths for VLM (NULL if none) */
-    int32_t  image_count; /* Number of images */
-    ml_Path* audio_paths; /* Array of audio paths for VLM (NULL if none) */
-    int32_t  audio_count; /* Number of audios */
+    ml_Path*         image_paths;    /* Array of image paths for VLM (NULL if none) */
+    int32_t          image_count;    /* Number of images */
+    ml_Path*         audio_paths;    /* Array of audio paths for VLM (NULL if none) */
+    int32_t          audio_count;    /* Number of audios */
 } ml_GenerationConfig;
 
 /** LLM / VLM model configuration */
 typedef struct {
-    int32_t n_ctx;            // text context, 0 = from model
-    int32_t n_threads;        // number of threads to use for generation
-    int32_t n_threads_batch;  // number of threads to use for batch processing
-    int32_t n_batch;          // logical maximum batch size that can be submitted to llama_decode
-    int32_t n_ubatch;         // physical maximum batch size
-    int32_t n_seq_max;        // max number of sequences (i.e. distinct states for recurrent models)
+    int32_t n_ctx; // text context, 0 = from model
+    int32_t n_threads; // number of threads to use for generation
+    int32_t n_threads_batch; // number of threads to use for batch processing
+    int32_t n_batch; // logical maximum batch size that can be submitted to llama_decode
+    int32_t n_ubatch; // physical maximum batch size
+    int32_t n_seq_max; // max number of sequences (i.e. distinct states for recurrent models)
+    ml_Path chat_template_path; // path to chat template file, optional
 } ml_ModelConfig;
 
 /** Get default model configuration with sensible defaults */
@@ -161,10 +248,10 @@ typedef struct ml_LLM ml_LLM; /* Opaque LLM handle */
 ML_API ml_LLM* ml_llm_create(ml_Path model_path, ml_Path tokenizer_path, ml_ModelConfig config, const char* device);
 
 /** Destroy LLM instance and free associated resources */
-ML_API void ml_llm_destroy(ml_LLM* handle);
+ML_API void    ml_llm_destroy(ml_LLM* handle);
 
 /** Reset LLM internal state (clear KV cache, reset sampling) */
-ML_API void ml_llm_reset(ml_LLM* handle);
+ML_API void    ml_llm_reset(ml_LLM* handle);
 
 /* ====================  Tokenization  ====================================== */
 
@@ -185,13 +272,13 @@ ML_API int32_t ml_llm_load_kv_cache(ml_LLM* handle, ml_Path path);
 /* ====================  LoRA Management  ================================== */
 
 /** Set active LoRA adapter by ID */
-ML_API void ml_llm_set_lora(ml_LLM* handle, int32_t lora_id);
+ML_API void    ml_llm_set_lora(ml_LLM* handle, int32_t lora_id);
 
 /** Add LoRA adapter from file. Returns LoRA ID on success, negative on error */
 ML_API int32_t ml_llm_add_lora(ml_LLM* handle, ml_Path lora_path);
 
 /** Remove LoRA adapter by ID */
-ML_API void ml_llm_remove_lora(ml_LLM* handle, int32_t lora_id);
+ML_API void    ml_llm_remove_lora(ml_LLM* handle, int32_t lora_id);
 
 /** List all loaded LoRA adapter IDs. Returns count, negative on error */
 ML_API int32_t ml_llm_list_loras(const ml_LLM* handle, int32_t** out_lora_ids);
@@ -206,7 +293,8 @@ ML_API void ml_llm_reset_sampler(ml_LLM* handle);
 
 /* ====================  Text Generation  ================================== */
 
-/** Generate text from prompt. Returns 0 on success, negative on error */
+/** Generate text from prompt. Returns 0 on success, negative on error
+ *  @param prompt_utf8 The full chat history */
 ML_API int32_t ml_llm_generate(
     ml_LLM* handle, const char* prompt_utf8, const ml_GenerationConfig* config, char** out_text);
 
@@ -221,15 +309,15 @@ ML_API int32_t ml_llm_apply_chat_template(
 
 /** Profiling data structure for LLM/VLM performance metrics */
 typedef struct {
-    double      ttft_ms;           /* Time to first token (ms) */
-    int32_t     total_tokens;      /* Total tokens generated */
-    const char* stop_reason;       /* Stop reason: "eos", "length", "user", "stop_sequence" */
-    double      tokens_per_second; /* Decoding speed (tokens/sec) */
-    double      total_time_ms;     /* Total generation time */
-    double      prompt_time_ms;    /* Prompt processing time */
-    double      decode_time_ms;    /* Token generation time */
-    int32_t     prompt_tokens;     /* Number of prompt tokens */
-    int32_t     generated_tokens;  /* Number of generated tokens */
+    double ttft_ms;           /* Time to first token (ms) */
+    int32_t total_tokens;     /* Total tokens generated */
+    const char* stop_reason;  /* Stop reason: "eos", "length", "user", "stop_sequence" */
+    double tokens_per_second; /* Decoding speed (tokens/sec) */
+    double total_time_ms;     /* Total generation time */
+    double prompt_time_ms;    /* Prompt processing time */
+    double decode_time_ms;    /* Token generation time */
+    int32_t prompt_tokens;    /* Number of prompt tokens */
+    int32_t generated_tokens; /* Number of generated tokens */
 } ml_ProfilingData;
 
 /** Get profiling data from LLM. Returns 0 on success, negative on error */
@@ -245,7 +333,8 @@ ML_API int32_t ml_llm_embed(ml_LLM* handle, const char** texts_utf8, int32_t tex
 
 /* ====================  Streaming Generation  ============================= */
 
-/** Generate text with streaming token callback. Returns 0 on success, negative on error */
+/** Generate text with streaming token callback. Returns 0 on success, negative on error
+ *  @param prompt_utf8 The full chat history */
 ML_API int32_t ml_llm_generate_stream(ml_LLM* handle, const char* prompt_utf8, const ml_GenerationConfig* config,
     ml_llm_token_callback on_token, void* user_data, char** out_full_text);
 
@@ -265,10 +354,10 @@ typedef struct ml_VLM ml_VLM; /* Opaque VLM handle */
 ML_API ml_VLM* ml_vlm_create(ml_Path model_path, ml_Path mmproj_path, int32_t context_length, const char* device);
 
 /** Destroy VLM instance and free associated resources */
-ML_API void ml_vlm_destroy(ml_VLM* handle);
+ML_API void    ml_vlm_destroy(ml_VLM* handle);
 
 /** Reset VLM internal state (clear KV cache, reset sampling) */
-ML_API void ml_vlm_reset(ml_VLM* handle);
+ML_API void    ml_vlm_reset(ml_VLM* handle);
 
 /* ====================  Tokenization  ====================================== */
 
@@ -286,15 +375,20 @@ ML_API void ml_vlm_set_sampler(ml_VLM* handle, const ml_SamplerConfig* config);
 /** Reset sampling parameters to defaults */
 ML_API void ml_vlm_reset_sampler(ml_VLM* handle);
 
+/** Print detailed performance profile (sampler + context) */
+ML_API void ml_vlm_print_profile(const ml_VLM* handle);
+
 /* ====================  Text Generation  ================================== */
 
 /** Generate text from prompt with optional multimodal inputs. Returns 0 on success, negative on error */
+/** @param prompt_utf8 The incremental chat history from the current turn */
 ML_API int32_t ml_vlm_generate(
     ml_VLM* handle, const char* prompt_utf8, const ml_GenerationConfig* config, char** out_text);
 
 /** Generate multimodal text with explicit image(s) and audio(s). Returns 0 on success, negative on error */
-ML_API int32_t ml_vlm_generate_multimodal(ml_VLM* handle, const char* prompt_utf8, ml_Path* image_paths,
-    int32_t image_count, ml_Path* audio_paths, int32_t audio_count, const ml_GenerationConfig* config, char** out_text);
+ML_API int32_t ml_vlm_generate_multimodal(
+    ml_VLM* handle, const char* prompt_utf8, ml_Path* image_paths, int32_t image_count,
+    ml_Path* audio_paths, int32_t audio_count, const ml_GenerationConfig* config, char** out_text);
 
 /** Get chat template by name. Returns 0 on success, negative on error */
 ML_API int32_t ml_vlm_get_chat_template(ml_VLM* handle, const char* template_name, const char** out_template);
@@ -313,16 +407,20 @@ ML_API int32_t ml_vlm_embed(ml_VLM* handle, const char** texts_utf8, int32_t tex
 /** Get profiling data from VLM. Returns 0 on success, negative on error */
 ML_API int32_t ml_vlm_get_profiling_data(const ml_VLM* handle, ml_ProfilingData* out_data);
 
+
+
 /* ====================  Streaming Generation  ============================= */
 
-/** Generate text with streaming token callback and multimodal inputs. Returns 0 on success, negative on error */
-ML_API int32_t ml_vlm_generate_stream(ml_VLM* handle, const char* prompt_utf8, const ml_GenerationConfig* config,
+/** Generate text with streaming token callback and multimodal inputs. Returns 0 on success, negative on error
+ *  @param prompt_utf8 The incremental chat history from the current turn */
+ML_API int32_t ml_vlm_generate_stream(
+    ml_VLM* handle, const char* prompt_utf8, const ml_GenerationConfig* config,
     ml_llm_token_callback on_token, void* user_data, char** out_full_text);
 
-/** Generate multimodal text with streaming and explicit image(s) and audio(s). Returns 0 on success, negative on error
- */
-ML_API int32_t ml_vlm_generate_stream_multimodal(ml_VLM* handle, const char* prompt_utf8, ml_Path* image_paths,
-    int32_t image_count, ml_Path* audio_paths, int32_t audio_count, const ml_GenerationConfig* config,
+/** Generate multimodal text with streaming and explicit image(s) and audio(s). Returns 0 on success, negative on error */
+ML_API int32_t ml_vlm_generate_stream_multimodal(
+    ml_VLM* handle, const char* prompt_utf8, ml_Path* image_paths, int32_t image_count,
+    ml_Path* audio_paths, int32_t audio_count, const ml_GenerationConfig* config,
     ml_llm_token_callback on_token, void* user_data, char** out_full_text);
 
 /* ========================================================================== */
@@ -344,7 +442,7 @@ typedef struct ml_Embedder ml_Embedder; /* Opaque embedder handle */
 ML_API ml_Embedder* ml_embedder_create(ml_Path model_path, ml_Path tokenizer_path, const char* device);
 
 /** Destroy embedder instance and free associated resources */
-ML_API void ml_embedder_destroy(ml_Embedder* handle);
+ML_API void         ml_embedder_destroy(ml_Embedder* handle);
 
 /* ====================  Embedding Generation  ============================= */
 
@@ -365,13 +463,13 @@ ML_API int32_t ml_embedder_embedding_dim(const ml_Embedder* handle);
 /* ====================  LoRA Management  ================================== */
 
 /** Set active LoRA adapter by ID */
-ML_API void ml_embedder_set_lora(ml_Embedder* handle, int32_t lora_id);
+ML_API void    ml_embedder_set_lora(ml_Embedder* handle, int32_t lora_id);
 
 /** Add LoRA adapter from file. Returns LoRA ID on success, negative on error */
 ML_API int32_t ml_embedder_add_lora(ml_Embedder* handle, ml_Path lora_path);
 
 /** Remove LoRA adapter by ID */
-ML_API void ml_embedder_remove_lora(ml_Embedder* handle, int32_t lora_id);
+ML_API void    ml_embedder_remove_lora(ml_Embedder* handle, int32_t lora_id);
 
 /** List all loaded LoRA adapter IDs. Returns count, negative on error */
 ML_API int32_t ml_embedder_list_loras(const ml_Embedder* handle, int32_t** out);
@@ -395,7 +493,7 @@ typedef struct ml_Reranker ml_Reranker; /* Opaque reranker handle */
 ML_API ml_Reranker* ml_reranker_create(ml_Path model_path, ml_Path tokenizer_path, const char* device);
 
 /** Destroy reranker instance and free associated resources */
-ML_API void ml_reranker_destroy(ml_Reranker* handle);
+ML_API void         ml_reranker_destroy(ml_Reranker* handle);
 
 /* ====================  Reranking  ========================================= */
 
@@ -457,13 +555,13 @@ typedef struct ml_ImageGen ml_ImageGen; /* Opaque image generator handle */
 ML_API ml_ImageGen* ml_imagegen_create(ml_Path model_path, ml_Path scheduler_config_path, const char* device);
 
 /** Destroy image generator instance and free associated resources */
-ML_API void ml_imagegen_destroy(ml_ImageGen* handle);
+ML_API void         ml_imagegen_destroy(ml_ImageGen* handle);
 
 /** Load model from path with optional extra configuration data */
-ML_API bool ml_imagegen_load_model(ml_ImageGen* handle, ml_Path model_path, const void* extra_data);
+ML_API bool         ml_imagegen_load_model(ml_ImageGen* handle, ml_Path model_path, const void* extra_data);
 
 /** Close and cleanup image generator resources */
-ML_API void ml_imagegen_close(ml_ImageGen* handle);
+ML_API void         ml_imagegen_close(ml_ImageGen* handle);
 
 /* ====================  Configuration  ===================================== */
 
@@ -483,8 +581,8 @@ ML_API ml_Image ml_imagegen_txt2img(
     ml_ImageGen* handle, const char* prompt_utf8, const ml_ImageGenerationConfig* config);
 
 /** Generate image from initial image and prompt */
-ML_API ml_Image ml_imagegen_img2img(
-    ml_ImageGen* handle, const ml_Image* init_image, const char* prompt_utf8, const ml_ImageGenerationConfig* config);
+ML_API ml_Image ml_imagegen_img2img(ml_ImageGen* handle, const ml_Image* init_image, const char* prompt_utf8,
+    const ml_ImageGenerationConfig* config);
 
 /** Generate image using full configuration */
 ML_API ml_Image ml_imagegen_generate(ml_ImageGen* handle, const ml_ImageGenerationConfig* config);
@@ -492,13 +590,13 @@ ML_API ml_Image ml_imagegen_generate(ml_ImageGen* handle, const ml_ImageGenerati
 /* ====================  LoRA Management  ================================== */
 
 /** Set active LoRA adapter by ID */
-ML_API void ml_imagegen_set_lora(ml_ImageGen* handle, int32_t lora_id);
+ML_API void    ml_imagegen_set_lora(ml_ImageGen* handle, int32_t lora_id);
 
 /** Add LoRA adapter from file. Returns LoRA ID on success, negative on error */
 ML_API int32_t ml_imagegen_add_lora(ml_ImageGen* handle, ml_Path lora_path);
 
 /** Remove LoRA adapter by ID */
-ML_API void ml_imagegen_remove_lora(ml_ImageGen* handle, int32_t lora_id);
+ML_API void    ml_imagegen_remove_lora(ml_ImageGen* handle, int32_t lora_id);
 
 /** List all loaded LoRA adapter IDs. Returns count, negative on error */
 ML_API int32_t ml_imagegen_list_loras(ml_ImageGen* handle, int32_t** out);
@@ -530,13 +628,13 @@ typedef struct ml_TextDetector ml_TextDetector; /* Opaque detector handle */
 ML_API ml_TextDetector* ml_textdetector_create(ml_Path model_path, const char* device);
 
 /** Destroy text detector instance and free associated resources */
-ML_API void ml_textdetector_destroy(ml_TextDetector* handle);
+ML_API void             ml_textdetector_destroy(ml_TextDetector* handle);
 
 /** Load text detection model from path */
-ML_API bool ml_textdetector_load_model(ml_TextDetector* handle, ml_Path model_path, const char* device);
+ML_API bool             ml_textdetector_load_model(ml_TextDetector* handle, ml_Path model_path, const char* device);
 
 /** Close and cleanup text detector resources */
-ML_API void ml_textdetector_close(ml_TextDetector* handle);
+ML_API void             ml_textdetector_close(ml_TextDetector* handle);
 
 /** Detect text regions in a single image. Returns bounding boxes */
 ML_API int32_t* ml_textdetector_infer(const ml_TextDetector* handle, const ml_Image* image, int32_t* out_box_count);
@@ -552,7 +650,7 @@ typedef struct ml_TextRecognizer ml_TextRecognizer; /* Opaque recognizer handle 
 ML_API ml_TextRecognizer* ml_textrecognizer_create(ml_Path model_path, const char* device);
 
 /** Destroy text recognizer instance and free associated resources */
-ML_API void ml_textrecognizer_destroy(ml_TextRecognizer* handle);
+ML_API void               ml_textrecognizer_destroy(ml_TextRecognizer* handle);
 
 /** Load text recognition model from path */
 ML_API bool ml_textrecognizer_load_model(ml_TextRecognizer* handle, ml_Path model_path, const char* device);
@@ -561,7 +659,7 @@ ML_API bool ml_textrecognizer_load_model(ml_TextRecognizer* handle, ml_Path mode
 ML_API void ml_textrecognizer_close(ml_TextRecognizer* handle);
 
 /** Recognize text in a single image region. Returns recognized text */
-ML_API char* ml_textrecognizer_infer(const ml_TextRecognizer* handle, const ml_Image* image);
+ML_API char*  ml_textrecognizer_infer(const ml_TextRecognizer* handle, const ml_Image* image);
 
 /** Recognize text in multiple image regions. Returns array of recognized texts */
 ML_API char** ml_textrecognizer_infer_batch(
@@ -574,16 +672,16 @@ typedef struct ml_OCR ml_OCR; /* Opaque OCR handle */
 ML_API ml_OCR* ml_ocr_create(const ml_OCRPipelineConfig* config);
 
 /** Destroy OCR pipeline instance and free associated resources */
-ML_API void ml_ocr_destroy(ml_OCR* handle);
+ML_API void    ml_ocr_destroy(ml_OCR* handle);
 
 /** Load OCR models from configuration */
-ML_API bool ml_ocr_load_model(ml_OCR* handle, const ml_OCRPipelineConfig* config);
+ML_API bool    ml_ocr_load_model(ml_OCR* handle, const ml_OCRPipelineConfig* config);
 
 /** Close and cleanup OCR pipeline resources */
-ML_API void ml_ocr_close(ml_OCR* handle);
+ML_API void    ml_ocr_close(ml_OCR* handle);
 
 /** Perform OCR on a single image. Returns detection and recognition results */
-ML_API ml_OCRResult* ml_ocr_infer(const ml_OCR* handle, const ml_Image* image, int32_t* out_count);
+ML_API ml_OCRResult*  ml_ocr_infer(const ml_OCR* handle, const ml_Image* image, int32_t* out_count);
 
 /** Perform OCR on multiple images. Returns arrays of results for each image */
 ML_API ml_OCRResult** ml_ocr_infer_batch(
@@ -624,13 +722,13 @@ ML_API ml_ASR* ml_asr_create(ml_Path model_path, ml_Path tokenizer_path, /* toke
     const char* device);
 
 /** Destroy ASR instance and free associated resources */
-ML_API void ml_asr_destroy(ml_ASR* handle);
+ML_API void    ml_asr_destroy(ml_ASR* handle);
 
 /** Load ASR model from path with optional extra configuration data */
-ML_API bool ml_asr_load_model(ml_ASR* handle, ml_Path model_path, const void* extra_data);
+ML_API bool    ml_asr_load_model(ml_ASR* handle, ml_Path model_path, const void* extra_data);
 
 /** Close and cleanup ASR resources */
-ML_API void ml_asr_close(ml_ASR* handle);
+ML_API void    ml_asr_close(ml_ASR* handle);
 
 /* ====================  Transcription  ===================================== */
 
@@ -660,7 +758,7 @@ ML_API void ml_asr_free_result(ml_ASRResult* result);
 ML_API const char** ml_asr_list_supported_languages(const ml_ASR* handle, int32_t* out_count);
 
 /** Set recognition language by ISO 639-1 code */
-ML_API void ml_asr_set_language(ml_ASR* handle, const char* language);
+ML_API void         ml_asr_set_language(ml_ASR* handle, const char* language);
 
 /* ========================================================================== */
 /*                              TEXT-TO-SPEECH (TTS)                         */
@@ -700,13 +798,13 @@ typedef struct ml_TTS ml_TTS; /* Opaque TTS handle */
 ML_API ml_TTS* ml_tts_create(ml_Path model_path, ml_Path vocoder_path, const char* device);
 
 /** Destroy TTS instance and free associated resources */
-ML_API void ml_tts_destroy(ml_TTS* handle);
+ML_API void    ml_tts_destroy(ml_TTS* handle);
 
 /** Load TTS model from path with optional extra configuration data */
-ML_API bool ml_tts_load_model(ml_TTS* handle, ml_Path model_path, const void* extra_data);
+ML_API bool    ml_tts_load_model(ml_TTS* handle, ml_Path model_path, const void* extra_data);
 
 /** Close and cleanup TTS resources */
-ML_API void ml_tts_close(ml_TTS* handle);
+ML_API void    ml_tts_close(ml_TTS* handle);
 
 /* ====================  Configuration  ===================================== */
 
@@ -719,7 +817,7 @@ ML_API void ml_tts_reset_sampler(ml_TTS* handle);
 /* ====================  Speech Synthesis  ================================== */
 
 /** Synthesize speech from text */
-ML_API ml_TTSResult ml_tts_synthesize(ml_TTS* handle, const char* text_utf8, const ml_TTSConfig* config);
+ML_API ml_TTSResult  ml_tts_synthesize(ml_TTS* handle, const char* text_utf8, const ml_TTSConfig* config);
 
 /** Synthesize speech from multiple texts in batch */
 ML_API ml_TTSResult* ml_tts_synthesize_batch(

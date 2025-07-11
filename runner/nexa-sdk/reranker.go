@@ -28,7 +28,7 @@ func NewReranker(model string, tokenizer *string, devices *string) (*Reranker, e
 
 	ptr := C.ml_reranker_create(cModel, cTokenizer, nil)
 	if ptr == nil {
-		return nil, ErrCreateFailed
+		return nil, SDKErrorModelLoad
 	}
 
 	return &Reranker{ptr: ptr}, nil
@@ -59,7 +59,7 @@ func (p *Reranker) Rerank(query string, texts []string) ([]float32, error) {
 	var res *C.float
 	resLen := C.ml_reranker_rerank(p.ptr, cQuery, &cTexts[0], C.int32_t(len(cTexts)), &config, &res)
 	if resLen <= 0 {
-		return nil, ErrCommon
+		return nil, SDKError(resLen)
 	}
 	defer C.free(unsafe.Pointer(res))
 
@@ -73,7 +73,7 @@ func (p *Reranker) GetProfilingData() (*ProfilingData, error) {
 	var cData C.ml_ProfilingData
 	res := C.ml_reranker_get_profiling_data(p.ptr, &cData)
 	if res < 0 {
-		return nil, ErrCommon
+		return nil, SDKError(res)
 	}
 
 	return NewProfilingDataFromC(cData), nil

@@ -2,17 +2,19 @@
 
 ## setup
 
-do with `make build`, or follow manually steps.
+do with `make download build`, or follow manually steps.
 
 > for darwin users, upgrade go to 1.24 `brew install go@1.24`
 >
-> for windows users, use [WSL](https://learn.microsoft.com/en-us/windows/wsl/), `ubuntu 22.04` is official support
+> for windows users, use `choco install mingw`
+>
+> for linux users, `ubuntu 22.04` is official support
 
 1. download binding library (choose one)
    - `make download`
    - manual download
      1. download dist from [nexasdk-bridge release page](https://github.com/NexaAI/nexasdk-bridge/releases)
-     2. put file in `build`
+     2. put files in `build`
      3. check `build/lib/libnexa_bridge.[so|dylib]`
 2. build app (choose one)
    - `make build`
