@@ -89,6 +89,8 @@ jobs:
     needs: build-cli
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ github.ref_name }}
 
     steps:
       - name: Download all build artifacts
@@ -99,7 +101,6 @@ jobs:
       - name: Prepare Packages and Generate Manifest
         id: package
         run: |
-          VERSION=${{ github.ref_name }}
           manifest_lines=""
           mkdir release_packages
 
@@ -153,7 +154,7 @@ jobs:
           RELEASE_REPOSITORY: "zhiyuan8/homebrew-go-release"
           MANIFEST_DATA: ${{ steps.package.outputs.manifest }}
         run: |
-          cp $GITHUB_WORKSPACE/.github/scripts/update_formula.rb .
+          cp $GITHUB_WORKSPACE/release/scripts/update_formula.rb .
           ruby ./update_formula.rb
         working-directory: ./homebrew-nexa
 

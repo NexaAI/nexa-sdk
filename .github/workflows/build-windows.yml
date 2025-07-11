@@ -44,9 +44,62 @@ jobs:
         run: |
           make download BRIDGE_BACKEND=${{ matrix.backend }}
 
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: nexasdk-cli_${{ matrix.os }}_${{ matrix.backend }}
           path: ./build
           include-hidden-files: true
+
+
+  build-installer:
+    name: Build Windows Installer
+    runs-on: sdk-windows-8-core-2
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: build-cli
+    env:
+      VERSION: ${{ github.ref_name }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          pip install pyinstaller
+
+      - name: Build launcher with PyInstaller
+        run: |
+          pyinstaller --onefile --noconsole --distpath artifacts --name "nexa-cli-windows-launcher" --icon="release/nexa_logo.ico" release/nexa_windows_launcher.py
+
+      - name: Compile Installer
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.6
+        with:
+          path: release/nexa_installer.iss
+          options: /O+
+
+      - name: Upload Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexa-cli-windows-setup-${{ github.ref_name }}
+          path: artifacts/nexa-cli-windows-setup-${{ github.ref_name }}.exe
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          repository: zhiyuan8/homebrew-go-release
+          files: |
+            artifacts/nexa-cli-windows-setup-${{ github.ref_name }}.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.NEXASDK_RELEASE_TOKEN }}
