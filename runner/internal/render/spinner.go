@@ -1,32 +1,38 @@
 package render
 
 import (
+	"sync"
+
 	"github.com/charmbracelet/huh/spinner"
 )
 
 type Spinner struct {
 	*spinner.Spinner
-	ch chan struct{}
+	start sync.WaitGroup
+	stop  sync.WaitGroup
 }
 
 func NewSpinner(desc string) *Spinner {
-	spin := spinner.New().Title(desc).Type(spinner.Globe)
-
-	ch := make(chan struct{})
-	spin.Action(func() {
-		<-ch
-	})
-
-	return &Spinner{
-		Spinner: spin,
-		ch:      ch,
+	s := Spinner{
+		Spinner: spinner.New().Title(desc).Type(spinner.Globe),
 	}
+
+	s.Action(func() { s.start.Wait() })
+
+	return &s
 }
 
 func (s *Spinner) Start() {
-	go s.Spinner.Run()
+	s.start.Add(1)
+	s.stop.Add(1)
+
+	go func() {
+		s.Spinner.Run()
+		s.stop.Done()
+	}()
 }
 
 func (s *Spinner) Stop() {
-	s.ch <- struct{}{}
+	s.start.Done()
+	s.stop.Wait()
 }

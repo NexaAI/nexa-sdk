@@ -71,6 +71,10 @@ func DeInit() {
 	C.ml_deinit()
 }
 
+func Version() string {
+	return "Unknown"
+}
+
 // go_log_wrap is exported to C and handles log messages from the C library
 // It converts C strings to Go strings and prints them to stdout
 //

@@ -53,7 +53,11 @@ run:
 build:
 	cd ./runner/nexa-sdk/stub && g++ -std=c++11 -O3 -fPIC -shared -o $(LIB)nexa_bridge.$(EXT) *.cpp
 	cd ./runner && go build -o ../build/nexa$(EXE) ./cmd/nexa-launcher
-	cd ./runner && go build -tags="sonic avx" -o ../build/nexa-cli$(EXE) ./cmd/nexa-cli
+	cd ./runner && go build \
+		-tags="sonic avx" \
+		-ldflags "-X 'main.Version=$(VERSION)'" \
+		-o ../build/nexa-cli$(EXE) \
+		./cmd/nexa-cli
 
 test:
 	cd runner && LD_LIBRARY_PATH=$(PWD)/build/lib go test -v ./nexa-sdk --run VLM
