@@ -83,8 +83,8 @@ jobs:
       - name: Upload Installer
         uses: actions/upload-artifact@v4
         with:
-          name: nexa-cli-windows-setup-${VERSION}
-          path: artifacts/nexa-cli-windows-setup-${VERSION}.exe
+          name: nexa-cli-windows-setup-${{ github.ref_name }}
+          path: artifacts/nexa-cli-windows-setup-${{ github.ref_name }}.exe
 
       - name: Create GitHub Release
         id: create_release
@@ -92,6 +92,6 @@ jobs:
         with:
           repository: zhiyuan8/homebrew-go-release
           files: |
-            artifacts/nexa-cli-windows-setup-${VERSION}.exe
+            artifacts/nexa-cli-windows-setup-${{ github.ref_name }}.exe
         env:
           GITHUB_TOKEN: ${{ secrets.NEXASDK_RELEASE_TOKEN }}
