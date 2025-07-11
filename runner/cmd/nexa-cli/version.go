@@ -3,10 +3,11 @@ package main
 import (
 	"fmt"
 
+	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
 	"github.com/spf13/cobra"
 )
 
-var Version = "unknown"
+var Version = "Unknown"
 
 func version() *cobra.Command {
 	versionCmd := &cobra.Command{
@@ -15,7 +16,7 @@ func version() *cobra.Command {
 	}
 
 	versionCmd.Run = func(cmd *cobra.Command, args []string) {
-		fmt.Println("NexaSDK Version:     ")
+		fmt.Println("NexaSDK Version:     " + nexa_sdk.Version())
 		fmt.Println("NexaSDK Cli Version: " + Version)
 	}
 

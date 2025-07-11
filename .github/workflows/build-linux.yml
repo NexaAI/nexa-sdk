@@ -20,6 +20,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Detect Tag Version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
+
+      - name: Detect Commit Hash
+        if: github.event_name == 'workflow_dispatch'
+        run: echo "VERSION=${{ github.sha }}" >> $GITHUB_ENV
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
