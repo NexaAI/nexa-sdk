@@ -72,19 +72,19 @@ jobs:
 
       - name: Build launcher with PyInstaller
         run: |
-          pyinstaller --onefile --noconsole --distpath artifacts --name "nexa-cli-windows-launcher" --icon="./nexa_logo.ico" nexa_windows_launcher.py
+          pyinstaller --onefile --noconsole --distpath artifacts --name "nexa-cli-windows-launcher" --icon="release/nexa_logo.ico" release/nexa_windows_launcher.py
 
       - name: Compile Installer
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.6
         with:
-          path: nexa_installer.iss
+          path: release/nexa_installer.iss
           options: /O+
 
       - name: Upload Installer
         uses: actions/upload-artifact@v4
         with:
-          name: nexa-cli-windows-setup-${{ VERSION}}
-          path: artifacts/nexa-cli-windows-setup-${{ VERSION}}.exe
+          name: nexa-cli-windows-setup-${VERSION}
+          path: artifacts/nexa-cli-windows-setup-${VERSION}.exe
 
       - name: Create GitHub Release
         id: create_release
@@ -92,9 +92,6 @@ jobs:
         with:
           repository: zhiyuan8/homebrew-go-release
           files: |
-            artifacts/nexa-cli-windows-setup-${{ VERSION}}.exe
-            artifacts/nexasdk-cli_windows_llama-cpp-cpu/**
-            artifacts/nexasdk-cli_windows_llama-cpp-vulkan/**
-            artifacts/nexasdk-cli_windows_llama-cpp-cuda/**
+            artifacts/nexa-cli-windows-setup-${VERSION}.exe
         env:
           GITHUB_TOKEN: ${{ secrets.NEXASDK_RELEASE_TOKEN }}
