@@ -58,23 +58,25 @@ func (s *Store) HFModelInfo(ctx context.Context, name string) ([]string, error) 
 // TODO merge HFModel info
 func (s *Store) GetQuantInfo(ctx context.Context, modelName string) (int, error) {
 	client := resty.New()
-	client.SetResponseMiddlewares(
-		httpCodeToError,
-	)
+	client.SetResponseMiddlewares(httpCodeToError)
 	defer client.Close()
 
-	quant := struct {
-		Bits int `json:"bits"`
-	}{}
-
 	url := fmt.Sprintf("%s/%s/resolve/main/config.json", HF_ENDPOINT, modelName)
-	_, err := client.R().
+	resp, err := client.R().
 		SetContext(ctx).
 		SetAuthToken(config.Get().HFToken).
-		SetResult(quant).
 		Get(url)
+	if err != nil {
+		return 0, err
+	}
 
-	return quant.Bits, err
+	var info struct {
+		QuantizationConfig struct {
+			Bits int `json:"bits"`
+		} `json:"quantization_config"`
+	}
+	err = sonic.Unmarshal(resp.Bytes(), &info)
+	return info.QuantizationConfig.Bits, err
 }
 
 func (s *Store) HFFileSize(ctx context.Context, modelName, fileName string) (int64, error) {
