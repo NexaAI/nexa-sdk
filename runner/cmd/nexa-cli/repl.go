@@ -404,17 +404,15 @@ func parseFiles(prompt string) (string, []string, []string) {
 }
 
 // =============== quant name parse ===============
-var quantRegPartens = []string{
+var quantRegix = regexp.MustCompile(`(` + strings.Join([]string{
 	"[fF][pP][0-9]+",                 // FP32, FP16, FP64
 	"[fF][0-9]+",                     // F64, F32, F16
 	"[iI][0-9]+",                     // I64, I32, I16, I8
 	"[qQ][0-9]+(_[A-Za-z0-9]+)*",     // Q8_0, Q8_1, Q8_K, Q6_K, Q5_0, Q5_1, Q5_K, Q4_0, Q4_1, Q4_K, Q3_K, Q2_K
 	"[iI][qQ][0-9]+(_[A-Za-z0-9]+)*", // IQ4_NL, IQ4_XS, IQ3_S, IQ3_XXS, IQ2_XXS, IQ2_S, IQ2_XS, IQ1_S, IQ1_M
 	"[bB][fF][0-9]+",                 // BF16
-	"[0-9]+bit",                      // 1bit, 2bit, 3bit, 4bit, 16bit
-}
-
-var quantRegix = regexp.MustCompile(`(` + strings.Join(quantRegPartens, "|") + `)`)
+	"[0-9]+[bB][iI][tT]",             // 1bit, 2bit, 3bit, 4bit, 16bit, 1BIT, 16Bit, etc.
+}, "|") + `)`)
 
 // order big to small
 func quantGreaterThan(a, b string, order []string) bool {

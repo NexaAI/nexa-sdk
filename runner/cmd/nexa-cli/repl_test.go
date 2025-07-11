@@ -25,6 +25,7 @@ func TestQuantRegix_MatchAllQuantLevels(t *testing.T) {
 		"bf16",
 		"q8_0", "q8_1", "q8_k", "q6_k", "q5_0", "q5_1", "q5_k", "q4_0", "q4_1", "q4_k", "q3_k", "q2_k",
 		"iq4_nl", "iq4_xs", "iq3_s", "iq3_xxs", "iq2_xxs", "iq2_s", "iq2_xs", "iq1_s", "iq1_m",
+		"1bit", "2bit", "3bit", "4bit", "16bit",
 
 		// Mixed case versions
 		"Fp32", "fP16", "Fp64",
@@ -33,6 +34,9 @@ func TestQuantRegix_MatchAllQuantLevels(t *testing.T) {
 		"Bf16", "bF16",
 		"Q8_0", "q8_1", "Q8_k", "q6_K", "Q5_0", "q5_1", "Q5_k", "Q4_0", "q4_1", "Q4_k", "q3_K", "Q2_k",
 		"Iq4_nl", "iQ4_xs", "Iq3_s", "iQ3_xxs", "Iq2_xxs", "iQ2_s", "Iq2_xs", "iQ1_s", "Iq1_m",
+		"1BIT", "2BIT", "3BIT", "4BIT", "16BIT",
+		"1Bit", "2Bit", "3Bit", "4Bit", "16Bit",
+		"1bIt", "2bIt", "3bIt", "4bIt", "16bIt",
 	}
 
 	for _, level := range quantLevels {
