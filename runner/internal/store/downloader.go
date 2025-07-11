@@ -39,7 +39,7 @@ func (s *Store) HFModelInfo(ctx context.Context, name string) ([]string, error) 
 
 	info := hfModelInfo{}
 	_, err := client.R().
-		//EnableDebug().
+		// EnableDebug().
 		SetAuthToken(config.Get().HFToken).
 		SetResult(&info).
 		Get(fmt.Sprintf("%s/api/models/%s", HF_ENDPOINT, name))
@@ -53,6 +53,42 @@ func (s *Store) HFModelInfo(ctx context.Context, name string) ([]string, error) 
 	}
 
 	return res, nil
+}
+
+type Quantization struct {
+	Group int `json:"group"`
+	Bits  int `json:"bits"`
+}
+
+type HFModelInfo struct {
+	Quantization        Quantization `json:"quantization"`
+	QuantizationCongfig string       `json:"quantization_config"`
+}
+
+// TODO merge HFModel info
+func (s *Store) GetQuantInfo(ctx context.Context, modelName string) (Quantization, error) {
+	client := resty.New()
+	client.SetResponseMiddlewares(
+		httpCodeToError,
+		resty.AutoParseResponseMiddleware,
+	)
+	defer client.Close()
+
+	url := fmt.Sprintf("%s/%s/resolve/main/config.json", HF_ENDPOINT, modelName)
+	resp, err := client.R().
+		SetContext(ctx).
+		SetAuthToken(config.Get().HFToken).
+		Get(url)
+	if err != nil {
+		return Quantization{}, err
+	}
+
+	info := HFModelInfo{}
+	if err := sonic.Unmarshal(resp.Bytes(), &info); err != nil {
+		return Quantization{}, err
+	}
+
+	return info.Quantization, nil
 }
 
 func (s *Store) HFFileSize(ctx context.Context, modelName, fileName string) (int64, error) {
@@ -118,7 +154,7 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 
 		// Create model directory structure
 		encName := s.encodeName(mf.Name)
-		err := os.MkdirAll(path.Join(s.home, "models", encName), 0770)
+		err := os.MkdirAll(path.Join(s.home, "models", encName), 0o770)
 		if err != nil {
 			errC <- err
 			return
@@ -147,7 +183,7 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 		}
 		manifestPath := path.Join(s.home, "models", encName, "nexa.manifest")
 		manifestData, _ := sonic.Marshal(model) // JSON marshal won't fail, ignore error
-		err = os.WriteFile(manifestPath, manifestData, 0664)
+		err = os.WriteFile(manifestPath, manifestData, 0o664)
 		if err != nil {
 			errC <- err
 			return
