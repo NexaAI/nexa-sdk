@@ -152,7 +152,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			history = append(history, openai.AssistantMessage(content))
 
 			profileData = &nexa_sdk.ProfilingData{
-				TotalTimeMs: float64(time.Since(start).Milliseconds()),
+				TotalTimeUs: int64(time.Since(start).Microseconds()),
 			}
 
 			return content, err
@@ -191,7 +191,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			}
 
 			profileData = &nexa_sdk.ProfilingData{
-				TotalTimeMs: float64(time.Since(start).Milliseconds()),
+				TotalTimeUs: int64(time.Since(start).Microseconds()),
 			}
 		},
 

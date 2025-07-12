@@ -32,29 +32,29 @@ const (
 
 // ProfilingData contains performance metrics from ML operations
 type ProfilingData struct {
-	TTFTMs          float64 // Time to first token (ms)
-	TotalTokens     int32   // Total tokens generated
-	StopReason      string  // Stop reason: "eos", "length", "user", "stop_sequence"
+	TTFTUs          int64   // Time to first token (us)
+	TotalTimeUs     int64   // Total generation time (us)
+	PromptTimeUs    int64   // Prompt processing time (us)
+	DecodeTimeUs    int64   // Token generation time (us)
 	TokensPerSecond float64 // Decoding speed (tokens/sec)
-	TotalTimeMs     float64 // Total generation time
-	PromptTimeMs    float64 // Prompt processing time
-	DecodeTimeMs    float64 // Token generation time
-	PromptTokens    int32   // Number of prompt tokens
-	GeneratedTokens int32   // Number of generated tokens
+	TotalTokens     int64   // Total tokens generated
+	PromptTokens    int64   // Number of prompt tokens
+	GeneratedTokens int64   // Number of generated tokens
+	StopReason      string  // Stop reason: "eos", "length", "user", "stop_sequence"
 }
 
 // NewProfilingDataFromC creates a new ProfilingData from C ml_ProfilingData
 func NewProfilingDataFromC(cData C.ml_ProfilingData) *ProfilingData {
 	return &ProfilingData{
-		TTFTMs:          float64(cData.ttft_ms),
-		TotalTokens:     int32(cData.total_tokens),
-		StopReason:      C.GoString(cData.stop_reason),
+		TTFTUs:          int64(cData.ttft_us),
+		TotalTimeUs:     int64(cData.total_time_us),
+		PromptTimeUs:    int64(cData.prompt_time_us),
+		DecodeTimeUs:    int64(cData.decode_time_us),
 		TokensPerSecond: float64(cData.tokens_per_second),
-		TotalTimeMs:     float64(cData.total_time_ms),
-		PromptTimeMs:    float64(cData.prompt_time_ms),
-		DecodeTimeMs:    float64(cData.decode_time_ms),
-		PromptTokens:    int32(cData.prompt_tokens),
-		GeneratedTokens: int32(cData.generated_tokens),
+		TotalTokens:     int64(cData.total_tokens),
+		PromptTokens:    int64(cData.prompt_tokens),
+		GeneratedTokens: int64(cData.generated_tokens),
+		StopReason:      C.GoString(cData.stop_reason),
 	}
 }
 

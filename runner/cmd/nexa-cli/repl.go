@@ -103,7 +103,7 @@ func printProfiling(profilingData *nexa_sdk.ProfilingData) {
 		profilingText := fmt.Sprintf("%.2f tok/sec • %d tokens • %.2fs to first token • Stop reason: %s",
 			profilingData.TokensPerSecond,
 			profilingData.GeneratedTokens,
-			profilingData.TTFTMs/1e3,
+			float64(profilingData.TTFTUs)/1e6, // Convert microseconds to seconds
 			strings.ToUpper(profilingData.StopReason))
 
 		fmt.Print(text.FgBlue.Sprint(profilingText))
@@ -112,9 +112,9 @@ func printProfiling(profilingData *nexa_sdk.ProfilingData) {
 		return
 	}
 
-	if profilingData.TotalTimeMs != 0 {
+	if profilingData.TotalTimeUs != 0 {
 		profilingText := fmt.Sprintf("Total time: %.2f sec",
-			profilingData.TotalTimeMs/1e3,
+			float64(profilingData.TotalTimeUs)/1e6, // Convert microseconds to seconds
 		)
 
 		fmt.Print(text.FgBlue.Sprint(profilingText))
