@@ -311,15 +311,15 @@ ML_API int32_t ml_llm_apply_chat_template(
 
 /** Profiling data structure for LLM/VLM performance metrics */
 typedef struct {
-    double ttft_ms;           /* Time to first token (ms) */
-    int32_t total_tokens;     /* Total tokens generated */
+    int64_t ttft_us;            /* Time to first token (us) */
+    int64_t total_time_us;      /* Total generation time (us) */
+    int64_t prompt_time_us;     /* Prompt processing time (us) */
+    int64_t decode_time_us;     /* Token generation time (us) */
+    double tokens_per_second;  /* Decoding speed (tokens/sec) */
+    int64_t total_tokens;      /* Total tokens generated */
+    int64_t prompt_tokens;     /* Number of prompt tokens */
+    int64_t generated_tokens;  /* Number of generated tokens */
     const char* stop_reason;  /* Stop reason: "eos", "length", "user", "stop_sequence" */
-    double tokens_per_second; /* Decoding speed (tokens/sec) */
-    double total_time_ms;     /* Total generation time */
-    double prompt_time_ms;    /* Prompt processing time */
-    double decode_time_ms;    /* Token generation time */
-    int32_t prompt_tokens;    /* Number of prompt tokens */
-    int32_t generated_tokens; /* Number of generated tokens */
 } ml_ProfilingData;
 
 /** Get profiling data from LLM. Returns 0 on success, negative on error */
@@ -609,90 +609,81 @@ ML_API int32_t ml_imagegen_list_loras(ml_ImageGen* handle, int32_t** out);
 /*                              COMPUTER VISION (CV)                           */
 /* ========================================================================== */
 
-/* ====================  OCR Configuration  ================================= */
-
-/** OCR pipeline configuration */
+/* ====================  Generic CV Data Types  ============================= */
+/** Generic bounding box structure */
 typedef struct {
-    ml_Path     detector_model_path;   /* Text detection model path */
-    ml_Path     recognizer_model_path; /* Text recognition model path */
-    const char* device;                /* Processing device ("cpu" default) */
-} ml_OCRPipelineConfig;
+    float x;      /* X coordinate (normalized or pixel, depends on model) */
+    float y;      /* Y coordinate (normalized or pixel, depends on model) */
+    float width;  /* Width */
+    float height; /* Height */
+} ml_BoundingBox;
 
-/** OCR detection result */
+/** Generic detection/classification result */
 typedef struct {
-    int32_t box[4]; /* Bounding box: [x_min, y_min, x_max, y_max] */
-    char*   text;   /* Detected text (UTF-8, caller must free) */
-    float   score;  /* Detection confidence score */
-} ml_OCRResult;
+    ml_Path*        image_paths;  /* Output image paths */
+    int32_t         image_count;  /* Number of output images */
+    int32_t         class_id;     /* Class ID (example: ConvNext) */
+    float           confidence;   /* Confidence score [0.0-1.0] */
+    ml_BoundingBox  bbox;         /* Bounding box (example: YOLO) */
+    const char*     text;         /* Text result (example: OCR)*/
+    float*          embedding;    /* Feature embedding (example: CLIP embedding) */
+    int32_t         embedding_dim; /* Embedding dimension */
+} ml_CVResult;
 
-/* ====================  Text Detection  ==================================== */
-typedef struct ml_TextDetector ml_TextDetector; /* Opaque detector handle */
+/** Generic CV inference result */
+typedef struct {
+    ml_CVResult*          results;        /* Array of CV results */
+    int32_t               result_count;   /* Number of CV results */
+} ml_CVResults;
 
-/** Create and initialize a text detector instance */
-ML_API ml_TextDetector* ml_textdetector_create(ml_Path model_path, const char* device);
+/** CV capabilities */
+typedef enum {
+    ML_CV_OCR             = 0,  /* OCR */
+    ML_CV_CLASSIFICATION  = 1,  /* Classification */
+    ML_CV_SEGMENTATION    = 2,  /* Segmentation */
+    ML_CV_CUSTOM          = 3,  /* Custom task */
+} ml_CVCapabilities;
 
-/** Destroy text detector instance and free associated resources */
-ML_API void             ml_textdetector_destroy(ml_TextDetector* handle);
+/** CV model preprocessing configuration */
+typedef struct {
+    ml_CVCapabilities capabilities; /* Capabilities */
+    ml_Path          model_path;   /* Model path */
+    ml_Path          system_library_path; /* System library path */
+    ml_Path          backend_library_path; /* Backend library path */
+    ml_Path          extension_library_path; /* Extension library path */
+    ml_Path          config_file_path; /* Config file path */
+    ml_Path          char_dict_path; /* Character dictionary path */
+} ml_CVModelConfig;
 
-/** Load text detection model from path */
-ML_API bool             ml_textdetector_load_model(ml_TextDetector* handle, ml_Path model_path, const char* device);
 
-/** Close and cleanup text detector resources */
-ML_API void             ml_textdetector_close(ml_TextDetector* handle);
 
-/** Detect text regions in a single image. Returns bounding boxes */
-ML_API int32_t* ml_textdetector_infer(const ml_TextDetector* handle, const ml_Image* image, int32_t* out_box_count);
+/* ====================  Generic CV Model  ================================== */
+typedef struct ml_CVModel ml_CVModel; /* Opaque CV model handle */
 
-/** Detect text regions in multiple images. Returns bounding boxes for each image */
-ML_API int32_t* ml_textdetector_infer_batch(
-    const ml_TextDetector* handle, const ml_Image* images, int32_t image_count, int32_t** out_counts);
+/* ====================  Lifecycle Management  ============================== */
 
-/* ====================  Text Recognition  ================================== */
-typedef struct ml_TextRecognizer ml_TextRecognizer; /* Opaque recognizer handle */
+/** Create and initialize a generic CV model */
+ML_API ml_CVModel* ml_cv_create(const ml_CVModelConfig* config, const ml_CVCapabilities capabilities, const char* device);
 
-/** Create and initialize a text recognizer instance */
-ML_API ml_TextRecognizer* ml_textrecognizer_create(ml_Path model_path, const char* device);
+/** Destroy CV model instance and free associated resources */
+ML_API void ml_cv_destroy(ml_CVModel* handle);
 
-/** Destroy text recognizer instance and free associated resources */
-ML_API void               ml_textrecognizer_destroy(ml_TextRecognizer* handle);
+/** Load model from path with optional configuration */
+ML_API bool ml_cv_load_model(ml_CVModel* handle, const ml_CVModelConfig* config);
 
-/** Load text recognition model from path */
-ML_API bool ml_textrecognizer_load_model(ml_TextRecognizer* handle, ml_Path model_path, const char* device);
+/** Close and cleanup CV model resources */
+ML_API void ml_cv_close(ml_CVModel* handle);
 
-/** Close and cleanup text recognizer resources */
-ML_API void ml_textrecognizer_close(ml_TextRecognizer* handle);
+/* ====================  Generic Inference  ================================= */
+/** Perform inference on a single image */
+ML_API ml_CVResults ml_cv_infer(const ml_CVModel* handle, const char* input_image_path);
 
-/** Recognize text in a single image region. Returns recognized text */
-ML_API char*  ml_textrecognizer_infer(const ml_TextRecognizer* handle, const ml_Image* image);
+/** Perform batch inference on multiple images */
+ML_API ml_CVResults* ml_cv_infer_batch(
+    const ml_CVModel* handle, const char* input_image_paths[], int32_t image_count, int32_t** out_counts);
 
-/** Recognize text in multiple image regions. Returns array of recognized texts */
-ML_API char** ml_textrecognizer_infer_batch(
-    const ml_TextRecognizer* handle, const ml_Image* images, int32_t image_count);
-
-/* ====================  OCR Pipeline  ====================================== */
-typedef struct ml_OCR ml_OCR; /* Opaque OCR handle */
-
-/** Create and initialize a complete OCR pipeline */
-ML_API ml_OCR* ml_ocr_create(const ml_OCRPipelineConfig* config);
-
-/** Destroy OCR pipeline instance and free associated resources */
-ML_API void    ml_ocr_destroy(ml_OCR* handle);
-
-/** Load OCR models from configuration */
-ML_API bool    ml_ocr_load_model(ml_OCR* handle, const ml_OCRPipelineConfig* config);
-
-/** Close and cleanup OCR pipeline resources */
-ML_API void    ml_ocr_close(ml_OCR* handle);
-
-/** Perform OCR on a single image. Returns detection and recognition results */
-ML_API ml_OCRResult*  ml_ocr_infer(const ml_OCR* handle, const ml_Image* image, int32_t* out_count);
-
-/** Perform OCR on multiple images. Returns arrays of results for each image */
-ML_API ml_OCRResult** ml_ocr_infer_batch(
-    const ml_OCR* handle, const ml_Image* images, int32_t image_count, int32_t** out_counts);
-
-/** Free OCR result structures and associated text data */
-ML_API void ml_ocr_free_results(ml_OCRResult* results, int32_t count);
+/** Free CV result structures and associated text data */
+ML_API void ml_cv_free_results(ml_CVResults* results, int32_t count);
 
 /* ========================================================================== */
 /*                              SPEECH RECOGNITION (ASR)                       */
