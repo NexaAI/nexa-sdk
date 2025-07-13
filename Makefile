@@ -6,7 +6,7 @@ AGS ?= infer Qwen/Qwen3-0.6B-GGUF
 # macos 14: llama-cpp-metal mlx
 # macos 15: llama-cpp-metal mlx
 # windows: llama-cpp-cpu llama-cpp-vulkan llama-cpp-cuda
-BRIDGE_VERSION ?= v0.1.1-rc2
+BRIDGE_VERSION ?= v0.1.1-rc3
 
 ifeq ($(OS), Windows_NT)
 	OS := windows
@@ -55,7 +55,7 @@ build:
 	cd ./runner && go build -o ../build/nexa$(EXE) ./cmd/nexa-launcher
 	cd ./runner && go build \
 		-tags="sonic avx" \
-		-ldflags "-X 'main.Version=$(VERSION)'" \
+		-ldflags "-X 'main.Version=$(VERSION)' -mwindows" \
 		-o ../build/nexa-cli$(EXE) \
 		./cmd/nexa-cli
 
