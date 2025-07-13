@@ -22,11 +22,11 @@ jobs:
 
       - name: Detect Tag Version
         if: startsWith(github.ref, 'refs/tags/v')
-        run: echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
+        run: echo "VERSION=${{ github.ref_name }}" >> $env:GITHUB_ENV
 
       - name: Detect Commit Hash
         if: github.event_name == 'workflow_dispatch'
-        run: echo "VERSION=${{ github.sha }}" >> $GITHUB_ENV
+        run: echo "VERSION=${{ github.sha }}" >> $env:GITHUB_ENV
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -44,14 +44,12 @@ jobs:
         run: |
           make download BRIDGE_BACKEND=${{ matrix.backend }}
 
-
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: nexasdk-cli_${{ matrix.os }}_${{ matrix.backend }}
           path: ./build
           include-hidden-files: true
-
 
   build-installer:
     name: Build Windows Installer

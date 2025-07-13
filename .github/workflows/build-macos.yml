@@ -170,4 +170,3 @@ jobs:
           else
             echo "No changes to the formula file. Skipping commit."
           fi
-
