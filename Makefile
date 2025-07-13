@@ -6,7 +6,7 @@ AGS ?= infer Qwen/Qwen3-0.6B-GGUF
 # macos 14: llama-cpp-metal mlx
 # macos 15: llama-cpp-metal mlx
 # windows: llama-cpp-cpu llama-cpp-vulkan llama-cpp-cuda
-BRIDGE_VERSION ?= latest
+BRIDGE_VERSION ?= v0.1.0
 
 ifeq ($(OS), Windows_NT)
 	OS := windows

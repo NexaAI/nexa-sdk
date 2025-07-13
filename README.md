@@ -2,26 +2,17 @@
 
 ## setup
 
-do with `make download build`, or follow manually steps.
-
-> for darwin users, upgrade go to 1.24 `brew install go@1.24`
->
-> for windows users, use `choco install mingw`
->
-> for linux users, `ubuntu 22.04` is official support
-
-1. download binding library (choose one)
-   - `make download`
-   - manual download
-     1. download dist from [nexasdk-bridge release page](https://github.com/NexaAI/nexasdk-bridge/releases)
-     2. put files in `build`
-     3. check `build/lib/libnexa_bridge.[so|dylib]`
-2. build app (choose one)
-   - `make build`
-   - manual build
-     1. `cd runner`
-     1. build nexa-launcher `CGO_ENABLED=0 go build -o ../build/nexa ./cmd/nexa-launcher`
-     1. build nexa-cli `go build -o ../build/nexa ./cmd/nexa-cli`
+1. Install dependencies
+   - darwin
+     `brew install go@1.24`
+   - windows
+     `choco install mingw make go -y`
+   - linux (ubuntu 22.04)
+     `apt install g++ make go -y`
+1. download bridge library
+   `make download` for default version, or specify `make download BRIDGE_VERSION=<version> BRIDGE_BACKEND=<backend>`
+1. build app
+   `make build`
 
 ## Run project
 
@@ -40,7 +31,7 @@ On Linux/WSL:
 ./build/nexa infer Qwen/Qwen3-0.6B-GGUF
 ```
 
-Note that the model will be downloaded to `~/.cache/nexa/models/` with base64 encoded name.
+Note that the model will be downloaded to [UserCacheDir](https://pkg.go.dev/os#UserCacheDir) with base64 encoded name.
 
 ````
 
@@ -99,15 +90,13 @@ export NEXA_KEEPALIVE=600
 │   ├── nexa-cli                # cli app
 │   │   ├── main.go             # cli entrypoint
 │   │   ├── repl.go             # repl
-│   │   └── runner.go           # simple runner implement
+│   │   └── infer.go            # local infer command
+│   │   └── run.go              # keepalive client
+│   │   └── serve.go            # keepalive server
 │   └── nexa-launcher           # runner updater
-│       ├── downloader.go       #
 │       ├── main.go             #
-│       └── updater.go          #
 ├── nexa-sdk                    #
-│   ├── nexa.go                 # nexa sdk go api
-│   ├── wrap.c                  # wrap code
-│   └── wrap.go                 # wrap code
+│   ├── nexa.go                 # nexa sdk go wrapper
 ├── internal                    #
 │   ├── auth                    # http auth function
 │   │   └── auth.go             #
