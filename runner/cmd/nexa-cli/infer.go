@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -140,6 +141,7 @@ func inferLLM(model string, tokenizer *string) {
 	defer p.Destroy()
 
 	var history []nexa_sdk.ChatMessage
+	var lastLen int
 
 	repl(ReplConfig{
 		Stream:    !disableStream,
@@ -189,9 +191,17 @@ func inferLLM(model string, tokenizer *string) {
 			}
 
 			var full strings.Builder
-			// fmt.Printf(text.FgBlack.Sprint(formatted[:lastLen]))
-			// fmt.Printf(text.FgCyan.Sprint(formatted[lastLen:]))
-			dCh, eCh := p.GenerateStream(ctx, formatted)
+
+			var promptToSend string
+			if isMLX(model) {
+				// fmt.Printf(text.FgBlack.Sprint(formatted[:lastLen]))
+				// fmt.Printf(text.FgCyan.Sprint(formatted[lastLen:]))
+				promptToSend = formatted[lastLen:]
+			} else {
+				promptToSend = formatted
+			}
+
+			dCh, eCh := p.GenerateStream(ctx, promptToSend)
 			for r := range dCh {
 				full.WriteString(r)
 				dataCh <- r
@@ -201,7 +211,9 @@ func inferLLM(model string, tokenizer *string) {
 				return
 			}
 
-			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: full.String()})
+			content := full.String()
+			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: content})
+			lastLen = len(formatted) + len(content)
 		},
 	})
 }
@@ -252,8 +264,6 @@ func inferVLM(model string, tokenizer *string) {
 			defer close(errCh)
 			defer close(dataCh)
 
-			// fmt.Println(text.FgBlack.Sprint(prompt))
-
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
 			formatted, e := p.ApplyChatTemplate(history)
 			if e != nil {
@@ -262,7 +272,15 @@ func inferVLM(model string, tokenizer *string) {
 			}
 
 			var full strings.Builder
-			dCh, eCh := p.GenerateStream(ctx, formatted[lastLen:], images, audios)
+			var promptToSend string
+
+			if isMLX(model) {
+				promptToSend = formatted
+			} else {
+				promptToSend = formatted[lastLen:]
+			}
+
+			dCh, eCh := p.GenerateStream(ctx, promptToSend, images, audios)
 			for r := range dCh {
 				full.WriteString(r)
 				dataCh <- r
@@ -272,10 +290,20 @@ func inferVLM(model string, tokenizer *string) {
 				return
 			}
 
-			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: full.String()})
-			lastLen = len(formatted) + len(full.String())
+			content := full.String()
+			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: content})
+			lastLen = len(formatted) + len(content)
 		},
 	})
+}
+
+func isMLX(model string) bool {
+	pathParts := strings.Split(model, "/")
+	encodedName := pathParts[len(pathParts)-2]
+	nameBytes, _ := base64.StdEncoding.DecodeString(encodedName)
+	name := strings.ToLower(string(nameBytes))
+	isMLX := strings.Contains(name, "mlx") || strings.Contains(name, "aml")
+	return isMLX
 }
 
 func inferEmbed(modelfile string, tokenizer *string) {
