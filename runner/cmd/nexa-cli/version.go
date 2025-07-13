@@ -16,8 +16,8 @@ func version() *cobra.Command {
 	}
 
 	versionCmd.Run = func(cmd *cobra.Command, args []string) {
-		fmt.Println("NexaSDK Version:     " + nexa_sdk.Version())
-		fmt.Println("NexaSDK Cli Version: " + Version)
+		fmt.Println("NexaSDK Bridge Version: " + nexa_sdk.Version())
+		fmt.Println("NexaSDK GO Version:     " + Version)
 	}
 
 	return versionCmd
