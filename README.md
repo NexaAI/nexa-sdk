@@ -10,7 +10,7 @@
    - linux (ubuntu 22.04)
      `apt install g++ make go -y`
 1. download bridge library
-   `make download` for default version, or specify `make download BRIDGE_VERSION=<version> BRIDGE_BACKEND=<backend>`
+   `make download` for default version, or specify version and backend, for example: `make download BRIDGE_VERSION=latest BRIDGE_BACKEND=mlx`.
 1. build app
    `make build`
 
