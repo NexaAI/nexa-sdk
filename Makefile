@@ -55,7 +55,7 @@ build:
 	cd ./runner && go build -o ../build/nexa$(EXE) ./cmd/nexa-launcher
 	cd ./runner && go build \
 		-tags="sonic avx" \
-		-ldflags "-X 'main.Version=$(VERSION)' -mwindows" \
+		-ldflags "-X 'main.Version=$(VERSION)'" \
 		-o ../build/nexa-cli$(EXE) \
 		./cmd/nexa-cli
 
