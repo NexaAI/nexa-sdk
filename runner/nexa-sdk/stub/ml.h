@@ -151,6 +151,9 @@ ML_API void ml_log(const char* message);
 /** Free memory allocated by ML library functions */
 ML_API void ml_free(void* ptr);
 
+/** Get Library Version */
+ML_API const char* ml_version(void);
+
 /* ====================  Data Structures  ==================================== */
 
 /** Image data structure */

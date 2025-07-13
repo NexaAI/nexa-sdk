@@ -1,12 +1,15 @@
 #include "ml.h"
 
 extern "C" {
+
+const char *ml_get_error_message(ml_ErrorCode error_code) { return ""; }
 /* ====================  Core Initialization  ============================== */
-void ml_init(void) {};                        /* Initialization */
-void ml_deinit(void) {};                      /* Cleanup */
-void ml_set_log(ml_log_callback callback) {}; /* Set logging callback */
-void ml_log(const char *message) {};          /* Log a message */
-void ml_free(void *ptr) {};                   /* Free allocated memory */
+void        ml_init(void) {};                        /* Initialization */
+void        ml_deinit(void) {};                      /* Cleanup */
+void        ml_set_log(ml_log_callback callback) {}; /* Set logging callback */
+void        ml_log(const char *message) {};          /* Log a message */
+void        ml_free(void *ptr) {};                   /* Free allocated memory */
+const char *ml_version() { return "stub"; }
 
 /* ====================  Data Structures  ================================== */
 void ml_image_free(ml_Image *image) {}

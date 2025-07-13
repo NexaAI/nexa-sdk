@@ -72,7 +72,7 @@ func DeInit() {
 }
 
 func Version() string {
-	return "Unknown"
+	return C.GoString(C.ml_version())
 }
 
 // go_log_wrap is exported to C and handles log messages from the C library
