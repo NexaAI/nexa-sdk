@@ -8,13 +8,12 @@ on:
 
 jobs:
   build-cli:
-    name: ${{ matrix.os }} - ${{ matrix.backend }}
+    name: ${{ matrix.os }}
     runs-on: sdk-linux-16-core
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu_22.04]
-        backend: [llama-cpp-cpu, llama-cpp-cuda]
 
     steps:
       - name: Checkout repository
@@ -39,11 +38,12 @@ jobs:
 
       - name: Download runtime
         run: |
-          make download BRIDGE_BACKEND=${{ matrix.backend }}
+          make download BRIDGE_BACKEND=llama-cpp-cpu
+          make download BRIDGE_BACKEND=llama-cpp-cuda
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nexasdk-cli_${{ matrix.os }}_${{ matrix.backend }}
+          name: nexasdk-cli_${{ matrix.os }}
           path: ./build
           include-hidden-files: true
