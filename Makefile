@@ -63,18 +63,18 @@ test:
 	cd runner && LD_LIBRARY_PATH=$(PWD)/build/lib go test -v ./nexa-sdk --run VLM
 
 download:
-	-$(RM) ./build/lib
-	$(MKDIR) ./build/lib
+	-$(RM) ./build/${BRIDGE_BACKEND}
+	$(MKDIR) ./build/${BRIDGE_BACKEND}
 	@echo "====> Download runtime"
 	@echo "OS: $(OS)"
 	@echo "BRIDGE_BACKEND: $(BRIDGE_BACKEND)"
 	@echo "BRIDGE_VERSION: $(BRIDGE_VERSION)"
 	curl -L -o build/nexasdk-bridge.zip https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexasdk/$(BRIDGE_VERSION)/$(BRIDGE_BACKEND)/$(OS)/nexasdk-bridge.zip
-	cd ./build/lib && unzip ../nexasdk-bridge.zip
+	cd ./build/${BRIDGE_BACKEND} && unzip ../nexasdk-bridge.zip
 	-$(RM) ./build/nexasdk-bridge.zip
 
 clean:
 	-$(RM) ./build/nexa$(EXE)
 	-$(RM) ./build/nexa-cli$(EXE)
-	-$(RM) ./build/lib
+	-$(RM) ./build/${BRIDGE_BACKEND}
 	-$(RM) ./runner/nexa-sdk/stub/$(LIB)nexa_bridge.$(EXT)
