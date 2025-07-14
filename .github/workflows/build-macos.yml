@@ -50,7 +50,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nexasdk-cli_${{ matrix.os }}
+          name: nexa-cli_${{ matrix.os }}
           path: ./build
           include-hidden-files: true
 
@@ -61,6 +61,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ github.ref_name }}
+      TAP_REPO: zhiyuan8/homebrew-go
+      RELEASE_REPO: zhiyuan8/homebrew-go-release
 
     steps:
       - name: Download all build artifacts
@@ -68,75 +70,112 @@ jobs:
         with:
           path: artifacts
 
-      - name: Prepare Packages and Generate Manifest
+      - name: Prepare Packages for Release
         id: package
         run: |
-          manifest_lines=""
           mkdir release_packages
-
           for dir in artifacts/*/; do
             dir_name=$(basename "$dir")
-            IFS='_' read -ra parts <<< "$dir_name"
-            os_version="${parts[1]}"
-            backend_parts=("${parts[@]:2}")
-            backend=$(IFS="-"; echo "${backend_parts[*]}")
-
-            PACKAGE_NAME="nexa-cli-${os_version}-${backend}-${VERSION}.tar.gz"
-            tar -czf "release_packages/${PACKAGE_NAME}" -C "$dir" .
-
-            SHA256=$(sha256sum "release_packages/${PACKAGE_NAME}" | awk '{ print $1 }')
-            manifest_lines+="${os_version};${backend};${PACKAGE_NAME};${SHA256}\n"
+            package_name="${dir_name}_${{ env.VERSION }}.tar.gz"
+            tar -czf "release_packages/${package_name}" -C "$dir" .
           done
-
-          echo "manifest<<EOF" >> $GITHUB_OUTPUT
-          echo -e "${manifest_lines}" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
           echo "packages_path=release_packages" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
-        id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          repository: zhiyuan8/homebrew-go-release
+          repository: ${{ env.RELEASE_REPO }}
           files: ${{ steps.package.outputs.packages_path }}/*.tar.gz
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ env.VERSION }}
         env:
           GITHUB_TOKEN: ${{ secrets.NEXASDK_RELEASE_TOKEN }}
-
-      - name: Checkout repository
-        uses: actions/checkout@v4
 
       - name: Checkout Homebrew Tap Repository
         uses: actions/checkout@v4
         with:
-          repository: "zhiyuan8/homebrew-go"
-          path: homebrew-nexa
+          repository: ${{ env.TAP_REPO }}
+          path: homebrew-tap
           token: ${{ secrets.NEXASDK_RELEASE_TOKEN }}
 
-      - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: "3.1"
-
-      - name: Generate Formula File
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
-          RELEASE_REPOSITORY: "zhiyuan8/homebrew-go-release"
-          MANIFEST_DATA: ${{ steps.package.outputs.manifest }}
+      - name: Generate and Update manifest.json
         run: |
-          cp $GITHUB_WORKSPACE/release/scripts/update_formula.rb .
-          ruby ./update_formula.rb
-        working-directory: ./homebrew-nexa
+          set -e
 
-      - name: Commit and Push Formula Changes
-        working-directory: ./homebrew-nexa
+          TAP_DIR="homebrew-tap"
+          MANIFEST_FILE="$TAP_DIR/manifest.json"
+
+          # --- 1. Init Manifest ---
+          if [[ -f "$MANIFEST_FILE" ]]; then
+            manifest_json=$(cat "$MANIFEST_FILE")
+          else
+            manifest_json='{"version": "", "url_template": "", "platforms": {}}'
+          fi
+
+          # --- 2. Update Top Level ---
+          manifest_json=$(echo "$manifest_json" | jq \
+            --arg version "${VERSION#v}" \
+            --arg url_template "https://github.com/${{ env.RELEASE_REPO }}/releases/download/v{version}/{artifact_name}_v{version}.tar.gz" \
+            '.version = $version | .url_template = $url_template')
+
+          # --- 3. Iterate and Update manifest ---
+          echo "release_packages list:"
+          cd release_packages
+          ls -al
+
+          echo "proj root dir:"
+          cd ..
+          ls -al
+
+          for pkg in release_packages/*.tar.gz; do
+            echo "package: $pkg"
+            pkg_name=$(basename "$pkg")
+            echo "package name: $pkg_name"
+            sha256=$(sha256sum "$pkg" | awk '{print $1}')
+
+            # e.g., nexa-cli_macos-14_v0.1.0.tar.gz -> nexa-cli_macos-14 -> macos-14
+            artifact_name=$(echo "$pkg_name" | sed -E "s/_${{ env.VERSION }}\.tar\.gz$//")
+            echo "artifact_name: $artifact_name"
+            platform_string=$(echo "$artifact_name" | sed 's/nexa-cli_//')
+            echo "platform_string: $platform_string"
+
+            case "$platform_string" in
+              macos-13)
+                jq_path='.platforms.ventura.intel'
+                ;;
+              macos-14)
+                jq_path='.platforms.sonoma.arm'
+                ;;
+              macos-15)
+                jq_path='.platforms."sequoia_and_later".arm'
+                ;;
+              *)
+                echo "::warning title=Unhandled Package::Skipping unhandled package format: $platform_string"
+                continue
+                ;;
+            esac
+
+            echo "Updating manifest for '$platform_string'..."
+
+            # --- 4. Update JSON ---
+            update_expression="$jq_path = {\"artifact_name\": \"$artifact_name\", \"sha256\": \"$sha256\"}"
+            manifest_json=$(echo "$manifest_json" | jq "$update_expression")
+          done
+
+          # --- 5. Write JSON ---
+          echo "$manifest_json" | jq '.' > "$MANIFEST_FILE"
+
+          echo "Final manifest.json:"
+          cat "$MANIFEST_FILE"
+
+      - name: Commit and Push Manifest
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          if [[ -n $(git status -s) ]]; then
-            git add Formula/nexa.rb
-            git commit -m "Update nexa formula for release ${{ github.ref_name }}"
+          cd homebrew-tap
+          git config user.name "GitHub Actions Bot"
+          git config user.email "github-actions@github.com"
+          if [[ -n $(git status --porcelain manifest.json) ]]; then
+            git add manifest.json
+            git commit -m "Update manifest for nexa version ${{ env.VERSION }}"
             git push
           else
-            echo "No changes to the formula file. Skipping commit."
+            echo "No changes detected in manifest.json."
           fi
