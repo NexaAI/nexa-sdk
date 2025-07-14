@@ -8,16 +8,12 @@ on:
 
 jobs:
   build-cli:
-    name: ${{ matrix.os }} - ${{ matrix.backend }}
+    name: ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [macos-13, macos-14, macos-15]
-        backend: [llama-cpp-metal, mlx]
-        exclude:
-          - os: macos-13
-            backend: mlx
 
     steps:
       - name: Checkout repository
@@ -40,9 +36,16 @@ jobs:
       - name: Build Nexa Cli
         run: make build
 
-      - name: Download runtime
+      - name: Download runtime (without mlx)
+        if: matrix.os == 'macos-13'
         run: |
-          make download BRIDGE_BACKEND=${{ matrix.backend }}
+          make download BRIDGE_BACKEND=llama-cpp-metal
+
+      - name: Download runtime
+        if: matrix.os != 'macos-13'
+        run: |
+          make download BRIDGE_BACKEND=llama-cpp-metal
+          make download BRIDGE_BACKEND=mlx
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
