@@ -50,7 +50,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nexasdk-cli_${{ matrix.os }}_${{ matrix.backend }}
+          name: nexasdk-cli_${{ matrix.os }}
           path: ./build
           include-hidden-files: true
 
