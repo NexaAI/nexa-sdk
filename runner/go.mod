@@ -18,10 +18,16 @@ require (
 	github.com/schollz/progressbar/v3 v3.18.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
+	github.com/valyala/fasthttp v1.63.0
 	resty.dev/v3 v3.0.0-beta.3
 )
 
-require github.com/emirpasic/gods/v2 v2.0.0-alpha // indirect
+require (
+	github.com/andybalholm/brotli v1.2.0 // indirect
+	github.com/emirpasic/gods/v2 v2.0.0-alpha // indirect
+	github.com/klauspost/compress v1.18.0 // indirect
+	github.com/valyala/bytebufferpool v1.0.0 // indirect
+)
 
 require (
 	github.com/atotto/clipboard v0.1.4 // indirect
@@ -88,13 +94,13 @@ require (
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/arch v0.8.0 // indirect
-	golang.org/x/crypto v0.36.0 // indirect
+	golang.org/x/crypto v0.39.0 // indirect
 	golang.org/x/exp v0.0.0-20250218142911-aa4b98e5adaa // indirect
-	golang.org/x/net v0.38.0 // indirect
-	golang.org/x/sync v0.13.0 // indirect
-	golang.org/x/sys v0.32.0 // indirect
-	golang.org/x/term v0.30.0 // indirect
-	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/net v0.41.0 // indirect
+	golang.org/x/sync v0.15.0 // indirect
+	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/term v0.32.0 // indirect
+	golang.org/x/text v0.26.0 // indirect
 	google.golang.org/protobuf v1.36.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

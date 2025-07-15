@@ -149,12 +149,12 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 		}
 
 		// Create modelfile for storing downloaded content
-		pgetDownloader := NewPgetDownloader(mf.Size)
+		downloader := NewHFDownloader(mf.Size, infoC)
 		for _, file := range needs {
 			outputPath := path.Join(s.home, "models", encName, file)
 			downloadURL := fmt.Sprintf("%s/%s/resolve/main/%s?download=true", HF_ENDPOINT, mf.Name, file)
 
-			err := pgetDownloader.DownloadWithProgress(ctx, downloadURL, config.Get().HFToken, outputPath, infoC)
+			err = downloader.Download(ctx, downloadURL, outputPath)
 			if err != nil {
 				errC <- err
 				return
