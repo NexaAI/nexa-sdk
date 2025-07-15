@@ -22,6 +22,9 @@ func (s *Store) List() ([]types.ModelManifest, error) {
 	// Parse each model directory's manifest
 	res := make([]types.ModelManifest, 0, len(names))
 	for _, encName := range names {
+		if !encName.IsDir() {
+			continue
+		}
 
 		name, err := base64.URLEncoding.DecodeString(encName.Name())
 		if err != nil {
