@@ -6,7 +6,7 @@ AGS ?= infer Qwen/Qwen3-0.6B-GGUF
 # macos 14: llama-cpp-metal mlx
 # macos 15: llama-cpp-metal mlx
 # windows: llama-cpp-cpu llama-cpp-vulkan llama-cpp-cuda
-BRIDGE_VERSION ?= v0.1.1-rc5
+BRIDGE_VERSION ?= v0.1.1-rc7
 
 ifeq ($(OS), Windows_NT)
 	OS := windows
@@ -63,18 +63,18 @@ test:
 	cd runner && LD_LIBRARY_PATH=$(PWD)/build/lib go test -v ./nexa-sdk --run VLM
 
 download:
-	-$(RM) ./build/${BRIDGE_BACKEND}
-	$(MKDIR) ./build/${BRIDGE_BACKEND}
+	-$(RM) ./build/lib/${BRIDGE_BACKEND}
+	$(MKDIR) ./build/lib/${BRIDGE_BACKEND}
 	@echo "====> Download runtime"
 	@echo "OS: $(OS)"
 	@echo "BRIDGE_BACKEND: $(BRIDGE_BACKEND)"
 	@echo "BRIDGE_VERSION: $(BRIDGE_VERSION)"
-	curl -L -o build/nexasdk-bridge.zip https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexasdk/$(BRIDGE_VERSION)/$(BRIDGE_BACKEND)/$(OS)/nexasdk-bridge.zip
-	cd ./build/${BRIDGE_BACKEND} && unzip ../nexasdk-bridge.zip
-	-$(RM) ./build/nexasdk-bridge.zip
+	curl -L -o build/lib/${BRIDGE_BACKEND}/nexasdk-bridge.zip https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexasdk/$(BRIDGE_VERSION)/$(BRIDGE_BACKEND)/$(OS)/nexasdk-bridge.zip
+	cd ./build/lib/${BRIDGE_BACKEND} && unzip ./nexasdk-bridge.zip
+	-$(RM) ./build/lib/${BRIDGE_BACKEND}/nexasdk-bridge.zip
 
 clean:
 	-$(RM) ./build/nexa$(EXE)
 	-$(RM) ./build/nexa-cli$(EXE)
-	-$(RM) ./build/${BRIDGE_BACKEND}
+	-$(RM) ./build/lib
 	-$(RM) ./runner/nexa-sdk/stub/$(LIB)nexa_bridge.$(EXT)

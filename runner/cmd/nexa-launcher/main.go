@@ -23,6 +23,9 @@ func initPath() {
 		panic(err)
 	}
 	baseDir = filepath.Dir(exe)
+	if filepath.Base(baseDir) == "bin" {
+		baseDir = filepath.Dir(baseDir)
+	}
 
 	var libName string
 	switch runtime.GOOS {
@@ -37,7 +40,8 @@ func initPath() {
 	}
 
 	// detect all backend
-	dirs, err := os.ReadDir(baseDir)
+	libDir := filepath.Join(baseDir, "lib")
+	dirs, err := os.ReadDir(libDir)
 	if err != nil {
 		panic(err)
 	}
@@ -46,7 +50,7 @@ func initPath() {
 			continue
 		}
 
-		bridgePath := filepath.Join(baseDir, dir.Name(), libName)
+		bridgePath := filepath.Join(libDir, dir.Name(), libName)
 		_, err := os.Stat(bridgePath)
 		if errors.Is(err, os.ErrNotExist) {
 			continue
@@ -72,7 +76,7 @@ func setRuntimeEnv() {
 		}
 	}
 
-	backend = filepath.Join(baseDir, backend)
+	backend = filepath.Join(baseDir, "lib", backend)
 	switch runtime.GOOS {
 	case "windows":
 		prependPath("PATH", backend)
