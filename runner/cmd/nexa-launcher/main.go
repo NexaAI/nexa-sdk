@@ -12,7 +12,9 @@ import (
 )
 
 var (
-	baseDir  string
+	baseDir string
+	binPath string
+
 	backends []string
 	backend  string
 )
@@ -23,6 +25,7 @@ func initPath() {
 		panic(err)
 	}
 	baseDir = filepath.Dir(exe)
+	binPath = filepath.Join(baseDir, "nexa-cli")
 	if filepath.Base(baseDir) == "bin" {
 		baseDir = filepath.Dir(baseDir)
 	}
@@ -118,7 +121,6 @@ func main() {
 	detectBackend()
 	setRuntimeEnv()
 
-	binPath := filepath.Join(baseDir, "nexa-cli")
 	cmd := exec.Command(binPath, os.Args[1:]...)
 	cmd.Env = os.Environ()
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
