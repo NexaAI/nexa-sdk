@@ -119,7 +119,7 @@ func (d *HFDownloader) getFilesSize(url string) (int64, error) {
 
 	req.SetRequestURI(url)
 	req.Header.SetMethod(fasthttp.MethodHead)
-	req.Header.Set("Authorization", "Bearer "+config.Get().HFToken)
+	d.setToken(req)
 	req.Header.Set("Accept-Encoding", "identity")
 
 	if err := d.client.Do(req, resp); err != nil {
@@ -127,6 +127,12 @@ func (d *HFDownloader) getFilesSize(url string) (int64, error) {
 	}
 
 	return int64(resp.Header.ContentLength()), nil
+}
+
+func (d *HFDownloader) setToken(req *fasthttp.Request) {
+	if config.Get().HFToken != "" {
+		req.Header.Set("Authorization", "Bearer "+config.Get().HFToken)
+	}
 }
 
 func (d *HFDownloader) handleRedirect(url string, maxRedirect int) (string, error) {
@@ -137,15 +143,13 @@ func (d *HFDownloader) handleRedirect(url string, maxRedirect int) (string, erro
 	defer fasthttp.ReleaseRequest(req)
 	defer fasthttp.ReleaseResponse(resp)
 
-	fmt.Println("handle redirect: ", url)
-
 	for i := 0; i < maxRedirect; i++ {
 		req.Reset()
 		resp.Reset()
 
 		req.SetRequestURI(currentURL)
 		req.Header.SetMethod(fasthttp.MethodHead)
-		// req.Header.Set("Authorization", "Bearer "+config.Get().HFToken)
+		d.setToken(req)
 
 		if err := d.client.Do(req, resp); err != nil {
 			return "", fmt.Errorf("request failed: %w", err)
@@ -204,6 +208,7 @@ func calcChunkSize(totalSize int64) int64 {
 	return chunkSize
 }
 
+// TODO: ctx not work for fasthttp
 func (d *HFDownloader) downloadChunk(ctx context.Context, url, outputPath string, start, end int64) error {
 	req := fasthttp.AcquireRequest()
 	resp := fasthttp.AcquireResponse()
@@ -212,7 +217,7 @@ func (d *HFDownloader) downloadChunk(ctx context.Context, url, outputPath string
 
 	req.SetRequestURI(url)
 	req.Header.SetMethod(fasthttp.MethodGet)
-	req.Header.Set("Authorization", "Bearer "+config.Get().HFToken)
+	d.setToken(req)
 	req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", start, end))
 
 	if err := d.client.Do(req, resp); err != nil {
