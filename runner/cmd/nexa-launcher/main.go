@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 )
 
@@ -24,47 +25,14 @@ func initPath() {
 	if err != nil {
 		panic(err)
 	}
-	baseDir = filepath.Dir(exe)
-	binPath = filepath.Join(baseDir, "nexa-cli")
-	if filepath.Base(baseDir) == "bin" {
-		baseDir = filepath.Dir(baseDir)
-	}
-
-	var libName string
-	switch runtime.GOOS {
-	case "windows":
-		libName = "nexa_bridge.dll"
-	case "linux":
-		libName = "libnexa_bridge.so"
-	case "darwin":
-		libName = "libnexa_bridge.dylib"
-	default:
-		panic("unsupported OS: " + runtime.GOOS)
-	}
-
-	// detect all backend
-	libDir := filepath.Join(baseDir, "lib")
-	dirs, err := os.ReadDir(libDir)
+	realExe, err := filepath.EvalSymlinks(exe)
 	if err != nil {
 		panic(err)
 	}
-	for _, dir := range dirs {
-		if !dir.IsDir() {
-			continue
-		}
-
-		bridgePath := filepath.Join(libDir, dir.Name(), libName)
-		_, err := os.Stat(bridgePath)
-		if errors.Is(err, os.ErrNotExist) {
-			continue
-		}
-		if err != nil {
-			panic(err)
-		}
-		backends = append(backends, dir.Name())
-	}
-	if len(backends) == 0 {
-		panic("no backend found")
+	baseDir = filepath.Dir(realExe)
+	binPath = filepath.Join(baseDir, "nexa-cli")
+	if filepath.Base(baseDir) == "bin" {
+		baseDir = filepath.Dir(baseDir)
 	}
 }
 
@@ -93,6 +61,44 @@ func setRuntimeEnv() {
 }
 
 func detectBackend() {
+	var libName string
+	switch runtime.GOOS {
+	case "windows":
+		libName = "nexa_bridge.dll"
+	case "linux":
+		libName = "libnexa_bridge.so"
+	case "darwin":
+		libName = "libnexa_bridge.dylib"
+	default:
+		panic("unsupported OS: " + runtime.GOOS)
+	}
+
+	// detect all backend
+	libDir := filepath.Join(baseDir, "lib")
+	dirs, err := os.ReadDir(libDir)
+	if err != nil {
+		panic(err)
+	}
+	for _, dir := range dirs {
+		if !dir.IsDir() {
+			continue
+
+		}
+
+		bridgePath := filepath.Join(libDir, dir.Name(), libName)
+		_, err := os.Stat(bridgePath)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			panic(err)
+		}
+		backends = append(backends, dir.Name())
+	}
+	if len(backends) == 0 {
+		panic("no backend found")
+	}
+
 	for i := range len(os.Args) {
 		switch os.Args[i] {
 		case "-b", "--backend":
@@ -100,6 +106,9 @@ func detectBackend() {
 				panic("must specify <backend> after --backend")
 			}
 			backend = os.Args[i+1]
+			if !slices.Contains(backends, backend) {
+				panic(fmt.Sprint("backend not found, exist backends: ", backends))
+			}
 			os.Args = append(os.Args[:i], os.Args[i+2:]...)
 			return
 		}
