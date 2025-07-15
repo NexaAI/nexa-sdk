@@ -143,7 +143,7 @@ func (d *HFDownloader) handleRedirect(url string, maxRedirect int) (string, erro
 	defer fasthttp.ReleaseRequest(req)
 	defer fasthttp.ReleaseResponse(resp)
 
-	for i := 0; i < maxRedirect; i++ {
+	for range maxRedirect {
 		req.Reset()
 		resp.Reset()
 
@@ -209,7 +209,7 @@ func calcChunkSize(totalSize int64) int64 {
 }
 
 // TODO: ctx not work for fasthttp
-func (d *HFDownloader) downloadChunk(ctx context.Context, url, outputPath string, start, end int64) error {
+func (d *HFDownloader) downloadChunk(_ context.Context, url, outputPath string, start, end int64) error {
 	req := fasthttp.AcquireRequest()
 	resp := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseRequest(req)
