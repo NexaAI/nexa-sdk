@@ -189,8 +189,7 @@ func chatLLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 						},
 					})
 
-					data, _ := sonic.ConfigFastest.MarshalToString(chunk)
-					c.SSEvent("", data)
+					c.SSEvent("", chunk)
 					return true
 				}
 				c.SSEvent("", "[DONE]")
