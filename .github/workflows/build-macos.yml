@@ -118,35 +118,23 @@ jobs:
             '.version = $version | .url_template = $url_template')
 
           # --- 3. Iterate and Update manifest ---
-          echo "release_packages list:"
-          cd release_packages
-          ls -al
-
-          echo "proj root dir:"
-          cd ..
-          ls -al
-
           for pkg in release_packages/*.tar.gz; do
-            echo "package: $pkg"
-            pkg_name=$(basename "$pkg")
-            echo "package name: $pkg_name"
             sha256=$(sha256sum "$pkg" | awk '{print $1}')
 
             # e.g., nexa-cli_macos-14_v0.1.0.tar.gz -> nexa-cli_macos-14 -> macos-14
+            pkg_name=$(basename "$pkg")
             artifact_name=$(echo "$pkg_name" | sed -E "s/_${{ env.VERSION }}\.tar\.gz$//")
-            echo "artifact_name: $artifact_name"
             platform_string=$(echo "$artifact_name" | sed 's/nexa-cli_//')
-            echo "platform_string: $platform_string"
 
             case "$platform_string" in
               macos-13)
-                jq_path='.platforms.ventura.intel'
+                jq_path='.platforms.ventura.x86_64'
                 ;;
               macos-14)
-                jq_path='.platforms.sonoma.arm'
+                jq_path='.platforms.sonoma.arm64'
                 ;;
               macos-15)
-                jq_path='.platforms."sequoia_and_later".arm'
+                jq_path='.platforms."sequoia_and_later".arm64'
                 ;;
               *)
                 echo "::warning title=Unhandled Package::Skipping unhandled package format: $platform_string"
