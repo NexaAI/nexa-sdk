@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"runtime"
 	"sync"
 
 	"github.com/gofrs/flock"
@@ -39,9 +40,18 @@ func Get() *Store {
 // init sets up the store's directory structure
 func (s *Store) init() {
 	// Get user's cache directory (OS-specific)
-	cacheDir, e := os.UserCacheDir()
-	if e != nil {
-		panic(e)
+	var cacheDir string
+	var e error
+	if runtime.GOOS == "windows" {
+		cacheDir = os.Getenv("ProgramData")
+		if cacheDir == "" {
+			panic("%ProgramData% is not defined")
+		}
+	} else {
+		cacheDir, e = os.UserCacheDir()
+		if e != nil {
+			panic(e)
+		}
 	}
 
 	// Set nexa cache directory
