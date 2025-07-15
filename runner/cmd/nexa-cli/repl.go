@@ -106,7 +106,7 @@ func printProfiling(profilingData *nexa_sdk.ProfilingData) {
 			float64(profilingData.TTFTUs)/1e6, // Convert microseconds to seconds
 			strings.ToUpper(profilingData.StopReason))
 
-		fmt.Print(text.FgBlue.Sprint(profilingText))
+		fmt.Print(text.FgHiMagenta.Sprint(profilingText))
 		fmt.Println(text.Reset.EscapeSeq())
 		fmt.Println()
 		return
@@ -117,7 +117,7 @@ func printProfiling(profilingData *nexa_sdk.ProfilingData) {
 			float64(profilingData.TotalTimeUs)/1e6, // Convert microseconds to seconds
 		)
 
-		fmt.Print(text.FgBlue.Sprint(profilingText))
+		fmt.Print(text.FgHiMagenta.Sprint(profilingText))
 		fmt.Println(text.Reset.EscapeSeq())
 		fmt.Println()
 		return
