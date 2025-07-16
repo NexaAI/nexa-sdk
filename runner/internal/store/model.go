@@ -2,7 +2,6 @@ package store
 
 import (
 	"encoding/base64"
-	"fmt"
 	"log/slog"
 	"os"
 	"path"
@@ -47,7 +46,7 @@ func (s *Store) List() ([]types.ModelManifest, error) {
 
 // Remove deletes a specific model and all its files
 func (s *Store) Remove(name string) error {
-	slog.Info("Remove model", "model", name)
+	slog.Debug("Remove model", "model", name)
 
 	err := s.LockModel(name)
 	if err != nil {
@@ -58,17 +57,17 @@ func (s *Store) Remove(name string) error {
 }
 
 // Clean removes all stored models and the models directory
-func (s *Store) Clean() error {
-	slog.Info("Start clean model")
+func (s *Store) Clean() int {
+	slog.Debug("Start clean model")
 
 	modelsDir := s.GetModelsDir()
 	entries, err := os.ReadDir(modelsDir)
 	if err != nil {
 		// If models directory doesn't exist, nothing to clean
-		if os.IsNotExist(err) {
-			return nil
+		if !os.IsNotExist(err) {
+			slog.Warn("Failed to read model path", "err", err)
 		}
-		return err
+		return 0
 	}
 
 	// Get list of all model names to remove
@@ -88,13 +87,16 @@ func (s *Store) Clean() error {
 
 	// Remove each model using the Remove function
 	// This ensures proper lock handling and consistency
+	count := 0
 	for _, modelName := range modelNames {
 		if err := s.Remove(modelName); err != nil {
-			return fmt.Errorf("failed to remove model '%s': %w", modelName, err)
+			slog.Warn("Failed to remove model", "modelName", modelName, "err", err)
+			continue
 		}
+		count += 1
 	}
 
-	return nil
+	return count
 }
 
 func (s *Store) GetManifest(name string) (*types.ModelManifest, error) {

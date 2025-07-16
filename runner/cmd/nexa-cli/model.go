@@ -84,6 +84,8 @@ func remove() *cobra.Command {
 		e := s.Remove(name)
 		if e != nil {
 			fmt.Println(e)
+		} else {
+			fmt.Printf("✔  Removed %s\n", name)
 		}
 	}
 
@@ -101,10 +103,8 @@ func clean() *cobra.Command {
 
 	cleanCmd.Run = func(cmd *cobra.Command, args []string) {
 		s := store.Get()
-		e := s.Clean()
-		if e != nil {
-			fmt.Println(e)
-		}
+		c := s.Clean()
+		fmt.Printf("✔  Removed %d models\n", c)
 	}
 
 	return cleanCmd
