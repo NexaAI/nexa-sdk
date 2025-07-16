@@ -17,6 +17,10 @@ func RootCmd() *cobra.Command {
 
 	rootCmd := &cobra.Command{
 		Use: "nexa",
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			applyLogLevel()
+			return nil
+		},
 	}
 
 	rootCmd.AddCommand(
@@ -38,7 +42,6 @@ func normalizeModelName(name string) string {
 	// support https://huggingface.co/Qwen/Qwen3-0.6B-GGUF -> Qwen/Qwen3-0.6B-GGUF
 	if strings.HasPrefix(name, store.HF_ENDPOINT) {
 		return strings.TrimPrefix(name, store.HF_ENDPOINT+"/")
-
 	}
 
 	return name
@@ -46,8 +49,6 @@ func normalizeModelName(name string) string {
 
 // main is the entry point that executes the root command.
 func main() {
-	applyLogLevel()
-
 	if err := RootCmd().Execute(); err != nil {
 		os.Exit(1)
 	}
