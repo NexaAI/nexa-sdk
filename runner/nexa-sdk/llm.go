@@ -114,8 +114,7 @@ func (p *LLM) Decode(ids []int32) (string, error) {
 	}
 	defer C.free(unsafe.Pointer(res))
 
-	result := C.GoString(res)
-	return result, nil
+	return C.GoString(res), nil
 }
 
 // SaveKVCache saves the model's key-value cache to disk for later reuse
@@ -160,8 +159,7 @@ func (p *LLM) Generate(prompt string) (string, error) {
 	}
 	defer C.free(unsafe.Pointer(res))
 
-	result := C.GoString(res)
-	return result, nil
+	return C.GoString(res), nil
 }
 
 // GetChatTemplate retrieves the chat template for formatting conversations
@@ -179,8 +177,7 @@ func (p *LLM) GetChatTemplate(name *string) (string, error) {
 		return "", SDKError(resLen)
 	}
 
-	result := C.GoString(res)
-	return result, nil
+	return C.GoString(res), nil
 }
 
 // ApplyChatTemplate formats chat messages using the model's chat template
@@ -203,8 +200,7 @@ func (p *LLM) ApplyChatTemplate(msgs []ChatMessage) (string, error) {
 	}
 	defer C.free(unsafe.Pointer(res))
 
-	result := C.GoString(res)
-	return result, nil
+	return C.GoString(res), nil
 }
 
 // ApplyChatTemplate formats chat messages using the model's chat template
@@ -226,11 +222,7 @@ func (p *LLM) ApplyJinjaTemplate(param ChatTemplateParam) (string, error) {
 	m := make(map[string]any)
 	sonic.Unmarshal(msgData, &m)
 
-	result, err := tmpl.ExecuteToString(exec.NewContext(m))
-	if err != nil {
-		return "", err
-	}
-	return result, nil
+	return tmpl.ExecuteToString(exec.NewContext(m))
 }
 
 // Global streamTokenCh for streaming - TODO: implement proper streamTokenCh mapping for concurrent streams
@@ -306,6 +298,5 @@ func (p *LLM) GetProfilingData() (*ProfilingData, error) {
 		return nil, SDKError(res)
 	}
 
-	profiling := NewProfilingDataFromC(cData)
-	return profiling, nil
+	return NewProfilingDataFromC(cData), nil
 }

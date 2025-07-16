@@ -33,8 +33,7 @@ func (p *VLM) GetProfilingData() (*ProfilingData, error) {
 		return nil, SDKError(res)
 	}
 
-	profiling := NewProfilingDataFromC(cData)
-	return profiling, nil
+	return NewProfilingDataFromC(cData), nil
 }
 
 // NewLLM creates a new VLM instance with the specified model and configuration
@@ -101,8 +100,7 @@ func (p *VLM) Decode(ids []int32) (string, error) {
 	}
 	defer C.free(unsafe.Pointer(res))
 
-	result := C.GoString(res)
-	return result, nil
+	return C.GoString(res), nil
 }
 
 // Generate produces text completion for the given prompt
@@ -146,8 +144,7 @@ func (p *VLM) Generate(prompt string, images []string, audios []string) (string,
 	}
 	defer C.free(unsafe.Pointer(res))
 
-	result := C.GoString(res)
-	return result, nil
+	return C.GoString(res), nil
 }
 
 // GetChatTemplate retrieves the chat template for formatting conversations
@@ -165,8 +162,7 @@ func (p *VLM) GetChatTemplate(name *string) (string, error) {
 		return "", SDKError(resLen)
 	}
 
-	result := C.GoString(res)
-	return result, nil
+	return C.GoString(res), nil
 }
 
 // ApplyChatTemplate formats chat messages using the model's chat template
@@ -189,8 +185,7 @@ func (p *VLM) ApplyChatTemplate(msgs []ChatMessage) (string, error) {
 	}
 	defer C.free(unsafe.Pointer(res))
 
-	result := C.GoString(res)
-	return result, nil
+	return C.GoString(res), nil
 }
 
 // ApplyChatTemplate formats chat messages using the model's chat template
@@ -209,11 +204,7 @@ func (p *VLM) ApplyJinjaTemplate(param ChatTemplateParam) (string, error) {
 	m := make(map[string]any)
 	sonic.Unmarshal(msgData, &m)
 
-	result, err := tmpl.ExecuteToString(exec.NewContext(m))
-	if err != nil {
-		return "", err
-	}
-	return result, nil
+	return tmpl.ExecuteToString(exec.NewContext(m))
 }
 
 // GenerateStream generates text in streaming mode, returning tokens as they are produced

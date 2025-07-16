@@ -82,6 +82,5 @@ func (p *Reranker) GetProfilingData() (*ProfilingData, error) {
 		return nil, SDKError(res)
 	}
 
-	profiling := NewProfilingDataFromC(cData)
-	return profiling, nil
+	return NewProfilingDataFromC(cData), nil
 }

@@ -208,7 +208,7 @@ func (p *TTS) SynthesizeBatch(texts []string, config *TTSConfig) ([]*TTSResult, 
 	}
 
 	// Free C memory
-	C.free(unsafe.Pointer(cRes))
+	C.ml_tts_free_result(cRes)
 
 	return results, nil
 }
@@ -233,7 +233,7 @@ func (p *TTS) LoadCache(path string) error {
 	return nil
 }
 
-// ListAvailableVoices returns list of available voices
+// ListAvailableVoices returns a list of available voices for TTS
 func (p *TTS) ListAvailableVoices() ([]string, error) {
 	slog.Debug("ListAvailableVoices called")
 	var count C.int32_t
