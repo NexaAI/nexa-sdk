@@ -23,10 +23,8 @@ func NewEmbedder(model string, tokenizer *string, devices *string) (*Embedder, e
 
 	ptr := C.ml_embedder_create(cModel, nil, nil)
 	if ptr == nil {
-		slog.Debug("NewEmbedder failed", "error", SDKErrorModelLoad)
 		return nil, SDKErrorModelLoad
 	}
-	slog.Debug("NewEmbedder success", "ptr", ptr)
 	return &Embedder{ptr: ptr}, nil
 }
 
@@ -55,14 +53,12 @@ func (p *Embedder) Embed(texts []string) ([]float32, error) {
 	var res *C.float
 	resLen := C.ml_embedder_embed(p.ptr, &cTexts[0], C.int32_t(len(cTexts)), &config, &res)
 	if resLen <= 0 {
-		slog.Debug("Embed failed", "error", SDKError(resLen))
 		return nil, SDKError(resLen)
 	}
 	defer C.free(unsafe.Pointer(res))
 
 	ret := make([]float32, resLen)
 	copy(ret, (*[1 << 30]float32)(unsafe.Pointer(res))[:resLen])
-	slog.Debug("Embed success", "result", ret)
 	return ret, nil
 }
 
@@ -72,11 +68,9 @@ func (p *Embedder) GetProfilingData() (*ProfilingData, error) {
 	var cData C.ml_ProfilingData
 	res := C.ml_embedder_get_profiling_data(p.ptr, &cData)
 	if res < 0 {
-		slog.Debug("GetProfilingData failed", "error", SDKError(res))
 		return nil, SDKError(res)
 	}
 
 	profiling := NewProfilingDataFromC(cData)
-	slog.Debug("GetProfilingData success", "profiling", profiling)
 	return profiling, nil
 }

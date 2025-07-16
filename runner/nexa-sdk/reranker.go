@@ -31,10 +31,8 @@ func NewReranker(model string, tokenizer *string, devices *string) (*Reranker, e
 
 	ptr := C.ml_reranker_create(cModel, cTokenizer, nil)
 	if ptr == nil {
-		slog.Debug("NewReranker failed", "error", SDKErrorModelLoad)
 		return nil, SDKErrorModelLoad
 	}
-	slog.Debug("NewReranker success", "ptr", ptr)
 	return &Reranker{ptr: ptr}, nil
 }
 
@@ -66,14 +64,12 @@ func (p *Reranker) Rerank(query string, texts []string) ([]float32, error) {
 	var res *C.float
 	resLen := C.ml_reranker_rerank(p.ptr, cQuery, &cTexts[0], C.int32_t(len(cTexts)), &config, &res)
 	if resLen <= 0 {
-		slog.Debug("Rerank failed", "error", SDKError(resLen))
 		return nil, SDKError(resLen)
 	}
 	defer C.free(unsafe.Pointer(res))
 
 	ret := make([]float32, resLen)
 	copy(ret, (*[1 << 30]float32)(unsafe.Pointer(res))[:resLen])
-	slog.Debug("Rerank success", "result", ret)
 	return ret, nil
 }
 
@@ -83,11 +79,9 @@ func (p *Reranker) GetProfilingData() (*ProfilingData, error) {
 	var cData C.ml_ProfilingData
 	res := C.ml_reranker_get_profiling_data(p.ptr, &cData)
 	if res < 0 {
-		slog.Debug("GetProfilingData failed", "error", SDKError(res))
 		return nil, SDKError(res)
 	}
 
 	profiling := NewProfilingDataFromC(cData)
-	slog.Debug("GetProfilingData success", "profiling", profiling)
 	return profiling, nil
 }

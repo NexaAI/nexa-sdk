@@ -64,10 +64,8 @@ func NewLLM(model string, tokenizer *string, ctxLen int32, devices *string) (*LL
 
 	ptr := C.ml_llm_create(cModel, nil, C.ml_ModelConfig{n_ctx: C.int32_t(ctxLen)}, nil)
 	if ptr == nil {
-		slog.Debug("NewLLM failed", "error", SDKErrorModelLoad)
 		return nil, SDKErrorModelLoad
 	}
-	slog.Debug("NewLLM success", "ptr", ptr)
 	return &LLM{ptr: ptr}, nil
 }
 
@@ -93,14 +91,12 @@ func (p *LLM) Encode(msg string) ([]int32, error) {
 	var res *C.int32_t
 	resLen := C.ml_llm_encode(p.ptr, cMsg, &res)
 	if resLen < 0 {
-		slog.Debug("Encode failed", "error", SDKError(resLen))
 		return nil, SDKError(resLen)
 	}
 	defer C.free(unsafe.Pointer(res))
 
 	ids := make([]int32, resLen)
 	copy(ids, (*[1 << 30]int32)(unsafe.Pointer(res))[:resLen])
-	slog.Debug("Encode success", "ids", ids)
 	return ids, nil
 }
 
@@ -114,13 +110,11 @@ func (p *LLM) Decode(ids []int32) (string, error) {
 		C.int32_t(len(ids)),
 		&res)
 	if resLen < 0 {
-		slog.Debug("Decode failed", "error", SDKError(resLen))
 		return "", SDKError(resLen)
 	}
 	defer C.free(unsafe.Pointer(res))
 
 	result := C.GoString(res)
-	slog.Debug("Decode success", "result", result)
 	return result, nil
 }
 
@@ -132,10 +126,8 @@ func (p *LLM) SaveKVCache(path string) error {
 
 	res := C.ml_llm_save_kv_cache(p.ptr, cPath)
 	if res < 0 {
-		slog.Debug("SaveKVCache failed", "error", SDKError(res))
 		return SDKError(res)
 	}
-	slog.Debug("SaveKVCache success")
 	return nil
 }
 
@@ -147,10 +139,8 @@ func (p *LLM) LoadKVCache(path string) error {
 
 	res := C.ml_llm_load_kv_cache(p.ptr, cPath)
 	if res < 0 {
-		slog.Debug("LoadKVCache failed", "error", SDKError(res))
 		return SDKError(res)
 	}
-	slog.Debug("LoadKVCache success")
 	return nil
 }
 
@@ -166,13 +156,11 @@ func (p *LLM) Generate(prompt string) (string, error) {
 	var res *C.char
 	resLen := C.ml_llm_generate(p.ptr, cPrompt, &config, &res)
 	if resLen <= 0 {
-		slog.Debug("Generate failed", "error", SDKError(resLen))
 		return "", SDKError(resLen)
 	}
 	defer C.free(unsafe.Pointer(res))
 
 	result := C.GoString(res)
-	slog.Debug("Generate success", "result", result)
 	return result, nil
 }
 
@@ -188,12 +176,10 @@ func (p *LLM) GetChatTemplate(name *string) (string, error) {
 	var res *C.char
 	resLen := C.ml_llm_get_chat_template(p.ptr, cName, &res)
 	if resLen < 0 {
-		slog.Debug("GetChatTemplate failed", "error", SDKError(resLen))
 		return "", SDKError(resLen)
 	}
 
 	result := C.GoString(res)
-	slog.Debug("GetChatTemplate success", "result", result)
 	return result, nil
 }
 
@@ -213,13 +199,11 @@ func (p *LLM) ApplyChatTemplate(msgs []ChatMessage) (string, error) {
 	var res *C.char
 	resLen := C.ml_llm_apply_chat_template(p.ptr, &cMsgs[0], C.int32_t(len(msgs)), &res)
 	if resLen < 0 {
-		slog.Debug("ApplyChatTemplate failed", "error", SDKError(resLen))
 		return "", SDKError(resLen)
 	}
 	defer C.free(unsafe.Pointer(res))
 
 	result := C.GoString(res)
-	slog.Debug("ApplyChatTemplate success", "result", result)
 	return result, nil
 }
 
@@ -228,7 +212,6 @@ func (p *LLM) ApplyJinjaTemplate(param ChatTemplateParam) (string, error) {
 	slog.Debug("ApplyJinjaTemplate called", "param", param)
 	chatTmpl, e := p.GetChatTemplate(nil)
 	if e != nil {
-		slog.Debug("ApplyJinjaTemplate failed in GetChatTemplate", "error", e)
 		return "", e
 	}
 
@@ -236,7 +219,6 @@ func (p *LLM) ApplyJinjaTemplate(param ChatTemplateParam) (string, error) {
 	chatTmpl = strings.ReplaceAll(chatTmpl, `not(`, `not (`)
 	tmpl, e := gonja.FromString(chatTmpl)
 	if e != nil {
-		slog.Debug("ApplyJinjaTemplate failed in FromString", "error", e)
 		return "", e
 	}
 
@@ -246,10 +228,8 @@ func (p *LLM) ApplyJinjaTemplate(param ChatTemplateParam) (string, error) {
 
 	result, err := tmpl.ExecuteToString(exec.NewContext(m))
 	if err != nil {
-		slog.Debug("ApplyJinjaTemplate failed in ExecuteToString", "error", err)
 		return "", err
 	}
-	slog.Debug("ApplyJinjaTemplate success", "result", result)
 	return result, nil
 }
 
@@ -291,7 +271,6 @@ func (p *LLM) GenerateStream(ctx context.Context, prompt string) (<-chan string,
 	config.max_tokens = 2048
 
 	if streamTokenCh != nil {
-		slog.Debug("GenerateStream panic: not support GenerateStream in parallel")
 		panic("not support GenerateStream in parallel")
 	}
 	stream := make(chan string, 10)
@@ -311,12 +290,10 @@ func (p *LLM) GenerateStream(ctx context.Context, prompt string) (<-chan string,
 		resLen := C.ml_llm_generate_stream(p.ptr, cPrompt, &config,
 			(C.ml_llm_token_callback)(C.go_generate_stream_on_token), nil, nil)
 		if resLen < 0 {
-			slog.Debug("GenerateStream failed", "error", SDKError(resLen))
 			err <- SDKError(resLen)
 		}
 	}()
 
-	slog.Debug("GenerateStream started")
 	return stream, err
 }
 
@@ -326,11 +303,9 @@ func (p *LLM) GetProfilingData() (*ProfilingData, error) {
 	var cData C.ml_ProfilingData
 	res := C.ml_llm_get_profiling_data(p.ptr, &cData)
 	if res < 0 {
-		slog.Debug("GetProfilingData failed", "error", SDKError(res))
 		return nil, SDKError(res)
 	}
 
 	profiling := NewProfilingDataFromC(cData)
-	slog.Debug("GetProfilingData success", "profiling", profiling)
 	return profiling, nil
 }

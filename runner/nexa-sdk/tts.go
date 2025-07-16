@@ -55,10 +55,8 @@ func NewTTS(model string, vocoder *string, devices *string) (*TTS, error) {
 
 	ptr := C.ml_tts_create(cModel, cVocoder, nil)
 	if ptr == nil {
-		slog.Debug("NewTTS failed", "error", SDKErrorUnknown)
 		return nil, SDKErrorUnknown
 	}
-	slog.Debug("NewTTS success", "ptr", ptr)
 	return &TTS{ptr: ptr}, nil
 }
 
@@ -83,10 +81,8 @@ func (p *TTS) LoadModel(modelPath string, extraData unsafe.Pointer) error {
 
 	res := C.ml_tts_load_model(p.ptr, cPath, extraData)
 	if !res {
-		slog.Debug("LoadModel failed", "error", SDKErrorUnknown)
 		return SDKErrorUnknown
 	}
-	slog.Debug("LoadModel success")
 	return nil
 }
 
@@ -139,7 +135,6 @@ func (p *TTS) Synthesize(text string, config *TTSConfig) (*TTSResult, error) {
 
 	res := C.ml_tts_synthesize(p.ptr, cText, &cConfig)
 	if res.audio == nil {
-		slog.Debug("Synthesize failed", "error", SDKErrorUnknown)
 		return nil, SDKErrorUnknown
 	}
 
@@ -161,7 +156,6 @@ func (p *TTS) Synthesize(text string, config *TTSConfig) (*TTSResult, error) {
 	// Free C memory
 	C.ml_tts_free_result(&res)
 
-	slog.Debug("Synthesize success", "result", result)
 	return result, nil
 }
 
@@ -190,7 +184,6 @@ func (p *TTS) SynthesizeBatch(texts []string, config *TTSConfig) ([]*TTSResult, 
 
 	cRes := C.ml_tts_synthesize_batch(p.ptr, &cTexts[0], C.int32_t(len(texts)), &cConfig)
 	if cRes == nil {
-		slog.Debug("SynthesizeBatch failed", "error", SDKErrorUnknown)
 		return nil, SDKErrorUnknown
 	}
 
@@ -217,7 +210,6 @@ func (p *TTS) SynthesizeBatch(texts []string, config *TTSConfig) ([]*TTSResult, 
 	// Free C memory
 	C.free(unsafe.Pointer(cRes))
 
-	slog.Debug("SynthesizeBatch success", "results", results)
 	return results, nil
 }
 
@@ -228,7 +220,6 @@ func (p *TTS) SaveCache(path string) error {
 	defer C.free(unsafe.Pointer(cPath))
 
 	C.ml_tts_save_cache(p.ptr, cPath)
-	slog.Debug("SaveCache success")
 	return nil
 }
 
@@ -239,7 +230,6 @@ func (p *TTS) LoadCache(path string) error {
 	defer C.free(unsafe.Pointer(cPath))
 
 	C.ml_tts_load_cache(p.ptr, cPath)
-	slog.Debug("LoadCache success")
 	return nil
 }
 
@@ -249,7 +239,6 @@ func (p *TTS) ListAvailableVoices() ([]string, error) {
 	var count C.int32_t
 	cVoices := C.ml_tts_list_available_voices(p.ptr, &count)
 	if cVoices == nil {
-		slog.Debug("ListAvailableVoices failed", "error", SDKErrorUnknown)
 		return nil, SDKErrorUnknown
 	}
 
@@ -259,7 +248,6 @@ func (p *TTS) ListAvailableVoices() ([]string, error) {
 		voices[i] = C.GoString(voice)
 	}
 
-	slog.Debug("ListAvailableVoices success", "voices", voices)
 	return voices, nil
 }
 

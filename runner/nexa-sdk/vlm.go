@@ -30,12 +30,10 @@ func (p *VLM) GetProfilingData() (*ProfilingData, error) {
 	var cData C.ml_ProfilingData
 	res := C.ml_vlm_get_profiling_data(p.ptr, &cData)
 	if res < 0 {
-		slog.Debug("GetProfilingData failed", "error", SDKError(res))
 		return nil, SDKError(res)
 	}
 
 	profiling := NewProfilingDataFromC(cData)
-	slog.Debug("GetProfilingData success", "profiling", profiling)
 	return profiling, nil
 }
 
@@ -53,10 +51,8 @@ func NewVLM(model string, tokenizer *string, ctxLen int32, devices *string) (*VL
 
 	ptr := C.ml_vlm_create(cModel, cTokenizer, C.int32_t(ctxLen), nil)
 	if ptr == nil {
-		slog.Debug("NewVLM failed", "error", SDKErrorModelLoad)
 		return nil, SDKErrorModelLoad
 	}
-	slog.Debug("NewVLM success", "ptr", ptr)
 	return &VLM{ptr: ptr}, nil
 }
 
@@ -82,14 +78,12 @@ func (p *VLM) Encode(msg string) ([]int32, error) {
 	var res *C.int32_t
 	resLen := C.ml_vlm_encode(p.ptr, cMsg, &res)
 	if resLen < 0 {
-		slog.Debug("Encode failed", "error", SDKError(resLen))
 		return nil, SDKError(resLen)
 	}
 	defer C.free(unsafe.Pointer(res))
 
 	ids := make([]int32, resLen)
 	copy(ids, (*[1 << 30]int32)(unsafe.Pointer(res))[:resLen])
-	slog.Debug("Encode success", "ids", ids)
 	return ids, nil
 }
 
@@ -103,13 +97,11 @@ func (p *VLM) Decode(ids []int32) (string, error) {
 		C.int32_t(len(ids)),
 		&res)
 	if resLen < 0 {
-		slog.Debug("Decode failed", "error", SDKError(resLen))
 		return "", SDKError(resLen)
 	}
 	defer C.free(unsafe.Pointer(res))
 
 	result := C.GoString(res)
-	slog.Debug("Decode success", "result", result)
 	return result, nil
 }
 
@@ -150,13 +142,11 @@ func (p *VLM) Generate(prompt string, images []string, audios []string) (string,
 	var res *C.char
 	resLen := C.ml_vlm_generate(p.ptr, cPrompt, &config, &res)
 	if resLen <= 0 {
-		slog.Debug("Generate failed", "error", SDKError(resLen))
 		return "", SDKError(resLen)
 	}
 	defer C.free(unsafe.Pointer(res))
 
 	result := C.GoString(res)
-	slog.Debug("Generate success", "result", result)
 	return result, nil
 }
 
@@ -172,12 +162,10 @@ func (p *VLM) GetChatTemplate(name *string) (string, error) {
 	var res *C.char
 	resLen := C.ml_vlm_get_chat_template(p.ptr, cName, &res)
 	if resLen < 0 {
-		slog.Debug("GetChatTemplate failed", "error", SDKError(resLen))
 		return "", SDKError(resLen)
 	}
 
 	result := C.GoString(res)
-	slog.Debug("GetChatTemplate success", "result", result)
 	return result, nil
 }
 
@@ -197,13 +185,11 @@ func (p *VLM) ApplyChatTemplate(msgs []ChatMessage) (string, error) {
 	var res *C.char
 	resLen := C.ml_vlm_apply_chat_template(p.ptr, &cMsgs[0], C.int32_t(len(msgs)), &res)
 	if resLen < 0 {
-		slog.Debug("ApplyChatTemplate failed", "error", SDKError(resLen))
 		return "", SDKError(resLen)
 	}
 	defer C.free(unsafe.Pointer(res))
 
 	result := C.GoString(res)
-	slog.Debug("ApplyChatTemplate success", "result", result)
 	return result, nil
 }
 
@@ -212,12 +198,10 @@ func (p *VLM) ApplyJinjaTemplate(param ChatTemplateParam) (string, error) {
 	slog.Debug("ApplyJinjaTemplate called", "param", param)
 	chatTmpl, e := p.GetChatTemplate(nil)
 	if e != nil {
-		slog.Debug("ApplyJinjaTemplate failed in GetChatTemplate", "error", e)
 		return "", e
 	}
 	tmpl, e := gonja.FromString(chatTmpl)
 	if e != nil {
-		slog.Debug("ApplyJinjaTemplate failed in FromString", "error", e)
 		return "", e
 	}
 
@@ -227,10 +211,8 @@ func (p *VLM) ApplyJinjaTemplate(param ChatTemplateParam) (string, error) {
 
 	result, err := tmpl.ExecuteToString(exec.NewContext(m))
 	if err != nil {
-		slog.Debug("ApplyJinjaTemplate failed in ExecuteToString", "error", err)
 		return "", err
 	}
-	slog.Debug("ApplyJinjaTemplate success", "result", result)
 	return result, nil
 }
 
@@ -242,7 +224,6 @@ func (p *VLM) GenerateStream(ctx context.Context, prompt string, images []string
 	cPrompt := C.CString(prompt)
 
 	if streamTokenCh != nil {
-		slog.Debug("GenerateStream panic: not support GenerateStream in parallel")
 		panic("not support GenerateStream in parallel")
 	}
 	stream := make(chan string, 10)
@@ -290,11 +271,9 @@ func (p *VLM) GenerateStream(ctx context.Context, prompt string, images []string
 			(C.ml_llm_token_callback)(C.go_generate_stream_on_token),
 			nil, nil)
 		if resLen < 0 {
-			slog.Debug("GenerateStream failed", "error", SDKError(resLen))
 			err <- SDKError(resLen)
 		}
 	}()
 
-	slog.Debug("GenerateStream started")
 	return stream, err
 }
