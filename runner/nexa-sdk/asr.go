@@ -8,6 +8,8 @@ import "C"
 
 import (
 	"unsafe"
+
+	"golang.org/x/exp/slog"
 )
 
 // ASRConfig represents ASR transcription configuration
@@ -31,6 +33,7 @@ type ASR struct {
 
 // NewASR creates a new ASR instance with the specified model and configuration
 func NewASR(model string, tokenizer *string, language *string, devices *string) (*ASR, error) {
+	slog.Debug("NewASR called", "model", model, "tokenizer", tokenizer, "language", language, "devices", devices)
 	cModel := C.CString(model)
 	defer C.free(unsafe.Pointer(cModel))
 
@@ -48,37 +51,44 @@ func NewASR(model string, tokenizer *string, language *string, devices *string) 
 
 	ptr := C.ml_asr_create(cModel, cTokenizer, cLanguage, nil)
 	if ptr == nil {
+		slog.Debug("NewASR failed", "error", SDKErrorUnknown)
 		return nil, SDKErrorUnknown
 	}
-
+	slog.Debug("NewASR success", "ptr", ptr)
 	return &ASR{ptr: ptr}, nil
 }
 
 // Destroy frees the memory allocated for the ASR instance
 func (p *ASR) Destroy() {
+	slog.Debug("Destroy called", "ptr", p.ptr)
 	C.ml_asr_destroy(p.ptr)
 	p.ptr = nil
 }
 
 // LoadModel loads ASR model from path with optional extra configuration data
 func (p *ASR) LoadModel(modelPath string, extraData unsafe.Pointer) error {
+	slog.Debug("LoadModel called", "modelPath", modelPath)
 	cPath := C.CString(modelPath)
 	defer C.free(unsafe.Pointer(cPath))
 
 	res := C.ml_asr_load_model(p.ptr, cPath, extraData)
 	if !res {
+		slog.Debug("LoadModel failed", "error", SDKErrorModelLoad)
 		return SDKErrorModelLoad
 	}
+	slog.Debug("LoadModel success")
 	return nil
 }
 
 // Close cleanup ASR resources
 func (p *ASR) Close() {
+	slog.Debug("Close called", "ptr", p.ptr)
 	C.ml_asr_close(p.ptr)
 }
 
 // Transcribe converts audio to text using ASR
 func (p *ASR) Transcribe(audio []float32, sampleRate int32, config *ASRConfig) (*ASRResult, error) {
+	slog.Debug("Transcribe called", "audioLen", len(audio), "sampleRate", sampleRate, "config", config)
 	if len(audio) == 0 {
 		audio = make([]float32, 0)
 	}
@@ -104,6 +114,7 @@ func (p *ASR) Transcribe(audio []float32, sampleRate int32, config *ASRConfig) (
 	)
 
 	if res.transcript == nil {
+		slog.Debug("Transcribe failed", "error", SDKErrorUnknown)
 		return nil, SDKErrorUnknown
 	}
 
@@ -129,11 +140,13 @@ func (p *ASR) Transcribe(audio []float32, sampleRate int32, config *ASRConfig) (
 	// Free C memory
 	C.ml_asr_free_result(&res)
 
+	slog.Debug("Transcribe success", "result", result)
 	return result, nil
 }
 
 // TranscribeBatch processes multiple audio samples in batch mode
 func (p *ASR) TranscribeBatch(audios [][]float32, sampleRate int32, config *ASRConfig) ([]*ASRResult, error) {
+	slog.Debug("TranscribeBatch called", "batchSize", len(audios), "sampleRate", sampleRate, "config", config)
 	if len(audios) == 0 {
 		return nil, SDKErrorUnknown
 	}
@@ -172,6 +185,7 @@ func (p *ASR) TranscribeBatch(audios [][]float32, sampleRate int32, config *ASRC
 	)
 
 	if cRes == nil {
+		slog.Debug("TranscribeBatch failed", "error", SDKErrorUnknown)
 		return nil, SDKErrorUnknown
 	}
 
@@ -209,11 +223,13 @@ func (p *ASR) TranscribeBatch(audios [][]float32, sampleRate int32, config *ASRC
 	// Free C memory
 	C.ml_asr_free_result(cRes)
 
+	slog.Debug("TranscribeBatch success", "results", results)
 	return results, nil
 }
 
 // TranscribeStep processes audio chunk for streaming transcription
 func (p *ASR) TranscribeStep(audioChunk []float32, step int32, config *ASRConfig) (*ASRResult, error) {
+	slog.Debug("TranscribeStep called", "audioChunkLen", len(audioChunk), "step", step, "config", config)
 	if len(audioChunk) == 0 {
 		return nil, SDKErrorUnknown
 	}
@@ -239,6 +255,7 @@ func (p *ASR) TranscribeStep(audioChunk []float32, step int32, config *ASRConfig
 	)
 
 	if res.transcript == nil {
+		slog.Debug("TranscribeStep failed", "error", SDKErrorUnknown)
 		return nil, SDKErrorUnknown
 	}
 
@@ -264,11 +281,13 @@ func (p *ASR) TranscribeStep(audioChunk []float32, step int32, config *ASRConfig
 	// Free C memory
 	C.ml_asr_free_result(&res)
 
+	slog.Debug("TranscribeStep success", "result", result)
 	return result, nil
 }
 
 // PrintResult prints ASR result to stdout
 func (p *ASR) PrintResult(result *ASRResult) {
+	slog.Debug("PrintResult called", "result", result)
 	if result == nil {
 		return
 	}
@@ -287,9 +306,11 @@ func (p *ASR) PrintResult(result *ASRResult) {
 
 // ListSupportedLanguages returns list of supported languages
 func (p *ASR) ListSupportedLanguages() ([]string, error) {
+	slog.Debug("ListSupportedLanguages called")
 	var count C.int32_t
 	cLanguages := C.ml_asr_list_supported_languages(p.ptr, &count)
 	if cLanguages == nil {
+		slog.Debug("ListSupportedLanguages failed", "error", SDKErrorUnknown)
 		return nil, SDKErrorUnknown
 	}
 
@@ -299,11 +320,13 @@ func (p *ASR) ListSupportedLanguages() ([]string, error) {
 		languages[i] = C.GoString(langPtr)
 	}
 
+	slog.Debug("ListSupportedLanguages success", "languages", languages)
 	return languages, nil
 }
 
 // SetLanguage sets the language for ASR transcription
 func (p *ASR) SetLanguage(language string) {
+	slog.Debug("SetLanguage called", "language", language)
 	cLanguage := C.CString(language)
 	defer C.free(unsafe.Pointer(cLanguage))
 

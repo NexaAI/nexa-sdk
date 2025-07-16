@@ -8,6 +8,8 @@ import "C"
 
 import (
 	"unsafe"
+
+	"golang.org/x/exp/slog"
 )
 
 // TTSConfig represents TTS synthesis configuration
@@ -41,6 +43,7 @@ type TTS struct {
 
 // NewTTS creates a new TTS instance with the specified model and vocoder
 func NewTTS(model string, vocoder *string, devices *string) (*TTS, error) {
+	slog.Debug("NewTTS called", "model", model, "vocoder", vocoder, "devices", devices)
 	cModel := C.CString(model)
 	defer C.free(unsafe.Pointer(cModel))
 
@@ -52,42 +55,50 @@ func NewTTS(model string, vocoder *string, devices *string) (*TTS, error) {
 
 	ptr := C.ml_tts_create(cModel, cVocoder, nil)
 	if ptr == nil {
+		slog.Debug("NewTTS failed", "error", SDKErrorUnknown)
 		return nil, SDKErrorUnknown
 	}
-
+	slog.Debug("NewTTS success", "ptr", ptr)
 	return &TTS{ptr: ptr}, nil
 }
 
 // Destroy frees the memory allocated for the TTS instance
 func (p *TTS) Destroy() {
+	slog.Debug("Destroy called", "ptr", p.ptr)
 	C.ml_tts_destroy(p.ptr)
 	p.ptr = nil
 }
 
 // Reset clears the TTS's internal state
 func (p *TTS) Reset() {
+	slog.Debug("Reset called", "ptr", p.ptr)
 	// Reset TTS state if needed
 }
 
 // LoadModel loads TTS model from path with optional extra configuration data
 func (p *TTS) LoadModel(modelPath string, extraData unsafe.Pointer) error {
+	slog.Debug("LoadModel called", "modelPath", modelPath)
 	cPath := C.CString(modelPath)
 	defer C.free(unsafe.Pointer(cPath))
 
 	res := C.ml_tts_load_model(p.ptr, cPath, extraData)
 	if !res {
+		slog.Debug("LoadModel failed", "error", SDKErrorUnknown)
 		return SDKErrorUnknown
 	}
+	slog.Debug("LoadModel success")
 	return nil
 }
 
 // Close cleanup TTS resources
 func (p *TTS) Close() {
+	slog.Debug("Close called", "ptr", p.ptr)
 	C.ml_tts_close(p.ptr)
 }
 
 // SetSampler configures TTS sampling parameters
 func (p *TTS) SetSampler(config *TTSSamplerConfig) {
+	slog.Debug("SetSampler called", "config", config)
 	if config == nil {
 		return
 	}
@@ -103,11 +114,13 @@ func (p *TTS) SetSampler(config *TTSSamplerConfig) {
 
 // ResetSampler resets TTS sampling parameters to default values
 func (p *TTS) ResetSampler() {
+	slog.Debug("ResetSampler called", "ptr", p.ptr)
 	C.ml_tts_reset_sampler(p.ptr)
 }
 
 // Synthesize converts text to speech audio
 func (p *TTS) Synthesize(text string, config *TTSConfig) (*TTSResult, error) {
+	slog.Debug("Synthesize called", "text", text, "config", config)
 	cText := C.CString(text)
 	defer C.free(unsafe.Pointer(cText))
 
@@ -126,6 +139,7 @@ func (p *TTS) Synthesize(text string, config *TTSConfig) (*TTSResult, error) {
 
 	res := C.ml_tts_synthesize(p.ptr, cText, &cConfig)
 	if res.audio == nil {
+		slog.Debug("Synthesize failed", "error", SDKErrorUnknown)
 		return nil, SDKErrorUnknown
 	}
 
@@ -147,11 +161,13 @@ func (p *TTS) Synthesize(text string, config *TTSConfig) (*TTSResult, error) {
 	// Free C memory
 	C.ml_tts_free_result(&res)
 
+	slog.Debug("Synthesize success", "result", result)
 	return result, nil
 }
 
 // SynthesizeBatch processes multiple texts in batch mode
 func (p *TTS) SynthesizeBatch(texts []string, config *TTSConfig) ([]*TTSResult, error) {
+	slog.Debug("SynthesizeBatch called", "texts", texts, "config", config)
 	cTexts := make([]*C.char, len(texts))
 	for i, text := range texts {
 		cText := &cTexts[i]
@@ -174,6 +190,7 @@ func (p *TTS) SynthesizeBatch(texts []string, config *TTSConfig) ([]*TTSResult, 
 
 	cRes := C.ml_tts_synthesize_batch(p.ptr, &cTexts[0], C.int32_t(len(texts)), &cConfig)
 	if cRes == nil {
+		slog.Debug("SynthesizeBatch failed", "error", SDKErrorUnknown)
 		return nil, SDKErrorUnknown
 	}
 
@@ -200,32 +217,39 @@ func (p *TTS) SynthesizeBatch(texts []string, config *TTSConfig) ([]*TTSResult, 
 	// Free C memory
 	C.free(unsafe.Pointer(cRes))
 
+	slog.Debug("SynthesizeBatch success", "results", results)
 	return results, nil
 }
 
 // SaveCache saves TTS cache state to file
 func (p *TTS) SaveCache(path string) error {
+	slog.Debug("SaveCache called", "path", path)
 	cPath := C.CString(path)
 	defer C.free(unsafe.Pointer(cPath))
 
 	C.ml_tts_save_cache(p.ptr, cPath)
+	slog.Debug("SaveCache success")
 	return nil
 }
 
 // LoadCache loads TTS cache state from file
 func (p *TTS) LoadCache(path string) error {
+	slog.Debug("LoadCache called", "path", path)
 	cPath := C.CString(path)
 	defer C.free(unsafe.Pointer(cPath))
 
 	C.ml_tts_load_cache(p.ptr, cPath)
+	slog.Debug("LoadCache success")
 	return nil
 }
 
 // ListAvailableVoices returns list of available voices
 func (p *TTS) ListAvailableVoices() ([]string, error) {
+	slog.Debug("ListAvailableVoices called")
 	var count C.int32_t
 	cVoices := C.ml_tts_list_available_voices(p.ptr, &count)
 	if cVoices == nil {
+		slog.Debug("ListAvailableVoices failed", "error", SDKErrorUnknown)
 		return nil, SDKErrorUnknown
 	}
 
@@ -235,11 +259,13 @@ func (p *TTS) ListAvailableVoices() ([]string, error) {
 		voices[i] = C.GoString(voice)
 	}
 
+	slog.Debug("ListAvailableVoices success", "voices", voices)
 	return voices, nil
 }
 
 // GetProfilingData retrieves performance metrics from the TTS instance
 func (p *TTS) GetProfilingData() (*ProfilingData, error) {
+	slog.Debug("GetProfilingData called")
 	// Note: TTS doesn't have profiling data in the C API
 	// Return empty profiling data for consistency
 	return &ProfilingData{}, nil
@@ -247,6 +273,7 @@ func (p *TTS) GetProfilingData() (*ProfilingData, error) {
 
 // PrintResult prints TTS result information to standard output for debugging
 func (result *TTSResult) PrintResult() {
+	slog.Debug("PrintResult called", "result", result)
 	if result == nil {
 		return
 	}

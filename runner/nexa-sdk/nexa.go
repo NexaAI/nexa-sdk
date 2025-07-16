@@ -15,6 +15,7 @@ import "C"
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 )
 
@@ -77,14 +78,8 @@ func Version() string {
 
 // go_log_wrap is exported to C and handles log messages from the C library
 // It converts C strings to Go strings and prints them to stdout
-
-var logCallback func(string) = func(string) {}
-
-func SetLog(log func(string)) {
-	logCallback = log
-}
-
+//
 //export go_log_wrap
 func go_log_wrap(msg *C.char) {
-	logCallback(strings.TrimSpace(C.GoString(msg)))
+	slog.Debug("[Bridge] " + strings.TrimSpace(C.GoString(msg)))
 }
