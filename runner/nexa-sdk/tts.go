@@ -189,7 +189,7 @@ func (p *TTS) SynthesizeBatch(texts []string, config *TTSConfig) ([]*TTSResult, 
 
 	// Convert C results to Go results
 	results := make([]*TTSResult, len(texts))
-	for i := 0; i < len(texts); i++ {
+	for i := range len(texts) {
 		res := (*C.ml_TTSResult)(unsafe.Pointer(uintptr(unsafe.Pointer(cRes)) + uintptr(i)*unsafe.Sizeof(C.ml_TTSResult{})))
 
 		audioLen := int(res.num_samples)

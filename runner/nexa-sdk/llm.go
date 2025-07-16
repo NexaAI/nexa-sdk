@@ -10,13 +10,13 @@ import "C"
 
 import (
 	"context"
+	"log/slog"
 	"strings"
 	"unsafe"
 
 	"github.com/bytedance/sonic"
 	"github.com/nikolalohinski/gonja/v2"
 	"github.com/nikolalohinski/gonja/v2/exec"
-	"golang.org/x/exp/slog"
 )
 
 // LLMRole represents different roles in a chat conversation
