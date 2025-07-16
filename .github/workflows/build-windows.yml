@@ -48,7 +48,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nexasdk-cli_${{ matrix.os }}
+          name: nexa-cli_${{ matrix.os }}
           path: ./build
           include-hidden-files: true
 
@@ -79,7 +79,17 @@ jobs:
 
       - name: Build launcher with PyInstaller
         run: |
-          pyinstaller --onefile --noconsole --distpath artifacts --name "nexa-cli-windows-launcher" --icon="release/nexa_logo.ico" release/nexa_windows_launcher.py
+          pyinstaller --onefile --noconsole --distpath artifacts --name "nexa-cli-launcher" --icon="release/nexa_logo.ico" release/nexa_windows_launcher.py
+
+      - name: Download NSSM
+        env:
+          NSSM_VERSION: "2.24"
+        run: |
+          Invoke-WebRequest -Uri "https://nssm.cc/release/nssm-${{ env.NSSM_VERSION }}.zip" -OutFile "nssm.zip"
+          Expand-Archive -Path "nssm.zip" -DestinationPath "nssm_temp"
+          Copy-Item "nssm_temp\nssm-${{ env.NSSM_VERSION }}\win64\nssm.exe" "artifacts\nssm.exe"
+          Remove-Item "nssm.zip"
+          Remove-Item "nssm_temp" -Recurse
 
       - name: Compile Installer
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.6
@@ -90,8 +100,8 @@ jobs:
       - name: Upload Installer
         uses: actions/upload-artifact@v4
         with:
-          name: nexa-cli-windows-setup-${{ github.ref_name }}
-          path: artifacts/nexa-cli-windows-setup-${{ github.ref_name }}.exe
+          name: nexa-cli_windows-setup_${{ env.VERSION }}
+          path: artifacts/nexa-cli_windows-setup_${{ env.VERSION }}.exe
 
       - name: Create GitHub Release
         id: create_release
@@ -99,6 +109,6 @@ jobs:
         with:
           repository: zhiyuan8/homebrew-go-release
           files: |
-            artifacts/nexa-cli-windows-setup-${{ github.ref_name }}.exe
+            artifacts/nexa-cli_windows-setup_${{ env.VERSION }}.exe
         env:
           GITHUB_TOKEN: ${{ secrets.NEXASDK_RELEASE_TOKEN }}
