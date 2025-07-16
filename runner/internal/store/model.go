@@ -47,6 +47,8 @@ func (s *Store) List() ([]types.ModelManifest, error) {
 
 // Remove deletes a specific model and all its files
 func (s *Store) Remove(name string) error {
+	slog.Info("Remove model", "model", name)
+
 	err := s.LockModel(name)
 	if err != nil {
 		return err
@@ -57,6 +59,8 @@ func (s *Store) Remove(name string) error {
 
 // Clean removes all stored models and the models directory
 func (s *Store) Clean() error {
+	slog.Info("Start clean model")
+
 	modelsDir := s.GetModelsDir()
 	entries, err := os.ReadDir(modelsDir)
 	if err != nil {
