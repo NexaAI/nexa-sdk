@@ -256,6 +256,7 @@ func repl(cfg ReplConfig) {
 				if len(fileds) != 2 {
 					fmt.Println(text.FgRed.Sprintf("Usage: /load <filename>"))
 					fmt.Println()
+					continue
 				}
 				cfg.Clear()
 				err := cfg.LoadKVCache(fileds[1])
