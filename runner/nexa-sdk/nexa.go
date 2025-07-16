@@ -15,7 +15,7 @@ import "C"
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 )
 
@@ -71,14 +71,24 @@ func DeInit() {
 	C.ml_deinit()
 }
 
+// Get SDK Version
 func Version() string {
 	return C.GoString(C.ml_version())
 }
+
+var bridgeLogEnabled = false
 
 // go_log_wrap is exported to C and handles log messages from the C library
 // It converts C strings to Go strings and prints them to stdout
 //
 //export go_log_wrap
 func go_log_wrap(msg *C.char) {
-	log.Default().Println(strings.TrimSpace(C.GoString(msg)))
+	if bridgeLogEnabled {
+		slog.Debug("[Bridge] " + strings.TrimSpace(C.GoString(msg)))
+	}
+}
+
+// EnableBridgeLog enables or disables the bridge log
+func EnableBridgeLog(enable bool) {
+	bridgeLogEnabled = enable
 }

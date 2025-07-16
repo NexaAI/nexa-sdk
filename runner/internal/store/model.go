@@ -3,6 +3,7 @@ package store
 import (
 	"encoding/base64"
 	"fmt"
+	"log/slog"
 	"os"
 	"path"
 
@@ -28,13 +29,13 @@ func (s *Store) List() ([]types.ModelManifest, error) {
 
 		name, err := base64.URLEncoding.DecodeString(encName.Name())
 		if err != nil {
-			fmt.Printf("getManifest error: %s\n", err)
+			slog.Warn("GetManifest Error", "err", err)
 			continue
 		}
 
 		model, err := s.GetManifest(string(name))
 		if err != nil {
-			fmt.Printf("getManifest error: %s\n", err)
+			slog.Warn("GetManifest Error", "err", err)
 			continue
 		}
 

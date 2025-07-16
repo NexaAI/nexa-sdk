@@ -1,7 +1,7 @@
 package server
 
 import (
-	"fmt"
+	"log/slog"
 
 	"github.com/gin-gonic/gin"
 
@@ -25,6 +25,6 @@ func Serve() {
 	// NEXA_HOST=127.0.0.1:18181 nexa serve
 	err := engine.Run(config.Get().Host)
 	if err != nil {
-		fmt.Printf("HTTP Server Error: %s", err)
+		slog.Error("HTTP Server Error", "err", err)
 	}
 }

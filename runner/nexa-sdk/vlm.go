@@ -10,6 +10,7 @@ import "C"
 
 import (
 	"context"
+	"log/slog"
 	"runtime"
 	"unsafe"
 
@@ -25,6 +26,8 @@ type VLM struct {
 
 // GetProfilingData retrieves performance metrics from the VLM instance
 func (p *VLM) GetProfilingData() (*ProfilingData, error) {
+	slog.Debug("GetProfilingData called")
+
 	var cData C.ml_ProfilingData
 	res := C.ml_vlm_get_profiling_data(p.ptr, &cData)
 	if res < 0 {
@@ -36,6 +39,8 @@ func (p *VLM) GetProfilingData() (*ProfilingData, error) {
 
 // NewLLM creates a new VLM instance with the specified model and configuration
 func NewVLM(model string, tokenizer *string, ctxLen int32, devices *string) (*VLM, error) {
+	slog.Debug("NewVLM called", "model", model, "tokenizer", tokenizer, "ctxLen", ctxLen, "devices", devices)
+
 	cModel := C.CString(model)
 	defer C.free(unsafe.Pointer(cModel))
 
@@ -49,23 +54,28 @@ func NewVLM(model string, tokenizer *string, ctxLen int32, devices *string) (*VL
 	if ptr == nil {
 		return nil, SDKErrorModelLoad
 	}
-
 	return &VLM{ptr: ptr}, nil
 }
 
 // Destroy frees the memory allocated for the VLM instance
 func (p *VLM) Destroy() {
+	slog.Debug("Destroy called", "ptr", p.ptr)
+
 	C.ml_vlm_destroy(p.ptr)
 	p.ptr = nil
 }
 
 // Reset clears the VLM's internal state and context
 func (p *VLM) Reset() {
+	slog.Debug("Reset called", "ptr", p.ptr)
+
 	C.ml_vlm_reset(p.ptr)
 }
 
 // Encode converts a text message into token IDs using the model's tokenizer
 func (p *VLM) Encode(msg string) ([]int32, error) {
+	slog.Debug("Encode called", "msg", msg)
+
 	cMsg := C.CString(msg)
 	defer C.free(unsafe.Pointer(cMsg))
 
@@ -76,15 +86,15 @@ func (p *VLM) Encode(msg string) ([]int32, error) {
 	}
 	defer C.free(unsafe.Pointer(res))
 
-	// Copy C array to Go slice
 	ids := make([]int32, resLen)
 	copy(ids, (*[1 << 30]int32)(unsafe.Pointer(res))[:resLen])
-
 	return ids, nil
 }
 
 // Decode converts token IDs back into text using the model's tokenizer
 func (p *VLM) Decode(ids []int32) (string, error) {
+	slog.Debug("Decode called", "ids", ids)
+
 	var res *C.char
 	resLen := C.ml_vlm_decode(
 		p.ptr,
@@ -101,13 +111,14 @@ func (p *VLM) Decode(ids []int32) (string, error) {
 
 // Generate produces text completion for the given prompt
 func (p *VLM) Generate(prompt string, images []string, audios []string) (string, error) {
+	slog.Debug("Generate called", "prompt", prompt, "images", images, "audios", audios)
+
 	cPrompt := C.CString(prompt)
 	defer C.free(unsafe.Pointer(cPrompt))
 
 	var pinnner runtime.Pinner
 	defer pinnner.Unpin()
 
-	// Configure generation parameters
 	config := C.ml_GenerationConfig{}
 	config.max_tokens = 2048
 	if len(images) > 0 {
@@ -145,6 +156,8 @@ func (p *VLM) Generate(prompt string, images []string, audios []string) (string,
 
 // GetChatTemplate retrieves the chat template for formatting conversations
 func (p *VLM) GetChatTemplate(name *string) (string, error) {
+	slog.Debug("GetChatTemplate called", "name", name)
+
 	var cName *C.char
 	if name != nil {
 		cName = C.CString(*name)
@@ -162,9 +175,10 @@ func (p *VLM) GetChatTemplate(name *string) (string, error) {
 
 // ApplyChatTemplate formats chat messages using the model's chat template
 func (p *VLM) ApplyChatTemplate(msgs []ChatMessage) (string, error) {
+	slog.Debug("ApplyChatTemplate called", "msgs", msgs)
+
 	cMsgs := make([]C.ml_ChatMessage, len(msgs))
 
-	// Convert Go chat messages to C structures
 	for i, msg := range msgs {
 		cMsg := &cMsgs[i]
 		cMsg.role = C.CString(string(msg.Role))
@@ -185,19 +199,20 @@ func (p *VLM) ApplyChatTemplate(msgs []ChatMessage) (string, error) {
 
 // ApplyChatTemplate formats chat messages using the model's chat template
 func (p *VLM) ApplyJinjaTemplate(param ChatTemplateParam) (string, error) {
+	slog.Debug("ApplyJinjaTemplate called", "param", param)
+
 	chatTmpl, e := p.GetChatTemplate(nil)
 	if e != nil {
 		return "", e
 	}
-
 	tmpl, e := gonja.FromString(chatTmpl)
 	if e != nil {
 		return "", e
 	}
 
-	msgData, _ := sonic.Marshal(param) // won't fail
+	msgData, _ := sonic.Marshal(param)
 	m := make(map[string]any)
-	sonic.Unmarshal(msgData, &m) // won't fail
+	sonic.Unmarshal(msgData, &m)
 
 	return tmpl.ExecuteToString(exec.NewContext(m))
 }
@@ -206,19 +221,18 @@ func (p *VLM) ApplyJinjaTemplate(param ChatTemplateParam) (string, error) {
 // Returns two channels: one for receiving tokens and one for errors
 // Note: Currently does not support parallel streaming due to global channel usage
 func (p *VLM) GenerateStream(ctx context.Context, prompt string, images []string, audios []string) (<-chan string, <-chan error) {
+	slog.Debug("GenerateStream called", "prompt", prompt, "images", images, "audios", audios)
+
 	cPrompt := C.CString(prompt)
 
-	// check parallel call
 	if streamTokenCh != nil {
 		panic("not support GenerateStream in parallel")
 	}
-	// Create channels for streaming output
 	stream := make(chan string, 10)
 	err := make(chan error, 1)
 	streamTokenCh = stream
 	streamTokenCtx = ctx
 
-	// Start streaming in a separate goroutine
 	go func() {
 		defer func() {
 			streamTokenCh = nil
@@ -230,7 +244,6 @@ func (p *VLM) GenerateStream(ctx context.Context, prompt string, images []string
 
 		var pinnner runtime.Pinner
 		defer pinnner.Unpin()
-		// Configure generation parameters
 		config := C.ml_GenerationConfig{}
 		config.max_tokens = 2048
 		if len(images) > 0 {
@@ -256,7 +269,6 @@ func (p *VLM) GenerateStream(ctx context.Context, prompt string, images []string
 			pinnner.Pin(&cAudios[0])
 		}
 
-		// Start streaming generation
 		resLen := C.ml_vlm_generate_stream(p.ptr, cPrompt, &config,
 			(C.ml_llm_token_callback)(C.go_generate_stream_on_token),
 			nil, nil)

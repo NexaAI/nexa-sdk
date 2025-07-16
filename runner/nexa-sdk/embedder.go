@@ -8,6 +8,8 @@ import "C"
 
 import (
 	"unsafe"
+
+	"log/slog"
 )
 
 type Embedder struct {
@@ -15,6 +17,8 @@ type Embedder struct {
 }
 
 func NewEmbedder(model string, tokenizer *string, devices *string) (*Embedder, error) {
+	slog.Debug("NewEmbedder called", "model", model, "tokenizer", tokenizer, "devices", devices)
+
 	cModel := C.CString(model)
 	defer C.free(unsafe.Pointer(cModel))
 
@@ -22,20 +26,24 @@ func NewEmbedder(model string, tokenizer *string, devices *string) (*Embedder, e
 	if ptr == nil {
 		return nil, SDKErrorModelLoad
 	}
-
 	return &Embedder{ptr: ptr}, nil
 }
 
 func (p *Embedder) Destroy() {
+	slog.Debug("Destroy called", "ptr", p.ptr)
+
 	C.ml_embedder_destroy(p.ptr)
 	p.ptr = nil
 }
 
 // Reset implements service.keepable.
 func (p *Embedder) Reset() {
+	slog.Debug("Reset called", "ptr", p.ptr)
 }
 
 func (p *Embedder) Embed(texts []string) ([]float32, error) {
+	slog.Debug("Embed called", "texts", texts)
+
 	cTexts := make([]*C.char, len(texts))
 	for i, text := range texts {
 		cText := &cTexts[i]
@@ -59,6 +67,8 @@ func (p *Embedder) Embed(texts []string) ([]float32, error) {
 
 // GetProfilingData retrieves performance metrics from the Embedder instance
 func (p *Embedder) GetProfilingData() (*ProfilingData, error) {
+	slog.Debug("GetProfilingData called")
+
 	var cData C.ml_ProfilingData
 	res := C.ml_embedder_get_profiling_data(p.ptr, &cData)
 	if res < 0 {
