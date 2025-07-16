@@ -49,7 +49,7 @@ func infer() *cobra.Command {
 	inferCmd.Flags().StringSliceVarP(&prompt, "prompt", "p", nil, "[embedder|tts] pass prompt")
 	inferCmd.Flags().StringVarP(&query, "query", "q", "", "[reranker] query")
 	inferCmd.Flags().StringSliceVarP(&document, "document", "d", nil, "[reranker] documents")
-	inferCmd.Flags().StringVarP(&input, "input", "i", "", "[asr] input file (audio for asr")
+	inferCmd.Flags().StringVarP(&input, "input", "i", "", "[asr] input file (audio for asr)")
 	inferCmd.Flags().StringVarP(&output, "output", "o", "", "[tts] output file (audio for tts)")
 	inferCmd.Flags().StringVarP(&voiceIdentifier, "voice-identifier", "", "", "[tts] voice identifier")
 	inferCmd.Flags().Float64VarP(&speechSpeed, "speech-speed", "", 1.0, "[tts] speech speed (1.0 = normal)")
