@@ -44,6 +44,7 @@ type TTS struct {
 // NewTTS creates a new TTS instance with the specified model and vocoder
 func NewTTS(model string, vocoder *string, devices *string) (*TTS, error) {
 	slog.Debug("NewTTS called", "model", model, "vocoder", vocoder, "devices", devices)
+
 	cModel := C.CString(model)
 	defer C.free(unsafe.Pointer(cModel))
 
@@ -63,6 +64,7 @@ func NewTTS(model string, vocoder *string, devices *string) (*TTS, error) {
 // Destroy frees the memory allocated for the TTS instance
 func (p *TTS) Destroy() {
 	slog.Debug("Destroy called", "ptr", p.ptr)
+
 	C.ml_tts_destroy(p.ptr)
 	p.ptr = nil
 }
@@ -70,12 +72,14 @@ func (p *TTS) Destroy() {
 // Reset clears the TTS's internal state
 func (p *TTS) Reset() {
 	slog.Debug("Reset called", "ptr", p.ptr)
+
 	// Reset TTS state if needed
 }
 
 // LoadModel loads TTS model from path with optional extra configuration data
 func (p *TTS) LoadModel(modelPath string, extraData unsafe.Pointer) error {
 	slog.Debug("LoadModel called", "modelPath", modelPath)
+
 	cPath := C.CString(modelPath)
 	defer C.free(unsafe.Pointer(cPath))
 
@@ -89,12 +93,14 @@ func (p *TTS) LoadModel(modelPath string, extraData unsafe.Pointer) error {
 // Close cleanup TTS resources
 func (p *TTS) Close() {
 	slog.Debug("Close called", "ptr", p.ptr)
+
 	C.ml_tts_close(p.ptr)
 }
 
 // SetSampler configures TTS sampling parameters
 func (p *TTS) SetSampler(config *TTSSamplerConfig) {
 	slog.Debug("SetSampler called", "config", config)
+
 	if config == nil {
 		return
 	}
@@ -111,12 +117,14 @@ func (p *TTS) SetSampler(config *TTSSamplerConfig) {
 // ResetSampler resets TTS sampling parameters to default values
 func (p *TTS) ResetSampler() {
 	slog.Debug("ResetSampler called", "ptr", p.ptr)
+
 	C.ml_tts_reset_sampler(p.ptr)
 }
 
 // Synthesize converts text to speech audio
 func (p *TTS) Synthesize(text string, config *TTSConfig) (*TTSResult, error) {
 	slog.Debug("Synthesize called", "text", text, "config", config)
+
 	cText := C.CString(text)
 	defer C.free(unsafe.Pointer(cText))
 
@@ -162,6 +170,7 @@ func (p *TTS) Synthesize(text string, config *TTSConfig) (*TTSResult, error) {
 // SynthesizeBatch processes multiple texts in batch mode
 func (p *TTS) SynthesizeBatch(texts []string, config *TTSConfig) ([]*TTSResult, error) {
 	slog.Debug("SynthesizeBatch called", "texts", texts, "config", config)
+
 	cTexts := make([]*C.char, len(texts))
 	for i, text := range texts {
 		cText := &cTexts[i]
@@ -216,6 +225,7 @@ func (p *TTS) SynthesizeBatch(texts []string, config *TTSConfig) ([]*TTSResult, 
 // SaveCache saves TTS cache state to file
 func (p *TTS) SaveCache(path string) error {
 	slog.Debug("SaveCache called", "path", path)
+
 	cPath := C.CString(path)
 	defer C.free(unsafe.Pointer(cPath))
 
@@ -226,6 +236,7 @@ func (p *TTS) SaveCache(path string) error {
 // LoadCache loads TTS cache state from file
 func (p *TTS) LoadCache(path string) error {
 	slog.Debug("LoadCache called", "path", path)
+
 	cPath := C.CString(path)
 	defer C.free(unsafe.Pointer(cPath))
 
@@ -236,6 +247,7 @@ func (p *TTS) LoadCache(path string) error {
 // ListAvailableVoices returns a list of available voices for TTS
 func (p *TTS) ListAvailableVoices() ([]string, error) {
 	slog.Debug("ListAvailableVoices called")
+
 	var count C.int32_t
 	cVoices := C.ml_tts_list_available_voices(p.ptr, &count)
 	if cVoices == nil {
@@ -254,6 +266,7 @@ func (p *TTS) ListAvailableVoices() ([]string, error) {
 // GetProfilingData retrieves performance metrics from the TTS instance
 func (p *TTS) GetProfilingData() (*ProfilingData, error) {
 	slog.Debug("GetProfilingData called")
+
 	// Note: TTS doesn't have profiling data in the C API
 	// Return empty profiling data for consistency
 	return &ProfilingData{}, nil
@@ -262,6 +275,7 @@ func (p *TTS) GetProfilingData() (*ProfilingData, error) {
 // PrintResult prints TTS result information to standard output for debugging
 func (result *TTSResult) PrintResult() {
 	slog.Debug("PrintResult called", "result", result)
+
 	if result == nil {
 		return
 	}

@@ -59,6 +59,7 @@ type LLM struct {
 // NewLLM creates a new LLM instance with the specified model and configuration
 func NewLLM(model string, tokenizer *string, ctxLen int32, devices *string) (*LLM, error) {
 	slog.Debug("NewLLM called", "model", model, "tokenizer", tokenizer, "ctxLen", ctxLen, "devices", devices)
+
 	cModel := C.CString(model)
 	defer C.free(unsafe.Pointer(cModel))
 
@@ -72,6 +73,7 @@ func NewLLM(model string, tokenizer *string, ctxLen int32, devices *string) (*LL
 // Destroy frees the memory allocated for the LLM instance
 func (p *LLM) Destroy() {
 	slog.Debug("Destroy called", "ptr", p.ptr)
+
 	C.ml_llm_destroy(p.ptr)
 	p.ptr = nil
 }
@@ -79,6 +81,7 @@ func (p *LLM) Destroy() {
 // Reset clears the LLM's internal state and context
 func (p *LLM) Reset() {
 	slog.Debug("Reset called", "ptr", p.ptr)
+
 	C.ml_llm_reset(p.ptr)
 }
 
@@ -103,6 +106,7 @@ func (p *LLM) Encode(msg string) ([]int32, error) {
 // Decode converts token IDs back into text using the model's tokenizer
 func (p *LLM) Decode(ids []int32) (string, error) {
 	slog.Debug("Decode called", "ids", ids)
+
 	var res *C.char
 	resLen := C.ml_llm_decode(
 		p.ptr,
@@ -120,6 +124,7 @@ func (p *LLM) Decode(ids []int32) (string, error) {
 // SaveKVCache saves the model's key-value cache to disk for later reuse
 func (p *LLM) SaveKVCache(path string) error {
 	slog.Debug("SaveKVCache called", "path", path)
+
 	cPath := C.CString(path)
 	defer C.free(unsafe.Pointer(cPath))
 
@@ -133,6 +138,7 @@ func (p *LLM) SaveKVCache(path string) error {
 // LoadKVCache loads a previously saved key-value cache from disk
 func (p *LLM) LoadKVCache(path string) error {
 	slog.Debug("LoadKVCache called", "path", path)
+
 	cPath := C.CString(path)
 	defer C.free(unsafe.Pointer(cPath))
 
@@ -146,6 +152,7 @@ func (p *LLM) LoadKVCache(path string) error {
 // Generate produces text completion for the given prompt
 func (p *LLM) Generate(prompt string) (string, error) {
 	slog.Debug("Generate called", "prompt", prompt)
+
 	cPrompt := C.CString(prompt)
 	defer C.free(unsafe.Pointer(cPrompt))
 
@@ -165,6 +172,7 @@ func (p *LLM) Generate(prompt string) (string, error) {
 // GetChatTemplate retrieves the chat template for formatting conversations
 func (p *LLM) GetChatTemplate(name *string) (string, error) {
 	slog.Debug("GetChatTemplate called", "name", name)
+
 	var cName *C.char
 	if name != nil {
 		cName = C.CString(*name)
@@ -183,6 +191,7 @@ func (p *LLM) GetChatTemplate(name *string) (string, error) {
 // ApplyChatTemplate formats chat messages using the model's chat template
 func (p *LLM) ApplyChatTemplate(msgs []ChatMessage) (string, error) {
 	slog.Debug("ApplyChatTemplate called", "msgs", msgs)
+
 	cMsgs := make([]C.ml_ChatMessage, len(msgs))
 
 	for i, msg := range msgs {
@@ -206,6 +215,7 @@ func (p *LLM) ApplyChatTemplate(msgs []ChatMessage) (string, error) {
 // ApplyChatTemplate formats chat messages using the model's chat template
 func (p *LLM) ApplyJinjaTemplate(param ChatTemplateParam) (string, error) {
 	slog.Debug("ApplyJinjaTemplate called", "param", param)
+
 	chatTmpl, e := p.GetChatTemplate(nil)
 	if e != nil {
 		return "", e

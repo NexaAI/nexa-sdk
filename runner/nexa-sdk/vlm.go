@@ -27,6 +27,7 @@ type VLM struct {
 // GetProfilingData retrieves performance metrics from the VLM instance
 func (p *VLM) GetProfilingData() (*ProfilingData, error) {
 	slog.Debug("GetProfilingData called")
+
 	var cData C.ml_ProfilingData
 	res := C.ml_vlm_get_profiling_data(p.ptr, &cData)
 	if res < 0 {
@@ -58,6 +59,7 @@ func NewVLM(model string, tokenizer *string, ctxLen int32, devices *string) (*VL
 // Destroy frees the memory allocated for the VLM instance
 func (p *VLM) Destroy() {
 	slog.Debug("Destroy called", "ptr", p.ptr)
+
 	C.ml_vlm_destroy(p.ptr)
 	p.ptr = nil
 }
@@ -65,6 +67,7 @@ func (p *VLM) Destroy() {
 // Reset clears the VLM's internal state and context
 func (p *VLM) Reset() {
 	slog.Debug("Reset called", "ptr", p.ptr)
+
 	C.ml_vlm_reset(p.ptr)
 }
 
@@ -89,6 +92,7 @@ func (p *VLM) Encode(msg string) ([]int32, error) {
 // Decode converts token IDs back into text using the model's tokenizer
 func (p *VLM) Decode(ids []int32) (string, error) {
 	slog.Debug("Decode called", "ids", ids)
+
 	var res *C.char
 	resLen := C.ml_vlm_decode(
 		p.ptr,
@@ -106,6 +110,7 @@ func (p *VLM) Decode(ids []int32) (string, error) {
 // Generate produces text completion for the given prompt
 func (p *VLM) Generate(prompt string, images []string, audios []string) (string, error) {
 	slog.Debug("Generate called", "prompt", prompt, "images", images, "audios", audios)
+
 	cPrompt := C.CString(prompt)
 	defer C.free(unsafe.Pointer(cPrompt))
 
@@ -150,6 +155,7 @@ func (p *VLM) Generate(prompt string, images []string, audios []string) (string,
 // GetChatTemplate retrieves the chat template for formatting conversations
 func (p *VLM) GetChatTemplate(name *string) (string, error) {
 	slog.Debug("GetChatTemplate called", "name", name)
+
 	var cName *C.char
 	if name != nil {
 		cName = C.CString(*name)
@@ -168,6 +174,7 @@ func (p *VLM) GetChatTemplate(name *string) (string, error) {
 // ApplyChatTemplate formats chat messages using the model's chat template
 func (p *VLM) ApplyChatTemplate(msgs []ChatMessage) (string, error) {
 	slog.Debug("ApplyChatTemplate called", "msgs", msgs)
+
 	cMsgs := make([]C.ml_ChatMessage, len(msgs))
 
 	for i, msg := range msgs {
@@ -191,6 +198,7 @@ func (p *VLM) ApplyChatTemplate(msgs []ChatMessage) (string, error) {
 // ApplyChatTemplate formats chat messages using the model's chat template
 func (p *VLM) ApplyJinjaTemplate(param ChatTemplateParam) (string, error) {
 	slog.Debug("ApplyJinjaTemplate called", "param", param)
+
 	chatTmpl, e := p.GetChatTemplate(nil)
 	if e != nil {
 		return "", e
@@ -212,6 +220,7 @@ func (p *VLM) ApplyJinjaTemplate(param ChatTemplateParam) (string, error) {
 // Note: Currently does not support parallel streaming due to global channel usage
 func (p *VLM) GenerateStream(ctx context.Context, prompt string, images []string, audios []string) (<-chan string, <-chan error) {
 	slog.Debug("GenerateStream called", "prompt", prompt, "images", images, "audios", audios)
+
 	cPrompt := C.CString(prompt)
 
 	if streamTokenCh != nil {
