@@ -8,16 +8,11 @@ import (
 	"strconv"
 
 	"github.com/bytedance/sonic"
-	"github.com/rs/zerolog"
 	"resty.dev/v3"
 
 	"github.com/NexaAI/nexa-sdk/internal/config"
 	"github.com/NexaAI/nexa-sdk/internal/types"
 )
-
-func init() {
-	zerolog.SetGlobalLevel(zerolog.Disabled)
-}
 
 const HF_ENDPOINT = "https://huggingface.co"
 
