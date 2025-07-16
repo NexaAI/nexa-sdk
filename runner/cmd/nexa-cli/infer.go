@@ -302,7 +302,7 @@ func isMLX(model string) bool {
 	encodedName := pathParts[len(pathParts)-2]
 	nameBytes, _ := base64.StdEncoding.DecodeString(encodedName)
 	name := strings.ToLower(string(nameBytes))
-	isMLX := strings.Contains(name, "mlx") || strings.Contains(name, "aml")
+	isMLX := strings.Contains(name, "mlx")
 	return isMLX
 }
 
