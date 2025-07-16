@@ -10,13 +10,13 @@ import "C"
 
 import (
 	"context"
+	"log/slog"
 	"runtime"
 	"unsafe"
 
 	"github.com/bytedance/sonic"
 	"github.com/nikolalohinski/gonja/v2"
 	"github.com/nikolalohinski/gonja/v2/exec"
-	"golang.org/x/exp/slog"
 )
 
 // VLM wraps the C library VLM structure and provides Go interface
@@ -40,6 +40,7 @@ func (p *VLM) GetProfilingData() (*ProfilingData, error) {
 // NewLLM creates a new VLM instance with the specified model and configuration
 func NewVLM(model string, tokenizer *string, ctxLen int32, devices *string) (*VLM, error) {
 	slog.Debug("NewVLM called", "model", model, "tokenizer", tokenizer, "ctxLen", ctxLen, "devices", devices)
+
 	cModel := C.CString(model)
 	defer C.free(unsafe.Pointer(cModel))
 
@@ -74,6 +75,7 @@ func (p *VLM) Reset() {
 // Encode converts a text message into token IDs using the model's tokenizer
 func (p *VLM) Encode(msg string) ([]int32, error) {
 	slog.Debug("Encode called", "msg", msg)
+
 	cMsg := C.CString(msg)
 	defer C.free(unsafe.Pointer(cMsg))
 

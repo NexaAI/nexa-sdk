@@ -9,7 +9,7 @@ import "C"
 import (
 	"unsafe"
 
-	"golang.org/x/exp/slog"
+	"log/slog"
 )
 
 type Reranker struct {

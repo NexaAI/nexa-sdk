@@ -88,6 +88,7 @@ func (p *LLM) Reset() {
 // Encode converts a text message into token IDs using the model's tokenizer
 func (p *LLM) Encode(msg string) ([]int32, error) {
 	slog.Debug("Encode called", "msg", msg)
+
 	cMsg := C.CString(msg)
 	defer C.free(unsafe.Pointer(cMsg))
 
@@ -267,6 +268,7 @@ func go_generate_stream_on_token(token *C.char, _ *C.void) C.bool {
 // Note: Currently does not support parallel streaming due to global channel usage
 func (p *LLM) GenerateStream(ctx context.Context, prompt string) (<-chan string, <-chan error) {
 	slog.Debug("GenerateStream called", "prompt", prompt)
+
 	cPrompt := C.CString(prompt)
 
 	config := C.ml_GenerationConfig{}
@@ -302,6 +304,7 @@ func (p *LLM) GenerateStream(ctx context.Context, prompt string) (<-chan string,
 // GetProfilingData retrieves performance metrics from the LLM instance
 func (p *LLM) GetProfilingData() (*ProfilingData, error) {
 	slog.Debug("GetProfilingData called")
+
 	var cData C.ml_ProfilingData
 	res := C.ml_llm_get_profiling_data(p.ptr, &cData)
 	if res < 0 {
