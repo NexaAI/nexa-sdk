@@ -31,7 +31,7 @@ func init() {
 	viper.SetDefault("keepalive", 300)          // Default 5-minute timeout
 	viper.SetDefault("hftoken", "")             // Default empty token
 
-	viper.SetDefault("log", "warn") // Default log level
+	viper.SetDefault("log", "info") // Default log level
 }
 
 // get initializes the configuration by reading from environment variables.

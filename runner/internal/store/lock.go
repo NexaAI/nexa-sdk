@@ -1,12 +1,15 @@
 package store
 
 import (
+	"log/slog"
 	"path"
 
 	"github.com/gofrs/flock"
 )
 
 func (s *Store) LockModel(modelName string) error {
+	slog.Debug("LockModel", "modelName", modelName)
+
 	if modelName == "" {
 		return ErrModelNameEmpty
 	}
@@ -30,6 +33,8 @@ func (s *Store) LockModel(modelName string) error {
 }
 
 func (s *Store) UnlockModel(modelName string) error {
+	slog.Debug("UnLockModel", "modelName", modelName)
+
 	if modelName == "" {
 		return nil
 	}

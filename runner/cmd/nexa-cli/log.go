@@ -33,6 +33,4 @@ func applyLogLevel() {
 	case LogLevelError:
 		slog.SetLogLoggerLevel(slog.LevelError)
 	}
-
-	slog.Error("set log level", "level", config.Get().Log)
 }

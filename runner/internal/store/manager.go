@@ -2,7 +2,7 @@ package store
 
 import (
 	"encoding/base64"
-	"fmt"
+	"log/slog"
 	"os"
 	"path"
 	"sync"
@@ -98,25 +98,21 @@ func (s *Store) cleanCorruptedDirectories() {
 		if s.isCorruptedModelDirectory(dirName, dirPath) {
 			modelName, err := base64.URLEncoding.DecodeString(dirName)
 			if err != nil {
-				fmt.Printf("Cleaning corrupted model directory (invalid name): %s\n", dirName)
+				slog.Warn("Cleaning invalid name model directory", "dirName", dirName)
 				if err := os.RemoveAll(dirPath); err != nil {
-					fmt.Printf("Failed to remove corrupted directory %s: %v\n", dirName, err)
+					slog.Warn("Failed to remove corrupted directory", "dirname", dirName, "err", err)
 				}
 				continue
 			}
 
 			if err := s.LockModel(string(modelName)); err != nil {
-				if err == ErrModelLocked {
-					fmt.Printf("Skipping cleanup of directory %s: model is being accessed by another process\n", dirName)
-					continue
-				}
-				fmt.Printf("Skipping cleanup of directory %s due to lock error: %v\n", dirName, err)
+				slog.Warn("Skipping cleanup of directory", "dirName", dirName, "err", err)
 				continue
 			}
 
-			fmt.Printf("Cleaning corrupted model directory: %s\n", dirName)
+			slog.Info("Cleaning corrupted model directory", "dirname", dirName)
 			if err := os.RemoveAll(dirPath); err != nil {
-				fmt.Printf("Failed to remove corrupted directory %s: %v\n", dirName, err)
+				slog.Error("Failed to remove corrupted directory", "dirName", dirName, "err", err)
 			}
 
 			s.UnlockModel(string(modelName))
