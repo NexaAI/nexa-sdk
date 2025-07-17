@@ -96,6 +96,8 @@ func detectBackend() {
 	}
 	if len(backends) == 0 {
 		panic("no backend found")
+	} else {
+		backend = backends[0]
 	}
 
 	for i := range len(os.Args) {
@@ -113,7 +115,7 @@ func detectBackend() {
 		}
 	}
 
-	// TOOD: avoid this decision for each inference, save it into config file and update each time when make download
+	// TODO: avoid this decision for each inference, save it into config file and update each time when make download
 	// Prefer backends based on OS priority
 	if runtime.GOOS == "windows" {
 		// Windows: cuda > vulkan > cpu
