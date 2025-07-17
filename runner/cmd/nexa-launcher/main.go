@@ -82,7 +82,6 @@ func detectBackend() {
 	for _, dir := range dirs {
 		if !dir.IsDir() {
 			continue
-
 		}
 
 		bridgePath := filepath.Join(libDir, dir.Name(), libName)
@@ -114,8 +113,29 @@ func detectBackend() {
 		}
 	}
 
-	// detect mlx
-	backend = backends[0]
+	// TOOD: avoid this decision for each inference, save it into config file and update each time when make download
+	// Prefer backends based on OS priority
+	if runtime.GOOS == "windows" {
+		// Windows: cuda > vulkan > cpu
+		priorities := []string{"llama-cpp-cuda", "llama-cpp-vulkan", "llama-cpp-cpu"}
+		for _, priority := range priorities {
+			if slices.Contains(backends, priority) {
+				backend = priority
+				break
+			}
+		}
+	} else if runtime.GOOS == "linux" {
+		// Linux: cuda > cpu
+		priorities := []string{"llama-cpp-cuda", "llama-cpp-cpu"}
+		for _, priority := range priorities {
+			if slices.Contains(backends, priority) {
+				backend = priority
+				break
+			}
+		}
+	}
+
+	// Special handling for MLX models
 	if len(os.Args) > 1 {
 		for _, arg := range os.Args[1:] {
 			if strings.Contains(strings.ToLower(arg), "mlx") {
