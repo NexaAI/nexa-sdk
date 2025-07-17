@@ -142,7 +142,6 @@ func main() {
 	}()
 
 	if err := cmd.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "run %s failed: %v\n", binPath, err)
 		os.Exit(1)
 	}
 }
