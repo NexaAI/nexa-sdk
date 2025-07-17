@@ -10,6 +10,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/charmbracelet/huh"
+	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 
@@ -73,12 +75,27 @@ func infer() *cobra.Command {
 			return
 		}
 
-		// TODO: choose quant
 		var modelFile string
-		for _, v := range manifest.ModelFile {
+		var options []huh.Option[string]
+		for k, v := range manifest.ModelFile {
 			if v.Downloaded {
-				modelFile = v.Name
+				options = append(options, huh.NewOption(
+					fmt.Sprintf("%-10s [%7s]", k, humanize.IBytes(uint64(v.Size))),
+					v.Name,
+				))
 			}
+		}
+		if len(options) >= 2 {
+			if err = huh.NewSelect[string]().
+				Title("Select a quant from local folder").
+				Options(options...).
+				Value(&modelFile).
+				Run(); err != nil {
+				fmt.Println(text.FgRed.Sprintf("select error: %s", err))
+				return
+			}
+		} else {
+			modelFile = options[0].Value
 		}
 
 		nexa_sdk.Init()

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"os/signal"
 	"regexp"
@@ -709,17 +708,5 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 		}
 	}
 
-	slog.Debug("ModelManifest")
-
-	slog.Debug("ModelFile")
-	for q, m := range res.ModelFile {
-		slog.Debug("", "quant", q, "model", m)
-	}
-	slog.Debug("MMProjFile")
-	slog.Debug("", "MMProjFile", res.MMProjFile)
-	slog.Debug("ExtraFiles")
-	for _, m := range res.ExtraFiles {
-		slog.Debug("", "model", m)
-	}
 	return
 }

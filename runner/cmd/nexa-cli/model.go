@@ -31,10 +31,22 @@ func pull() *cobra.Command {
 
 		s := store.Get()
 
-		if _, err := s.GetManifest(name); err == nil {
-			fmt.Println(text.FgBlue.Sprint("Already downloaded, if you want to use another quant, please manual remove first"))
-			return
+		mf, err := s.GetManifest(name)
+		if err == nil {
+			downloaded := true
+			for _, f := range mf.ModelFile {
+				if !f.Downloaded {
+					downloaded = false
+					break
+				}
+			}
+
+			if downloaded {
+				fmt.Println(text.FgBlue.Sprint("Already downloaded all quant"))
+				return
+			}
 		}
+
 		spin := render.NewSpinner("download manifest from: " + name)
 		spin.Start()
 		files, err := s.HFModelInfo(context.TODO(), name)
@@ -44,23 +56,27 @@ func pull() *cobra.Command {
 			return
 		}
 
-		manifest, err := chooseFiles(name, files)
-		if err != nil {
-			return
-		}
+		if mf.Name != "" {
+			panic("not implement")
+		} else {
+			manifest, err := chooseFiles(name, files)
+			if err != nil {
+				return
+			}
 
-		// TODO: replace with go-pretty
-		pgCh, errCh := s.Pull(context.TODO(), manifest)
-		bar := render.NewProgressBar(manifest.GetSize(), "downloading")
+			// TODO: replace with go-pretty
+			pgCh, errCh := s.Pull(context.TODO(), manifest)
+			bar := render.NewProgressBar(manifest.GetSize(), "downloading")
 
-		for pg := range pgCh {
-			bar.Set(pg.TotalDownloaded)
-		}
-		bar.Exit()
+			for pg := range pgCh {
+				bar.Set(pg.TotalDownloaded)
+			}
+			bar.Exit()
 
-		for err := range errCh {
-			bar.Clear()
-			fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+			for err := range errCh {
+				bar.Clear()
+				fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+			}
 		}
 	}
 
