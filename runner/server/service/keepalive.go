@@ -114,7 +114,13 @@ func keepAliveGet[T any](name string, param types.ModelParam) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile)
+
+	// TODO: select one of quant
+	var modelfile string
+	for _, v := range manifest.ModelFile {
+		modelfile = s.ModelfilePath(manifest.Name, v.Name)
+		break
+	}
 
 	var t keepable
 	var e error
@@ -122,10 +128,10 @@ func keepAliveGet[T any](name string, param types.ModelParam) (any, error) {
 	case reflect.TypeFor[nexa_sdk.LLM]():
 		t, e = nexa_sdk.NewLLM(modelfile, nil, param.CtxLen, param.Device)
 	case reflect.TypeFor[nexa_sdk.VLM]():
-		if manifest.MMProjFile == "" {
+		if manifest.MMProjFile.Name == "" {
 			return nil, fmt.Errorf("missing mmproj file")
 		} else {
-			mmproj := s.ModelfilePath(manifest.Name, manifest.MMProjFile)
+			mmproj := s.ModelfilePath(manifest.Name, manifest.MMProjFile.Name)
 			t, e = nexa_sdk.NewVLM(modelfile, &mmproj, param.CtxLen, param.Device)
 		}
 	case reflect.TypeFor[nexa_sdk.Embedder]():

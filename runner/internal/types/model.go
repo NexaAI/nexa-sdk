@@ -12,14 +12,34 @@ const (
 	ModelTypeASR      = "asr"
 )
 
-type ModelManifest struct {
-	Name  string
-	Size  int64
-	Quant string
+type ModeFileInfo struct {
+	Name       string
+	Downloaded bool
+	Size       int64
+}
 
-	ModelFile  string
-	MMProjFile string
-	ExtraFiles []string
+type ModelManifest struct {
+	Name string
+
+	ModelFile  map[string]ModeFileInfo // quant -> modelfile
+	MMProjFile ModeFileInfo
+	ExtraFiles []ModeFileInfo
+}
+
+func (m ModelManifest) GetSize() int64 {
+	var count int64
+
+	for _, v := range m.ModelFile {
+		if v.Downloaded {
+			count += v.Size
+		}
+	}
+	count += m.MMProjFile.Size
+	for _, v := range m.ExtraFiles {
+		count += v.Size
+	}
+
+	return count
 }
 
 type ModelParam struct {

@@ -129,11 +129,21 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 
 		// filter download file
 		var needs []string
-		needs = append(needs, mf.ModelFile)
-		if mf.MMProjFile != "" {
-			needs = append(needs, mf.MMProjFile)
+		for _, f := range mf.ModelFile {
+			if f.Downloaded {
+				needs = append(needs, f.Name)
+			}
 		}
-		needs = append(needs, mf.ExtraFiles...)
+		if mf.MMProjFile.Name != "" {
+			if mf.MMProjFile.Downloaded {
+				needs = append(needs, mf.MMProjFile.Name)
+			}
+		}
+		for _, f := range mf.ExtraFiles {
+			if f.Downloaded {
+				needs = append(needs, f.Name)
+			}
+		}
 
 		// Create model directory structure
 		encName := s.encodeName(mf.Name)
@@ -144,7 +154,7 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 		}
 
 		// Create modelfile for storing downloaded content
-		downloader := NewHFDownloader(mf.Size, infoC)
+		downloader := NewHFDownloader(mf.GetSize(), infoC)
 		for _, file := range needs {
 			outputPath := path.Join(s.home, "models", encName, file)
 			downloadURL := fmt.Sprintf("%s/%s/resolve/main/%s?download=true", HF_ENDPOINT, mf.Name, file)
@@ -158,8 +168,6 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 
 		model := types.ModelManifest{
 			Name:       mf.Name,
-			Size:       mf.Size,
-			Quant:      mf.Quant,
 			ModelFile:  mf.ModelFile,
 			MMProjFile: mf.MMProjFile,
 			ExtraFiles: mf.ExtraFiles,

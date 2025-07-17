@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -50,7 +51,7 @@ func pull() *cobra.Command {
 
 		// TODO: replace with go-pretty
 		pgCh, errCh := s.Pull(context.TODO(), manifest)
-		bar := render.NewProgressBar(manifest.Size, "downloading")
+		bar := render.NewProgressBar(manifest.GetSize(), "downloading")
 
 		for pg := range pgCh {
 			bar.Set(pg.TotalDownloaded)
@@ -134,7 +135,13 @@ func list() *cobra.Command {
 		tw.SetStyle(table.StyleLight)
 		tw.AppendHeader(table.Row{"NAME", "QUANT", "SIZE"})
 		for _, model := range models {
-			tw.AppendRow(table.Row{model.Name, model.Quant, humanize.IBytes(uint64(model.Size))})
+			var quants []string
+			for k := range model.ModelFile {
+				if model.ModelFile[k].Downloaded {
+					quants = append(quants, k)
+				}
+			}
+			tw.AppendRow(table.Row{model.Name, strings.Join(quants, ","), humanize.IBytes(uint64(model.GetSize()))})
 		}
 		tw.Render()
 	}

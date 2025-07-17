@@ -68,20 +68,27 @@ func infer() *cobra.Command {
 			// check agin
 			manifest, err = s.GetManifest(model)
 		}
-
 		if err != nil {
 			fmt.Println(text.FgRed.Sprintf("parse manifest error: %s", err))
 			return
 		}
 
+		// TODO: choose quant
+		var modelFile string
+		for _, v := range manifest.ModelFile {
+			if v.Downloaded {
+				modelFile = v.Name
+			}
+		}
+
 		nexa_sdk.Init()
 		defer nexa_sdk.DeInit()
 
-		modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile)
+		modelfile := s.ModelfilePath(manifest.Name, modelFile)
 
 		switch modelType {
 		case types.ModelTypeLLM:
-			if manifest.MMProjFile == "" && !isContainPreprocessor(manifest) {
+			if !isVLM(manifest) {
 				if len(tool) == 0 {
 					inferLLM(modelfile, nil)
 					return
@@ -91,16 +98,16 @@ func infer() *cobra.Command {
 			} else {
 				// compat vlm
 				var t *string
-				if manifest.MMProjFile != "" {
-					tokenizer := s.ModelfilePath(manifest.Name, manifest.MMProjFile)
+				if manifest.MMProjFile.Name != "" {
+					tokenizer := s.ModelfilePath(manifest.Name, manifest.MMProjFile.Name)
 					t = &tokenizer
 				}
 				inferVLM(modelfile, t)
 			}
 		case types.ModelTypeVLM:
 			var t *string
-			if manifest.MMProjFile != "" {
-				tokenizer := s.ModelfilePath(manifest.Name, manifest.MMProjFile)
+			if manifest.MMProjFile.Name != "" {
+				tokenizer := s.ModelfilePath(manifest.Name, manifest.MMProjFile.Name)
 				t = &tokenizer
 			}
 			inferVLM(modelfile, t)
@@ -120,9 +127,12 @@ func infer() *cobra.Command {
 }
 
 // isContainPreprocessor checks if the model has a preprocess.json file
-func isContainPreprocessor(m *types.ModelManifest) bool {
+func isVLM(m *types.ModelManifest) bool {
+	if m.MMProjFile.Name != "" {
+		return true
+	}
 	for _, file := range m.ExtraFiles {
-		if strings.Contains(file, "preprocessor") {
+		if strings.Contains(file.Name, "preprocessor") {
 			return true
 		}
 	}
