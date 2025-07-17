@@ -25,7 +25,7 @@ jobs:
 
       - name: Detect Commit Hash
         if: github.event_name == 'workflow_dispatch'
-        run: echo "VERSION=${{ github.sha }}" >> $GITHUB_ENV
+        run: echo "VERSION=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_ENV
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -51,8 +51,104 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nexa-cli_${{ matrix.os }}
-          path: ./build
+          path: build
           include-hidden-files: true
+
+      - name: Prepare file structure for packaging
+        id: prep_files
+        run: |
+          # --- 1. 创建组件的根目录 ---
+          APP_BASE="staging/Applications"
+          APP_NAME="Nexa CLI"
+          APP_PATH="${APP_BASE}/${APP_NAME}.app"     
+          mkdir -p "${APP_PATH}/Contents/MacOS"
+          mkdir -p "${APP_PATH}/Contents/Resources"
+          COMMAND="nexa -h"
+
+          # --- 2. 移动核心文件 ---
+          mv build/nexa build/nexa-cli build/lib "${APP_PATH}/Contents/Resources/"
+          cp release/scripts/uninstall.sh "${APP_PATH}/Contents/Resources/"
+          chmod +x "${APP_PATH}/Contents/Resources/uninstall.sh"
+
+          # --- 3. 创建并移动启动器 ---
+          cp release/nexa-icon.icns "${APP_PATH}/Contents/Resources/nexa-icon.icns"
+
+          # # 创建 Info.plist 文件
+          cat << EOF > "${APP_PATH}/Contents/Info.plist"
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleName</key>
+              <string>${APP_NAME}</string>
+              <key>CFBundleDisplayName</key>
+              <string>${APP_NAME}</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.nexaai.nexa-cli</string>
+              <key>CFBundleVersion</key>
+              <string>${{ env.VERSION }}</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleExecutable</key>
+              <string>launcher.scpt</string>
+              <key>NSAppleScriptEnabled</key>
+              <true/>
+              <key>CFBundleIconFile</key>
+              <string>nexa-icon</string>
+          </dict>
+          </plist>
+          EOF
+
+          # # create launcher
+          # # Create basic Info.plist structure first
+          # /usr/libexec/PlistBuddy -c "Add :CFBundleName string '${APP_NAME}'" "${APP_PATH}/Contents/Info.plist"
+          # /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string '${APP_NAME}'" "${APP_PATH}/Contents/Info.plist"
+          # /usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string 'com.nexaai.nexa-cli'" "${APP_PATH}/Contents/Info.plist"
+          # /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string '${{ env.VERSION }}'" "${APP_PATH}/Contents/Info.plist"
+          # /usr/libexec/PlistBuddy -c "Add :CFBundlePackageType string 'APPL'" "${APP_PATH}/Contents/Info.plist"
+          # /usr/libexec/PlistBuddy -c "Add :CFBundleExecutable string 'launcher.scpt'" "${APP_PATH}/Contents/Info.plist"
+          # /usr/libexec/PlistBuddy -c "Add :NSAppleScriptEnabled bool true" "${APP_PATH}/Contents/Info.plist"
+          # /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string 'nexa-icon'" "${APP_PATH}/Contents/Info.plist"
+
+          echo "plis created:"
+          cat "${APP_PATH}/Contents/Info.plist"
+
+
+          cat << EOF > "${APP_PATH}/Contents/MacOS/launcher.scpt"
+          #!/usr/bin/osascript
+
+          tell application "Terminal"
+              activate
+              do script "nexa"
+          end tell
+          EOF
+
+          chmod +x "${APP_PATH}/Contents/MacOS/launcher.scpt"
+
+          # --- 4. 准备脚本和资源目录 ---
+          mkdir -p pkg_scripts
+          cp release/scripts/postinstall pkg_scripts/
+          chmod +x pkg_scripts/postinstall
+          # cp release/scripts/background.png pkg_scripts/
+          # touch pkg_scripts/welcome.rtf pkg_scripts/license.rtf
+
+          echo "STAGING_DIR=$(pwd)/staging" >> $GITHUB_OUTPUT
+          echo "SCRIPTS_DIR=$(pwd)/pkg_scripts" >> $GITHUB_OUTPUT
+
+      - name: Build PKG
+        run: |
+          pkgbuild --root "${{ steps.prep_files.outputs.STAGING_DIR }}" \
+                   --scripts "${{ steps.prep_files.outputs.SCRIPTS_DIR }}" \
+                   --identifier "com.nexaai.sdk" \
+                   --version "${{ env.VERSION }}" \
+                   --install-location / \
+                   build/"nexa-cli_${{ matrix.os }}.pkg"
+
+      - name: Upload PKG as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: "nexa-cli_${{ matrix.os }}.pkg"
+          path: build
 
   release-and-update-tap:
     name: Create Release and Update Homebrew Tap

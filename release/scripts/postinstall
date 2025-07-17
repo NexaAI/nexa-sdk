@@ -1,0 +1,13 @@
+#!/bin/sh
+
+echo "Creating symbolic links for Nexa CLI..."
+
+APP_PATH="/Applications/Nexa CLI.app"
+
+chmod +x "${APP_PATH}/Contents/Resources/nexa"
+chmod +x "${APP_PATH}/Contents/Resources/nexa-cli"
+
+ln -sf "${APP_PATH}/Contents/Resources/nexa" "/usr/local/bin/nexa"
+ln -sf "${APP_PATH}/Contents/Resources/nexa-cli" "/usr/local/bin/nexa-cli"
+
+exit 0
