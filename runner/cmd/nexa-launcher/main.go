@@ -141,7 +141,6 @@ func main() {
 		}
 	}()
 
-	if err := cmd.Run(); err != nil {
-		os.Exit(1)
-	}
+	cmd.Run()
+	os.Exit(cmd.ProcessState.ExitCode())
 }
