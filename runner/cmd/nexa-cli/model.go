@@ -56,8 +56,24 @@ func pull() *cobra.Command {
 			return
 		}
 
-		if mf.Name != "" {
-			panic("not implement")
+		if mf != nil {
+			newManifest, err := chooseQuantFiles(*mf)
+			if err != nil {
+				return
+			}
+			// TODO: replace with go-pretty
+			pgCh, errCh := s.PullExtraQuant(context.TODO(), *mf, *newManifest)
+			bar := render.NewProgressBar(newManifest.GetSize()-mf.GetSize(), "downloading")
+
+			for pg := range pgCh {
+				bar.Set(pg.TotalDownloaded)
+			}
+			bar.Exit()
+
+			for err := range errCh {
+				bar.Clear()
+				fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+			}
 		} else {
 			manifest, err := chooseFiles(name, files)
 			if err != nil {

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/bytedance/sonic"
 	"github.com/charmbracelet/huh"
 	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/text"
@@ -358,6 +359,7 @@ func repl(cfg ReplConfig) {
 // =============== file name parse ===============
 
 var fileRegex = regexp.MustCompile(`(?:[a-zA-Z]:)?(?:\./|/|\\)[\S\\ ]+?\.(?i:jpg|jpeg|png|webp|mp3|wav)\b`)
+var partRegex = regexp.MustCompile(`-\d+-of-\d+\.gguf$`)
 
 func parseFiles(prompt string) (string, []string, []string) {
 	files := fileRegex.FindAllString(prompt, -1)
@@ -501,14 +503,13 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 	ggufGroups := make(map[string][]string)
 	// qwen2.5-7b-instruct-q8_0-00003-of-00003.gguf original name is qwen2.5-7b-instruct-q8_0
 	// *d-of-*d like this
-	partRegix := regexp.MustCompile(`-\d+-of-\d+\.gguf$`)
 	for _, file := range files {
 		lower := strings.ToLower(file)
 		if strings.HasSuffix(lower, ".gguf") {
 			if strings.HasPrefix(lower, "mmproj") {
 				mmprojs = append(mmprojs, file)
 			} else {
-				name := partRegix.ReplaceAllString(file, "")
+				name := partRegex.ReplaceAllString(file, "")
 				ggufGroups[name] = append(ggufGroups[name], file)
 			}
 		}
@@ -604,7 +605,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 				downloaded := k == file
 				quant := strings.ToUpper(quantRegix.FindString(k))
 				// sort files by name
-				files := ggufGroups[file]
+				files := ggufGroups[k]
 				slices.Sort(files)
 				res.ModelFile[quant] = types.ModeFileInfo{
 					Name:       files[0],
@@ -709,4 +710,48 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 	}
 
 	return
+}
+
+func chooseQuantFiles(old types.ModelManifest) (*types.ModelManifest, error) {
+	var mf types.ModelManifest
+	d, _ := sonic.Marshal(old)
+	sonic.Unmarshal(d, &mf)
+	// Find the longest quant name for alignment
+	options := make([]huh.Option[string], 0, len(mf.ModelFile))
+	for q, m := range mf.ModelFile {
+		if !m.Downloaded {
+			options = append(options, huh.NewOption(
+				fmt.Sprintf("%-10s [%7s]", q, humanize.IBytes(uint64(m.Size))), q,
+			))
+		}
+	}
+
+	var quant string
+	if err := huh.NewSelect[string]().
+		Title("Choose a quant version to download").
+		Options(options...).
+		Value(&quant).
+		Run(); err != nil {
+		return nil, err
+	}
+
+	mf.ModelFile[quant] = types.ModeFileInfo{
+		Name:       mf.ModelFile[quant].Name,
+		Downloaded: true,
+		Size:       mf.ModelFile[quant].Size,
+	}
+
+	file := mf.ModelFile[quant].Name
+	ggufName := partRegex.ReplaceAllString(file, "")
+	for i, f := range mf.ExtraFiles {
+		if ggufName == partRegex.ReplaceAllString(file, "") {
+			mf.ExtraFiles[i] = types.ModeFileInfo{
+				Name:       f.Name,
+				Downloaded: true,
+			}
+		}
+
+	}
+
+	return &mf, nil
 }
