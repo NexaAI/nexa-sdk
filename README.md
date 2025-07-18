@@ -9,9 +9,15 @@
      `choco install mingw make go -y`
    - linux (ubuntu 22.04)
      `apt install g++ make go -y`
-1. download bridge library
+2. download bridge library
    `make download` for default version, or specify version and backend, for example: `make download BRIDGE_VERSION=latest BRIDGE_BACKEND=mlx`.
-1. build app
+```shell
+make download
+make download BRIDGE_VERSION=latest BRIDGE_BACKEND=llama-cpp-cuda
+make download BRIDGE_VERSION=latest BRIDGE_BACKEND=llama-cpp-vulkan
+make download BRIDGE_VERSION=latest BRIDGE_BACKEND=mlx
+```
+3. build app
    `make build`
 
 ## Run project

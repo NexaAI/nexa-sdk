@@ -82,7 +82,6 @@ func detectBackend() {
 	for _, dir := range dirs {
 		if !dir.IsDir() {
 			continue
-
 		}
 
 		bridgePath := filepath.Join(libDir, dir.Name(), libName)
@@ -103,22 +102,27 @@ func detectBackend() {
 		switch os.Args[i] {
 		case "-b", "--backend":
 			if i+1 >= len(os.Args) {
-				panic("must specify <backend> after --backend")
+				fmt.Println("must specify <backend> after --backend")
+				os.Exit(1)
 			}
 			backend = os.Args[i+1]
 			if !slices.Contains(backends, backend) {
-				panic(fmt.Sprint("backend not found, exist backends: ", backends))
+				fmt.Println(fmt.Sprint("backend not found, exist backends: ", backends))
+				os.Exit(1)
 			}
 			os.Args = append(os.Args[:i], os.Args[i+2:]...)
 			return
 		}
 	}
 
-	// detect mlx
-	backend = backends[0]
+	// Special handling for MLX models
 	if len(os.Args) > 1 {
 		for _, arg := range os.Args[1:] {
 			if strings.Contains(strings.ToLower(arg), "mlx") {
+				if runtime.GOOS != "darwn" {
+					fmt.Println("MLX is not supported on" + runtime.GOOS)
+					os.Exit(1)
+				}
 				backend = "mlx"
 			}
 		}
