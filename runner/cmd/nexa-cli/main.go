@@ -35,11 +35,13 @@ func RootCmd() *cobra.Command {
 }
 
 func normalizeModelName(name string) string {
+	// support shortcuts
+	if actualName, exists := config.GetModelMapping(name); exists {
+		return actualName
+	}
+
 	// support qwen3 -> nexaml/qwen3
 	if !strings.Contains(name, "/") {
-		if name, exists := config.GetModelMapping(name); exists {
-			return name
-		}
 		return "nexaml/" + name
 	}
 
