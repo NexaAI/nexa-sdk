@@ -40,7 +40,7 @@ jobs:
         run: |
           mkdir -p ~/.cache/nexa/models/bmV4YW1sL1F3ZW4zLTAuNkI=
           if [ ! -f ~/.cache/nexa/models/bmV4YW1sL1F3ZW4zLTAuNkI=/Qwen3-0.6B-Q8_0.gguf ]; then
-            wget -O ~/.cache/nexa/models/bmV4YW1sL1F3ZW4zLTAuNkI=/Qwen3-0.6B-Q8_0.gguf \
+            wget -nv -O ~/.cache/nexa/models/bmV4YW1sL1F3ZW4zLTAuNkI=/Qwen3-0.6B-Q8_0.gguf \
               https://huggingface.co/nexaml/Qwen3-0.6B/resolve/main/Qwen3-0.6B-Q8_0.gguf
           else
             echo "Model already cached, skip download."
@@ -50,10 +50,11 @@ jobs:
         shell: bash
         run: |
           if [[ "$RUNNER_OS" == "macOS" ]]; then
-            export DYLD_LIBRARY_PATH="$PWD/build/lib:$DYLD_LIBRARY_PATH"
+            export DYLD_LIBRARY_PATH="$PWD/build/lib/${{ matrix.backend }}"
           elif [[ "$RUNNER_OS" == "Linux" ]]; then
-            export LD_LIBRARY_PATH="$PWD/build/lib:$LD_LIBRARY_PATH"
+            export LD_LIBRARY_PATH="$PWD/build/lib/${{ matrix.backend }}"
           elif [[ "$RUNNER_OS" == "Windows" ]]; then
-            export PATH="$PWD/build/lib;$PATH"
+            export PATH="$PWD/build/lib/${{ matrix.backend }};$PATH"
           fi
+          export CGO_LDFLAGS="-L$PWD/build/lib/${{ matrix.backend }}"
           cd runner/nexa-sdk && go test -v -run "Test.*LLM|TestChatMultiTurn"
