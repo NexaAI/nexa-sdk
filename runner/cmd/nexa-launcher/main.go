@@ -20,11 +20,6 @@ var (
 	backend  string
 )
 
-func fatalError(e string) {
-	fmt.Println(e)
-	os.Exit(1)
-}
-
 func initPath() {
 	exe, err := os.Executable()
 	if err != nil {
@@ -61,7 +56,7 @@ func setRuntimeEnv() {
 	case "darwin":
 		prependPath("DYLD_LIBRARY_PATH", backend)
 	default:
-		fatalError("unsupported OS: " + runtime.GOOS)
+		panic("unsupported OS: " + runtime.GOOS)
 	}
 }
 
@@ -75,7 +70,7 @@ func detectBackend() {
 	case "darwin":
 		libName = "libnexa_bridge.dylib"
 	default:
-		fatalError("unsupported OS: " + runtime.GOOS)
+		panic("unsupported OS: " + runtime.GOOS)
 	}
 
 	// detect all backend
@@ -100,18 +95,20 @@ func detectBackend() {
 		backends = append(backends, dir.Name())
 	}
 	if len(backends) == 0 {
-		fatalError("no backend found")
+		panic("no backend found")
 	}
 
 	for i := range len(os.Args) {
 		switch os.Args[i] {
 		case "-b", "--backend":
 			if i+1 >= len(os.Args) {
-				fatalError("must specify <backend> after --backend")
+				fmt.Println("must specify <backend> after --backend")
+				os.Exit(1)
 			}
 			backend = os.Args[i+1]
 			if !slices.Contains(backends, backend) {
-				fatalError(fmt.Sprint("backend not found, exist backends: ", backends))
+				fmt.Println(fmt.Sprint("backend not found, exist backends: ", backends))
+				os.Exit(1)
 			}
 			os.Args = append(os.Args[:i], os.Args[i+2:]...)
 			return
@@ -123,7 +120,8 @@ func detectBackend() {
 		for _, arg := range os.Args[1:] {
 			if strings.Contains(strings.ToLower(arg), "mlx") {
 				if runtime.GOOS != "darwn" {
-					fatalError(fmt.Sprintf("MLX is not supported on {%s}", runtime.GOOS))
+					fmt.Println("MLX is not supported on" + runtime.GOOS)
+					os.Exit(1)
 				}
 				backend = "mlx"
 			}
