@@ -634,6 +634,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 				return res, err
 			}
 			res.MMProjFile.Size = size
+			res.MMProjFile.Downloaded = true
 
 		default:
 			// Get mmproj file sizes for display
@@ -656,6 +657,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 
 			res.MMProjFile.Name = file
 			res.MMProjFile.Size = mmprojSizes[file]
+			res.MMProjFile.Downloaded = true
 		}
 	} else {
 		// other format

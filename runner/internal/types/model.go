@@ -34,9 +34,13 @@ func (m ModelManifest) GetSize() int64 {
 			count += v.Size
 		}
 	}
-	count += m.MMProjFile.Size
+	if m.MMProjFile.Downloaded {
+		count += m.MMProjFile.Size
+	}
 	for _, v := range m.ExtraFiles {
-		count += v.Size
+		if v.Downloaded {
+			count += v.Size
+		}
 	}
 
 	return count
