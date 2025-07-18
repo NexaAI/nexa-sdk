@@ -14,6 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu_22.04]
+        backend: [llama-cpp-cpu, llama-cpp-cuda]
 
     steps:
       - name: Checkout repository
@@ -38,12 +39,11 @@ jobs:
 
       - name: Download runtime
         run: |
-          make download BRIDGE_BACKEND=llama-cpp-cpu
-          make download BRIDGE_BACKEND=llama-cpp-cuda
+          make download BRIDGE_BACKEND=${{ matrix.backend }}
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nexa-cli_${{ matrix.os }}
+          name: nexa-cli_${{ matrix.os }}_${{ matrix.backend }}
           path: ./build
           include-hidden-files: true
