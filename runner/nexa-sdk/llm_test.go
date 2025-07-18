@@ -3,6 +3,7 @@ package nexa_sdk
 import (
 	"context"
 	"fmt"
+	"os"
 	"path"
 	"strings"
 	"testing"
@@ -17,7 +18,7 @@ var llm *LLM
 func initLLM() {
 	var err error
 	llm, err = NewLLM(
-		path.Join(nexaPath, "models", "bmV4YW1sL1F3ZW4zLTAuNkI=", "Qwen3-0.6B-Q8_0.gguf"),
+		path.Join(os.Getenv("HOME"), ".cache", "models", "Qwen3-0.6B-Q8_0.gguf"),
 		nil, 8192, nil)
 	if err != nil {
 		panic("Error creating LLM: " + err.Error())
