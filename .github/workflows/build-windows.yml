@@ -8,12 +8,13 @@ on:
 
 jobs:
   build-cli:
-    name: ${{ matrix.os }}
+    name: ${{ matrix.os }} - ${{ matrix.backend }}
     runs-on: sdk-windows-8-core-2
     strategy:
       fail-fast: false
       matrix:
         os: [windows]
+        backend: [llama-cpp-cpu, llama-cpp-vulkan, llama-cpp-cuda]
 
     steps:
       - name: Checkout repository
@@ -41,14 +42,12 @@ jobs:
 
       - name: Download runtime
         run: |
-          make download BRIDGE_BACKEND=llama-cpp-cpu
-          make download BRIDGE_BACKEND=llama-cpp-vulkan
-          make download BRIDGE_BACKEND=llama-cpp-cuda
+          make download BRIDGE_BACKEND=${{ matrix.backend }}
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nexa-cli_${{ matrix.os }}
+          name: nexa-cli_${{ matrix.os }}_${{ matrix.backend }}
           path: ./build
           include-hidden-files: true
 
