@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -30,10 +31,22 @@ func pull() *cobra.Command {
 
 		s := store.Get()
 
-		if _, err := s.GetManifest(name); err == nil {
-			fmt.Println(text.FgBlue.Sprint("Already downloaded, if you want to use another quant, please manual remove first"))
-			return
+		mf, err := s.GetManifest(name)
+		if err == nil {
+			downloaded := true
+			for _, f := range mf.ModelFile {
+				if !f.Downloaded {
+					downloaded = false
+					break
+				}
+			}
+
+			if downloaded {
+				fmt.Println(text.FgBlue.Sprint("Already downloaded all quant"))
+				return
+			}
 		}
+
 		spin := render.NewSpinner("download manifest from: " + name)
 		spin.Start()
 		files, err := s.HFModelInfo(context.TODO(), name)
@@ -43,23 +56,43 @@ func pull() *cobra.Command {
 			return
 		}
 
-		manifest, err := chooseFiles(name, files)
-		if err != nil {
-			return
-		}
+		if mf != nil {
+			newManifest, err := chooseQuantFiles(*mf)
+			if err != nil {
+				return
+			}
+			// TODO: replace with go-pretty
+			pgCh, errCh := s.PullExtraQuant(context.TODO(), *mf, *newManifest)
+			bar := render.NewProgressBar(newManifest.GetSize()-mf.GetSize(), "downloading")
 
-		// TODO: replace with go-pretty
-		pgCh, errCh := s.Pull(context.TODO(), manifest)
-		bar := render.NewProgressBar(manifest.Size, "downloading")
+			for pg := range pgCh {
+				bar.Set(pg.TotalDownloaded)
+			}
+			bar.Exit()
 
-		for pg := range pgCh {
-			bar.Set(pg.TotalDownloaded)
-		}
-		bar.Exit()
+			for err := range errCh {
+				bar.Clear()
+				fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+			}
+		} else {
+			manifest, err := chooseFiles(name, files)
+			if err != nil {
+				return
+			}
 
-		for err := range errCh {
-			bar.Clear()
-			fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+			// TODO: replace with go-pretty
+			pgCh, errCh := s.Pull(context.TODO(), manifest)
+			bar := render.NewProgressBar(manifest.GetSize(), "downloading")
+
+			for pg := range pgCh {
+				bar.Set(pg.TotalDownloaded)
+			}
+			bar.Exit()
+
+			for err := range errCh {
+				bar.Clear()
+				fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+			}
 		}
 	}
 
@@ -136,7 +169,13 @@ func list() *cobra.Command {
 		tw.SetStyle(table.StyleLight)
 		tw.AppendHeader(table.Row{"NAME", "QUANT", "SIZE"})
 		for _, model := range models {
-			tw.AppendRow(table.Row{model.Name, model.Quant, humanize.IBytes(uint64(model.Size))})
+			var quants []string
+			for k := range model.ModelFile {
+				if model.ModelFile[k].Downloaded {
+					quants = append(quants, k)
+				}
+			}
+			tw.AppendRow(table.Row{model.Name, strings.Join(quants, ","), humanize.IBytes(uint64(model.GetSize()))})
 		}
 		tw.Render()
 	}

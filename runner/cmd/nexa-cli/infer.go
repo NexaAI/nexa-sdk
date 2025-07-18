@@ -10,6 +10,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/charmbracelet/huh"
+	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 
@@ -68,20 +70,42 @@ func infer() *cobra.Command {
 			// check agin
 			manifest, err = s.GetManifest(model)
 		}
-
 		if err != nil {
 			fmt.Println(text.FgRed.Sprintf("parse manifest error: %s", err))
 			return
 		}
 
+		var modelFile string
+		var options []huh.Option[string]
+		for k, v := range manifest.ModelFile {
+			if v.Downloaded {
+				options = append(options, huh.NewOption(
+					fmt.Sprintf("%-10s [%7s]", k, humanize.IBytes(uint64(v.Size))),
+					v.Name,
+				))
+			}
+		}
+		if len(options) >= 2 {
+			if err = huh.NewSelect[string]().
+				Title("Select a quant from local folder").
+				Options(options...).
+				Value(&modelFile).
+				Run(); err != nil {
+				fmt.Println(text.FgRed.Sprintf("select error: %s", err))
+				return
+			}
+		} else {
+			modelFile = options[0].Value
+		}
+
 		nexa_sdk.Init()
 		defer nexa_sdk.DeInit()
 
-		modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile)
+		modelfile := s.ModelfilePath(manifest.Name, modelFile)
 
 		switch modelType {
 		case types.ModelTypeLLM:
-			if manifest.MMProjFile == "" && !isContainPreprocessor(manifest) {
+			if !isVLM(manifest) {
 				if len(tool) == 0 {
 					inferLLM(modelfile, nil)
 					return
@@ -91,16 +115,16 @@ func infer() *cobra.Command {
 			} else {
 				// compat vlm
 				var t *string
-				if manifest.MMProjFile != "" {
-					tokenizer := s.ModelfilePath(manifest.Name, manifest.MMProjFile)
+				if manifest.MMProjFile.Name != "" {
+					tokenizer := s.ModelfilePath(manifest.Name, manifest.MMProjFile.Name)
 					t = &tokenizer
 				}
 				inferVLM(modelfile, t)
 			}
 		case types.ModelTypeVLM:
 			var t *string
-			if manifest.MMProjFile != "" {
-				tokenizer := s.ModelfilePath(manifest.Name, manifest.MMProjFile)
+			if manifest.MMProjFile.Name != "" {
+				tokenizer := s.ModelfilePath(manifest.Name, manifest.MMProjFile.Name)
 				t = &tokenizer
 			}
 			inferVLM(modelfile, t)
@@ -120,9 +144,12 @@ func infer() *cobra.Command {
 }
 
 // isContainPreprocessor checks if the model has a preprocess.json file
-func isContainPreprocessor(m *types.ModelManifest) bool {
+func isVLM(m *types.ModelManifest) bool {
+	if m.MMProjFile.Name != "" {
+		return true
+	}
 	for _, file := range m.ExtraFiles {
-		if strings.Contains(file, "preprocessor") {
+		if strings.Contains(file.Name, "preprocessor") {
 			return true
 		}
 	}

@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -26,6 +27,8 @@ type HFDownloader struct {
 }
 
 func NewHFDownloader(totalSize int64, progress chan<- types.DownloadInfo) *HFDownloader {
+	slog.Debug("NewHFDownloader", "totalSize", totalSize)
+
 	return &HFDownloader{
 		client: fasthttp.Client{
 			NoDefaultUserAgentHeader:  true,
@@ -37,6 +40,8 @@ func NewHFDownloader(totalSize int64, progress chan<- types.DownloadInfo) *HFDow
 }
 
 func (d *HFDownloader) Download(ctx context.Context, url, outputPath string) error {
+	slog.Debug("Download", "url", url, "outputPath", outputPath)
+
 	url, err := d.handleRedirect(url, 3)
 	if err != nil {
 		return fmt.Errorf("failed to handle redirect: %v", err)

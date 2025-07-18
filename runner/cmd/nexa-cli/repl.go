@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/bytedance/sonic"
 	"github.com/charmbracelet/huh"
 	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/text"
@@ -358,6 +359,7 @@ func repl(cfg ReplConfig) {
 // =============== file name parse ===============
 
 var fileRegex = regexp.MustCompile(`(?:[a-zA-Z]:)?(?:\./|/|\\)[\S\\ ]+?\.(?i:jpg|jpeg|png|webp|mp3|wav)\b`)
+var partRegex = regexp.MustCompile(`-\d+-of-\d+\.gguf$`)
 
 func parseFiles(prompt string) (string, []string, []string) {
 	files := fileRegex.FindAllString(prompt, -1)
@@ -493,6 +495,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 	}
 
 	res.Name = name
+	res.ModelFile = make(map[string]types.ModeFileInfo)
 
 	// TODO: refactor
 	// check gguf
@@ -500,14 +503,13 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 	ggufGroups := make(map[string][]string)
 	// qwen2.5-7b-instruct-q8_0-00003-of-00003.gguf original name is qwen2.5-7b-instruct-q8_0
 	// *d-of-*d like this
-	partRegix := regexp.MustCompile(`-\d+-of-\d+\.gguf$`)
 	for _, file := range files {
 		lower := strings.ToLower(file)
 		if strings.HasSuffix(lower, ".gguf") {
 			if strings.HasPrefix(lower, "mmproj") {
 				mmprojs = append(mmprojs, file)
 			} else {
-				name := partRegix.ReplaceAllString(file, "")
+				name := partRegex.ReplaceAllString(file, "")
 				ggufGroups[name] = append(ggufGroups[name], file)
 			}
 		}
@@ -522,7 +524,10 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 	if len(ggufs) > 0 {
 		// detect gguf
 		if len(ggufs) == 1 {
-			res.ModelFile = ggufs[0]
+			// single quant
+			fileInfo := types.ModeFileInfo{}
+			fileInfo.Name = ggufs[0]
+			fileInfo.Downloaded = true
 			spin.Start()
 			fileSizes, err := getFileSizesConcurrent(name, ggufGroups[ggufs[0]])
 			spin.Stop()
@@ -531,8 +536,12 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 				return res, err
 			}
 			for _, size := range fileSizes {
-				res.Size += size
+				fileInfo.Size += size
 			}
+
+			quant := strings.ToUpper(quantRegix.FindString(ggufs[0]))
+			res.ModelFile[quant] = fileInfo
+
 		} else {
 			// interactive choose
 			// Get file sizes for display
@@ -591,23 +600,32 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 				Run(); err != nil {
 				return res, err
 			}
-			// sort files by name
-			files := ggufGroups[file]
-			slices.Sort(files)
 
-			res.Size += fileSizes[file]
-			res.ModelFile = files[0]
-			if len(files) > 1 {
-				res.ExtraFiles = append(res.ExtraFiles, files[1:]...)
+			for k := range ggufGroups {
+				downloaded := k == file
+				quant := strings.ToUpper(quantRegix.FindString(k))
+				// sort files by name
+				files := ggufGroups[k]
+				slices.Sort(files)
+				res.ModelFile[quant] = types.ModeFileInfo{
+					Name:       files[0],
+					Downloaded: downloaded,
+					Size:       fileSizes[k],
+				}
+				for _, file := range files[1:] {
+					res.ExtraFiles = append(res.ExtraFiles, types.ModeFileInfo{
+						Name:       file,
+						Downloaded: downloaded,
+					})
+				}
 			}
 		}
-		res.Quant = strings.ToUpper(quantRegix.FindString(res.ModelFile))
 
 		// detect mmproj
 		switch len(mmprojs) {
 		case 0:
 		case 1:
-			res.MMProjFile = mmprojs[0]
+			res.MMProjFile.Name = mmprojs[0]
 			spin.Start()
 			size, err := store.Get().HFFileSize(context.TODO(), name, mmprojs[0])
 			spin.Stop()
@@ -615,7 +633,8 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 				fmt.Println(text.FgRed.Sprintf("get filesize error: [%s] %s", mmprojs[0], err))
 				return res, err
 			}
-			res.Size += size
+			res.MMProjFile.Size = size
+
 		default:
 			// Get mmproj file sizes for display
 			spin.Start()
@@ -635,23 +654,37 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 				}
 			}
 
-			res.MMProjFile = file
-			res.Size += mmprojSizes[file]
+			res.MMProjFile.Name = file
+			res.MMProjFile.Size = mmprojSizes[file]
 		}
 	} else {
 		// other format
 
+		// quant
+		var quant string
+		if q := strings.ToUpper(quantRegix.FindString(name)); q != "" {
+			quant = q
+		} else if q, err := store.Get().GetQuantInfo(context.TODO(), name); err == nil && q != 0 {
+			quant = fmt.Sprintf("%dBIT", q)
+		}
+
 		// detect main model file
 		// add other files
 		for _, file := range files {
-			if res.ModelFile == "" {
+			if res.ModelFile[quant].Name == "" {
 				lower := strings.ToLower(file)
 				if strings.HasSuffix(lower, "safetensors") || strings.HasSuffix(lower, "npz") {
-					res.ModelFile = file
+					res.ModelFile[quant] = types.ModeFileInfo{Name: file}
 					continue
 				}
 			}
-			res.ExtraFiles = append(res.ExtraFiles, file)
+			res.ExtraFiles = append(res.ExtraFiles, types.ModeFileInfo{Name: file})
+		}
+
+		// fallback to first file
+		if res.ModelFile[quant].Name == "" {
+			res.ModelFile[quant] = types.ModeFileInfo{Name: files[0]}
+			res.ExtraFiles = res.ExtraFiles[1:]
 		}
 
 		spin.Start()
@@ -661,23 +694,64 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 			fmt.Println(text.FgRed.Sprintf("get filesize error: %s", err))
 			return res, err
 		}
-		for _, size := range sizes {
-			res.Size += size
-		}
 
-		// quant
-		if quant := strings.ToUpper(quantRegix.FindString(name)); quant != "" {
-			res.Quant = quant
-		} else if quant, err := store.Get().GetQuantInfo(context.TODO(), name); err == nil && quant != 0 {
-			res.Quant = fmt.Sprintf("%dBIT", quant)
+		res.ModelFile[quant] = types.ModeFileInfo{
+			Name:       res.ModelFile[quant].Name,
+			Downloaded: true,
+			Size:       sizes[res.ModelFile[quant].Name],
 		}
-
-		// fallback to first file
-		if res.ModelFile == "" {
-			res.ModelFile = files[0]
-			res.ExtraFiles = res.ExtraFiles[1:]
+		for i, v := range res.ExtraFiles {
+			res.ExtraFiles[i] = types.ModeFileInfo{
+				Name:       v.Name,
+				Downloaded: true,
+				Size:       sizes[v.Name],
+			}
 		}
 	}
 
 	return
+}
+
+func chooseQuantFiles(old types.ModelManifest) (*types.ModelManifest, error) {
+	var mf types.ModelManifest
+	d, _ := sonic.Marshal(old)
+	sonic.Unmarshal(d, &mf)
+	// Find the longest quant name for alignment
+	options := make([]huh.Option[string], 0, len(mf.ModelFile))
+	for q, m := range mf.ModelFile {
+		if !m.Downloaded {
+			options = append(options, huh.NewOption(
+				fmt.Sprintf("%-10s [%7s]", q, humanize.IBytes(uint64(m.Size))), q,
+			))
+		}
+	}
+
+	var quant string
+	if err := huh.NewSelect[string]().
+		Title("Choose a quant version to download").
+		Options(options...).
+		Value(&quant).
+		Run(); err != nil {
+		return nil, err
+	}
+
+	mf.ModelFile[quant] = types.ModeFileInfo{
+		Name:       mf.ModelFile[quant].Name,
+		Downloaded: true,
+		Size:       mf.ModelFile[quant].Size,
+	}
+
+	file := mf.ModelFile[quant].Name
+	ggufName := partRegex.ReplaceAllString(file, "")
+	for i, f := range mf.ExtraFiles {
+		if ggufName == partRegex.ReplaceAllString(file, "") {
+			mf.ExtraFiles[i] = types.ModeFileInfo{
+				Name:       f.Name,
+				Downloaded: true,
+			}
+		}
+
+	}
+
+	return &mf, nil
 }

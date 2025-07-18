@@ -40,7 +40,7 @@ func PullModel(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
 	}
-	if manifest.Name == "" || manifest.ModelFile == "" {
+	if manifest.Name == "" || len(manifest.ModelFile) == 0 {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": "name or modelfile is empty"})
 		return
 	}

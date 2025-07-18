@@ -75,14 +75,12 @@ func runFunc(cmd *cobra.Command, args []string) {
 			var raw *http.Response
 			err = client.Post(context.TODO(), "/models", nil, &raw,
 				option.WithJSONSet("Name", manifest.Name),
-				option.WithJSONSet("Size", manifest.Size),
-				option.WithJSONSet("Quant", manifest.Quant),
 				option.WithJSONSet("ModelFile", manifest.ModelFile),
 				option.WithJSONSet("MMProjFile", manifest.MMProjFile),
 				option.WithJSONSet("ExtraFiles", manifest.ExtraFiles),
 			)
 			stream := ssestream.NewStream[types.DownloadInfo](ssestream.NewDecoder(raw), err)
-			bar := render.NewProgressBar(manifest.Size, "downloading")
+			bar := render.NewProgressBar(manifest.GetSize(), "downloading")
 			for stream.Next() {
 				event := stream.Current()
 				bar.Set(event.TotalDownloaded)
