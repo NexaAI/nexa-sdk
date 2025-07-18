@@ -70,9 +70,10 @@ func pull() *cobra.Command {
 // Usage: nexa remove <model-name>
 func remove() *cobra.Command {
 	removeCmd := &cobra.Command{
-		Use:   "remove <model-name>",
-		Short: "Remove cached model",
-		Long:  "Delete a cached model by name. This will remove the model files from the local cache.",
+		Use:     "remove <model-name>",
+		Aliases: []string{"rm"},
+		Short:   "Remove cached model",
+		Long:    "Delete a cached model by name. This will remove the model files from the local cache.",
 	}
 
 	removeCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
@@ -115,9 +116,10 @@ func clean() *cobra.Command {
 // Usage: nexa list
 func list() *cobra.Command {
 	listCmd := &cobra.Command{
-		Use:   "list",
-		Short: "List all cached models",
-		Long:  "Display all cached models in a formatted table, showing model names, types, and sizes.",
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "List all cached models",
+		Long:    "Display all cached models in a formatted table, showing model names, types, and sizes.",
 	}
 
 	listCmd.Run = func(cmd *cobra.Command, args []string) {
