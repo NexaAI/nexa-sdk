@@ -26,7 +26,7 @@ func RootCmd() *cobra.Command {
 
 	rootCmd.AddCommand(
 		pull(), remove(), clean(), list(),
-		infer(), genImage(),
+		infer(), // genImage(),
 		serve(), run(),
 		version(),
 	)
