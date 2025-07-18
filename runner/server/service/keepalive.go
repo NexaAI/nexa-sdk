@@ -90,7 +90,13 @@ func keepAliveGet[T any](name string, param types.ModelParam) (any, error) {
 
 	// make nexaml repo as default
 	if !strings.Contains(name, "/") {
-		name = "nexaml/" + name
+		// check if it's a known shortcut
+		if actualPath, exists := config.GetModelMapping(name); exists {
+			name = actualPath
+		} else {
+			// fallback to nexaml prefix for unknown shortcuts
+			name = "nexaml/" + name
+		}
 	}
 
 	// Check if model already exists in cache
