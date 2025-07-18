@@ -177,11 +177,11 @@ func inferLLM(model string, tokenizer *string) {
 		Clear: p.Reset,
 
 		SaveKVCache: func(path string) error {
-			return p.SaveKVCache(store.Get().CachefilePath(path))
+			return p.SaveKVCache(path)
 		},
 
 		LoadKVCache: func(path string) error {
-			return p.LoadKVCache(store.Get().CachefilePath(path))
+			return p.LoadKVCache(path)
 		},
 
 		GetProfilingData: func() (*nexa_sdk.ProfilingData, error) {
