@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-cli:
-    name: ${{ matrix.os }}
+    name: ${{ matrix.os }} - ${{ matrix.backend }}
     runs-on: sdk-linux-16-core
     strategy:
       fail-fast: false

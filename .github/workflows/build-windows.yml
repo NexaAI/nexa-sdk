@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-cli:
-    name: ${{ matrix.os }}
+    name: ${{ matrix.os }} - ${{ matrix.backend }}
     runs-on: sdk-windows-8-core-2
     strategy:
       fail-fast: false
