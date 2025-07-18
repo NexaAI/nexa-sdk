@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/NexaAI/nexa-sdk/internal/config"
 	"github.com/NexaAI/nexa-sdk/internal/store"
 )
 
@@ -34,6 +35,11 @@ func RootCmd() *cobra.Command {
 }
 
 func normalizeModelName(name string) string {
+	// support shortcuts
+	if actualName, exists := config.GetModelMapping(name); exists {
+		return actualName
+	}
+
 	// support qwen3 -> nexaml/qwen3
 	if !strings.Contains(name, "/") {
 		return "nexaml/" + name

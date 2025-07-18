@@ -88,8 +88,11 @@ func keepAliveGet[T any](name string, param types.ModelParam) (any, error) {
 	keepAlive.Lock()
 	defer keepAlive.Unlock()
 
-	// make nexaml repo as default
-	if !strings.Contains(name, "/") {
+	if actualPath, exists := config.GetModelMapping(name); exists {
+		// support shortcuts like qwen3 -> Qwen/Qwen3-4B-GGUF
+		name = actualPath
+	} else if !strings.Contains(name, "/") {
+		// fallback to nexaml prefix for unknown shortcuts
 		name = "nexaml/" + name
 	}
 

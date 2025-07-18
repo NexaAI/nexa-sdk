@@ -23,7 +23,7 @@ func genImage() *cobra.Command {
 
 	imgCmd.Flags().SortFlags = false
 	imgCmd.Flags().StringVarP(&model, "model", "m", "stabilityai/sdxl-turbo", "Model name for image generation")
-	imgCmd.Flags().StringSliceVarP(&prompts, "prompt", "p", nil, "Prompt for image generation")
+	imgCmd.Flags().StringArrayVarP(&prompts, "prompt", "p", nil, "Prompt for image generation")
 	imgCmd.Flags().StringVarP(&genType, "type", "t", "txt2img", "Type of image generation: txt2img, img2img")
 	imgCmd.Flags().StringVarP(&input, "input", "i", "", "Input image file for img2img generation (optional)")
 	imgCmd.Flags().StringVarP(&output, "output", "o", "out.png", "Output file name for the generated image")
