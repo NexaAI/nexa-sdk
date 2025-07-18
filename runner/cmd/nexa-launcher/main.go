@@ -121,8 +121,8 @@ func detectBackend() {
 	if len(os.Args) > 1 {
 		for _, arg := range os.Args[1:] {
 			if strings.Contains(strings.ToLower(arg), "mlx") {
-				if runtime.GOOS != "darwn" {
-					fmt.Println("MLX is not supported on" + runtime.GOOS)
+				if runtime.GOOS != "darwin" {
+					fmt.Printf("ℹ️ MLX models work on Apple-silicon Macs. You're on %s—choose a GGUF model or try on an M-series Mac.\n", runtime.GOOS)
 					os.Exit(1)
 				}
 				backend = "mlx"
