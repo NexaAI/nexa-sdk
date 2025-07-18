@@ -4,21 +4,24 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"strings"
 	"testing"
 	"time"
 )
 
-var (
-	// llm is the global LLM instance used across all tests
-	llm *LLM
-)
+// llm is the global LLM instance used across all tests
+var llm *LLM
 
 // initLLM creates a new LLM instance for testing with a predefined model
-// Uses the Qwen3-0.6B-GGUF model from the local cache
+// Uses the nexaml/Qwen3-0.6B model from the local cache
 func initLLM() {
-	llm, _ = NewLLM(
-		path.Join(nexaPath, "models", "UXdlbi9Rd2VuMy0wLjZCLUdHVUY=", "modelfile"),
+	var err error
+	llm, err = NewLLM(
+		path.Join(nexaPath, "models", "bmV4YW1sL1F3ZW4zLTAuNkI=", "Qwen3-0.6B-Q8_0.gguf"),
 		nil, 8192, nil)
+	if err != nil {
+		panic("Error creating LLM: " + err.Error())
+	}
 }
 
 // deinitLLM cleans up the LLM instance after testing
@@ -217,6 +220,47 @@ func TestChat(t *testing.T) {
 		t.Error(e)
 	}
 	t.Log(res)
+}
+
+func TestChatMultiTurn(t *testing.T) {
+	type turn struct {
+		user      string
+		expectSub string
+	}
+
+	turns := []turn{
+		{
+			user:      "a=11, b=22, what is a+b?",
+			expectSub: "33",
+		},
+		{
+			user:      "what is b-a?",
+			expectSub: "11",
+		},
+		{
+			user:      "what is b/a?",
+			expectSub: "2",
+		},
+	}
+
+	var history []ChatMessage
+	for i, turn := range turns {
+		history = append(history, ChatMessage{Role: LLMRoleUser, Content: turn.user})
+		msg, err := llm.ApplyChatTemplate(history)
+		if err != nil {
+			t.Fatalf("ApplyChatTemplate failed at turn %d: %v", i+1, err)
+		}
+		res, err := llm.Generate(msg)
+		if err != nil {
+			t.Fatalf("Generate failed at turn %d: %v", i+1, err)
+		}
+		t.Logf("Turn %d reply: %s", i+1, res)
+		if turn.expectSub != "" && !strings.Contains(res, turn.expectSub) {
+			t.Errorf("Turn %d: expected reply to contain %q, got %q", i+1, turn.expectSub, res)
+		}
+		// Append assistant reply to history for next turn
+		history = append(history, ChatMessage{Role: LLMRoleAssistant, Content: res})
+	}
 }
 
 // TestGenerateStream tests streaming text generation functionality

@@ -1,0 +1,59 @@
+name: Test
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test-llm:
+    name: ${{ matrix.os }} / ${{ matrix.backend }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-13, macos-14, macos-15]
+        backend: [llama-cpp-metal]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.24.3
+          cache-dependency-path: runner/go.sum
+
+      - name: Download backend runtime
+        run: make download BRIDGE_BACKEND=${{ matrix.backend }}
+
+      - name: Cache Nexa model files
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/nexa/models/bmV4YW1sL1F3ZW4zLTAuNkI=
+          key: qwen3-0.6b-gguf-${{ runner.os }}-${{ hashFiles('**/test.yml') }}
+          restore-keys: |
+            qwen3-0.6b-gguf-${{ runner.os }}-
+
+      - name: Download model
+        shell: bash
+        run: |
+          mkdir -p ~/.cache/nexa/models/bmV4YW1sL1F3ZW4zLTAuNkI=
+          if [ ! -f ~/.cache/nexa/models/bmV4YW1sL1F3ZW4zLTAuNkI=/Qwen3-0.6B-Q8_0.gguf ]; then
+            wget -O ~/.cache/nexa/models/bmV4YW1sL1F3ZW4zLTAuNkI=/Qwen3-0.6B-Q8_0.gguf \
+              https://huggingface.co/nexaml/Qwen3-0.6B/resolve/main/Qwen3-0.6B-Q8_0.gguf
+          else
+            echo "Model already cached, skip download."
+          fi
+
+      - name: Test LLM Multi-Turn Chat
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            export DYLD_LIBRARY_PATH="$PWD/build/lib:$DYLD_LIBRARY_PATH"
+          elif [[ "$RUNNER_OS" == "Linux" ]]; then
+            export LD_LIBRARY_PATH="$PWD/build/lib:$LD_LIBRARY_PATH"
+          elif [[ "$RUNNER_OS" == "Windows" ]]; then
+            export PATH="$PWD/build/lib;$PATH"
+          fi
+          cd runner/nexa-sdk && go test -v -run "Test.*LLM|TestChatMultiTurn"
