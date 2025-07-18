@@ -2,7 +2,6 @@ package nexa_sdk
 
 import (
 	"os"
-	"path"
 	"testing"
 )
 
@@ -13,24 +12,17 @@ var nexaPath string
 // It initializes the SDK, creates an LLM instance, runs tests, then cleans up
 func TestMain(m *testing.M) {
 	// Get user cache directory and set Nexa path
-	cache, _ := os.UserCacheDir()
-	nexaPath = path.Join(cache, "nexa")
+	// cache, _ := os.UserCacheDir()
+	// nexaPath = path.Join(cache, "nexa")
 
 	// Initialize SDK and modules for testing
 	Init()
+	defer DeInit()
 	initLLM()
-	initEmbeder()
-	initReranker()
-	initVLM()
+	defer deinitLLM()
 
 	// Run all tests
 	code := m.Run()
 
-	// Clean up resources after testing
-	deinitLLM()
-	deinitEmbeder()
-	deinitReranker()
-	deinitVLM()
-	DeInit()
 	os.Exit(code)
 }

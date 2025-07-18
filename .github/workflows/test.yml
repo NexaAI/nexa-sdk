@@ -1,0 +1,60 @@
+name: Test
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test-llm:
+    name: ${{ matrix.os }} / ${{ matrix.backend }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15]
+        backend: [llama-cpp-metal]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.24.3
+          cache-dependency-path: runner/go.sum
+
+      - name: Download backend runtime
+        run: make download BRIDGE_BACKEND=${{ matrix.backend }}
+
+      - name: Cache Nexa model files
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/models/Qwen3-0.6B-Q8_0.gguf
+          key: Qwen3-0.6B-Q8_0.gguf
+          restore-keys: |
+            Qwen3-0.6B-Q8_0.gguf
+
+      - name: Download model
+        shell: bash
+        run: |
+          MODEL_PATH="$HOME/.cache/models/Qwen3-0.6B-Q8_0.gguf"
+          if [ ! -f "$MODEL_PATH" ]; then
+            mkdir -p "$(dirname "$MODEL_PATH")"
+            wget -nv -O "$MODEL_PATH" https://huggingface.co/nexaml/Qwen3-0.6B/resolve/main/Qwen3-0.6B-Q8_0.gguf
+          else
+            echo "Model already cached, skip download."
+          fi
+
+      - name: Test LLM Multi-Turn Chat
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            export DYLD_LIBRARY_PATH="$PWD/build/lib/${{ matrix.backend }}"
+          elif [[ "$RUNNER_OS" == "Linux" ]]; then
+            export LD_LIBRARY_PATH="$PWD/build/lib/${{ matrix.backend }}"
+          elif [[ "$RUNNER_OS" == "Windows" ]]; then
+            export PATH="$PWD/build/lib/${{ matrix.backend }};$PATH"
+          fi
+          export CGO_LDFLAGS="-L$PWD/build/lib/${{ matrix.backend }}"
+          cd runner/nexa-sdk && go test -v -run "Test.*LLM|TestChatMultiTurn"
