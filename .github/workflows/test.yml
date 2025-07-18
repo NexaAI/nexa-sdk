@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-13, macos-14, macos-15]
+        os: [macos-15]
         backend: [llama-cpp-metal]
     steps:
       - name: Checkout code
