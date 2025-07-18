@@ -98,6 +98,8 @@ func detectBackend() {
 		panic("no backend found")
 	}
 
+	backend = backends[0]
+
 	for i := range len(os.Args) {
 		switch os.Args[i] {
 		case "-b", "--backend":
