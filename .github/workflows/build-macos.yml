@@ -54,26 +54,43 @@ jobs:
           path: build
           include-hidden-files: true
 
+  package-and-release:
+    name: pckage PKG for ${{ matrix.os }} and release
+    needs: build-cli
+    # if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-13, macos-14, macos-15]
+    env:
+      VERSION: ${{ github.ref_name }}
+      RELEASE_REPO: zhiyuan8/homebrew-go-release
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts 
+        uses: actions/download-artifact@v4
+        with:
+          name: nexa-cli_${{ matrix.os }}
+          path: build
+
       - name: Prepare file structure for packaging
         id: prep_files
         run: |
-          # --- 1. 创建组件的根目录 ---
           APP_BASE="staging/Applications"
           APP_NAME="Nexa CLI"
           APP_PATH="${APP_BASE}/${APP_NAME}.app"     
           mkdir -p "${APP_PATH}/Contents/MacOS"
           mkdir -p "${APP_PATH}/Contents/Resources"
-          COMMAND="nexa -h"
 
-          # --- 2. 移动核心文件 ---
           mv build/nexa build/nexa-cli build/lib "${APP_PATH}/Contents/Resources/"
           cp release/scripts/uninstall.sh "${APP_PATH}/Contents/Resources/"
           chmod +x "${APP_PATH}/Contents/Resources/uninstall.sh"
-
-          # --- 3. 创建并移动启动器 ---
           cp release/nexa-icon.icns "${APP_PATH}/Contents/Resources/nexa-icon.icns"
 
-          # # 创建 Info.plist 文件
           cat << EOF > "${APP_PATH}/Contents/Info.plist"
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -90,7 +107,7 @@ jobs:
               <key>CFBundlePackageType</key>
               <string>APPL</string>
               <key>CFBundleExecutable</key>
-              <string>launcher.scpt</string>
+              <string>launcher</string>
               <key>NSAppleScriptEnabled</key>
               <true/>
               <key>CFBundleIconFile</key>
@@ -99,22 +116,7 @@ jobs:
           </plist>
           EOF
 
-          # # create launcher
-          # # Create basic Info.plist structure first
-          # /usr/libexec/PlistBuddy -c "Add :CFBundleName string '${APP_NAME}'" "${APP_PATH}/Contents/Info.plist"
-          # /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string '${APP_NAME}'" "${APP_PATH}/Contents/Info.plist"
-          # /usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string 'com.nexaai.nexa-cli'" "${APP_PATH}/Contents/Info.plist"
-          # /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string '${{ env.VERSION }}'" "${APP_PATH}/Contents/Info.plist"
-          # /usr/libexec/PlistBuddy -c "Add :CFBundlePackageType string 'APPL'" "${APP_PATH}/Contents/Info.plist"
-          # /usr/libexec/PlistBuddy -c "Add :CFBundleExecutable string 'launcher.scpt'" "${APP_PATH}/Contents/Info.plist"
-          # /usr/libexec/PlistBuddy -c "Add :NSAppleScriptEnabled bool true" "${APP_PATH}/Contents/Info.plist"
-          # /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string 'nexa-icon'" "${APP_PATH}/Contents/Info.plist"
-
-          echo "plis created:"
-          cat "${APP_PATH}/Contents/Info.plist"
-
-
-          cat << EOF > "${APP_PATH}/Contents/MacOS/launcher.scpt"
+          cat << EOF > "${APP_PATH}/Contents/MacOS/launcher"
           #!/usr/bin/osascript
 
           tell application "Terminal"
@@ -123,18 +125,35 @@ jobs:
           end tell
           EOF
 
-          chmod +x "${APP_PATH}/Contents/MacOS/launcher.scpt"
-
-          # --- 4. 准备脚本和资源目录 ---
+          chmod +x "${APP_PATH}/Contents/MacOS/launcher"
           mkdir -p pkg_scripts
           cp release/scripts/postinstall pkg_scripts/
           chmod +x pkg_scripts/postinstall
-          # cp release/scripts/background.png pkg_scripts/
-          # touch pkg_scripts/welcome.rtf pkg_scripts/license.rtf
-
           echo "STAGING_DIR=$(pwd)/staging" >> $GITHUB_OUTPUT
           echo "SCRIPTS_DIR=$(pwd)/pkg_scripts" >> $GITHUB_OUTPUT
+          echo "APP_PATH=$(pwd)/${APP_PATH}" >> $GITHUB_ENV
 
+      - name: Import Code-Signing Certificates
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        uses: Apple-Actions/import-codesign-certs@v1
+        with:
+          p12-file-base64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          p12-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+
+      - name: Sign binaries and libraries
+        run: |
+          cd "${{ env.APP_PATH }}/Contents/Resources"
+          find lib -type f -name "*.dylib" -o -name "*.so" -exec codesign --force --options runtime --timestamp --verify --verbose -s "${{ secrets.APPLE_ID_APPLICATION }}" {} \;
+          if [ -d "lib/mlx/python_runtime/bin" ]; then
+            find lib/mlx/python_runtime/bin -type f -name "python*" -exec codesign --force --options runtime --timestamp --verify --verbose -s "${{ secrets.APPLE_ID_APPLICATION }}" {} \;
+          fi
+          codesign --force --options runtime --timestamp --verify --verbose -s "${{ secrets.APPLE_ID_APPLICATION }}" nexa
+          codesign --force --options runtime --timestamp --verify --verbose -s "${{ secrets.APPLE_ID_APPLICATION }}" nexa-cli  
+          cd ../MacOS
+          codesign --force --options runtime --timestamp --verify --verbose -s "${{ secrets.APPLE_ID_APPLICATION }}" launcher
+          cd ${{ github.workspace }}
+          codesign --force --options runtime --timestamp --verify --verbose -s "${{ secrets.APPLE_ID_APPLICATION }}" "${{ env.APP_PATH }}"
+      
       - name: Build PKG
         run: |
           pkgbuild --root "${{ steps.prep_files.outputs.STAGING_DIR }}" \
@@ -142,13 +161,80 @@ jobs:
                    --identifier "com.nexaai.sdk" \
                    --version "${{ env.VERSION }}" \
                    --install-location / \
-                   build/"nexa-cli_${{ matrix.os }}.pkg"
+                   "build/nexa-cli_${{ matrix.os }}-unsigned.pkg"
 
-      - name: Upload PKG as artifact
-        uses: actions/upload-artifact@v4
+      - name: Productsign PKG
+        run: |
+          productsign --sign "${{ secrets.APPLE_ID_INSTALLER }}" --timestamp "build/nexa-cli_${{ matrix.os }}-unsigned.pkg" "build/nexa-cli_${{ matrix.os }}.pkg"
+          pkgutil --check-signature "build/nexa-cli_${{ matrix.os }}.pkg"
+          rm "build/nexa-cli_${{ matrix.os }}-unsigned.pkg"
+        
+      - name: Notarize & Staple PKG
+        run: |
+          # xcrun notarytool submit "build/nexa-cli_${{ matrix.os }}.pkg" \
+          #   --apple-id "${{ secrets.APPLE_ID }}" \
+          #   --password "${{ secrets.APPLE_ID_PASSWORD }}" \
+          #   --team-id "${{ secrets.APPLE_TEAM_ID }}" \
+          #   --wait
+
+          # stapler staple -v "build/nexa-cli_${{ matrix.os }}.pkg"
+
+          NOTARIZATION_OUTPUT=$(xcrun notarytool submit "build/nexa-cli_${{ matrix.os }}.pkg" --apple-id "${{ secrets.APPLE_ID }}" --password "${{ secrets.APPLE_ID_PASSWORD }}" --team-id "${{ secrets.APPLE_TEAM_ID }}" --wait)
+          echo "Submission output:"
+          echo "$NOTARIZATION_OUTPUT"
+          
+          # Extract the submission ID (ensuring it's a single line)
+          SUBMISSION_ID=$(echo "$NOTARIZATION_OUTPUT" | grep 'id:' | head -n 1 | awk '{print $2}' | tr -d '\n')
+          echo "Extracted Submission ID: $SUBMISSION_ID"
+          
+          if [ -z "$SUBMISSION_ID" ]; then
+            echo "Failed to extract submission ID. Notarization likely failed."
+            exit 1
+          fi
+          
+          # Wait for notarization to complete and check the result
+          MAX_ATTEMPTS=10
+          ATTEMPT=0
+          
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "Attempt $ATTEMPT/$MAX_ATTEMPTS: Checking notarization status..."
+            
+            NOTARIZATION_INFO=$(xcrun notarytool info "$SUBMISSION_ID" --apple-id "${{ secrets.APPLE_ID }}" --password "${{ secrets.APPLE_ID_PASSWORD }}" --team-id "${{ secrets.APPLE_TEAM_ID }}")
+            STATUS=$(echo "$NOTARIZATION_INFO" | grep "status:" | cut -d: -f2 | xargs)
+            echo "Notarization status: $STATUS"
+            
+            if [ "$STATUS" = "Accepted" ]; then
+              echo "Notarization successful"
+              echo "Stapling notarization ticket to the package..."
+              xcrun stapler staple "build/nexa-cli_${{ matrix.os }}.pkg"
+              echo "Notarization ticket stapled to the package"
+              break
+            elif [ "$STATUS" = "Invalid" ] || [ "$STATUS" = "Rejected" ]; then
+              echo "Notarization failed. Fetching detailed log..."
+              xcrun notarytool log "$SUBMISSION_ID" --apple-id "${{ secrets.APPLE_ID }}" --password "${{ secrets.APPLE_ID_PASSWORD }}" --team-id "${{ secrets.APPLE_TEAM_ID }}"
+              echo "Notarization failed. See log above for details."
+              exit 1
+            fi
+            
+            echo "Waiting for 30 seconds before checking again..."
+            sleep 30
+          done
+          
+          if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+            echo "Error: Notarization timed out after $MAX_ATTEMPTS attempts"
+            exit 1
+          fi
+            
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: "nexa-cli_${{ matrix.os }}.pkg"
-          path: build
+          repository: ${{ env.RELEASE_REPO }}
+          files: "build/nexa-cli_${{ matrix.os }}.pkg"
+          tag_name: ${{ env.VERSION }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.NEXASDK_RELEASE_TOKEN }}·
 
   release-and-update-tap:
     name: Create Release and Update Homebrew Tap
