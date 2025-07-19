@@ -57,7 +57,7 @@ jobs:
   package-and-release:
     name: pckage PKG for ${{ matrix.os }} and release
     needs: build-cli
-    # if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -133,26 +133,36 @@ jobs:
           echo "SCRIPTS_DIR=$(pwd)/pkg_scripts" >> $GITHUB_OUTPUT
           echo "APP_PATH=$(pwd)/${APP_PATH}" >> $GITHUB_ENV
 
-      - name: Import Code-Signing Certificates
-        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
-        uses: Apple-Actions/import-codesign-certs@v1
-        with:
-          p12-file-base64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
-          p12-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      - name: Import Code Signing Certificates
+        env:
+          APP_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APP_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          INSTALLER_CERTIFICATE_BASE64: ${{ secrets.APPLE_INSTALLER_CERTIFICATE_BASE64 }}
+          INSTALLER_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          echo $APP_CERTIFICATE_BASE64 | base64 --decode > app_certificate.p12
+          echo $INSTALLER_CERTIFICATE_BASE64 | base64 --decode > installer_certificate.p12
+          security create-keychain -p "" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          security import app_certificate.p12 -k build.keychain -P $APP_CERTIFICATE_PASSWORD -T /usr/bin/codesign
+          security import installer_certificate.p12 -k build.keychain -P $INSTALLER_CERTIFICATE_PASSWORD -T /usr/bin/productsign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
 
       - name: Sign binaries and libraries
         run: |
           cd "${{ env.APP_PATH }}/Contents/Resources"
-          find lib -type f -name "*.dylib" -o -name "*.so" -exec codesign --force --options runtime --timestamp --verify --verbose -s "${{ secrets.APPLE_ID_APPLICATION }}" {} \;
+          find lib -type f \( -name "*.dylib" -o -name "*.so" \) -exec codesign --force --options runtime --timestamp --verify -s "${{ secrets.APPLE_ID_APPLICATION }}" {} \;
           if [ -d "lib/mlx/python_runtime/bin" ]; then
-            find lib/mlx/python_runtime/bin -type f -name "python*" -exec codesign --force --options runtime --timestamp --verify --verbose -s "${{ secrets.APPLE_ID_APPLICATION }}" {} \;
+            find lib/mlx/python_runtime/bin -type f -name "python*" -exec codesign --force --options runtime --timestamp --verify -s "${{ secrets.APPLE_ID_APPLICATION }}" {} \;
           fi
-          codesign --force --options runtime --timestamp --verify --verbose -s "${{ secrets.APPLE_ID_APPLICATION }}" nexa
-          codesign --force --options runtime --timestamp --verify --verbose -s "${{ secrets.APPLE_ID_APPLICATION }}" nexa-cli  
+
+          codesign --force --options runtime --timestamp --verify -s "${{ secrets.APPLE_ID_APPLICATION }}" nexa
+          codesign --force --options runtime --timestamp --verify -s "${{ secrets.APPLE_ID_APPLICATION }}" nexa-cli  
           cd ../MacOS
-          codesign --force --options runtime --timestamp --verify --verbose -s "${{ secrets.APPLE_ID_APPLICATION }}" launcher
+          codesign --force --options runtime --timestamp --verify -s "${{ secrets.APPLE_ID_APPLICATION }}" launcher
           cd ${{ github.workspace }}
-          codesign --force --options runtime --timestamp --verify --verbose -s "${{ secrets.APPLE_ID_APPLICATION }}" "${{ env.APP_PATH }}"
+          codesign --force --options runtime --timestamp --verify -s "${{ secrets.APPLE_ID_APPLICATION }}" "${{ env.APP_PATH }}"
       
       - name: Build PKG
         run: |
@@ -168,24 +178,17 @@ jobs:
           productsign --sign "${{ secrets.APPLE_ID_INSTALLER }}" --timestamp "build/nexa-cli_${{ matrix.os }}-unsigned.pkg" "build/nexa-cli_${{ matrix.os }}.pkg"
           pkgutil --check-signature "build/nexa-cli_${{ matrix.os }}.pkg"
           rm "build/nexa-cli_${{ matrix.os }}-unsigned.pkg"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: "nexa-cli_${{ matrix.os }}.pkg"
+          path: "build/nexa-cli_${{ matrix.os }}.pkg"
         
       - name: Notarize & Staple PKG
         run: |
-          # xcrun notarytool submit "build/nexa-cli_${{ matrix.os }}.pkg" \
-          #   --apple-id "${{ secrets.APPLE_ID }}" \
-          #   --password "${{ secrets.APPLE_ID_PASSWORD }}" \
-          #   --team-id "${{ secrets.APPLE_TEAM_ID }}" \
-          #   --wait
-
-          # stapler staple -v "build/nexa-cli_${{ matrix.os }}.pkg"
-
           NOTARIZATION_OUTPUT=$(xcrun notarytool submit "build/nexa-cli_${{ matrix.os }}.pkg" --apple-id "${{ secrets.APPLE_ID }}" --password "${{ secrets.APPLE_ID_PASSWORD }}" --team-id "${{ secrets.APPLE_TEAM_ID }}" --wait)
-          echo "Submission output:"
-          echo "$NOTARIZATION_OUTPUT"
-          
-          # Extract the submission ID (ensuring it's a single line)
           SUBMISSION_ID=$(echo "$NOTARIZATION_OUTPUT" | grep 'id:' | head -n 1 | awk '{print $2}' | tr -d '\n')
-          echo "Extracted Submission ID: $SUBMISSION_ID"
           
           if [ -z "$SUBMISSION_ID" ]; then
             echo "Failed to extract submission ID. Notarization likely failed."
@@ -225,7 +228,6 @@ jobs:
             echo "Error: Notarization timed out after $MAX_ATTEMPTS attempts"
             exit 1
           fi
-            
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -234,7 +236,7 @@ jobs:
           files: "build/nexa-cli_${{ matrix.os }}.pkg"
           tag_name: ${{ env.VERSION }}
         env:
-          GITHUB_TOKEN: ${{ secrets.NEXASDK_RELEASE_TOKEN }}·
+          GITHUB_TOKEN: ${{ secrets.NEXASDK_RELEASE_TOKEN }}
 
   release-and-update-tap:
     name: Create Release and Update Homebrew Tap
