@@ -3,8 +3,6 @@ package nexa_sdk
 /*
 #cgo CFLAGS: -I./stub
 #cgo LDFLAGS: -L./stub -lnexa_bridge
-#cgo linux LDFLAGS: -Wl,-rpath,${SRCDIR}/../../build/lib
-#cgo darwin LDFLAGS: -Wl,-rpath,${SRCDIR}/../../build/lib
 
 #include <stdlib.h>
 #include "ml.h"
