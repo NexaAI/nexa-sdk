@@ -270,15 +270,6 @@ jobs:
           done
           echo "packages_path=release_packages" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          repository: ${{ env.RELEASE_REPO }}
-          files: ${{ steps.package.outputs.packages_path }}/*.tar.gz
-          tag_name: ${{ env.VERSION }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.NEXASDK_RELEASE_TOKEN }}
-
       - name: Checkout Homebrew Tap Repository
         uses: actions/checkout@v4
         with:
