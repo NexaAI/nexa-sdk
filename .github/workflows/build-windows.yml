@@ -26,7 +26,7 @@ jobs:
 
       - name: Detect Commit Hash
         if: github.event_name == 'workflow_dispatch'
-        run: echo "VERSION=${{ github.sha }}" >> $env:GITHUB_ENV
+        run: "VERSION=$('${{ github.sha }}'.Substring(0, 7))" >> $env:GITHUB_ENV
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -48,7 +48,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nexa-cli_${{ matrix.os }}_${{ matrix.backend }}
-          path: ./build
+          path: build
           include-hidden-files: true
 
   build-installer:
@@ -110,4 +110,4 @@ jobs:
           files: |
             artifacts/nexa-cli_windows-setup_${{ env.VERSION }}.exe
         env:
-          GITHUB_TOKEN: ${{ secrets.NEXASDK_RELEASE_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.ZACK_ACCESS_TOKEN }}
