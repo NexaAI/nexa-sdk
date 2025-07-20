@@ -126,6 +126,7 @@ func detectBackend() {
 					os.Exit(1)
 				}
 				backend = "mlx"
+				binPath = filepath.Join(filepath.Dir(binPath), "nexa-cli-mlx")
 			}
 		}
 	}

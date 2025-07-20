@@ -57,7 +57,7 @@ jobs:
   package-and-release:
     name: pckage PKG for ${{ matrix.os }} and release
     needs: build-cli
-    # if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -71,7 +71,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download build artifacts 
+      - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           name: nexa-cli_${{ matrix.os }}
@@ -82,7 +82,7 @@ jobs:
         run: |
           APP_BASE="staging/Applications"
           APP_NAME="Nexa CLI"
-          APP_PATH="${APP_BASE}/${APP_NAME}.app"     
+          APP_PATH="${APP_BASE}/${APP_NAME}.app"
           mkdir -p "${APP_PATH}/Contents/MacOS"
           mkdir -p "${APP_PATH}/Contents/Resources"
 
@@ -126,6 +126,8 @@ jobs:
           EOF
 
           chmod +x "${APP_PATH}/Contents/MacOS/launcher"
+          chmod +x "${APP_PATH}/Contents/Resources/nexa"
+          chmod +x "${APP_PATH}/Contents/Resources/nexa-cli"
           mkdir -p pkg_scripts
           cp release/scripts/postinstall pkg_scripts/
           chmod +x pkg_scripts/postinstall
@@ -133,10 +135,11 @@ jobs:
           echo "SCRIPTS_DIR=$(pwd)/pkg_scripts" >> $GITHUB_OUTPUT
           echo "APP_PATH=$(pwd)/${APP_PATH}" >> $GITHUB_ENV
 
-
       - name: Fix dylib Linkages (RPATH)
         run: |
+          cp "${APP_PATH}/Contents/Resources/nexa-cli" "${APP_PATH}/Contents/Resources/nexa-cli-mlx"
           install_name_tool -change libnexa_bridge.dylib "/Applications/Nexa CLI.app/Contents/Resources/lib/llama-cpp-metal/libnexa_bridge.dylib" "${APP_PATH}/Contents/Resources/nexa-cli"
+          install_name_tool -change libnexa_bridge.dylib "/Applications/Nexa CLI.app/Contents/Resources/lib/mlx/libnexa_bridge.dylib" "${APP_PATH}/Contents/Resources/nexa-cli-mlx"
 
       - name: Import Code Signing Certificates
         env:
@@ -163,12 +166,13 @@ jobs:
           fi
 
           codesign --force --options runtime --timestamp --verify -s "${{ secrets.APPLE_ID_APPLICATION }}" nexa
-          codesign --force --options runtime --timestamp --verify -s "${{ secrets.APPLE_ID_APPLICATION }}" nexa-cli  
+          codesign --force --options runtime --timestamp --verify -s "${{ secrets.APPLE_ID_APPLICATION }}" nexa-cli
+          codesign --force --options runtime --timestamp --verify -s "${{ secrets.APPLE_ID_APPLICATION }}" nexa-cli-mlx
           cd ../MacOS
           codesign --force --options runtime --timestamp --verify -s "${{ secrets.APPLE_ID_APPLICATION }}" launcher
           cd ${{ github.workspace }}
           codesign --force --options runtime --timestamp --verify -s "${{ secrets.APPLE_ID_APPLICATION }}" "${{ env.APP_PATH }}"
-      
+
       - name: Build PKG
         run: |
           pkgbuild --root "${{ steps.prep_files.outputs.STAGING_DIR }}" \
@@ -184,34 +188,28 @@ jobs:
           pkgutil --check-signature "build/nexa-cli_${{ matrix.os }}.pkg"
           rm "build/nexa-cli_${{ matrix.os }}-unsigned.pkg"
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: "nexa-cli_${{ matrix.os }}.pkg"
-          path: "build/nexa-cli_${{ matrix.os }}.pkg"
-        
       - name: Notarize & Staple PKG
         run: |
           NOTARIZATION_OUTPUT=$(xcrun notarytool submit "build/nexa-cli_${{ matrix.os }}.pkg" --apple-id "${{ secrets.APPLE_ID }}" --password "${{ secrets.APPLE_ID_PASSWORD }}" --team-id "${{ secrets.APPLE_TEAM_ID }}" --wait)
           SUBMISSION_ID=$(echo "$NOTARIZATION_OUTPUT" | grep 'id:' | head -n 1 | awk '{print $2}' | tr -d '\n')
-          
+
           if [ -z "$SUBMISSION_ID" ]; then
             echo "Failed to extract submission ID. Notarization likely failed."
             exit 1
           fi
-          
+
           # Wait for notarization to complete and check the result
           MAX_ATTEMPTS=10
           ATTEMPT=0
-          
+
           while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
             ATTEMPT=$((ATTEMPT + 1))
             echo "Attempt $ATTEMPT/$MAX_ATTEMPTS: Checking notarization status..."
-            
+
             NOTARIZATION_INFO=$(xcrun notarytool info "$SUBMISSION_ID" --apple-id "${{ secrets.APPLE_ID }}" --password "${{ secrets.APPLE_ID_PASSWORD }}" --team-id "${{ secrets.APPLE_TEAM_ID }}")
             STATUS=$(echo "$NOTARIZATION_INFO" | grep "status:" | cut -d: -f2 | xargs)
             echo "Notarization status: $STATUS"
-            
+
             if [ "$STATUS" = "Accepted" ]; then
               echo "Notarization successful"
               echo "Stapling notarization ticket to the package..."
@@ -224,21 +222,23 @@ jobs:
               echo "Notarization failed. See log above for details."
               exit 1
             fi
-            
+
             echo "Waiting for 30 seconds before checking again..."
             sleep 30
           done
-          
+
           if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
             echo "Error: Notarization timed out after $MAX_ATTEMPTS attempts"
             exit 1
           fi
 
+          mv "build/nexa-cli_${{ matrix.os }}.pkg" "build/nexa-cli_${{ matrix.os }}_${{ env.VERSION }}.pkg"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           repository: ${{ env.RELEASE_REPO }}
-          files: "build/nexa-cli_${{ matrix.os }}.pkg"
+          files: "build/nexa-cli_${{ matrix.os }}_${{ env.VERSION }}.pkg"
           tag_name: ${{ env.VERSION }}
         env:
           GITHUB_TOKEN: ${{ secrets.NEXASDK_RELEASE_TOKEN }}
