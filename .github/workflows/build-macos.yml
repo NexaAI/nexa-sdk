@@ -133,6 +133,11 @@ jobs:
           echo "SCRIPTS_DIR=$(pwd)/pkg_scripts" >> $GITHUB_OUTPUT
           echo "APP_PATH=$(pwd)/${APP_PATH}" >> $GITHUB_ENV
 
+
+      - name: Fix dylib Linkages (RPATH)
+        run: |
+          install_name_tool -change libnexa_bridge.dylib "/Applications/Nexa CLI.app/Contents/Resources/lib/llama-cpp-metal/libnexa_bridge.dylib" "${APP_PATH}/Contents/Resources/nexa-cli"
+
       - name: Import Code Signing Certificates
         env:
           APP_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
