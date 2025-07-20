@@ -101,7 +101,7 @@ jobs:
               <key>CFBundleDisplayName</key>
               <string>${APP_NAME}</string>
               <key>CFBundleIdentifier</key>
-              <string>com.nexaai.nexa-cli</string>
+              <string>com.nexaai.nexa-sdk</string>
               <key>CFBundleVersion</key>
               <string>${{ env.VERSION }}</string>
               <key>CFBundlePackageType</key>
@@ -168,7 +168,7 @@ jobs:
         run: |
           pkgbuild --root "${{ steps.prep_files.outputs.STAGING_DIR }}" \
                    --scripts "${{ steps.prep_files.outputs.SCRIPTS_DIR }}" \
-                   --identifier "com.nexaai.sdk" \
+                   --identifier "com.nexaai.nexa-sdk" \
                    --version "${{ env.VERSION }}" \
                    --install-location / \
                    "build/nexa-cli_${{ matrix.os }}-unsigned.pkg"
