@@ -62,4 +62,4 @@ jobs:
           tag_name: ${{ env.VERSION }}
         env:
           RELEASE_REPO: zhiyuan8/homebrew-go-release
-          GITHUB_TOKEN: ${{ secrets.NEXASDK_RELEASE_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.ZACK_ACCESS_TOKEN }}

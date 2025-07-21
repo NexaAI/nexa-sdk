@@ -244,7 +244,7 @@ jobs:
           files: "build/nexa-cli_${{ matrix.os }}_${{ env.VERSION }}.pkg"
           tag_name: ${{ env.VERSION }}
         env:
-          GITHUB_TOKEN: ${{ secrets.NEXASDK_RELEASE_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.ZACK_ACCESS_TOKEN }}
 
   release-and-update-tap:
     name: Create Release and Update Homebrew Tap
@@ -278,7 +278,7 @@ jobs:
         with:
           repository: ${{ env.TAP_REPO }}
           path: homebrew-tap
-          token: ${{ secrets.NEXASDK_RELEASE_TOKEN }}
+          token: ${{ secrets.ZACK_ACCESS_TOKEN }}
 
       - name: Generate and Update manifest.json
         run: |
