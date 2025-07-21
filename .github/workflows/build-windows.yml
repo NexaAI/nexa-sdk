@@ -54,7 +54,7 @@ jobs:
           include-hidden-files: true
 
   build-installer:
-    name: Build Windows Installer
+    name: Build Windows Installer & Release
     runs-on: sdk-windows-8-core-2
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: build-cli
@@ -92,24 +92,73 @@ jobs:
           Remove-Item "nssm.zip"
           Remove-Item "nssm_temp" -Recurse
 
+      - name: Setup .NET Core SDK
+        uses: actions/setup-dotnet@v4.1.0
+        with:
+          dotnet-version: 8.0.403
+
+      - name: Sign executables with AzureSignTool
+        shell: pwsh
+        run: |
+          dotnet tool install --global AzureSignTool
+
+          Get-ChildItem -Path "artifacts" -Recurse -Include *.exe, *.dll | ForEach-Object {
+            azuresigntool sign `
+              -kvu "${{ secrets.AZURE_KEY_VAULT_URI }}" `
+              -kvc "${{ secrets.AZURE_CERT_NAME }}" `
+              -kvi "${{ secrets.AZURE_CLIENT_ID }}" `
+              -kvs "${{ secrets.AZURE_CLIENT_SECRET }}" `
+              --azure-key-vault-tenant-id "${{ secrets.AZURE_TENANT_ID }}" `
+              -tr http://timestamp.globalsign.com/tsa/advanced `
+              -td sha256 `
+              $_.FullName
+          }
+
+          azuresigntool sign `
+            -kvu "${{ secrets.AZURE_KEY_VAULT_URI }}" `
+            -kvc "${{ secrets.AZURE_CERT_NAME }}" `
+            -kvi "${{ secrets.AZURE_CLIENT_ID }}" `
+            -kvs "${{ secrets.AZURE_CLIENT_SECRET }}" `
+            --azure-key-vault-tenant-id "${{ secrets.AZURE_TENANT_ID }}" `
+            -tr http://timestamp.globalsign.com/tsa/advanced `
+            -td sha256 `
+            "artifacts\nexa-cli-launcher.exe"
+
+          azuresigntool sign `
+            -kvu "${{ secrets.AZURE_KEY_VAULT_URI }}" `
+            -kvc "${{ secrets.AZURE_CERT_NAME }}" `
+            -kvi "${{ secrets.AZURE_CLIENT_ID }}" `
+            -kvs "${{ secrets.AZURE_CLIENT_SECRET }}" `
+            --azure-key-vault-tenant-id "${{ secrets.AZURE_TENANT_ID }}" `
+            -tr http://timestamp.globalsign.com/tsa/advanced `
+            -td sha256 `
+            "artifacts\nssm.exe"
+
       - name: Compile Installer
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.6
         with:
           path: release/nexa_installer.iss
           options: /O+
 
-      - name: Upload Installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: nexa-cli_windows-setup_${{ env.VERSION }}
-          path: artifacts/nexa-cli_windows-setup_${{ env.VERSION }}.exe
+      - name: Sign Installer
+        shell: pwsh
+        run: |
+          azuresigntool sign `
+            -kvu "${{ secrets.AZURE_KEY_VAULT_URI }}" `
+            -kvc "${{ secrets.AZURE_CERT_NAME }}" `
+            -kvi "${{ secrets.AZURE_CLIENT_ID }}" `
+            -kvs "${{ secrets.AZURE_CLIENT_SECRET }}" `
+            --azure-key-vault-tenant-id "${{ secrets.AZURE_TENANT_ID }}" `
+            -tr http://timestamp.globalsign.com/tsa/advanced `
+            -td sha256 `
+            "artifacts/nexa-cli_windows-setup_${{ env.VERSION }}.exe"
 
       - name: Create GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
           repository: zhiyuan8/homebrew-go-release
-          files: |
-            artifacts/nexa-cli_windows-setup_${{ env.VERSION }}.exe
+          tag_name: ${{ env.VERSION }}
+          files: artifacts/nexa-cli_windows-setup_${{ env.VERSION }}.exe
         env:
           GITHUB_TOKEN: ${{ secrets.NEXASDK_RELEASE_TOKEN }}

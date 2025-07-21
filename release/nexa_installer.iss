@@ -10,7 +10,7 @@ AppId={{e9b30237-d65d-4a79-a7c0-f4e217e78f54}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-DefaultDirName={localappdata}\{#MyAppName}
+DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 OutputDir=..\artifacts
 OutputBaseFilename=nexa-cli_windows-setup_{#MyAppVersion}
@@ -23,13 +23,22 @@ PrivilegesRequired=admin
 
 [Files]
 ; Main executables
-Source: "..\artifacts\nexa-cli_windows\nexa.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\artifacts\nexa-cli_windows\nexa-cli.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\artifacts\nexa-cli_windows_llama-cpp-cpu\nexa.exe"; DestDir: "{app}"; DestName: "nexa.exe"; Flags: ignoreversion; Check: IsCPUSelected
+Source: "..\artifacts\nexa-cli_windows_llama-cpp-cpu\nexa-cli.exe"; DestDir: "{app}"; DestName: "nexa-cli.exe"; Flags: ignoreversion; Check: IsCPUSelected
+
+Source: "..\artifacts\nexa-cli_windows_llama-cpp-cuda\nexa.exe"; DestDir: "{app}"; DestName: "nexa.exe"; Flags: ignoreversion; Check: IsCUDASelected
+Source: "..\artifacts\nexa-cli_windows_llama-cpp-cuda\nexa-cli.exe"; DestDir: "{app}"; DestName: "nexa-cli.exe"; Flags: ignoreversion; Check: IsCUDASelected
+
+Source: "..\artifacts\nexa-cli_windows_llama-cpp-vulkan\nexa.exe"; DestDir: "{app}"; DestName: "nexa.exe"; Flags: ignoreversion; Check: IsVulkanSelected
+Source: "..\artifacts\nexa-cli_windows_llama-cpp-vulkan\nexa-cli.exe"; DestDir: "{app}"; DestName: "nexa-cli.exe"; Flags: ignoreversion; Check: IsVulkanSelected
+
 Source: "..\artifacts\nexa-cli-launcher.exe"; DestDir: "{app}"; DestName: "{#MyAppLauncherName}"; Flags: ignoreversion
 Source: "..\artifacts\nssm.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 ; Dependencies - with corrected exclusions
-Source: "..\artifacts\nexa-cli_windows\lib\*"; DestDir: "{app}\lib"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\artifacts\nexa-cli_windows_llama-cpp-cpu\lib\*"; DestDir: "{app}\lib"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: IsCPUSelected
+Source: "..\artifacts\nexa-cli_windows_llama-cpp-cuda\lib\*"; DestDir: "{app}\lib"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: IsCUDASelected
+Source: "..\artifacts\nexa-cli_windows_llama-cpp-vulkan\lib\*"; DestDir: "{app}\lib"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: IsVulkanSelected
 
 [Registry]
 ; Modified registry entries to properly handle icons and default applications
@@ -49,6 +58,38 @@ Root: HKLM; Subkey: "SOFTWARE\Classes\Applications\{#MyAppExeName}"; ValueType: 
 Root: HKLM; Subkey: "SOFTWARE\Classes\Applications\{#MyAppExeName}\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName}"; Flags: uninsdeletekey
 
 [Code]
+var
+  VersionPage: TInputOptionWizardPage;
+
+procedure InitializeWizard;
+begin
+  VersionPage := CreateInputOptionPage(wpWelcome,
+    'Choose Version', 'Which version of Nexa-cli do you want to install?',
+    'Please select the version you want to install, then click Next.',
+    True, False);
+
+  VersionPage.Add('CUDA (12.4.1 or higher)');
+  VersionPage.Add('Vulkan (1.3.261.1 or higher)');
+  VersionPage.Add('CPU');
+
+  VersionPage.SelectedValueIndex := 0;
+end;
+
+function IsCUDASelected: Boolean;
+begin
+  Result := VersionPage.SelectedValueIndex = 0;
+end;
+
+function IsVulkanSelected: Boolean;
+begin
+  Result := VersionPage.SelectedValueIndex = 1;
+end;
+
+function IsCPUSelected: Boolean;
+begin
+  Result := VersionPage.SelectedValueIndex = 2;
+end;
+
 function NeedsAddPath(Param: string): Boolean;
 var
   OrigPath: string;
