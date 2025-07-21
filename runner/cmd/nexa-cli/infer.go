@@ -21,6 +21,12 @@ import (
 	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
 )
 
+const modelLoadFailMsg = `⚠️ Oops. Model failed to load.
+
+👉 Try these:
+- Verify your system meets the model’s requirements.
+- Seek help in our discord or slack.`
+
 var (
 	// disableStream *bool // reuse in run.go
 	modelType       string
@@ -161,8 +167,13 @@ func inferLLM(model string, tokenizer *string) {
 	spin.Start()
 	p, err := nexa_sdk.NewLLM(model, tokenizer, 8192, nil)
 	spin.Stop()
+
 	if err != nil {
-		fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+		if errors.Is(err, nexa_sdk.SDKErrorModelLoad) {
+			fmt.Println(modelLoadFailMsg)
+		} else {
+			fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+		}
 		return
 	}
 	defer p.Destroy()
@@ -251,7 +262,11 @@ func inferVLM(model string, tokenizer *string) {
 	p, err := nexa_sdk.NewVLM(model, tokenizer, 8192, nil)
 	spin.Stop()
 	if err != nil {
-		fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+		if errors.Is(err, nexa_sdk.SDKErrorModelLoad) {
+			fmt.Println(modelLoadFailMsg)
+		} else {
+			fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+		}
 		return
 	}
 	defer p.Destroy()
@@ -339,8 +354,12 @@ func inferEmbed(modelfile string, tokenizer *string) {
 	p, err := nexa_sdk.NewEmbedder(modelfile, tokenizer, nil)
 	spin.Stop()
 	if err != nil {
-		fmt.Println(text.FgRed.Sprintf("Error: %s", err))
-		fmt.Println()
+		if errors.Is(err, nexa_sdk.SDKErrorModelLoad) {
+			fmt.Println(modelLoadFailMsg)
+		} else {
+			fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+			fmt.Println()
+		}
 		return
 	}
 	defer p.Destroy()
@@ -379,7 +398,11 @@ func inferRerank(modelfile string, tokenizer *string) {
 	p, err := nexa_sdk.NewReranker(modelfile, tokenizer, nil)
 	spin.Stop()
 	if err != nil {
-		fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+		if errors.Is(err, nexa_sdk.SDKErrorModelLoad) {
+			fmt.Println(modelLoadFailMsg)
+		} else {
+			fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+		}
 		return
 	}
 	defer p.Destroy()
