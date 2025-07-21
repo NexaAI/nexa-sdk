@@ -131,14 +131,13 @@ install_nexa_sdk() {
     fi
     : "${NEXA_BASE_URL:=https://github.com/zhiyuan8/homebrew-go-release/releases/download}"
     NEXA_DOWNLOAD_URL="${NEXA_BASE_URL}/${NEXA_VERSION}/nexa-cli_ubuntu_22.04_${BACKEND}_${NEXA_VERSION}.tar.gz"
-    status ">>> Downloading Nexa bundle from $NEXA_DOWNLOAD_URL"
+    status "Downloading Nexa bundle from $NEXA_DOWNLOAD_URL"
     curl --fail --show-error --location --progress-bar \
         "$NEXA_DOWNLOAD_URL" | $SUDO tar -xz -C "$NEXA_INSTALL_DIR"
 
     # Create symbolic links
     status "Creating symbolic links in $BINDIR"
-    $SUDO ln -sf "$NEXA_INSTALL_DIR/nexa-cli_ubuntu_22.04_${BACKEND}/nexa" "$BINDIR/nexa"
-    # $SUDO ln -sf "$NEXA_INSTALL_DIR/nexa-cli" "$BINDIR/nexa-cli"
+    $SUDO ln -sf "$NEXA_INSTALL_DIR/nexa" "$BINDIR/nexa"
 }
 
 # Create system user and groups
