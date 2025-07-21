@@ -128,6 +128,9 @@ jobs:
           chmod +x "${APP_PATH}/Contents/MacOS/launcher"
           chmod +x "${APP_PATH}/Contents/Resources/nexa"
           chmod +x "${APP_PATH}/Contents/Resources/nexa-cli"
+          if [ -d "${APP_PATH}/Contents/Resources/lib/mlx/python_runtime/bin" ]; then
+            chmod -R +x "${APP_PATH}/Contents/Resources/lib/mlx/python_runtime/bin"
+          fi
           mkdir -p pkg_scripts
           cp release/scripts/postinstall pkg_scripts/
           chmod +x pkg_scripts/postinstall
