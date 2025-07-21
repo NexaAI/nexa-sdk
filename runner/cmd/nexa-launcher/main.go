@@ -55,7 +55,7 @@ func setRuntimeEnv() {
 		prependPath("LD_LIBRARY_PATH", backend)
 	case "darwin":
 		prependPath("DYLD_LIBRARY_PATH", backend)
-		if backend == "mlx" {
+		if strings.Contains(backend, "mlx") {
 			binPath = filepath.Join(filepath.Dir(binPath), "nexa-cli-mlx")
 		}
 	default:
