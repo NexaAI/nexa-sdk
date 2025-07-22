@@ -65,7 +65,6 @@ jobs:
         os: [macos-13, macos-14, macos-15]
     env:
       VERSION: ${{ github.ref_name }}
-      RELEASE_REPO: zhiyuan8/homebrew-go-release
 
     steps:
       - name: Checkout repository
@@ -235,119 +234,12 @@ jobs:
             exit 1
           fi
 
-          mv "build/nexa-cli_${{ matrix.os }}.pkg" "build/nexa-cli_${{ matrix.os }}_${{ env.VERSION }}.pkg"
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          repository: ${{ env.RELEASE_REPO }}
-          files: "build/nexa-cli_${{ matrix.os }}_${{ env.VERSION }}.pkg"
+          repository: NexaAI/nexa-sdk
+          files: "build/nexa-cli_${{ matrix.os }}.pkg"
           tag_name: ${{ env.VERSION }}
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.NEXASDK_RELEASE_TOKEN }}
-
-  release-and-update-tap:
-    name: Create Release and Update Homebrew Tap
-    needs: build-cli
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    env:
-      VERSION: ${{ github.ref_name }}
-      TAP_REPO: zhiyuan8/homebrew-go
-      RELEASE_REPO: zhiyuan8/homebrew-go-release
-
-    steps:
-      - name: Download all build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Prepare Packages for Release
-        id: package
-        run: |
-          mkdir release_packages
-          for dir in artifacts/*/; do
-            dir_name=$(basename "$dir")
-            package_name="${dir_name}_${{ env.VERSION }}.tar.gz"
-            tar -czf "release_packages/${package_name}" -C "$dir" .
-          done
-          echo "packages_path=release_packages" >> $GITHUB_OUTPUT
-
-      - name: Checkout Homebrew Tap Repository
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ env.TAP_REPO }}
-          path: homebrew-tap
-          token: ${{ secrets.NEXASDK_RELEASE_TOKEN }}
-
-      - name: Generate and Update manifest.json
-        run: |
-          set -e
-
-          TAP_DIR="homebrew-tap"
-          MANIFEST_FILE="$TAP_DIR/manifest.json"
-
-          # --- 1. Init Manifest ---
-          if [[ -f "$MANIFEST_FILE" ]]; then
-            manifest_json=$(cat "$MANIFEST_FILE")
-          else
-            manifest_json='{"version": "", "url_template": "", "platforms": {}}'
-          fi
-
-          # --- 2. Update Top Level ---
-          manifest_json=$(echo "$manifest_json" | jq \
-            --arg version "${VERSION#v}" \
-            --arg url_template "https://github.com/${{ env.RELEASE_REPO }}/releases/download/v{version}/{artifact_name}_v{version}.tar.gz" \
-            '.version = $version | .url_template = $url_template')
-
-          # --- 3. Iterate and Update manifest ---
-          for pkg in release_packages/*.tar.gz; do
-            sha256=$(sha256sum "$pkg" | awk '{print $1}')
-
-            # e.g., nexa-cli_macos-14_v0.1.0.tar.gz -> nexa-cli_macos-14 -> macos-14
-            pkg_name=$(basename "$pkg")
-            artifact_name=$(echo "$pkg_name" | sed -E "s/_${{ env.VERSION }}\.tar\.gz$//")
-            platform_string=$(echo "$artifact_name" | sed 's/nexa-cli_//')
-
-            case "$platform_string" in
-              macos-13)
-                jq_path='.platforms.ventura.x86_64'
-                ;;
-              macos-14)
-                jq_path='.platforms.sonoma.arm64'
-                ;;
-              macos-15)
-                jq_path='.platforms."sequoia_and_later".arm64'
-                ;;
-              *)
-                echo "::warning title=Unhandled Package::Skipping unhandled package format: $platform_string"
-                continue
-                ;;
-            esac
-
-            echo "Updating manifest for '$platform_string'..."
-
-            # --- 4. Update JSON ---
-            update_expression="$jq_path = {\"artifact_name\": \"$artifact_name\", \"sha256\": \"$sha256\"}"
-            manifest_json=$(echo "$manifest_json" | jq "$update_expression")
-          done
-
-          # --- 5. Write JSON ---
-          echo "$manifest_json" | jq '.' > "$MANIFEST_FILE"
-
-          echo "Final manifest.json:"
-          cat "$MANIFEST_FILE"
-
-      - name: Commit and Push Manifest
-        run: |
-          cd homebrew-tap
-          git config user.name "GitHub Actions Bot"
-          git config user.email "github-actions@github.com"
-          if [[ -n $(git status --porcelain manifest.json) ]]; then
-            git add manifest.json
-            git commit -m "Update manifest for nexa version ${{ env.VERSION }}"
-            git push
-          else
-            echo "No changes detected in manifest.json."
-          fi

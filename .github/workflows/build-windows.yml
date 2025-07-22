@@ -151,15 +151,15 @@ jobs:
             --azure-key-vault-tenant-id "${{ secrets.AZURE_TENANT_ID }}" `
             -tr http://timestamp.globalsign.com/tsa/advanced `
             -td sha256 `
-            "artifacts/nexa-cli_windows-setup_${{ env.VERSION }}.exe"
+            "artifacts/nexa-cli_windows-setup.exe"
 
       - name: Create GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          repository: zhiyuan8/homebrew-go-release
+          repository: NexaAI/nexa-sdk
           tag_name: ${{ env.VERSION }}
-          files: artifacts/nexa-cli_windows-setup_${{ env.VERSION }}.exe
+          files: artifacts/nexa-cli_windows-setup.exe
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.NEXASDK_RELEASE_TOKEN }}
