@@ -243,6 +243,7 @@ jobs:
           repository: ${{ env.RELEASE_REPO }}
           files: "build/nexa-cli_${{ matrix.os }}_${{ env.VERSION }}.pkg"
           tag_name: ${{ env.VERSION }}
+          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.NEXASDK_RELEASE_TOKEN }}
 

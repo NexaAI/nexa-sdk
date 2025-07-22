@@ -160,5 +160,6 @@ jobs:
           repository: zhiyuan8/homebrew-go-release
           tag_name: ${{ env.VERSION }}
           files: artifacts/nexa-cli_windows-setup_${{ env.VERSION }}.exe
+          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.NEXASDK_RELEASE_TOKEN }}
