@@ -1,5 +1,6 @@
 <h1>Nexa SDK - Local On-Device Inference Framework</h1>
 Nexa SDK is a comprehensive toolkit for supporting GGUF and MLX model formats. It supports LLM and VLMs.
+![Nexa SDK](assets/banner.png)
 
 Features
 - Device Support: CPU, GPU (CUDA, Metal, Vulkan)
