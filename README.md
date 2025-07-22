@@ -1,5 +1,6 @@
 <h1>Nexa SDK - Local On-Device Inference Framework</h1>
 Nexa SDK is a comprehensive toolkit for supporting GGUF and MLX model formats. It supports LLM and VLMs.
+
 ![Nexa SDK](assets/banner.png)
 
 Features
@@ -14,11 +15,10 @@ Features
 > Welcome to submit your requests through issues, we ship weekly.
 
 ## Installation
-### MacOS
+- [MacOS](https://github.com/NexaAI/nexa-sdk/releases/latest/nexa-cli-universal.pkg)
+- [Windows](https://github.com/NexaAI/nexa-sdk/releases/latest/nexa-cli_windows-setup.exe)
+- [Linux](release/linux/install.sh)
 
-### Windows
-
-### Linux
 
 ## 🚀 Supported Model Types
 GGUF runs on **macOS, Linux, and Windows**. MLX is **macOS-only (Apple Silicon)**.
