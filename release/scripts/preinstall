@@ -1,0 +1,38 @@
+#!/bin/sh
+
+echo "Pre-installation script for Nexa CLI..."
+echo "Stopping existing processes and removing previous installation..."
+
+# Stop any running nexa processes
+echo "Stopping nexa processes..."
+pkill -x "nexa" 2>/dev/null || true
+pkill -x "nexa-cli" 2>/dev/null || true
+
+# Wait a moment for processes to terminate
+sleep 2
+
+# Force kill if still running
+pkill -9 -x "nexa" 2>/dev/null || true
+pkill -9 -x "nexa-cli" 2>/dev/null || true
+echo "Processes stopped."
+
+# Clean up any previous package receipts
+echo "Cleaning up package receipts..."
+pkgutil --forget "com.nexaai.nexa-sdk" 2>/dev/null || true
+
+# Remove previous installation (check all possible locations)
+APP_PATHS=(
+    "/Applications/NexaCLI.app"
+    "/Applications/Nexa CLI.app"
+)
+
+for APP_PATH in "${APP_PATHS[@]}"; do
+    if [ -d "${APP_PATH}" ]; then
+        echo "Removing previous installation at ${APP_PATH}..."
+        rm -rf "${APP_PATH}"
+        echo "Previous installation removed."
+    fi
+done
+
+echo "Pre-installation cleanup completed successfully."
+exit 0

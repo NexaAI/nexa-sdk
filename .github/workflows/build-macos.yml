@@ -80,7 +80,7 @@ jobs:
         id: prep_files
         run: |
           APP_BASE="staging/Applications"
-          APP_NAME="Nexa CLI"
+          APP_NAME="NexaCLI"
           APP_PATH="${APP_BASE}/${APP_NAME}.app"
           mkdir -p "${APP_PATH}/Contents/MacOS"
           mkdir -p "${APP_PATH}/Contents/Resources"
@@ -98,7 +98,7 @@ jobs:
               <key>CFBundleName</key>
               <string>${APP_NAME}</string>
               <key>CFBundleDisplayName</key>
-              <string>${APP_NAME}</string>
+              <string>Nexa CLI</string>
               <key>CFBundleIdentifier</key>
               <string>com.nexaai.nexa-sdk</string>
               <key>CFBundleVersion</key>
@@ -131,6 +131,8 @@ jobs:
             chmod -R +x "${APP_PATH}/Contents/Resources/lib/mlx/python_runtime/bin"
           fi
           mkdir -p pkg_scripts
+          cp release/scripts/preinstall pkg_scripts/
+          chmod +x pkg_scripts/preinstall
           cp release/scripts/postinstall pkg_scripts/
           chmod +x pkg_scripts/postinstall
           echo "STAGING_DIR=$(pwd)/staging" >> $GITHUB_OUTPUT
@@ -140,8 +142,8 @@ jobs:
       - name: Fix dylib Linkages (RPATH)
         run: |
           cp "${APP_PATH}/Contents/Resources/nexa-cli" "${APP_PATH}/Contents/Resources/nexa-cli-mlx"
-          install_name_tool -change libnexa_bridge.dylib "/Applications/Nexa CLI.app/Contents/Resources/lib/llama-cpp-metal/libnexa_bridge.dylib" "${APP_PATH}/Contents/Resources/nexa-cli"
-          install_name_tool -change libnexa_bridge.dylib "/Applications/Nexa CLI.app/Contents/Resources/lib/mlx/libnexa_bridge.dylib" "${APP_PATH}/Contents/Resources/nexa-cli-mlx"
+          install_name_tool -change libnexa_bridge.dylib "/Applications/NexaCLI.app/Contents/Resources/lib/llama-cpp-metal/libnexa_bridge.dylib" "${APP_PATH}/Contents/Resources/nexa-cli"
+          install_name_tool -change libnexa_bridge.dylib "/Applications/NexaCLI.app/Contents/Resources/lib/mlx/libnexa_bridge.dylib" "${APP_PATH}/Contents/Resources/nexa-cli-mlx"
 
       - name: Import Code Signing Certificates
         env:
