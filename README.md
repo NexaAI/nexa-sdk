@@ -1,56 +1,91 @@
-<h1>Nexa SDK - Local On-Device Inference Framework</h1>
-Nexa SDK is a comprehensive toolkit for supporting GGUF and MLX model formats. It supports LLM and VLMs.
+<div align="center">
+  <p>
+      <img width="100%" src="assets/banner.png" alt="Nexa AI Banner">
+  </p>
 
-![Nexa SDK](assets/banner.png)
-
-Features
-- Device Support: CPU, GPU (CUDA, Metal, Vulkan)
-- Input Type Support: Text, Image, Audio
-- Server: OpenAI-compatible API, JSON schema for function calling and streaming support
-- Model Format Support: GGUF, MLX
-
-## Latest News 🔥
-- Beta launch for Nexa SDK, more updates coming soon!
+  <p align="center">
+    <a href="https://docs.nexa.ai">
+        <img src="https://img.shields.io/badge/docs-website-brightgreen?logo=readthedocs" alt="Documentation">
+    </a>
+   <a href="https://x.com/nexa_ai"><img alt="X account" src="https://img.shields.io/twitter/url/https/twitter.com/diffuserslib.svg?style=social&label=Follow%20%40Nexa_AI"></a>
+    <a href="https://discord.com/invite/nexa-ai">
+        <img src="https://img.shields.io/discord/1192186167391682711?color=5865F2&logo=discord&logoColor=white&style=flat-square" alt="Join us on Discord">
+    </a>
+    <a href="https://join.slack.com/t/nexa-ai-community/shared_invite/zt-3837k9xpe-LEty0disTTUnTUQ4O3uuNw">
+        <img src="https://img.shields.io/badge/slack-join%20chat-4A154B?logo=slack&logoColor=white" alt="Join us on Slack">
+    </a>
+</p>
   
-> Welcome to submit your requests through issues, we ship weekly.
+  ![OS](https://img.shields.io/badge/os-linux%20|%20macOS%20|%20windows-purple)
+  ![Hardware](https://img.shields.io/badge/hardware-CPU%20|%20GPU%20|%20NPU-yellow)
 
+</div>
+
+# Nexa SDK
+
+Nexa SDK is an on-device inference framework that runs any model on any device, across any backend. It runs on CPUs and GPUs with backend support for CUDA, Metal, and Vulkan. It handles multiple input modalities including text 📝, image 🖼️, and audio 🎧. The SDK includes an OpenAI-compatible API server with support for JSON schema-based function calling and streaming. It supports model formats such as GGUF and MLX, enabling efficient quantized inference across diverse platforms.
+
+## Recent updates
+
+#### 📣  **2025.07.22: Release of nexaSDK beta**, includes:
+
+- MLX and GGUF support
+- VLM and LLMs
+- More updates coming soon
+  
 ## Installation
-- [MacOS](https://github.com/NexaAI/nexa-sdk/releases/latest/nexa-cli-universal.pkg)
-- [Windows](https://github.com/NexaAI/nexa-sdk/releases/latest/nexa-cli_windows-setup.exe)
-- [Linux](release/linux/install.sh)
 
+### MacOS
 
-## 🚀 Supported Model Types
-GGUF runs on **macOS, Linux, and Windows**. MLX is **macOS-only (Apple Silicon)**.
+[Download](https://github.com/NexaAI/nexa-sdk/releases/latest/nexa-cli-universal.pkg)
 
-| Type                | GGUF (Universal)  Quickstart                 | MLX (macOS only) Quickstart                     |
-|---------------------|----------------------------------|------------------------------------------|
-| **LLM**             | `nexa infer ggml-org/Qwen3-1.7B-GGUF`       | `nexa infer NexaAI/Qwen3-4B-4bit-MLX`               |
-| **Multimodal (VLM)**| `nexa infer NexaAI/Qwen2.5-Omni-3B-GGUF`    | `nexa infer NexaAI/gemma-3n-E4B-it-4bit-MLX`        |
+### Windows
+[Download](https://github.com/NexaAI/nexa-sdk/releases/latest/nexa-cli_windows-setup.exe)
 
+### Linux
+[Download](release/linux/install.sh)
 
+## Supported Models
 
-## 🤗 Run Models from HuggingFace
-You can run any compatible GGUF or MLX model from Hugging Face by using the **full repo name**.
+You can run any compatible GGUF or MLX model from 🤗 Hugging Face by using the `<full repo name>`.
 
 ### GGUF models
-To try other GGUF models, go to Hugging Face, find any model with GGUF format (e.g. unsloth/Qwen2.5-VL-3B-Instruct-GGUF), and run:
+
+> [!TIP]
+> GGUF runs on macOS, Linux, and Windows.
+
+📝 Run and chat with LLMs, e.g. Qwen3:
 
 ```bash
-nexa infer unsloth/Qwen2.5-VL-3B-Instruct-GGUF
+nexa infer ggml-org/Qwen3-1.7B-GGUF
+```
+
+🖼️ Run and chat with Multimodal models, e.g. Qwen2.5-Omni:
+
+```bash
+nexa infer NexaAI/Qwen2.5-Omni-3B-GGUF
 ```
 
 ### MLX models
-Many MLX models in the Hugging Face mlx-community organization have quality issues and may not run reliably.
-We recommend starting with models from our curated [NexaAI Collection](https://huggingface.co/NexaAI/collections) for best results:
+> [!TIP]
+> MLX is macOS-only (Apple Silicon). Many MLX models in the Hugging Face mlx-community organization have quality issues and may not run reliably.
+> We recommend starting with models from our curated [NexaAI Collection](https://huggingface.co/NexaAI/collections) for best results. For example
+
+📝 Run and chat with LLMs, e.g. Qwen3:
 
 ```bash
 nexa infer NexaAI/Qwen3-4B-4bit-MLX
 ```
 
-## 🛠️ Essential CLI Commands
+🖼️ Run and chat with Multimodal models, e.g. Gemma3n:
 
-| Command                          | What it does                                                        |
+```bash
+nexa infer NexaAI/gemma-3n-E4B-it-4bit-MLX
+```
+
+## CLI Reference
+
+| Essential Command                          | What it does                                                        |
 |----------------------------------|----------------------------------------------------------------------|
 | `nexa -h`              | show all CLI commands                              |
 | `nexa pull <repo>`              | Interactive download & cache of a model                              |
@@ -60,10 +95,12 @@ nexa infer NexaAI/Qwen3-4B-4bit-MLX
 | `nexa serve --host 127.0.0.1:8080` | Launch OpenAI‑compatible REST server                            |
 | `nexa run <repo>`              | Chat with a model via an existing server                             |
 
-👉 For comprehensive commands, see the full [CLI Reference →](https://nexaai.mintlify.app/nexa-sdk-go/NexaCLI)
+👉 To interact with multimodal models, you can drag photos or audio clips directly into the CLI — you can even drop multiple images at once!
 
+See [CLI Reference](https://nexaai.mintlify.app/nexa-sdk-go/NexaCLI) for full commands.
 
 ## Acknowledgements
+
 We would like to thank the following projects:
 - [llama.cpp](https://github.com/ggml-org/llama.cpp)
 - [mlx-lm](https://github.com/ml-explore/mlx-lm)
