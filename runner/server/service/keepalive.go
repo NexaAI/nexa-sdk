@@ -92,8 +92,8 @@ func keepAliveGet[T any](name string, param types.ModelParam) (any, error) {
 		// support shortcuts like qwen3 -> Qwen/Qwen3-4B-GGUF
 		name = actualPath
 	} else if !strings.Contains(name, "/") {
-		// fallback to nexaml prefix for unknown shortcuts
-		name = "nexaml/" + name
+		// fallback to NexaAI prefix for unknown shortcuts
+		name = "NexaAI/" + name
 	}
 
 	// Check if model already exists in cache
