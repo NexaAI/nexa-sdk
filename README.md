@@ -35,15 +35,24 @@ Nexa SDK is an on-device inference framework that runs any model on any device, 
   
 ## Installation
 
-### MacOS
+Here's an improved, concise version of your installation section:
 
-[Download](https://github.com/NexaAI/nexa-sdk/releases/latest/nexa-cli-universal.pkg)
+---
+
+## Installation
+
+### macOS
+* [macOS 13](https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_macos-13.pkg)
+* [macOS 14](https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_macos-14.pkg)
+* [macOS 15](https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_macos-15.pkg)
 
 ### Windows
-[Download](https://github.com/NexaAI/nexa-sdk/releases/latest/nexa-cli_windows-setup.exe)
+* [Windows Installer](https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_windows-setup.exe)
 
 ### Linux
-[Download](release/linux/install.sh)
+```bash
+curl -fsSL https://path.to/install.sh -o install.sh && chmod +x install.sh && ./install.sh
+```
 
 ## Supported Models
 
