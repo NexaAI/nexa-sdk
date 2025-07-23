@@ -56,7 +56,7 @@ func setRuntimeEnv() {
 	case "darwin":
 		prependPath("DYLD_LIBRARY_PATH", backend)
 		if strings.Contains(backend, "mlx") {
-			binPath = filepath.Join(filepath.Dir(binPath), "nexa-cli-mlx")
+			binPath = filepath.Join(filepath.Dir(binPath), "nexa-cli")
 		}
 	default:
 		panic("unsupported OS: " + runtime.GOOS)
