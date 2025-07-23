@@ -31,13 +31,6 @@ Nexa SDK is an on-device inference framework that runs any model on any device, 
 
 - MLX and GGUF support
 - VLM and LLMs
-- More updates coming soon
-  
-## Installation
-
-Here's an improved, concise version of your installation section:
-
----
 
 ## Installation
 
@@ -51,7 +44,7 @@ Here's an improved, concise version of your installation section:
 
 ### Linux
 ```bash
-curl -fsSL https://path.to/install.sh -o install.sh && chmod +x install.sh && ./install.sh
+curl -fsSL https://raw.githubusercontent.com/NexaAI/nexa-sdk/main/release/linux/install.sh -o install.sh && chmod +x install.sh && ./install.sh
 ```
 
 ## Supported Models
