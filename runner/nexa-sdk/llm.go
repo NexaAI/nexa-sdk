@@ -161,7 +161,7 @@ func (p *LLM) Generate(prompt string) (string, error) {
 	config.max_tokens = 2048
 
 	var res *C.char
-	resLen := C.ml_llm_generate(p.ptr, cPrompt, &config, &res)
+	resLen := C.ml_llm_generate_stream(p.ptr, cPrompt, &config, nil, nil, &res)
 	if resLen <= 0 {
 		return "", SDKError(resLen)
 	}

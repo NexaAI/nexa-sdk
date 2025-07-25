@@ -272,7 +272,6 @@ func inferVLM(model string, tokenizer *string) {
 	defer p.Destroy()
 
 	var history []nexa_sdk.ChatMessage
-	var lastLen int
 
 	repl(ReplConfig{
 		Stream:    !disableStream,
@@ -286,18 +285,17 @@ func inferVLM(model string, tokenizer *string) {
 
 		Run: func(prompt string, images, audios []string) (string, error) {
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
-			formatted, err := p.ApplyChatTemplate(history)
+			formatted, err := p.ApplyChatTemplate(history, images, audios)
 			if err != nil {
 				return "", err
 			}
 
-			res, err := p.Generate(prompt, images, audios)
+			res, err := p.Generate(formatted, images, audios)
 			if err != nil {
 				return "", err
 			}
 
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: res})
-			lastLen = len(formatted) + len(res)
 
 			return res, nil
 		},
@@ -307,22 +305,15 @@ func inferVLM(model string, tokenizer *string) {
 			defer close(dataCh)
 
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
-			formatted, e := p.ApplyChatTemplate(history)
+			formatted, e := p.ApplyChatTemplate(history, images, audios)
 			if e != nil {
 				errCh <- e
 				return
 			}
 
 			var full strings.Builder
-			var promptToSend string
 
-			if isMLX(model) {
-				promptToSend = formatted
-			} else {
-				promptToSend = formatted[lastLen:]
-			}
-
-			dCh, eCh := p.GenerateStream(ctx, promptToSend, images, audios)
+			dCh, eCh := p.GenerateStream(ctx, formatted, images, audios)
 			for r := range dCh {
 				full.WriteString(r)
 				dataCh <- r
@@ -334,7 +325,6 @@ func inferVLM(model string, tokenizer *string) {
 
 			content := full.String()
 			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: content})
-			lastLen = len(formatted) + len(content)
 		},
 	})
 }

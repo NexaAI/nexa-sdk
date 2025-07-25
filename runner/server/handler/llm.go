@@ -310,7 +310,7 @@ func chatVLMCompletions(c *gin.Context, param ChatCompletionRequest) {
 
 	} else {
 
-		formatted, err := p.ApplyChatTemplate(messages)
+		formatted, err := p.ApplyChatTemplate(messages, images, audios)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 			return

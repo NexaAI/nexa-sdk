@@ -54,7 +54,7 @@ func TestVLMApplyChatTemplate(t *testing.T) {
 		{LLMRoleUser, "hello"},
 		{LLMRoleAssistant, "yes, you are a so cute cat"},
 		{LLMRoleUser, "can you give me a new cute name"},
-	})
+	}, nil, nil)
 
 	if e != nil {
 		t.Error(e)
@@ -87,15 +87,15 @@ func TestVLMGetChatTemplate(t *testing.T) {
 // Combines chat template application with text generation
 func TestVLMChat(t *testing.T) {
 	// Format the user message using chat template
+	pic := "~/Pictures/ScreenShot/20200201_182517.png"
 	msg, e := vlm.ApplyChatTemplate([]ChatMessage{
 		{LLMRoleUser, "what does the picture say"},
-	})
+	}, []string{pic}, nil)
 	if e != nil {
 		t.Error(e)
 	}
 
 	// Generate response using the formatted prompt
-	pic := "~/Pictures/ScreenShot/20200201_182517.png"
 	res, e := vlm.Generate(msg, []string{pic}, nil)
 	if e != nil {
 		t.Error(e)
