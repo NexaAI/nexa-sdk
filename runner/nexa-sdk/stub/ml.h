@@ -3,13 +3,13 @@
 /**
  * @file ml.h
  * @brief Unified C API for machine learning operations
- * 
+ *
  * This header provides a comprehensive C interface for various ML tasks including:
  * - Language models (LLM) and multimodal models (VLM)
  * - Text embeddings and reranking
  * - Image generation and computer vision (OCR)
  * - Speech recognition (ASR) and text-to-speech (TTS)
- * 
+ *
  * All functions return status codes where applicable, with negative values indicating errors.
  * Memory management follows RAII principles - use corresponding destroy/free functions.
  */
@@ -133,6 +133,18 @@ typedef void (*ml_log_callback)(const char*);
 
 /** Token callback for streaming generation */
 typedef bool (*ml_llm_token_callback)(const char* token, void* user_data);
+
+/** Tool definition */
+typedef struct {
+    const char* name;                       /* name of the function */
+    const char* description;                /* description of the function in natural language */
+    const char* parameters_json;            /* JSON schema for the function parameters */
+} ml_ToolFunction;
+
+typedef struct {
+    const char*                 *type;      /* always "function" */
+    const ml_ToolFunction*      function;   /* pointer to ToolFunction */
+} ml_Tool;
 
 /* ====================  Core Initialization  ================================ */
 
@@ -274,34 +286,7 @@ ML_API int32_t ml_llm_save_kv_cache(const ml_LLM* handle, ml_Path path);
 /** Load KV cache state from file. Returns 0 on success, negative on error */
 ML_API int32_t ml_llm_load_kv_cache(ml_LLM* handle, ml_Path path);
 
-/* ====================  LoRA Management  ================================== */
-
-/** Set active LoRA adapter by ID */
-ML_API void    ml_llm_set_lora(ml_LLM* handle, int32_t lora_id);
-
-/** Add LoRA adapter from file. Returns LoRA ID on success, negative on error */
-ML_API int32_t ml_llm_add_lora(ml_LLM* handle, ml_Path lora_path);
-
-/** Remove LoRA adapter by ID */
-ML_API void    ml_llm_remove_lora(ml_LLM* handle, int32_t lora_id);
-
-/** List all loaded LoRA adapter IDs. Returns count, negative on error */
-ML_API int32_t ml_llm_list_loras(const ml_LLM* handle, int32_t** out_lora_ids);
-
-/* ====================  Sampling Configuration  =========================== */
-
-/** Configure text generation sampling parameters */
-ML_API void ml_llm_set_sampler(ml_LLM* handle, const ml_SamplerConfig* config);
-
-/** Reset sampling parameters to defaults */
-ML_API void ml_llm_reset_sampler(ml_LLM* handle);
-
 /* ====================  Text Generation  ================================== */
-
-/** Generate text from prompt. Returns 0 on success, negative on error
- *  @param prompt_utf8 The full chat history */
-ML_API int32_t ml_llm_generate(
-    ml_LLM* handle, const char* prompt_utf8, const ml_GenerationConfig* config, char** out_text);
 
 /** Get chat template by name. Returns 0 on success, negative on error */
 ML_API int32_t ml_llm_get_chat_template(ml_LLM* handle, const char* template_name, const char** out_template);
@@ -328,14 +313,6 @@ typedef struct {
 /** Get profiling data from LLM. Returns 0 on success, negative on error */
 ML_API int32_t ml_llm_get_profiling_data(const ml_LLM* handle, ml_ProfilingData* out_data);
 
-/** Reset profiling counters for LLM */
-// ML_API void ml_llm_reset_profiling(ml_LLM* handle);
-
-/* ====================  Embedding Generation  ============================= */
-
-/** Generate embeddings for input texts. Returns 0 on success, negative on error */
-ML_API int32_t ml_llm_embed(ml_LLM* handle, const char** texts_utf8, int32_t text_count, float** out_embeddings);
-
 /* ====================  Streaming Generation  ============================= */
 
 /** Generate text with streaming token callback. Returns 0 on success, negative on error
@@ -343,22 +320,28 @@ ML_API int32_t ml_llm_embed(ml_LLM* handle, const char** texts_utf8, int32_t tex
 ML_API int32_t ml_llm_generate_stream(ml_LLM* handle, const char* prompt_utf8, const ml_GenerationConfig* config,
     ml_llm_token_callback on_token, void* user_data, char** out_full_text);
 
-/** Generate next token from input IDs. Returns token ID (>0), 0 for EOS, negative for error */
-// TODO: remove this function, it is not used
-ML_API int32_t ml_llm_generate_next_token(ml_LLM* handle, int32_t** input_ids, int32_t* input_length, int32_t* n_past);
-
 /* ========================================================================== */
 /*                              MULTIMODAL MODELS (VLM)                          */
 /* ========================================================================== */
+
+typedef struct {
+    const char *type;  // "text", "image", "audio", … (null-terminated UTF-8)
+    const char *text;  // payload: the actual text, URL, or special token
+} ml_VlmContent;
+
+/* ---------- Message ---------- */
+typedef struct {
+    const char     *role;          // "user", "assistant", "system", …
+    int64_t        content_count; // number of elements in `contents`
+    ml_VlmContent  *contents;      // dynamically-allocated array (may be NULL)
+} ml_VlmChatMessage;
 
 typedef struct ml_VLM ml_VLM; /* Opaque VLM handle */
 
 /* ====================  Lifecycle Management  ============================== */
 
 /** Create and initialize a VLM instance from model files */
-ML_API ml_VLM* ml_vlm_create(ml_Path model_path, ml_Path mmproj_path, int32_t context_length, const char* device);
-// TODO, change to:
-// ML_API ml_VLM* ml_vlm_create(ml_Path model_path, ml_Path mmproj_path, ml_ModelConfig config, const char* device);
+ML_API ml_VLM* ml_vlm_create(ml_Path model_path, ml_Path mmproj_path, ml_ModelConfig config, const char* device);
 
 /** Destroy VLM instance and free associated resources */
 ML_API void    ml_vlm_destroy(ml_VLM* handle);
@@ -374,60 +357,30 @@ ML_API int32_t ml_vlm_encode(const ml_VLM* handle, const char* text_utf8, int32_
 /** Decode token IDs to UTF-8 text. Returns character count, negative on error */
 ML_API int32_t ml_vlm_decode(const ml_VLM* handle, const int32_t* token_ids, int32_t length, char** out_text);
 
-/* ====================  Sampling Configuration  =========================== */
-
-/** Configure text generation sampling parameters */
-ML_API void ml_vlm_set_sampler(ml_VLM* handle, const ml_SamplerConfig* config);
-
-/** Reset sampling parameters to defaults */
-ML_API void ml_vlm_reset_sampler(ml_VLM* handle);
 
 /** Print detailed performance profile (sampler + context) */
 ML_API void ml_vlm_print_profile(const ml_VLM* handle);
 
 /* ====================  Text Generation  ================================== */
 
-/** Generate text from prompt with optional multimodal inputs. Returns 0 on success, negative on error */
-/** @param prompt_utf8 The incremental chat history from the current turn */
-ML_API int32_t ml_vlm_generate(
-    ml_VLM* handle, const char* prompt_utf8, const ml_GenerationConfig* config, char** out_text);
-
-/** Generate multimodal text with explicit image(s) and audio(s). Returns 0 on success, negative on error */
-ML_API int32_t ml_vlm_generate_multimodal(
-    ml_VLM* handle, const char* prompt_utf8, ml_Path* image_paths, int32_t image_count,
-    ml_Path* audio_paths, int32_t audio_count, const ml_GenerationConfig* config, char** out_text);
-
 /** Get chat template by name. Returns 0 on success, negative on error */
 ML_API int32_t ml_vlm_get_chat_template(ml_VLM* handle, const char* template_name, const char** out_template);
 
 /** Apply chat template to messages. Returns 0 on success, negative on error */
 ML_API int32_t ml_vlm_apply_chat_template(
-    ml_VLM* handle, ml_ChatMessage* messages, int32_t message_count, char** out_text);
-
-/* ====================  Embedding Generation  ============================= */
-
-/** Generate embeddings for input texts. Returns 0 on success, negative on error */
-ML_API int32_t ml_vlm_embed(ml_VLM* handle, const char** texts_utf8, int32_t text_count, float** out_embeddings);
+    ml_VLM* handle, ml_VlmChatMessage* messages, int32_t message_count, ml_Tool* tools, int32_t tool_count, char** out_text);
 
 /* ====================  Profiling Data  ================================ */
 
 /** Get profiling data from VLM. Returns 0 on success, negative on error */
 ML_API int32_t ml_vlm_get_profiling_data(const ml_VLM* handle, ml_ProfilingData* out_data);
 
-
-
 /* ====================  Streaming Generation  ============================= */
 
-/** Generate text with streaming token callback and multimodal inputs. Returns 0 on success, negative on error
- *  @param prompt_utf8 The incremental chat history from the current turn */
+/** Generate text with streaming token callback. Returns 0 on success, negative on error
+ *  @param prompt_utf8 The full chat history */
 ML_API int32_t ml_vlm_generate_stream(
     ml_VLM* handle, const char* prompt_utf8, const ml_GenerationConfig* config,
-    ml_llm_token_callback on_token, void* user_data, char** out_full_text);
-
-/** Generate multimodal text with streaming and explicit image(s) and audio(s). Returns 0 on success, negative on error */
-ML_API int32_t ml_vlm_generate_stream_multimodal(
-    ml_VLM* handle, const char* prompt_utf8, ml_Path* image_paths, int32_t image_count,
-    ml_Path* audio_paths, int32_t audio_count, const ml_GenerationConfig* config,
     ml_llm_token_callback on_token, void* user_data, char** out_full_text);
 
 /* ========================================================================== */
@@ -466,20 +419,6 @@ ML_API int32_t ml_embedder_get_profiling_data(const ml_Embedder* handle, ml_Prof
 
 /** Get embedding dimension. Returns dimension size, negative on error */
 ML_API int32_t ml_embedder_embedding_dim(const ml_Embedder* handle);
-
-/* ====================  LoRA Management  ================================== */
-
-/** Set active LoRA adapter by ID */
-ML_API void    ml_embedder_set_lora(ml_Embedder* handle, int32_t lora_id);
-
-/** Add LoRA adapter from file. Returns LoRA ID on success, negative on error */
-ML_API int32_t ml_embedder_add_lora(ml_Embedder* handle, ml_Path lora_path);
-
-/** Remove LoRA adapter by ID */
-ML_API void    ml_embedder_remove_lora(ml_Embedder* handle, int32_t lora_id);
-
-/** List all loaded LoRA adapter IDs. Returns count, negative on error */
-ML_API int32_t ml_embedder_list_loras(const ml_Embedder* handle, int32_t** out);
 
 /* ========================================================================== */
 /*                              RERANKING MODELS                               */
@@ -544,6 +483,7 @@ typedef struct {
 typedef struct {
     const char* type;                /* Scheduler type: "ddim", etc. */
     int32_t     num_train_timesteps; /* Training timesteps */
+    int32_t     steps_offset;        /* An offset added to the inference steps */
     float       beta_start;          /* Beta schedule start */
     float       beta_end;            /* Beta schedule end */
     const char* beta_schedule;       /* Beta schedule: "scaled_linear" */
@@ -594,19 +534,6 @@ ML_API ml_Image ml_imagegen_img2img(ml_ImageGen* handle, const ml_Image* init_im
 /** Generate image using full configuration */
 ML_API ml_Image ml_imagegen_generate(ml_ImageGen* handle, const ml_ImageGenerationConfig* config);
 
-/* ====================  LoRA Management  ================================== */
-
-/** Set active LoRA adapter by ID */
-ML_API void    ml_imagegen_set_lora(ml_ImageGen* handle, int32_t lora_id);
-
-/** Add LoRA adapter from file. Returns LoRA ID on success, negative on error */
-ML_API int32_t ml_imagegen_add_lora(ml_ImageGen* handle, ml_Path lora_path);
-
-/** Remove LoRA adapter by ID */
-ML_API void    ml_imagegen_remove_lora(ml_ImageGen* handle, int32_t lora_id);
-
-/** List all loaded LoRA adapter IDs. Returns count, negative on error */
-ML_API int32_t ml_imagegen_list_loras(ml_ImageGen* handle, int32_t** out);
 
 /* ========================================================================== */
 /*                              COMPUTER VISION (CV)                           */

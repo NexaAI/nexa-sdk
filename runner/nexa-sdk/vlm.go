@@ -50,7 +50,7 @@ func NewVLM(model string, tokenizer *string, ctxLen int32, devices *string) (*VL
 		defer C.free(unsafe.Pointer(cTokenizer))
 	}
 
-	ptr := C.ml_vlm_create(cModel, cTokenizer, C.int32_t(ctxLen), nil)
+	ptr := C.ml_vlm_create(cModel, cTokenizer, C.ml_ModelConfig{n_ctx: C.int32_t(ctxLen)}, nil)
 	if ptr == nil {
 		return nil, SDKErrorModelLoad
 	}
@@ -145,7 +145,7 @@ func (p *VLM) Generate(prompt string, images []string, audios []string) (string,
 	}
 
 	var res *C.char
-	resLen := C.ml_vlm_generate(p.ptr, cPrompt, &config, &res)
+	resLen := C.ml_vlm_generate_stream(p.ptr, cPrompt, &config, nil, nil, &res)
 	if resLen <= 0 {
 		return "", SDKError(resLen)
 	}
@@ -174,21 +174,81 @@ func (p *VLM) GetChatTemplate(name *string) (string, error) {
 }
 
 // ApplyChatTemplate formats chat messages using the model's chat template
-func (p *VLM) ApplyChatTemplate(msgs []ChatMessage) (string, error) {
-	slog.Debug("ApplyChatTemplate called", "msgs", msgs)
+func (p *VLM) ApplyChatTemplate(msgs []ChatMessage, images []string, audios []string) (string, error) {
+	slog.Debug("ApplyChatTemplate called", "msgs", msgs, "images", images, "audios", audios)
 
-	cMsgs := make([]C.ml_ChatMessage, len(msgs))
+	cMsgs := make([]C.ml_VlmChatMessage, len(msgs))
 
+	// Calculate total content items needed per message
+	// For the last message (user message), we add images and audios
+	// For other messages, just text content
+	totalContents := 0
+	for i := range msgs {
+		if i == len(msgs)-1 { // Last message gets media appended
+			totalContents += 1 + len(images) + len(audios) // text + images + audios
+		} else {
+			totalContents += 1 // just text
+		}
+	}
+
+	allContents := make([]C.ml_VlmContent, totalContents)
+
+	var pinner runtime.Pinner
+	defer pinner.Unpin()
+
+	contentIndex := 0
 	for i, msg := range msgs {
 		cMsg := &cMsgs[i]
 		cMsg.role = C.CString(string(msg.Role))
 		defer C.free(unsafe.Pointer(cMsg.role))
-		cMsg.content = C.CString(msg.Content)
-		defer C.free(unsafe.Pointer(cMsg.content))
+
+		// Start with text content
+		contentStartIndex := contentIndex
+
+		// Create text content
+		textContent := &allContents[contentIndex]
+		textContent._type = C.CString("text")
+		defer C.free(unsafe.Pointer(textContent._type))
+		textContent.text = C.CString(msg.Content)
+		defer C.free(unsafe.Pointer(textContent.text))
+		contentIndex++
+
+		// For the last message (typically user message), append images and audios
+		if i == len(msgs)-1 {
+			// Add image contents
+			for _, imagePath := range images {
+				imageContent := &allContents[contentIndex]
+				imageContent._type = C.CString("image")
+				defer C.free(unsafe.Pointer(imageContent._type))
+				imageContent.text = C.CString(imagePath)
+				defer C.free(unsafe.Pointer(imageContent.text))
+				contentIndex++
+			}
+
+			// Add audio contents
+			for _, audioPath := range audios {
+				audioContent := &allContents[contentIndex]
+				audioContent._type = C.CString("audio")
+				defer C.free(unsafe.Pointer(audioContent._type))
+				audioContent.text = C.CString(audioPath)
+				defer C.free(unsafe.Pointer(audioContent.text))
+				contentIndex++
+			}
+		}
+
+		// Set up the message with its content items
+		contentCount := contentIndex - contentStartIndex
+		cMsg.content_count = C.int64_t(contentCount)
+		cMsg.contents = &allContents[contentStartIndex]
+	}
+
+	// Pin the allContents slice to prevent GC from moving it
+	if len(allContents) > 0 {
+		pinner.Pin(&allContents[0])
 	}
 
 	var res *C.char
-	resLen := C.ml_vlm_apply_chat_template(p.ptr, &cMsgs[0], C.int32_t(len(msgs)), &res)
+	resLen := C.ml_vlm_apply_chat_template(p.ptr, &cMsgs[0], C.int32_t(len(msgs)), nil, 0, &res)
 	if resLen < 0 {
 		return "", SDKError(resLen)
 	}
