@@ -2,6 +2,7 @@ package server
 
 import (
 	"log/slog"
+	"os"
 
 	"github.com/gin-gonic/gin"
 
@@ -22,9 +23,33 @@ func Serve() {
 	RegisterAPIv1(engine)
 	RegisterSwagger(engine)
 
-	// NEXA_HOST=127.0.0.1:18181 nexa serve
-	err := engine.Run(config.Get().Host)
+	cfg := config.Get()
+	var err error
+
+	// Determine whether to serve over HTTPS
+	if cfg.EnableHTTPS {
+		certFile := cfg.CertFile
+		keyFile := cfg.KeyFile
+
+		// Verify that certificate and key files exist
+		if _, err := os.Stat(certFile); os.IsNotExist(err) {
+			slog.Error("HTTPS Certificate file not found", "cert", certFile)
+			return
+		}
+		if _, err := os.Stat(keyFile); os.IsNotExist(err) {
+			slog.Error("HTTPS Key file not found", "key", keyFile)
+			return
+		}
+
+		slog.Info("HTTPS enabled", "cert", certFile, "key", keyFile)
+		slog.Info("Localhosted documentation on https://" + cfg.Host + "/docs/ui")
+		err = engine.RunTLS(cfg.Host, certFile, keyFile)
+	} else {
+		slog.Info("Localhosted documentation on http://" + cfg.Host + "/docs/ui")
+		err = engine.Run(cfg.Host)
+	}
+
 	if err != nil {
-		slog.Error("HTTP Server Error", "err", err)
+		slog.Error("HTTP/HTTPS Server Error", "err", err)
 	}
 }

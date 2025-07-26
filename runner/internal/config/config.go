@@ -12,6 +12,11 @@ type Config struct {
 	HFToken   string
 
 	Log string // Enable backend log
+
+	// HTTPS / TLS settings
+	EnableHTTPS bool   // Whether to serve over HTTPS (default: false)
+	CertFile    string // TLS certificate file path
+	KeyFile     string // TLS private key file path
 }
 
 var config *Config
@@ -32,6 +37,11 @@ func init() {
 	viper.SetDefault("hftoken", "")             // Default empty token
 
 	viper.SetDefault("log", "info") // Default log level
+
+	// HTTPS defaults - disabled unless explicitly enabled
+	viper.SetDefault("enablehttps", false)
+	viper.SetDefault("certfile", "cert.pem")
+	viper.SetDefault("keyfile", "key.pem")
 }
 
 // get initializes the configuration by reading from environment variables.

@@ -4,9 +4,6 @@ info:
   version: 0.0.0
   description: |
     Nexa AI Server - OpenAI compatible API endpoints
-servers:
-  - url: http://127.0.0.1:18181
-    description: Local dev server
 
 paths:
   /v1/completions:
