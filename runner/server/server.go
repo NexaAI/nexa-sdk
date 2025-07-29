@@ -42,10 +42,10 @@ func Serve() {
 		}
 
 		slog.Info("HTTPS enabled", "cert", certFile, "key", keyFile)
-		slog.Info("Localhosted documentation on https://" + cfg.Host + "/docs/ui")
+		// slog.Info("Localhosting on https://" + cfg.Host + "/docs/ui")
 		err = engine.RunTLS(cfg.Host, certFile, keyFile)
 	} else {
-		slog.Info("Localhosted documentation on http://" + cfg.Host + "/docs/ui")
+		slog.Info("Localhosting on http://" + cfg.Host + "/docs/ui")
 		err = engine.Run(cfg.Host)
 	}
 
