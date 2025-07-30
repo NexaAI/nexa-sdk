@@ -82,16 +82,6 @@ jobs:
         run: |
           pyinstaller --onefile --noconsole --distpath artifacts --name "nexa-cli-launcher" --icon="release/nexa_logo.ico" release/nexa_windows_launcher.py
 
-      - name: Download NSSM
-        env:
-          NSSM_VERSION: "2.24"
-        run: |
-          Invoke-WebRequest -Uri "https://nssm.cc/release/nssm-${{ env.NSSM_VERSION }}.zip" -OutFile "nssm.zip"
-          Expand-Archive -Path "nssm.zip" -DestinationPath "nssm_temp"
-          Copy-Item "nssm_temp\nssm-${{ env.NSSM_VERSION }}\win64\nssm.exe" "artifacts\nssm.exe"
-          Remove-Item "nssm.zip"
-          Remove-Item "nssm_temp" -Recurse
-
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v4.1.0
         with:
@@ -123,16 +113,6 @@ jobs:
             -tr http://timestamp.globalsign.com/tsa/advanced `
             -td sha256 `
             "artifacts\nexa-cli-launcher.exe"
-
-          azuresigntool sign `
-            -kvu "${{ secrets.AZURE_KEY_VAULT_URI }}" `
-            -kvc "${{ secrets.AZURE_CERT_NAME }}" `
-            -kvi "${{ secrets.AZURE_CLIENT_ID }}" `
-            -kvs "${{ secrets.AZURE_CLIENT_SECRET }}" `
-            --azure-key-vault-tenant-id "${{ secrets.AZURE_TENANT_ID }}" `
-            -tr http://timestamp.globalsign.com/tsa/advanced `
-            -td sha256 `
-            "artifacts\nssm.exe"
 
       - name: Compile Installer
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.6
