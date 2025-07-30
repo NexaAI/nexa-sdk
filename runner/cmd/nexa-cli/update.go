@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -16,32 +15,29 @@ import (
 	"github.com/NexaAI/nexa-sdk/internal/render"
 	"github.com/NexaAI/nexa-sdk/internal/store"
 	"github.com/NexaAI/nexa-sdk/internal/types"
+	"github.com/bytedance/sonic"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 )
 
 const (
-	GithubAPIURL = "https://api.github.com/repos/zhiyuan8/homebrew-go-release/releases/latest"
-	UserAgent    = "Nexa-Updater/1.0"
+	githubAPIURL = "https://api.github.com/repos/zhiyuan8/homebrew-go-release/releases/latest"
+	userAgent    = "Nexa-Updater/1.0"
+
+	updateCheckInterval  = 24 * time.Hour
+	notificationInterval = 8 * time.Hour
 )
 
-type Release struct {
+type release struct {
 	TagName string  `json:"tag_name"`
-	Assets  []Asset `json:"assets"`
+	Assets  []asset `json:"assets"`
 }
 
-type Asset struct {
+type asset struct {
 	Name               string `json:"name"`
 	BrowserDownloadURL string `json:"browser_download_url"`
 	Size               int    `json:"size"`
 	Digest             string `json:"digest"`
-}
-
-type Platform struct {
-	OS      string
-	Arch    string
-	Backend string
-	Version string
 }
 
 func update() *cobra.Command {
@@ -49,9 +45,6 @@ func update() *cobra.Command {
 	updateCmd.Use = "update"
 	updateCmd.Short = "update nexa"
 	updateCmd.Long = "Update nexa to the latest version"
-
-	var loop bool
-	updateCmd.Flags().BoolVar(&loop, "loop", false, "check update in loop")
 
 	updateCmd.Run = func(cmd *cobra.Command, args []string) {
 		if err := updateImpl(); err != nil {
@@ -64,33 +57,23 @@ func update() *cobra.Command {
 }
 
 func updateImpl() error {
-	platform, err := detectPlatform()
-	if err != nil {
-		return err
-	}
-	fmt.Printf("platform: %+v\n", platform)
-
-	release, err := getLatestRelease()
+	rls, err := getLatestRelease()
 	if err != nil {
 		return err
 	}
 
-	// check if need update
-	if release.TagName <= platform.Version {
-		fmt.Printf("No newer version available: %s\n", release.TagName)
+	if rls.TagName <= Version {
+		fmt.Println("Already up-to-date.")
 		return nil
 	}
 
-	ast, err := findMatchingAsset(release, platform)
+	ast, err := findMatchingAsset(rls)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("New version found, file: %s, version: %s\n", ast.Name, release.TagName)
+	fmt.Printf("New version found, file: %s, version: %s\n", ast.Name, rls.TagName)
 
-	// download update package
-	dst := filepath.Join(os.TempDir(), "nexa", release.TagName, ast.Name)
-	// fmt.Printf("download update package to: %s\n", dst)
-
+	dst := filepath.Join(os.TempDir(), "nexa", rls.TagName, ast.Name)
 	progress := make(chan types.DownloadInfo)
 	bar := render.NewProgressBar(int64(ast.Size), "downloading")
 	fmt.Println()
@@ -105,6 +88,15 @@ func updateImpl() error {
 		return err
 	}
 
+	ck := updateCheck{
+		CheckTime:     time.Now(),
+		LastNotify:    time.Now(),
+		LatestVersion: rls.TagName,
+	}
+	if err = setLastCheck(&ck); err != nil {
+		return fmt.Errorf("failed to set last check: %w", err)
+	}
+
 	if err = installUpdate(dst); err != nil {
 		return err
 	}
@@ -112,104 +104,49 @@ func updateImpl() error {
 	return nil
 }
 
-func getCurrentVersion() (string, string, error) {
-	var version, backend string
-
-	// nexa version:
-	// NexaSDK Bridge Version: v0.1.2-rc4_llama-cpp-metal
-	// NexaSDK CLI Version:    v0.2.16-rc2
-	cmd := exec.Command("/usr/local/bin/nexa", "version")
-	output, err := cmd.Output()
-	if err != nil {
-		fmt.Println(err.Error())
-		return "", "", err
-	}
-
-	versionStr := strings.TrimSpace(string(output))
-
-	lines := strings.SplitSeq(versionStr, "\n")
-	for line := range lines {
-		if strings.Contains(line, "CLI Version") {
-			parts := strings.Split(line, ":")
-			if len(parts) >= 2 {
-				version = strings.TrimSpace(parts[1])
-			}
-		}
-
-		if strings.Contains(line, "Bridge Version") {
-			parts := strings.Split(line, ":")
-			if len(parts) >= 2 {
-				backend = strings.Split(strings.TrimSpace(parts[1]), "_")[1]
-			}
-		}
-	}
-
-	if version == "" || backend == "" {
-		return "", "", fmt.Errorf("can not parse version: %s", versionStr)
-	}
-	return version, backend, nil
-}
-
-// 检测当前平台
-func detectPlatform() (Platform, error) {
-	version, backend, err := getCurrentVersion()
-	if err != nil {
-		return Platform{}, err
-	}
-
-	platform := Platform{
-		OS:      runtime.GOOS,
-		Arch:    runtime.GOARCH,
-		Version: version,
-		Backend: backend,
-	}
-
-	return platform, nil
-}
-
-func getLatestRelease() (Release, error) {
-	var release Release
+func getLatestRelease() (release, error) {
+	var rls release
 
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
 
-	req, err := http.NewRequest("GET", GithubAPIURL, nil)
+	req, err := http.NewRequest("GET", githubAPIURL, nil)
 	if err != nil {
-		return release, err
+		return rls, err
 	}
 
-	req.Header.Set("User-Agent", UserAgent)
+	req.Header.Set("User-Agent", userAgent)
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return release, err
+		return rls, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return release, fmt.Errorf("get latest release failed: %d", resp.StatusCode)
+		return rls, fmt.Errorf("get latest release failed: %d", resp.StatusCode)
 	}
 
-	err = json.NewDecoder(resp.Body).Decode(&release)
+	err = sonic.ConfigDefault.NewDecoder(resp.Body).Decode(&rls)
 	if err != nil {
-		return release, err
+		return rls, err
 	}
 
-	return release, nil
+	return rls, nil
 }
 
-func findMatchingAsset(release Release, platform Platform) (*Asset, error) {
+func findMatchingAsset(rls release) (*asset, error) {
 	var assetName string
-	switch platform.OS {
+	switch runtime.GOOS {
 	case "darwin":
 		macOSVersion, err := getMacOSVersion()
 		if err != nil {
 			return nil, err
 		}
 
-		assetName = fmt.Sprintf("nexa-cli_macos-%s.pkg", macOSVersion)
-		for _, asset := range release.Assets {
+		assetName = fmt.Sprintf("nexa-cli_macos-%d.pkg", macOSVersion)
+		for _, asset := range rls.Assets {
 			if asset.Name == assetName {
 				return &asset, nil
 			}
@@ -217,7 +154,7 @@ func findMatchingAsset(release Release, platform Platform) (*Asset, error) {
 
 	case "windows":
 		assetName = "nexa-cli_windows-setup.exe"
-		for _, asset := range release.Assets {
+		for _, asset := range rls.Assets {
 			if asset.Name == assetName {
 				return &asset, nil
 			}
@@ -239,8 +176,8 @@ func download(url, dst string, progress chan types.DownloadInfo) error {
 	manifest, err := os.Open(manifestPath)
 	if err == nil {
 		defer manifest.Close()
-		var ast Asset
-		if err = json.NewDecoder(manifest).Decode(&ast); err != nil {
+		var ast asset
+		if err = sonic.ConfigDefault.NewDecoder(manifest).Decode(&ast); err != nil {
 			return err
 		}
 
@@ -267,8 +204,7 @@ func download(url, dst string, progress chan types.DownloadInfo) error {
 		return err
 	}
 
-	// 写入 manifest.json
-	ast := Asset{
+	ast := asset{
 		Name:               filepath.Base(dst),
 		BrowserDownloadURL: url,
 		Size:               int(info.Size()),
@@ -279,33 +215,29 @@ func download(url, dst string, progress chan types.DownloadInfo) error {
 		return err
 	}
 	defer manifest.Close()
-	return json.NewEncoder(manifest).Encode(ast)
+
+	return sonic.ConfigFastest.NewEncoder(manifest).Encode(ast)
 }
 
 // X86 -> 13
 // ARM >=15 -> 15
 // ARM others: 14
-func getMacOSVersion() (string, error) {
-	if runtime.GOOS != "darwin" {
-		return "", errors.New("not macos")
-	}
-
+func getMacOSVersion() (int, error) {
 	if runtime.GOARCH != "arm64" {
-		return "13", nil
+		return 13, nil
 	}
 
-	// 运行 sw_vers 命令获取 macOS 版本
 	cmd := exec.Command("sw_vers", "-productVersion")
 	output, err := cmd.Output()
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 
 	versionStr := strings.TrimSpace(string(output))
 	if versionStr >= "15" {
-		return "15", nil
+		return 15, nil
 	}
-	return "14", nil
+	return 14, nil
 }
 
 func installUpdate(pkgPath string) error {
@@ -324,4 +256,79 @@ func installUpdate(pkgPath string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Start()
+}
+
+type updateCheck struct {
+	CheckTime     time.Time `json:"check_time"`
+	LastNotify    time.Time `json:"last_notify"`
+	LatestVersion string    `json:"latest_version"`
+}
+
+func getLastCheck() (updateCheck, error) {
+	var ck updateCheck
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return ck, err
+	}
+	checkFile := filepath.Join(configDir, "nexa-cli", ".updatecheck")
+
+	data, err := os.ReadFile(checkFile)
+	if err != nil {
+		return ck, err
+	}
+
+	if err = sonic.Unmarshal(data, &ck); err != nil {
+		return ck, err
+	}
+	return ck, nil
+}
+
+func setLastCheck(ck *updateCheck) error {
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return err
+	}
+
+	nexaConfigDir := filepath.Join(configDir, "nexa-cli")
+	if err := os.MkdirAll(nexaConfigDir, 0755); err != nil {
+		return err
+	}
+
+	data, err := sonic.Marshal(ck)
+	if err != nil {
+		return err
+	}
+	checkFile := filepath.Join(nexaConfigDir, ".updatecheck")
+	return os.WriteFile(checkFile, data, 0644)
+}
+
+func notifyUpdate() {
+	ck, _ := getLastCheck()
+	if time.Since(ck.CheckTime) < updateCheckInterval {
+		return
+	}
+
+	rls, err := getLatestRelease()
+	if err != nil {
+		fmt.Println("Failed to check for updates:", err)
+		return
+	}
+	ck.CheckTime = time.Now()
+	defer setLastCheck(&ck)
+
+	if rls.TagName > Version {
+		if rls.TagName != ck.LatestVersion || time.Since(ck.LastNotify) > notificationInterval {
+			ck.LatestVersion = rls.TagName
+			ck.LastNotify = time.Now()
+
+			fmt.Fprintf(os.Stderr, "\n\n%s %s → %s\n",
+				text.FgYellow.Sprintf("A new version of nexa-cli is available:"),
+				text.FgGreen.Sprint(Version),
+				text.FgGreen.Sprint(rls.TagName))
+
+			fmt.Fprintf(os.Stderr, "%s\n\n",
+				text.FgYellow.Sprint("To update, run: `nexa update`"),
+			)
+		}
+	}
 }
