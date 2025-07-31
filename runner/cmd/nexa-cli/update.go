@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	githubAPIURL = "https://api.github.com/repos/zhiyuan8/homebrew-go-release/releases/latest"
+	githubAPIURL = "https://api.github.com/repos/NexaAI/nexa-sdk/releases/latest"
 	userAgent    = "Nexa-Updater/1.0"
 
 	updateCheckInterval  = 24 * time.Hour

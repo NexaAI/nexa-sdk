@@ -239,7 +239,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          repository: zhiyuan8/homebrew-go-release
+          repository: NexaAI/nexa-sdk
           files: "build/nexa-cli_${{ matrix.os }}.pkg"
           tag_name: ${{ env.VERSION }}
           make_latest: true

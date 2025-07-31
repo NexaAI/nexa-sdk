@@ -137,7 +137,7 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          repository: zhiyuan8/homebrew-go-release
+          repository: NexaAI/nexa-sdk
           tag_name: ${{ env.VERSION }}
           files: artifacts/nexa-cli_windows-setup.exe
           make_latest: true

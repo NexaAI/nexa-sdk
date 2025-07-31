@@ -57,7 +57,7 @@ jobs:
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          repository: zhiyuan8/homebrew-go-release
+          repository: NexaAI/nexa-sdk
           files: "nexa-cli_${{ matrix.os }}_${{ matrix.backend }}.tar.gz"
           tag_name: ${{ env.VERSION }}
           make_latest: true
