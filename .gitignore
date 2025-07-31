@@ -68,3 +68,5 @@ tmp/
 
 # Delve debugger
 __debug_bin
+/.swiftpm
+/bindings/ios/.swiftpm

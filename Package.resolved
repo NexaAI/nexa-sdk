@@ -1,0 +1,14 @@
+{
+  "pins" : [
+    {
+      "identity" : "nexasdk-mobile-ios-framework",
+      "kind" : "remoteSourceControl",
+      "location" : "git@github.com:NexaAI/nexasdk-mobile-iOS-framework.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "66341d8c8e29a43e0bc44138d0435adc31662187"
+      }
+    }
+  ],
+  "version" : 2
+}
