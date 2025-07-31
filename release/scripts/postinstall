@@ -2,7 +2,7 @@
 
 echo "Creating symbolic links for Nexa CLI..."
 
-APP_PATH="/Applications/Nexa CLI.app"
+APP_PATH="/Applications/NexaCLI.app"
 ln -sf "${APP_PATH}/Contents/Resources/nexa" "/usr/local/bin/nexa"
 
 exit 0

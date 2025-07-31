@@ -20,6 +20,12 @@ func RootCmd() *cobra.Command {
 		Use: "nexa",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			applyLogLevel()
+
+			calledCmd := cmd.CalledAs()
+			if calledCmd != "update" && calledCmd != "version" {
+				go notifyUpdate()
+			}
+
 			return nil
 		},
 	}
@@ -28,7 +34,7 @@ func RootCmd() *cobra.Command {
 		pull(), remove(), clean(), list(),
 		infer(), // genImage(),
 		serve(), run(),
-		version(),
+		version(), update(),
 	)
 
 	return rootCmd

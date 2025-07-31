@@ -1,0 +1,18 @@
+#!/bin/sh
+
+echo "Pre-installation script for Nexa CLI..."
+
+# echo "Cleaning up previous package receipt to ensure a clean install..."
+# pkgutil --forget "com.nexaai.nexa-sdk" >/dev/null 2>&1 || true
+
+echo "Stopping any running nexa processes..."
+pkill -f "/Applications/Nexa.*CLI.app" >/dev/null 2>&1 || true
+
+sleep 1
+
+echo "Removing previous installation files..."
+rm -rf "/Applications/Nexa CLI.app"
+rm -rf "/Applications/NexaCLI.app"
+
+echo "Pre-installation cleanup completed successfully."
+exit 0

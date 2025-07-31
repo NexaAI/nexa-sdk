@@ -47,7 +47,7 @@ detect_system_environment() {
         # aarch64|arm64) ARCH="arm64" ;;
         *) error "Unsupported architecture: $ARCH" ;;
     esac
-    
+
     # Detect WSL2 environment
     KERN=$(uname -r)
     case "$KERN" in
@@ -82,7 +82,7 @@ select_backend() {
     echo "1) llama-cpp-cpu (CPU only)"
     echo "2) llama-cpp-cuda (CUDA GPU acceleration)"
     echo ""
-    
+
     while true; do
         read -p "Please select backend (1 or 2): " choice
         case $choice in
@@ -112,24 +112,24 @@ install_nexa_sdk() {
     NEXA_INSTALL_DIR="/opt/nexa-sdk"
     status "Installation directory: $NEXA_INSTALL_DIR"
     status "Binary directory: $BINDIR"
-    
+
     # Clean up old installation
     if [ -d "$NEXA_INSTALL_DIR" ] ; then
         status "Cleaning up old version at $NEXA_INSTALL_DIR"
         $SUDO rm -rf "$NEXA_INSTALL_DIR"
     fi
-    
+
     # Create necessary directories
     status "Creating installation directories"
     $SUDO install -o0 -g0 -m755 -d "$NEXA_INSTALL_DIR"
-    
+
     # Download and extract Nexa
     : "${NEXA_VERSION:=latest}"
     if [ "$NEXA_VERSION" = "latest" ]; then
-        NEXA_VERSION=$(curl -sSfL "https://api.github.com/repos/zhiyuan8/homebrew-go-release/releases/latest" | \
+        NEXA_VERSION=$(curl -sSfL "https://api.github.com/repos/NexaAI/nexa-sdk/releases/latest" | \
             grep '"tag_name":' | cut -d '"' -f 4)
     fi
-    : "${NEXA_BASE_URL:=https://github.com/zhiyuan8/homebrew-go-release/releases/download}"
+    : "${NEXA_BASE_URL:=https://github.com/NexaAI/nexa-sdk/releases/download}"
     NEXA_DOWNLOAD_URL="${NEXA_BASE_URL}/${NEXA_VERSION}/nexa-cli_ubuntu_22.04_${BACKEND}_${NEXA_VERSION}.tar.gz"
     status "Downloading Nexa bundle from $NEXA_DOWNLOAD_URL"
     curl --fail --show-error --location --progress-bar \
@@ -205,7 +205,7 @@ enable_systemd_service() {
 configure_systemd() {
     create_system_user
     create_systemd_service
-    
+
     enable_systemd_service
 }
 

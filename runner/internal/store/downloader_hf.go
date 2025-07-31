@@ -33,6 +33,8 @@ func NewHFDownloader(totalSize int64, progress chan<- types.DownloadInfo) *HFDow
 		client: fasthttp.Client{
 			NoDefaultUserAgentHeader:  true,
 			MaxIdemponentCallAttempts: 3,
+			ReadBufferSize:            64 * 1024,
+			WriteBufferSize:           64 * 1024,
 		},
 		totalSize: totalSize,
 		progress:  progress,
