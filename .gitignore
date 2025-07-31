@@ -70,3 +70,5 @@ tmp/
 __debug_bin
 /.swiftpm
 /bindings/ios/.swiftpm
+bindings/ios/Example/Example.xcodeproj/project.xcworkspace/xcuserdata/niki.xcuserdatad/UserInterfaceState.xcuserstate
+/bindings/ios/Example/Example.xcodeproj/project.xcworkspace/xcuserdata
