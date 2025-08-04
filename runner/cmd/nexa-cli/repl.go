@@ -7,16 +7,20 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/bytedance/sonic"
 	"github.com/charmbracelet/huh"
 	"github.com/dustin/go-humanize"
 	"github.com/ollama/ollama/readline"
 
+	"github.com/NexaAI/nexa-sdk/runner/internal/record"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
@@ -41,6 +45,7 @@ var help = [][2]string{
 	{"/clear", "Clear the screen and conversation history"},
 	{"/load <filename>", "Load conversation history from a file"},
 	{"/save <filename>", "Save conversation history to a file"},
+	{"/mic", "chat with LLM"},
 }
 
 // TODO: support sub dir
@@ -148,6 +153,7 @@ func repl(cfg ReplConfig) {
 
 	var sb strings.Builder
 	var multiline MultilineState
+	var rec *record.Recorder
 	for {
 		line, err := l.Readline()
 
@@ -156,6 +162,16 @@ func repl(cfg ReplConfig) {
 			fmt.Println()
 			return
 		case errors.Is(err, readline.ErrInterrupt):
+			if rec != nil {
+				if err = rec.Stop(); err != nil {
+					fmt.Printf("stop record failed: %v\n", err)
+				}
+
+				line = rec.GetOutputFile()
+				rec = nil
+				break
+			}
+
 			if line == "" {
 				fmt.Println("\nUse Ctrl + d or /exit to exit.")
 				fmt.Println()
@@ -254,6 +270,26 @@ func repl(cfg ReplConfig) {
 				if err != nil {
 					fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 					fmt.Println()
+				}
+
+			case "/mic":
+				if rec != nil {
+					fmt.Println(text.FgRed.Sprint("Recording is going on, press Ctrl-C to stop"))
+					continue
+				}
+
+				t := strconv.Itoa(int(time.Now().Unix()))
+				outputFile := filepath.Join(os.TempDir(), "nexa-cli", t+".wav")
+				rec, err = record.NewRecorder(outputFile)
+				if err != nil {
+					fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+					fmt.Println()
+					continue
+				}
+				if err = rec.Start(); err != nil {
+					fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+					fmt.Println()
+					continue
 				}
 
 			default:
