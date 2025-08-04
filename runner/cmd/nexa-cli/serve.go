@@ -1,12 +1,9 @@
 package main
 
 import (
-	"log/slog"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/NexaAI/nexa-sdk/internal/config"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
 	"github.com/NexaAI/nexa-sdk/server"
 )
@@ -22,7 +19,6 @@ func serve() *cobra.Command {
 	serveCmd.Short = "Run the Nexa AI Service"
 
 	serveCmd.Run = func(cmd *cobra.Command, args []string) {
-		slog.Info("Start Nexa AI Server on http://" + config.Get().Host)
 
 		// Initialize SDK resources and prepare AI models for serving
 		nexa_sdk.Init()
@@ -38,9 +34,16 @@ func serve() *cobra.Command {
 	serveCmd.Flags().SortFlags = false
 	serveCmd.Flags().String("host", "127.0.0.1:18181", "Default server address (env: NEXA_HOST)")
 	serveCmd.Flags().Int("keepalive", 300, "Keepalive seconds (env: NEXA_KEEPALIVE)")
+	// HTTPS / TLS flags
+	serveCmd.Flags().Bool("https", false, "Enable HTTPS/TLS (env: NEXA_ENABLEHTTPS)")
+	serveCmd.Flags().String("certfile", "cert.pem", "TLS certificate file path (env: NEXA_CERTFILE)")
+	serveCmd.Flags().String("keyfile", "key.pem", "TLS private key file path (env: NEXA_KEYFILE)")
 
 	viper.BindPFlag("host", serveCmd.Flags().Lookup("host"))
 	viper.BindPFlag("keepalive", serveCmd.Flags().Lookup("keepalive"))
+	viper.BindPFlag("enablehttps", serveCmd.Flags().Lookup("https"))
+	viper.BindPFlag("certfile", serveCmd.Flags().Lookup("certfile"))
+	viper.BindPFlag("keyfile", serveCmd.Flags().Lookup("keyfile"))
 
 	return serveCmd
 }
