@@ -124,7 +124,8 @@ install_nexa_sdk() {
     $SUDO install -o0 -g0 -m755 -d "$NEXA_INSTALL_DIR"
 
     # Download and extract Nexa
-    : "${NEXA_VERSION:=latest}"
+    # : "${NEXA_VERSION:=latest}"
+    : "${NEXA_VERSION:=v0.2.15}"
     if [ "$NEXA_VERSION" = "latest" ]; then
         NEXA_VERSION=$(curl -sSfL "https://api.github.com/repos/NexaAI/nexa-sdk/releases/latest" | \
             grep '"tag_name":' | cut -d '"' -f 4)
