@@ -5,7 +5,7 @@ BRIDGE_VERSION ?= v1.0.1-rc5
 
 ifeq ($(OS), Windows_NT)
 	OS := windows
-	ARCH := x86_64
+	ARCH ?= x86_64
 	LIB :=
 	EXT := dll
 	EXE := .exe
