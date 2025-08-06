@@ -68,3 +68,6 @@ tmp/
 
 # Delve debugger
 __debug_bin
+
+# TLS certificates
+*.pem
