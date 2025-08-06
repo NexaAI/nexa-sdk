@@ -38,12 +38,14 @@ func serve() *cobra.Command {
 	serveCmd.Flags().Bool("https", false, "Enable HTTPS/TLS (env: NEXA_ENABLEHTTPS)")
 	serveCmd.Flags().String("certfile", "cert.pem", "TLS certificate file path (env: NEXA_CERTFILE)")
 	serveCmd.Flags().String("keyfile", "key.pem", "TLS private key file path (env: NEXA_KEYFILE)")
+	serveCmd.Flags().Bool("ngrok", false, "Use ngrok for public HTTPS tunnel (env: NEXA_NGROK)")
 
 	viper.BindPFlag("host", serveCmd.Flags().Lookup("host"))
 	viper.BindPFlag("keepalive", serveCmd.Flags().Lookup("keepalive"))
 	viper.BindPFlag("enablehttps", serveCmd.Flags().Lookup("https"))
 	viper.BindPFlag("certfile", serveCmd.Flags().Lookup("certfile"))
 	viper.BindPFlag("keyfile", serveCmd.Flags().Lookup("keyfile"))
+	viper.BindPFlag("ngrok", serveCmd.Flags().Lookup("ngrok"))
 
 	return serveCmd
 }
