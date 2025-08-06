@@ -78,9 +78,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download all build artifacts
+      - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
+          name: nexa-cli_windows_${{ matrix.arch }}
           path: artifacts
 
       - uses: actions/setup-python@v5

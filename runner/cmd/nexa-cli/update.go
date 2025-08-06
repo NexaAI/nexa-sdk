@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
@@ -217,27 +216,6 @@ func download(url, dst string, progress chan types.DownloadInfo) error {
 	defer manifest.Close()
 
 	return sonic.ConfigFastest.NewEncoder(manifest).Encode(ast)
-}
-
-// X86 -> 13
-// ARM >=15 -> 15
-// ARM others: 14
-func getMacOSVersion() (int, error) {
-	if runtime.GOARCH != "arm64" {
-		return 13, nil
-	}
-
-	cmd := exec.Command("sw_vers", "-productVersion")
-	output, err := cmd.Output()
-	if err != nil {
-		return 0, err
-	}
-
-	versionStr := strings.TrimSpace(string(output))
-	if versionStr >= "15" {
-		return 15, nil
-	}
-	return 14, nil
 }
 
 func installUpdate(pkgPath string) error {
