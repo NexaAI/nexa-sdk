@@ -1,5 +1,6 @@
 #define MyAppName "Nexa CLI"
 #define MyAppVersion GetEnv('VERSION')
+#define MyAppArch GetEnv('ARCH')
 #define MyAppPublisher "Nexa AI"
 #define MyAppExeName "nexa.exe"
 #define MyAppServiceName "NexaService"
@@ -12,8 +13,8 @@ AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 DefaultDirName={localappdata}\{#MyAppName}
 DefaultGroupName={#MyAppName}
-OutputDir=..\artifacts
-OutputBaseFilename=nexa-cli_windows-setup
+OutputDir=..\..\..\artifacts
+OutputBaseFilename=nexa-cli_windows_${#MyAppArch}
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
@@ -27,21 +28,21 @@ ArchitecturesInstallIn64BitMode=x64compatible
 
 [Files]
 ; Main executables
-Source: "..\artifacts\nexa-cli_windows_llama-cpp-cpu\nexa.exe"; DestDir: "{app}"; DestName: "nexa.exe"; Flags: ignoreversion; Check: IsCPUSelected
-Source: "..\artifacts\nexa-cli_windows_llama-cpp-cpu\nexa-cli.exe"; DestDir: "{app}"; DestName: "nexa-cli.exe"; Flags: ignoreversion; Check: IsCPUSelected
+Source: "..\..\..\artifacts\nexa-cli_windows_llama-cpp-cpu\nexa.exe"; DestDir: "{app}"; DestName: "nexa.exe"; Flags: ignoreversion; Check: IsCPUSelected
+Source: "..\..\..\artifacts\nexa-cli_windows_llama-cpp-cpu\nexa-cli.exe"; DestDir: "{app}"; DestName: "nexa-cli.exe"; Flags: ignoreversion; Check: IsCPUSelected
 
-Source: "..\artifacts\nexa-cli_windows_llama-cpp-cuda\nexa.exe"; DestDir: "{app}"; DestName: "nexa.exe"; Flags: ignoreversion; Check: IsCUDASelected
-Source: "..\artifacts\nexa-cli_windows_llama-cpp-cuda\nexa-cli.exe"; DestDir: "{app}"; DestName: "nexa-cli.exe"; Flags: ignoreversion; Check: IsCUDASelected
+Source: "..\..\..\artifacts\nexa-cli_windows_llama-cpp-cuda\nexa.exe"; DestDir: "{app}"; DestName: "nexa.exe"; Flags: ignoreversion; Check: IsCUDASelected
+Source: "..\..\..\artifacts\nexa-cli_windows_llama-cpp-cuda\nexa-cli.exe"; DestDir: "{app}"; DestName: "nexa-cli.exe"; Flags: ignoreversion; Check: IsCUDASelected
 
-Source: "..\artifacts\nexa-cli_windows_llama-cpp-vulkan\nexa.exe"; DestDir: "{app}"; DestName: "nexa.exe"; Flags: ignoreversion; Check: IsVulkanSelected
-Source: "..\artifacts\nexa-cli_windows_llama-cpp-vulkan\nexa-cli.exe"; DestDir: "{app}"; DestName: "nexa-cli.exe"; Flags: ignoreversion; Check: IsVulkanSelected
+Source: "..\..\..\artifacts\nexa-cli_windows_llama-cpp-vulkan\nexa.exe"; DestDir: "{app}"; DestName: "nexa.exe"; Flags: ignoreversion; Check: IsVulkanSelected
+Source: "..\..\..\artifacts\nexa-cli_windows_llama-cpp-vulkan\nexa-cli.exe"; DestDir: "{app}"; DestName: "nexa-cli.exe"; Flags: ignoreversion; Check: IsVulkanSelected
 
-Source: "..\artifacts\nexa-cli-launcher.exe"; DestDir: "{app}"; DestName: "{#MyAppLauncherName}"; Flags: ignoreversion
+Source: "..\..\..\artifacts\nexa-cli-launcher.exe"; DestDir: "{app}"; DestName: "{#MyAppLauncherName}"; Flags: ignoreversion
 
 ; Dependencies - with corrected exclusions
-Source: "..\artifacts\nexa-cli_windows_llama-cpp-cpu\lib\*"; DestDir: "{app}\lib"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: IsCPUSelected
-Source: "..\artifacts\nexa-cli_windows_llama-cpp-cuda\lib\*"; DestDir: "{app}\lib"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: IsCUDASelected
-Source: "..\artifacts\nexa-cli_windows_llama-cpp-vulkan\lib\*"; DestDir: "{app}\lib"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: IsVulkanSelected
+Source: "..\..\..\artifacts\nexa-cli_windows_llama-cpp-cpu\lib\*"; DestDir: "{app}\lib"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: IsCPUSelected
+Source: "..\..\..\artifacts\nexa-cli_windows_llama-cpp-cuda\lib\*"; DestDir: "{app}\lib"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: IsCUDASelected
+Source: "..\..\..\artifacts\nexa-cli_windows_llama-cpp-vulkan\lib\*"; DestDir: "{app}\lib"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: IsVulkanSelected
 
 [Registry]
 ; Launcher registration (primary application)

@@ -140,29 +140,29 @@ func findMatchingAsset(rls release) (*asset, error) {
 	var assetName string
 	switch runtime.GOOS {
 	case "darwin":
-		macOSVersion, err := getMacOSVersion()
-		if err != nil {
-			return nil, err
-		}
-
-		assetName = fmt.Sprintf("nexa-cli_macos-%d.pkg", macOSVersion)
-		for _, asset := range rls.Assets {
-			if asset.Name == assetName {
-				return &asset, nil
-			}
+		switch runtime.GOARCH {
+		case "amd64":
+			assetName = "nexa-cli_macos_x86_64.pkg"
+		case "arm64":
+			assetName = "nexa-cli_macos_arm64.pkg"
 		}
 
 	case "windows":
-		assetName = "nexa-cli_windows-setup.exe"
-		for _, asset := range rls.Assets {
-			if asset.Name == assetName {
-				return &asset, nil
-			}
+		switch runtime.GOARCH {
+		case "amd64":
+			assetName = "nexa-cli_windows_x86_64.exe"
 		}
 
 		// 	curl -fsSL https://raw.githubusercontent.com/NexaAI/nexa-sdk/main/release/linux/install.sh -o install.sh && chmod +x install.sh && ./install.sh
 		// case "linux":
 	}
+
+	for _, asset := range rls.Assets {
+		if asset.Name == assetName {
+			return &asset, nil
+		}
+	}
+
 	return nil, errors.New("can not find matching asset")
 }
 
