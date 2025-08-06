@@ -5,288 +5,328 @@ package nexa_sdk
 #include "ml.h"
 */
 import "C"
-
 import (
-	"unsafe"
-
 	"log/slog"
+	"unsafe"
 )
 
 // TTSConfig represents TTS synthesis configuration
 type TTSConfig struct {
-	Voice      string  // Voice identifier
-	Speed      float32 // Speech speed (1.0 = normal)
-	Seed       int32   // Random seed (-1 for random)
-	SampleRate int32   // Output sample rate in Hz
+	Voice      string
+	Speed      float32
+	Seed       int32
+	SampleRate int32
 }
 
-// TTSSamplerConfig represents TTS sampling parameters
-type TTSSamplerConfig struct {
-	Temperature float32 // Sampling temperature
-	NoiseScale  float32 // Noise scale for voice variation
-	LengthScale float32 // Length scale for speech duration
+func (tc TTSConfig) toCPtr() *C.ml_TTSConfig {
+	cPtr := (*C.ml_TTSConfig)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_TTSConfig{}))))
+	*cPtr = C.ml_TTSConfig{}
+
+	if tc.Voice != "" {
+		cPtr.voice = C.CString(tc.Voice)
+	}
+	cPtr.speed = C.float(tc.Speed)
+	cPtr.seed = C.int32_t(tc.Seed)
+	cPtr.sample_rate = C.int32_t(tc.SampleRate)
+
+	return cPtr
 }
+
+func freeTTSConfig(cPtr *C.ml_TTSConfig) {
+	if cPtr != nil {
+		if cPtr.voice != nil {
+			C.free(unsafe.Pointer(cPtr.voice))
+		}
+		C.free(unsafe.Pointer(cPtr))
+	}
+}
+
+// // TTSSamplerConfig represents TTS sampling parameters
+// type TTSSamplerConfig struct {
+// 	Temperature  float32
+// 	NoiseScale   float32
+// 	LengthScale  float32
+// }
+
+// func (tsc TTSSamplerConfig) toCPtr() *C.ml_TTSSamplerConfig {
+// 	cPtr := (*C.ml_TTSSamplerConfig)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_TTSSamplerConfig{}))))
+// 	*cPtr = C.ml_TTSSamplerConfig{}
+
+// 	cPtr.temperature = C.float(tsc.Temperature)
+// 	cPtr.noise_scale = C.float(tsc.NoiseScale)
+// 	cPtr.length_scale = C.float(tsc.LengthScale)
+
+// 	return cPtr
+// }
+
+// func freeTTSSamplerConfig(cPtr *C.ml_TTSSamplerConfig) {
+// 	if cPtr != nil {
+// 		C.free(unsafe.Pointer(cPtr))
+// 	}
+// }
 
 // TTSResult represents TTS synthesis result
 type TTSResult struct {
-	Audio           []float32 // Audio samples: num_samples × channels
-	DurationSeconds float32   // Audio duration in seconds
-	SampleRate      int32     // Audio sample rate in Hz
-	Channels        int32     // Number of audio channels (default: 1)
-	NumSamples      int32     // Number of audio samples
+	AudioPath       string
+	DurationSeconds float32
+	SampleRate      int32
+	Channels        int32
+	NumSamples      int32
 }
 
-// TTS wraps the C library TTS structure and provides Go interface
-type TTS struct {
-	ptr *C.ml_TTS // Pointer to the underlying C TTS structure
-}
+func newTTSResultFromCPtr(c *C.ml_TTSResult) TTSResult {
+	result := TTSResult{}
 
-// NewTTS creates a new TTS instance with the specified model and vocoder
-func NewTTS(model string, vocoder *string, devices *string) (*TTS, error) {
-	slog.Debug("NewTTS called", "model", model, "vocoder", vocoder, "devices", devices)
-
-	cModel := C.CString(model)
-	defer C.free(unsafe.Pointer(cModel))
-
-	var cVocoder *C.char
-	if vocoder != nil {
-		cVocoder = C.CString(*vocoder)
-		defer C.free(unsafe.Pointer(cVocoder))
+	if c == nil {
+		return result
 	}
 
-	ptr := C.ml_tts_create(cModel, cVocoder, nil)
+	if c.audio_path != nil {
+		result.AudioPath = C.GoString(c.audio_path)
+	}
+	result.DurationSeconds = float32(c.duration_seconds)
+	result.SampleRate = int32(c.sample_rate)
+	result.Channels = int32(c.channels)
+	result.NumSamples = int32(c.num_samples)
+
+	return result
+}
+
+func freeTTSResult(ptr *C.ml_TTSResult) {
 	if ptr == nil {
-		return nil, SDKErrorUnknown
-	}
-	return &TTS{ptr: ptr}, nil
-}
-
-// Destroy frees the memory allocated for the TTS instance
-func (p *TTS) Destroy() {
-	slog.Debug("Destroy called", "ptr", p.ptr)
-
-	C.ml_tts_destroy(p.ptr)
-	p.ptr = nil
-}
-
-// Reset clears the TTS's internal state
-func (p *TTS) Reset() {
-	slog.Debug("Reset called", "ptr", p.ptr)
-
-	// Reset TTS state if needed
-}
-
-// LoadModel loads TTS model from path with optional extra configuration data
-func (p *TTS) LoadModel(modelPath string, extraData unsafe.Pointer) error {
-	slog.Debug("LoadModel called", "modelPath", modelPath)
-
-	cPath := C.CString(modelPath)
-	defer C.free(unsafe.Pointer(cPath))
-
-	res := C.ml_tts_load_model(p.ptr, cPath, extraData)
-	if !res {
-		return SDKErrorUnknown
-	}
-	return nil
-}
-
-// Close cleanup TTS resources
-func (p *TTS) Close() {
-	slog.Debug("Close called", "ptr", p.ptr)
-
-	C.ml_tts_close(p.ptr)
-}
-
-// SetSampler configures TTS sampling parameters
-func (p *TTS) SetSampler(config *TTSSamplerConfig) {
-	slog.Debug("SetSampler called", "config", config)
-
-	if config == nil {
 		return
 	}
-
-	cConfig := C.ml_TTSSamplerConfig{
-		temperature:  C.float(config.Temperature),
-		noise_scale:  C.float(config.NoiseScale),
-		length_scale: C.float(config.LengthScale),
+	if ptr.audio_path != nil {
+		mlFree(unsafe.Pointer(ptr.audio_path))
 	}
-
-	C.ml_tts_set_sampler(p.ptr, &cConfig)
 }
 
-// ResetSampler resets TTS sampling parameters to default values
-func (p *TTS) ResetSampler() {
-	slog.Debug("ResetSampler called", "ptr", p.ptr)
-
-	C.ml_tts_reset_sampler(p.ptr)
+// TtsCreateInput represents input parameters for TTS creation
+type TtsCreateInput struct {
+	ModelPath   string
+	VocoderPath string
+	PluginID    string
+	DeviceID    string
 }
 
-// Synthesize converts text to speech audio
-func (p *TTS) Synthesize(text string, config *TTSConfig) (*TTSResult, error) {
-	slog.Debug("Synthesize called", "text", text, "config", config)
+func (tci TtsCreateInput) toCPtr() *C.ml_TtsCreateInput {
+	cPtr := (*C.ml_TtsCreateInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_TtsCreateInput{}))))
+	*cPtr = C.ml_TtsCreateInput{}
 
-	cText := C.CString(text)
-	defer C.free(unsafe.Pointer(cText))
-
-	var cConfig C.ml_TTSConfig
-	if config != nil {
-		cVoice := C.CString(config.Voice)
-		defer C.free(unsafe.Pointer(cVoice))
-
-		cConfig = C.ml_TTSConfig{
-			voice:       cVoice,
-			speed:       C.float(config.Speed),
-			seed:        C.int32_t(config.Seed),
-			sample_rate: C.int32_t(config.SampleRate),
-		}
+	if tci.ModelPath != "" {
+		cPtr.model_path = C.CString(tci.ModelPath)
+	}
+	if tci.VocoderPath != "" {
+		cPtr.vocoder_path = C.CString(tci.VocoderPath)
+	}
+	if tci.PluginID != "" {
+		cPtr.plugin_id = C.CString(tci.PluginID)
+	}
+	if tci.DeviceID != "" {
+		cPtr.device_id = C.CString(tci.DeviceID)
 	}
 
-	res := C.ml_tts_synthesize(p.ptr, cText, &cConfig)
-	if res.audio == nil {
-		return nil, SDKErrorUnknown
-	}
-
-	// Convert C result to Go result
-	audioLen := int(res.num_samples)
-	audio := make([]float32, audioLen)
-	if audioLen > 0 {
-		copy(audio, (*[1 << 30]float32)(unsafe.Pointer(res.audio))[:audioLen])
-	}
-
-	result := &TTSResult{
-		Audio:           audio,
-		DurationSeconds: float32(res.duration_seconds),
-		SampleRate:      int32(res.sample_rate),
-		Channels:        int32(res.channels),
-		NumSamples:      int32(res.num_samples),
-	}
-
-	// Free C memory
-	C.ml_tts_free_result(&res)
-
-	return result, nil
+	return cPtr
 }
 
-// SynthesizeBatch processes multiple texts in batch mode
-func (p *TTS) SynthesizeBatch(texts []string, config *TTSConfig) ([]*TTSResult, error) {
-	slog.Debug("SynthesizeBatch called", "texts", texts, "config", config)
-
-	cTexts := make([]*C.char, len(texts))
-	for i, text := range texts {
-		cText := &cTexts[i]
-		*cText = C.CString(text)
-		defer C.free(unsafe.Pointer(*cText))
-	}
-
-	var cConfig C.ml_TTSConfig
-	if config != nil {
-		cVoice := C.CString(config.Voice)
-		defer C.free(unsafe.Pointer(cVoice))
-
-		cConfig = C.ml_TTSConfig{
-			voice:       cVoice,
-			speed:       C.float(config.Speed),
-			seed:        C.int32_t(config.Seed),
-			sample_rate: C.int32_t(config.SampleRate),
+func freeTtsCreateInput(cPtr *C.ml_TtsCreateInput) {
+	if cPtr != nil {
+		if cPtr.model_path != nil {
+			C.free(unsafe.Pointer(cPtr.model_path))
 		}
-	}
-
-	cRes := C.ml_tts_synthesize_batch(p.ptr, &cTexts[0], C.int32_t(len(texts)), &cConfig)
-	if cRes == nil {
-		return nil, SDKErrorUnknown
-	}
-
-	// Convert C results to Go results
-	results := make([]*TTSResult, len(texts))
-	for i := range len(texts) {
-		res := (*C.ml_TTSResult)(unsafe.Pointer(uintptr(unsafe.Pointer(cRes)) + uintptr(i)*unsafe.Sizeof(C.ml_TTSResult{})))
-
-		audioLen := int(res.num_samples)
-		audio := make([]float32, audioLen)
-		if audioLen > 0 {
-			copy(audio, (*[1 << 30]float32)(unsafe.Pointer(res.audio))[:audioLen])
+		if cPtr.vocoder_path != nil {
+			C.free(unsafe.Pointer(cPtr.vocoder_path))
 		}
-
-		results[i] = &TTSResult{
-			Audio:           audio,
-			DurationSeconds: float32(res.duration_seconds),
-			SampleRate:      int32(res.sample_rate),
-			Channels:        int32(res.channels),
-			NumSamples:      int32(res.num_samples),
+		if cPtr.plugin_id != nil {
+			C.free(unsafe.Pointer(cPtr.plugin_id))
 		}
+		if cPtr.device_id != nil {
+			C.free(unsafe.Pointer(cPtr.device_id))
+		}
+		C.free(unsafe.Pointer(cPtr))
 	}
-
-	// Free C memory
-	C.ml_tts_free_result(cRes)
-
-	return results, nil
 }
 
-// SaveCache saves TTS cache state to file
-func (p *TTS) SaveCache(path string) error {
-	slog.Debug("SaveCache called", "path", path)
+// TtsSynthesizeInput represents input parameters for TTS synthesis
+type TtsSynthesizeInput struct {
+	TextUTF8   string
+	Config     *TTSConfig
+	OutputPath string
+}
 
-	cPath := C.CString(path)
-	defer C.free(unsafe.Pointer(cPath))
+func (tsi TtsSynthesizeInput) toCPtr() *C.ml_TtsSynthesizeInput {
+	cPtr := (*C.ml_TtsSynthesizeInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_TtsSynthesizeInput{}))))
+	*cPtr = C.ml_TtsSynthesizeInput{}
 
-	C.ml_tts_save_cache(p.ptr, cPath)
+	cPtr.text_utf8 = C.CString(tsi.TextUTF8)
+	if tsi.Config != nil {
+		cPtr.config = tsi.Config.toCPtr()
+	} else {
+		cPtr.config = nil
+	}
+	if tsi.OutputPath != "" {
+		cPtr.output_path = C.CString(tsi.OutputPath)
+	} else {
+		cPtr.output_path = nil
+	}
+
+	return cPtr
+}
+
+func freeTtsSynthesizeInput(cPtr *C.ml_TtsSynthesizeInput) {
+	if cPtr != nil {
+		if cPtr.text_utf8 != nil {
+			C.free(unsafe.Pointer(cPtr.text_utf8))
+		}
+		if cPtr.config != nil {
+			freeTTSConfig(cPtr.config)
+		}
+		if cPtr.output_path != nil {
+			C.free(unsafe.Pointer(cPtr.output_path))
+		}
+		C.free(unsafe.Pointer(cPtr))
+	}
+}
+
+// TtsSynthesizeOutput represents output from TTS synthesis
+type TtsSynthesizeOutput struct {
+	Result TTSResult
+}
+
+func newTtsSynthesizeOutputFromCPtr(c *C.ml_TtsSynthesizeOutput) TtsSynthesizeOutput {
+	output := TtsSynthesizeOutput{}
+
+	if c == nil {
+		return output
+	}
+
+	output.Result = newTTSResultFromCPtr(&c.result)
+	return output
+}
+
+func freeTtsSynthesizeOutput(ptr *C.ml_TtsSynthesizeOutput) {
+	if ptr == nil {
+		return
+	}
+	freeTTSResult(&ptr.result)
+}
+
+// TtsListAvailableVoicesInput represents input for listing available voices
+type TtsListAvailableVoicesInput struct {
+	Reserved interface{}
+}
+
+func (tlavi TtsListAvailableVoicesInput) toCPtr() *C.ml_TtsListAvailableVoicesInput {
+	cPtr := (*C.ml_TtsListAvailableVoicesInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_TtsListAvailableVoicesInput{}))))
+	*cPtr = C.ml_TtsListAvailableVoicesInput{}
+	return cPtr
+}
+
+func freeTtsListAvailableVoicesInput(cPtr *C.ml_TtsListAvailableVoicesInput) {
+	if cPtr != nil {
+		C.free(unsafe.Pointer(cPtr))
+	}
+}
+
+// TtsListAvailableVoicesOutput represents output for listing available voices
+type TtsListAvailableVoicesOutput struct {
+	VoiceIDs   []string
+}
+
+func newTtsListAvailableVoicesOutputFromCPtr(c *C.ml_TtsListAvailableVoicesOutput) TtsListAvailableVoicesOutput {
+	output := TtsListAvailableVoicesOutput{}
+
+	if c == nil {
+		return output
+	}
+
+	output.VoiceIDs = cCharArrayToSlice(c.voice_ids, c.voice_count)
+
+	return output
+}
+
+func freeTtsListAvailableVoicesOutput(ptr *C.ml_TtsListAvailableVoicesOutput) {
+	if ptr == nil {
+		return
+	}
+	if ptr.voice_ids != nil {
+		mlFreeCCharArray(ptr.voice_ids, ptr.voice_count)
+	}
+}
+
+// TTS represents a TTS instance
+type TTS struct {
+	ptr *C.ml_TTS
+}
+
+// NewTTS creates a new TTS instance
+func NewTTS(input TtsCreateInput) (*TTS, error) {
+	slog.Debug("NewTTS called", "input", input)
+
+	cInput := input.toCPtr()
+	defer freeTtsCreateInput(cInput)
+
+	var cHandle *C.ml_TTS
+	res := C.ml_tts_create(cInput, &cHandle)
+	if res < 0 {
+		return nil, SDKError(res)
+	}
+
+	return &TTS{ptr: cHandle}, nil
+}
+
+// Destroy destroys the TTS instance and frees associated resources
+func (t *TTS) Destroy() error {
+	slog.Debug("Destroy called", "ptr", t.ptr)
+
+	if t.ptr == nil {
+		return nil
+	}
+
+	res := C.ml_tts_destroy(t.ptr)
+	if res < 0 {
+		return SDKError(res)
+	}
+	t.ptr = nil
 	return nil
 }
 
-// LoadCache loads TTS cache state from file
-func (p *TTS) LoadCache(path string) error {
-	slog.Debug("LoadCache called", "path", path)
+// Synthesize synthesizes speech from text and saves to filesystem
+func (t *TTS) Synthesize(input TtsSynthesizeInput) (TtsSynthesizeOutput, error) {
+	slog.Debug("Synthesize called", "input", input)
 
-	cPath := C.CString(path)
-	defer C.free(unsafe.Pointer(cPath))
+	cInput := input.toCPtr()
+	defer freeTtsSynthesizeInput(cInput)
 
-	C.ml_tts_load_cache(p.ptr, cPath)
-	return nil
+	var cOutput C.ml_TtsSynthesizeOutput
+	defer freeTtsSynthesizeOutput(&cOutput)
+
+	res := C.ml_tts_synthesize(t.ptr, cInput, &cOutput)
+	if res < 0 {
+		return TtsSynthesizeOutput{}, SDKError(res)
+	}
+
+	output := newTtsSynthesizeOutputFromCPtr(&cOutput)
+	return output, nil
 }
 
-// ListAvailableVoices returns a list of available voices for TTS
-func (p *TTS) ListAvailableVoices() ([]string, error) {
+// ListAvailableVoices gets list of available voice identifiers
+func (t *TTS) ListAvailableVoices() (TtsListAvailableVoicesOutput, error) {
 	slog.Debug("ListAvailableVoices called")
 
-	var count C.int32_t
-	cVoices := C.ml_tts_list_available_voices(p.ptr, &count)
-	if cVoices == nil {
-		return nil, SDKErrorUnknown
+	input := TtsListAvailableVoicesInput{}
+	cInput := input.toCPtr()
+	defer freeTtsListAvailableVoicesInput(cInput)
+
+	var cOutput C.ml_TtsListAvailableVoicesOutput
+	defer freeTtsListAvailableVoicesOutput(&cOutput)
+
+	res := C.ml_tts_list_available_voices(t.ptr, cInput, &cOutput)
+	if res < 0 {
+		return TtsListAvailableVoicesOutput{}, SDKError(res)
 	}
 
-	voices := make([]string, int(count))
-	for i := 0; i < int(count); i++ {
-		voice := (*C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(cVoices)) + uintptr(i)*unsafe.Sizeof((*C.char)(nil))))
-		voices[i] = C.GoString(voice)
-	}
-
-	return voices, nil
+	output := newTtsListAvailableVoicesOutputFromCPtr(&cOutput)
+	return output, nil
 }
 
-// GetProfilingData retrieves performance metrics from the TTS instance
-func (p *TTS) GetProfilingData() (*ProfilingData, error) {
-	slog.Debug("GetProfilingData called")
-
-	// Note: TTS doesn't have profiling data in the C API
-	// Return empty profiling data for consistency
-	return &ProfilingData{}, nil
-}
-
-// PrintResult prints TTS result information to standard output for debugging
-func (result *TTSResult) PrintResult() {
-	slog.Debug("PrintResult called", "result", result)
-
-	if result == nil {
-		return
-	}
-
-	cResult := C.ml_TTSResult{
-		audio:            (*C.float)(unsafe.Pointer(&result.Audio[0])),
-		duration_seconds: C.float(result.DurationSeconds),
-		sample_rate:      C.int32_t(result.SampleRate),
-		channels:         C.int32_t(result.Channels),
-		num_samples:      C.int32_t(result.NumSamples),
-	}
-
-	C.ml_tts_print_result(&cResult)
-}

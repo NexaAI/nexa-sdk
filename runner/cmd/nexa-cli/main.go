@@ -6,8 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/NexaAI/nexa-sdk/internal/config"
-	"github.com/NexaAI/nexa-sdk/internal/store"
+	"github.com/NexaAI/nexa-sdk/runner/internal/config"
+	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 )
 
 // RootCmd creates the main Nexa CLI command with all subcommands.

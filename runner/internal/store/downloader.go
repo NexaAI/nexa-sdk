@@ -4,14 +4,15 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/bytedance/sonic"
 	"resty.dev/v3"
 
-	"github.com/NexaAI/nexa-sdk/internal/config"
-	"github.com/NexaAI/nexa-sdk/internal/types"
+	"github.com/NexaAI/nexa-sdk/runner/internal/config"
+	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 )
 
 const HF_ENDPOINT = "https://huggingface.co"
@@ -146,8 +147,7 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 		}
 
 		// Create model directory structure
-		encName := s.encodeName(mf.Name)
-		err := os.MkdirAll(path.Join(s.home, "models", encName), 0o770)
+		err := os.MkdirAll(filepath.Join(s.home, "models", mf.Name), 0o770)
 		if err != nil {
 			errC <- err
 			return
@@ -156,7 +156,7 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 		// Create modelfile for storing downloaded content
 		downloader := NewHFDownloader(mf.GetSize(), infoC)
 		for _, file := range needs {
-			outputPath := path.Join(s.home, "models", encName, file)
+			outputPath := filepath.Join(s.home, "models", mf.Name, file)
 			downloadURL := fmt.Sprintf("%s/%s/resolve/main/%s?download=true", HF_ENDPOINT, mf.Name, file)
 
 			err = downloader.Download(ctx, downloadURL, outputPath)
@@ -166,13 +166,22 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 			}
 		}
 
+		// Detect plugin
+		if strings.Contains(strings.ToLower(mf.Name), "mlx") {
+			mf.PluginId = "mlx"
+		} else {
+			mf.PluginId = "llama_cpp"
+		}
+
 		model := types.ModelManifest{
 			Name:       mf.Name,
+			ModelType:  mf.ModelType,
+			PluginId:   mf.PluginId,
 			ModelFile:  mf.ModelFile,
 			MMProjFile: mf.MMProjFile,
 			ExtraFiles: mf.ExtraFiles,
 		}
-		manifestPath := path.Join(s.home, "models", encName, "nexa.manifest")
+		manifestPath := filepath.Join(s.home, "models", mf.Name, "nexa.manifest")
 		manifestData, _ := sonic.Marshal(model) // JSON marshal won't fail, ignore error
 		err = os.WriteFile(manifestPath, manifestData, 0o664)
 		if err != nil {
@@ -217,8 +226,7 @@ func (s *Store) PullExtraQuant(ctx context.Context, omf, nmf types.ModelManifest
 		}
 
 		// Create model directory structure
-		encName := s.encodeName(nmf.Name)
-		err := os.MkdirAll(path.Join(s.home, "models", encName), 0o770)
+		err := os.MkdirAll(filepath.Join(s.home, "models", nmf.Name), 0o770)
 		if err != nil {
 			errC <- err
 			return
@@ -227,7 +235,7 @@ func (s *Store) PullExtraQuant(ctx context.Context, omf, nmf types.ModelManifest
 		// Create modelfile for storing downloaded content
 		downloader := NewHFDownloader(nmf.GetSize(), infoC)
 		for _, file := range needs {
-			outputPath := path.Join(s.home, "models", encName, file)
+			outputPath := filepath.Join(s.home, "models", nmf.Name, file)
 			downloadURL := fmt.Sprintf("%s/%s/resolve/main/%s?download=true", HF_ENDPOINT, nmf.Name, file)
 
 			err = downloader.Download(ctx, downloadURL, outputPath)
@@ -239,11 +247,13 @@ func (s *Store) PullExtraQuant(ctx context.Context, omf, nmf types.ModelManifest
 
 		model := types.ModelManifest{
 			Name:       nmf.Name,
+			ModelType:  nmf.ModelType,
+			PluginId:   nmf.PluginId,
 			ModelFile:  nmf.ModelFile,
 			MMProjFile: nmf.MMProjFile,
 			ExtraFiles: nmf.ExtraFiles,
 		}
-		manifestPath := path.Join(s.home, "models", encName, "nexa.manifest")
+		manifestPath := filepath.Join(s.home, "models", nmf.Name, "nexa.manifest")
 		manifestData, _ := sonic.Marshal(model) // JSON marshal won't fail, ignore error
 		err = os.WriteFile(manifestPath, manifestData, 0o664)
 		if err != nil {

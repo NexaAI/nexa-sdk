@@ -6,8 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/NexaAI/nexa-sdk/internal/config"
-	"github.com/NexaAI/nexa-sdk/server/service"
+	"github.com/NexaAI/nexa-sdk/runner/internal/config"
+	"github.com/NexaAI/nexa-sdk/runner/server/service"
 )
 
 // @Title		Nexa AI Server

@@ -12,8 +12,8 @@ import (
 
 	"github.com/valyala/fasthttp"
 
-	"github.com/NexaAI/nexa-sdk/internal/config"
-	"github.com/NexaAI/nexa-sdk/internal/types"
+	"github.com/NexaAI/nexa-sdk/runner/internal/config"
+	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 )
 
 type HFDownloader struct {

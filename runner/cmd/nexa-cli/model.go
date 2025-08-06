@@ -11,8 +11,8 @@ import (
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 
-	"github.com/NexaAI/nexa-sdk/internal/render"
-	"github.com/NexaAI/nexa-sdk/internal/store"
+	"github.com/NexaAI/nexa-sdk/runner/internal/render"
+	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 )
 
 // pull creates a command to download and cache a model by name.
@@ -75,10 +75,16 @@ func pull() *cobra.Command {
 				fmt.Println(text.FgRed.Sprintf("Error: %s", err))
 			}
 		} else {
+			modelType, err := chooseModelType()
+			if err != nil {
+				return
+			}
+
 			manifest, err := chooseFiles(name, files)
 			if err != nil {
 				return
 			}
+			manifest.ModelType = modelType
 
 			// TODO: replace with go-pretty
 			pgCh, errCh := s.Pull(context.TODO(), manifest)
@@ -167,7 +173,7 @@ func list() *cobra.Command {
 		tw := table.NewWriter()
 		tw.SetOutputMirror(os.Stdout)
 		tw.SetStyle(table.StyleLight)
-		tw.AppendHeader(table.Row{"NAME", "QUANT", "SIZE"})
+		tw.AppendHeader(table.Row{"NAME", "TYPE", "PLUGIN", "QUANT", "SIZE"})
 		for _, model := range models {
 			var quants []string
 			for k := range model.ModelFile {
@@ -175,7 +181,7 @@ func list() *cobra.Command {
 					quants = append(quants, k)
 				}
 			}
-			tw.AppendRow(table.Row{model.Name, strings.Join(quants, ","), humanize.IBytes(uint64(model.GetSize()))})
+			tw.AppendRow(table.Row{model.Name, model.ModelType, model.PluginId, strings.Join(quants, ","), humanize.IBytes(uint64(model.GetSize()))})
 		}
 		tw.Render()
 	}

@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/NexaAI/nexa-sdk/internal/render"
-	"github.com/NexaAI/nexa-sdk/internal/store"
-	"github.com/NexaAI/nexa-sdk/internal/types"
+	"github.com/NexaAI/nexa-sdk/runner/internal/render"
+	"github.com/NexaAI/nexa-sdk/runner/internal/store"
+	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 	"github.com/bytedance/sonic"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"

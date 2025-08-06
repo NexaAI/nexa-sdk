@@ -2,7 +2,8 @@ package store
 
 import (
 	"log/slog"
-	"path"
+	"os"
+	"path/filepath"
 
 	"github.com/gofrs/flock"
 )
@@ -14,9 +15,9 @@ func (s *Store) LockModel(modelName string) error {
 		return ErrModelNameEmpty
 	}
 
-	encName := s.encodeName(modelName)
-	modelsDir := s.GetModelsDir()
-	lockPath := path.Join(modelsDir, "."+encName+".lock")
+	modelsDir := s.ModelDirPath()
+	os.MkdirAll(filepath.Join(modelsDir, modelName), 0o770)
+	lockPath := filepath.Join(modelsDir, modelName+".lock")
 
 	fl := flock.New(lockPath)
 

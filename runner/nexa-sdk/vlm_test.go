@@ -1,135 +1,257 @@
 package nexa_sdk
 
 import (
-	"context"
-	"fmt"
-	"path"
+	"log/slog"
 	"testing"
-	"time"
 )
 
 var (
-	// vlm is the global vlm instance used across all tests
-	vlm *VLM
+	vlm         *VLM
+	vlmMessages = []VlmChatMessage{
+		{
+			Role: "system",
+			Contents: []VlmContent{
+				{
+					Type: "text",
+					Text: "You are a helpful assistant that can see images.",
+				},
+			},
+		},
+		{
+			Role: "user",
+			Contents: []VlmContent{
+				{
+					Type: "text",
+					Text: "What do you see in this image?",
+				},
+				{
+					Type: "image",
+					Text: "modelfiles/assets/test_image.png",
+				},
+			},
+		},
+	}
 )
 
-// initvlm creates a new vlm instance for testing with a predefined model
-// Uses the Qwen3-0.6B-GGUF model from the local cache
 func initVLM() {
-	mmproj := path.Join(nexaPath, "models", "bmV4YW1sL25leGFtbC1tb2RlbHM=", "mmproj-model-f16.gguf")
-	vlm, _ = NewVLM(
-		path.Join(nexaPath, "models", "bmV4YW1sL25leGFtbC1tb2RlbHM=", "gemma-3-4b-it-Q8_0.gguf"),
-		&mmproj, 8192, nil)
+	slog.Debug("initVLM called")
+
+	var err error
+
+	input := VlmCreateInput{
+		ModelPath:  "modelfiles/llama_cpp/SmolVLM-256M-Instruct-Q8_0.gguf",
+		MmprojPath: "modelfiles/llama_cpp/mmproj-SmolVLM-256M-Instruct-Q8_0.gguf",
+		Config: ModelConfig{
+			NCtx:    512,
+			NSeqMax: 64,
+		},
+
+		PluginID: "llama_cpp",
+	}
+
+	vlm, err = NewVLM(input)
+	if err != nil {
+		panic("Error creating VLM: " + err.Error())
+	}
 }
 
-// deinitvlm cleans up the vlm instance after testing
 func deinitVLM() {
-	vlm.Destroy()
+	if vlm != nil {
+		vlm.Destroy()
+	}
 }
 
-// TestEncode tests the tokenization functionality
-// Verifies that text can be converted to token IDs
-func TestVLMEncode(t *testing.T) {
-	ids, e := vlm.Encode("hello world")
-	if e != nil {
-		t.Error(e)
-	}
-	t.Log(ids)
-}
-
-// TestDecode tests the detokenization functionality
-// Verifies that token IDs can be converted back to text
-func TestVLMDecode(t *testing.T) {
-	res, e := vlm.Decode([]int32{2, 23391, 1902})
-	if e != nil {
-		t.Error(e)
-	}
-	t.Log(res)
-}
-
-// TestApplyChatTemplate tests the chat template formatting functionality
-// Verifies that chat messages can be properly formatted for the model
-func TestVLMApplyChatTemplate(t *testing.T) {
-	msg, e := vlm.ApplyChatTemplate([]ChatMessage{
-		{LLMRoleUser, "hello"},
-		{LLMRoleAssistant, "yes, you are a so cute cat"},
-		{LLMRoleUser, "can you give me a new cute name"},
-	}, nil, nil)
-
-	if e != nil {
-		t.Error(e)
-	}
-	t.Log(msg)
-}
-
-// TestGenerate tests basic text generation functionality
-// Verifies that the model can complete a given prompt
-//func TestVLMGenerate(t *testing.T) {
-//	pic := "~/Pictures/ScreenShot/20200201_182517.png"
-//	res, e := vlm.Generate("what does the picture say", &pic)
-//	if e != nil {
-//		t.Error(e)
-//	}
-//	t.Log(res)
-//}
-
-// TestGetChatTemplate tests retrieval of the model's chat template
-// Verifies that the default chat template can be obtained
-func TestVLMGetChatTemplate(t *testing.T) {
-	msg, e := vlm.GetChatTemplate(nil)
-	if e != nil {
-		t.Error(e)
-	}
-	t.Log(msg)
-}
-
-// TestChat tests end-to-end chat functionality
-// Combines chat template application with text generation
-func TestVLMChat(t *testing.T) {
-	// Format the user message using chat template
-	pic := "~/Pictures/ScreenShot/20200201_182517.png"
-	msg, e := vlm.ApplyChatTemplate([]ChatMessage{
-		{LLMRoleUser, "what does the picture say"},
-	}, []string{pic}, nil)
-	if e != nil {
-		t.Error(e)
+func TestVLMReset(t *testing.T) {
+	// Skip if VLM is not available
+	if vlm == nil {
+		t.Skip("VLM not initialized, skipping test")
 	}
 
-	// Generate response using the formatted prompt
-	res, e := vlm.Generate(msg, []string{pic}, nil)
-	if e != nil {
-		t.Error(e)
-	}
-	t.Log(res)
-}
-
-// TestGenerateStream tests streaming text generation functionality
-// Measures generation speed and verifies that tokens are streamed properly
-func TestVLMGenerateStream(t *testing.T) {
-	pic := "/home/remilia/Pictures/ScreenShot/20200201_182517.png"
-	dataCh, errCh := vlm.GenerateStream(context.Background(), "what does the picture say", []string{pic}, nil)
-
-	start := time.Now()
-	count := 0
-
-	// Receive and print each token as it's generated
-	for r := range dataCh {
-		fmt.Print(r)
-		count++
-	}
-	fmt.Print("\n")
-
-	// Check for any errors during generation
-	e, ok := <-errCh
-	if ok {
-		t.Error(e)
+	err := vlm.Reset()
+	if err != nil {
+		t.Errorf("Reset failed: %v", err)
 		return
 	}
 
-	// Calculate and report generation speed
-	duration := time.Since(start).Seconds()
-	t.Logf("\033[34mGenerate %d token in %f s, speed is %f token/s\033[0m\n",
-		count,
-		duration,
-		float64(count)/duration)
+	t.Logf("Reset completed successfully")
+}
+
+func TestVLMApplyChatTemplate(t *testing.T) {
+	// Skip if VLM is not available
+	if vlm == nil {
+		t.Skip("VLM not initialized, skipping test")
+	}
+
+	input := VlmApplyChatTemplateInput{
+		Messages: vlmMessages,
+	}
+
+	output, err := vlm.ApplyChatTemplate(input)
+	if err != nil {
+		t.Errorf("ApplyChatTemplate failed: %v", err)
+		return
+	}
+
+	t.Logf("ApplyChatTemplate: %s", output.FormattedText)
+	vlm.Reset()
+}
+
+func TestVLMGenerate(t *testing.T) {
+	// Skip if VLM is not available
+	if vlm == nil {
+		t.Skip("VLM not initialized, skipping test")
+	}
+
+	tpl, err := vlm.ApplyChatTemplate(VlmApplyChatTemplateInput{
+		Messages: vlmMessages,
+	})
+	if err != nil {
+		t.Fatalf("Failed to apply chat template: %v", err)
+	}
+	cfg := &GenerationConfig{
+		MaxTokens: 100,
+	}
+
+	for _, content := range vlmMessages[1].Contents {
+		if content.Type == "image" {
+			cfg.ImagePaths = append(cfg.ImagePaths, content.Text)
+		}
+	}
+
+	stream, err := vlm.Generate(VlmGenerateInput{
+		PromptUTF8: tpl.FormattedText,
+		Config:     cfg,
+		OnToken: func(token string) bool {
+			// t.Logf("<< %s", token)
+			return true
+		},
+	})
+	if err != nil {
+		t.Fatalf("Failed to generate text: %v", err)
+	}
+
+	t.Logf("GenerateStream: %s", stream.FullText)
+	vlm.Reset()
+}
+
+func TestVLMGenerateMulti(t *testing.T) {
+	// Skip if VLM is not available
+	if vlm == nil {
+		t.Skip("VLM not initialized, skipping test")
+	}
+
+	// Define test rounds
+	testRounds := []struct {
+		name    string
+		message VlmChatMessage
+	}{
+		{
+			"Initial conversation",
+			VlmChatMessage{
+				Role: "user",
+				Contents: []VlmContent{
+					{
+						Type: "text",
+						Text: "What do you see in this image?",
+					},
+					{
+						Type: "image",
+						Text: "modelfiles/assets/test_image.png",
+					},
+				},
+			},
+		},
+		{
+			"Repeat the number 42 three times",
+			VlmChatMessage{
+				Role: "user",
+				Contents: []VlmContent{
+					{
+						Type: "text",
+						Text: "Please repeat the number 42 three times.",
+					},
+				},
+			},
+		},
+		{
+			"What colors do you see in this image? Please describe the color scheme.",
+			VlmChatMessage{
+				Role: "user",
+				Contents: []VlmContent{
+					{
+						Type: "text",
+						Text: "What colors do you see in this image? Please describe the color scheme.",
+					},
+					{
+						Type: "image",
+						Text: "modelfiles/assets/test_image.png",
+					},
+				},
+			},
+		},
+	}
+
+	// Set prompt
+	history := []VlmChatMessage{
+		{
+			Role: "system",
+			Contents: []VlmContent{
+				{
+					Type: "text",
+					Text: "You are a helpful assistant that can see images.",
+				},
+			},
+		},
+	}
+
+	for i, round := range testRounds {
+		t.Logf("=== Round %d: %s ===", i+1, round.name)
+
+		// Add user message to history
+		history = append(history, round.message)
+
+		// Apply chat template to get formatted text
+		formated, err := vlm.ApplyChatTemplate(VlmApplyChatTemplateInput{
+			Messages: history,
+		})
+		if err != nil {
+			t.Fatalf("Failed to apply chat template for round %d: %v", i+1, err)
+		}
+
+		cfg := &GenerationConfig{MaxTokens: 100}
+
+		// Add image paths to generation config if this round has image
+		for _, content := range round.message.Contents {
+			if content.Type == "image" {
+				cfg.ImagePaths = append(cfg.ImagePaths, content.Text)
+			}
+		}
+
+		stream, err := vlm.Generate(VlmGenerateInput{
+			PromptUTF8: formated.FormattedText,
+			Config:     cfg,
+			OnToken: func(token string) bool {
+				return true
+			},
+		})
+		if err != nil {
+			t.Fatalf("Failed to generate text for round %d: %v", i+1, err)
+		}
+
+		t.Logf("Round %d response: %s", i+1, stream.FullText)
+
+		// Add assistant response to conversation history
+		history = append(history, VlmChatMessage{
+			Role: VlmRoleAssistant,
+			Contents: []VlmContent{
+				{
+					Type: VlmContentTypeText,
+					Text: stream.FullText,
+				},
+			},
+		})
+	}
+
+	t.Logf("Multi-round conversation completed successfully")
+	vlm.Reset()
 }

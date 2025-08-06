@@ -5,328 +5,326 @@ package nexa_sdk
 #include "ml.h"
 */
 import "C"
-
 import (
-	"unsafe"
-
 	"log/slog"
+	"unsafe"
 )
 
-// ASRConfig represents ASR transcription configuration
+// ASRConfig represents ASR processing configuration
 type ASRConfig struct {
-	Timestamps string // Timestamp mode: "none", "segment", "word"
-	BeamSize   int32  // Beam search size
-	Stream     bool   // Enable streaming mode
+	Timestamps string
+	BeamSize   int32
+	Stream     bool
+}
+
+func (ac ASRConfig) toCPtr() *C.ml_ASRConfig {
+	cPtr := (*C.ml_ASRConfig)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_ASRConfig{}))))
+	*cPtr = C.ml_ASRConfig{}
+
+	if ac.Timestamps != "" {
+		cPtr.timestamps = C.CString(ac.Timestamps)
+	}
+	cPtr.beam_size = C.int32_t(ac.BeamSize)
+	cPtr.stream = C.bool(ac.Stream)
+
+	return cPtr
+}
+
+func freeASRConfig(cPtr *C.ml_ASRConfig) {
+	if cPtr != nil {
+		if cPtr.timestamps != nil {
+			C.free(unsafe.Pointer(cPtr.timestamps))
+		}
+		C.free(unsafe.Pointer(cPtr))
+	}
 }
 
 // ASRResult represents ASR transcription result
 type ASRResult struct {
-	Transcript       string    // Transcribed text (UTF-8)
-	ConfidenceScores []float32 // Confidence scores for each unit
-	Timestamps       []float32 // Timestamp pairs: [start, end] for each unit
+	Transcript       string
+	ConfidenceScores []float32
+	Timestamps       []float32
 }
 
-// ASR wraps the C library ASR structure and provides Go interface
-type ASR struct {
-	ptr *C.ml_ASR // Pointer to the underlying C ASR structure
+func newASRResultFromCPtr(c *C.ml_ASRResult) ASRResult {
+	result := ASRResult{}
+
+	if c == nil {
+		return result
+	}
+
+	if c.transcript != nil {
+		result.Transcript = C.GoString(c.transcript)
+	}
+
+	// Convert confidence scores array
+	if c.confidence_scores != nil && c.confidence_count > 0 {
+		scores := unsafe.Slice((*C.float)(unsafe.Pointer(c.confidence_scores)), int(c.confidence_count))
+		result.ConfidenceScores = make([]float32, c.confidence_count)
+		for i := range result.ConfidenceScores {
+			result.ConfidenceScores[i] = float32(scores[i])
+		}
+	}
+
+	// Convert timestamps array
+	if c.timestamps != nil && c.timestamp_count > 0 {
+		timestamps := unsafe.Slice((*C.float)(unsafe.Pointer(c.timestamps)), int(c.timestamp_count))
+		result.Timestamps = make([]float32, c.timestamp_count)
+		for i := range result.Timestamps {
+			result.Timestamps[i] = float32(timestamps[i])
+		}
+	}
+
+	return result
 }
 
-// NewASR creates a new ASR instance with the specified model and configuration
-func NewASR(model string, tokenizer *string, language *string, devices *string) (*ASR, error) {
-	slog.Debug("NewASR called", "model", model, "tokenizer", tokenizer, "language", language, "devices", devices)
-
-	cModel := C.CString(model)
-	defer C.free(unsafe.Pointer(cModel))
-
-	var cTokenizer *C.char
-	if tokenizer != nil {
-		cTokenizer = C.CString(*tokenizer)
-		defer C.free(unsafe.Pointer(cTokenizer))
-	}
-
-	var cLanguage *C.char
-	if language != nil {
-		cLanguage = C.CString(*language)
-		defer C.free(unsafe.Pointer(cLanguage))
-	}
-
-	ptr := C.ml_asr_create(cModel, cTokenizer, cLanguage, nil)
+func freeASRResult(ptr *C.ml_ASRResult) {
 	if ptr == nil {
-		return nil, SDKErrorUnknown
+		return
 	}
-	return &ASR{ptr: ptr}, nil
+	if ptr.transcript != nil {
+		mlFree(unsafe.Pointer(ptr.transcript))
+	}
+	if ptr.confidence_scores != nil {
+		mlFree(unsafe.Pointer(ptr.confidence_scores))
+	}
+	if ptr.timestamps != nil {
+		mlFree(unsafe.Pointer(ptr.timestamps))
+	}
 }
 
-// Destroy frees the memory allocated for the ASR instance
-func (p *ASR) Destroy() {
-	slog.Debug("Destroy called", "ptr", p.ptr)
-
-	C.ml_asr_destroy(p.ptr)
-	p.ptr = nil
+// AsrCreateInput represents input parameters for ASR creation
+type AsrCreateInput struct {
+	ModelPath     string
+	TokenizerPath string
+	Language      string
+	PluginID      string
+	DeviceID      string
 }
 
-// LoadModel loads ASR model from path with optional extra configuration data
-func (p *ASR) LoadModel(modelPath string, extraData unsafe.Pointer) error {
-	slog.Debug("LoadModel called", "modelPath", modelPath)
+func (aci AsrCreateInput) toCPtr() *C.ml_AsrCreateInput {
+	cPtr := (*C.ml_AsrCreateInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_AsrCreateInput{}))))
+	*cPtr = C.ml_AsrCreateInput{}
 
-	cPath := C.CString(modelPath)
-	defer C.free(unsafe.Pointer(cPath))
-
-	res := C.ml_asr_load_model(p.ptr, cPath, extraData)
-	if !res {
-		return SDKErrorModelLoad
+	if aci.ModelPath != "" {
+		cPtr.model_path = C.CString(aci.ModelPath)
 	}
+	if aci.TokenizerPath != "" {
+		cPtr.tokenizer_path = C.CString(aci.TokenizerPath)
+	}
+	if aci.Language != "" {
+		cPtr.language = C.CString(aci.Language)
+	}
+	if aci.PluginID != "" {
+		cPtr.plugin_id = C.CString(aci.PluginID)
+	}
+	if aci.DeviceID != "" {
+		cPtr.device_id = C.CString(aci.DeviceID)
+	}
+
+	return cPtr
+}
+
+func freeAsrCreateInput(cPtr *C.ml_AsrCreateInput) {
+	if cPtr != nil {
+		if cPtr.model_path != nil {
+			C.free(unsafe.Pointer(cPtr.model_path))
+		}
+		if cPtr.tokenizer_path != nil {
+			C.free(unsafe.Pointer(cPtr.tokenizer_path))
+		}
+		if cPtr.language != nil {
+			C.free(unsafe.Pointer(cPtr.language))
+		}
+		if cPtr.plugin_id != nil {
+			C.free(unsafe.Pointer(cPtr.plugin_id))
+		}
+		if cPtr.device_id != nil {
+			C.free(unsafe.Pointer(cPtr.device_id))
+		}
+		C.free(unsafe.Pointer(cPtr))
+	}
+}
+
+// AsrTranscribeInput represents input parameters for ASR transcription
+type AsrTranscribeInput struct {
+	AudioPath string
+	Language  string
+	Config    *ASRConfig
+}
+
+func (ati AsrTranscribeInput) toCPtr() *C.ml_AsrTranscribeInput {
+	cPtr := (*C.ml_AsrTranscribeInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_AsrTranscribeInput{}))))
+	*cPtr = C.ml_AsrTranscribeInput{}
+
+	cPtr.audio_path = C.CString(ati.AudioPath)
+	if ati.Language != "" {
+		cPtr.language = C.CString(ati.Language)
+	} else {
+		cPtr.language = nil
+	}
+	if ati.Config != nil {
+		cPtr.config = ati.Config.toCPtr()
+	} else {
+		cPtr.config = nil
+	}
+
+	return cPtr
+}
+
+func freeAsrTranscribeInput(cPtr *C.ml_AsrTranscribeInput) {
+	if cPtr != nil {
+		if cPtr.audio_path != nil {
+			C.free(unsafe.Pointer(cPtr.audio_path))
+		}
+		if cPtr.language != nil {
+			C.free(unsafe.Pointer(cPtr.language))
+		}
+		if cPtr.config != nil {
+			freeASRConfig(cPtr.config)
+		}
+		C.free(unsafe.Pointer(cPtr))
+	}
+}
+
+// AsrTranscribeOutput represents output from ASR transcription
+type AsrTranscribeOutput struct {
+	Result ASRResult
+}
+
+func newAsrTranscribeOutputFromCPtr(c *C.ml_AsrTranscribeOutput) AsrTranscribeOutput {
+	output := AsrTranscribeOutput{}
+
+	if c == nil {
+		return output
+	}
+
+	output.Result = newASRResultFromCPtr(&c.result)
+	return output
+}
+
+func freeAsrTranscribeOutput(ptr *C.ml_AsrTranscribeOutput) {
+	if ptr == nil {
+		return
+	}
+	freeASRResult(&ptr.result)
+}
+
+// AsrListSupportedLanguagesInput represents input for listing supported languages
+type AsrListSupportedLanguagesInput struct {
+	Reserved interface{}
+}
+
+func (asli AsrListSupportedLanguagesInput) toCPtr() *C.ml_AsrListSupportedLanguagesInput {
+	cPtr := (*C.ml_AsrListSupportedLanguagesInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_AsrListSupportedLanguagesInput{}))))
+	*cPtr = C.ml_AsrListSupportedLanguagesInput{}
+	return cPtr
+}
+
+func freeAsrListSupportedLanguagesInput(cPtr *C.ml_AsrListSupportedLanguagesInput) {
+	if cPtr != nil {
+		C.free(unsafe.Pointer(cPtr))
+	}
+}
+
+// AsrListSupportedLanguagesOutput represents output for listing supported languages
+type AsrListSupportedLanguagesOutput struct {
+	LanguageCodes []string
+}
+
+func newAsrListSupportedLanguagesOutputFromCPtr(c *C.ml_AsrListSupportedLanguagesOutput) AsrListSupportedLanguagesOutput {
+	output := AsrListSupportedLanguagesOutput{}
+
+	if c == nil {
+		return output
+	}
+
+	output.LanguageCodes = cCharArrayToSlice(c.language_codes, c.language_count)
+
+	return output
+}
+
+func freeAsrListSupportedLanguagesOutput(ptr *C.ml_AsrListSupportedLanguagesOutput) {
+	if ptr == nil {
+		return
+	}
+	if ptr.language_codes != nil {
+		mlFreeCCharArray(ptr.language_codes, ptr.language_count)
+	}
+}
+
+// ASR represents an ASR instance
+type ASR struct {
+	ptr *C.ml_ASR
+}
+
+// NewASR creates a new ASR instance
+func NewASR(input AsrCreateInput) (*ASR, error) {
+	slog.Debug("NewASR called", "input", input)
+
+	cInput := input.toCPtr()
+	defer freeAsrCreateInput(cInput)
+
+	var cHandle *C.ml_ASR
+	res := C.ml_asr_create(cInput, &cHandle)
+	if res < 0 {
+		return nil, SDKError(res)
+	}
+
+	return &ASR{ptr: cHandle}, nil
+}
+
+// Destroy destroys the ASR instance and frees associated resources
+func (a *ASR) Destroy() error {
+	slog.Debug("Destroy called", "ptr", a.ptr)
+
+	if a.ptr == nil {
+		return nil
+	}
+
+	res := C.ml_asr_destroy(a.ptr)
+	if res < 0 {
+		return SDKError(res)
+	}
+	a.ptr = nil
 	return nil
 }
 
-// Close cleanup ASR resources
-func (p *ASR) Close() {
-	slog.Debug("Close called", "ptr", p.ptr)
+// Transcribe transcribes audio file to text with specified language
+func (a *ASR) Transcribe(input AsrTranscribeInput) (AsrTranscribeOutput, error) {
+	slog.Debug("Transcribe called", "input", input)
 
-	C.ml_asr_close(p.ptr)
+	cInput := input.toCPtr()
+	defer freeAsrTranscribeInput(cInput)
+
+	var cOutput C.ml_AsrTranscribeOutput
+	defer freeAsrTranscribeOutput(&cOutput)
+
+	res := C.ml_asr_transcribe(a.ptr, cInput, &cOutput)
+	if res < 0 {
+		return AsrTranscribeOutput{}, SDKError(res)
+	}
+
+	output := newAsrTranscribeOutputFromCPtr(&cOutput)
+	return output, nil
 }
 
-// Transcribe converts audio to text using ASR
-func (p *ASR) Transcribe(audio []float32, sampleRate int32, config *ASRConfig) (*ASRResult, error) {
-	slog.Debug("Transcribe called", "audioLen", len(audio), "sampleRate", sampleRate, "config", config)
-
-	if len(audio) == 0 {
-		audio = make([]float32, 0)
-	}
-
-	var cConfig C.ml_ASRConfig
-	if config != nil {
-		cTimestamps := C.CString(config.Timestamps)
-		defer C.free(unsafe.Pointer(cTimestamps))
-
-		cConfig = C.ml_ASRConfig{
-			timestamps: cTimestamps,
-			beam_size:  C.int32_t(config.BeamSize),
-			stream:     C.bool(config.Stream),
-		}
-	}
-
-	res := C.ml_asr_transcribe(
-		p.ptr,
-		(*C.float)(unsafe.Pointer(&audio[0])),
-		C.int32_t(len(audio)),
-		C.int32_t(sampleRate),
-		&cConfig,
-	)
-
-	if res.transcript == nil {
-		return nil, SDKErrorUnknown
-	}
-
-	// Convert C result to Go result
-	result := &ASRResult{
-		Transcript: C.GoString(res.transcript),
-	}
-
-	// Copy confidence scores
-	if res.confidence_scores != nil && res.confidence_count > 0 {
-		confidenceCount := int(res.confidence_count)
-		result.ConfidenceScores = make([]float32, confidenceCount)
-		copy(result.ConfidenceScores, (*[1 << 30]float32)(unsafe.Pointer(res.confidence_scores))[:confidenceCount])
-	}
-
-	// Copy timestamps
-	if res.timestamps != nil && res.timestamp_count > 0 {
-		timestampCount := int(res.timestamp_count)
-		result.Timestamps = make([]float32, timestampCount)
-		copy(result.Timestamps, (*[1 << 30]float32)(unsafe.Pointer(res.timestamps))[:timestampCount])
-	}
-
-	// Free C memory
-	C.ml_asr_free_result(&res)
-
-	return result, nil
-}
-
-// TranscribeBatch processes multiple audio samples in batch mode
-func (p *ASR) TranscribeBatch(audios [][]float32, sampleRate int32, config *ASRConfig) ([]*ASRResult, error) {
-	slog.Debug("TranscribeBatch called", "batchSize", len(audios), "sampleRate", sampleRate, "config", config)
-
-	if len(audios) == 0 {
-		return nil, SDKErrorUnknown
-	}
-
-	// Prepare C arrays
-	cAudios := make([]*C.float, len(audios))
-	numSamplesArray := make([]C.int32_t, len(audios))
-
-	for i, audio := range audios {
-		if len(audio) == 0 {
-			return nil, SDKErrorUnknown
-		}
-		cAudios[i] = (*C.float)(unsafe.Pointer(&audio[0]))
-		numSamplesArray[i] = C.int32_t(len(audio))
-	}
-
-	var cConfig C.ml_ASRConfig
-	if config != nil {
-		cTimestamps := C.CString(config.Timestamps)
-		defer C.free(unsafe.Pointer(cTimestamps))
-
-		cConfig = C.ml_ASRConfig{
-			timestamps: cTimestamps,
-			beam_size:  C.int32_t(config.BeamSize),
-			stream:     C.bool(config.Stream),
-		}
-	}
-
-	cRes := C.ml_asr_transcribe_batch(
-		p.ptr,
-		&cAudios[0],
-		&numSamplesArray[0],
-		C.int32_t(len(audios)),
-		C.int32_t(sampleRate),
-		&cConfig,
-	)
-
-	if cRes == nil {
-		return nil, SDKErrorUnknown
-	}
-
-	// Convert C results to Go results
-	results := make([]*ASRResult, len(audios))
-	for i := range len(audios) {
-		res := (*C.ml_ASRResult)(unsafe.Pointer(uintptr(unsafe.Pointer(cRes)) + uintptr(i)*unsafe.Sizeof(C.ml_ASRResult{})))
-
-		if res.transcript == nil {
-			results[i] = &ASRResult{}
-			continue
-		}
-
-		result := &ASRResult{
-			Transcript: C.GoString(res.transcript),
-		}
-
-		// Copy confidence scores
-		if res.confidence_scores != nil && res.confidence_count > 0 {
-			confidenceCount := int(res.confidence_count)
-			result.ConfidenceScores = make([]float32, confidenceCount)
-			copy(result.ConfidenceScores, (*[1 << 30]float32)(unsafe.Pointer(res.confidence_scores))[:confidenceCount])
-		}
-
-		// Copy timestamps
-		if res.timestamps != nil && res.timestamp_count > 0 {
-			timestampCount := int(res.timestamp_count)
-			result.Timestamps = make([]float32, timestampCount)
-			copy(result.Timestamps, (*[1 << 30]float32)(unsafe.Pointer(res.timestamps))[:timestampCount])
-		}
-
-		results[i] = result
-	}
-
-	// Free C memory
-	C.ml_asr_free_result(cRes)
-
-	return results, nil
-}
-
-// TranscribeStep processes audio chunk for streaming transcription
-func (p *ASR) TranscribeStep(audioChunk []float32, step int32, config *ASRConfig) (*ASRResult, error) {
-	slog.Debug("TranscribeStep called", "audioChunkLen", len(audioChunk), "step", step, "config", config)
-
-	if len(audioChunk) == 0 {
-		return nil, SDKErrorUnknown
-	}
-
-	var cConfig C.ml_ASRConfig
-	if config != nil {
-		cTimestamps := C.CString(config.Timestamps)
-		defer C.free(unsafe.Pointer(cTimestamps))
-
-		cConfig = C.ml_ASRConfig{
-			timestamps: cTimestamps,
-			beam_size:  C.int32_t(config.BeamSize),
-			stream:     C.bool(config.Stream),
-		}
-	}
-
-	res := C.ml_asr_transcribe_step(
-		p.ptr,
-		(*C.float)(unsafe.Pointer(&audioChunk[0])),
-		C.int32_t(len(audioChunk)),
-		C.int32_t(step),
-		&cConfig,
-	)
-
-	if res.transcript == nil {
-		return nil, SDKErrorUnknown
-	}
-
-	// Convert C result to Go result
-	result := &ASRResult{
-		Transcript: C.GoString(res.transcript),
-	}
-
-	// Copy confidence scores
-	if res.confidence_scores != nil && res.confidence_count > 0 {
-		confidenceCount := int(res.confidence_count)
-		result.ConfidenceScores = make([]float32, confidenceCount)
-		copy(result.ConfidenceScores, (*[1 << 30]float32)(unsafe.Pointer(res.confidence_scores))[:confidenceCount])
-	}
-
-	// Copy timestamps
-	if res.timestamps != nil && res.timestamp_count > 0 {
-		timestampCount := int(res.timestamp_count)
-		result.Timestamps = make([]float32, timestampCount)
-		copy(result.Timestamps, (*[1 << 30]float32)(unsafe.Pointer(res.timestamps))[:timestampCount])
-	}
-
-	// Free C memory
-	C.ml_asr_free_result(&res)
-
-	return result, nil
-}
-
-// PrintResult prints ASR result to stdout
-func (p *ASR) PrintResult(result *ASRResult) {
-	slog.Debug("PrintResult called", "result", result)
-
-	if result == nil {
-		return
-	}
-
-	cResult := C.ml_ASRResult{
-		transcript:        C.CString(result.Transcript),
-		confidence_scores: (*C.float)(unsafe.Pointer(&result.ConfidenceScores[0])),
-		confidence_count:  C.int32_t(len(result.ConfidenceScores)),
-		timestamps:        (*C.float)(unsafe.Pointer(&result.Timestamps[0])),
-		timestamp_count:   C.int32_t(len(result.Timestamps)),
-	}
-	defer C.free(unsafe.Pointer(cResult.transcript))
-
-	C.ml_asr_print_result(&cResult)
-}
-
-// ListSupportedLanguages returns list of supported languages
-func (p *ASR) ListSupportedLanguages() ([]string, error) {
+// ListSupportedLanguages gets list of supported languages for ASR model
+func (a *ASR) ListSupportedLanguages() (AsrListSupportedLanguagesOutput, error) {
 	slog.Debug("ListSupportedLanguages called")
 
-	var count C.int32_t
-	cLanguages := C.ml_asr_list_supported_languages(p.ptr, &count)
-	if cLanguages == nil {
-		return nil, SDKErrorUnknown
+	input := AsrListSupportedLanguagesInput{}
+	cInput := input.toCPtr()
+	defer freeAsrListSupportedLanguagesInput(cInput)
+
+	var cOutput C.ml_AsrListSupportedLanguagesOutput
+	defer freeAsrListSupportedLanguagesOutput(&cOutput)
+
+	res := C.ml_asr_list_supported_languages(a.ptr, cInput, &cOutput)
+	if res < 0 {
+		return AsrListSupportedLanguagesOutput{}, SDKError(res)
 	}
 
-	languages := make([]string, count)
-	for i := 0; i < int(count); i++ {
-		langPtr := (*C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(cLanguages)) + uintptr(i)*unsafe.Sizeof((*C.char)(nil))))
-		languages[i] = C.GoString(langPtr)
-	}
-
-	return languages, nil
-}
-
-// SetLanguage sets the language for ASR transcription
-func (p *ASR) SetLanguage(language string) {
-	slog.Debug("SetLanguage called", "language", language)
-
-	cLanguage := C.CString(language)
-	defer C.free(unsafe.Pointer(cLanguage))
-
-	C.ml_asr_set_language(p.ptr, cLanguage)
+	output := newAsrListSupportedLanguagesOutputFromCPtr(&cOutput)
+	return output, nil
 }

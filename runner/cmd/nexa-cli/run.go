@@ -5,22 +5,20 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 	"github.com/openai/openai-go/packages/ssestream"
 	"github.com/spf13/cobra"
 
-	"github.com/NexaAI/nexa-sdk/internal/config"
-	"github.com/NexaAI/nexa-sdk/internal/render"
-	"github.com/NexaAI/nexa-sdk/internal/store"
-	"github.com/NexaAI/nexa-sdk/internal/types"
-	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
+	"github.com/NexaAI/nexa-sdk/runner/internal/config"
+	"github.com/NexaAI/nexa-sdk/runner/internal/render"
+	"github.com/NexaAI/nexa-sdk/runner/internal/store"
+	"github.com/NexaAI/nexa-sdk/runner/internal/types"
+	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 )
-
-var disableStream bool
 
 func run() *cobra.Command {
 	runCmd := &cobra.Command{
@@ -32,7 +30,6 @@ func run() *cobra.Command {
 	runCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
 
 	runCmd.Flags().SortFlags = false
-	runCmd.Flags().BoolVarP(&disableStream, "disable-stream", "s", false, "disable stream mode")
 
 	runCmd.Run = runFunc
 	return runCmd
@@ -47,7 +44,9 @@ func runFunc(cmd *cobra.Command, args []string) {
 	)
 
 	// check
-	_, err := client.Models.Get(context.TODO(), model)
+	modelInfo, err := client.Models.Get(context.TODO(), model)
+	var manifest types.ModelManifest
+	sonic.UnmarshalString(modelInfo.RawJSON(), &manifest)
 	if err != nil {
 		if _, ok := err.(net.Error); ok {
 			fmt.Println(text.FgRed.Sprintf("Is server running? Please check your network. \n\t%s", err))
@@ -67,6 +66,11 @@ func runFunc(cmd *cobra.Command, args []string) {
 				return
 			}
 
+			modelType, err := chooseModelType()
+			if err != nil {
+				return
+			}
+
 			manifest, err := chooseFiles(model, files)
 			if err != nil {
 				return
@@ -75,6 +79,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			var raw *http.Response
 			err = client.Post(context.TODO(), "/models", nil, &raw,
 				option.WithJSONSet("Name", manifest.Name),
+				option.WithJSONSet("ModelType", modelType),
 				option.WithJSONSet("ModelFile", manifest.ModelFile),
 				option.WithJSONSet("MMProjFile", manifest.MMProjFile),
 				option.WithJSONSet("ExtraFiles", manifest.ExtraFiles),
@@ -114,90 +119,74 @@ func runFunc(cmd *cobra.Command, args []string) {
 
 	// repl
 	var history []openai.ChatCompletionMessageParamUnion
-	var profileData *nexa_sdk.ProfilingData
 	repl(ReplConfig{
-		Stream:    !disableStream,
-		ParseFile: false,
+		ParseFile: manifest.ModelType == types.ModelTypeVLM,
 
-		Clear: func() {
+		Reset: func() error {
 			history = nil
-			client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
+			_, err := client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
 				Messages: nil,
 				Model:    model,
 			})
+			return err
 		},
 
-		Run: func(prompt string, images, audios []string) (string, error) {
-			profileData = nil
-			start := time.Now()
-
-			history = append(history, openai.UserMessage(prompt))
-
-			chatCompletion, err := client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
-				Messages: history,
-				Model:    model,
-			})
-			if err != nil {
-				return "", err
+		Run: func(prompt string, images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			if len(images) > 0 || len(audios) > 0 {
+				contens := make([]openai.ChatCompletionContentPartUnionParam, 0)
+				contens = append(contens, openai.ChatCompletionContentPartUnionParam{
+					OfText: &openai.ChatCompletionContentPartTextParam{
+						Text: prompt,
+					},
+				})
+				for _, image := range images {
+					contens = append(contens, openai.ChatCompletionContentPartUnionParam{
+						OfImageURL: &openai.ChatCompletionContentPartImageParam{
+							ImageURL: openai.ChatCompletionContentPartImageImageURLParam{
+								URL: image,
+							},
+						},
+					})
+				}
+				for _, audio := range audios {
+					contens = append(contens, openai.ChatCompletionContentPartUnionParam{
+						OfInputAudio: &openai.ChatCompletionContentPartInputAudioParam{
+							InputAudio: openai.ChatCompletionContentPartInputAudioInputAudioParam{
+								Data: audio,
+							},
+						},
+					})
+				}
+				history = append(history, openai.UserMessage([]openai.ChatCompletionContentPartUnionParam{}))
+			} else {
+				history = append(history, openai.UserMessage(prompt))
 			}
-
-			if len(chatCompletion.Choices) == 0 {
-				return "", fmt.Errorf("response empty")
-			}
-
-			content := chatCompletion.Choices[0].Message.Content
-
-			history = append(history, openai.AssistantMessage(content))
-
-			profileData = &nexa_sdk.ProfilingData{
-				TotalTimeUs: int64(time.Since(start).Microseconds()),
-			}
-
-			return content, err
-		},
-
-		RunStream: func(ctx context.Context, prompt string, images, audios []string, dataCh chan<- string, errCh chan<- error) {
-			defer close(errCh)
-			defer close(dataCh)
-
-			profileData = nil
-			start := time.Now()
 
 			acc := openai.ChatCompletionAccumulator{}
-			history = append(history, openai.UserMessage(prompt))
-
-			stream := client.Chat.Completions.NewStreaming(ctx, openai.ChatCompletionNewParams{
+			stream := client.Chat.Completions.NewStreaming(context.Background(), openai.ChatCompletionNewParams{
 				Messages: history,
 				Model:    model,
-			})
+			}, option.WithHeaderAdd("Nexa-KeepCache", "true"))
 
 			for stream.Next() {
 				chunk := stream.Current()
 				acc.AddChunk(chunk)
 				if len(chunk.Choices) > 0 {
-					dataCh <- chunk.Choices[0].Delta.Content
+					if !on_token(chunk.Choices[0].Delta.Content) {
+						stream.Close()
+						break
+					}
 					acc.AddChunk(chunk)
 				}
 			}
 
-			if stream.Err() != nil {
-				errCh <- stream.Err()
-			}
-
 			if len(acc.Choices) > 0 {
 				history = append(history, openai.AssistantMessage(acc.Choices[0].Message.Content))
+				return acc.Choices[0].Message.Content, nexa_sdk.ProfileData{}, nil
 			}
 
-			profileData = &nexa_sdk.ProfilingData{
-				TotalTimeUs: int64(time.Since(start).Microseconds()),
-			}
-		},
+			return "", nexa_sdk.ProfileData{}, nil
 
-		GetProfilingData: func() (*nexa_sdk.ProfilingData, error) {
-			if profileData == nil {
-				return nil, fmt.Errorf("do not have profiling data")
-			}
-			return profileData, nil
 		},
 	})
 }

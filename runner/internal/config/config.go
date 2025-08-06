@@ -36,7 +36,7 @@ func init() {
 	viper.SetDefault("keepalive", 300)          // Default 5-minute timeout
 	viper.SetDefault("hftoken", "")             // Default empty token
 
-	viper.SetDefault("log", "info") // Default log level
+	viper.SetDefault("log", "none") // Default log level
 
 	// HTTPS defaults - disabled unless explicitly enabled
 	viper.SetDefault("enablehttps", false)

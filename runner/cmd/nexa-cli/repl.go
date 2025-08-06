@@ -18,10 +18,10 @@ import (
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/ollama/ollama/readline"
 
-	"github.com/NexaAI/nexa-sdk/internal/render"
-	"github.com/NexaAI/nexa-sdk/internal/store"
-	"github.com/NexaAI/nexa-sdk/internal/types"
-	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
+	"github.com/NexaAI/nexa-sdk/runner/internal/render"
+	"github.com/NexaAI/nexa-sdk/runner/internal/store"
+	"github.com/NexaAI/nexa-sdk/runner/internal/types"
+	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 )
 
 //var completer = readline.NewPrefixCompleter(
@@ -58,24 +58,21 @@ var help = [][2]string{
 
 // LLM, VLM
 type ReplConfig struct {
-	Stream    bool
+	//Stream    bool
 	ParseFile bool
 
-	Clear       func()
+	Reset       func() error
 	SaveKVCache func(path string) error
 	LoadKVCache func(path string) error
 
-	Run       func(prompt string, images, audios []string) (string, error)
-	RunStream func(ctx context.Context, prompt string, images, audios []string, dataCh chan<- string, errCh chan<- error)
-
-	GetProfilingData func() (*nexa_sdk.ProfilingData, error)
+	Run func(prompt string, images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error)
 }
 
 func (cfg *ReplConfig) fill() {
 	notSupport := fmt.Errorf("notSupport")
 
-	if cfg.Clear == nil {
-		cfg.Clear = func() {}
+	if cfg.Reset == nil {
+		cfg.Reset = func() error { return nil }
 	}
 	if cfg.SaveKVCache == nil {
 		cfg.SaveKVCache = func(string) error { return notSupport }
@@ -83,22 +80,9 @@ func (cfg *ReplConfig) fill() {
 	if cfg.LoadKVCache == nil {
 		cfg.LoadKVCache = func(string) error { return notSupport }
 	}
-	if cfg.Run == nil {
-		cfg.Run = func(string, []string, []string) (string, error) { return "", notSupport }
-	}
-	if cfg.RunStream == nil {
-		cfg.RunStream = func(ctx context.Context, prompt string, images, audios []string, dataCh chan<- string, errCh chan<- error) {
-			close(dataCh)
-			errCh <- notSupport
-			close(errCh)
-		}
-	}
 }
 
-func printProfiling(profilingData *nexa_sdk.ProfilingData) {
-	if profilingData == nil {
-		return
-	}
+func printProfiling(profilingData nexa_sdk.ProfileData) {
 
 	if profilingData.TokensPerSecond != 0 {
 		profilingText := fmt.Sprintf("%.2f tok/sec • %d tokens • %.2fs to first token • Stop reason: %s",
@@ -250,7 +234,7 @@ func repl(cfg ReplConfig) {
 				return
 
 			case "/clear":
-				cfg.Clear()
+				cfg.Reset()
 				fmt.Print("\033[H\033[2J")
 
 			case "/load":
@@ -259,7 +243,7 @@ func repl(cfg ReplConfig) {
 					fmt.Println()
 					continue
 				}
-				cfg.Clear()
+				cfg.Reset()
 				err := cfg.LoadKVCache(fileds[1])
 				if err != nil {
 					fmt.Println(text.FgRed.Sprintf("Error: %s", err))
@@ -287,71 +271,63 @@ func repl(cfg ReplConfig) {
 		}
 
 		// chat
-		if cfg.Stream {
-			// run async
-			dataCh := make(chan string, 10)
-			errCh := make(chan error, 1)
+		//if cfg.Stream {
+		// run async
+		ctx, cancelFunc := context.WithCancel(context.Background())
+		cancel = cancelFunc
 
-			fmt.Print(text.FgMagenta.EscapeSeq())
-			ctx, cancelFunc := context.WithCancel(context.Background())
-			cancel = cancelFunc
-			go cfg.RunStream(ctx, line, images, audios, dataCh, errCh)
+		firstToken := true
 
-			// print stream
-			firstToken := true
-			for r := range dataCh {
+		_, profileData, err := cfg.Run(line, images, audios, func(token string) bool {
 
-				if firstToken {
-					fmt.Print(text.FgYellow.EscapeSeq())
-					firstToken = false
-				}
-
-				switch r {
-				case "<think>":
-					fmt.Print(text.FgHiBlack.EscapeSeq())
-					fmt.Print(r)
-				case "</think>":
-					fmt.Print(r)
-					fmt.Print(text.FgYellow.EscapeSeq())
-				default:
-					fmt.Print(r)
-				}
-
+			if firstToken {
+				fmt.Print(text.FgYellow.EscapeSeq())
+				firstToken = false
 			}
-			fmt.Println(text.Reset.EscapeSeq())
+
+			switch token {
+			case "<think>":
+				fmt.Print(text.FgHiBlack.EscapeSeq())
+				fmt.Print(token)
+			case "</think>":
+				fmt.Print(token)
+				fmt.Print(text.FgYellow.EscapeSeq())
+			default:
+				fmt.Print(token)
+			}
+
+			return ctx.Err() == nil
+		})
+
+		fmt.Println(text.Reset.EscapeSeq())
+		fmt.Println()
+
+		printProfiling(profileData)
+
+		// check error
+		if err != nil {
+			fmt.Println(text.FgRed.Sprintf("Error: %s\n", err))
 			fmt.Println()
-
-			if data, err := cfg.GetProfilingData(); err == nil {
-				printProfiling(data)
-			}
-
-			// check error
-			e, ok := <-errCh
-			if ok {
-				fmt.Println(text.FgRed.Sprintf("Error: %s\n", e))
-				fmt.Println()
-				return
-			}
-		} else {
-			fmt.Print(text.FgMagenta.EscapeSeq())
-			res, err := cfg.Run(line, images, audios)
-			// append color to think
-			res = strings.ReplaceAll(res, "<think>", text.FgBlack.EscapeSeq()+"<think>")
-			res = strings.ReplaceAll(res, "</think>", "</think>"+text.FgYellow.EscapeSeq())
-			fmt.Println(text.FgYellow.Sprint(res))
-			fmt.Println()
-
-			if data, err := cfg.GetProfilingData(); err == nil {
-				printProfiling(data)
-			}
-
-			fmt.Print(text.Reset.EscapeSeq())
-			if err != nil {
-				fmt.Println(text.FgRed.Sprintf("Error: %s\n", err))
-				fmt.Println()
-				return
-			}
+			return
 		}
+		//} else {
+		//	fmt.Print(text.FgMagenta.EscapeSeq())
+		//	res, profileData, err := cfg.Run(line, images, audios, nil)
+		//	// append color to think
+		//	res = strings.ReplaceAll(res, "<think>", text.FgBlack.EscapeSeq()+"<think>")
+		//	res = strings.ReplaceAll(res, "</think>", "</think>"+text.FgYellow.EscapeSeq())
+		//	fmt.Println(text.FgYellow.Sprint(res))
+		//	fmt.Println()
+
+		//	printProfiling(profileData)
+
+		//	fmt.Print(text.Reset.EscapeSeq())
+		//	if err != nil {
+		//		fmt.Println(text.FgRed.Sprintf("Error: %s\n", err))
+		//		fmt.Println()
+		//		return
+		//	}
+		//}
 
 	}
 }
@@ -485,6 +461,20 @@ func getFileSizesConcurrent(name string, files []string) (map[string]int64, erro
 	wg.Wait()
 
 	return fileSizes, firstError
+}
+
+func chooseModelType() (types.ModelType, error) {
+	var modelType types.ModelType
+	if err := huh.NewSelect[types.ModelType]().
+		Title("Choose Model Type").
+		Options(huh.NewOptions(
+			types.ModelTypeLLM, types.ModelTypeVLM, types.ModelTypeEmbedder, types.ModelTypeReranker,
+			types.ModelTypeASR, types.ModelTypeTTS)...).
+		Value(&modelType).
+		Run(); err != nil {
+		return "", err
+	}
+	return modelType, nil
 }
 
 func chooseFiles(name string, files []string) (res types.ModelManifest, err error) {

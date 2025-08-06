@@ -220,16 +220,10 @@ install_success() {
 main() {
     [ "$(uname -s)" = "Linux" ] || error 'This script is intended to run on Linux only.'
 
-    detect_system_environment
 	validate_requirements
-    setup_sudo
 
-    select_backend
+    uninstall_nexa_sdk
     install_nexa_sdk
-
-    if available systemctl; then
-        configure_systemd
-    fi
 
     status 'Install complete. Run "nexa" from the command line.'
 }

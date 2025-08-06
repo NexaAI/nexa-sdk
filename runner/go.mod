@@ -1,4 +1,4 @@
-module github.com/NexaAI/nexa-sdk
+module github.com/NexaAI/nexa-sdk/runner
 
 go 1.24.0
 

@@ -10,8 +10,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/NexaAI/nexa-sdk/internal/store"
-	"github.com/NexaAI/nexa-sdk/internal/types"
+	"github.com/NexaAI/nexa-sdk/runner/internal/store"
+	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 )
 
 func ListModels(c *gin.Context) {
