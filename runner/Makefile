@@ -58,7 +58,7 @@ link:
 	$(MKDIR) ./build
 	cd build && ln -s ../../../nexasdk-bridge/build/out/* ./
 	cd nexa-sdk && ln -sf  ../../../nexasdk-bridge/modelfiles .
-	
+
 download:
 	-$(RM) ./build
 	$(MKDIR) ./build
