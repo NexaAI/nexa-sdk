@@ -16,8 +16,8 @@ func TestMain(m *testing.M) {
 	// initLLM()
 	// defer deinitLLM()
 
-	initVLM()
-	defer deinitVLM()
+	// initVLM()
+	// defer deinitVLM()
 
 	// initTTS()
 	// defer deinitTTS()
@@ -27,6 +27,9 @@ func TestMain(m *testing.M) {
 
 	// initEmbedder()
 	// defer deinitEmbedder()
+
+	initCV()
+	defer deinitCV()
 
 	code := m.Run()
 	os.Exit(code)
