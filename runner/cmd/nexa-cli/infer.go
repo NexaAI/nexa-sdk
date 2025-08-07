@@ -126,6 +126,8 @@ func infer() *cobra.Command {
 			inferTTS(manifest.PluginId, modelfile, "")
 		case types.ModelTypeASR:
 			inferASR(manifest.PluginId, modelfile, "")
+		case types.ModelTypeCV:
+			inferCV(manifest.PluginId, modelfile)
 		default:
 			panic("not support model type")
 		}
@@ -415,4 +417,65 @@ func inferASR(plugin, modelfile string, tokenizerPath string) {
 	}
 
 	fmt.Println(render.GetTheme().Warning.Sprint(result.Result.Transcript))
+}
+
+func inferCV(plugin, modelfile string) {
+	spin := render.NewSpinner("loading CV model...")
+	spin.Start()
+
+	cvInput := nexa_sdk.CVCreateInput{
+		Capabilities: []nexa_sdk.CVCapabilities{nexa_sdk.CVCapabilityOCR},
+		Config: nexa_sdk.CVModelConfig{
+			ModelPath:            modelfile,
+			ConfigFilePath:       "",
+			CharDictPath:         "",
+			SystemLibraryPath:    "",
+			BackendLibraryPath:   "",
+			ExtensionLibraryPath: "",
+		},
+		PluginID: plugin,
+		DeviceID: "",
+	}
+
+	p, err := nexa_sdk.NewCV(cvInput)
+	spin.Stop()
+
+	if err != nil {
+		slog.Error("failed to create CV", "error", err)
+		fmt.Println(modelLoadFailMsg)
+		return
+	}
+	defer p.Destroy()
+
+	if input == "" {
+		fmt.Println(text.FgRed.Sprintf("input image file is required for CV inference"))
+		fmt.Println()
+		return
+	}
+
+	if _, err := os.Stat(input); os.IsNotExist(err) {
+		fmt.Println(text.FgRed.Sprintf("input file '%s' does not exist", input))
+		return
+	}
+
+	inferInput := nexa_sdk.CVInferInput{
+		InputImagePath: input,
+	}
+
+	fmt.Println(text.FgGreen.Sprintf("Performing CV inference on image: %s", input))
+
+	result, err := p.Infer(inferInput)
+	if err != nil {
+		fmt.Println(text.FgRed.Sprintf("CV inference failed: %s", err))
+		return
+	}
+
+	fmt.Println(text.FgGreen.Sprintf("✓ CV inference completed successfully"))
+	fmt.Println(text.FgGreen.Sprintf("  Found %d results", result.ResultCount))
+
+	for _, cvResult := range result.Results {
+		if cvResult.Text != "" {
+			fmt.Printf("[%s] %s\n", text.FgHiMagenta.Sprintf("%.3f", cvResult.Confidence), text.FgYellow.Sprintf("\"%s\"", cvResult.Text))
+		}
+	}
 }

@@ -10,6 +10,7 @@ const (
 	ModelTypeImageGen ModelType = "image_gen"
 	ModelTypeTTS      ModelType = "tts"
 	ModelTypeASR      ModelType = "asr"
+	ModelTypeCV       ModelType = "cv"
 )
 
 type ModeFileInfo struct {
