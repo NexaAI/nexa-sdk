@@ -10,6 +10,7 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/dustin/go-humanize"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
@@ -426,9 +427,9 @@ func inferCV(plugin, modelfile string) {
 	cvInput := nexa_sdk.CVCreateInput{
 		Config: nexa_sdk.CVModelConfig{
 			Capabilities:         nexa_sdk.CVCapabilityOCR,
-			ModelPath:            modelfile,
-			// TODO: use rec model path
+			DetModelPath:         modelfile,
 			RecModelPath:         modelfile,
+			ModelPath:            "",
 			ConfigFilePath:       "",
 			CharDictPath:         "",
 			SystemLibraryPath:    "",

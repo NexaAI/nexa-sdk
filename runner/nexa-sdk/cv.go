@@ -45,13 +45,13 @@ func newBoundingBoxFromCPtr(c *C.ml_BoundingBox) BoundingBox {
 
 // CVResult represents a generic detection/classification result
 type CVResult struct {
-	ImagePaths     []string
-	ClassID        int32
-	Confidence     float32
-	BBox           BoundingBox
-	Text           string
-	Embedding      []float32
-	EmbeddingDim   int32
+	ImagePaths   []string
+	ClassID      int32
+	Confidence   float32
+	BBox         BoundingBox
+	Text         string
+	Embedding    []float32
+	EmbeddingDim int32
 }
 
 func newCVResultFromCPtr(c *C.ml_CVResult) CVResult {
@@ -123,9 +123,12 @@ func freeCVResult(ptr *C.ml_CVResult) {
 
 // CVModelConfig represents CV model preprocessing configuration
 type CVModelConfig struct {
-	Capabilities         CVCapabilities
+	Capabilities CVCapabilities
+	// MLX-OCR
+	DetModelPath string // Detection model path
+	RecModelPath string // Recognition model path
+	// QNN
 	ModelPath            string
-	RecModelPath         string // Recognition model path
 	SystemLibraryPath    string
 	BackendLibraryPath   string
 	ExtensionLibraryPath string
@@ -139,11 +142,14 @@ func (cmc CVModelConfig) toCPtr() *C.ml_CVModelConfig {
 
 	cPtr.capabilities = C.ml_CVCapabilities(cmc.Capabilities)
 
-	if cmc.ModelPath != "" {
-		cPtr.model_path = C.CString(cmc.ModelPath)
+	if cmc.DetModelPath != "" {
+		cPtr.det_model_path = C.CString(cmc.DetModelPath)
 	}
 	if cmc.RecModelPath != "" {
 		cPtr.rec_model_path = C.CString(cmc.RecModelPath)
+	}
+	if cmc.ModelPath != "" {
+		cPtr.model_path = C.CString(cmc.ModelPath)
 	}
 	if cmc.SystemLibraryPath != "" {
 		cPtr.system_library_path = C.CString(cmc.SystemLibraryPath)
@@ -166,6 +172,12 @@ func (cmc CVModelConfig) toCPtr() *C.ml_CVModelConfig {
 
 func freeCVModelConfig(cPtr *C.ml_CVModelConfig) {
 	if cPtr != nil {
+		if cPtr.det_model_path != nil {
+			C.free(unsafe.Pointer(cPtr.det_model_path))
+		}
+		if cPtr.rec_model_path != nil {
+			C.free(unsafe.Pointer(cPtr.rec_model_path))
+		}
 		if cPtr.model_path != nil {
 			C.free(unsafe.Pointer(cPtr.model_path))
 		}
@@ -348,4 +360,4 @@ func (c *CV) Infer(input CVInferInput) (CVInferOutput, error) {
 
 	output := newCVInferOutputFromCPtr(&cOutput)
 	return output, nil
-} 
+}
