@@ -140,19 +140,18 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 			PluginID: manifest.PluginId,
 		})
 	case reflect.TypeFor[nexa_sdk.VLM]():
-		if manifest.MMProjFile.Name == "" {
-			return nil, fmt.Errorf("missing mmproj file")
-		} else {
-			mmproj := s.ModelfilePath(manifest.Name, manifest.MMProjFile.Name)
-			t, e = nexa_sdk.NewVLM(nexa_sdk.VlmCreateInput{
-				ModelPath:  modelfile,
-				MmprojPath: mmproj,
-				Config: nexa_sdk.ModelConfig{
-					NCtx: param.NCtx,
-				},
-				PluginID: manifest.PluginId,
-			})
+		var mmproj string
+		if manifest.MMProjFile.Name != "" {
+			mmproj = s.ModelfilePath(manifest.Name, manifest.MMProjFile.Name)
 		}
+		t, e = nexa_sdk.NewVLM(nexa_sdk.VlmCreateInput{
+			ModelPath:  modelfile,
+			MmprojPath: mmproj,
+			Config: nexa_sdk.ModelConfig{
+				NCtx: param.NCtx,
+			},
+			PluginID: manifest.PluginId,
+		})
 	//case reflect.TypeFor[nexa_sdk.Embedder]():
 	//	t, e = nexa_sdk.NewEmbedder(modelfile, nil, param.Device)
 	//case reflect.TypeFor[nexa_sdk.Reranker]():
