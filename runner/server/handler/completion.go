@@ -282,6 +282,8 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 
 	// Build message list for VLM template
 	messages := make([]nexa_sdk.VlmChatMessage, 0, len(param.Messages))
+	images := make([]string, 0)
+	audios := make([]string, 0)
 	for _, msg := range param.Messages {
 		content := msg.GetContent().AsAny()
 		switch content := content.(type) {
@@ -307,13 +309,15 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 				case "image_url":
 					contents = append(contents, nexa_sdk.VlmContent{
 						Type: nexa_sdk.VlmContentTypeImage,
-						Text: *ct.GetText(),
+						Text: ct.GetImageURL().URL,
 					})
+					images = append(images, ct.GetImageURL().URL)
 				case "input_audio":
 					contents = append(contents, nexa_sdk.VlmContent{
 						Type: nexa_sdk.VlmContentTypeAudio,
-						Text: *ct.GetText(),
+						Text: ct.GetInputAudio().Data,
 					})
+					audios = append(audios, ct.GetInputAudio().Data)
 				}
 			}
 
@@ -369,7 +373,9 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 					return true
 				},
 				Config: &nexa_sdk.GenerationConfig{
-					MaxTokens: 2048,
+					MaxTokens:  2048,
+					ImagePaths: images,
+					AudioPaths: audios,
 				}},
 			)
 
@@ -406,7 +412,9 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 		genOut, err := p.Generate(nexa_sdk.VlmGenerateInput{
 			PromptUTF8: formatted.FormattedText,
 			Config: &nexa_sdk.GenerationConfig{
-				MaxTokens: 2048,
+				MaxTokens:  2048,
+				ImagePaths: images,
+				AudioPaths: audios,
 			}},
 		)
 		if err != nil {
