@@ -15,7 +15,6 @@ import (
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 	"github.com/bytedance/sonic"
-	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 )
 
@@ -47,7 +46,7 @@ func update() *cobra.Command {
 
 	updateCmd.Run = func(cmd *cobra.Command, args []string) {
 		if err := updateImpl(); err != nil {
-			fmt.Println(text.FgRed.Sprintf("update failed: %s", err.Error()))
+			fmt.Println(render.GetTheme().Error.Sprintf("update failed: %s", err.Error()))
 			os.Exit(1)
 		}
 	}
@@ -300,12 +299,12 @@ func notifyUpdate() {
 			ck.LastNotify = time.Now()
 
 			fmt.Fprintf(os.Stderr, "\n\n%s %s → %s\n",
-				text.FgYellow.Sprintf("A new version of nexa-cli is available:"),
-				text.FgGreen.Sprint(Version),
-				text.FgGreen.Sprint(rls.TagName))
+				render.GetTheme().Warning.Sprintf("A new version of nexa-cli is available:"),
+				render.GetTheme().Success.Sprint(Version),
+				render.GetTheme().Success.Sprint(rls.TagName))
 
 			fmt.Fprintf(os.Stderr, "%s\n\n",
-				text.FgYellow.Sprint("To update, run: `nexa update`"),
+				render.GetTheme().Warning.Sprint("To update, run: `nexa update`"),
 			)
 		}
 	}

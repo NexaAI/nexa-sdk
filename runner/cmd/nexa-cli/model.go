@@ -8,7 +8,6 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
@@ -42,7 +41,7 @@ func pull() *cobra.Command {
 			}
 
 			if downloaded {
-				fmt.Println(text.FgBlue.Sprint("Already downloaded all quant"))
+				fmt.Println(render.GetTheme().Info.Sprint("Already downloaded all quant"))
 				return
 			}
 		}
@@ -52,7 +51,7 @@ func pull() *cobra.Command {
 		files, err := s.HFModelInfo(context.TODO(), name)
 		spin.Stop()
 		if err != nil {
-			fmt.Println(text.FgRed.Sprintf("Get manifest from huggingface error: %s", err))
+			fmt.Println(render.GetTheme().Error.Sprintf("Get manifest from huggingface error: %s", err))
 			return
 		}
 
@@ -72,7 +71,7 @@ func pull() *cobra.Command {
 
 			for err := range errCh {
 				bar.Clear()
-				fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 			}
 		} else {
 			modelType, err := chooseModelType()
@@ -97,7 +96,7 @@ func pull() *cobra.Command {
 
 			for err := range errCh {
 				bar.Clear()
-				fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 			}
 		}
 	}
