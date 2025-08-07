@@ -79,13 +79,13 @@ func infer() *cobra.Command {
 			return
 		}
 
-		var modelFile string
+		var quant string
 		var options []huh.Option[string]
 		for k, v := range manifest.ModelFile {
 			if v.Downloaded {
 				options = append(options, huh.NewOption(
 					fmt.Sprintf("%-10s [%7s]", k, humanize.IBytes(uint64(v.Size))),
-					v.Name,
+					k,
 				))
 			}
 		}
@@ -93,19 +93,21 @@ func infer() *cobra.Command {
 			if err = huh.NewSelect[string]().
 				Title("Select a quant from local folder").
 				Options(options...).
-				Value(&modelFile).
+				Value(&quant).
 				Run(); err != nil {
 				fmt.Println(render.GetTheme().Error.Sprintf("select error: %s", err))
 				return
 			}
 		} else {
-			modelFile = options[0].Value
+			quant = options[0].Value
 		}
+
+		fmt.Println(render.GetTheme().Quant.Sprintf("🔹 Quant=%s", quant))
 
 		nexa_sdk.Init()
 		defer nexa_sdk.DeInit()
 
-		modelfile := s.ModelfilePath(manifest.Name, modelFile)
+		modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
 
 		switch manifest.ModelType {
 		case types.ModelTypeLLM:
