@@ -64,48 +64,26 @@ func (s *Store) Close() error {
 }
 
 func (s *Store) cleanCorruptedDirectories() {
-	modelsDir := s.ModelDirPath()
-
-	entries, err := os.ReadDir(modelsDir)
+	models, err := s.scanModelDir()
 	if err != nil {
+		slog.Error("Failed to scan model directory", "err", err)
 		return
 	}
 
-	// org name
-	for _, entry := range entries {
-		// try to remove the lock file
-		//if entry.Type().IsRegular() && strings.HasSuffix(entry.Name(), ".lock") {
-		//	os.Remove(filepath.Join(modelsDir, entry.Name()))
-		//}
-
-		if !entry.IsDir() {
-			continue
-		}
-
-		// repo name
-		subentries, err := os.ReadDir(filepath.Join(modelsDir, entry.Name()))
-		if err != nil {
-			continue
-		}
-		for _, subentry := range subentries {
-			if !subentry.IsDir() {
+	for _, models := range models {
+		slog.Info("Checking model directory", "name", models)
+		if s.isCorruptedModelDirectory(models) {
+			if err := s.LockModel(models); err != nil {
+				slog.Warn("Skipping cleanup of directory", "name", models, "err", err)
 				continue
 			}
-			name := entry.Name() + "/" + subentry.Name()
-			slog.Info("Checking model directory", "name", name)
-			if s.isCorruptedModelDirectory(name) {
-				if err := s.LockModel(name); err != nil {
-					slog.Warn("Skipping cleanup of directory", "name", name, "err", err)
-					continue
-				}
 
-				slog.Info("Cleaning corrupted model directory", "name", name)
-				if err := os.RemoveAll(s.ModelfilePath(name, "")); err != nil {
-					slog.Error("Failed to remove corrupted directory", "name", name, "err", err)
-				}
-
-				s.UnlockModel(name)
+			slog.Info("Cleaning corrupted model directory", "name", models)
+			if err := os.RemoveAll(s.ModelfilePath(models, "")); err != nil {
+				slog.Error("Failed to remove corrupted directory", "name", models, "err", err)
 			}
+
+			s.UnlockModel(models)
 		}
 	}
 }
