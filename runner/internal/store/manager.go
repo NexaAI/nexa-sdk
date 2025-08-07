@@ -67,6 +67,7 @@ func (s *Store) cleanCorruptedDirectories() {
 	models, err := s.scanModelDir()
 	if err != nil {
 		slog.Error("Failed to scan model directory", "err", err)
+		return
 	}
 
 	for _, models := range models {
