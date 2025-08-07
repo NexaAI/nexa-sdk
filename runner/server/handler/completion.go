@@ -317,7 +317,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 						Type: nexa_sdk.VlmContentTypeAudio,
 						Text: ct.GetInputAudio().Data,
 					})
-					audios = append(images, ct.GetInputAudio().Data)
+					audios = append(audios, ct.GetInputAudio().Data)
 				}
 			}
 
