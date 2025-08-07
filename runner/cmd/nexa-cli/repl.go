@@ -85,15 +85,14 @@ func printProfile(profileData nexa_sdk.ProfileData) {
 	var profileText string
 
 	if profileData.TokensPerSecond != 0 {
-		profileText = fmt.Sprintf("%.2f tok/sec • %d tokens • %.2fs to first token • Stop reason: %s",
+		profileText = fmt.Sprintf("— %.1f tok/s • %d tok • %.1f s first token -",
 			profileData.TokensPerSecond,
 			profileData.GeneratedTokens,
-			float64(profileData.TTFTUs)/1e6, // Convert microseconds to seconds
-			strings.ToUpper(profileData.StopReason))
+			float64(profileData.TTFTUs)/1e6)
 
 	} else {
 		if profileData.TotalTimeUs != 0 {
-			profileText = fmt.Sprintf("Total time: %.2f sec",
+			profileText = fmt.Sprintf("- %.1f s -",
 				float64(profileData.TotalTimeUs)/1e6, // Convert microseconds to seconds
 			)
 		}
