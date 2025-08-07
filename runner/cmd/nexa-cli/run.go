@@ -133,14 +133,14 @@ func runFunc(cmd *cobra.Command, args []string) {
 
 		Run: func(prompt string, images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			if len(images) > 0 || len(audios) > 0 {
-				contens := make([]openai.ChatCompletionContentPartUnionParam, 0)
-				contens = append(contens, openai.ChatCompletionContentPartUnionParam{
+				contents := make([]openai.ChatCompletionContentPartUnionParam, 0)
+				contents = append(contents, openai.ChatCompletionContentPartUnionParam{
 					OfText: &openai.ChatCompletionContentPartTextParam{
 						Text: prompt,
 					},
 				})
 				for _, image := range images {
-					contens = append(contens, openai.ChatCompletionContentPartUnionParam{
+					contents = append(contents, openai.ChatCompletionContentPartUnionParam{
 						OfImageURL: &openai.ChatCompletionContentPartImageParam{
 							ImageURL: openai.ChatCompletionContentPartImageImageURLParam{
 								URL: image,
@@ -149,7 +149,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 					})
 				}
 				for _, audio := range audios {
-					contens = append(contens, openai.ChatCompletionContentPartUnionParam{
+					contents = append(contents, openai.ChatCompletionContentPartUnionParam{
 						OfInputAudio: &openai.ChatCompletionContentPartInputAudioParam{
 							InputAudio: openai.ChatCompletionContentPartInputAudioInputAudioParam{
 								Data: audio,
@@ -157,7 +157,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 						},
 					})
 				}
-				history = append(history, openai.UserMessage([]openai.ChatCompletionContentPartUnionParam{}))
+				history = append(history, openai.UserMessage(contents))
 			} else {
 				history = append(history, openai.UserMessage(prompt))
 			}
@@ -166,7 +166,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			stream := client.Chat.Completions.NewStreaming(context.Background(), openai.ChatCompletionNewParams{
 				Messages: history,
 				Model:    model,
-			}, option.WithHeaderAdd("Nexa-KeepCache", "true"))
+			}, option.WithHeaderAdd("Nexa-KeepCache", "false"))
 
 			for stream.Next() {
 				chunk := stream.Current()
