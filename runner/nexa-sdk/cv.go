@@ -125,6 +125,7 @@ func freeCVResult(ptr *C.ml_CVResult) {
 type CVModelConfig struct {
 	Capabilities         CVCapabilities
 	ModelPath            string
+	RecModelPath         string // Recognition model path
 	SystemLibraryPath    string
 	BackendLibraryPath   string
 	ExtensionLibraryPath string
@@ -140,6 +141,9 @@ func (cmc CVModelConfig) toCPtr() *C.ml_CVModelConfig {
 
 	if cmc.ModelPath != "" {
 		cPtr.model_path = C.CString(cmc.ModelPath)
+	}
+	if cmc.RecModelPath != "" {
+		cPtr.rec_model_path = C.CString(cmc.RecModelPath)
 	}
 	if cmc.SystemLibraryPath != "" {
 		cPtr.system_library_path = C.CString(cmc.SystemLibraryPath)
@@ -186,27 +190,14 @@ func freeCVModelConfig(cPtr *C.ml_CVModelConfig) {
 
 // CVCreateInput represents input parameters for CV model creation
 type CVCreateInput struct {
-	Capabilities []CVCapabilities
-	Config       CVModelConfig
-	PluginID     string
-	DeviceID     string
+	Config   CVModelConfig
+	PluginID string
+	DeviceID string
 }
 
 func (cvi CVCreateInput) toCPtr() *C.ml_CVCreateInput {
 	cPtr := (*C.ml_CVCreateInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_CVCreateInput{}))))
 	*cPtr = C.ml_CVCreateInput{}
-
-	// Convert capabilities array
-	if len(cvi.Capabilities) > 0 {
-		capabilities := C.malloc(C.size_t(len(cvi.Capabilities) * C.sizeof_ml_CVCapabilities))
-		cCapabilities := unsafe.Slice((*C.ml_CVCapabilities)(capabilities), len(cvi.Capabilities))
-		for i, cap := range cvi.Capabilities {
-			cCapabilities[i] = C.ml_CVCapabilities(cap)
-		}
-		cPtr.capabilities = (*C.ml_CVCapabilities)(capabilities)
-	} else {
-		cPtr.capabilities = nil
-	}
 
 	// Convert config - config is a value type, not a pointer
 	configPtr := cvi.Config.toCPtr()
@@ -225,9 +216,6 @@ func (cvi CVCreateInput) toCPtr() *C.ml_CVCreateInput {
 
 func freeCVCreateInput(cPtr *C.ml_CVCreateInput) {
 	if cPtr != nil {
-		if cPtr.capabilities != nil {
-			C.free(unsafe.Pointer(cPtr.capabilities))
-		}
 		// Note: config is a value type, so we don't need to free it separately
 		if cPtr.plugin_id != nil {
 			C.free(unsafe.Pointer(cPtr.plugin_id))

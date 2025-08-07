@@ -14,9 +14,10 @@ func initCV() {
 	var err error
 
 	input := CVCreateInput{
-		Capabilities: []CVCapabilities{CVCapabilityOCR},
 		Config: CVModelConfig{
+			Capabilities:         CVCapabilityOCR,
 			ModelPath:            "modelfiles/mlx/paddle-ocr-ml/ch_ptocr_v4_det_infer.safetensors",
+			RecModelPath:         "modelfiles/mlx/paddle-ocr-ml/ch_ptocr_v4_rec_infer_f16.safetensors",
 			ConfigFilePath:       "",
 			CharDictPath:         "",
 			SystemLibraryPath:    "",

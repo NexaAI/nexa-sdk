@@ -424,9 +424,11 @@ func inferCV(plugin, modelfile string) {
 	spin.Start()
 
 	cvInput := nexa_sdk.CVCreateInput{
-		Capabilities: []nexa_sdk.CVCapabilities{nexa_sdk.CVCapabilityOCR},
 		Config: nexa_sdk.CVModelConfig{
+			Capabilities:         nexa_sdk.CVCapabilityOCR,
 			ModelPath:            modelfile,
+			// TODO: use rec model path
+			RecModelPath:         modelfile,
 			ConfigFilePath:       "",
 			CharDictPath:         "",
 			SystemLibraryPath:    "",
