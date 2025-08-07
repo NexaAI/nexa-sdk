@@ -270,7 +270,15 @@ func repl(cfg ReplConfig) {
 		ctx, cancelFunc := context.WithCancel(context.Background())
 		cancel = cancelFunc
 
+		firstToken := true
+		spin := render.NewSpinner("encoding...")
+		spin.Start()
+
 		_, profileData, err := cfg.Run(line, images, audios, func(token string) bool {
+			if firstToken {
+				spin.Stop()
+				firstToken = false
+			}
 
 			switch token {
 			case "<think>":
