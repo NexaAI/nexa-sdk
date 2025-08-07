@@ -15,7 +15,6 @@ import (
 	"github.com/bytedance/sonic"
 	"github.com/charmbracelet/huh"
 	"github.com/dustin/go-humanize"
-	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/ollama/ollama/readline"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
@@ -82,31 +81,26 @@ func (cfg *ReplConfig) fill() {
 	}
 }
 
-func printProfiling(profilingData nexa_sdk.ProfileData) {
+func printProfile(profileData nexa_sdk.ProfileData) {
+	var profileText string
 
-	if profilingData.TokensPerSecond != 0 {
-		profilingText := fmt.Sprintf("%.2f tok/sec • %d tokens • %.2fs to first token • Stop reason: %s",
-			profilingData.TokensPerSecond,
-			profilingData.GeneratedTokens,
-			float64(profilingData.TTFTUs)/1e6, // Convert microseconds to seconds
-			strings.ToUpper(profilingData.StopReason))
+	if profileData.TokensPerSecond != 0 {
+		profileText = fmt.Sprintf("— %.1f tok/s • %d tok • %.1f s first token -",
+			profileData.TokensPerSecond,
+			profileData.GeneratedTokens,
+			float64(profileData.TTFTUs)/1e6)
 
-		fmt.Print(text.FgHiMagenta.Sprint(profilingText))
-		fmt.Println(text.Reset.EscapeSeq())
-		fmt.Println()
-		return
+	} else {
+		if profileData.TotalTimeUs != 0 {
+			profileText = fmt.Sprintf("- %.1f s -",
+				float64(profileData.TotalTimeUs)/1e6, // Convert microseconds to seconds
+			)
+		}
 	}
 
-	if profilingData.TotalTimeUs != 0 {
-		profilingText := fmt.Sprintf("Total time: %.2f sec",
-			float64(profilingData.TotalTimeUs)/1e6, // Convert microseconds to seconds
-		)
-
-		fmt.Print(text.FgHiMagenta.Sprint(profilingText))
-		fmt.Println(text.Reset.EscapeSeq())
-		fmt.Println()
-		return
-	}
+	fmt.Print(render.GetTheme().Profile.Sprint(profileText))
+	fmt.Println()
+	fmt.Println()
 }
 
 type MultilineState int
@@ -128,8 +122,8 @@ func repl(cfg ReplConfig) {
 	//	HistoryFile:     store.Get().HistoryFilePath(),
 	//})
 	l, err := readline.New(readline.Prompt{
-		Prompt:         text.Colors{text.FgGreen, text.Bold}.Sprint("> "),
-		AltPrompt:      text.Colors{text.FgGreen, text.Bold}.Sprint(". "),
+		Prompt:         render.GetTheme().Prompt.Sprint("> "),
+		AltPrompt:      render.GetTheme().Prompt.Sprint(". "),
 		Placeholder:    "Send a message, press /? for help",
 		AltPlaceholder: `Use """ to end multi-line input`,
 	})
@@ -239,31 +233,31 @@ func repl(cfg ReplConfig) {
 
 			case "/load":
 				if len(fileds) != 2 {
-					fmt.Println(text.FgRed.Sprintf("Usage: /load <filename>"))
+					fmt.Println(render.GetTheme().Error.Sprintf("Usage: /load <filename>"))
 					fmt.Println()
 					continue
 				}
 				cfg.Reset()
 				err := cfg.LoadKVCache(fileds[1])
 				if err != nil {
-					fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+					fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 					fmt.Println()
 				}
 
 			case "/save":
 				if len(fileds) != 2 {
-					fmt.Println(text.FgRed.Sprintf("Usage: /save <filename>"))
+					fmt.Println(render.GetTheme().Error.Sprintf("Usage: /save <filename>"))
 					fmt.Println()
 					continue
 				}
 				err := cfg.SaveKVCache(fileds[1])
 				if err != nil {
-					fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+					fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 					fmt.Println()
 				}
 
 			default:
-				fmt.Println(text.FgRed.Sprintf("Unknown command: %s", fileds[0]))
+				fmt.Println(render.GetTheme().Error.Sprintf("Unknown command: %s", fileds[0]))
 				fmt.Println()
 			}
 
@@ -276,22 +270,15 @@ func repl(cfg ReplConfig) {
 		ctx, cancelFunc := context.WithCancel(context.Background())
 		cancel = cancelFunc
 
-		firstToken := true
-
 		_, profileData, err := cfg.Run(line, images, audios, func(token string) bool {
-
-			if firstToken {
-				fmt.Print(text.FgYellow.EscapeSeq())
-				firstToken = false
-			}
 
 			switch token {
 			case "<think>":
-				fmt.Print(text.FgHiBlack.EscapeSeq())
+				render.GetTheme().Set(render.GetTheme().ThinkOutput)
 				fmt.Print(token)
 			case "</think>":
 				fmt.Print(token)
-				fmt.Print(text.FgYellow.EscapeSeq())
+				render.GetTheme().Set(render.GetTheme().ModelOutput)
 			default:
 				fmt.Print(token)
 			}
@@ -299,14 +286,15 @@ func repl(cfg ReplConfig) {
 			return ctx.Err() == nil
 		})
 
-		fmt.Println(text.Reset.EscapeSeq())
+		render.GetTheme().Reset()
+		fmt.Println()
 		fmt.Println()
 
-		printProfiling(profileData)
+		printProfile(profileData)
 
 		// check error
 		if err != nil {
-			fmt.Println(text.FgRed.Sprintf("Error: %s\n", err))
+			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s\n", err))
 			fmt.Println()
 			return
 		}
@@ -323,7 +311,7 @@ func repl(cfg ReplConfig) {
 
 		//	fmt.Print(text.Reset.EscapeSeq())
 		//	if err != nil {
-		//		fmt.Println(text.FgRed.Sprintf("Error: %s\n", err))
+		//		fmt.Println(render.GetTheme().Error.Sprintf("Error: %s\n", err))
 		//		fmt.Println()
 		//		return
 		//	}
@@ -363,16 +351,16 @@ func parseFiles(prompt string) (string, []string, []string) {
 
 		_, err := os.Stat(realFile)
 		if err != nil {
-			fmt.Println(text.FgRed.Sprintf("parse file error: [%s] %s", realFile, err))
+			fmt.Println(render.GetTheme().Error.Sprintf("parse file error: [%s] %s", realFile, err))
 			continue
 		}
 		switch realFile[len(realFile)-3:] {
 		case "mp3", "wav":
 			audios = append(audios, realFile)
-			fmt.Println(text.FgBlue.Sprintf("add audio: %s", realFile))
+			fmt.Println(render.GetTheme().AddFiles.Sprintf("add audio: %s", realFile))
 		default:
 			images = append(images, realFile)
-			fmt.Println(text.FgBlue.Sprintf("add image: %s", realFile))
+			fmt.Println(render.GetTheme().AddFiles.Sprintf("add image: %s", realFile))
 		}
 
 		prompt = strings.ReplaceAll(prompt, "'"+realFile+"'", "")
@@ -522,7 +510,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 			fileSizes, err := getFileSizesConcurrent(name, ggufGroups[ggufs[0]])
 			spin.Stop()
 			if err != nil {
-				fmt.Println(text.FgRed.Sprintf("get filesize error: [%s] %s", ggufs[0], err))
+				fmt.Println(render.GetTheme().Error.Sprintf("get filesize error: [%s] %s", ggufs[0], err))
 				return res, err
 			}
 			for _, size := range fileSizes {
@@ -541,7 +529,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 			for _, gguf := range ggufs {
 				sizes, err := getFileSizesConcurrent(name, ggufGroups[gguf])
 				if err != nil {
-					fmt.Println(text.FgRed.Sprintf("get filesize error: [%s] %s", gguf, err))
+					fmt.Println(render.GetTheme().Error.Sprintf("get filesize error: [%s] %s", gguf, err))
 					return res, err
 				}
 				for _, size := range sizes {
@@ -620,7 +608,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 			size, err := store.Get().HFFileSize(context.TODO(), name, mmprojs[0])
 			spin.Stop()
 			if err != nil {
-				fmt.Println(text.FgRed.Sprintf("get filesize error: [%s] %s", mmprojs[0], err))
+				fmt.Println(render.GetTheme().Error.Sprintf("get filesize error: [%s] %s", mmprojs[0], err))
 				return res, err
 			}
 			res.MMProjFile.Size = size
@@ -632,7 +620,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 			mmprojSizes, err := getFileSizesConcurrent(name, mmprojs)
 			spin.Stop()
 			if err != nil {
-				fmt.Println(text.FgRed.Sprintf("get filesize error: %s", err))
+				fmt.Println(render.GetTheme().Error.Sprintf("get filesize error: %s", err))
 				return res, err
 			}
 
@@ -683,7 +671,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 		sizes, err := getFileSizesConcurrent(name, files)
 		spin.Stop()
 		if err != nil {
-			fmt.Println(text.FgRed.Sprintf("get filesize error: %s", err))
+			fmt.Println(render.GetTheme().Error.Sprintf("get filesize error: %s", err))
 			return res, err
 		}
 

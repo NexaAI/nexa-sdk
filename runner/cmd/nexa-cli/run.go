@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/bytedance/sonic"
-	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 	"github.com/openai/openai-go/packages/ssestream"
@@ -49,12 +48,12 @@ func runFunc(cmd *cobra.Command, args []string) {
 	sonic.UnmarshalString(modelInfo.RawJSON(), &manifest)
 	if err != nil {
 		if _, ok := err.(net.Error); ok {
-			fmt.Println(text.FgRed.Sprintf("Is server running? Please check your network. \n\t%s", err))
+			fmt.Println(render.GetTheme().Error.Sprintf("Is server running? Please check your network. \n\t%s", err))
 			return
 		}
 		if e, ok := err.(*openai.Error); ok && e.StatusCode == http.StatusNotFound {
 			// pull model
-			fmt.Println(text.FgBlue.Sprintf("model not found, start download"))
+			fmt.Println(render.GetTheme().Info.Sprintf("model not found, start download"))
 
 			// download manifest
 			spin := render.NewSpinner("download manifest from: " + model)
@@ -62,7 +61,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			files, err := store.Get().HFModelInfo(context.TODO(), model)
 			spin.Stop()
 			if err != nil {
-				fmt.Println(text.FgRed.Sprintf("Get manifest from huggingface error: %s", err))
+				fmt.Println(render.GetTheme().Error.Sprintf("Get manifest from huggingface error: %s", err))
 				return
 			}
 
@@ -94,11 +93,11 @@ func runFunc(cmd *cobra.Command, args []string) {
 
 			if stream.Err() != nil {
 				bar.Clear()
-				fmt.Println(text.FgRed.Sprintf("pull model error: %s", stream.Err().Error()))
+				fmt.Println(render.GetTheme().Error.Sprintf("pull model error: %s", stream.Err().Error()))
 				return
 			}
 		} else {
-			fmt.Println(text.FgRed.Sprintf("get model error: %s", err.Error()))
+			fmt.Println(render.GetTheme().Error.Sprintf("get model error: %s", err.Error()))
 			return
 		}
 	}

@@ -10,7 +10,6 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/dustin/go-humanize"
-	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
@@ -69,24 +68,24 @@ func infer() *cobra.Command {
 
 		manifest, err := s.GetManifest(model)
 		if errors.Is(err, os.ErrNotExist) {
-			fmt.Println(text.FgBlue.Sprintf("model not found, start download"))
+			fmt.Println(render.GetTheme().Info.Sprintf("model not found, start download"))
 
 			pull().Run(cmd, args)
 			// check agin
 			manifest, err = s.GetManifest(model)
 		}
 		if err != nil {
-			fmt.Println(text.FgRed.Sprintf("parse manifest error: %s", err))
+			fmt.Println(render.GetTheme().Error.Sprintf("parse manifest error: %s", err))
 			return
 		}
 
-		var modelFile string
+		var quant string
 		var options []huh.Option[string]
 		for k, v := range manifest.ModelFile {
 			if v.Downloaded {
 				options = append(options, huh.NewOption(
 					fmt.Sprintf("%-10s [%7s]", k, humanize.IBytes(uint64(v.Size))),
-					v.Name,
+					k,
 				))
 			}
 		}
@@ -94,19 +93,21 @@ func infer() *cobra.Command {
 			if err = huh.NewSelect[string]().
 				Title("Select a quant from local folder").
 				Options(options...).
-				Value(&modelFile).
+				Value(&quant).
 				Run(); err != nil {
-				fmt.Println(text.FgRed.Sprintf("select error: %s", err))
+				fmt.Println(render.GetTheme().Error.Sprintf("select error: %s", err))
 				return
 			}
 		} else {
-			modelFile = options[0].Value
+			quant = options[0].Value
 		}
+
+		fmt.Println(render.GetTheme().Quant.Sprintf("🔹 Quant=%s", quant))
 
 		nexa_sdk.Init()
 		defer nexa_sdk.DeInit()
 
-		modelfile := s.ModelfilePath(manifest.Name, modelFile)
+		modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
 
 		switch manifest.ModelType {
 		case types.ModelTypeLLM:
@@ -294,16 +295,16 @@ func inferTTS(plugin, modelfile string, vocoderfile string) {
 	if listVoice {
 		voices, err := p.ListAvailableVoices()
 		if err != nil {
-			fmt.Println(text.FgRed.Sprintf("Failed to list available voices: %s", err))
+			fmt.Println(render.GetTheme().Error.Sprintf("Failed to list available voices: %s", err))
 			return
 		}
-		fmt.Println(text.FgGreen.Sprintf("Available voices: %v", voices.VoiceIDs))
+		fmt.Println(render.GetTheme().Success.Sprintf("Available voices: %v", voices.VoiceIDs))
 		return
 	}
 
 	// Check if prompt is provided
 	if len(prompt) == 0 {
-		fmt.Println(text.FgRed.Sprintf("text is required for TTS synthesis (use --prompt)"))
+		fmt.Println(render.GetTheme().Error.Sprintf("text is required for TTS synthesis (use --prompt)"))
 		fmt.Println()
 		return
 	}
@@ -336,15 +337,15 @@ func inferTTS(plugin, modelfile string, vocoderfile string) {
 		OutputPath: outputFile,
 	}
 
-	fmt.Println(text.FgGreen.Sprintf("Synthesizing speech: \"%s\"", textToSynthesize))
+	fmt.Println(render.GetTheme().Success.Sprintf("Synthesizing speech: \"%s\"", textToSynthesize))
 
 	result, err := p.Synthesize(synthesizeInput)
 	if err != nil {
-		fmt.Println(text.FgRed.Sprintf("Synthesis failed: %s", err))
+		fmt.Println(render.GetTheme().Error.Sprintf("Synthesis failed: %s", err))
 		return
 	}
 
-	fmt.Println(text.FgGreen.Sprintf("✓ Audio saved to: %s", result.Result.AudioPath))
+	fmt.Println(render.GetTheme().Success.Sprintf("✓ Audio saved to: %s", result.Result.AudioPath))
 	// fmt.Printf("  Duration: %.2f seconds\n", result.Result.DurationSeconds)
 	// fmt.Printf("  Sample rate: %d Hz\n", result.Result.SampleRate)
 }
@@ -375,21 +376,21 @@ func inferASR(plugin, modelfile string, tokenizerPath string) {
 	if listLanguage {
 		lans, err := p.ListSupportedLanguages()
 		if err != nil {
-			fmt.Println(text.FgRed.Sprintf("Failed to list available languages: %s", err))
+			fmt.Println(render.GetTheme().Error.Sprintf("Failed to list available languages: %s", err))
 			return
 		}
-		fmt.Println(text.FgGreen.Sprintf("Available languages: %v", lans.LanguageCodes))
+		fmt.Println(render.GetTheme().Success.Sprintf("Available languages: %v", lans.LanguageCodes))
 		return
 	}
 
 	if input == "" {
-		fmt.Println(text.FgRed.Sprintf("input audio file is required for ASR transcription"))
+		fmt.Println(render.GetTheme().Error.Sprintf("input audio file is required for ASR transcription"))
 		fmt.Println()
 		return
 	}
 
 	if _, err := os.Stat(input); os.IsNotExist(err) {
-		fmt.Println(text.FgRed.Sprintf("input file '%s' does not exist", input))
+		fmt.Println(render.GetTheme().Error.Sprintf("input file '%s' does not exist", input))
 		return
 	}
 
@@ -405,13 +406,13 @@ func inferASR(plugin, modelfile string, tokenizerPath string) {
 		Config:    asrConfig,
 	}
 
-	fmt.Println(text.FgGreen.Sprintf("Transcribing audio file: %s", input))
+	fmt.Println(render.GetTheme().Success.Sprintf("Transcribing audio file: %s", input))
 
 	result, err := p.Transcribe(transcribeInput)
 	if err != nil {
-		fmt.Println(text.FgRed.Sprintf("Transcription failed: %s", err))
+		fmt.Println(render.GetTheme().Error.Sprintf("Transcription failed: %s", err))
 		return
 	}
 
-	fmt.Println(text.FgYellow.Sprint(result.Result.Transcript))
+	fmt.Println(render.GetTheme().Warning.Sprint(result.Result.Transcript))
 }
