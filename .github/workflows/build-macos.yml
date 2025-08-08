@@ -92,7 +92,7 @@ jobs:
         run: |
           RESOURCES_PATH="${{ env.APP_PATH }}/Contents/Resources"
           find "${RESOURCES_PATH}" -type f \( -name "*.dylib" -o -name "*.so" \) -maxdepth 2 -exec install_name_tool -change @rpath/libc++.1.dylib /usr/lib/libc++.1.dylib {} \;
-          install_name_tool -add_rpath "@loader_path/." "${RESOURCES_PATH}/nexa-cli"
+          install_name_tool -add_rpath "@loader_path" "${RESOURCES_PATH}/nexa-cli"
 
       - name: Import Code Signing Certificates
         env:

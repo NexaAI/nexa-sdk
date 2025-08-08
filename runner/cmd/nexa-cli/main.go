@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log/slog"
 	"os"
 	"strings"
 
@@ -62,6 +63,7 @@ func normalizeModelName(name string) string {
 // main is the entry point that executes the root command.
 func main() {
 	if err := RootCmd().Execute(); err != nil {
+		slog.Error("nexa-cli failed", "err", err)
 		os.Exit(1)
 	}
 }
