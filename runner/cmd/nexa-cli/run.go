@@ -44,8 +44,6 @@ func runFunc(cmd *cobra.Command, args []string) {
 
 	// check
 	modelInfo, err := client.Models.Get(context.TODO(), model)
-	var manifest types.ModelManifest
-	sonic.UnmarshalString(modelInfo.RawJSON(), &manifest)
 	if err != nil {
 		if _, ok := err.(net.Error); ok {
 			fmt.Println(render.GetTheme().Error.Sprintf("Is server running? Please check your network. \n\t%s", err))
@@ -96,11 +94,20 @@ func runFunc(cmd *cobra.Command, args []string) {
 				fmt.Println(render.GetTheme().Error.Sprintf("pull model error: %s", stream.Err().Error()))
 				return
 			}
+
+			// check again
+			modelInfo, err = client.Models.Get(context.TODO(), model)
+			if err != nil {
+				fmt.Println(render.GetTheme().Error.Sprintf("get model error: %s", err.Error()))
+				return
+			}
 		} else {
 			fmt.Println(render.GetTheme().Error.Sprintf("get model error: %s", err.Error()))
 			return
 		}
 	}
+	var manifest types.ModelManifest
+	sonic.UnmarshalString(modelInfo.RawJSON(), &manifest)
 
 	// warm up
 	spin := render.NewSpinner("loading model...")
