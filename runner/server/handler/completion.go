@@ -165,9 +165,10 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 		// Streaming response mode
 		stopGen := false
 		dataCh := make(chan string)
+		resCh := make(chan nexa_sdk.LlmGenerateOutput)
 
 		go func() {
-			_, err := p.Generate(nexa_sdk.LlmGenerateInput{
+			res, err := p.Generate(nexa_sdk.LlmGenerateInput{
 				PromptUTF8: formatted.FormattedText,
 				OnToken: func(token string) bool {
 					if stopGen {
@@ -181,11 +182,13 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 				}},
 			)
 
-			close(dataCh)
-
 			if err != nil {
 				slog.Warn("Generate Error", "error", err)
 			}
+
+			close(dataCh)
+			resCh <- res
+			close(resCh)
 		}()
 
 		c.Stream(func(w io.Writer) bool {
@@ -201,6 +204,14 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 				c.SSEvent("", chunk)
 				return true
 			}
+
+			if param.StreamOptions.IncludeUsage.Value {
+				res := <-resCh
+				c.SSEvent("", openai.ChatCompletionChunk{
+					Usage: profile2Usage(res.ProfileData),
+				})
+			}
+
 			c.SSEvent("", "[DONE]")
 
 			return false
@@ -209,6 +220,9 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 		stopGen = true
 		for range dataCh {
 		}
+		for range resCh {
+		}
+
 	} else {
 		// Blocking response mode
 		genOut, err := p.Generate(nexa_sdk.LlmGenerateInput{
@@ -229,6 +243,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 			choice.Message.Content = genOut.FullText
 			res := openai.ChatCompletion{
 				Choices: []openai.ChatCompletionChoice{choice},
+				Usage:   profile2Usage(genOut.ProfileData),
 			}
 			c.JSON(http.StatusOK, res)
 			return
@@ -251,6 +266,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 			choice.Message.ToolCalls = []openai.ChatCompletionMessageToolCall{toolCall}
 			res := openai.ChatCompletion{
 				Choices: []openai.ChatCompletionChoice{choice},
+				Usage:   profile2Usage(genOut.ProfileData),
 			}
 			c.JSON(http.StatusOK, res)
 			return
@@ -429,6 +445,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 			choice.Message.Content = genOut.FullText
 			res := openai.ChatCompletion{
 				Choices: []openai.ChatCompletionChoice{choice},
+				Usage:   profile2Usage(genOut.ProfileData),
 			}
 			c.JSON(http.StatusOK, res)
 			return
@@ -451,9 +468,18 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 			choice.Message.ToolCalls = []openai.ChatCompletionMessageToolCall{toolCall}
 			res := openai.ChatCompletion{
 				Choices: []openai.ChatCompletionChoice{choice},
+				Usage:   profile2Usage(genOut.ProfileData),
 			}
 			c.JSON(http.StatusOK, res)
 			return
 		}
+	}
+}
+
+func profile2Usage(p nexa_sdk.ProfileData) openai.CompletionUsage {
+	return openai.CompletionUsage{
+		CompletionTokens: p.GeneratedTokens,
+		PromptTokens:     p.PromptTokens,
+		TotalTokens:      p.TotalTokens,
 	}
 }

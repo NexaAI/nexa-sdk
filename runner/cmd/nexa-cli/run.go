@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/bytedance/sonic"
 	"github.com/openai/openai-go"
@@ -44,8 +45,6 @@ func runFunc(cmd *cobra.Command, args []string) {
 
 	// check
 	modelInfo, err := client.Models.Get(context.TODO(), model)
-	var manifest types.ModelManifest
-	sonic.UnmarshalString(modelInfo.RawJSON(), &manifest)
 	if err != nil {
 		if _, ok := err.(net.Error); ok {
 			fmt.Println(render.GetTheme().Error.Sprintf("Is server running? Please check your network. \n\t%s", err))
@@ -96,11 +95,20 @@ func runFunc(cmd *cobra.Command, args []string) {
 				fmt.Println(render.GetTheme().Error.Sprintf("pull model error: %s", stream.Err().Error()))
 				return
 			}
+
+			// check again
+			modelInfo, err = client.Models.Get(context.TODO(), model)
+			if err != nil {
+				fmt.Println(render.GetTheme().Error.Sprintf("get model error: %s", err.Error()))
+				return
+			}
 		} else {
 			fmt.Println(render.GetTheme().Error.Sprintf("get model error: %s", err.Error()))
 			return
 		}
 	}
+	var manifest types.ModelManifest
+	sonic.UnmarshalString(modelInfo.RawJSON(), &manifest)
 
 	// warm up
 	spin := render.NewSpinner("loading model...")
@@ -161,13 +169,21 @@ func runFunc(cmd *cobra.Command, args []string) {
 				history = append(history, openai.UserMessage(prompt))
 			}
 
+			start := time.Now()
 			acc := openai.ChatCompletionAccumulator{}
 			stream := client.Chat.Completions.NewStreaming(context.Background(), openai.ChatCompletionNewParams{
-				Messages: history,
-				Model:    model,
+				Messages:      history,
+				Model:         model,
+				StreamOptions: openai.ChatCompletionStreamOptionsParam{IncludeUsage: openai.Opt(true)},
 			}, option.WithHeaderAdd("Nexa-KeepCache", "false"))
 
+			var firstToken time.Time
+			var profileData nexa_sdk.ProfileData
 			for stream.Next() {
+				if firstToken.IsZero() {
+					firstToken = time.Now()
+				}
+
 				chunk := stream.Current()
 				acc.AddChunk(chunk)
 				if len(chunk.Choices) > 0 {
@@ -177,15 +193,25 @@ func runFunc(cmd *cobra.Command, args []string) {
 					}
 					acc.AddChunk(chunk)
 				}
+				if chunk.Usage.PromptTokens > 0 {
+					profileData.PromptTokens = chunk.Usage.PromptTokens
+					profileData.GeneratedTokens = chunk.Usage.CompletionTokens
+					profileData.TotalTokens = chunk.Usage.TotalTokens
+				}
 			}
+			end := time.Now()
+			profileData.TTFTUs = firstToken.Sub(start).Microseconds()
+			profileData.TotalTimeUs = end.Sub(start).Microseconds()
+			profileData.PromptTimeUs = 0
+			profileData.DecodeTimeUs = 0
+			profileData.TokensPerSecond = float64(profileData.GeneratedTokens) / float64(end.Sub(firstToken).Seconds())
 
 			if len(acc.Choices) > 0 {
 				history = append(history, openai.AssistantMessage(acc.Choices[0].Message.Content))
-				return acc.Choices[0].Message.Content, nexa_sdk.ProfileData{}, nil
+				return acc.Choices[0].Message.Content, profileData, nil
 			}
 
-			return "", nexa_sdk.ProfileData{}, nil
-
+			return "", profileData, nil
 		},
 	})
 }
