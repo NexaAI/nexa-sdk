@@ -8,6 +8,12 @@ import (
 	"github.com/NexaAI/nexa-sdk/server/middleware"
 )
 
+func RegisterRoot(r *gin.Engine) {
+	r.GET("/", func(c *gin.Context) {
+		c.String(200, "Nexa SDK is running")
+	})
+}
+
 // @BasePath /v1
 
 // http://localhost:18181/docs/ui/
