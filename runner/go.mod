@@ -19,6 +19,7 @@ require (
 	github.com/spf13/viper v1.20.1
 	github.com/valyala/fasthttp v1.63.0
 	resty.dev/v3 v3.0.0-beta.3
+	github.com/hashicorp/go-version v1.7.0
 )
 
 require (
