@@ -17,6 +17,7 @@ type Config struct {
 	EnableHTTPS bool   // Whether to serve over HTTPS (default: false)
 	CertFile    string // TLS certificate file path
 	KeyFile     string // TLS private key file path
+	UseNgrok    bool   // Whether to use ngrok for public HTTPS tunnel (default: false)
 }
 
 var config *Config
@@ -42,6 +43,7 @@ func init() {
 	viper.SetDefault("enablehttps", false)
 	viper.SetDefault("certfile", "cert.pem")
 	viper.SetDefault("keyfile", "key.pem")
+	viper.SetDefault("ngrok", false)
 }
 
 // get initializes the configuration by reading from environment variables.
@@ -56,4 +58,7 @@ func get() {
 	viper.AutomaticEnv()
 	// Unmarshal configuration into the Config struct
 	viper.Unmarshal(config)
+
+	// Map the ngrok flag properly
+	config.UseNgrok = viper.GetBool("ngrok")
 }

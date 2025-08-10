@@ -1,10 +1,14 @@
 package server
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
+	"net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"golang.ngrok.com/ngrok/v2"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/config"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
@@ -21,6 +25,7 @@ func Serve() {
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.Default()
 
+	RegisterRoot(engine)
 	RegisterAPIv1(engine)
 	RegisterSwagger(engine)
 
@@ -45,6 +50,37 @@ func Serve() {
 		fmt.Println(render.GetTheme().Info.Sprintf("HTTPS enabled: cert=%s key=%s", certFile, keyFile))
 		// fmt.Println(render.GetTheme().Info.Sprintf("Localhosting on https://%s/docs/ui", cfg.Host))
 		err = engine.RunTLS(cfg.Host, certFile, keyFile)
+	} else if cfg.UseNgrok {
+		slog.Info("Ngrok HTTPS enabled")
+
+		// Create a custom agent with explicit authtoken
+		agent, err := ngrok.NewAgent(
+			ngrok.WithAuthtoken("30w3s7lTj2h3NMEBTyQ1sQ2pSGU_5iAXnXDWJS8VwbsQEcNws"),
+		)
+		if err != nil {
+			slog.Error("Failed to create ngrok agent", "err", err)
+			return
+		}
+
+		// Connect the agent
+		if err := agent.Connect(context.Background()); err != nil {
+			slog.Error("Failed to connect ngrok agent", "err", err)
+			return
+		}
+
+		// Create listener using the agent
+		listener, err := agent.Listen(context.Background())
+		if err != nil {
+			slog.Error("Failed to create ngrok tunnel", "err", err)
+			return
+		}
+
+		slog.Info("API documentation available at", "url", listener.URL().String()+"/docs/ui")
+		err = http.Serve(listener, engine)
+		if err != nil {
+			slog.Error("Failed to serve ngrok tunnel", "err", err)
+			return
+		}
 	} else {
 		fmt.Println(render.GetTheme().Info.Sprintf("Localhosting on http://%s/docs/ui", cfg.Host))
 		err = engine.Run(cfg.Host)

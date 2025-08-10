@@ -29,7 +29,7 @@ else
 	MKDIR := mkdir -p
 endif
 
-.PHONY: run build doc test download clean
+.PHONY: run build doc test link download release clean
 
 # Allow passing arguments to run target
 # Usage: make run ARGS="pull Qwen/Qwen2.5-7B-Instruct"
