@@ -1,6 +1,7 @@
 package render
 
 import (
+	"fmt"
 	"log/slog"
 	"sync"
 
@@ -28,7 +29,7 @@ type Theme struct {
 func GetTheme() *Theme {
 	themeInit.Do(func() {
 		slog.Debug("Detect terminal theme")
-		theme = &defaultTrueColorTheme
+		theme = defaultColorTheme()
 	})
 	return theme
 }
@@ -39,6 +40,12 @@ type Style interface {
 	Code() string
 }
 
+type NoColor struct{}
+
+func (n NoColor) Sprint(a ...any) string                 { return fmt.Sprint(a...) }
+func (n NoColor) Sprintf(format string, a ...any) string { return fmt.Sprintf(format, a...) }
+func (n NoColor) Code() string                           { return "" }
+
 func (t *Theme) Set(s Style) {
 	color.SetTerminal(s.Code())
 }
@@ -47,17 +54,47 @@ func (t *Theme) Reset() {
 	color.ResetTerminal()
 }
 
-var defaultTrueColorTheme = Theme{
-	Normal:  color.Style{color.FgWhite},
-	Info:    color.Style{color.FgBlue},
-	Success: color.Style{color.FgGreen},
-	Warning: color.Style{color.FgYellow},
-	Error:   color.Style{color.FgRed},
+func defaultColorTheme() *Theme {
+	theme := Theme{
+		Normal:      NoColor{},
+		Info:        NoColor{},
+		Success:     NoColor{},
+		Warning:     NoColor{},
+		Error:       NoColor{},
+		Quant:       NoColor{},
+		Prompt:      NoColor{},
+		AddFiles:    NoColor{},
+		ThinkOutput: NoColor{},
+		ModelOutput: NoColor{},
+		Profile:     NoColor{},
+	}
+	if color.TermColorLevel() >= color.Level16 {
+		slog.Debug("apply 16 color")
+		theme.Normal = NoColor{}
+		theme.Info = color.Style{color.FgBlue}
+		theme.Success = color.Style{color.FgGreen}
+		theme.Warning = color.Style{color.FgYellow}
+		theme.Error = color.Style{color.FgRed}
 
-	Quant:       color.NewRGBStyle(color.RGB(0, 135, 175)),
-	Prompt:      color.Style{color.FgGreen, color.Bold},
-	AddFiles:    color.NewRGBStyle(color.RGB(192, 192, 192)),
-	ThinkOutput: color.Style{color.FgDarkGray},
-	ModelOutput: color.Style{color.FgWhite},
-	Profile:     color.NewRGBStyle(color.RGB(0, 215, 215)),
+		theme.Quant = color.Style{color.FgLightBlue}
+		theme.Prompt = color.Style{color.FgGreen, color.Bold}
+		theme.AddFiles = color.Style{color.FgWhite}
+		theme.ThinkOutput = color.Style{color.FgDarkGray}
+		theme.ModelOutput = NoColor{}
+		theme.Profile = color.Style{color.FgLightCyan}
+	}
+	if color.TermColorLevel() >= color.Level256 {
+		slog.Debug("apply 256 color")
+		theme.Quant = color.S256(31)
+		//theme.AddFiles = color.S256(7)
+		//theme.ModelOutput = color.S256(15)
+		theme.Profile = color.S256(44)
+	}
+	if color.TermColorLevel() >= color.LevelRgb {
+		slog.Debug("apply true color")
+		theme.Quant = color.NewRGBStyle(color.RGB(0, 135, 175))
+		//theme.AddFiles = color.NewRGBStyle(color.RGB(192, 192, 192))
+		theme.Profile = color.NewRGBStyle(color.RGB(0, 215, 215))
+	}
+	return &theme
 }
