@@ -382,21 +382,20 @@ func inferASR(plugin, modelfile string, tokenizerPath string) {
 	}
 	defer p.Destroy()
 
+	if listLanguage {
+		lans, err := p.ListSupportedLanguages()
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("Failed to list available languages: %s", err))
+			return
+		}
+		fmt.Println(render.GetTheme().Success.Sprintf("Available languages: %v", lans.LanguageCodes))
+		listLanguage = false
+	}
+
 	repl(ReplConfig{
 		ParseFile: true,
 
 		Run: func(_prompt string, _images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
-			if listLanguage {
-				lans, err := p.ListSupportedLanguages()
-				if err != nil {
-					fmt.Println(render.GetTheme().Error.Sprintf("Failed to list available languages: %s", err))
-					return "", nexa_sdk.ProfileData{}, err
-				}
-				fmt.Println(render.GetTheme().Success.Sprintf("Available languages: %v", lans.LanguageCodes))
-				listLanguage = false
-				return "", nexa_sdk.ProfileData{}, nil
-			}
-
 			asrConfig := &nexa_sdk.ASRConfig{
 				Timestamps: "segment",
 				BeamSize:   5,
@@ -416,6 +415,7 @@ func inferASR(plugin, modelfile string, tokenizerPath string) {
 				fmt.Println(render.GetTheme().Error.Sprintf("Transcription failed: %s", err))
 				return "", nexa_sdk.ProfileData{}, err
 			}
+			on_token(result.Result.Transcript)
 
 			return result.Result.Transcript, nexa_sdk.ProfileData{}, nil
 		},

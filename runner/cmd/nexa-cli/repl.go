@@ -274,7 +274,7 @@ func repl(cfg ReplConfig) {
 
 			case "/mic":
 				if rec != nil {
-					render.GetTheme().Error.Sprint("Recording is going on, press Ctrl-C to stop")
+					fmt.Println(render.GetTheme().Error.Sprint("Recording is going on, press Ctrl-C to stop"))
 					continue
 				}
 
@@ -282,12 +282,12 @@ func repl(cfg ReplConfig) {
 				outputFile := filepath.Join(os.TempDir(), "nexa-cli", t+".wav")
 				rec, err = record.NewRecorder(outputFile)
 				if err != nil {
-					render.GetTheme().Error.Sprintf("Error: %s", err)
+					fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 					fmt.Println()
 					continue
 				}
 				if err = rec.Start(); err != nil {
-					render.GetTheme().Error.Sprintf("Failed to start recording: %s", err)
+					fmt.Println(render.GetTheme().Error.Sprintf("Failed to start recording: %s", err))
 					fmt.Println()
 					continue
 				}
