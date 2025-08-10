@@ -15,6 +15,7 @@ import (
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 	"github.com/bytedance/sonic"
+	goverision "github.com/hashicorp/go-version"
 	"github.com/spf13/cobra"
 )
 
@@ -59,8 +60,11 @@ func updateImpl() error {
 	if err != nil {
 		return err
 	}
-
-	if rls.TagName <= Version {
+	need, err := needUpdate(Version, rls.TagName)
+	if err != nil {
+		return err
+	}
+	if !need {
 		fmt.Println("Already up-to-date.")
 		return nil
 	}
@@ -74,7 +78,6 @@ func updateImpl() error {
 	dst := filepath.Join(os.TempDir(), "nexa", rls.TagName, ast.Name)
 	progress := make(chan types.DownloadInfo)
 	bar := render.NewProgressBar(int64(ast.Size), "downloading")
-	fmt.Println()
 	go func() {
 		defer bar.Exit()
 		for pg := range progress {
@@ -100,6 +103,18 @@ func updateImpl() error {
 	}
 	fmt.Println("update package is ready to install")
 	return nil
+}
+
+func needUpdate(cur, latest string) (bool, error) {
+	curVer, err := goverision.NewVersion(cur)
+	if err != nil {
+		return false, fmt.Errorf("invalid SemVer %s: %w", cur, err)
+	}
+	latestVer, err := goverision.NewVersion(latest)
+	if err != nil {
+		return false, fmt.Errorf("invalid SemVer %s: %w", latest, err)
+	}
+	return curVer.Compare(latestVer) < 0, nil
 }
 
 func getLatestRelease() (release, error) {
@@ -187,8 +202,6 @@ func download(url, dst string, progress chan types.DownloadInfo) error {
 				TotalSize:       int64(ast.Size),
 			}
 		}
-
-		fmt.Printf("file already exists: %s, size: %d\n", ast.Name, ast.Size)
 		return nil
 	}
 
@@ -290,22 +303,30 @@ func notifyUpdate() {
 		fmt.Println("Failed to check for updates:", err)
 		return
 	}
+
 	ck.CheckTime = time.Now()
 	defer setLastCheck(&ck)
 
-	if rls.TagName > Version {
-		if rls.TagName != ck.LatestVersion || time.Since(ck.LastNotify) > notificationInterval {
-			ck.LatestVersion = rls.TagName
-			ck.LastNotify = time.Now()
+	need, err := needUpdate(Version, rls.TagName)
+	if err != nil {
+		fmt.Println("Failed to check for updates:", err)
+		return
+	}
+	if !need {
+		return
+	}
 
-			fmt.Fprintf(os.Stderr, "\n\n%s %s → %s\n",
-				render.GetTheme().Warning.Sprintf("A new version of nexa-cli is available:"),
-				render.GetTheme().Success.Sprint(Version),
-				render.GetTheme().Success.Sprint(rls.TagName))
+	if rls.TagName != ck.LatestVersion || time.Since(ck.LastNotify) > notificationInterval {
+		ck.LatestVersion = rls.TagName
+		ck.LastNotify = time.Now()
 
-			fmt.Fprintf(os.Stderr, "%s\n\n",
-				render.GetTheme().Warning.Sprint("To update, run: `nexa update`"),
-			)
-		}
+		fmt.Fprintf(os.Stderr, "\n\n%s %s → %s\n",
+			render.GetTheme().Warning.Sprintf("A new version of nexa-cli is available:"),
+			render.GetTheme().Success.Sprint(Version),
+			render.GetTheme().Success.Sprint(rls.TagName))
+
+		fmt.Fprintf(os.Stderr, "%s\n\n",
+			render.GetTheme().Warning.Sprint("To update, run: `nexa update`"),
+		)
 	}
 }

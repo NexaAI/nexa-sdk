@@ -51,6 +51,7 @@ jobs:
         run: |
           cd runner
           make build ARCH=${{ matrix.arch }}
+          Remove-Item build/ml.h
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
