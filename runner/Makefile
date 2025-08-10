@@ -1,7 +1,7 @@
 AGS ?= infer Qwen/Qwen3-0.6B-GGUF
 #ARGS ?= serve
 
-BRIDGE_VERSION ?= v1.0.2
+BRIDGE_VERSION ?= v1.0.3-rc2
 
 ifeq ($(OS), Windows_NT)
 	OS := windows
