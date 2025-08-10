@@ -1,24 +1,22 @@
 package main
 
 import (
-	"context"
-	"encoding/base64"
-	"encoding/binary"
 	"errors"
 	"fmt"
-	"math"
+	"log/slog"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/huh"
 	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 
-	"github.com/NexaAI/nexa-sdk/internal/render"
-	"github.com/NexaAI/nexa-sdk/internal/store"
-	"github.com/NexaAI/nexa-sdk/internal/types"
-	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
+	"github.com/NexaAI/nexa-sdk/runner/internal/render"
+	"github.com/NexaAI/nexa-sdk/runner/internal/store"
+	"github.com/NexaAI/nexa-sdk/runner/internal/types"
+	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 )
 
 const modelLoadFailMsg = `⚠️ Oops. Model failed to load.
@@ -29,16 +27,17 @@ const modelLoadFailMsg = `⚠️ Oops. Model failed to load.
 
 var (
 	// disableStream *bool // reuse in run.go
-	modelType       string
-	tool            []string
-	prompt          []string
-	query           string
-	document        []string
-	input           string
-	output          string
-	voiceIdentifier string
-	speechSpeed     float64
-	language        string
+	tool         []string
+	prompt       []string
+	query        string
+	document     []string
+	input        string
+	output       string
+	voice        string
+	listVoice    bool
+	speechSpeed  float64
+	language     string
+	listLanguage bool
 )
 
 func infer() *cobra.Command {
@@ -51,17 +50,17 @@ func infer() *cobra.Command {
 	inferCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
 
 	inferCmd.Flags().SortFlags = false
-	inferCmd.Flags().StringVarP(&modelType, "model-type", "m", "llm", "specify model type [llm/vlm/embedder/reranker/tts/asr]")
-	inferCmd.Flags().BoolVarP(&disableStream, "disable-stream", "s", false, "[llm|vlm] disable stream mode")
 	inferCmd.Flags().StringArrayVarP(&tool, "tool", "t", nil, "[llm|vlm] add tool to make function call")
 	inferCmd.Flags().StringArrayVarP(&prompt, "prompt", "p", nil, "[embedder|tts] pass prompt")
 	inferCmd.Flags().StringVarP(&query, "query", "q", "", "[reranker] query")
 	inferCmd.Flags().StringArrayVarP(&document, "document", "d", nil, "[reranker] documents")
 	inferCmd.Flags().StringVarP(&input, "input", "i", "", "[asr] input file (audio for asr)")
 	inferCmd.Flags().StringVarP(&output, "output", "o", "", "[tts] output file (audio for tts)")
-	inferCmd.Flags().StringVarP(&voiceIdentifier, "voice-identifier", "", "", "[tts] voice identifier")
+	inferCmd.Flags().StringVarP(&voice, "voice", "", "", "[tts] voice identifier")
+	inferCmd.Flags().BoolVarP(&listVoice, "list-voice", "", false, "[tts] list available voices")
 	inferCmd.Flags().Float64VarP(&speechSpeed, "speech-speed", "", 1.0, "[tts] speech speed (1.0 = normal)")
-	inferCmd.Flags().StringVarP(&language, "language", "l", "", "[asr] language code (e.g., en, zh, ja)")
+	inferCmd.Flags().StringVarP(&language, "language", "", "", "[asr] language code (e.g., en, zh, ja)")
+	inferCmd.Flags().BoolVarP(&listLanguage, "list-language", "", false, "[asr] list available languages")
 
 	inferCmd.Run = func(cmd *cobra.Command, args []string) {
 		model := normalizeModelName(args[0])
@@ -70,24 +69,24 @@ func infer() *cobra.Command {
 
 		manifest, err := s.GetManifest(model)
 		if errors.Is(err, os.ErrNotExist) {
-			fmt.Println(text.FgBlue.Sprintf("model not found, start download"))
+			fmt.Println(render.GetTheme().Info.Sprintf("model not found, start download"))
 
 			pull().Run(cmd, args)
 			// check agin
 			manifest, err = s.GetManifest(model)
 		}
 		if err != nil {
-			fmt.Println(text.FgRed.Sprintf("parse manifest error: %s", err))
+			fmt.Println(render.GetTheme().Error.Sprintf("parse manifest error: %s", err))
 			return
 		}
 
-		var modelFile string
+		var quant string
 		var options []huh.Option[string]
 		for k, v := range manifest.ModelFile {
 			if v.Downloaded {
 				options = append(options, huh.NewOption(
 					fmt.Sprintf("%-10s [%7s]", k, humanize.IBytes(uint64(v.Size))),
-					v.Name,
+					k,
 				))
 			}
 		}
@@ -95,53 +94,41 @@ func infer() *cobra.Command {
 			if err = huh.NewSelect[string]().
 				Title("Select a quant from local folder").
 				Options(options...).
-				Value(&modelFile).
+				Value(&quant).
 				Run(); err != nil {
-				fmt.Println(text.FgRed.Sprintf("select error: %s", err))
+				fmt.Println(render.GetTheme().Error.Sprintf("select error: %s", err))
 				return
 			}
 		} else {
-			modelFile = options[0].Value
+			quant = options[0].Value
 		}
+
+		fmt.Println(render.GetTheme().Quant.Sprintf("🔹 Quant=%s", quant))
 
 		nexa_sdk.Init()
 		defer nexa_sdk.DeInit()
 
-		modelfile := s.ModelfilePath(manifest.Name, modelFile)
+		modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
 
-		switch modelType {
+		switch manifest.ModelType {
 		case types.ModelTypeLLM:
-			if !isVLM(manifest) {
-				if len(tool) == 0 {
-					inferLLM(modelfile, nil)
-					return
-				} else {
-					panic("TODO")
-				}
-			} else {
-				// compat vlm
-				var t *string
-				if manifest.MMProjFile.Name != "" {
-					tokenizer := s.ModelfilePath(manifest.Name, manifest.MMProjFile.Name)
-					t = &tokenizer
-				}
-				inferVLM(modelfile, t)
-			}
+			inferLLM(manifest.PluginId, modelfile)
 		case types.ModelTypeVLM:
-			var t *string
+			var mmprojfile string
 			if manifest.MMProjFile.Name != "" {
-				tokenizer := s.ModelfilePath(manifest.Name, manifest.MMProjFile.Name)
-				t = &tokenizer
+				mmprojfile = s.ModelfilePath(manifest.Name, manifest.MMProjFile.Name)
 			}
-			inferVLM(modelfile, t)
+			inferVLM(manifest.PluginId, modelfile, mmprojfile)
 		case types.ModelTypeEmbedder:
-			inferEmbed(modelfile, nil)
+			// inferEmbed(modelfile, nil)
 		case types.ModelTypeReranker:
-			inferRerank(modelfile, nil)
+			// inferRerank(modelfile, nil)
 		case types.ModelTypeTTS:
-			inferTTS(modelfile, nil)
+			inferTTS(manifest.PluginId, modelfile, "")
 		case types.ModelTypeASR:
-			inferASR(modelfile, nil)
+			inferASR(manifest.PluginId, modelfile, "")
+		case types.ModelTypeCV:
+			inferCV(manifest.PluginId, modelfile)
 		default:
 			panic("not support model type")
 		}
@@ -149,523 +136,349 @@ func infer() *cobra.Command {
 	return inferCmd
 }
 
-// isContainPreprocessor checks if the model has a preprocess.json file
-func isVLM(m *types.ModelManifest) bool {
-	if m.MMProjFile.Name != "" {
-		return true
-	}
-	for _, file := range m.ExtraFiles {
-		if strings.Contains(file.Name, "preprocessor") {
-			return true
-		}
-	}
-	return false
-}
-
-func inferLLM(model string, tokenizer *string) {
+func inferLLM(plugin, modelfile string) {
 	spin := render.NewSpinner("loading model...")
 	spin.Start()
-	p, err := nexa_sdk.NewLLM(model, tokenizer, 8192, nil)
+	p, err := nexa_sdk.NewLLM(nexa_sdk.LlmCreateInput{
+		ModelPath: modelfile,
+		PluginID:  plugin,
+		Config: nexa_sdk.ModelConfig{
+			NCtx: 2048,
+		},
+	})
 	spin.Stop()
 
 	if err != nil {
-		if errors.Is(err, nexa_sdk.SDKErrorModelLoad) {
-			fmt.Println(modelLoadFailMsg)
-		} else {
-			fmt.Println(text.FgRed.Sprintf("Error: %s", err))
-		}
+		slog.Error("failed to create LLM", "error", err)
+		fmt.Println(modelLoadFailMsg)
 		return
 	}
 	defer p.Destroy()
 
-	var history []nexa_sdk.ChatMessage
-	var lastLen int
+	var history []nexa_sdk.LlmChatMessage
 
 	repl(ReplConfig{
-		Stream:    !disableStream,
 		ParseFile: false,
 
-		Clear: p.Reset,
+		Reset: p.Reset,
 
 		SaveKVCache: func(path string) error {
-			return p.SaveKVCache(path)
+			_, err := p.SaveKVCache(nexa_sdk.LlmSaveKVCacheInput{Path: path})
+			return err
 		},
 
 		LoadKVCache: func(path string) error {
-			return p.LoadKVCache(path)
+			_, err := p.LoadKVCache(nexa_sdk.LlmLoadKVCacheInput{Path: path})
+			return err
 		},
 
-		GetProfilingData: func() (*nexa_sdk.ProfilingData, error) {
-			return p.GetProfilingData()
-		},
+		Run: func(prompt string, _, _ []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			history = append(history, nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
 
-		Run: func(prompt string, _, _ []string) (string, error) {
-			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
-
-			formatted, err := p.ApplyChatTemplate(history)
+			templateOutput, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{Messages: history})
 			if err != nil {
-				return "", err
+				return "", nexa_sdk.ProfileData{}, err
 			}
 
-			res, err := p.Generate(formatted)
+			res, err := p.Generate(nexa_sdk.LlmGenerateInput{
+				PromptUTF8: templateOutput.FormattedText,
+				OnToken:    on_token,
+				Config: &nexa_sdk.GenerationConfig{
+					MaxTokens: 2048,
+				},
+			},
+			)
 			if err != nil {
-				return "", err
+				return "", nexa_sdk.ProfileData{}, err
 			}
 
-			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: res})
-
-			return res, nil
-		},
-
-		RunStream: func(ctx context.Context, prompt string, _, _ []string, dataCh chan<- string, errCh chan<- error) {
-			defer close(errCh)
-			defer close(dataCh)
-
-			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
-			formatted, e := p.ApplyChatTemplate(history)
-			if e != nil {
-				errCh <- e
-				return
-			}
-
-			var full strings.Builder
-
-			var promptToSend string
-			if isMLX(model) {
-				// fmt.Printf(text.FgBlack.Sprint(formatted[:lastLen]))
-				// fmt.Printf(text.FgCyan.Sprint(formatted[lastLen:]))
-				promptToSend = formatted[lastLen:]
-			} else {
-				promptToSend = formatted
-			}
-
-			dCh, eCh := p.GenerateStream(ctx, promptToSend)
-			for r := range dCh {
-				full.WriteString(r)
-				dataCh <- r
-			}
-			for e := range eCh {
-				errCh <- e
-				return
-			}
-
-			content := full.String()
-			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: content})
-			lastLen = len(formatted) + len(content)
+			history = append(history, nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: res.FullText})
+			return res.FullText, res.ProfileData, nil
 		},
 	})
 }
 
-func inferVLM(model string, tokenizer *string) {
+func inferVLM(plugin, modelfile string, mmprojfile string) {
 	spin := render.NewSpinner("loading model...")
 	spin.Start()
-	p, err := nexa_sdk.NewVLM(model, tokenizer, 8192, nil)
+	p, err := nexa_sdk.NewVLM(nexa_sdk.VlmCreateInput{
+		ModelPath:  modelfile,
+		MmprojPath: mmprojfile,
+		PluginID:   plugin,
+		Config: nexa_sdk.ModelConfig{
+			NCtx: 2048,
+		},
+	})
 	spin.Stop()
+
 	if err != nil {
-		if errors.Is(err, nexa_sdk.SDKErrorModelLoad) {
-			fmt.Println(modelLoadFailMsg)
-		} else {
-			fmt.Println(text.FgRed.Sprintf("Error: %s", err))
-		}
+		slog.Error("failed to create VLM", "error", err)
+		fmt.Println(modelLoadFailMsg)
 		return
 	}
 	defer p.Destroy()
 
-	var history []nexa_sdk.ChatMessage
-	var lastLen int
+	var history []nexa_sdk.VlmChatMessage
 
 	repl(ReplConfig{
-		Stream:    !disableStream,
 		ParseFile: true,
 
-		Clear: p.Reset,
+		Reset: p.Reset,
 
-		GetProfilingData: func() (*nexa_sdk.ProfilingData, error) {
-			return p.GetProfilingData()
+		SaveKVCache: func(path string) error {
+			return fmt.Errorf("VLM does not support KV cache saving")
 		},
 
-		Run: func(prompt string, images, audios []string) (string, error) {
-			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
-			formatted, err := p.ApplyChatTemplate(history)
-			if err != nil {
-				return "", err
-			}
-
-			res, err := p.Generate(prompt, images, audios)
-			if err != nil {
-				return "", err
-			}
-
-			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: res})
-			lastLen = len(formatted) + len(res)
-
-			return res, nil
+		LoadKVCache: func(path string) error {
+			return fmt.Errorf("VLM does not support KV cache loading")
 		},
 
-		RunStream: func(ctx context.Context, prompt string, images, audios []string, dataCh chan<- string, errCh chan<- error) {
-			defer close(errCh)
-			defer close(dataCh)
-
-			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
-			formatted, e := p.ApplyChatTemplate(history)
-			if e != nil {
-				errCh <- e
-				return
+		Run: func(prompt string, images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			msg := nexa_sdk.VlmChatMessage{Role: nexa_sdk.VlmRoleUser}
+			msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeText, Text: prompt})
+			for _, image := range images {
+				msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeImage, Text: image})
+			}
+			for _, audio := range audios {
+				msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeAudio, Text: audio})
 			}
 
-			var full strings.Builder
-			var promptToSend string
+			history = append(history, msg)
 
-			if isMLX(model) {
-				promptToSend = formatted
-			} else {
-				promptToSend = formatted[lastLen:]
+			tmplOut, err := p.ApplyChatTemplate(nexa_sdk.VlmApplyChatTemplateInput{Messages: history})
+			if err != nil {
+				return "", nexa_sdk.ProfileData{}, err
 			}
 
-			dCh, eCh := p.GenerateStream(ctx, promptToSend, images, audios)
-			for r := range dCh {
-				full.WriteString(r)
-				dataCh <- r
-			}
-			for e := range eCh {
-				errCh <- e
-				return
+			res, err := p.Generate(nexa_sdk.VlmGenerateInput{
+				PromptUTF8: tmplOut.FormattedText,
+				OnToken:    on_token,
+				Config: &nexa_sdk.GenerationConfig{
+					MaxTokens:  2048,
+					ImagePaths: images,
+					AudioPaths: audios,
+				},
+			})
+			if err != nil {
+				return "", nexa_sdk.ProfileData{}, err
 			}
 
-			content := full.String()
-			history = append(history, nexa_sdk.ChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: content})
-			lastLen = len(formatted) + len(content)
+			history = append(history, nexa_sdk.VlmChatMessage{
+				Role: nexa_sdk.VlmRoleAssistant,
+				Contents: []nexa_sdk.VlmContent{
+					{Type: nexa_sdk.VlmContentTypeText, Text: res.FullText},
+				},
+			})
+
+			return res.FullText, res.ProfileData, nil
 		},
 	})
 }
 
-func isMLX(model string) bool {
-	pathParts := strings.Split(model, "/")
-	encodedName := pathParts[len(pathParts)-2]
-	nameBytes, _ := base64.StdEncoding.DecodeString(encodedName)
-	name := strings.ToLower(string(nameBytes))
-	isMLX := strings.Contains(name, "mlx")
-	return isMLX
-}
-
-func inferEmbed(modelfile string, tokenizer *string) {
-	spin := render.NewSpinner("loading model...")
+func inferTTS(plugin, modelfile string, vocoderfile string) {
+	spin := render.NewSpinner("loading TTS model...")
 	spin.Start()
-	p, err := nexa_sdk.NewEmbedder(modelfile, tokenizer, nil)
+
+	ttsInput := nexa_sdk.TtsCreateInput{
+		ModelPath:   modelfile,
+		VocoderPath: vocoderfile,
+		PluginID:    plugin,
+	}
+
+	p, err := nexa_sdk.NewTTS(ttsInput)
 	spin.Stop()
+
 	if err != nil {
-		if errors.Is(err, nexa_sdk.SDKErrorModelLoad) {
-			fmt.Println(modelLoadFailMsg)
-		} else {
-			fmt.Println(text.FgRed.Sprintf("Error: %s", err))
-			fmt.Println()
-		}
+		slog.Error("failed to create TTS", "error", err)
+		fmt.Println(modelLoadFailMsg)
 		return
 	}
 	defer p.Destroy()
 
-	if len(prompt) == 0 {
-		fmt.Println(text.FgRed.Sprintf("at least 1 text prompt is accept"))
-		fmt.Println()
-		return
-	}
-
-	res, err := p.Embed(prompt)
-	if err != nil {
-		fmt.Println(text.FgRed.Sprintf("Error: %s", err))
-		fmt.Println()
-		return
-	} else {
-		nEmbed := len(res) / len(prompt)
-		for i := range res {
-			if i%nEmbed == 0 {
-				fmt.Print(text.FgYellow.Sprintf("\n===> %d\n", i/nEmbed))
-			}
-			fmt.Print(text.FgYellow.Sprintf("%f ", res[i]))
-		}
-		fmt.Println()
-	}
-	fmt.Println()
-
-	if data, err := p.GetProfilingData(); err == nil {
-		printProfiling(data)
-	}
-}
-
-func inferRerank(modelfile string, tokenizer *string) {
-	spin := render.NewSpinner("loading model...")
-	spin.Start()
-	p, err := nexa_sdk.NewReranker(modelfile, tokenizer, nil)
-	spin.Stop()
-	if err != nil {
-		if errors.Is(err, nexa_sdk.SDKErrorModelLoad) {
-			fmt.Println(modelLoadFailMsg)
-		} else {
-			fmt.Println(text.FgRed.Sprintf("Error: %s", err))
-		}
-		return
-	}
-	defer p.Destroy()
-
-	if len(query) == 0 {
-		fmt.Println(text.FgRed.Sprintf("at least 1 query is accept"))
-		fmt.Println()
-		return
-	}
-	if len(document) == 0 {
-		fmt.Println(text.FgRed.Sprintf("at least 1 document is accept"))
-		fmt.Println()
-		return
-	}
-
-	res, err := p.Rerank(query, document)
-	if err != nil {
-		fmt.Println(text.FgRed.Sprintf("Error: %s", err))
-		fmt.Println()
-		return
-	} else {
-		fmt.Println()
-		for i := range res {
-			fmt.Println(text.FgYellow.Sprintf("%d => %f", i, res[i]))
-		}
-		fmt.Println()
-	}
-
-	if data, err := p.GetProfilingData(); err == nil {
-		printProfiling(data)
-	}
-}
-
-func inferTTS(modelfile string, tokenizer *string) {
-	spin := render.NewSpinner("loading model...")
-
-	spin.Start()
-	p, err := nexa_sdk.NewTTS(modelfile, tokenizer, nil)
-	spin.Stop()
-	if err != nil {
-		fmt.Println(text.FgRed.Sprintf("Error: %s", err))
-		return
-	}
-	defer p.Destroy()
-
-	// Get text input - prioritize prompt, fallback to input file
-	var inputText string
-	if len(prompt) > 0 && prompt[0] != "" {
-		inputText = prompt[0]
-	} else {
-		fmt.Println(text.FgRed.Sprintf("text is required for TTS synthesis (use --prompt)"))
-		fmt.Println()
-		return
-	}
-
-	// Configure TTS
-	config := &nexa_sdk.TTSConfig{
-		Voice:      voiceIdentifier,
-		Speed:      float32(speechSpeed),
-		Seed:       -1,
-		SampleRate: 44100,
-	}
-
-	// Synthesize text to speech
-	result, err := p.Synthesize(inputText, config)
-	if err != nil {
-		fmt.Println(text.FgRed.Sprintf("Error: %s", err))
-		fmt.Println()
-		return
-	}
-
-	if output != "" {
-		err = saveWAV(result, output)
+	if listVoice {
+		voices, err := p.ListAvailableVoices()
 		if err != nil {
-			fmt.Println(text.FgRed.Sprintf("Error saving audio: %s", err))
+			fmt.Println(render.GetTheme().Error.Sprintf("Failed to list available voices: %s", err))
+			return
 		}
-	} else {
-		fmt.Println(text.FgRed.Sprintf("output file is required for TTS synthesis (use --output)"))
-	}
-	fmt.Println()
-
-	if data, err := p.GetProfilingData(); err == nil {
-		printProfiling(data)
-	}
-}
-
-func inferASR(modelfile string, tokenizer *string) {
-	spin := render.NewSpinner("loading model...")
-
-	spin.Start()
-	p, err := nexa_sdk.NewASR(modelfile, tokenizer, &language, nil)
-	spin.Stop()
-	if err != nil {
-		fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+		fmt.Println(render.GetTheme().Success.Sprintf("Available voices: %v", voices.VoiceIDs))
 		return
 	}
-	defer p.Destroy()
 
-	// Check input file
-	if input == "" {
-		fmt.Println(text.FgRed.Sprintf("input audio file is required for ASR transcription"))
+	// Check if prompt is provided
+	if len(prompt) == 0 {
+		fmt.Println(render.GetTheme().Error.Sprintf("text is required for TTS synthesis (use --prompt)"))
 		fmt.Println()
 		return
 	}
 
-	// Load audio file
-	audio, sampleRate, err := loadWavFile(input)
+	// Combine all prompt texts
+	textToSynthesize := strings.Join(prompt, " ")
+
+	// Generate output filename if not specified
+	outputFile := output
+	if outputFile == "" {
+		outputFile = fmt.Sprintf("tts_output_%d.wav", time.Now().Unix())
+	}
+
+	// Create TTS config
+	ttsConfig := &nexa_sdk.TTSConfig{
+		Voice:      "af_heart",
+		Speed:      float32(speechSpeed),
+		SampleRate: 24000,
+		Seed:       42,
+	}
+
+	if voice != "" {
+		ttsConfig.Voice = voice
+	}
+
+	// Synthesize speech
+	synthesizeInput := nexa_sdk.TtsSynthesizeInput{
+		TextUTF8:   textToSynthesize,
+		Config:     ttsConfig,
+		OutputPath: outputFile,
+	}
+
+	fmt.Println(render.GetTheme().Success.Sprintf("Synthesizing speech: \"%s\"", textToSynthesize))
+
+	result, err := p.Synthesize(synthesizeInput)
 	if err != nil {
-		fmt.Println(text.FgRed.Sprintf("Error loading audio file: %s", err))
+		fmt.Println(render.GetTheme().Error.Sprintf("Synthesis failed: %s", err))
 		return
 	}
 
-	// Configure ASR
-	config := &nexa_sdk.ASRConfig{
-		Timestamps: "word",
+	fmt.Println(render.GetTheme().Success.Sprintf("✓ Audio saved to: %s", result.Result.AudioPath))
+	// fmt.Printf("  Duration: %.2f seconds\n", result.Result.DurationSeconds)
+	// fmt.Printf("  Sample rate: %d Hz\n", result.Result.SampleRate)
+}
+
+func inferASR(plugin, modelfile string, tokenizerPath string) {
+	spin := render.NewSpinner("loading ASR model...")
+	spin.Start()
+
+	asrInput := nexa_sdk.AsrCreateInput{
+		ModelPath:     modelfile,
+		TokenizerPath: tokenizerPath,
+		PluginID:      plugin,
+	}
+	if language != "" {
+		asrInput.Language = language
+	}
+
+	p, err := nexa_sdk.NewASR(asrInput)
+	spin.Stop()
+
+	if err != nil {
+		slog.Error("failed to create ASR", "error", err)
+		fmt.Println(modelLoadFailMsg)
+		return
+	}
+	defer p.Destroy()
+
+	if listLanguage {
+		lans, err := p.ListSupportedLanguages()
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("Failed to list available languages: %s", err))
+			return
+		}
+		fmt.Println(render.GetTheme().Success.Sprintf("Available languages: %v", lans.LanguageCodes))
+		return
+	}
+
+	if input == "" {
+		fmt.Println(render.GetTheme().Error.Sprintf("input audio file is required for ASR transcription"))
+		fmt.Println()
+		return
+	}
+
+	if _, err := os.Stat(input); os.IsNotExist(err) {
+		fmt.Println(render.GetTheme().Error.Sprintf("input file '%s' does not exist", input))
+		return
+	}
+
+	asrConfig := &nexa_sdk.ASRConfig{
+		Timestamps: "segment",
 		BeamSize:   5,
 		Stream:     false,
 	}
 
-	// Transcribe audio to text
-	result, err := p.Transcribe(audio, int32(sampleRate), config)
+	transcribeInput := nexa_sdk.AsrTranscribeInput{
+		AudioPath: input,
+		Language:  language,
+		Config:    asrConfig,
+	}
+
+	fmt.Println(render.GetTheme().Success.Sprintf("Transcribing audio file: %s", input))
+
+	result, err := p.Transcribe(transcribeInput)
 	if err != nil {
-		fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+		fmt.Println(render.GetTheme().Error.Sprintf("Transcription failed: %s", err))
+		return
+	}
+
+	fmt.Println(render.GetTheme().Warning.Sprint(result.Result.Transcript))
+}
+
+func inferCV(plugin, modelfile string) {
+	spin := render.NewSpinner("loading CV model...")
+	spin.Start()
+
+	cvInput := nexa_sdk.CVCreateInput{
+		Config: nexa_sdk.CVModelConfig{
+			Capabilities:         nexa_sdk.CVCapabilityOCR,
+			DetModelPath:         modelfile,
+			RecModelPath:         modelfile,
+			ModelPath:            "",
+			ConfigFilePath:       "",
+			CharDictPath:         "",
+			SystemLibraryPath:    "",
+			BackendLibraryPath:   "",
+			ExtensionLibraryPath: "",
+		},
+		PluginID: plugin,
+		DeviceID: "",
+	}
+
+	p, err := nexa_sdk.NewCV(cvInput)
+	spin.Stop()
+
+	if err != nil {
+		slog.Error("failed to create CV", "error", err)
+		fmt.Println(modelLoadFailMsg)
+		return
+	}
+	defer p.Destroy()
+
+	if input == "" {
+		fmt.Println(text.FgRed.Sprintf("input image file is required for CV inference"))
 		fmt.Println()
 		return
 	}
 
-	if result != nil {
-		fmt.Println(text.FgYellow.Sprint(result.Transcript))
-	}
-	fmt.Println()
-}
-
-// WAVHeader represents the WAV file header structure
-type WAVHeader struct {
-	Riff          [4]byte // "RIFF"
-	FileSize      uint32  // File size - 8
-	Wave          [4]byte // "WAVE"
-	Fmt           [4]byte // "fmt "
-	FmtSize       uint32  // Format chunk size
-	AudioFormat   uint16  // Audio format (1 = PCM)
-	NumChannels   uint16  // Number of channels
-	SampleRate    uint32  // Sample rate
-	ByteRate      uint32  // Byte rate
-	BlockAlign    uint16  // Block align
-	BitsPerSample uint16  // Bits per sample
-	Data          [4]byte // "data"
-	DataSize      uint32  // Data chunk size
-}
-
-// saveWAV saves the TTS result as a WAV file
-func saveWAV(result *nexa_sdk.TTSResult, filename string) error {
-	if result == nil || len(result.Audio) == 0 {
-		return fmt.Errorf("no audio data to save")
+	if _, err := os.Stat(input); os.IsNotExist(err) {
+		fmt.Println(text.FgRed.Sprintf("input file '%s' does not exist", input))
+		return
 	}
 
-	file, err := os.Create(filename)
+	inferInput := nexa_sdk.CVInferInput{
+		InputImagePath: input,
+	}
+
+	fmt.Println(text.FgGreen.Sprintf("Performing CV inference on image: %s", input))
+
+	result, err := p.Infer(inferInput)
 	if err != nil {
-		return fmt.Errorf("could not create audio file: %v", err)
-	}
-	defer file.Close()
-
-	// Prepare WAV header
-	header := WAVHeader{}
-	copy(header.Riff[:], "RIFF")
-	copy(header.Wave[:], "WAVE")
-	copy(header.Fmt[:], "fmt ")
-	copy(header.Data[:], "data")
-
-	header.FmtSize = 16
-	header.AudioFormat = 1 // PCM
-	header.NumChannels = uint16(result.Channels)
-	header.SampleRate = uint32(result.SampleRate)
-	header.BitsPerSample = 16
-	header.ByteRate = uint32(result.SampleRate) * uint32(result.Channels) * uint32(header.BitsPerSample) / 8
-	header.BlockAlign = uint16(result.Channels) * header.BitsPerSample / 8
-	header.DataSize = uint32(len(result.Audio)) * uint32(result.Channels) * uint32(header.BitsPerSample) / 8
-	header.FileSize = uint32(binary.Size(header)) - 8 + header.DataSize
-
-	// Write header
-	err = binary.Write(file, binary.LittleEndian, header)
-	if err != nil {
-		return fmt.Errorf("failed to write WAV header: %v", err)
+		fmt.Println(text.FgRed.Sprintf("CV inference failed: %s", err))
+		return
 	}
 
-	// Convert float samples to 16-bit PCM and write
-	pcmSamples := make([]int16, len(result.Audio)*int(result.Channels))
-	for i, sample := range result.Audio {
-		// Clamp audio values to [-1.0, 1.0] and convert to 16-bit PCM
-		clampedSample := math.Max(-1.0, math.Min(1.0, float64(sample)))
-		pcmSamples[i] = int16(clampedSample * 32767.0)
-	}
+	fmt.Println(text.FgGreen.Sprintf("✓ CV inference completed successfully"))
+	fmt.Println(text.FgGreen.Sprintf("  Found %d results", result.ResultCount))
 
-	err = binary.Write(file, binary.LittleEndian, pcmSamples)
-	if err != nil {
-		return fmt.Errorf("failed to write audio data: %v", err)
-	}
-
-	return nil
-}
-
-func loadWavFile(path string) ([]float32, int, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, 0, fmt.Errorf("could not open audio file: %w", err)
-	}
-	defer f.Close()
-
-	// Read WAV header
-	var header WAVHeader
-	if err := binary.Read(f, binary.LittleEndian, &header); err != nil {
-		return nil, 0, fmt.Errorf("could not read WAV header: %w", err)
-	}
-
-	// Validate WAV header
-	if string(header.Riff[:]) != "RIFF" || string(header.Wave[:]) != "WAVE" {
-		return nil, 0, errors.New("invalid WAV file format")
-	}
-
-	if header.AudioFormat != 1 {
-		return nil, 0, errors.New("only PCM WAV files are supported")
-	}
-
-	// Calculate number of samples
-	bytesPerSample := header.BitsPerSample / 8
-	totalSamples := int(header.DataSize) / int(bytesPerSample)
-	samplesPerChannel := totalSamples / int(header.NumChannels)
-
-	// Read and convert audio data
-	var samples []float32
-
-	switch header.BitsPerSample {
-	case 16:
-		// 16-bit PCM
-		intSamples := make([]int16, totalSamples)
-		if err := binary.Read(f, binary.LittleEndian, &intSamples); err != nil {
-			return nil, 0, fmt.Errorf("could not read 16-bit PCM data: %w", err)
+	for _, cvResult := range result.Results {
+		if cvResult.Text != "" {
+			fmt.Printf("[%s] %s\n", text.FgHiMagenta.Sprintf("%.3f", cvResult.Confidence), text.FgYellow.Sprintf("\"%s\"", cvResult.Text))
 		}
-
-		// Convert to float and extract first channel
-		samples = make([]float32, samplesPerChannel)
-		for i := range samplesPerChannel {
-			sampleIndex := i * int(header.NumChannels) // Take first channel
-			samples[i] = float32(intSamples[sampleIndex]) / 32768.0
-		}
-
-	case 32:
-		// 32-bit float PCM
-		floatSamples := make([]float32, totalSamples)
-		if err := binary.Read(f, binary.LittleEndian, &floatSamples); err != nil {
-			return nil, 0, fmt.Errorf("could not read 32-bit float PCM data: %w", err)
-		}
-
-		// Extract first channel
-		samples = make([]float32, samplesPerChannel)
-		for i := range samplesPerChannel {
-			sampleIndex := i * int(header.NumChannels) // Take first channel
-			samples[i] = floatSamples[sampleIndex]
-		}
-
-	default:
-		return nil, 0, fmt.Errorf("unsupported bits per sample: %d", header.BitsPerSample)
 	}
-
-	return samples, int(header.SampleRate), nil
 }

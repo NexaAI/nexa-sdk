@@ -1,13 +1,14 @@
 package main
 
 import (
+	"log/slog"
 	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
 
-	"github.com/NexaAI/nexa-sdk/internal/config"
-	"github.com/NexaAI/nexa-sdk/internal/store"
+	"github.com/NexaAI/nexa-sdk/runner/internal/config"
+	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 )
 
 // RootCmd creates the main Nexa CLI command with all subcommands.
@@ -20,6 +21,12 @@ func RootCmd() *cobra.Command {
 		Use: "nexa",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			applyLogLevel()
+
+			calledCmd := cmd.CalledAs()
+			if calledCmd != "update" && calledCmd != "version" {
+				go notifyUpdate()
+			}
+
 			return nil
 		},
 	}
@@ -28,7 +35,7 @@ func RootCmd() *cobra.Command {
 		pull(), remove(), clean(), list(),
 		infer(), // genImage(),
 		serve(), run(),
-		version(),
+		version(), update(),
 	)
 
 	return rootCmd
@@ -56,6 +63,7 @@ func normalizeModelName(name string) string {
 // main is the entry point that executes the root command.
 func main() {
 	if err := RootCmd().Execute(); err != nil {
+		slog.Error("nexa-cli failed", "err", err)
 		os.Exit(1)
 	}
 }

@@ -9,307 +9,489 @@ extern bool go_generate_stream_on_token(char*, void*);
 import "C"
 
 import (
-	"context"
 	"log/slog"
-	"strings"
 	"unsafe"
-
-	"github.com/bytedance/sonic"
-	"github.com/nikolalohinski/gonja/v2"
-	"github.com/nikolalohinski/gonja/v2/exec"
 )
 
+// TODO: use same role const with VLM and others
 // LLMRole represents different roles in a chat conversation
 type LLMRole string
 
 const (
-	LLMRoleSystem    = "system"    // System role for instructions
-	LLMRoleUser      = "user"      // User role for queries
-	LLMRoleAssistant = "assistant" // Assistant role for responses
+	LLMRoleSystem    LLMRole = "system"    // System role for instructions
+	LLMRoleUser      LLMRole = "user"      // User role for queries
+	LLMRoleAssistant LLMRole = "assistant" // Assistant role for responses
 )
 
-// ChatMessage represents a single message in a chat conversation
-type ChatMessage struct {
-	Role    LLMRole `json:"role"`    // The role of the message sender
-	Content string  `json:"content"` // The actual message content
+type LlmCreateInput struct {
+	ModelPath     string
+	TokenizerPath string
+	Config        ModelConfig
+	PluginID      string
+	DeviceID      string
 }
 
-type ChatToolFunction struct {
-	Name        string         `json:"name"`
-	Description string         `json:"description,omitempty"`
-	Parameters  map[string]any `json:"parameters,omitempty"`
-	Strict      bool           `json:"strict,omitempty"`
-}
+func (lci LlmCreateInput) toCPtr() *C.ml_LlmCreateInput {
+	cPtr := (*C.ml_LlmCreateInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_LlmCreateInput{}))))
+	*cPtr = C.ml_LlmCreateInput{}
 
-type ChatTool struct {
-	Type     string           `json:"type"`
-	Function ChatToolFunction `json:"function"`
-}
-
-type ChatTemplateParam struct {
-	Messages []ChatMessage `json:"messages,omitempty"`
-	Tools    []ChatTool    `json:"tools,omitempty"`
-}
-
-// LLM wraps the C library LLM structure and provides Go interface
-type LLM struct {
-	ptr *C.ml_LLM // Pointer to the underlying C LLM structure
-}
-
-// NewLLM creates a new LLM instance with the specified model and configuration
-func NewLLM(model string, tokenizer *string, ctxLen int32, devices *string) (*LLM, error) {
-	slog.Debug("NewLLM called", "model", model, "tokenizer", tokenizer, "ctxLen", ctxLen, "devices", devices)
-
-	cModel := C.CString(model)
-	defer C.free(unsafe.Pointer(cModel))
-
-	ptr := C.ml_llm_create(cModel, nil, C.ml_ModelConfig{n_ctx: C.int32_t(ctxLen)}, nil)
-	if ptr == nil {
-		return nil, SDKErrorModelLoad
+	if lci.ModelPath != "" {
+		cPtr.model_path = C.CString(lci.ModelPath)
 	}
-	return &LLM{ptr: ptr}, nil
-}
-
-// Destroy frees the memory allocated for the LLM instance
-func (p *LLM) Destroy() {
-	slog.Debug("Destroy called", "ptr", p.ptr)
-
-	C.ml_llm_destroy(p.ptr)
-	p.ptr = nil
-}
-
-// Reset clears the LLM's internal state and context
-func (p *LLM) Reset() {
-	slog.Debug("Reset called", "ptr", p.ptr)
-
-	C.ml_llm_reset(p.ptr)
-}
-
-// Encode converts a text message into token IDs using the model's tokenizer
-func (p *LLM) Encode(msg string) ([]int32, error) {
-	slog.Debug("Encode called", "msg", msg)
-
-	cMsg := C.CString(msg)
-	defer C.free(unsafe.Pointer(cMsg))
-
-	var res *C.int32_t
-	resLen := C.ml_llm_encode(p.ptr, cMsg, &res)
-	if resLen < 0 {
-		return nil, SDKError(resLen)
+	if lci.TokenizerPath != "" {
+		cPtr.tokenizer_path = C.CString(lci.TokenizerPath)
 	}
-	defer C.free(unsafe.Pointer(res))
-
-	ids := make([]int32, resLen)
-	copy(ids, (*[1 << 30]int32)(unsafe.Pointer(res))[:resLen])
-	return ids, nil
-}
-
-// Decode converts token IDs back into text using the model's tokenizer
-func (p *LLM) Decode(ids []int32) (string, error) {
-	slog.Debug("Decode called", "ids", ids)
-
-	var res *C.char
-	resLen := C.ml_llm_decode(
-		p.ptr,
-		(*C.int32_t)(unsafe.Pointer(&ids[0])),
-		C.int32_t(len(ids)),
-		&res)
-	if resLen < 0 {
-		return "", SDKError(resLen)
+	if lci.PluginID != "" {
+		cPtr.plugin_id = C.CString(lci.PluginID)
 	}
-	defer C.free(unsafe.Pointer(res))
-
-	return C.GoString(res), nil
-}
-
-// SaveKVCache saves the model's key-value cache to disk for later reuse
-func (p *LLM) SaveKVCache(path string) error {
-	slog.Debug("SaveKVCache called", "path", path)
-
-	cPath := C.CString(path)
-	defer C.free(unsafe.Pointer(cPath))
-
-	res := C.ml_llm_save_kv_cache(p.ptr, cPath)
-	if res < 0 {
-		return SDKError(res)
-	}
-	return nil
-}
-
-// LoadKVCache loads a previously saved key-value cache from disk
-func (p *LLM) LoadKVCache(path string) error {
-	slog.Debug("LoadKVCache called", "path", path)
-
-	cPath := C.CString(path)
-	defer C.free(unsafe.Pointer(cPath))
-
-	res := C.ml_llm_load_kv_cache(p.ptr, cPath)
-	if res < 0 {
-		return SDKError(res)
-	}
-	return nil
-}
-
-// Generate produces text completion for the given prompt
-func (p *LLM) Generate(prompt string) (string, error) {
-	slog.Debug("Generate called", "prompt", prompt)
-
-	cPrompt := C.CString(prompt)
-	defer C.free(unsafe.Pointer(cPrompt))
-
-	config := C.ml_GenerationConfig{}
-	config.max_tokens = 2048
-
-	var res *C.char
-	resLen := C.ml_llm_generate(p.ptr, cPrompt, &config, &res)
-	if resLen <= 0 {
-		return "", SDKError(resLen)
-	}
-	defer C.free(unsafe.Pointer(res))
-
-	return C.GoString(res), nil
-}
-
-// GetChatTemplate retrieves the chat template for formatting conversations
-func (p *LLM) GetChatTemplate(name *string) (string, error) {
-	slog.Debug("GetChatTemplate called", "name", name)
-
-	var cName *C.char
-	if name != nil {
-		cName = C.CString(*name)
-		defer C.free(unsafe.Pointer(cName))
+	if lci.DeviceID != "" {
+		cPtr.device_id = C.CString(lci.DeviceID)
 	}
 
-	var res *C.char
-	resLen := C.ml_llm_get_chat_template(p.ptr, cName, &res)
-	if resLen < 0 {
-		return "", SDKError(resLen)
+	// no need to use toCPtr() here, because we are not using the config pointer
+	cPtr.config = C.ml_ModelConfig{
+		n_ctx:           C.int32_t(lci.Config.NCtx),
+		n_threads:       C.int32_t(lci.Config.NThreads),
+		n_threads_batch: C.int32_t(lci.Config.NThreadsBatch),
+		n_batch:         C.int32_t(lci.Config.NBatch),
+		n_ubatch:        C.int32_t(lci.Config.NUbatch),
+		n_seq_max:       C.int32_t(lci.Config.NSeqMax),
+	}
+	if lci.Config.ChatTemplatePath != "" {
+		cPtr.config.chat_template_path = C.CString(lci.Config.ChatTemplatePath)
+	}
+	if lci.Config.ChatTemplateContent != "" {
+		cPtr.config.chat_template_content = C.CString(lci.Config.ChatTemplateContent)
 	}
 
-	return C.GoString(res), nil
+	return cPtr
 }
 
-// ApplyChatTemplate formats chat messages using the model's chat template
-func (p *LLM) ApplyChatTemplate(msgs []ChatMessage) (string, error) {
-	slog.Debug("ApplyChatTemplate called", "msgs", msgs)
-
-	cMsgs := make([]C.ml_ChatMessage, len(msgs))
-
-	for i, msg := range msgs {
-		cMsg := &cMsgs[i]
-		cMsg.role = C.CString(string(msg.Role))
-		defer C.free(unsafe.Pointer(cMsg.role))
-		cMsg.content = C.CString(msg.Content)
-		defer C.free(unsafe.Pointer(cMsg.content))
-	}
-
-	var res *C.char
-	resLen := C.ml_llm_apply_chat_template(p.ptr, &cMsgs[0], C.int32_t(len(msgs)), &res)
-	if resLen < 0 {
-		return "", SDKError(resLen)
-	}
-	defer C.free(unsafe.Pointer(res))
-
-	return C.GoString(res), nil
-}
-
-// ApplyChatTemplate formats chat messages using the model's chat template
-func (p *LLM) ApplyJinjaTemplate(param ChatTemplateParam) (string, error) {
-	slog.Debug("ApplyJinjaTemplate called", "param", param)
-
-	chatTmpl, e := p.GetChatTemplate(nil)
-	if e != nil {
-		return "", e
-	}
-
-	chatTmpl = strings.ReplaceAll(chatTmpl, `messages|length`, `(messages|length)`)
-	chatTmpl = strings.ReplaceAll(chatTmpl, `not(`, `not (`)
-	tmpl, e := gonja.FromString(chatTmpl)
-	if e != nil {
-		return "", e
-	}
-
-	msgData, _ := sonic.Marshal(param)
-	m := make(map[string]any)
-	sonic.Unmarshal(msgData, &m)
-
-	return tmpl.ExecuteToString(exec.NewContext(m))
-}
-
-// Global streamTokenCh for streaming - TODO: implement proper streamTokenCh mapping for concurrent streams
-var (
-	streamTokenCh  chan<- string
-	streamTokenCtx context.Context
-)
-
-// go_generate_stream_on_token is the callback function called by C code during streaming
-// It sends each generated token to the Go channel
-//
-//export go_generate_stream_on_token
-func go_generate_stream_on_token(token *C.char, _ *C.void) C.bool {
-	select {
-	case <-streamTokenCtx.Done():
-		// fmt.Println("context done")
-		return false
-	default:
-	}
-
-	select {
-	case streamTokenCh <- C.GoString(token):
-		return true
-	case <-streamTokenCtx.Done():
-		// fmt.Println("cancel")
-		return false
-	}
-}
-
-// GenerateStream generates text in streaming mode, returning tokens as they are produced
-// Returns two channels: one for receiving tokens and one for errors
-// Note: Currently does not support parallel streaming due to global channel usage
-func (p *LLM) GenerateStream(ctx context.Context, prompt string) (<-chan string, <-chan error) {
-	slog.Debug("GenerateStream called", "prompt", prompt)
-
-	cPrompt := C.CString(prompt)
-
-	config := C.ml_GenerationConfig{}
-	config.max_tokens = 2048
-
-	if streamTokenCh != nil {
-		panic("not support GenerateStream in parallel")
-	}
-	stream := make(chan string, 10)
-	err := make(chan error, 1)
-	streamTokenCh = stream
-	streamTokenCtx = ctx
-
-	go func() {
-		defer func() {
-			streamTokenCh = nil
-			streamTokenCtx = nil
-			close(err)
-			close(stream)
-			C.free(unsafe.Pointer(cPrompt))
-		}()
-
-		resLen := C.ml_llm_generate_stream(p.ptr, cPrompt, &config,
-			(C.ml_llm_token_callback)(C.go_generate_stream_on_token), nil, nil)
-		if resLen < 0 {
-			err <- SDKError(resLen)
+func freeLlmCreateInput(cPtr *C.ml_LlmCreateInput) {
+	if cPtr != nil {
+		// Free string fields
+		if cPtr.model_path != nil {
+			C.free(unsafe.Pointer(cPtr.model_path))
 		}
-	}()
+		if cPtr.tokenizer_path != nil {
+			C.free(unsafe.Pointer(cPtr.tokenizer_path))
+		}
+		if cPtr.plugin_id != nil {
+			C.free(unsafe.Pointer(cPtr.plugin_id))
+		}
+		if cPtr.device_id != nil {
+			C.free(unsafe.Pointer(cPtr.device_id))
+		}
 
-	return stream, err
+		// Free nested ModelConfig - config is a value, not a pointer
+		// We need to free the string fields manually
+		if cPtr.config.chat_template_path != nil {
+			C.free(unsafe.Pointer(cPtr.config.chat_template_path))
+		}
+		if cPtr.config.chat_template_content != nil {
+			C.free(unsafe.Pointer(cPtr.config.chat_template_content))
+		}
+
+		// Free the main structure
+		C.free(unsafe.Pointer(cPtr))
+	}
 }
 
-// GetProfilingData retrieves performance metrics from the LLM instance
-func (p *LLM) GetProfilingData() (*ProfilingData, error) {
-	slog.Debug("GetProfilingData called")
+type LlmGenerateInput struct {
+	PromptUTF8 string
+	Config     *GenerationConfig
+	OnToken    OnTokenCallback
+	// UserData   unsafe.Pointer
+}
 
-	var cData C.ml_ProfilingData
-	res := C.ml_llm_get_profiling_data(p.ptr, &cData)
+func (lgi LlmGenerateInput) toCPtr() *C.ml_LlmGenerateInput {
+	cPtr := (*C.ml_LlmGenerateInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_LlmGenerateInput{}))))
+	*cPtr = C.ml_LlmGenerateInput{}
+
+	cPtr.prompt_utf8 = C.CString(lgi.PromptUTF8)
+	if lgi.Config != nil {
+		cPtr.config = lgi.Config.toCPtr()
+	} else {
+		cPtr.config = nil
+	}
+
+	// Note: on_token and user_data should be set by the caller
+	cPtr.on_token = nil
+	cPtr.user_data = nil
+
+	return cPtr
+}
+
+func freeLlmGenerateInput(cPtr *C.ml_LlmGenerateInput) {
+	if cPtr != nil {
+		if cPtr.prompt_utf8 != nil {
+			C.free(unsafe.Pointer(cPtr.prompt_utf8))
+		}
+
+		if cPtr.config != nil {
+			freeGenerationConfig(cPtr.config)
+		}
+
+		C.free(unsafe.Pointer(cPtr))
+	}
+}
+
+type LlmGenerateOutput struct {
+	FullText    string
+	ProfileData ProfileData
+}
+
+func newLlmGenerateOutputFromCPtr(c *C.ml_LlmGenerateOutput) LlmGenerateOutput {
+	output := LlmGenerateOutput{}
+
+	if c == nil {
+		return output
+	}
+
+	if c.full_text != nil {
+		output.FullText = C.GoString(c.full_text)
+	}
+	output.ProfileData = newProfileDataFromCPtr(c.profile_data)
+	return output
+}
+
+func freeLlmGenerateOutput(ptr *C.ml_LlmGenerateOutput) {
+	if ptr == nil {
+		return
+	}
+	if ptr.full_text != nil {
+		mlFree(unsafe.Pointer(ptr.full_text))
+	}
+}
+
+type LlmChatMessage struct {
+	Role    LLMRole
+	Content string
+}
+
+type llmChatMessages []LlmChatMessage
+
+func (lcm llmChatMessages) toCPtr() (*C.ml_LlmChatMessage, C.int32_t) {
+	if len(lcm) == 0 {
+		return nil, 0
+	}
+
+	count := len(lcm)
+	raw := C.malloc(C.size_t(count * C.sizeof_ml_LlmChatMessage))
+	cMessages := unsafe.Slice((*C.ml_LlmChatMessage)(raw), count)
+
+	for i, msg := range lcm {
+		if msg.Role != "" {
+			cMessages[i].role = C.CString(string(msg.Role))
+		}
+		if msg.Content != "" {
+			cMessages[i].content = C.CString(msg.Content)
+		}
+	}
+
+	return (*C.ml_LlmChatMessage)(raw), C.int32_t(count)
+}
+
+func freeLlmChatMessages(cPtr *C.ml_LlmChatMessage, count C.int32_t) {
+	if cPtr == nil || count == 0 {
+		return
+	}
+
+	cMessages := unsafe.Slice(cPtr, int(count))
+	for i := range count {
+		if cMessages[i].role != nil {
+			C.free(unsafe.Pointer(cMessages[i].role))
+		}
+		if cMessages[i].content != nil {
+			C.free(unsafe.Pointer(cMessages[i].content))
+		}
+	}
+
+	C.free(unsafe.Pointer(cPtr))
+}
+
+type LlmApplyChatTemplateInput struct {
+	Messages []LlmChatMessage
+	Tools    []Tool
+}
+
+func (lati LlmApplyChatTemplateInput) toCPtr() *C.ml_LlmApplyChatTemplateInput {
+	cPtr := (*C.ml_LlmApplyChatTemplateInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_LlmApplyChatTemplateInput{}))))
+	*cPtr = C.ml_LlmApplyChatTemplateInput{}
+
+	if len(lati.Messages) > 0 {
+		cMessages, messageCount := llmChatMessages(lati.Messages).toCPtr()
+		cPtr.messages = cMessages
+		cPtr.message_count = C.int32_t(messageCount)
+	}
+
+	if len(lati.Tools) > 0 {
+		cTools, toolCount := tools(lati.Tools).toCPtr()
+		cPtr.tools = cTools
+		cPtr.tool_count = C.int32_t(toolCount)
+	}
+
+	return cPtr
+}
+
+func freeLlmApplyChatTemplateInput(cPtr *C.ml_LlmApplyChatTemplateInput) {
+	if cPtr == nil {
+		return
+	}
+	freeLlmChatMessages(cPtr.messages, cPtr.message_count)
+	freeTools(cPtr.tools, cPtr.tool_count)
+	C.free(unsafe.Pointer(cPtr))
+}
+
+type LlmApplyChatTemplateOutput struct {
+	FormattedText string
+}
+
+func newLlmApplyChatTemplateOutputFromCPtr(c *C.ml_LlmApplyChatTemplateOutput) LlmApplyChatTemplateOutput {
+	output := LlmApplyChatTemplateOutput{}
+
+	if c == nil {
+		return output
+	}
+
+	if c.formatted_text != nil {
+		output.FormattedText = C.GoString(c.formatted_text)
+	}
+
+	return output
+}
+
+func freeLlmApplyChatTemplateOutput(cPtr *C.ml_LlmApplyChatTemplateOutput) {
+	if cPtr == nil {
+		return
+	}
+	if cPtr.formatted_text != nil {
+		mlFree(unsafe.Pointer(cPtr.formatted_text))
+	}
+}
+
+type LLM struct {
+	ptr *C.ml_LLM
+}
+
+func NewLLM(input LlmCreateInput) (*LLM, error) {
+	slog.Debug("NewLLM called", "input", input)
+
+	cInput := input.toCPtr()
+	defer freeLlmCreateInput(cInput)
+
+	var cHandle *C.ml_LLM
+	res := C.ml_llm_create(cInput, &cHandle)
 	if res < 0 {
 		return nil, SDKError(res)
 	}
 
-	return NewProfilingDataFromC(cData), nil
+	return &LLM{ptr: cHandle}, nil
+}
+
+func (l *LLM) Destroy() error {
+	slog.Debug("Destroy called", "ptr", l.ptr)
+
+	if l.ptr == nil {
+		return nil
+	}
+
+	res := C.ml_llm_destroy(l.ptr)
+	if res < 0 {
+		return SDKError(res)
+	}
+	l.ptr = nil
+	return nil
+}
+
+func (l *LLM) Reset() error {
+	slog.Debug("Reset called", "ptr", l.ptr)
+	if l.ptr == nil {
+		return nil
+	}
+
+	res := C.ml_llm_reset(l.ptr)
+	if res < 0 {
+		return SDKError(res)
+	}
+	return nil
+}
+
+// LlmSaveKVCacheInput represents input for saving LLM KV cache
+type LlmSaveKVCacheInput struct {
+	Path string
+}
+
+func (lsci LlmSaveKVCacheInput) toCPtr() *C.ml_KvCacheSaveInput {
+	cPtr := (*C.ml_KvCacheSaveInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_KvCacheSaveInput{}))))
+	*cPtr = C.ml_KvCacheSaveInput{}
+
+	if lsci.Path != "" {
+		cPtr.path = C.CString(lsci.Path)
+	}
+
+	return cPtr
+}
+
+func freeLlmSaveKVCacheInput(cPtr *C.ml_KvCacheSaveInput) {
+	if cPtr != nil {
+		if cPtr.path != nil {
+			C.free(unsafe.Pointer(cPtr.path))
+		}
+		C.free(unsafe.Pointer(cPtr))
+	}
+}
+
+// LlmSaveKVCacheOutput represents output from saving LLM KV cache
+type LlmSaveKVCacheOutput struct {
+	Reserved interface{}
+}
+
+func newLlmSaveKVCacheOutputFromCPtr(c *C.ml_KvCacheSaveOutput) LlmSaveKVCacheOutput {
+	output := LlmSaveKVCacheOutput{}
+
+	if c == nil {
+		return output
+	}
+
+	// Currently no fields to copy from C structure
+	return output
+}
+
+func freeLlmSaveKVCacheOutput(cPtr *C.ml_KvCacheSaveOutput) {
+	if cPtr == nil {
+		return
+	}
+	// Currently no fields to free
+}
+
+// LlmLoadKVCacheInput represents input for loading LLM KV cache
+type LlmLoadKVCacheInput struct {
+	Path string
+}
+
+func (llci LlmLoadKVCacheInput) toCPtr() *C.ml_KvCacheLoadInput {
+	cPtr := (*C.ml_KvCacheLoadInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_KvCacheLoadInput{}))))
+	*cPtr = C.ml_KvCacheLoadInput{}
+
+	if llci.Path != "" {
+		cPtr.path = C.CString(llci.Path)
+	}
+
+	return cPtr
+}
+
+func freeLlmLoadKVCacheInput(cPtr *C.ml_KvCacheLoadInput) {
+	if cPtr != nil {
+		if cPtr.path != nil {
+			C.free(unsafe.Pointer(cPtr.path))
+		}
+		C.free(unsafe.Pointer(cPtr))
+	}
+}
+
+// LlmLoadKVCacheOutput represents output from loading LLM KV cache
+type LlmLoadKVCacheOutput struct {
+	Reserved any
+}
+
+func newLlmLoadKVCacheOutputFromCPtr(c *C.ml_KvCacheLoadOutput) LlmLoadKVCacheOutput {
+	output := LlmLoadKVCacheOutput{}
+
+	if c == nil {
+		return output
+	}
+
+	// Currently no fields to copy from C structure
+	return output
+}
+
+func freeLlmLoadKVCacheOutput(cPtr *C.ml_KvCacheLoadOutput) {
+	if cPtr == nil {
+		return
+	}
+	// Currently no fields to free
+}
+
+func (l *LLM) ApplyChatTemplate(input LlmApplyChatTemplateInput) (*LlmApplyChatTemplateOutput, error) {
+	slog.Debug("ApplyChatTemplate called", "input", input)
+
+	cinput := input.toCPtr()
+	defer freeLlmApplyChatTemplateInput(cinput)
+
+	var cOutput C.ml_LlmApplyChatTemplateOutput
+	defer freeLlmApplyChatTemplateOutput(&cOutput)
+
+	res := C.ml_llm_apply_chat_template(l.ptr, cinput, &cOutput)
+	if res < 0 {
+		return nil, SDKError(res)
+	}
+
+	output := newLlmApplyChatTemplateOutputFromCPtr(&cOutput)
+
+	return &output, nil
+}
+
+func (l *LLM) SaveKVCache(input LlmSaveKVCacheInput) (*LlmSaveKVCacheOutput, error) {
+	slog.Debug("SaveKVCache called", "input", input)
+
+	cInput := input.toCPtr()
+	defer freeLlmSaveKVCacheInput(cInput)
+
+	var cOutput C.ml_KvCacheSaveOutput
+	defer freeLlmSaveKVCacheOutput(&cOutput)
+
+	res := C.ml_llm_save_kv_cache(l.ptr, cInput, &cOutput)
+	if res < 0 {
+		return nil, SDKError(res)
+	}
+
+	output := newLlmSaveKVCacheOutputFromCPtr(&cOutput)
+
+	return &output, nil
+}
+
+func (l *LLM) LoadKVCache(input LlmLoadKVCacheInput) (*LlmLoadKVCacheOutput, error) {
+	slog.Debug("LoadKVCache called", "input", input)
+
+	cInput := input.toCPtr()
+	defer freeLlmLoadKVCacheInput(cInput)
+
+	var cOutput C.ml_KvCacheLoadOutput
+	defer freeLlmLoadKVCacheOutput(&cOutput)
+
+	res := C.ml_llm_load_kv_cache(l.ptr, cInput, &cOutput)
+	if res < 0 {
+		return nil, SDKError(res)
+	}
+
+	output := newLlmLoadKVCacheOutputFromCPtr(&cOutput)
+
+	return &output, nil
+}
+
+func (l *LLM) Generate(input LlmGenerateInput) (LlmGenerateOutput, error) {
+	slog.Debug("Generate called", "input", input)
+
+	cInput := input.toCPtr()
+	defer freeLlmGenerateInput(cInput)
+
+	// set the callback
+	onToken = input.OnToken
+	defer func() {
+		onToken = nil // reset to default
+	}()
+	cInput.on_token = C.ml_token_callback(C.go_generate_stream_on_token)
+
+	var cOutput C.ml_LlmGenerateOutput
+	defer freeLlmGenerateOutput(&cOutput)
+
+	res := C.ml_llm_generate(l.ptr, cInput, &cOutput)
+	if res < 0 {
+		return LlmGenerateOutput{}, SDKError(res)
+	}
+
+	output := newLlmGenerateOutputFromCPtr(&cOutput)
+
+	return output, nil
 }

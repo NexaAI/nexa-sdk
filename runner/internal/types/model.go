@@ -3,13 +3,14 @@ package types
 type ModelType string
 
 const (
-	ModelTypeLLM      = "llm"
-	ModelTypeVLM      = "vlm"
-	ModelTypeEmbedder = "embedder"
-	ModelTypeReranker = "reranker"
-	ModelTypeImageGen = "image_gen"
-	ModelTypeTTS      = "tts"
-	ModelTypeASR      = "asr"
+	ModelTypeLLM      ModelType = "llm"
+	ModelTypeVLM      ModelType = "vlm"
+	ModelTypeEmbedder ModelType = "embedder"
+	ModelTypeReranker ModelType = "reranker"
+	ModelTypeImageGen ModelType = "image_gen"
+	ModelTypeTTS      ModelType = "tts"
+	ModelTypeASR      ModelType = "asr"
+	ModelTypeCV       ModelType = "cv"
 )
 
 type ModeFileInfo struct {
@@ -19,7 +20,9 @@ type ModeFileInfo struct {
 }
 
 type ModelManifest struct {
-	Name string
+	Name      string
+	ModelType ModelType
+	PluginId  string
 
 	ModelFile  map[string]ModeFileInfo // quant -> modelfile
 	MMProjFile ModeFileInfo
@@ -47,8 +50,7 @@ func (m ModelManifest) GetSize() int64 {
 }
 
 type ModelParam struct {
-	CtxLen int32
-	Device *string
+	NCtx int32
 }
 
 type DownloadInfo struct {

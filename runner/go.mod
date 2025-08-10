@@ -1,4 +1,4 @@
-module github.com/NexaAI/nexa-sdk
+module github.com/NexaAI/nexa-sdk/runner
 
 go 1.24.0
 
@@ -10,8 +10,8 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/gin-gonic/gin v1.10.1
 	github.com/gofrs/flock v0.12.1
+	github.com/gookit/color v1.5.4
 	github.com/jedib0t/go-pretty/v6 v6.6.7
-	github.com/nikolalohinski/gonja/v2 v2.3.4
 	github.com/ollama/ollama v0.9.5
 	github.com/openai/openai-go v1.6.0
 	github.com/schollz/progressbar/v3 v3.18.0
@@ -19,6 +19,7 @@ require (
 	github.com/spf13/viper v1.20.1
 	github.com/valyala/fasthttp v1.63.0
 	resty.dev/v3 v3.0.0-beta.3
+	github.com/hashicorp/go-version v1.7.0
 )
 
 require (
@@ -76,12 +77,10 @@ require (
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.13.1 // indirect
 	github.com/sagikazarmark/locafero v0.7.0 // indirect
-	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.12.0 // indirect
 	github.com/spf13/cast v1.7.1 // indirect

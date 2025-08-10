@@ -1,22 +1,13 @@
 package store
 
 import (
-	"encoding/base64"
 	"log/slog"
 	"os"
-	"path"
-	"runtime"
+	"path/filepath"
 	"sync"
 
 	"github.com/gofrs/flock"
 )
-
-// Model directory structure:
-// │.
-// │└─ models
-// │   └─ model_name (base64 encoded)
-// │      ├─ modelfile (actual model data)
-// │      └─ manifest (model metadata)
 
 type Store struct {
 	home       string
@@ -40,26 +31,17 @@ func Get() *Store {
 // init sets up the store's directory structure
 func (s *Store) init() {
 	// Get user's cache directory (OS-specific)
-	var cacheDir string
-	var e error
-	if runtime.GOOS == "windows" {
-		cacheDir = os.Getenv("ProgramData")
-		if cacheDir == "" {
-			panic("%ProgramData% is not defined")
-		}
-	} else {
-		cacheDir, e = os.UserCacheDir()
-		if e != nil {
-			panic(e)
-		}
+	homeDir, e := os.UserHomeDir()
+	if e != nil {
+		panic(e)
 	}
 
 	// Set nexa cache directory
-	s.home = path.Join(cacheDir, "nexa")
+	s.home = filepath.Join(homeDir, ".cache", "nexa.ai", "nexa_sdk")
 
 	// Create models directory structure
-	for _, d := range []string{"models", "cache"} {
-		e = os.MkdirAll(path.Join(s.home, d), 0o770)
+	for _, d := range []string{"models"} {
+		e = os.MkdirAll(filepath.Join(s.home, d), 0o770)
 		if e != nil {
 			panic(e)
 		}
@@ -81,62 +63,35 @@ func (s *Store) Close() error {
 	return nil
 }
 
-func (s *Store) GetModelsDir() string {
-	return path.Join(s.home, "models")
-}
-
 func (s *Store) cleanCorruptedDirectories() {
-	modelsDir := s.GetModelsDir()
-
-	entries, err := os.ReadDir(modelsDir)
+	models, err := s.scanModelDir()
 	if err != nil {
+		slog.Error("Failed to scan model directory", "err", err)
 		return
 	}
 
-	for _, entry := range entries {
-		// try to remove the lock file
-		// if entry.Type().IsRegular() && strings.HasSuffix(entry.Name(), ".lock") {
-		// 	os.Remove(path.Join(modelsDir, entry.Name()))
-		// }
-
-		if !entry.IsDir() {
-			continue
-		}
-
-		dirName := entry.Name()
-		dirPath := path.Join(modelsDir, dirName)
-		if s.isCorruptedModelDirectory(dirName, dirPath) {
-			modelName, err := base64.URLEncoding.DecodeString(dirName)
-			if err != nil {
-				slog.Warn("Cleaning invalid name model directory", "dirName", dirName)
-				if err := os.RemoveAll(dirPath); err != nil {
-					slog.Warn("Failed to remove corrupted directory", "dirname", dirName, "err", err)
-				}
+	for _, models := range models {
+		slog.Info("Checking model directory", "name", models)
+		if s.isCorruptedModelDirectory(models) {
+			if err := s.LockModel(models); err != nil {
+				slog.Warn("Skipping cleanup of directory", "name", models, "err", err)
 				continue
 			}
 
-			if err := s.LockModel(string(modelName)); err != nil {
-				slog.Warn("Skipping cleanup of directory", "dirName", dirName, "err", err)
-				continue
+			slog.Info("Cleaning corrupted model directory", "name", models)
+			if err := os.RemoveAll(s.ModelfilePath(models, "")); err != nil {
+				slog.Error("Failed to remove corrupted directory", "name", models, "err", err)
 			}
 
-			slog.Info("Cleaning corrupted model directory", "dirname", dirName)
-			if err := os.RemoveAll(dirPath); err != nil {
-				slog.Error("Failed to remove corrupted directory", "dirName", dirName, "err", err)
-			}
-
-			s.UnlockModel(string(modelName))
+			s.UnlockModel(models)
 		}
 	}
 }
 
-func (s *Store) isCorruptedModelDirectory(dirName, dirPath string) bool {
-	if _, err := base64.URLEncoding.DecodeString(dirName); err != nil {
-		return true
-	}
-
-	manifestPath := path.Join(dirPath, "nexa.manifest")
+func (s *Store) isCorruptedModelDirectory(name string) bool {
+	manifestPath := s.ModelfilePath(name, "nexa.manifest")
 	if _, err := os.Stat(manifestPath); err != nil {
+		slog.Info("Cleaning corrupted model directory", "name", err)
 		return true
 	}
 

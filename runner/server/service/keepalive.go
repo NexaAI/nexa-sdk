@@ -3,20 +3,19 @@ package service
 import (
 	"fmt"
 	"reflect"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/NexaAI/nexa-sdk/internal/config"
-	"github.com/NexaAI/nexa-sdk/internal/store"
-	"github.com/NexaAI/nexa-sdk/internal/types"
-	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
+	"github.com/NexaAI/nexa-sdk/runner/internal/config"
+	"github.com/NexaAI/nexa-sdk/runner/internal/store"
+	"github.com/NexaAI/nexa-sdk/runner/internal/types"
+	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 )
 
 // KeepAliveGet retrieves a model from the keepalive cache or creates it if not found
 // This avoids the overhead of repeatedly loading/unloading models from disk
-func KeepAliveGet[T any](name string, param types.ModelParam) (*T, error) {
-	t, err := keepAliveGet[T](name, param)
+func KeepAliveGet[T any](name string, param types.ModelParam, reset bool) (*T, error) {
+	t, err := keepAliveGet[T](name, param, reset)
 	if err != nil {
 		return nil, err
 	}
@@ -43,8 +42,8 @@ type modelKeepInfo struct {
 // keepable interface defines objects that can be managed by the keepalive service
 // Objects must support cleanup and reset operations
 type keepable interface {
-	Destroy()
-	Reset()
+	Destroy() error
+	Reset() error
 }
 
 // start begins the background cleanup process that removes unused models
@@ -84,22 +83,24 @@ func (keepAlive *keepAliveService) start() {
 
 // keepAliveGet retrieves a cached model or creates a new one if not found
 // Ensures only one model is kept in memory at a time by clearing others
-func keepAliveGet[T any](name string, param types.ModelParam) (any, error) {
+func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, error) {
 	keepAlive.Lock()
 	defer keepAlive.Unlock()
 
-	if actualPath, exists := config.GetModelMapping(name); exists {
-		// support shortcuts like qwen3 -> Qwen/Qwen3-4B-GGUF
-		name = actualPath
-	} else if !strings.Contains(name, "/") {
-		// fallback to NexaAI prefix for unknown shortcuts
-		name = "NexaAI/" + name
-	}
+	// if actualPath, exists := config.GetModelMapping(name); exists {
+	// 	// support shortcuts like qwen3 -> Qwen/Qwen3-4B-GGUF
+	// 	name = actualPath
+	// } else if !strings.Contains(name, "/") {
+	// 	// fallback to NexaAI prefix for unknown shortcuts
+	// 	name = "NexaAI/" + name
+	// }
 
 	// Check if model already exists in cache
 	model, ok := keepAlive.models[name]
 	if ok && reflect.DeepEqual(model.param, param) {
-		// model.model.Reset()
+		if reset {
+			model.model.Reset()
+		}
 		model.lastTime = time.Now()
 		return model.model, nil
 	}
@@ -121,28 +122,42 @@ func keepAliveGet[T any](name string, param types.ModelParam) (any, error) {
 	// TODO: select one of quant
 	var modelfile string
 	for _, v := range manifest.ModelFile {
-		modelfile = s.ModelfilePath(manifest.Name, v.Name)
-		break
+		if v.Downloaded {
+			modelfile = s.ModelfilePath(manifest.Name, v.Name)
+			break
+		}
 	}
 
 	var t keepable
 	var e error
 	switch reflect.TypeFor[T]() {
 	case reflect.TypeFor[nexa_sdk.LLM]():
-		t, e = nexa_sdk.NewLLM(modelfile, nil, param.CtxLen, param.Device)
+		t, e = nexa_sdk.NewLLM(nexa_sdk.LlmCreateInput{
+			ModelPath: modelfile,
+			Config: nexa_sdk.ModelConfig{
+				NCtx: param.NCtx,
+			},
+			PluginID: manifest.PluginId,
+		})
 	case reflect.TypeFor[nexa_sdk.VLM]():
-		if manifest.MMProjFile.Name == "" {
-			return nil, fmt.Errorf("missing mmproj file")
-		} else {
-			mmproj := s.ModelfilePath(manifest.Name, manifest.MMProjFile.Name)
-			t, e = nexa_sdk.NewVLM(modelfile, &mmproj, param.CtxLen, param.Device)
+		var mmproj string
+		if manifest.MMProjFile.Name != "" {
+			mmproj = s.ModelfilePath(manifest.Name, manifest.MMProjFile.Name)
 		}
-	case reflect.TypeFor[nexa_sdk.Embedder]():
-		t, e = nexa_sdk.NewEmbedder(modelfile, nil, param.Device)
-	case reflect.TypeFor[nexa_sdk.Reranker]():
-		t, e = nexa_sdk.NewReranker(modelfile, nil, param.Device)
-	case reflect.TypeFor[nexa_sdk.TTS]():
-		t, e = nexa_sdk.NewTTS(modelfile, nil, param.Device)
+		t, e = nexa_sdk.NewVLM(nexa_sdk.VlmCreateInput{
+			ModelPath:  modelfile,
+			MmprojPath: mmproj,
+			Config: nexa_sdk.ModelConfig{
+				NCtx: param.NCtx,
+			},
+			PluginID: manifest.PluginId,
+		})
+	//case reflect.TypeFor[nexa_sdk.Embedder]():
+	//	t, e = nexa_sdk.NewEmbedder(modelfile, nil, param.Device)
+	//case reflect.TypeFor[nexa_sdk.Reranker]():
+	//	t, e = nexa_sdk.NewReranker(modelfile, nil, param.Device)
+	//case reflect.TypeFor[nexa_sdk.TTS]():
+	//	t, e = nexa_sdk.NewTTS(modelfile, nil, param.Device)
 	default:
 		panic(fmt.Sprintf("not support type: %+#v", t))
 	}

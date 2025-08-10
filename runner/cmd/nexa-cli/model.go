@@ -8,11 +8,10 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 
-	"github.com/NexaAI/nexa-sdk/internal/render"
-	"github.com/NexaAI/nexa-sdk/internal/store"
+	"github.com/NexaAI/nexa-sdk/runner/internal/render"
+	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 )
 
 // pull creates a command to download and cache a model by name.
@@ -42,7 +41,7 @@ func pull() *cobra.Command {
 			}
 
 			if downloaded {
-				fmt.Println(text.FgBlue.Sprint("Already downloaded all quant"))
+				fmt.Println(render.GetTheme().Info.Sprint("Already downloaded all quant"))
 				return
 			}
 		}
@@ -52,7 +51,7 @@ func pull() *cobra.Command {
 		files, err := s.HFModelInfo(context.TODO(), name)
 		spin.Stop()
 		if err != nil {
-			fmt.Println(text.FgRed.Sprintf("Get manifest from huggingface error: %s", err))
+			fmt.Println(render.GetTheme().Error.Sprintf("Get manifest from huggingface error: %s", err))
 			return
 		}
 
@@ -72,13 +71,19 @@ func pull() *cobra.Command {
 
 			for err := range errCh {
 				bar.Clear()
-				fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 			}
 		} else {
+			modelType, err := chooseModelType()
+			if err != nil {
+				return
+			}
+
 			manifest, err := chooseFiles(name, files)
 			if err != nil {
 				return
 			}
+			manifest.ModelType = modelType
 
 			// TODO: replace with go-pretty
 			pgCh, errCh := s.Pull(context.TODO(), manifest)
@@ -91,7 +96,7 @@ func pull() *cobra.Command {
 
 			for err := range errCh {
 				bar.Clear()
-				fmt.Println(text.FgRed.Sprintf("Error: %s", err))
+				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 			}
 		}
 	}
@@ -167,7 +172,7 @@ func list() *cobra.Command {
 		tw := table.NewWriter()
 		tw.SetOutputMirror(os.Stdout)
 		tw.SetStyle(table.StyleLight)
-		tw.AppendHeader(table.Row{"NAME", "QUANT", "SIZE"})
+		tw.AppendHeader(table.Row{"NAME", "TYPE", "PLUGIN", "QUANT", "SIZE"})
 		for _, model := range models {
 			var quants []string
 			for k := range model.ModelFile {
@@ -175,7 +180,7 @@ func list() *cobra.Command {
 					quants = append(quants, k)
 				}
 			}
-			tw.AppendRow(table.Row{model.Name, strings.Join(quants, ","), humanize.IBytes(uint64(model.GetSize()))})
+			tw.AppendRow(table.Row{model.Name, model.ModelType, model.PluginId, strings.Join(quants, ","), humanize.IBytes(uint64(model.GetSize()))})
 		}
 		tw.Render()
 	}

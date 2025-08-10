@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -9,8 +10,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.ngrok.com/ngrok/v2"
 
-	"github.com/NexaAI/nexa-sdk/internal/config"
-	"github.com/NexaAI/nexa-sdk/server/service"
+	"github.com/NexaAI/nexa-sdk/runner/internal/config"
+	"github.com/NexaAI/nexa-sdk/runner/internal/render"
+	"github.com/NexaAI/nexa-sdk/runner/server/service"
 )
 
 // @Title		Nexa AI Server
@@ -37,16 +39,16 @@ func Serve() {
 
 		// Verify that certificate and key files exist
 		if _, err := os.Stat(certFile); os.IsNotExist(err) {
-			slog.Error("HTTPS Certificate file not found", "cert", certFile)
+			fmt.Println(render.GetTheme().Error.Sprintf("HTTPS Certificate file not found: %s", certFile))
 			return
 		}
 		if _, err := os.Stat(keyFile); os.IsNotExist(err) {
-			slog.Error("HTTPS Key file not found", "key", keyFile)
+			fmt.Println(render.GetTheme().Error.Sprintf("HTTPS Key file not found: %s", keyFile))
 			return
 		}
 
-		slog.Info("HTTPS enabled", "cert", certFile, "key", keyFile)
-		// slog.Info("Localhosting on https://" + cfg.Host + "/docs/ui")
+		fmt.Println(render.GetTheme().Info.Sprintf("HTTPS enabled: cert=%s key=%s", certFile, keyFile))
+		// fmt.Println(render.GetTheme().Info.Sprintf("Localhosting on https://%s/docs/ui", cfg.Host))
 		err = engine.RunTLS(cfg.Host, certFile, keyFile)
 	} else if cfg.UseNgrok {
 		slog.Info("Ngrok HTTPS enabled")
@@ -80,11 +82,11 @@ func Serve() {
 			return
 		}
 	} else {
-		slog.Info("Localhosting on http://" + cfg.Host + "/docs/ui")
+		fmt.Println(render.GetTheme().Info.Sprintf("Localhosting on http://%s/docs/ui", cfg.Host))
 		err = engine.Run(cfg.Host)
 	}
 
 	if err != nil {
-		slog.Error("HTTP/HTTPS Server Error", "err", err)
+		fmt.Println(render.GetTheme().Error.Sprintf("HTTP/HTTPS Server Error: %v", err))
 	}
 }

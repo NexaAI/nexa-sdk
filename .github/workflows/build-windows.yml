@@ -8,13 +8,14 @@ on:
 
 jobs:
   build-cli:
-    name: ${{ matrix.os }} - ${{ matrix.backend }}
-    runs-on: sdk-windows-8-core-2
+    name: windows_${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        os: [windows]
-        backend: [llama-cpp-cpu, llama-cpp-vulkan, llama-cpp-cuda]
+        include:
+          - runner: sdk-windows-8-core-2
+            arch: x86_64
 
     steps:
       - name: Checkout repository
@@ -37,37 +38,51 @@ jobs:
           cache-dependency-path: runner/go.sum
 
       - name: Setup MinGW
-        run: choco install mingw -y
-
-      - name: Build Nexa Cli
-        run: make build
+        run: |
+          choco install mingw -y
+          g++ --version
 
       - name: Download runtime
         run: |
-          make download BRIDGE_BACKEND=${{ matrix.backend }}
+          cd runner
+          make download ARCH=${{ matrix.arch }}
+
+      - name: Build Nexa Cli
+        run: |
+          cd runner
+          make build ARCH=${{ matrix.arch }}
+          Remove-Item build/ml.h
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nexa-cli_${{ matrix.os }}_${{ matrix.backend }}
-          path: build
+          name: nexa-cli_windows_${{ matrix.arch }}
+          path: runner/build
           include-hidden-files: true
 
   build-installer:
     name: Build Windows Installer & Release
-    runs-on: sdk-windows-8-core-2
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: build-cli
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: sdk-windows-8-core-2
+            arch: x86_64
     env:
       VERSION: ${{ github.ref_name }}
+      ARCH: ${{ matrix.arch }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download all build artifacts
+      - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
+          name: nexa-cli_windows_${{ matrix.arch }}
           path: artifacts
 
       - uses: actions/setup-python@v5
@@ -80,17 +95,7 @@ jobs:
 
       - name: Build launcher with PyInstaller
         run: |
-          pyinstaller --onefile --noconsole --distpath artifacts --name "nexa-cli-launcher" --icon="release/nexa_logo.ico" release/nexa_windows_launcher.py
-
-      - name: Download NSSM
-        env:
-          NSSM_VERSION: "2.24"
-        run: |
-          Invoke-WebRequest -Uri "https://nssm.cc/release/nssm-${{ env.NSSM_VERSION }}.zip" -OutFile "nssm.zip"
-          Expand-Archive -Path "nssm.zip" -DestinationPath "nssm_temp"
-          Copy-Item "nssm_temp\nssm-${{ env.NSSM_VERSION }}\win64\nssm.exe" "artifacts\nssm.exe"
-          Remove-Item "nssm.zip"
-          Remove-Item "nssm_temp" -Recurse
+          pyinstaller --onefile --noconsole --distpath artifacts --name "nexa-cli-launcher" --icon="runner/release/windows/nexa_logo.ico" runner/release/windows/nexa_launcher.py
 
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v4.1.0
@@ -124,20 +129,10 @@ jobs:
             -td sha256 `
             "artifacts\nexa-cli-launcher.exe"
 
-          azuresigntool sign `
-            -kvu "${{ secrets.AZURE_KEY_VAULT_URI }}" `
-            -kvc "${{ secrets.AZURE_CERT_NAME }}" `
-            -kvi "${{ secrets.AZURE_CLIENT_ID }}" `
-            -kvs "${{ secrets.AZURE_CLIENT_SECRET }}" `
-            --azure-key-vault-tenant-id "${{ secrets.AZURE_TENANT_ID }}" `
-            -tr http://timestamp.globalsign.com/tsa/advanced `
-            -td sha256 `
-            "artifacts\nssm.exe"
-
       - name: Compile Installer
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.6
         with:
-          path: release/nexa_installer.iss
+          path: runner/release/windows/nexa_installer.iss
           options: /O+
 
       - name: Sign Installer
@@ -151,14 +146,15 @@ jobs:
             --azure-key-vault-tenant-id "${{ secrets.AZURE_TENANT_ID }}" `
             -tr http://timestamp.globalsign.com/tsa/advanced `
             -td sha256 `
-            "artifacts/nexa-cli_windows-setup_${{ env.VERSION }}.exe"
+            "artifacts/nexa-cli_windows_${{ matrix.arch }}.exe"
 
       - name: Create GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          repository: zhiyuan8/homebrew-go-release
+          repository: NexaAI/nexa-sdk
           tag_name: ${{ env.VERSION }}
-          files: artifacts/nexa-cli_windows-setup_${{ env.VERSION }}.exe
+          files: artifacts/nexa-cli_windows_${{ matrix.arch }}.exe
+          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.ZACK_ACCESS_TOKEN }}

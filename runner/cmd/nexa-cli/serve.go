@@ -4,8 +4,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	nexa_sdk "github.com/NexaAI/nexa-sdk/nexa-sdk"
-	"github.com/NexaAI/nexa-sdk/server"
+	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
+	"github.com/NexaAI/nexa-sdk/runner/server"
 )
 
 // serve creates a command to start the Nexa AI service server.

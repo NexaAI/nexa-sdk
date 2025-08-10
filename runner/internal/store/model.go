@@ -1,38 +1,25 @@
 package store
 
 import (
-	"encoding/base64"
 	"log/slog"
 	"os"
-	"path"
+	"path/filepath"
 
 	"github.com/bytedance/sonic"
 
-	"github.com/NexaAI/nexa-sdk/internal/types"
+	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 )
 
 // List returns all locally stored models by reading their manifest files
 func (s *Store) List() ([]types.ModelManifest, error) {
-	dir := path.Join(s.home, "models")
-	names, e := os.ReadDir(dir)
-	if e != nil {
-		return nil, e
+	res := make([]types.ModelManifest, 0)
+	models, err := s.scanModelDir()
+	if err != nil {
+		return nil, err
 	}
-
-	// Parse each model directory's manifest
-	res := make([]types.ModelManifest, 0, len(names))
-	for _, encName := range names {
-		if !encName.IsDir() {
-			continue
-		}
-
-		name, err := base64.URLEncoding.DecodeString(encName.Name())
-		if err != nil {
-			slog.Warn("GetManifest Error", "err", err)
-			continue
-		}
-
-		model, err := s.GetManifest(string(name))
+	for _, model := range models {
+		// Parse each model directory's manifest
+		model, err := s.GetManifest(model)
 		if err != nil {
 			slog.Warn("GetManifest Error", "err", err)
 			continue
@@ -53,44 +40,23 @@ func (s *Store) Remove(name string) error {
 		return err
 	}
 	defer s.UnlockModel(name)
-	return os.RemoveAll(path.Join(s.home, "models", s.encodeName(name)))
+	return os.RemoveAll(filepath.Join(s.home, "models", name))
 }
 
 // Clean removes all stored models and the models directory
 func (s *Store) Clean() int {
 	slog.Debug("Start clean model")
 
-	modelsDir := s.GetModelsDir()
-	entries, err := os.ReadDir(modelsDir)
+	models, err := s.scanModelDir()
 	if err != nil {
-		// If models directory doesn't exist, nothing to clean
-		if !os.IsNotExist(err) {
-			slog.Warn("Failed to read model path", "err", err)
-		}
 		return 0
 	}
 
 	// Get list of all model names to remove
-	var modelNames []string
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-
-		modelName, err := base64.URLEncoding.DecodeString(entry.Name())
-		if err != nil {
-			continue // Skip corrupted directory names
-		}
-
-		modelNames = append(modelNames, string(modelName))
-	}
-
-	// Remove each model using the Remove function
-	// This ensures proper lock handling and consistency
 	count := 0
-	for _, modelName := range modelNames {
-		if err := s.Remove(modelName); err != nil {
-			slog.Warn("Failed to remove model", "modelName", modelName, "err", err)
+	for _, model := range models {
+		if err := s.Remove(model); err != nil {
+			slog.Warn("Failed to remove model", "model", model, "err", err)
 			continue
 		}
 		count += 1
@@ -106,9 +72,9 @@ func (s *Store) GetManifest(name string) (*types.ModelManifest, error) {
 	}
 	defer s.UnlockModel(name)
 
-	dir := path.Join(s.home, "models")
+	dir := filepath.Join(s.home, "models")
 	// Read manifest file
-	data, e := os.ReadFile(path.Join(dir, s.encodeName(name), "nexa.manifest"))
+	data, e := os.ReadFile(filepath.Join(dir, name, "nexa.manifest"))
 	if e != nil {
 		return nil, e
 	}
@@ -122,22 +88,43 @@ func (s *Store) GetManifest(name string) (*types.ModelManifest, error) {
 	return &model, nil
 }
 
+func (s *Store) ModelDirPath() string {
+	return filepath.Join(s.home, "models")
+}
+
 // ModelfilePath returns the full path to a model's data file
 func (s *Store) ModelfilePath(name string, file string) string {
-	return path.Join(s.home, "models", s.encodeName(name), file)
+	return filepath.Join(s.home, "models", name, file)
 }
 
-// encodeName encodes model names to safe filesystem names using base64
-func (s *Store) encodeName(name string) string {
-	return base64.URLEncoding.EncodeToString([]byte(name))
-}
+func (s *Store) scanModelDir() ([]string, error) {
+	orgs, e := os.ReadDir(s.ModelDirPath())
+	if e != nil {
+		slog.Warn("Failed to read model directory", "err", e)
+		return nil, e
+	}
 
-// modelDir returns the path to the models directory
-func (s *Store) CachefilePath(name string) string {
-	return path.Join(s.home, "cache", name)
-}
+	// Parse each model directory's manifest
+	res := make([]string, 0)
+	for _, org := range orgs {
+		if !org.IsDir() {
+			continue
+		}
 
-// modelDir returns the path to the models directory
-func (s *Store) HistoryFilePath() string {
-	return path.Join(s.home, "history")
+		repos, e := os.ReadDir(filepath.Join(s.ModelDirPath(), org.Name()))
+		if e != nil {
+			slog.Warn("Failed to read model subdirectory", "org", org.Name(), "err", e)
+			continue
+		}
+
+		for _, repo := range repos {
+			if !repo.IsDir() {
+				continue
+			}
+
+			res = append(res, org.Name()+"/"+repo.Name())
+		}
+	}
+
+	return res, nil
 }
