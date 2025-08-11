@@ -31,7 +31,10 @@ func (s SDKError) Error() string {
 // Init initializes the Nexa SDK by calling the underlying C library initialization
 // This must be called before using any other SDK functions
 func Init() {
-	C.ml_set_log((C.ml_log_callback)(C.go_log_wrap))
+	slog.Debug("[ML] Init", "bridgeLogEnabled", bridgeLogEnabled)
+	if bridgeLogEnabled {
+		C.ml_set_log((C.ml_log_callback)(C.go_log_wrap))
+	}
 	C.ml_init()
 }
 
@@ -149,23 +152,20 @@ func GetDeviceList(input DeviceListInput) (*DeviceListOutput, error) {
 //
 //export go_log_wrap
 func go_log_wrap(level C.ml_LogLevel, msg *C.char) {
-	if bridgeLogEnabled {
-		msg := C.GoString(msg)
-		switch level {
-		case C.ML_LOG_LEVEL_INFO:
-			slog.Info("[ML]", "msg", msg)
-		case C.ML_LOG_LEVEL_WARN:
-			slog.Warn("[ML]", "msg", msg)
-		case C.ML_LOG_LEVEL_ERROR:
-			slog.Error("[ML]", "msg", msg)
-		default:
-			slog.Debug("[ML]", "msg", msg)
-		}
+	msgStr := C.GoString(msg)
+	switch level {
+	case C.ML_LOG_LEVEL_INFO:
+		slog.Info("[ML] " + msgStr)
+	case C.ML_LOG_LEVEL_WARN:
+		slog.Warn("[ML] " + msgStr)
+	case C.ML_LOG_LEVEL_ERROR:
+		slog.Error("[ML] " + msgStr)
+	default:
+		slog.Debug("[ML] " + msgStr)
 	}
 }
 
 // EnableBridgeLog enables or disables the bridge log
 func EnableBridgeLog(enable bool) {
-	slog.Debug("[ML] EnableBridgeLog", "enable", enable)
 	bridgeLogEnabled = enable
 }
