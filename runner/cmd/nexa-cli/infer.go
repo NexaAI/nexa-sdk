@@ -122,7 +122,7 @@ func infer() *cobra.Command {
 		case types.ModelTypeEmbedder:
 			// inferEmbed(modelfile, nil)
 		case types.ModelTypeReranker:
-			inferRerank(manifest.PluginId, modelfile)
+			inferReranker(manifest.PluginId, modelfile)
 		case types.ModelTypeTTS:
 			inferTTS(manifest.PluginId, modelfile, "")
 		case types.ModelTypeASR:
@@ -483,7 +483,7 @@ func inferCV(plugin, modelfile string) {
 	}
 }
 
-func inferRerank(plugin, modelfile string) {
+func inferReranker(plugin, modelfile string) {
 	spin := render.NewSpinner("loading reranker model...")
 	spin.Start()
 
