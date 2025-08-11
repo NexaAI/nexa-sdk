@@ -312,6 +312,15 @@ func inferTTS(plugin, modelfile string, vocoderfile string) {
 		return
 	}
 
+	// Check for empty strings in prompts
+	for _, p := range prompt {
+		if strings.TrimSpace(p) == "" {
+			fmt.Println(render.GetTheme().Error.Sprintf("prompt cannot be empty"))
+			fmt.Println()
+			return
+		}
+	}
+
 	// Combine all prompt texts
 	textToSynthesize := strings.Join(prompt, " ")
 
