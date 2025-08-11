@@ -122,7 +122,7 @@ func infer() *cobra.Command {
 		case types.ModelTypeEmbedder:
 			// inferEmbed(modelfile, nil)
 		case types.ModelTypeReranker:
-			// inferRerank(modelfile, nil)
+			inferRerank(manifest.PluginId, modelfile)
 		case types.ModelTypeTTS:
 			inferTTS(manifest.PluginId, modelfile, "")
 		case types.ModelTypeASR:
@@ -481,6 +481,72 @@ func inferCV(plugin, modelfile string) {
 	for _, cvResult := range result.Results {
 		if cvResult.Text != "" {
 			fmt.Printf("[%s] %s\n", text.FgHiMagenta.Sprintf("%.3f", cvResult.Confidence), text.FgYellow.Sprintf("\"%s\"", cvResult.Text))
+		}
+	}
+}
+
+func inferRerank(plugin, modelfile string) {
+	spin := render.NewSpinner("loading reranker model...")
+	spin.Start()
+
+	rerankerInput := nexa_sdk.RerankerCreateInput{
+		ModelPath: modelfile,
+		PluginID:  plugin,
+	}
+
+	p, err := nexa_sdk.NewReranker(rerankerInput)
+	spin.Stop()
+
+	if err != nil {
+		slog.Error("failed to create reranker", "error", err)
+		fmt.Println(modelLoadFailMsg)
+		return
+	}
+	defer p.Destroy()
+
+	// Check if query is provided
+	if query == "" {
+		fmt.Println(render.GetTheme().Error.Sprintf("--query is required for reranking"))
+		fmt.Println()
+		return
+	}
+
+	// Check if documents are provided
+	if len(document) == 0 {
+		fmt.Println(render.GetTheme().Error.Sprintf("at least one --document is required for reranking"))
+		fmt.Println()
+		return
+	}
+
+	fmt.Println(render.GetTheme().Success.Sprintf("Query: %s", query))
+	fmt.Println(render.GetTheme().Success.Sprintf("Processing %d documents", len(document)))
+
+	// Create rerank input
+	rerankInput := nexa_sdk.RerankerRerankInput{
+		Query:     query,
+		Documents: document,
+		Config: &nexa_sdk.RerankConfig{
+			BatchSize:       int32(len(document)),
+			Normalize:       true,
+			NormalizeMethod: "softmax",
+		},
+	}
+
+	// Perform reranking
+	result, err := p.Rerank(rerankInput)
+	if err != nil {
+		fmt.Println(render.GetTheme().Error.Sprintf("reranking failed: %s", err))
+		return
+	}
+
+	fmt.Println(render.GetTheme().Success.Sprintf("✓ Reranking completed successfully"))
+	fmt.Println(render.GetTheme().Success.Sprintf("  Generated %d scores", len(result.Scores)))
+
+	// Display results
+	for i, doc := range document {
+		if i < len(result.Scores) {
+			fmt.Printf("\n%s [%d]: %s\n", render.GetTheme().Info.Sprintf("Document"), i+1, doc)
+			fmt.Printf("%s: %.6f\n", render.GetTheme().Info.Sprintf("Score"), result.Scores[i])
 		}
 	}
 }
