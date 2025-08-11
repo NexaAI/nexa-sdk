@@ -510,12 +510,12 @@ func chooseModelType() (types.ModelType, error) {
 }
 
 func chooseFiles(name string, files []string) (res types.ModelManifest, err error) {
-	spin := render.NewSpinner("loading model size...")
 	if len(files) == 0 {
 		err = fmt.Errorf("repo is empty")
 		return
 	}
 
+	spin := render.NewSpinner("loading model size...")
 	res.Name = name
 	res.ModelFile = make(map[string]types.ModeFileInfo)
 
@@ -562,6 +562,9 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 			}
 
 			quant := strings.ToUpper(quantRegix.FindString(ggufs[0]))
+			if quant == "" {
+				quant = "N/A"
+			}
 			res.ModelFile[quant] = fileInfo
 
 		} else {
@@ -690,6 +693,8 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 			quant = q
 		} else if q, err := store.Get().GetQuantInfo(context.TODO(), name); err == nil && q != 0 {
 			quant = fmt.Sprintf("%dBIT", q)
+		} else {
+			quant = "N/A"
 		}
 
 		// detect main model file
