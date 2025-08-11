@@ -22,7 +22,7 @@ import (
 const modelLoadFailMsg = `⚠️ Oops. Model failed to load.
 
 👉 Try these:
-- Verify your system meets the model’s requirements.
+- Verify your system meets the model's requirements.
 - Seek help in our discord or slack.`
 
 var (
@@ -54,7 +54,7 @@ func infer() *cobra.Command {
 	inferCmd.Flags().StringArrayVarP(&prompt, "prompt", "p", nil, "[embedder|tts] pass prompt")
 	inferCmd.Flags().StringVarP(&query, "query", "q", "", "[reranker] query")
 	inferCmd.Flags().StringArrayVarP(&document, "document", "d", nil, "[reranker] documents")
-	inferCmd.Flags().StringVarP(&input, "input", "i", "", "[asr] input file (audio for asr)")
+	inferCmd.Flags().StringVarP(&input, "input", "i", "", "[cv] input file (image for cv)")
 	inferCmd.Flags().StringVarP(&output, "output", "o", "", "[tts] output file (audio for tts)")
 	inferCmd.Flags().StringVarP(&voice, "voice", "", "", "[tts] voice identifier")
 	inferCmd.Flags().BoolVarP(&listVoice, "list-voice", "", false, "[tts] list available voices")
@@ -370,11 +370,8 @@ func inferASR(plugin, modelfile string, tokenizerPath string) {
 		ModelPath:     modelfile,
 		TokenizerPath: tokenizerPath,
 		PluginID:      plugin,
+		Language:      language,
 	}
-	if language != "" {
-		asrInput.Language = language
-	}
-
 	p, err := nexa_sdk.NewASR(asrInput)
 	spin.Stop()
 
@@ -392,41 +389,37 @@ func inferASR(plugin, modelfile string, tokenizerPath string) {
 			return
 		}
 		fmt.Println(render.GetTheme().Success.Sprintf("Available languages: %v", lans.LanguageCodes))
-		return
+		listLanguage = false
 	}
 
-	if input == "" {
-		fmt.Println(render.GetTheme().Error.Sprintf("input audio file is required for ASR transcription"))
-		fmt.Println()
-		return
-	}
+	repl(ReplConfig{
+		ParseFile: true,
 
-	if _, err := os.Stat(input); os.IsNotExist(err) {
-		fmt.Println(render.GetTheme().Error.Sprintf("input file '%s' does not exist", input))
-		return
-	}
+		Run: func(_prompt string, _images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			asrConfig := &nexa_sdk.ASRConfig{
+				Timestamps: "segment",
+				BeamSize:   5,
+				Stream:     false,
+			}
 
-	asrConfig := &nexa_sdk.ASRConfig{
-		Timestamps: "segment",
-		BeamSize:   5,
-		Stream:     false,
-	}
+			transcribeInput := nexa_sdk.AsrTranscribeInput{
+				AudioPath: audios[0],
+				Language:  language,
+				Config:    asrConfig,
+			}
 
-	transcribeInput := nexa_sdk.AsrTranscribeInput{
-		AudioPath: input,
-		Language:  language,
-		Config:    asrConfig,
-	}
+			fmt.Println(render.GetTheme().Success.Sprintf("Transcribing audio file: %s", audios[0]))
 
-	fmt.Println(render.GetTheme().Success.Sprintf("Transcribing audio file: %s", input))
+			result, err := p.Transcribe(transcribeInput)
+			if err != nil {
+				fmt.Println(render.GetTheme().Error.Sprintf("Transcription failed: %s", err))
+				return "", nexa_sdk.ProfileData{}, err
+			}
+			on_token(result.Result.Transcript)
 
-	result, err := p.Transcribe(transcribeInput)
-	if err != nil {
-		fmt.Println(render.GetTheme().Error.Sprintf("Transcription failed: %s", err))
-		return
-	}
-
-	fmt.Println(render.GetTheme().Warning.Sprint(result.Result.Transcript))
+			return result.Result.Transcript, nexa_sdk.ProfileData{}, nil
+		},
+	})
 }
 
 func inferCV(plugin, modelfile string) {
