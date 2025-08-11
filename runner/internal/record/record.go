@@ -52,7 +52,7 @@ func (r *Recorder) Start() error {
 
 func (r *Recorder) Stop() error {
 	if r.cmd.Process == nil {
-		return fmt.Errorf("recording not start yet")
+		return fmt.Errorf("recording not started yet")
 	}
 
 	return r.cmd.Process.Kill()
