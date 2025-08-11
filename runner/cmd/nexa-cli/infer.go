@@ -120,7 +120,7 @@ func infer() *cobra.Command {
 			}
 			inferVLM(manifest.PluginId, modelfile, mmprojfile)
 		case types.ModelTypeEmbedder:
-			inferEmbedding(manifest.PluginId, modelfile)
+			inferEmbedder(manifest.PluginId, modelfile)
 		case types.ModelTypeReranker:
 			inferReranker(manifest.PluginId, modelfile)
 		case types.ModelTypeTTS:
@@ -485,7 +485,7 @@ func inferCV(plugin, modelfile string) {
 	}
 }
 
-func inferEmbedding(plugin, modelfile string) {
+func inferEmbedder(plugin, modelfile string) {
 	spin := render.NewSpinner("loading embedding model...")
 	spin.Start()
 
