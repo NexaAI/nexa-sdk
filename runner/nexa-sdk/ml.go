@@ -9,13 +9,18 @@ package nexa_sdk
 
 #include <stdlib.h>
 #include "ml.h"
+
+extern void go_log_wrap(ml_LogLevel level, char *msg);
 */
 import "C"
 
 import (
 	"fmt"
+	"log/slog"
 	"unsafe"
 )
+
+var bridgeLogEnabled = false
 
 type SDKError int32
 
@@ -26,7 +31,7 @@ func (s SDKError) Error() string {
 // Init initializes the Nexa SDK by calling the underlying C library initialization
 // This must be called before using any other SDK functions
 func Init() {
-	// C.ml_set_log((C.ml_log_callback)(C.go_log_wrap))
+	C.ml_set_log((C.ml_log_callback)(C.go_log_wrap))
 	C.ml_init()
 }
 
@@ -137,4 +142,30 @@ func GetDeviceList(input DeviceListInput) (*DeviceListOutput, error) {
 	output := newDeviceListOutputFromCPtr(&cOutput)
 
 	return &output, nil
+}
+
+// go_log_wrap is exported to C and handles log messages from the C library
+// It converts C strings to Go strings and prints them to stdout
+//
+//export go_log_wrap
+func go_log_wrap(level C.ml_LogLevel, msg *C.char) {
+	if bridgeLogEnabled {
+		msg := C.GoString(msg)
+		switch level {
+		case C.ML_LOG_LEVEL_INFO:
+			slog.Info("[ML]", "msg", msg)
+		case C.ML_LOG_LEVEL_WARN:
+			slog.Warn("[ML]", "msg", msg)
+		case C.ML_LOG_LEVEL_ERROR:
+			slog.Error("[ML]", "msg", msg)
+		default:
+			slog.Debug("[ML]", "msg", msg)
+		}
+	}
+}
+
+// EnableBridgeLog enables or disables the bridge log
+func EnableBridgeLog(enable bool) {
+	slog.Debug("[ML] EnableBridgeLog", "enable", enable)
+	bridgeLogEnabled = enable
 }
