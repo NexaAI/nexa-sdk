@@ -45,7 +45,7 @@ var help = [][2]string{
 	{"/clear", "Clear the screen and conversation history"},
 	{"/load <filename>", "Load conversation history from a file"},
 	{"/save <filename>", "Save conversation history to a file"},
-	{"/mic", "chat with LLM"},
+	{"/mic", "Record audio for transcription"},
 }
 
 // TODO: support sub dir
