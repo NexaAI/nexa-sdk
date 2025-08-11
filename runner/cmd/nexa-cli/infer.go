@@ -103,11 +103,6 @@ func infer() *cobra.Command {
 			quant = options[0].Value
 		}
 
-		// Default to "N/A" if quant is not obtained
-		if quant == "" {
-			quant = "N/A"
-		}
-
 		fmt.Println(render.GetTheme().Quant.Sprintf("🔹 Quant=%s", quant))
 
 		nexa_sdk.Init()
