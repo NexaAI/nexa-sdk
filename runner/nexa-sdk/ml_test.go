@@ -28,11 +28,14 @@ func TestMain(m *testing.M) {
 	// initEmbedder()
 	// defer deinitEmbedder()
 
-	// initCV()
-	// defer deinitCV()
+	// // initCV()
+	// // defer deinitCV()
 
-	initReranker()
-	defer deinitReranker()
+	// initEmbedder()
+	// defer deinitEmbedder()
+
+	// initReranker()
+	// defer deinitReranker()
 
 	code := m.Run()
 	os.Exit(code)

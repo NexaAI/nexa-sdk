@@ -120,7 +120,7 @@ func infer() *cobra.Command {
 			}
 			inferVLM(manifest.PluginId, modelfile, mmprojfile)
 		case types.ModelTypeEmbedder:
-			// inferEmbed(modelfile, nil)
+			inferEmbedder(manifest.PluginId, modelfile)
 		case types.ModelTypeReranker:
 			inferReranker(manifest.PluginId, modelfile)
 		case types.ModelTypeTTS:
@@ -305,8 +305,8 @@ func inferTTS(plugin, modelfile string, vocoderfile string) {
 		return
 	}
 
-	// Check if prompt is provided
-	if len(prompt) == 0 {
+	prompts := prompt
+	if len(prompts) == 0 {
 		fmt.Println(render.GetTheme().Error.Sprintf("text is required for TTS synthesis (use --prompt)"))
 		fmt.Println()
 		return
@@ -322,7 +322,7 @@ func inferTTS(plugin, modelfile string, vocoderfile string) {
 	}
 
 	// Combine all prompt texts
-	textToSynthesize := strings.Join(prompt, " ")
+	textToSynthesize := strings.Join(prompts, " ")
 
 	// Generate output filename if not specified
 	outputFile := output
@@ -483,6 +483,68 @@ func inferCV(plugin, modelfile string) {
 			fmt.Printf("[%s] %s\n", text.FgHiMagenta.Sprintf("%.3f", cvResult.Confidence), text.FgYellow.Sprintf("\"%s\"", cvResult.Text))
 		}
 	}
+}
+
+func inferEmbedder(plugin, modelfile string) {
+	spin := render.NewSpinner("loading embedding model...")
+	spin.Start()
+
+	embedderInput := nexa_sdk.EmbedderCreateInput{
+		ModelPath: modelfile,
+		PluginID:  plugin,
+	}
+
+	p, err := nexa_sdk.NewEmbedder(embedderInput)
+	spin.Stop()
+
+	if err != nil {
+		slog.Error("failed to create embedder", "error", err)
+		fmt.Println(modelLoadFailMsg)
+		return
+	}
+	defer p.Destroy()
+
+	prompts := prompt
+	if len(prompts) == 0 {
+		fmt.Println(render.GetTheme().Error.Sprintf("at least one --prompt is required for embedding generation"))
+		fmt.Println()
+		return
+	}
+
+	dimOutput, err := p.EmbeddingDimension()
+	if err != nil {
+		fmt.Println(render.GetTheme().Error.Sprintf("failed to get embedding dimension: %s", err))
+		return
+	}
+
+	fmt.Println(render.GetTheme().Success.Sprintf("Embedding dimension: %d", dimOutput.Dimension))
+	fmt.Println(render.GetTheme().Success.Sprintf("Processing %d prompts", len(prompts)))
+
+	embedInput := nexa_sdk.EmbedderEmbedInput{
+		Texts: prompts,
+		Config: &nexa_sdk.EmbeddingConfig{
+			BatchSize:       int32(len(prompts)),
+			Normalize:       true,
+			NormalizeMethod: "l2",
+		},
+	}
+
+	result, err := p.Embed(embedInput)
+	if err != nil {
+		fmt.Println(render.GetTheme().Error.Sprintf("embedding generation failed: %s", err))
+		return
+	}
+
+	fmt.Println(render.GetTheme().Success.Sprintf("✓ Embedding generation completed successfully"))
+
+	for i, text := range prompts {
+		if i < len(result.Embeddings) {
+			fmt.Printf("\n%s [%d]: %s\n", render.GetTheme().Info.Sprintf("Prompt"), i+1, text)
+			fmt.Printf("%s: [%.6f]\n", render.GetTheme().Info.Sprintf("Embedding"), result.Embeddings[i])
+		}
+	}
+
+	fmt.Println()
 }
 
 func inferReranker(plugin, modelfile string) {
