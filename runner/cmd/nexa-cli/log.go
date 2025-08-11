@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/config"
+	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 )
 
 const (
@@ -21,6 +22,7 @@ func applyLogLevel() {
 	case LogLevelNone:
 		slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	case LogLevelTrace:
+		nexa_sdk.EnableBridgeLog(true)
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	case LogLevelDebug:
 		slog.SetLogLoggerLevel(slog.LevelDebug)
