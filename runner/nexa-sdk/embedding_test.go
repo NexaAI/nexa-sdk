@@ -12,9 +12,14 @@ func initEmbedder() {
 
 	var err error
 
+	// input := EmbedderCreateInput{
+	// 	ModelPath: "modelfiles/llama_cpp/jina-embeddings-v2-small-en-Q4_K_M.gguf",
+	// 	PluginID:  "llama_cpp",
+	// }
+
 	input := EmbedderCreateInput{
-		ModelPath: "modelfiles/llama_cpp/jina-embeddings-v2-small-en-Q4_K_M.gguf",
-		PluginID:  "llama_cpp",
+		ModelPath: "modelfiles/mlx/jina-v2-fp16-mlx/model.safetensors",
+		PluginID:  "mlx",
 	}
 
 	embedder, err = NewEmbedder(input)
