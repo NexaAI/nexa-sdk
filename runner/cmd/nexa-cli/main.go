@@ -24,7 +24,8 @@ func RootCmd() *cobra.Command {
 
 			calledCmd := cmd.CalledAs()
 			if calledCmd != "update" && calledCmd != "version" {
-				go notifyUpdate()
+				notifyUpdate()
+				go checkForUpdate(false)
 			}
 
 			return nil
