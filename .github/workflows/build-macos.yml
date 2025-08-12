@@ -147,4 +147,4 @@ jobs:
           tag_name: ${{ env.VERSION }}
           make_latest: true
         env:
-          GITHUB_TOKEN: ${{ secrets.NEXASDK_RELEASE_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.ZACK_ACCESS_TOKEN }}
