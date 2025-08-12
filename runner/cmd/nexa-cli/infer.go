@@ -143,7 +143,7 @@ func inferLLM(plugin, modelfile string) {
 		ModelPath: modelfile,
 		PluginID:  plugin,
 		Config: nexa_sdk.ModelConfig{
-			NCtx: 2048,
+			NCtx: 4096,
 		},
 	})
 	spin.Stop()
@@ -206,7 +206,7 @@ func inferVLM(plugin, modelfile string, mmprojfile string) {
 		MmprojPath: mmprojfile,
 		PluginID:   plugin,
 		Config: nexa_sdk.ModelConfig{
-			NCtx: 2048,
+			NCtx: 4096,
 		},
 	})
 	spin.Stop()
