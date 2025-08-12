@@ -1,40 +1,52 @@
-#!/bin/sh
-# This script installs Nexa on Linux.
-# It detects the current operating system architecture and installs the appropriate version of Nexa.
+#!/bin/bash
+#
+# Self-contained installer for the Nexa SDK on Linux.
+# This script includes an embedded binary payload.
+#
+# Usage:
+#   chmod +x ./install.sh
+#   sudo ./install.sh
 
 set -eu
 
-red="$( (/usr/bin/tput bold || :; /usr/bin/tput setaf 1 || :) 2>&-)"
-plain="$( (/usr/bin/tput sgr0 || :) 2>&-)"
+# --- Shell UI Helper Functions ---
+red="$( (tput bold 2>/dev/null || :) && (tput setaf 1 2>/dev/null || :) )"
+plain="$( tput sgr0 2>/dev/null || : )"
 
 status() { echo ">>> $*" >&2; }
-error() { echo "${red}ERROR:${plain} $*"; exit 1; }
-warning() { echo "${red}WARNING:${plain} $*"; }
+error() { echo "${red}ERROR:${plain} $*" >&2; exit 1; }
+warning() { echo "${red}WARNING:${plain} $*" >&2; }
 
+# --- Cleanup handler ---
+# Ensures temporary files are removed on exit
 TEMP_DIR=$(mktemp -d)
-cleanup() { rm -rf $TEMP_DIR; }
+cleanup() {
+    rm -rf "$TEMP_DIR"
+}
 trap cleanup EXIT
 
-# Global variables
-ARCH=""
-IS_WSL2=false
+# --- Global Variables ---
 SUDO=""
-NEXA_INSTALL_DIR=""
-BINDIR=""
-BACKEND=""
+NEXA_INSTALL_DIR="/opt/nexa-cli"
+BINDIR="/usr/local/bin"
+IS_WSL2=false
 
-# Check if a command is available
-available() { command -v $1 >/dev/null; }
+# --- Prerequisite and Environment Checks ---
 
-# Check required tools
-require() {
-    local MISSING=''
-    for TOOL in $*; do
-        if ! available $TOOL; then
-            MISSING="$MISSING $TOOL"
+# Checks if a command is available on the system
+available() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Checks for a list of required tools and reports missing ones
+require_tools() {
+    local missing_tools=""
+    for tool in "$@"; do
+        if ! available "$tool"; then
+            missing_tools="${missing_tools} ${tool}"
         fi
     done
-    echo $MISSING
+    echo "$missing_tools"
 }
 
 # Detect system environment
@@ -57,175 +69,169 @@ detect_system_environment() {
     esac
 }
 
-# Check and setup sudo
+# Sets up the SUDO variable if not running as root
 setup_sudo() {
     if [ "$(id -u)" -ne 0 ]; then
         if ! available sudo; then
-            error "This script requires superuser permissions. Please re-run as root."
+            error "This script requires superuser permissions, but 'sudo' is not available. Please re-run as root."
         fi
         SUDO="sudo"
+        status "Using 'sudo' for privileged operations."
     fi
 }
 
-# Validate required tools
+# Validates all system requirements before proceeding
 validate_requirements() {
-    NEEDS=$(require curl gcc)
-    if [ -n "$NEEDS" ]; then
-        error "The following tools are required but missing: $NEEDS"
+    local needs
+    needs=$(require_tools tar base64)
+    if [ -n "$needs" ]; then
+        error "The following required tools are missing:$needs"
     fi
-    status "All required tools are available"
+    status "All required tools are available."
 }
 
-# Let user choose backend
-select_backend() {
-    echo "Available backends:"
-    echo "1) llama-cpp-cpu (CPU only)"
-    echo "2) llama-cpp-cuda (CUDA GPU acceleration)"
-    echo ""
+# --- Core Installation Logic ---
 
-    while true; do
-        read -p "Please select backend (1 or 2): " choice
-        case $choice in
-            1)
-                BACKEND="llama-cpp-cpu"
-                status "Selected CPU backend"
-                break
-                ;;
-            2)
-                BACKEND="llama-cpp-cuda"
-                status "Selected CUDA backend"
-                break
-                ;;
-            *)
-                echo "Invalid choice. Please enter 1 or 2."
-                ;;
-        esac
-    done
-}
-
-# Install Nexa SDK
+# Main installation function
 install_nexa_sdk() {
-    # Determine binary directory for symlinks
-    for BINDIR in /usr/local/bin /usr/bin /bin; do
-        echo $PATH | grep -q $BINDIR && break || continue
-    done
-    NEXA_INSTALL_DIR="/opt/nexa-sdk"
-    status "Installation directory: $NEXA_INSTALL_DIR"
-    status "Binary directory: $BINDIR"
+    status "Starting Nexa SDK installation..."
 
-    # Clean up old installation
-    if [ -d "$NEXA_INSTALL_DIR" ] ; then
-        status "Cleaning up old version at $NEXA_INSTALL_DIR"
+    # --- 1. Locate and extract the embedded payload ---
+    local payload_line
+    payload_line=$(awk '/^__PAYLOAD_BELOW__/ {print NR + 1}' "$0")
+    if [ -z "$payload_line" ]; then
+        error "Could not find payload in the script. The installer appears to be corrupted."
+    fi
+
+    local temp_extract_dir
+    temp_extract_dir=$(mktemp -d)
+
+    status "Extracting embedded payload to a temporary directory..."
+    tail -n "+$payload_line" "$0" | base64 --decode | tar -xzf - -C "$temp_extract_dir"
+    if [ $? -ne 0 ]; then
+        rm -rf "$temp_extract_dir"
+        error "Failed to extract payload. The installer might be corrupted or incomplete."
+    fi
+
+    # --- 2. Clean up previous installations ---
+    if [ -d "$NEXA_INSTALL_DIR" ]; then
+        status "Removing existing installation at $NEXA_INSTALL_DIR"
         $SUDO rm -rf "$NEXA_INSTALL_DIR"
     fi
 
-    # Create necessary directories
-    status "Creating installation directories"
-    $SUDO install -o0 -g0 -m755 -d "$NEXA_INSTALL_DIR"
+    # --- 3. Install new files ---
+    status "Creating installation directory: $NEXA_INSTALL_DIR"
+    $SUDO install -o root -g root -m 755 -d "$NEXA_INSTALL_DIR"
 
-    # Download and extract Nexa
-    # : "${NEXA_VERSION:=latest}"
-    : "${NEXA_VERSION:=v0.2.15}"
-    if [ "$NEXA_VERSION" = "latest" ]; then
-        NEXA_VERSION=$(curl -sSfL "https://api.github.com/repos/NexaAI/nexa-sdk/releases/latest" | \
-            grep '"tag_name":' | cut -d '"' -f 4)
-    fi
-    : "${NEXA_BASE_URL:=https://github.com/NexaAI/nexa-sdk/releases/download}"
-    NEXA_DOWNLOAD_URL="${NEXA_BASE_URL}/${NEXA_VERSION}/nexa-cli_ubuntu_22.04_${BACKEND}_${NEXA_VERSION}.tar.gz"
-    status "Downloading Nexa bundle from $NEXA_DOWNLOAD_URL"
-    curl --fail --show-error --location --progress-bar \
-        "$NEXA_DOWNLOAD_URL" | $SUDO tar -xz -C "$NEXA_INSTALL_DIR"
+    status "Installing Nexa SDK files..."
+    $SUDO mv "$temp_extract_dir"/* "$NEXA_INSTALL_DIR/"
 
-    # Create symbolic links
-    status "Creating symbolic links in $BINDIR"
+    # --- 4. Create symbolic links ---
+    status "Creating symbolic links in $BINDIR..."
+    $SUDO mkdir -p "$BINDIR"
     $SUDO ln -sf "$NEXA_INSTALL_DIR/nexa" "$BINDIR/nexa"
+
+    # --- 5. Clean up ---
+    rm -rf "$temp_extract_dir"
+    status "Nexa SDK files installed successfully."
 }
 
-# Create system user and groups
+# --- Systemd Service Configuration ---
+
+# Creates the nexa system user and adds to relevant groups
 create_system_user() {
     if ! id nexa >/dev/null 2>&1; then
-        status "Creating nexa user..."
+        status "Creating system user 'nexa'..."
         $SUDO useradd -r -s /bin/false -U -m -d /usr/share/nexa nexa
     fi
     if getent group render >/dev/null 2>&1; then
-        status "Adding nexa user to render group..."
+        status "Adding 'nexa' user to 'render' group..."
         $SUDO usermod -a -G render nexa
     fi
     if getent group video >/dev/null 2>&1; then
-        status "Adding nexa user to video group..."
+        status "Adding 'nexa' user to 'video' group..."
         $SUDO usermod -a -G video nexa
     fi
 
-    status "Adding current user to nexa group..."
-    $SUDO usermod -a -G nexa $(whoami)
+    status "Adding current user ($(whoami)) to 'nexa' group..."
+    $SUDO usermod -a -G nexa "$(whoami)"
 }
 
-# Create systemd service
+# Creates the systemd service unit file
 create_systemd_service() {
     status "Creating nexa systemd service..."
-    cat <<EOF | $SUDO tee /etc/systemd/system/nexa.service >/dev/null
+    # Using a heredoc with sudo tee to write the file as root
+    $SUDO tee /etc/systemd/system/nexa.service >/dev/null <<EOF
 [Unit]
-Description=Nexa Service
+Description=Nexa Background Service
 After=network-online.target
 
 [Service]
+Type=simple
 ExecStart=$BINDIR/nexa serve
 User=nexa
 Group=nexa
 Restart=always
-RestartSec=3
-Environment="PATH=$PATH"
+RestartSec=5
 
 [Install]
 WantedBy=default.target
 EOF
 }
 
-# Enable and start systemd service
+# Enables and starts the systemd service if systemd is running
 enable_systemd_service() {
-    SYSTEMCTL_RUNNING="$(systemctl is-system-running || true)"
-    case $SYSTEMCTL_RUNNING in
-        running|degraded)
-            status "Enabling and starting nexa service..."
-            $SUDO systemctl daemon-reload
-            $SUDO systemctl enable nexa
+    local systemctl_running
+    systemctl_running="$(systemctl is-system-running 2>/dev/null || echo 'unknown')"
 
-            start_service() { $SUDO systemctl restart nexa; }
-            trap start_service EXIT
+    case "$systemctl_running" in
+        running|degraded)
+            status "Enabling and starting nexa service via systemd..."
+            $SUDO systemctl daemon-reload
+            $SUDO systemctl enable nexa.service
+            $SUDO systemctl restart nexa.service
             ;;
         *)
-            warning "systemd is not running"
+            warning "systemd does not appear to be running."
             if [ "$IS_WSL2" = true ]; then
-                warning "see https://learn.microsoft.com/en-us/windows/wsl/systemd#how-to-enable-systemd to enable it"
+                warning "To enable systemd in WSL2, see: https://devblogs.microsoft.com/commandline/systemd-support-is-now-available-in-wsl/"
             fi
+            warning "The nexa service has been installed but not started."
             ;;
     esac
 }
 
-# Configure systemd service
-configure_systemd() {
-    create_system_user
-    create_systemd_service
+# --- Main Execution ---
 
-    enable_systemd_service
-}
-
-# Installation success message
-install_success() {
-    status 'The Nexa is now available at 127.0.0.1:18181.'
-    status 'Install complete. Run "nexa" from the command line.'
-}
-
-# Main installation function
+# Main function to orchestrate the installation
 main() {
-    [ "$(uname -s)" = "Linux" ] || error 'This script is intended to run on Linux only.'
+    if [ "$(uname -s)" != "Linux" ]; then
+        error "This script is intended to run on Linux only."
+    fi
 
-	validate_requirements
+    status "Starting Nexa SDK installer..."
 
-    uninstall_nexa_sdk
+    setup_sudo
+    detect_system_environment
+    validate_requirements
+
     install_nexa_sdk
 
-    status 'Install complete. Run "nexa" from the command line.'
+    create_system_user
+    create_systemd_service
+    enable_systemd_service
+
+    status "${plain}Install complete! The Nexa SDK is now installed."
+    status "You can use the 'nexa' commands from your terminal."
+    status "You may need to start a new terminal session for the 'nexa' group membership to take effect."
+    status "The background service is running. Check its status with: sudo systemctl status nexa"
 }
 
-main
+# Run the main function with all arguments passed to the script
+main "$@"
+
+# --- IMPORTANT ---
+# The script MUST exit before the payload marker.
+# The CI/CD process will append the base64 encoded payload below this line.
+exit 0
+__PAYLOAD_BELOW__
