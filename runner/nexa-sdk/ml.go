@@ -5,7 +5,7 @@ package nexa_sdk
 #cgo darwin LDFLAGS: -Wl,-rpath,${SRCDIR}/../build
 
 #cgo CFLAGS: -I../build
-#cgo LDFLAGS: -L../build -lnexa_bridge
+#cgo LDFLAGS: -L../build -lqwen3-sdk
 
 #include <stdlib.h>
 #include "ml.h"

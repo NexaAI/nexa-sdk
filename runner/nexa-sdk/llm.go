@@ -10,6 +10,7 @@ import "C"
 
 import (
 	"log/slog"
+	"path/filepath"
 	"unsafe"
 )
 
@@ -279,16 +280,42 @@ type LLM struct {
 }
 
 func NewLLM(input LlmCreateInput) (*LLM, error) {
+
+	// Qnn
+	basePath := filepath.Dir(input.ModelPath)
+	input.ModelPath = filepath.Join(basePath, "qwen3-1.7B", "weight_sharing_model_1_of_1_w8.serialized.bin")
+	input.TokenizerPath = filepath.Join(basePath, "qwen3-1.7B", "tokenizer.json")
+	// Qnn
+
 	slog.Debug("NewLLM called", "input", input)
 
 	cInput := input.toCPtr()
 	defer freeLlmCreateInput(cInput)
 
+	// Qnn
+	cInput.config.system_library_path = C.CString(filepath.Join(basePath, "htp-files-2.36", "QnnSystem.dll"))
+	defer C.free(unsafe.Pointer(cInput.config.system_library_path))
+	cInput.config.backend_library_path = C.CString(filepath.Join(basePath, "htp-files-2.36", "QnnHtp.dll"))
+	defer C.free(unsafe.Pointer(cInput.config.backend_library_path))
+	cInput.config.extension_library_path = C.CString(filepath.Join(basePath, "htp-files-2.36", "QnnHtpNetRunExtensions.dll"))
+	defer C.free(unsafe.Pointer(cInput.config.extension_library_path))
+	cInput.config.config_file_path = C.CString(filepath.Join(basePath, "qwen3-1.7B", "htp_backend_ext_config.json"))
+	defer C.free(unsafe.Pointer(cInput.config.config_file_path))
+	cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "qwen3-1.7B", "qwen3_embedding_layer.npy"))
+	defer C.free(unsafe.Pointer(cInput.config.embedded_tokens_path))
+	cInput.config.max_tokens = 256
+	cInput.config.enable_thinking = true
+	cInput.config.verbose = false
+	// Qnn
+
 	var cHandle *C.ml_LLM
 	res := C.ml_llm_create(cInput, &cHandle)
 	if res < 0 {
+		slog.Debug("Failed to create LLM", "error_code", res)
 		return nil, SDKError(res)
 	}
+
+	slog.Debug("LLM created successfully", "ptr", cHandle)
 
 	return &LLM{ptr: cHandle}, nil
 }
