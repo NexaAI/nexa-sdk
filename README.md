@@ -26,12 +26,10 @@
 Nexa SDK is an on-device inference framework that runs any model on any device, across any backend. It runs on CPUs and GPUs with backend support for CUDA, Metal, and Vulkan. It handles multiple input modalities including text 📝, image 🖼️, and audio 🎧. The SDK includes an OpenAI-compatible API server with support for JSON schema-based function calling and streaming. It supports model formats such as GGUF and MLX, enabling efficient quantized inference across diverse platforms.
 
 ## Recent updates
-
-#### 📣  **2025.07.22: Release of nexaSDK beta**, includes:
-
-- MLX and GGUF support
-- VLM and LLMs
-
+#### 📣  **2025.08.12: ASR & TTS Support in MLX format
+- ASR & TTS model support in MLX format.
+- new "> /mic" mode to transcribe live speech directly in your terminal.
+  
 ## Installation
 
 ### macOS
