@@ -61,7 +61,7 @@ echo "Template copied and made executable."
 # --- 4. Embed the payload ---
 echo "Step 3: Encoding and embedding payload..."
 # Append the base64 encoded payload to the end of the script
-base64 "$PAYLOAD_FILE" >> "$OUTPUT_NAME"
+cat "$PAYLOAD_FILE" >> "$OUTPUT_NAME"
 if [ $? -ne 0 ]; then
     echo "Error: Failed to embed payload into '$OUTPUT_NAME'." >&2
     exit 1
