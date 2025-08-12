@@ -83,7 +83,7 @@ setup_sudo() {
 # Validates all system requirements before proceeding
 validate_requirements() {
     local needs
-    needs=$(require_tools tar base64)
+    needs=$(require_tools tar cat awk)
     if [ -n "$needs" ]; then
         error "The following required tools are missing:$needs"
     fi
@@ -107,7 +107,7 @@ install_nexa_sdk() {
     temp_extract_dir=$(mktemp -d)
 
     status "Extracting embedded payload to a temporary directory..."
-    tail -n "+$payload_line" "$0" | base64 --decode | tar -xzf - -C "$temp_extract_dir"
+    tail -n "+$payload_line" "$0" | tar -xzf - -C "$temp_extract_dir"
     if [ $? -ne 0 ]; then
         rm -rf "$temp_extract_dir"
         error "Failed to extract payload. The installer might be corrupted or incomplete."
@@ -125,6 +125,7 @@ install_nexa_sdk() {
 
     status "Installing Nexa SDK files..."
     $SUDO mv "$temp_extract_dir"/* "$NEXA_INSTALL_DIR/"
+    $SUDO chmod a+x "$NEXA_INSTALL_DIR/nexa" "$NEXA_INSTALL_DIR/nexa-cli"
 
     # --- 4. Create symbolic links ---
     status "Creating symbolic links in $BINDIR..."
@@ -224,7 +225,6 @@ main() {
     status "${plain}Install complete! The Nexa SDK is now installed."
     status "You can use the 'nexa' commands from your terminal."
     status "You may need to start a new terminal session for the 'nexa' group membership to take effect."
-    status "The background service is running. Check its status with: sudo systemctl status nexa"
 }
 
 # Run the main function with all arguments passed to the script

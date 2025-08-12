@@ -57,7 +57,7 @@ jobs:
 
 
   package-and-release:
-    name: Package for ${{ matrix.os }}_${{ matrix.arch }}
+    name: Package for ${{ matrix.runner }}_${{ matrix.arch }}
     needs: build-cli
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ${{ matrix.runner }}
