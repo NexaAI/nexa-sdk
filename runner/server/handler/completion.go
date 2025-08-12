@@ -480,6 +480,6 @@ func profile2Usage(p nexa_sdk.ProfileData) openai.CompletionUsage {
 	return openai.CompletionUsage{
 		CompletionTokens: p.GeneratedTokens,
 		PromptTokens:     p.PromptTokens,
-		TotalTokens:      p.TotalTokens,
+		TotalTokens:      p.TotalTokens(),
 	}
 }
