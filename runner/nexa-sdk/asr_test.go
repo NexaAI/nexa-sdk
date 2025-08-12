@@ -40,7 +40,7 @@ func TestASRListSupportedLanguages(t *testing.T) {
 
 func TestASRTranscribe(t *testing.T) {
 	input := AsrTranscribeInput{
-		AudioPath: "./test_audio.wav",
+		AudioPath: "modelfiles/assets/OSR_us_000_0010_8k.wav",
 		Language:  "en",
 		Config: &ASRConfig{
 			Timestamps: "word",
@@ -64,7 +64,7 @@ func TestASRTranscribe(t *testing.T) {
 
 func TestASRTranscribeWithoutConfig(t *testing.T) {
 	input := AsrTranscribeInput{
-		AudioPath: "./test_audio.wav",
+		AudioPath: "modelfiles/assets/OSR_us_000_0010_8k.wav",
 		Language:  "en",
 		Config:    nil, // Use default configuration
 	}
@@ -80,7 +80,7 @@ func TestASRTranscribeWithoutConfig(t *testing.T) {
 
 func TestASRTranscribeWithAutoLanguage(t *testing.T) {
 	input := AsrTranscribeInput{
-		AudioPath: "./test_audio.wav",
+		AudioPath: "modelfiles/assets/OSR_us_000_0010_8k.wav",
 		Language:  "", // Auto-detect language
 		Config: &ASRConfig{
 			Timestamps: "segment",
@@ -105,7 +105,7 @@ func TestASRTranscribeWithAutoLanguage(t *testing.T) {
 
 func TestASRTranscribeWithStreaming(t *testing.T) {
 	input := AsrTranscribeInput{
-		AudioPath: "./test_audio.wav",
+		AudioPath: "modelfiles/assets/OSR_us_000_0010_8k.wav",
 		Language:  "en",
 		Config: &ASRConfig{
 			Timestamps: "word",

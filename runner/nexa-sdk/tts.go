@@ -190,7 +190,8 @@ func freeTtsSynthesizeInput(cPtr *C.ml_TtsSynthesizeInput) {
 
 // TtsSynthesizeOutput represents output from TTS synthesis
 type TtsSynthesizeOutput struct {
-	Result TTSResult
+	Result      TTSResult
+	ProfileData ProfileData
 }
 
 func newTtsSynthesizeOutputFromCPtr(c *C.ml_TtsSynthesizeOutput) TtsSynthesizeOutput {
@@ -201,6 +202,7 @@ func newTtsSynthesizeOutputFromCPtr(c *C.ml_TtsSynthesizeOutput) TtsSynthesizeOu
 	}
 
 	output.Result = newTTSResultFromCPtr(&c.result)
+	output.ProfileData = newProfileDataFromCPtr(c.profile_data)
 	return output
 }
 

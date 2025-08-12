@@ -22,8 +22,8 @@ func TestMain(m *testing.M) {
 	// initTTS()
 	// defer deinitTTS()
 
-	// initASR()
-	// defer deinitASR()
+	initASR()
+	defer deinitASR()
 
 	// initEmbedder()
 	// defer deinitEmbedder()

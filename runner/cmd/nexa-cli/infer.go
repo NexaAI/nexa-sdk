@@ -357,9 +357,8 @@ func inferTTS(plugin, modelfile string, vocoderfile string) {
 		return
 	}
 
-	fmt.Println(render.GetTheme().Success.Sprintf("✓ Audio saved to: %s", result.Result.AudioPath))
-	// fmt.Printf("  Duration: %.2f seconds\n", result.Result.DurationSeconds)
-	// fmt.Printf("  Sample rate: %d Hz\n", result.Result.SampleRate)
+	fmt.Println(render.GetTheme().Success.Sprintf("✓ Audio saved: %s", result.Result.AudioPath))
+	printProfile(result.ProfileData)
 }
 
 func inferASR(plugin, modelfile string, tokenizerPath string) {
@@ -396,6 +395,10 @@ func inferASR(plugin, modelfile string, tokenizerPath string) {
 		ParseFile: true,
 
 		Run: func(_prompt string, _images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			if len(audios) == 0 {
+				return "", nexa_sdk.ProfileData{}, errors.New("no audio file provided")
+			}
+
 			asrConfig := &nexa_sdk.ASRConfig{
 				Timestamps: "segment",
 				BeamSize:   5,
@@ -417,7 +420,7 @@ func inferASR(plugin, modelfile string, tokenizerPath string) {
 			}
 			on_token(result.Result.Transcript)
 
-			return result.Result.Transcript, nexa_sdk.ProfileData{}, nil
+			return result.Result.Transcript, result.ProfileData, nil
 		},
 	})
 }
