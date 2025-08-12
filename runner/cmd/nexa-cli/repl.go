@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -408,10 +409,10 @@ func parseFiles(prompt string) (string, []string, []string) {
 		switch realFile[len(realFile)-3:] {
 		case "mp3", "wav":
 			audios = append(audios, realFile)
-			fmt.Println(render.GetTheme().AddFiles.Sprintf("add audio: %s", realFile))
+			slog.Debug("add audio", "file", realFile)
 		default:
 			images = append(images, realFile)
-			fmt.Println(render.GetTheme().AddFiles.Sprintf("add image: %s", realFile))
+			slog.Debug("add image", "file", realFile)
 		}
 
 		prompt = strings.ReplaceAll(prompt, "'"+realFile+"'", "")
