@@ -88,6 +88,8 @@ func infer() *cobra.Command {
 			manifest.ModelType = types.ModelTypeLLM
 		case "paddleocr":
 			manifest.ModelType = types.ModelTypeCV
+		case "yolov12":
+			manifest.ModelType = types.ModelTypeCV
 		default:
 			fmt.Println(render.GetTheme().Error.Sprintf("not support: %s", args[0]))
 			return

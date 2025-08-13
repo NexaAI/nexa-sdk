@@ -182,6 +182,11 @@ func list() *cobra.Command {
 			}
 			tw.AppendRow(table.Row{model.Name, model.ModelType, model.PluginId, strings.Join(quants, ","), humanize.IBytes(uint64(model.GetSize()))})
 		}
+		// QNN
+		tw.AppendRow(table.Row{"qwen3", "llm", "qnn", "N/A", "0B"})
+		tw.AppendRow(table.Row{"paddleocr", "cv", "qnn", "N/A", "0B"})
+		tw.AppendRow(table.Row{"yolov12", "cv", "qnn", "N/A", "0B"})
+		// QNN
 		tw.Render()
 	}
 
