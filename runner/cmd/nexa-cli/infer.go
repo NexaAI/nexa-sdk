@@ -129,6 +129,9 @@ func infer() *cobra.Command {
 			inferASR(manifest.PluginId, modelfile, "")
 		case types.ModelTypeCV:
 			inferCV(manifest.PluginId, modelfile)
+		case types.ModelTypeImageGen:
+			// ImageGen model is a directory, not a file
+			inferImageGen(manifest.PluginId, s.ModelfilePath(manifest.Name, ""))
 		default:
 			panic("not support model type")
 		}
@@ -545,6 +548,74 @@ func inferEmbedder(plugin, modelfile string) {
 	}
 
 	fmt.Println()
+}
+
+func inferImageGen(plugin, modeldir string) {
+	prompts := prompt
+	if len(prompts) == 0 {
+		fmt.Println(render.GetTheme().Error.Sprintf("text prompt is required for image generation (use --prompt)"))
+		fmt.Println()
+		return
+	}
+
+	spin := render.NewSpinner("loading ImageGen model...")
+	spin.Start()
+	p, err := nexa_sdk.NewImageGen(nexa_sdk.ImageGenCreateInput{
+		ModelPath: modeldir,
+		PluginID:  plugin,
+		DeviceID:  "cuda", // Currently only CUDA is supported
+	})
+	spin.Stop()
+	if err != nil {
+		slog.Error("failed to create ImageGen", "error", err)
+		fmt.Println(modelLoadFailMsg)
+		return
+	}
+	defer p.Destroy()
+
+	if output == "" {
+		output = fmt.Sprintf("imagegen_output_%d.png", time.Now().Unix())
+	}
+
+	fmt.Println(render.GetTheme().Info.Sprintf("Generating image: \"%s\"", prompts[0]))
+
+	result, err := p.Txt2Img(nexa_sdk.ImageGenTxt2ImgInput{
+		PromptUTF8: prompts[0],
+		Config: &nexa_sdk.ImageGenerationConfig{
+			Prompts:         prompts,
+			NegativePrompts: []string{"blurry, low quality, distorted"},
+			Height:          512,
+			Width:           512,
+			SamplerConfig: nexa_sdk.ImageSamplerConfig{
+				Method:        "ddim",
+				Steps:         20,
+				GuidanceScale: 7.5,
+				Eta:           0.0,
+				Seed:          42,
+			},
+			SchedulerConfig: nexa_sdk.SchedulerConfig{
+				Type:              "ddim",
+				NumTrainTimesteps: 1000,
+				StepsOffset:       1,
+				BetaStart:         0.00085,
+				BetaEnd:           0.012,
+				BetaSchedule:      "scaled_linear",
+				PredictionType:    "epsilon",
+				TimestepType:      "discrete",
+				TimestepSpacing:   "leading",
+				InterpolationType: "linear",
+				ConfigPath:        "",
+			},
+			Strength: 1.0,
+		},
+		OutputPath: output,
+	})
+	if err != nil {
+		fmt.Println(render.GetTheme().Error.Sprintf("Image generation failed: %s", err))
+		return
+	}
+
+	fmt.Println(render.GetTheme().Success.Sprintf("✓ Image saved to: %s", result.OutputImagePath))
 }
 
 func inferReranker(plugin, modelfile string) {

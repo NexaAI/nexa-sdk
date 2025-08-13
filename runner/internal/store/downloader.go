@@ -169,6 +169,8 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 		// Detect plugin
 		if strings.Contains(strings.ToLower(mf.Name), "mlx") {
 			mf.PluginId = "mlx"
+		} else if strings.Contains(strings.ToLower(mf.Name), "ort") || strings.Contains(strings.ToLower(mf.Name), "onnx") {
+			mf.PluginId = "ort"
 		} else {
 			mf.PluginId = "llama_cpp"
 		}

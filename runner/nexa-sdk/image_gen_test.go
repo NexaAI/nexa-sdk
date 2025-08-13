@@ -88,7 +88,7 @@ func TestImageGenTxt2Img(t *testing.T) {
 	input := ImageGenTxt2ImgInput{
 		PromptUTF8: "a beautiful landscape with mountains and trees",
 		Config:     &config,
-		OutputPath: "./build/Testing/Temporary/generated_image.png", // Specify custom output path
+		OutputPath: "./build/generated_image.png",
 	}
 
 	output, err := imagegen.Txt2Img(input)
