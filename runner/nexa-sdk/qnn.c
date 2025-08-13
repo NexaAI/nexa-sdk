@@ -1,4 +1,4 @@
-#include "../../../nexasdk-bridge/build/out/ml.h"
+#include "ml.h"
 #include <stdint.h>
 #include <string.h>
 
@@ -145,16 +145,5 @@ int32_t
 ml_tts_list_available_voices(const ml_TTS *handle,
                              const ml_TtsListAvailableVoicesInput *input,
                              ml_TtsListAvailableVoicesOutput *output) {
-  return -1;
-}
-
-int32_t ml_cv_create(const ml_CVCreateInput *input, ml_CV **out_handle) {
-  return -1;
-}
-
-int32_t ml_cv_destroy(ml_CV *handle) { return -1; }
-
-int32_t ml_cv_infer(const ml_CV *handle, const ml_CVInferInput *input,
-                    ml_CVInferOutput *output) {
   return -1;
 }

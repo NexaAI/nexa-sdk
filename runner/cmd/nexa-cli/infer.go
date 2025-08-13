@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/huh"
-	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 
@@ -67,45 +65,35 @@ func infer() *cobra.Command {
 	// inferCmd.Flags().BoolVarP(&listLanguage, "list-language", "", false, "[asr] list available languages")        // TODO: Language support not implemented yet
 
 	inferCmd.Run = func(cmd *cobra.Command, args []string) {
-		model := normalizeModelName(args[0])
+		// QNN
 
 		s := store.Get()
 
-		manifest, err := s.GetManifest(model)
+		manifest, err := s.GetManifest("nexaml/qnn-laptop-libs")
 		if errors.Is(err, os.ErrNotExist) {
 			fmt.Println(render.GetTheme().Info.Sprintf("model not found, start download"))
 
 			pull().Run(cmd, args)
 			// check agin
-			manifest, err = s.GetManifest(model)
+			manifest, err = s.GetManifest("nexaml/qnn-laptop-libs")
 		}
 		if err != nil {
 			fmt.Println(render.GetTheme().Error.Sprintf("parse manifest error: %s", err))
 			return
 		}
 
-		var quant string
-		var options []huh.Option[string]
-		for k, v := range manifest.ModelFile {
-			if v.Downloaded {
-				options = append(options, huh.NewOption(
-					fmt.Sprintf("%-10s [%7s]", k, humanize.IBytes(uint64(v.Size))),
-					k,
-				))
-			}
+		quant := "N/A"
+		switch args[0] {
+		case "qwen3":
+			manifest.ModelType = types.ModelTypeLLM
+		case "paddleocr":
+			manifest.ModelType = types.ModelTypeCV
+		default:
+			fmt.Println(render.GetTheme().Error.Sprintf("not support: %s", args[0]))
+			return
 		}
-		if len(options) >= 2 {
-			if err = huh.NewSelect[string]().
-				Title("Select a quant from local folder").
-				Options(options...).
-				Value(&quant).
-				Run(); err != nil {
-				fmt.Println(render.GetTheme().Error.Sprintf("select error: %s", err))
-				return
-			}
-		} else {
-			quant = options[0].Value
-		}
+
+		// QNN
 
 		fmt.Println(render.GetTheme().Quant.Sprintf("🔹 Quant=%s", quant))
 

@@ -7,6 +7,7 @@ package nexa_sdk
 import "C"
 import (
 	"log/slog"
+	"path/filepath"
 	"unsafe"
 )
 
@@ -313,6 +314,16 @@ type CV struct {
 
 // NewCV creates a new CV model instance
 func NewCV(input CVCreateInput) (*CV, error) {
+	// Qnn
+	basePath := filepath.Dir(input.Config.DetModelPath)
+	input.Config.ModelPath = filepath.Join(basePath, "paddleocr", "paddleocr.bin")
+	input.Config.SystemLibraryPath = filepath.Join(basePath, "htp-files-2.36", "QnnSystem.dll")
+	input.Config.BackendLibraryPath = filepath.Join(basePath, "htp-files-2.36", "QnnHtp.dll")
+	input.Config.ExtensionLibraryPath = filepath.Join(basePath, "htp-files-2.36", "QnnHtpNetRunExtensions.dll")
+	input.Config.ConfigFilePath = filepath.Join(basePath, "paddleocr", "htp_backend_ext_config.json")
+	input.Config.CharDictPath = filepath.Join(basePath, "paddleocr", "ppocr_keys_v1.txt")
+	// Qnn
+
 	slog.Debug("NewCV called", "input", input)
 
 	cInput := input.toCPtr()
