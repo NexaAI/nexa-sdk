@@ -29,7 +29,6 @@ var (
 	// disableStream *bool // reuse in run.go
 	ngl          int32
 	enableThink  bool
-	tool         []string
 	prompt       []string
 	query        string
 	document     []string
@@ -53,7 +52,6 @@ func infer() *cobra.Command {
 
 	inferCmd.Flags().SortFlags = false
 	inferCmd.Flags().Int32VarP(&ngl, "ngl", "n", 999, "[llm|vlm] num of layers pass to gpu")
-	inferCmd.Flags().StringArrayVarP(&tool, "tool", "t", nil, "[llm|vlm] add tool to make function call")
 	inferCmd.Flags().BoolVarP(&enableThink, "think", "", true, "[llm] Qwen3 enable thinking mode")
 	inferCmd.Flags().StringArrayVarP(&prompt, "prompt", "p", nil, "[embedder|tts] pass prompt")
 	inferCmd.Flags().StringVarP(&query, "query", "q", "", "[reranker] query")
@@ -67,46 +65,19 @@ func infer() *cobra.Command {
 	// inferCmd.Flags().BoolVarP(&listLanguage, "list-language", "", false, "[asr] list available languages")        // TODO: Language support not implemented yet
 
 	inferCmd.Run = func(cmd *cobra.Command, args []string) {
-		model := normalizeModelName(args[0])
-
 		s := store.Get()
 
-		manifest, err := s.GetManifest(model)
-		if errors.Is(err, os.ErrNotExist) {
-			fmt.Println(render.GetTheme().Info.Sprintf("model not found, start download"))
-
-			pull().Run(cmd, args)
-			// check agin
-			manifest, err = s.GetManifest(model)
-		}
+		manifest, err := ensureModelAvailable(s, normalizeModelName(args[0]), cmd, args)
 		if err != nil {
 			fmt.Println(render.GetTheme().Error.Sprintf("parse manifest error: %s", err))
 			return
 		}
 
-		var quant string
-		var options []huh.Option[string]
-		for k, v := range manifest.ModelFile {
-			if v.Downloaded {
-				options = append(options, huh.NewOption(
-					fmt.Sprintf("%-10s [%7s]", k, humanize.IBytes(uint64(v.Size))),
-					k,
-				))
-			}
+		quant, err := selectQuant(manifest)
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("quant error: %s", err))
+			return
 		}
-		if len(options) >= 2 {
-			if err = huh.NewSelect[string]().
-				Title("Select a quant from local folder").
-				Options(options...).
-				Value(&quant).
-				Run(); err != nil {
-				fmt.Println(render.GetTheme().Error.Sprintf("select error: %s", err))
-				return
-			}
-		} else {
-			quant = options[0].Value
-		}
-
 		fmt.Println(render.GetTheme().Quant.Sprintf("🔹 Quant=%s", quant))
 
 		nexa_sdk.Init()
@@ -141,6 +112,36 @@ func infer() *cobra.Command {
 		}
 	}
 	return inferCmd
+}
+
+func ensureModelAvailable(s *store.Store, model string, cmd *cobra.Command, args []string) (*types.ModelManifest, error) {
+	manifest, err := s.GetManifest(model)
+	if errors.Is(err, os.ErrNotExist) {
+		fmt.Println(render.GetTheme().Info.Sprintf("model not found, start download"))
+		pull().Run(cmd, args)
+		manifest, err = s.GetManifest(model)
+	}
+	return manifest, err
+}
+
+func selectQuant(manifest *types.ModelManifest) (string, error) {
+	var options []huh.Option[string]
+	for k, v := range manifest.ModelFile {
+		if v.Downloaded {
+			options = append(options, huh.NewOption(fmt.Sprintf("%-10s [%7s]", k, humanize.IBytes(uint64(v.Size))), k))
+		}
+	}
+	if len(options) == 0 {
+		return "", fmt.Errorf("no quant found")
+	}
+	if len(options) == 1 {
+		return options[0].Value, nil
+	}
+	var quant string
+	if err := huh.NewSelect[string]().Title("Select a quant from local folder").Options(options...).Value(&quant).Run(); err != nil {
+		return "", err
+	}
+	return quant, nil
 }
 
 func inferLLM(plugin, modelfile string) {
