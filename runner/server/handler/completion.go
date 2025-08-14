@@ -63,7 +63,8 @@ type ChatCompletionNewParams openai.ChatCompletionNewParams
 // ChatCompletionRequest defines the request body for the chat completions API.
 // example: { "model": "nexaml/nexaml-models", "messages": [ { "role": "user", "content": "why is the sky blue?" } ] }
 type ChatCompletionRequest struct {
-	Stream bool `json:"stream" default:"false"`
+	Stream      bool `json:"stream" default:"false"`
+	EnableThink bool `json:"enable_think" default:"true"`
 
 	ChatCompletionNewParams
 }
@@ -153,8 +154,9 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 
 	// Format prompt using chat template
 	formatted, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
-		Messages: messages,
-		Tools:    tools,
+		Messages:    messages,
+		Tools:       tools,
+		EnableThink: param.EnableThink,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
@@ -179,9 +181,9 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 				},
 				Config: &nexa_sdk.GenerationConfig{
 					MaxTokens: 2048,
-				}},
+				},
+			},
 			)
-
 			if err != nil {
 				slog.Warn("Generate Error", "error", err)
 			}
@@ -229,7 +231,8 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 			PromptUTF8: formatted.FormattedText,
 			Config: &nexa_sdk.GenerationConfig{
 				MaxTokens: 2048,
-			}},
+			},
+		},
 		)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
@@ -365,8 +368,9 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 
 	// Format prompt using VLM chat template
 	formatted, err := p.ApplyChatTemplate(nexa_sdk.VlmApplyChatTemplateInput{
-		Messages: messages,
-		Tools:    tools,
+		Messages:    messages,
+		Tools:       tools,
+		EnableThink: param.EnableThink,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
@@ -392,7 +396,8 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 					MaxTokens:  2048,
 					ImagePaths: images,
 					AudioPaths: audios,
-				}},
+				},
+			},
 			)
 
 			close(dataCh)
@@ -431,7 +436,8 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 				MaxTokens:  2048,
 				ImagePaths: images,
 				AudioPaths: audios,
-			}},
+			},
+		},
 		)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})

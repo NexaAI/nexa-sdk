@@ -214,6 +214,7 @@ func freeLlmChatMessages(cPtr *C.ml_LlmChatMessage, count C.int32_t) {
 type LlmApplyChatTemplateInput struct {
 	Messages []LlmChatMessage
 	Tools    []Tool
+	EnableThink bool
 }
 
 func (lati LlmApplyChatTemplateInput) toCPtr() *C.ml_LlmApplyChatTemplateInput {
@@ -231,6 +232,8 @@ func (lati LlmApplyChatTemplateInput) toCPtr() *C.ml_LlmApplyChatTemplateInput {
 		cPtr.tools = cTools
 		cPtr.tool_count = C.int32_t(toolCount)
 	}
+
+	cPtr.enable_thinking = C.bool(lati.EnableThink)
 
 	return cPtr
 }
