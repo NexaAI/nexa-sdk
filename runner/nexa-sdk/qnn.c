@@ -7,7 +7,8 @@ const char *ml_get_error_message(const ml_ErrorCode error_code) {
 }
 
 int32_t ml_init(void) { return 0; }
-int32_t ml_register_plugin(void *plugin_id_func, void *create_func) {
+int32_t ml_register_plugin(ml_plugin_id_func plugin_id_func,
+                           ml_create_plugin_func create_func) {
   return 0;
 }
 int32_t ml_deinit(void) { return 0; }
@@ -37,24 +38,24 @@ int32_t ml_llm_apply_chat_template(ml_LLM *handle,
   return strlen(output->formatted_text);
 }
 
-int32_t ml_vlm_create(const ml_VlmCreateInput *input, ml_VLM **out_handle) {
-  return -1;
-}
-
-int32_t ml_vlm_destroy(ml_VLM *handle) { return -1; }
-
-int32_t ml_vlm_reset(ml_VLM *handle) { return -1; }
-
-int32_t ml_vlm_apply_chat_template(ml_VLM *handle,
-                                   const ml_VlmApplyChatTemplateInput *input,
-                                   ml_VlmApplyChatTemplateOutput *output) {
-  return -1;
-}
-
-int32_t ml_vlm_generate(ml_VLM *handle, const ml_VlmGenerateInput *input,
-                        ml_VlmGenerateOutput *output) {
-  return -1;
-}
+// int32_t ml_vlm_create(const ml_VlmCreateInput *input, ml_VLM **out_handle) {
+//   return -1;
+// }
+//
+// int32_t ml_vlm_destroy(ml_VLM *handle) { return -1; }
+//
+// int32_t ml_vlm_reset(ml_VLM *handle) { return -1; }
+//
+// int32_t ml_vlm_apply_chat_template(ml_VLM *handle,
+//                                    const ml_VlmApplyChatTemplateInput *input,
+//                                    ml_VlmApplyChatTemplateOutput *output) {
+//   return -1;
+// }
+//
+// int32_t ml_vlm_generate(ml_VLM *handle, const ml_VlmGenerateInput *input,
+//                         ml_VlmGenerateOutput *output) {
+//   return -1;
+// }
 
 int32_t ml_embedder_create(const ml_EmbedderCreateInput *input,
                            ml_Embedder **out_handle) {
@@ -93,12 +94,6 @@ int32_t ml_imagegen_create(const ml_ImageGenCreateInput *input,
 }
 
 int32_t ml_imagegen_destroy(ml_ImageGen *handle) { return -1; }
-
-int32_t ml_imagegen_load_model(ml_ImageGen *handle,
-                               const ml_ImageGenLoadModelInput *input,
-                               ml_ImageGenLoadModelOutput *output) {
-  return -1;
-}
 
 int32_t ml_imagegen_txt2img(ml_ImageGen *handle,
                             const ml_ImageGenTxt2ImgInput *input,

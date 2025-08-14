@@ -69,13 +69,22 @@ func infer() *cobra.Command {
 
 		s := store.Get()
 
-		manifest, err := s.GetManifest("nexaml/qnn-laptop-libs")
+		var modelName string
+
+		switch args[0] {
+		case "qwen3", "paddleocr", "yolov12":
+			modelName = "nexaml/qnn-laptop-libs"
+		case "omni-neural":
+			modelName = "nexaml/qnn-laptop-libs-omni-neural"
+		}
+
+		manifest, err := s.GetManifest(modelName)
 		if errors.Is(err, os.ErrNotExist) {
 			fmt.Println(render.GetTheme().Info.Sprintf("model not found, start download"))
 
 			pull().Run(cmd, args)
 			// check agin
-			manifest, err = s.GetManifest("nexaml/qnn-laptop-libs")
+			manifest, err = s.GetManifest(modelName)
 		}
 		if err != nil {
 			fmt.Println(render.GetTheme().Error.Sprintf("parse manifest error: %s", err))
@@ -86,6 +95,8 @@ func infer() *cobra.Command {
 		switch args[0] {
 		case "qwen3":
 			manifest.ModelType = types.ModelTypeLLM
+		case "omni-neural":
+			manifest.ModelType = types.ModelTypeVLM
 		case "paddleocr":
 			manifest.ModelType = types.ModelTypeCV
 			manifest.PluginId = "paddleocr"

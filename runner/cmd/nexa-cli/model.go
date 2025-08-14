@@ -184,6 +184,7 @@ func list() *cobra.Command {
 		}
 		// QNN
 		tw.AppendRow(table.Row{"qwen3", "llm", "qnn", "N/A", "0B"})
+		tw.AppendRow(table.Row{"omni-neural ", "vlm", "qnn", "N/A", "0B"})
 		tw.AppendRow(table.Row{"paddleocr", "cv", "qnn", "N/A", "0B"})
 		tw.AppendRow(table.Row{"yolov12", "cv", "qnn", "N/A", "0B"})
 		// QNN

@@ -9,6 +9,7 @@ extern bool go_generate_stream_on_token(char*, void*);
 import "C"
 import (
 	"log/slog"
+	"path/filepath"
 	"unsafe"
 )
 
@@ -240,8 +241,8 @@ func freeToolFunction(cPtr *C.ml_ToolFunction) {
 
 // VlmApplyChatTemplateInput represents input for applying VLM chat template
 type VlmApplyChatTemplateInput struct {
-	Messages []VlmChatMessage
-	Tools    []Tool
+	Messages    []VlmChatMessage
+	Tools       []Tool
 	EnableThink bool
 }
 
@@ -379,12 +380,36 @@ type VLM struct {
 
 // NewVLM creates a new VLM instance
 func NewVLM(input VlmCreateInput) (*VLM, error) {
+	// Qnn
+	basePath := filepath.Dir(input.ModelPath)
+	input.ModelPath = filepath.Join(basePath, "omni-neural", "llm", "ar128-ar1-cl4096", "weight_sharing_model_1_of_2.serialized.bin")
+	input.MmprojPath = filepath.Join(basePath, "omni-neural", "llm", "ar128-ar1-cl4096", "weight_sharing_model_2_of_2.serialized.bin")
+	// Qnn
+
 	slog.Debug("NewVLM called", "input", input)
 
 	cInput := input.toCPtr()
 	defer freeVlmCreateInput(cInput)
 
+	// Qnn
+	cInput.config.system_library_path = C.CString(filepath.Join(basePath, "htp-files-2.36", "QnnSystem.dll"))
+	defer C.free(unsafe.Pointer(cInput.config.system_library_path))
+	cInput.config.backend_library_path = C.CString(filepath.Join(basePath, "htp-files-2.36", "QnnHtp.dll"))
+	defer C.free(unsafe.Pointer(cInput.config.backend_library_path))
+	cInput.config.extension_library_path = C.CString(filepath.Join(basePath, "htp-files-2.36", "QnnHtpNetRunExtensions.dll"))
+	defer C.free(unsafe.Pointer(cInput.config.extension_library_path))
+	cInput.config.config_file_path = C.CString(filepath.Join(basePath, "omni-neural", "llm", "ar128-ar1-cl4096_conf_files", "htp_backend_ext_config.json"))
+	defer C.free(unsafe.Pointer(cInput.config.config_file_path))
+	cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "omni-neural", "llm", "embed_tokens.npy"))
+	defer C.free(unsafe.Pointer(cInput.config.embedded_tokens_path))
+	cInput.config.max_tokens = 256
+	cInput.config.enable_thinking = true
+	cInput.config.verbose = false
+
+	// Qnn
+
 	var cHandle *C.ml_VLM
+	//res := C.ml_vlm_create(cInput, &cHandle)
 	res := C.ml_vlm_create(cInput, &cHandle)
 	if res < 0 {
 		return nil, SDKError(res)
