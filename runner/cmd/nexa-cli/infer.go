@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/charmbracelet/huh"
 	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/text"
@@ -53,7 +54,7 @@ func infer() *cobra.Command {
 
 	inferCmd.Flags().SortFlags = false
 	inferCmd.Flags().Int32VarP(&ngl, "ngl", "n", 999, "[llm|vlm] num of layers pass to gpu")
-	inferCmd.Flags().StringArrayVarP(&tool, "tool", "t", nil, "[llm|vlm] add tool to make function call")
+	inferCmd.Flags().StringArrayVarP(&tool, "tool", "t", nil, "[llm|vlm] add function name for function call")
 	inferCmd.Flags().BoolVarP(&enableThink, "think", "", true, "[llm] Qwen3 enable thinking mode")
 	inferCmd.Flags().StringArrayVarP(&prompt, "prompt", "p", nil, "[embedder|tts] pass prompt")
 	inferCmd.Flags().StringVarP(&query, "query", "q", "", "[reranker] query")
@@ -143,7 +144,59 @@ func infer() *cobra.Command {
 	return inferCmd
 }
 
+func parseTools(tools []string) (parsedTools []nexa_sdk.Tool, err error) {
+	parsedTools = make([]nexa_sdk.Tool, len(tools))
+
+	var tempTool struct {
+		Type     string `json:"type"`
+		Function struct {
+			Name        string `json:"name"`
+			Description string `json:"description"`
+			Parameters  any    `json:"parameters" default:"{}"`
+		} `json:"function"`
+	}
+
+	for i, tool := range tools {
+		err = sonic.UnmarshalString(tool, &tempTool)
+		if err != nil {
+			return nil, err
+		}
+		param, err := sonic.Marshal(tempTool.Function.Parameters)
+		if err != nil {
+			return nil, err
+		}
+		parsedTools[i] = nexa_sdk.Tool{
+			Type: tempTool.Type,
+			Function: &nexa_sdk.ToolFunction{
+				Name:        tempTool.Function.Name,
+				Description: tempTool.Function.Description,
+				Parameters:  string(param),
+			},
+		}
+	}
+
+	return parsedTools, nil
+}
+
+func checkParseTools(tools []string) ([]nexa_sdk.Tool, error) {
+	if len(tools) == 0 {
+		return nil, nil
+	}
+
+	if len(prompt) == 0 {
+		return nil, fmt.Errorf("prompt is required (use --prompt)")
+	}
+
+	return parseTools(tools)
+}
+
 func inferLLM(plugin, modelfile string) {
+	tools, err := checkParseTools(tool)
+	if err != nil {
+		fmt.Println(render.GetTheme().Error.Sprint(err))
+		return
+	}
+
 	spin := render.NewSpinner("loading model...")
 	spin.Start()
 	p, err := nexa_sdk.NewLLM(nexa_sdk.LlmCreateInput{
@@ -162,6 +215,40 @@ func inferLLM(plugin, modelfile string) {
 		return
 	}
 	defer p.Destroy()
+
+	// function call mode
+	if tools != nil {
+		messages := make([]nexa_sdk.LlmChatMessage, len(prompt))
+		for i, p := range prompt {
+			messages[i] = nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleUser, Content: p}
+		}
+		templateOutput, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
+			Messages:    messages,
+			EnableThink: false, // disable thinking mode for function call mode
+			Tools:       tools,
+		})
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("apply chat template error: %s", err))
+			return
+		}
+		res, err := p.Generate(nexa_sdk.LlmGenerateInput{
+			PromptUTF8: templateOutput.FormattedText,
+			Config: &nexa_sdk.GenerationConfig{
+				MaxTokens: 2048,
+			},
+		},
+		)
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("generate error: %s", err))
+			return
+		}
+
+		fmt.Println()
+		fmt.Println(render.GetTheme().Success.Sprintf("%s", res.FullText))
+		fmt.Println()
+		printProfile(res.ProfileData)
+		return
+	}
 
 	var history []nexa_sdk.LlmChatMessage
 
@@ -210,6 +297,12 @@ func inferLLM(plugin, modelfile string) {
 }
 
 func inferVLM(plugin, modelfile string, mmprojfile string) {
+	tools, err := checkParseTools(tool)
+	if err != nil {
+		fmt.Println(render.GetTheme().Error.Sprint(err))
+		return
+	}
+
 	spin := render.NewSpinner("loading model...")
 	spin.Start()
 	p, err := nexa_sdk.NewVLM(nexa_sdk.VlmCreateInput{
@@ -229,6 +322,38 @@ func inferVLM(plugin, modelfile string, mmprojfile string) {
 		return
 	}
 	defer p.Destroy()
+
+	if tools != nil {
+		messages := make([]nexa_sdk.VlmChatMessage, len(prompt))
+		for i, p := range prompt {
+			messages[i] = nexa_sdk.VlmChatMessage{Role: nexa_sdk.VlmRoleUser, Contents: []nexa_sdk.VlmContent{{Type: nexa_sdk.VlmContentTypeText, Text: p}}}
+		}
+		templateOutput, err := p.ApplyChatTemplate(nexa_sdk.VlmApplyChatTemplateInput{
+			Messages:    messages,
+			EnableThink: false, // disable thinking mode for function call mode
+			Tools:       tools,
+		})
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("apply chat template error: %s", err))
+			return
+		}
+		res, err := p.Generate(nexa_sdk.VlmGenerateInput{
+			PromptUTF8: templateOutput.FormattedText,
+			Config: &nexa_sdk.GenerationConfig{
+				MaxTokens: 2048,
+			},
+		})
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("generate error: %s", err))
+			return
+		}
+
+		fmt.Println()
+		fmt.Println(render.GetTheme().Success.Sprintf("%s", res.FullText))
+		fmt.Println()
+		printProfile(res.ProfileData)
+		return
+	}
 
 	var history []nexa_sdk.VlmChatMessage
 
