@@ -46,6 +46,7 @@ func (vci VlmCreateInput) toCPtr() *C.ml_VlmCreateInput {
 		n_batch:         C.int32_t(vci.Config.NBatch),
 		n_ubatch:        C.int32_t(vci.Config.NUbatch),
 		n_seq_max:       C.int32_t(vci.Config.NSeqMax),
+		n_gpu_layers:    C.int32_t(vci.Config.NGpuLayers),
 	}
 	if vci.Config.ChatTemplatePath != "" {
 		cPtr.config.chat_template_path = C.CString(vci.Config.ChatTemplatePath)
@@ -236,8 +237,6 @@ func freeToolFunction(cPtr *C.ml_ToolFunction) {
 		C.free(unsafe.Pointer(cPtr))
 	}
 }
-
-
 
 // VlmApplyChatTemplateInput represents input for applying VLM chat template
 type VlmApplyChatTemplateInput struct {

@@ -27,6 +27,7 @@ const modelLoadFailMsg = `⚠️ Oops. Model failed to load.
 
 var (
 	// disableStream *bool // reuse in run.go
+	ngl          int32
 	tool         []string
 	prompt       []string
 	query        string
@@ -50,6 +51,7 @@ func infer() *cobra.Command {
 	inferCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
 
 	inferCmd.Flags().SortFlags = false
+	inferCmd.Flags().Int32VarP(&ngl, "ngl", "n", 999, "[llm|vlm] num of layers pass to gpu")
 	inferCmd.Flags().StringArrayVarP(&tool, "tool", "t", nil, "[llm|vlm] add tool to make function call")
 	inferCmd.Flags().StringArrayVarP(&prompt, "prompt", "p", nil, "[embedder|tts] pass prompt")
 	inferCmd.Flags().StringVarP(&query, "query", "q", "", "[reranker] query")
@@ -146,7 +148,8 @@ func inferLLM(plugin, modelfile string) {
 		ModelPath: modelfile,
 		PluginID:  plugin,
 		Config: nexa_sdk.ModelConfig{
-			NCtx: 4096,
+			NCtx:       4096,
+			NGpuLayers: ngl,
 		},
 	})
 	spin.Stop()
@@ -209,7 +212,8 @@ func inferVLM(plugin, modelfile string, mmprojfile string) {
 		MmprojPath: mmprojfile,
 		PluginID:   plugin,
 		Config: nexa_sdk.ModelConfig{
-			NCtx: 4096,
+			NCtx:       4096,
+			NGpuLayers: ngl,
 		},
 	})
 	spin.Stop()
