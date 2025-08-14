@@ -247,6 +247,7 @@ type ModelConfig struct {
 	NBatch              int32
 	NUbatch             int32
 	NSeqMax             int32
+	NGpuLayers          int32
 	ChatTemplatePath    string
 	ChatTemplateContent string
 }

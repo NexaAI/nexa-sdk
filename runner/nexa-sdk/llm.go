@@ -56,6 +56,7 @@ func (lci LlmCreateInput) toCPtr() *C.ml_LlmCreateInput {
 		n_batch:         C.int32_t(lci.Config.NBatch),
 		n_ubatch:        C.int32_t(lci.Config.NUbatch),
 		n_seq_max:       C.int32_t(lci.Config.NSeqMax),
+		n_gpu_layers:    C.int32_t(lci.Config.NGpuLayers),
 	}
 	if lci.Config.ChatTemplatePath != "" {
 		cPtr.config.chat_template_path = C.CString(lci.Config.ChatTemplatePath)
