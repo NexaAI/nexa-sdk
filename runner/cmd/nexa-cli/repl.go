@@ -509,7 +509,7 @@ func chooseModelType() (types.ModelType, error) {
 		Title("Choose Model Type").
 		Options(huh.NewOptions(
 			types.ModelTypeLLM, types.ModelTypeVLM, types.ModelTypeEmbedder, types.ModelTypeReranker,
-			types.ModelTypeASR, types.ModelTypeTTS, types.ModelTypeCV)...).
+			types.ModelTypeASR, types.ModelTypeTTS, types.ModelTypeCV, types.ModelTypeImageGen)...).
 		Value(&modelType).
 		Run(); err != nil {
 		return "", err

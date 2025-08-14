@@ -37,6 +37,9 @@ func TestMain(m *testing.M) {
 	// initReranker()
 	// defer deinitReranker()
 
+	initImageGen()
+	defer deinitImageGen()
+
 	code := m.Run()
 	os.Exit(code)
 }
