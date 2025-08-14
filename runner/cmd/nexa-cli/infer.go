@@ -28,6 +28,7 @@ const modelLoadFailMsg = `⚠️ Oops. Model failed to load.
 var (
 	// disableStream *bool // reuse in run.go
 	ngl          int32
+	enableThink  bool
 	tool         []string
 	prompt       []string
 	query        string
@@ -39,7 +40,6 @@ var (
 	speechSpeed  float64
 	language     string
 	listLanguage bool
-	enableThink  bool
 )
 
 func infer() *cobra.Command {
