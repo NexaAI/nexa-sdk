@@ -315,22 +315,24 @@ type CV struct {
 // NewCV creates a new CV model instance
 func NewCV(input CVCreateInput) (*CV, error) {
 	// Qnn
-	// paddleocr
-	// basePath := filepath.Dir(input.Config.DetModelPath)
-	// input.Config.ModelPath = filepath.Join(basePath, "paddleocr", "paddleocr.bin")
-	// input.Config.SystemLibraryPath = filepath.Join(basePath, "htp-files-2.36", "QnnSystem.dll")
-	// input.Config.BackendLibraryPath = filepath.Join(basePath, "htp-files-2.36", "QnnHtp.dll")
-	// input.Config.ExtensionLibraryPath = filepath.Join(basePath, "htp-files-2.36", "QnnHtpNetRunExtensions.dll")
-	// input.Config.ConfigFilePath = filepath.Join(basePath, "paddleocr", "htp_backend_ext_config.json")
-	// input.Config.CharDictPath = filepath.Join(basePath, "paddleocr", "ppocr_keys_v1.txt")
-	// yolov12
-	basePath := filepath.Dir(input.Config.DetModelPath)
-	input.Config.ModelPath = filepath.Join(basePath, "yolo", "yolov12n.bin")
-	input.Config.SystemLibraryPath = filepath.Join(basePath, "htp-files-2.36", "QnnSystem.dll")
-	input.Config.BackendLibraryPath = filepath.Join(basePath, "htp-files-2.36", "QnnHtp.dll")
-	input.Config.ExtensionLibraryPath = filepath.Join(basePath, "htp-files-2.36", "QnnHtpNetRunExtensions.dll")
-	input.Config.ConfigFilePath = filepath.Join(basePath, "yolo", "htp_backend_ext_config.json")
-	input.Config.CharDictPath = filepath.Join(basePath, "yolo", "coco.names")
+	switch input.PluginID {
+	case "paddleocr":
+		basePath := filepath.Dir(input.Config.DetModelPath)
+		input.Config.ModelPath = filepath.Join(basePath, "paddleocr", "paddleocr.bin")
+		input.Config.SystemLibraryPath = filepath.Join(basePath, "htp-files-2.36", "QnnSystem.dll")
+		input.Config.BackendLibraryPath = filepath.Join(basePath, "htp-files-2.36", "QnnHtp.dll")
+		input.Config.ExtensionLibraryPath = filepath.Join(basePath, "htp-files-2.36", "QnnHtpNetRunExtensions.dll")
+		input.Config.ConfigFilePath = filepath.Join(basePath, "paddleocr", "htp_backend_ext_config.json")
+		input.Config.CharDictPath = filepath.Join(basePath, "paddleocr", "ppocr_keys_v1.txt")
+	case "yolov12":
+		basePath := filepath.Dir(input.Config.DetModelPath)
+		input.Config.ModelPath = filepath.Join(basePath, "yolo", "yolov12n.bin")
+		input.Config.SystemLibraryPath = filepath.Join(basePath, "htp-files-2.36", "QnnSystem.dll")
+		input.Config.BackendLibraryPath = filepath.Join(basePath, "htp-files-2.36", "QnnHtp.dll")
+		input.Config.ExtensionLibraryPath = filepath.Join(basePath, "htp-files-2.36", "QnnHtpNetRunExtensions.dll")
+		input.Config.ConfigFilePath = filepath.Join(basePath, "yolo", "htp_backend_ext_config.json")
+		input.Config.CharDictPath = filepath.Join(basePath, "yolo", "coco.names")
+	}
 	// Qnn
 
 	slog.Debug("NewCV called", "input", input)

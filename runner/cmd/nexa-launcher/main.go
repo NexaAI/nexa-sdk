@@ -5,6 +5,8 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
+	"strings"
 )
 
 var (
@@ -28,8 +30,39 @@ func initPath() {
 	}
 }
 
+func setRuntimeEnv() {
+	prependPath := func(envKey, newPath string) {
+		old := os.Getenv(envKey)
+		if old == "" {
+			_ = os.Setenv(envKey, newPath)
+		} else {
+			sep := string(os.PathListSeparator) // ';' on Windows, ':' on *nix
+			_ = os.Setenv(envKey, newPath+sep+old)
+		}
+	}
+
+	backend := "yolov12"
+	for _, arg := range os.Args[1:] {
+		if strings.Contains(arg, "paddleocr") {
+			backend = "paddleocr"
+			break
+		}
+	}
+
+	backend = filepath.Join(baseDir, backend)
+	switch runtime.GOOS {
+	case "windows":
+		prependPath("PATH", backend)
+	case "linux":
+		prependPath("LD_LIBRARY_PATH", backend)
+	default:
+		panic("unsupported OS: " + runtime.GOOS)
+	}
+}
+
 func main() {
 	initPath()
+	setRuntimeEnv()
 
 	cmd := exec.Command(binPath, os.Args[1:]...)
 	cmd.Env = os.Environ()

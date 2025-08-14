@@ -29,7 +29,9 @@ go env -w CXX=C:/tools/msys64/clangarm64/bin/clang++.exe
 
 Build and Run
 
-- copy `ml.h` `qwen3-sdk.dll` `paddleocr-sdk.dll` to `runner/build`
+- copy `ml.h` `qwen3-sdk.dll` to `runner/build`
+- copy `yolov12-sdk.dll` to `runner/build/yolov12`
+- copy `paddleocr-sdk.dll` to `runner/build/paddleocr`
 - run `make build`
 - set env token `$env:NEXA_HFTOKEN="hf_xxxxxxxxxxxxx"`
 - run `./build/nexa pull nexaml/qnn-laptop-libs`
