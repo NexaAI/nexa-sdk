@@ -29,7 +29,6 @@ var (
 	// disableStream *bool // reuse in run.go
 	ngl          int32
 	enableThink  bool
-	tool         []string
 	prompt       []string
 	query        string
 	document     []string
@@ -53,7 +52,6 @@ func infer() *cobra.Command {
 
 	inferCmd.Flags().SortFlags = false
 	inferCmd.Flags().Int32VarP(&ngl, "ngl", "n", 999, "[llm|vlm] num of layers pass to gpu")
-	inferCmd.Flags().StringArrayVarP(&tool, "tool", "t", nil, "[llm|vlm] add function name for function call")
 	inferCmd.Flags().BoolVarP(&enableThink, "think", "", true, "[llm] Qwen3 enable thinking mode")
 	inferCmd.Flags().StringArrayVarP(&prompt, "prompt", "p", nil, "[embedder|tts] pass prompt")
 	inferCmd.Flags().StringVarP(&query, "query", "q", "", "[reranker] query")

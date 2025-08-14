@@ -34,7 +34,7 @@ func RootCmd() *cobra.Command {
 
 	rootCmd.AddCommand(
 		pull(), remove(), clean(), list(),
-		infer(), functioncall(),
+		infer(), functionCall(),
 		serve(), run(),
 		version(), update(),
 	)

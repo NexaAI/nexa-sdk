@@ -13,7 +13,9 @@ import (
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 )
 
-func functioncall() *cobra.Command {
+var tool []string
+
+func functionCall() *cobra.Command {
 	fcCmd := &cobra.Command{
 		Use:     "functioncall <model-name>",
 		Aliases: []string{"fc"},
