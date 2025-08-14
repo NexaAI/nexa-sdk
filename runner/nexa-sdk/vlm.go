@@ -242,6 +242,7 @@ func freeToolFunction(cPtr *C.ml_ToolFunction) {
 type VlmApplyChatTemplateInput struct {
 	Messages []VlmChatMessage
 	Tools    []Tool
+	EnableThink bool
 }
 
 func (vati VlmApplyChatTemplateInput) toCPtr() *C.ml_VlmApplyChatTemplateInput {
@@ -259,6 +260,8 @@ func (vati VlmApplyChatTemplateInput) toCPtr() *C.ml_VlmApplyChatTemplateInput {
 		cPtr.tools = cTools
 		cPtr.tool_count = C.int32_t(toolCount)
 	}
+
+	cPtr.enable_thinking = C.bool(vati.EnableThink)
 
 	return cPtr
 }

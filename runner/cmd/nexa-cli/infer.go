@@ -28,6 +28,7 @@ const modelLoadFailMsg = `⚠️ Oops. Model failed to load.
 var (
 	// disableStream *bool // reuse in run.go
 	ngl          int32
+	enableThink  bool
 	tool         []string
 	prompt       []string
 	query        string
@@ -53,6 +54,7 @@ func infer() *cobra.Command {
 	inferCmd.Flags().SortFlags = false
 	inferCmd.Flags().Int32VarP(&ngl, "ngl", "n", 999, "[llm|vlm] num of layers pass to gpu")
 	inferCmd.Flags().StringArrayVarP(&tool, "tool", "t", nil, "[llm|vlm] add tool to make function call")
+	inferCmd.Flags().BoolVarP(&enableThink, "think", "", true, "[llm] Qwen3 enable thinking mode")
 	inferCmd.Flags().StringArrayVarP(&prompt, "prompt", "p", nil, "[embedder|tts] pass prompt")
 	inferCmd.Flags().StringVarP(&query, "query", "q", "", "[reranker] query")
 	inferCmd.Flags().StringArrayVarP(&document, "document", "d", nil, "[reranker] documents")
@@ -181,7 +183,10 @@ func inferLLM(plugin, modelfile string) {
 		Run: func(prompt string, _, _ []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			history = append(history, nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
 
-			templateOutput, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{Messages: history})
+			templateOutput, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
+				Messages:    history,
+				EnableThink: enableThink,
+			})
 			if err != nil {
 				return "", nexa_sdk.ProfileData{}, err
 			}
@@ -252,7 +257,10 @@ func inferVLM(plugin, modelfile string, mmprojfile string) {
 
 			history = append(history, msg)
 
-			tmplOut, err := p.ApplyChatTemplate(nexa_sdk.VlmApplyChatTemplateInput{Messages: history})
+			tmplOut, err := p.ApplyChatTemplate(nexa_sdk.VlmApplyChatTemplateInput{
+				Messages:    history,
+				EnableThink: enableThink,
+			})
 			if err != nil {
 				return "", nexa_sdk.ProfileData{}, err
 			}
