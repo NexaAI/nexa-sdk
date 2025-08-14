@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/charmbracelet/huh"
 	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/text"
@@ -68,46 +67,19 @@ func infer() *cobra.Command {
 	// inferCmd.Flags().BoolVarP(&listLanguage, "list-language", "", false, "[asr] list available languages")        // TODO: Language support not implemented yet
 
 	inferCmd.Run = func(cmd *cobra.Command, args []string) {
-		model := normalizeModelName(args[0])
-
 		s := store.Get()
 
-		manifest, err := s.GetManifest(model)
-		if errors.Is(err, os.ErrNotExist) {
-			fmt.Println(render.GetTheme().Info.Sprintf("model not found, start download"))
-
-			pull().Run(cmd, args)
-			// check agin
-			manifest, err = s.GetManifest(model)
-		}
+		manifest, err := ensureModelAvailable(s, normalizeModelName(args[0]), cmd, args)
 		if err != nil {
 			fmt.Println(render.GetTheme().Error.Sprintf("parse manifest error: %s", err))
 			return
 		}
 
-		var quant string
-		var options []huh.Option[string]
-		for k, v := range manifest.ModelFile {
-			if v.Downloaded {
-				options = append(options, huh.NewOption(
-					fmt.Sprintf("%-10s [%7s]", k, humanize.IBytes(uint64(v.Size))),
-					k,
-				))
-			}
+		quant, err := selectQuant(manifest)
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("quant error: %s", err))
+			return
 		}
-		if len(options) >= 2 {
-			if err = huh.NewSelect[string]().
-				Title("Select a quant from local folder").
-				Options(options...).
-				Value(&quant).
-				Run(); err != nil {
-				fmt.Println(render.GetTheme().Error.Sprintf("select error: %s", err))
-				return
-			}
-		} else {
-			quant = options[0].Value
-		}
-
 		fmt.Println(render.GetTheme().Quant.Sprintf("🔹 Quant=%s", quant))
 
 		nexa_sdk.Init()
@@ -144,59 +116,37 @@ func infer() *cobra.Command {
 	return inferCmd
 }
 
-func parseTools(tools []string) (parsedTools []nexa_sdk.Tool, err error) {
-	parsedTools = make([]nexa_sdk.Tool, len(tools))
-
-	var tempTool struct {
-		Type     string `json:"type"`
-		Function struct {
-			Name        string `json:"name"`
-			Description string `json:"description"`
-			Parameters  any    `json:"parameters" default:"{}"`
-		} `json:"function"`
+func ensureModelAvailable(s *store.Store, model string, cmd *cobra.Command, args []string) (*types.ModelManifest, error) {
+	manifest, err := s.GetManifest(model)
+	if errors.Is(err, os.ErrNotExist) {
+		fmt.Println(render.GetTheme().Info.Sprintf("model not found, start download"))
+		pull().Run(cmd, args)
+		manifest, err = s.GetManifest(model)
 	}
-
-	for i, tool := range tools {
-		err = sonic.UnmarshalString(tool, &tempTool)
-		if err != nil {
-			return nil, err
-		}
-		param, err := sonic.Marshal(tempTool.Function.Parameters)
-		if err != nil {
-			return nil, err
-		}
-		parsedTools[i] = nexa_sdk.Tool{
-			Type: tempTool.Type,
-			Function: &nexa_sdk.ToolFunction{
-				Name:        tempTool.Function.Name,
-				Description: tempTool.Function.Description,
-				Parameters:  string(param),
-			},
-		}
-	}
-
-	return parsedTools, nil
+	return manifest, err
 }
 
-func checkParseTools(tools []string) ([]nexa_sdk.Tool, error) {
-	if len(tools) == 0 {
-		return nil, nil
+func selectQuant(manifest *types.ModelManifest) (string, error) {
+	var options []huh.Option[string]
+	for k, v := range manifest.ModelFile {
+		if v.Downloaded {
+			options = append(options, huh.NewOption(fmt.Sprintf("%-10s [%7s]", k, humanize.IBytes(uint64(v.Size))), k))
+		}
 	}
-
-	if len(prompt) == 0 {
-		return nil, fmt.Errorf("prompt is required (use --prompt)")
+	if len(options) == 0 {
+		return "", fmt.Errorf("no quant found")
 	}
-
-	return parseTools(tools)
+	if len(options) == 1 {
+		return options[0].Value, nil
+	}
+	var quant string
+	if err := huh.NewSelect[string]().Title("Select a quant from local folder").Options(options...).Value(&quant).Run(); err != nil {
+		return "", err
+	}
+	return quant, nil
 }
 
 func inferLLM(plugin, modelfile string) {
-	tools, err := checkParseTools(tool)
-	if err != nil {
-		fmt.Println(render.GetTheme().Error.Sprint(err))
-		return
-	}
-
 	spin := render.NewSpinner("loading model...")
 	spin.Start()
 	p, err := nexa_sdk.NewLLM(nexa_sdk.LlmCreateInput{
@@ -215,40 +165,6 @@ func inferLLM(plugin, modelfile string) {
 		return
 	}
 	defer p.Destroy()
-
-	// function call mode
-	if tools != nil {
-		messages := make([]nexa_sdk.LlmChatMessage, len(prompt))
-		for i, p := range prompt {
-			messages[i] = nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleUser, Content: p}
-		}
-		templateOutput, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
-			Messages:    messages,
-			EnableThink: false, // disable thinking mode for function call mode
-			Tools:       tools,
-		})
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("apply chat template error: %s", err))
-			return
-		}
-		res, err := p.Generate(nexa_sdk.LlmGenerateInput{
-			PromptUTF8: templateOutput.FormattedText,
-			Config: &nexa_sdk.GenerationConfig{
-				MaxTokens: 2048,
-			},
-		},
-		)
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("generate error: %s", err))
-			return
-		}
-
-		fmt.Println()
-		fmt.Println(render.GetTheme().Success.Sprintf("%s", res.FullText))
-		fmt.Println()
-		printProfile(res.ProfileData)
-		return
-	}
 
 	var history []nexa_sdk.LlmChatMessage
 
@@ -297,12 +213,6 @@ func inferLLM(plugin, modelfile string) {
 }
 
 func inferVLM(plugin, modelfile string, mmprojfile string) {
-	tools, err := checkParseTools(tool)
-	if err != nil {
-		fmt.Println(render.GetTheme().Error.Sprint(err))
-		return
-	}
-
 	spin := render.NewSpinner("loading model...")
 	spin.Start()
 	p, err := nexa_sdk.NewVLM(nexa_sdk.VlmCreateInput{
@@ -322,38 +232,6 @@ func inferVLM(plugin, modelfile string, mmprojfile string) {
 		return
 	}
 	defer p.Destroy()
-
-	if tools != nil {
-		messages := make([]nexa_sdk.VlmChatMessage, len(prompt))
-		for i, p := range prompt {
-			messages[i] = nexa_sdk.VlmChatMessage{Role: nexa_sdk.VlmRoleUser, Contents: []nexa_sdk.VlmContent{{Type: nexa_sdk.VlmContentTypeText, Text: p}}}
-		}
-		templateOutput, err := p.ApplyChatTemplate(nexa_sdk.VlmApplyChatTemplateInput{
-			Messages:    messages,
-			EnableThink: false, // disable thinking mode for function call mode
-			Tools:       tools,
-		})
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("apply chat template error: %s", err))
-			return
-		}
-		res, err := p.Generate(nexa_sdk.VlmGenerateInput{
-			PromptUTF8: templateOutput.FormattedText,
-			Config: &nexa_sdk.GenerationConfig{
-				MaxTokens: 2048,
-			},
-		})
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("generate error: %s", err))
-			return
-		}
-
-		fmt.Println()
-		fmt.Println(render.GetTheme().Success.Sprintf("%s", res.FullText))
-		fmt.Println()
-		printProfile(res.ProfileData)
-		return
-	}
 
 	var history []nexa_sdk.VlmChatMessage
 
