@@ -260,16 +260,8 @@ func inferVLM(plugin, modelfile string, mmprojfile string) {
 
 			history = append(history, msg)
 
-			tmplOut, err := p.ApplyChatTemplate(nexa_sdk.VlmApplyChatTemplateInput{
-				Messages:    history,
-				EnableThink: enableThink,
-			})
-			if err != nil {
-				return "", nexa_sdk.ProfileData{}, err
-			}
-
 			res, err := p.Generate(nexa_sdk.VlmGenerateInput{
-				PromptUTF8: tmplOut.FormattedText,
+				PromptUTF8: prompt,
 				OnToken:    on_token,
 				Config: &nexa_sdk.GenerationConfig{
 					MaxTokens:  2048,

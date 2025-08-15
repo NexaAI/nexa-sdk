@@ -46,13 +46,11 @@ int32_t ml_llm_apply_chat_template(ml_LLM *handle,
 //
 // int32_t ml_vlm_reset(ml_VLM *handle) { return -1; }
 //
-int32_t ml_vlm_apply_chat_template(ml_VLM *handle,
-                                   const ml_VlmApplyChatTemplateInput *input,
-                                   ml_VlmApplyChatTemplateOutput *output) {
-  output->formatted_text =
-      strdup(input->messages[input->message_count - 1].contents[0].text);
-  return strlen(output->formatted_text);
-}
+// int32_t ml_vlm_apply_chat_template(ml_VLM *handle,
+//                                    const ml_VlmApplyChatTemplateInput *input,
+//                                    ml_VlmApplyChatTemplateOutput *output) {
+//   return -1;
+// }
 //
 // int32_t ml_vlm_generate(ml_VLM *handle, const ml_VlmGenerateInput *input,
 //                         ml_VlmGenerateOutput *output) {
