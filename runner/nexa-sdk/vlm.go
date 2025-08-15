@@ -15,11 +15,12 @@ import (
 
 // VlmCreateInput represents input parameters for creating a VLM instance
 type VlmCreateInput struct {
-	ModelPath  string
-	MmprojPath string
-	Config     ModelConfig
-	PluginID   string
-	DeviceID   string
+	ModelPath     string
+	MmprojPath    string
+	TokenizerPath string
+	Config        ModelConfig
+	PluginID      string
+	DeviceID      string
 }
 
 func (vci VlmCreateInput) toCPtr() *C.ml_VlmCreateInput {
@@ -31,6 +32,9 @@ func (vci VlmCreateInput) toCPtr() *C.ml_VlmCreateInput {
 	}
 	if vci.MmprojPath != "" {
 		cPtr.mmproj_path = C.CString(vci.MmprojPath)
+	}
+	if vci.TokenizerPath != "" {
+		cPtr.tokenizer_path = C.CString(vci.TokenizerPath)
 	}
 	if vci.PluginID != "" {
 		cPtr.plugin_id = C.CString(vci.PluginID)
@@ -47,7 +51,7 @@ func (vci VlmCreateInput) toCPtr() *C.ml_VlmCreateInput {
 		n_batch:         C.int32_t(vci.Config.NBatch),
 		n_ubatch:        C.int32_t(vci.Config.NUbatch),
 		n_seq_max:       C.int32_t(vci.Config.NSeqMax),
-		n_gpu_layers:    C.int32_t(vci.Config.NGpuLayers),
+		//n_gpu_layers:    C.int32_t(vci.Config.NGpuLayers),
 	}
 	if vci.Config.ChatTemplatePath != "" {
 		cPtr.config.chat_template_path = C.CString(vci.Config.ChatTemplatePath)
@@ -67,6 +71,9 @@ func freeVlmCreateInput(cPtr *C.ml_VlmCreateInput) {
 		}
 		if cPtr.mmproj_path != nil {
 			C.free(unsafe.Pointer(cPtr.mmproj_path))
+		}
+		if cPtr.tokenizer_path != nil {
+			C.free(unsafe.Pointer(cPtr.tokenizer_path))
 		}
 		if cPtr.plugin_id != nil {
 			C.free(unsafe.Pointer(cPtr.plugin_id))
@@ -384,6 +391,7 @@ func NewVLM(input VlmCreateInput) (*VLM, error) {
 	basePath := filepath.Dir(input.ModelPath)
 	input.ModelPath = filepath.Join(basePath, "omni-neural", "llm", "ar128-ar1-cl4096", "weight_sharing_model_1_of_2.serialized.bin")
 	input.MmprojPath = filepath.Join(basePath, "omni-neural", "llm", "ar128-ar1-cl4096", "weight_sharing_model_2_of_2.serialized.bin")
+	input.TokenizerPath = filepath.Join(basePath, "omni-neural", "tokenizer.json")
 	// Qnn
 
 	slog.Debug("NewVLM called", "input", input)
@@ -402,6 +410,21 @@ func NewVLM(input VlmCreateInput) (*VLM, error) {
 	defer C.free(unsafe.Pointer(cInput.config.config_file_path))
 	cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "omni-neural", "llm", "embed_tokens.npy"))
 	defer C.free(unsafe.Pointer(cInput.config.embedded_tokens_path))
+	cInput.config.patch_embed_path = C.CString(filepath.Join(basePath, "omni-neural", "vit", "patch_embed.serialized.bin"))
+	defer C.free(unsafe.Pointer(cInput.config.patch_embed_path))
+	cInput.config.vit_model_path = C.CString(filepath.Join(basePath, "omni-neural", "vit", "vit.serialized.bin"))
+	defer C.free(unsafe.Pointer(cInput.config.vit_model_path))
+	cInput.config.vit_config_file_path = C.CString(filepath.Join(basePath, "omni-neural", "vit", "htp_backend_ext_config.json"))
+	defer C.free(unsafe.Pointer(cInput.config.vit_config_file_path))
+	cInput.config.audio_encoder_helper0_path = C.CString(filepath.Join(basePath, "omni-neural", "audio_encoder", "audio_encoder_helper0.serialized.bin"))
+	defer C.free(unsafe.Pointer(cInput.config.audio_encoder_helper0_path))
+	cInput.config.audio_encoder_helper1_path = C.CString(filepath.Join(basePath, "omni-neural", "audio_encoder", "audio_encoder_helper1.serialized.bin"))
+	defer C.free(unsafe.Pointer(cInput.config.audio_encoder_helper1_path))
+	cInput.config.audio_encoder_model_path = C.CString(filepath.Join(basePath, "omni-neural", "audio_encoder", "audio_encoder.serialized.bin"))
+	defer C.free(unsafe.Pointer(cInput.config.audio_encoder_model_path))
+	cInput.config.audio_encoder_config_file_path = C.CString(filepath.Join(basePath, "omni-neural", "audio_encoder", "htp_backend_ext_config.json"))
+	defer C.free(unsafe.Pointer(cInput.config.audio_encoder_config_file_path))
+
 	cInput.config.max_tokens = 256
 	cInput.config.enable_thinking = true
 	cInput.config.verbose = false
