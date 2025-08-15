@@ -69,14 +69,7 @@ func infer() *cobra.Command {
 
 		s := store.Get()
 
-		var modelName string
-
-		switch args[0] {
-		case "qwen3", "paddleocr", "yolov12":
-			modelName = "nexaml/qnn-laptop-libs"
-		case "omni-neural":
-			modelName = "nexaml/qnn-laptop-libs-omni-neural"
-		}
+		modelName := "nexaml/nexaml-models"
 
 		manifest, err := s.GetManifest(modelName)
 		if errors.Is(err, os.ErrNotExist) {
