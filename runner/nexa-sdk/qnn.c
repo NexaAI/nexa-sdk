@@ -14,7 +14,7 @@ int32_t ml_register_plugin(ml_plugin_id_func plugin_id_func,
 int32_t ml_deinit(void) { return 0; }
 int32_t ml_set_log(ml_log_callback callback) { return 0; }
 void ml_free(void *ptr) {}
-const char *ml_version(void) { return "0.0.0-qnn"; }
+const char *ml_version(void) { return "v1.0.3-qnn-rc4"; }
 
 int32_t ml_get_plugin_list(ml_GetPluginListOutput *output) { return 0; }
 

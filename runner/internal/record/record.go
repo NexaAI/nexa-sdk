@@ -31,7 +31,7 @@ func NewRecorder(outputFile string) (*Recorder, error) {
 		cmd = exec.Command("sox", args...)
 
 	case "windows":
-		args = []string{"-t", "waveaudio", "-d", outputFile}
+		args = []string{"-t", "waveaudio", "-c", "1", "-r", "16000", "-d", outputFile}
 		cmd = exec.Command("sox", args...)
 
 	default:
