@@ -46,8 +46,8 @@ func NewRecorder(outputFile string) (*Recorder, error) {
 	}, nil
 }
 
-func (r *Recorder) Start() error {
-	return r.cmd.Start()
+func (r *Recorder) Run() error {
+	return r.cmd.Run()
 }
 
 func (r *Recorder) Stop() error {
