@@ -3,13 +3,18 @@ package main
 import (
 	"errors"
 	"fmt"
+	"image"
+	"image/jpeg"
 	"log/slog"
 	"os"
 	"strings"
 	"time"
 
+	_ "image/png"
+
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
+	"golang.org/x/image/draw"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
@@ -101,9 +106,10 @@ func infer() *cobra.Command {
 			return
 		}
 
-		// QNN
+		if !strings.Contains(quant, "N/A") {
+			fmt.Println(render.GetTheme().Quant.Sprintf("🔹 Quant=%s", quant))
+		}
 
-		fmt.Println(render.GetTheme().Quant.Sprintf("🔹 Quant=%s", quant))
 
 		nexa_sdk.Init()
 		defer nexa_sdk.DeInit()
@@ -205,6 +211,35 @@ func inferLLM(plugin, modelfile string) {
 	})
 }
 
+func ResizeToTemp(path string, width, height int) (string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", fmt.Errorf("open input: %w", err)
+	}
+	defer file.Close()
+
+	img, _, err := image.Decode(file)
+	if err != nil {
+		return "", fmt.Errorf("decode image: %w", err)
+	}
+
+	dst := image.NewRGBA(image.Rect(0, 0, width, height))
+
+	draw.CatmullRom.Scale(dst, dst.Bounds(), img, img.Bounds(), draw.Over, nil)
+
+	tmpFile, err := os.CreateTemp("", "resized-*.jpg")
+	if err != nil {
+		return "", fmt.Errorf("create temp file: %w", err)
+	}
+	defer tmpFile.Close()
+
+	if err := jpeg.Encode(tmpFile, dst, &jpeg.Options{Quality: 95}); err != nil {
+		return "", fmt.Errorf("encode jpeg: %w", err)
+	}
+
+	return tmpFile.Name(), nil
+}
+
 func inferVLM(plugin, modelfile string, mmprojfile string) {
 	spin := render.NewSpinner("loading model...")
 	spin.Start()
@@ -244,7 +279,15 @@ func inferVLM(plugin, modelfile string, mmprojfile string) {
 		Run: func(prompt string, images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			msg := nexa_sdk.VlmChatMessage{Role: nexa_sdk.VlmRoleUser}
 			msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeText, Text: prompt})
-			for _, image := range images {
+			for i, image := range images {
+				if strings.Contains(modelfile, "omni-neural") {
+					var err error
+					if image, err = ResizeToTemp(image, 448, 448); err != nil {
+						return "", nexa_sdk.ProfileData{}, err
+					}
+					slog.Info("resized image", "image", image)
+					images[i] = image
+				}
 				msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeImage, Text: image})
 			}
 			for _, audio := range audios {

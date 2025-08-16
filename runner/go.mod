@@ -11,6 +11,7 @@ require (
 	github.com/gin-gonic/gin v1.10.1
 	github.com/gofrs/flock v0.12.1
 	github.com/gookit/color v1.5.4
+	github.com/hashicorp/go-version v1.7.0
 	github.com/jedib0t/go-pretty/v6 v6.6.7
 	github.com/ollama/ollama v0.9.5
 	github.com/openai/openai-go v1.6.0
@@ -18,8 +19,9 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
 	github.com/valyala/fasthttp v1.63.0
+	golang.ngrok.com/ngrok/v2 v2.0.0
+	golang.org/x/image v0.22.0
 	resty.dev/v3 v3.0.0-beta.3
-	github.com/hashicorp/go-version v1.7.0
 )
 
 require (
@@ -29,8 +31,6 @@ require (
 	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	golang.ngrok.com/muxado/v2 v2.0.1 // indirect
-	golang.ngrok.com/ngrok/v2 v2.0.0 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
 require (
