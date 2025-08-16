@@ -280,7 +280,8 @@ func inferVLM(plugin, modelfile string, mmprojfile string) {
 			msg := nexa_sdk.VlmChatMessage{Role: nexa_sdk.VlmRoleUser}
 			msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeText, Text: prompt})
 			for i, image := range images {
-				if strings.Contains(modelfile, "omni-neural") {
+				// omni-neural resize
+				if strings.Contains(modelfile, "nexaml-models") {
 					var err error
 					if image, err = ResizeToTemp(image, 448, 448); err != nil {
 						return "", nexa_sdk.ProfileData{}, err
