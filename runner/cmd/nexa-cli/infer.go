@@ -87,7 +87,10 @@ func infer() *cobra.Command {
 			fmt.Println(render.GetTheme().Error.Sprintf("quant error: %s", err))
 			return
 		}
-		fmt.Println(render.GetTheme().Quant.Sprintf("🔹 Quant=%s", quant))
+		// skip N/A
+		if quant != "N/A" {
+			fmt.Println(render.GetTheme().Quant.Sprintf("🔹 Quant=%s", quant))
+		}
 
 		nexa_sdk.Init()
 		defer nexa_sdk.DeInit()
