@@ -167,11 +167,16 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 		}
 
 		// Detect plugin
-		if strings.Contains(strings.ToLower(mf.Name), "mlx") {
+		// TODO: abstract this logic to a function and enum plugin_id
+		lowerName := strings.ToLower(mf.Name)
+		switch {
+		case strings.Contains(lowerName, "mlx"):
 			mf.PluginId = "mlx"
-		} else if strings.Contains(strings.ToLower(mf.Name), "ort") || strings.Contains(strings.ToLower(mf.Name), "onnx") {
+		case strings.Contains(lowerName, "ort"), strings.Contains(lowerName, "onnx"):
 			mf.PluginId = "ort"
-		} else {
+		case strings.Contains(lowerName, "npu"), strings.Contains(lowerName, "omni-neural"):
+			mf.PluginId = "qnn"
+		default:
 			mf.PluginId = "llama_cpp"
 		}
 
