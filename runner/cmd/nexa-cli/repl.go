@@ -132,7 +132,7 @@ func repl(cfg ReplConfig) {
 
 	for {
 		// print stashed content
-		if multiline == MultilineNone && recordAudios != nil {
+		if multiline == MultilineNone && len(recordAudios) > 0 {
 			fmt.Println(render.GetTheme().Info.Sprintf("Current stash audios: %s", strings.Join(recordAudios, ", ")))
 		}
 
