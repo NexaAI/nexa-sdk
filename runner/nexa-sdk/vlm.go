@@ -52,6 +52,7 @@ func (vci VlmCreateInput) toCPtr() *C.ml_VlmCreateInput {
 		n_ubatch:        C.int32_t(vci.Config.NUbatch),
 		n_seq_max:       C.int32_t(vci.Config.NSeqMax),
 		//n_gpu_layers:    C.int32_t(vci.Config.NGpuLayers),
+		enable_sampling: C.bool(vci.Config.EnableSampling),
 	}
 	if vci.Config.ChatTemplatePath != "" {
 		cPtr.config.chat_template_path = C.CString(vci.Config.ChatTemplatePath)
@@ -426,7 +427,6 @@ func NewVLM(input VlmCreateInput) (*VLM, error) {
 	defer C.free(unsafe.Pointer(cInput.config.audio_encoder_config_file_path))
 
 	cInput.config.max_tokens = 256
-	cInput.config.enable_thinking = true
 	cInput.config.verbose = false
 
 	// Qnn

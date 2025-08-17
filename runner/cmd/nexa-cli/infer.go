@@ -7,6 +7,7 @@ import (
 	"image/jpeg"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -30,19 +31,20 @@ const modelLoadFailMsg = `⚠️ Oops. Model failed to load.
 
 var (
 	// disableStream *bool // reuse in run.go
-	ngl          int32
-	enableThink  bool
-	tool         []string
-	prompt       []string
-	query        string
-	document     []string
-	input        string
-	output       string
-	voice        string
-	listVoice    bool
-	speechSpeed  float64
-	language     string
-	listLanguage bool
+	ngl            int32
+	enableThink    bool
+	enableSampling bool
+	tool           []string
+	prompt         []string
+	query          string
+	document       []string
+	input          string
+	output         string
+	voice          string
+	listVoice      bool
+	speechSpeed    float64
+	language       string
+	listLanguage   bool
 )
 
 func infer() *cobra.Command {
@@ -58,6 +60,7 @@ func infer() *cobra.Command {
 	inferCmd.Flags().Int32VarP(&ngl, "ngl", "n", 999, "[llm|vlm] num of layers pass to gpu")
 	inferCmd.Flags().StringArrayVarP(&tool, "tool", "t", nil, "[llm|vlm] add tool to make function call")
 	inferCmd.Flags().BoolVarP(&enableThink, "think", "", true, "[llm] Qwen3 enable thinking mode")
+	inferCmd.Flags().BoolVarP(&enableSampling, "enable-json", "", false, "[vlm] omini-neural enable json output")
 	inferCmd.Flags().StringArrayVarP(&prompt, "prompt", "p", nil, "[embedder|tts] pass prompt")
 	inferCmd.Flags().StringVarP(&query, "query", "q", "", "[reranker] query")
 	inferCmd.Flags().StringArrayVarP(&document, "document", "d", nil, "[reranker] documents")
@@ -91,9 +94,11 @@ func infer() *cobra.Command {
 
 		quant := "N/A"
 		switch args[0] {
-		case "qwen3":
+		case "qwen3", "qwen3-npu":
 			manifest.ModelType = types.ModelTypeLLM
 		case "omni-neural":
+			manifest.ModelType = types.ModelTypeVLM
+		case "nexaml/omni-neural":
 			manifest.ModelType = types.ModelTypeVLM
 		case "paddleocr":
 			manifest.ModelType = types.ModelTypeCV
@@ -110,7 +115,6 @@ func infer() *cobra.Command {
 			fmt.Println(render.GetTheme().Quant.Sprintf("🔹 Quant=%s", quant))
 		}
 
-
 		nexa_sdk.Init()
 		defer nexa_sdk.DeInit()
 
@@ -124,7 +128,12 @@ func infer() *cobra.Command {
 			if manifest.MMProjFile.Name != "" {
 				mmprojfile = s.ModelfilePath(manifest.Name, manifest.MMProjFile.Name)
 			}
-			inferVLM(manifest.PluginId, modelfile, mmprojfile)
+			tokenizer := ""
+			if strings.Contains(args[0], "omni-neural") {
+				tokenizer = filepath.Dir(modelfile) + "/omni-neural/tokenizer.json"
+			}
+			// fmt.Println("model:", modelfile, "mmproj:", mmprojfile, "tokenizer:", tokenizer)
+			inferVLM(manifest.PluginId, modelfile, mmprojfile, tokenizer)
 		case types.ModelTypeEmbedder:
 			inferEmbedder(manifest.PluginId, modelfile)
 		case types.ModelTypeReranker:
@@ -240,16 +249,18 @@ func ResizeToTemp(path string, width, height int) (string, error) {
 	return tmpFile.Name(), nil
 }
 
-func inferVLM(plugin, modelfile string, mmprojfile string) {
+func inferVLM(plugin, modelfile string, mmprojfile string, tokenizer string) {
 	spin := render.NewSpinner("loading model...")
 	spin.Start()
 	p, err := nexa_sdk.NewVLM(nexa_sdk.VlmCreateInput{
-		ModelPath:  modelfile,
-		MmprojPath: mmprojfile,
-		PluginID:   plugin,
+		ModelPath:     modelfile,
+		MmprojPath:    mmprojfile,
+		TokenizerPath: tokenizer,
+		PluginID:      plugin,
 		Config: nexa_sdk.ModelConfig{
-			NCtx:       4096,
-			NGpuLayers: ngl,
+			NCtx:           4096,
+			NGpuLayers:     ngl,
+			EnableSampling: enableSampling,
 		},
 	})
 	spin.Stop()

@@ -2,6 +2,7 @@ package config
 
 var modelMapping = map[string]string{
 	"qwen3":       "NexaAI/Qwen3-4B-GGUF",
+	"qwen3-npu":   "nexaml/qwen3-npu",
 	"qwen2vl":     "ggml-org/Qwen2-VL-2B-Instruct-GGUF",
 	"qwen2.5vl":   "Qwen/Qwen2.5-VL-3B-Instruct",
 	"gemma3":      "ggml-org/gemma-3-4b-it-GGUF",

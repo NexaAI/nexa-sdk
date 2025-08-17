@@ -248,6 +248,7 @@ type ModelConfig struct {
 	NUbatch             int32
 	NSeqMax             int32
 	NGpuLayers          int32
+	EnableSampling      bool
 	ChatTemplatePath    string
 	ChatTemplateContent string
 }
