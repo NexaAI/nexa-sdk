@@ -7,12 +7,13 @@ import (
 	"image/jpeg"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
 	_ "image/png"
 
+	"github.com/charmbracelet/huh"
+	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 	"golang.org/x/image/draw"
@@ -73,53 +74,25 @@ func infer() *cobra.Command {
 	// inferCmd.Flags().BoolVarP(&listLanguage, "list-language", "", false, "[asr] list available languages")        // TODO: Language support not implemented yet
 
 	inferCmd.Run = func(cmd *cobra.Command, args []string) {
-		// QNN
-
 		s := store.Get()
 
-		modelName := "nexaml/nexaml-models"
-
-		manifest, err := s.GetManifest(modelName)
-		if errors.Is(err, os.ErrNotExist) {
-			fmt.Println(render.GetTheme().Info.Sprintf("model not found, start download"))
-
-			pull().Run(cmd, args)
-			// check agin
-			manifest, err = s.GetManifest(modelName)
-		}
+		manifest, err := ensureModelAvailable(s, normalizeModelName(args[0]), cmd, args)
 		if err != nil {
 			fmt.Println(render.GetTheme().Error.Sprintf("parse manifest error: %s", err))
 			return
 		}
 
-		quant := "N/A"
-		switch args[0] {
-		case "qwen3", "qwen3-npu":
-			manifest.ModelType = types.ModelTypeLLM
-		case "omni-neural":
-			manifest.ModelType = types.ModelTypeVLM
-		case "nexaml/omni-neural":
-			manifest.ModelType = types.ModelTypeVLM
-		case "paddleocr":
-			manifest.ModelType = types.ModelTypeCV
-			manifest.PluginId = "paddleocr"
-		case "yolov12":
-			manifest.ModelType = types.ModelTypeCV
-			manifest.PluginId = "yolov12"
-		default:
-			fmt.Println(render.GetTheme().Error.Sprintf("not support: %s", args[0]))
+		quant, err := selectQuant(manifest)
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("quant error: %s", err))
 			return
 		}
-
-		if !strings.Contains(quant, "N/A") {
-			fmt.Println(render.GetTheme().Quant.Sprintf("🔹 Quant=%s", quant))
-		}
+		fmt.Println(render.GetTheme().Quant.Sprintf("🔹 Quant=%s", quant))
 
 		nexa_sdk.Init()
 		defer nexa_sdk.DeInit()
 
 		modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
-
 		switch manifest.ModelType {
 		case types.ModelTypeLLM:
 			inferLLM(manifest.PluginId, modelfile)
@@ -128,12 +101,7 @@ func infer() *cobra.Command {
 			if manifest.MMProjFile.Name != "" {
 				mmprojfile = s.ModelfilePath(manifest.Name, manifest.MMProjFile.Name)
 			}
-			tokenizer := ""
-			if strings.Contains(args[0], "omni-neural") {
-				tokenizer = filepath.Dir(modelfile) + "/omni-neural/tokenizer.json"
-			}
-			// fmt.Println("model:", modelfile, "mmproj:", mmprojfile, "tokenizer:", tokenizer)
-			inferVLM(manifest.PluginId, modelfile, mmprojfile, tokenizer)
+			inferVLM(manifest.PluginId, modelfile, mmprojfile)
 		case types.ModelTypeEmbedder:
 			inferEmbedder(manifest.PluginId, modelfile)
 		case types.ModelTypeReranker:
@@ -152,6 +120,36 @@ func infer() *cobra.Command {
 		}
 	}
 	return inferCmd
+}
+
+func ensureModelAvailable(s *store.Store, model string, cmd *cobra.Command, args []string) (*types.ModelManifest, error) {
+	manifest, err := s.GetManifest(model)
+	if errors.Is(err, os.ErrNotExist) {
+		fmt.Println(render.GetTheme().Info.Sprintf("model not found, start download"))
+		pull().Run(cmd, args)
+		manifest, err = s.GetManifest(model)
+	}
+	return manifest, err
+}
+
+func selectQuant(manifest *types.ModelManifest) (string, error) {
+	var options []huh.Option[string]
+	for k, v := range manifest.ModelFile {
+		if v.Downloaded {
+			options = append(options, huh.NewOption(fmt.Sprintf("%-10s [%7s]", k, humanize.IBytes(uint64(v.Size))), k))
+		}
+	}
+	if len(options) == 0 {
+		return "", fmt.Errorf("no quant found")
+	}
+	if len(options) == 1 {
+		return options[0].Value, nil
+	}
+	var quant string
+	if err := huh.NewSelect[string]().Title("Select a quant from local folder").Options(options...).Value(&quant).Run(); err != nil {
+		return "", err
+	}
+	return quant, nil
 }
 
 func inferLLM(plugin, modelfile string) {
@@ -249,14 +247,13 @@ func ResizeToTemp(path string, width, height int) (string, error) {
 	return tmpFile.Name(), nil
 }
 
-func inferVLM(plugin, modelfile string, mmprojfile string, tokenizer string) {
+func inferVLM(plugin, modelfile string, mmprojfile string) {
 	spin := render.NewSpinner("loading model...")
 	spin.Start()
 	p, err := nexa_sdk.NewVLM(nexa_sdk.VlmCreateInput{
-		ModelPath:     modelfile,
-		MmprojPath:    mmprojfile,
-		TokenizerPath: tokenizer,
-		PluginID:      plugin,
+		ModelPath:  modelfile,
+		MmprojPath: mmprojfile,
+		PluginID:   plugin,
 		Config: nexa_sdk.ModelConfig{
 			NCtx:           4096,
 			NGpuLayers:     ngl,

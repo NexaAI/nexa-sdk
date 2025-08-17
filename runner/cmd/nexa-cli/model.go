@@ -180,17 +180,8 @@ func list() *cobra.Command {
 					quants = append(quants, k)
 				}
 			}
-			if strings.HasPrefix(model.Name, "nexaml") {
-				model.PluginId = "qnn"
-			}
 			tw.AppendRow(table.Row{model.Name, model.ModelType, model.PluginId, strings.Join(quants, ","), humanize.IBytes(uint64(model.GetSize()))})
 		}
-		// QNN
-		tw.AppendRow(table.Row{"qwen3", "llm", "qnn", "N/A", "3.5GB"})
-		tw.AppendRow(table.Row{"omni-neural", "vlm", "qnn", "N/A", "3.5GB"})
-		tw.AppendRow(table.Row{"paddleocr", "cv", "qnn", "N/A", "76MB"})
-		tw.AppendRow(table.Row{"yolov12", "cv", "qnn", "N/A", "144MB"})
-		// QNN
 		tw.Render()
 	}
 
