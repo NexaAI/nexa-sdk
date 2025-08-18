@@ -9,7 +9,6 @@ extern bool go_generate_stream_on_token(char*, void*);
 import "C"
 
 import (
-	"fmt"
 	"log/slog"
 	"path/filepath"
 	"unsafe"
@@ -308,7 +307,6 @@ func NewLLM(input LlmCreateInput) (*LLM, error) {
 	cInput.config.enable_thinking = true
 	cInput.config.verbose = false
 	// Qnn
-	fmt.Printf("%#v", cInput)
 	var cHandle *C.ml_LLM
 	res := C.ml_llm_create(cInput, &cHandle)
 	if res < 0 {
