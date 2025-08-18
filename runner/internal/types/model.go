@@ -4,7 +4,7 @@ type ModelType string
 
 const (
 	ModelTypeLLM      ModelType = "llm"
-	ModelTypeVLM      ModelType = "vlm"
+	ModelTypeVLM      ModelType = "multimodal"
 	ModelTypeEmbedder ModelType = "embedder"
 	ModelTypeReranker ModelType = "reranker"
 	ModelTypeImageGen ModelType = "image_gen"
