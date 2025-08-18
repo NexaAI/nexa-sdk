@@ -74,7 +74,7 @@ func pull() *cobra.Command {
 				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 			}
 		} else {
-			modelType, err := chooseModelType()
+			modelType, err := chooseModelTypeByName(name)
 			if err != nil {
 				return
 			}

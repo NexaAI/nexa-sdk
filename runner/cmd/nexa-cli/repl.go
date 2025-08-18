@@ -467,6 +467,23 @@ func chooseModelType() (types.ModelType, error) {
 	return modelType, nil
 }
 
+func chooseModelTypeByName(modelName string) (types.ModelType, error) {
+	// Hardcoded model type mapping for specific models
+	switch modelName {
+	case "omni-neural", "nexaml/omni-neural":
+		return types.ModelTypeVLM, nil
+	case "qwen3-npu", "nexaml/qwen3-npu":
+		return types.ModelTypeLLM, nil
+	case "paddleocr-npu", "nexaml/paddleocr-npu":
+		return types.ModelTypeCV, nil
+	case "yolov12-npu", "nexaml/yolov12-npu":
+		return types.ModelTypeCV, nil
+	default:
+		// Fallback to interactive selection for unknown models
+		return chooseModelType()
+	}
+}
+
 func chooseFiles(name string, files []string) (res types.ModelManifest, err error) {
 	if len(files) == 0 {
 		err = fmt.Errorf("repo is empty")
