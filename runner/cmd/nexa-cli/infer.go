@@ -498,6 +498,7 @@ func inferCV(plugin, modelfile string) {
 			SystemLibraryPath:    "",
 			BackendLibraryPath:   "",
 			ExtensionLibraryPath: "",
+			InputImagePath:       "",
 		},
 		PluginID: plugin,
 		DeviceID: "",

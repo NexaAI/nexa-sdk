@@ -136,6 +136,7 @@ type CVModelConfig struct {
 	ExtensionLibraryPath string
 	ConfigFilePath       string
 	CharDictPath         string
+	InputImagePath       string
 }
 
 func (cmc CVModelConfig) toCPtr() *C.ml_CVModelConfig {
@@ -167,6 +168,9 @@ func (cmc CVModelConfig) toCPtr() *C.ml_CVModelConfig {
 	}
 	if cmc.CharDictPath != "" {
 		cPtr.char_dict_path = C.CString(cmc.CharDictPath)
+	}
+	if cmc.InputImagePath != "" {
+		cPtr.input_image_path = C.CString(cmc.InputImagePath)
 	}
 
 	return cPtr
@@ -331,6 +335,7 @@ func NewCV(input CVCreateInput) (*CV, error) {
 		input.Config.ExtensionLibraryPath = filepath.Join(basePath, "htp-files-2.36", "QnnHtpNetRunExtensions.dll")
 		input.Config.ConfigFilePath = filepath.Join(basePath, "yolo", "htp_backend_ext_config.json")
 		input.Config.CharDictPath = filepath.Join(basePath, "yolo", "coco.names")
+		input.Config.InputImagePath = filepath.Join(basePath, "yolo", "")
 	}
 	// Qnn
 
