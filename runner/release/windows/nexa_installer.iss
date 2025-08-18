@@ -4,7 +4,7 @@
 #define MyAppPublisher "Nexa AI"
 #define MyAppExeName "nexa.exe"
 #define MyAppServiceName "NexaService"
-#define MyAppLauncherName "Nexa CLI Launcher.exe"
+#define MyAppLauncherName "nexa-cli-launcher.exe"
 
 [Setup]
 AppId={{e9b30237-d65d-4a79-a7c0-f4e217e78f54}}
@@ -28,11 +28,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 
 [Files]
 ; Main executables
-Source: "..\..\..\artifacts\nexa.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\..\..\artifacts\nexa-cli.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\..\..\artifacts\nexa-cli-launcher.exe"; DestDir: "{app}"; DestName: "{#MyAppLauncherName}"; Flags: ignoreversion
-Source: "..\..\..\artifacts\nexa_bridge.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\..\..\artifacts\nexa_llama_cpp\*"; DestDir: "{app}\nexa_llama_cpp"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\..\..\artifacts\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Registry]
 ; Launcher registration (primary application)

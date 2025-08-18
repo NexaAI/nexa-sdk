@@ -295,7 +295,6 @@ func NewLLM(input LlmCreateInput) (*LLM, error) {
 		C.free(unsafe.Pointer(cInput.tokenizer_path))
 	}
 	basePath := filepath.Dir(input.ModelPath)
-	slog.Debug("Using Qwen3-NPU model", "basePath", basePath)
 	if strings.HasSuffix(basePath, "qwen3-npu") {
 		cInput.model_path = C.CString(filepath.Join(basePath, "qwen3-npu", "weight_sharing_model_1_of_1_w8.serialized.bin"))
 		cInput.tokenizer_path = C.CString(filepath.Join(basePath, "qwen3-npu", "tokenizer.json"))

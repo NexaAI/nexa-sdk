@@ -1,5 +1,4 @@
 # Build and binary files
-build/
 *.exe
 *.exe~
 *.dll

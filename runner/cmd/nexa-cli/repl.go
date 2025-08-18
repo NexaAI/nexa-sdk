@@ -470,13 +470,11 @@ func chooseModelType() (types.ModelType, error) {
 func chooseModelTypeByName(modelName string) (types.ModelType, error) {
 	// Hardcoded model type mapping for specific models
 	switch modelName {
+	case "qwen3-npu", "nexaml/qwen3-npu", "qwen3-4B-npu", "nexaml/qwen3-4B-npu":
+		return types.ModelTypeLLM, nil
 	case "omni-neural", "nexaml/omni-neural":
 		return types.ModelTypeVLM, nil
-	case "qwen3-npu", "nexaml/qwen3-npu":
-		return types.ModelTypeLLM, nil
-	case "paddleocr-npu", "nexaml/paddleocr-npu":
-		return types.ModelTypeCV, nil
-	case "yolov12-npu", "nexaml/yolov12-npu":
+	case "paddleocr-npu", "nexaml/paddleocr-npu", "yolov12-npu", "nexaml/yolov12-npu":
 		return types.ModelTypeCV, nil
 	default:
 		// Fallback to interactive selection for unknown models
