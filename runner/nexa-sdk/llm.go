@@ -321,7 +321,7 @@ func NewLLM(input LlmCreateInput) (*LLM, error) {
 	defer C.free(unsafe.Pointer(cInput.config.config_file_path))
 	defer C.free(unsafe.Pointer(cInput.config.embedded_tokens_path))
 	cInput.config.max_tokens = 256
-	cInput.config.enable_thinking = true
+	cInput.config.enable_thinking = false
 	cInput.config.verbose = false
 	// Qnn
 	var cHandle *C.ml_LLM
