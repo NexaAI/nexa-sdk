@@ -8,6 +8,7 @@ import "C"
 import (
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"unsafe"
 )
 
@@ -315,17 +316,15 @@ type CV struct {
 // NewCV creates a new CV model instance
 func NewCV(input CVCreateInput) (*CV, error) {
 	// Qnn
-	switch input.PluginID {
-	case "paddleocr":
-		basePath := filepath.Dir(input.Config.DetModelPath)
+	basePath := filepath.Dir(input.Config.DetModelPath)
+	if strings.HasSuffix(basePath, "paddleocr-npu") {
 		input.Config.ModelPath = filepath.Join(basePath, "paddleocr", "paddleocr.bin")
 		input.Config.SystemLibraryPath = filepath.Join(basePath, "htp-files-2.36", "QnnSystem.dll")
 		input.Config.BackendLibraryPath = filepath.Join(basePath, "htp-files-2.36", "QnnHtp.dll")
 		input.Config.ExtensionLibraryPath = filepath.Join(basePath, "htp-files-2.36", "QnnHtpNetRunExtensions.dll")
 		input.Config.ConfigFilePath = filepath.Join(basePath, "paddleocr", "htp_backend_ext_config.json")
 		input.Config.CharDictPath = filepath.Join(basePath, "paddleocr", "ppocr_keys_v1.txt")
-	case "yolov12":
-		basePath := filepath.Dir(input.Config.DetModelPath)
+	} else if strings.HasSuffix(basePath, "yolov12-npu") {
 		input.Config.ModelPath = filepath.Join(basePath, "yolo", "yolov12n.bin")
 		input.Config.SystemLibraryPath = filepath.Join(basePath, "htp-files-2.36", "QnnSystem.dll")
 		input.Config.BackendLibraryPath = filepath.Join(basePath, "htp-files-2.36", "QnnHtp.dll")

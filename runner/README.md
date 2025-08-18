@@ -37,7 +37,8 @@ Build and Run
   - `nexa-sampling.dll`
   - `nexaproc.dll`
   - `omni-neural-sdk.dll`
-  - `qwen3-sdk.dll`
+  - `qwen3-sdk.dll` -> `qwen3/qwen3-sdk.dll`
+  - `qwen3-4B-sdk.dll` -> `qwen3-4B/qwen3-sdk.dll` **MUST RENAME**
   - `yolov12-sdk.dll -> yolov12/yolov12-sdk.dll`
   - `paddle-ocr-proc-lib.dll -> paddleocr/paddle-ocr-proc-lib.dll`
   - `paddleocr-sdk.dll -> paddleocr/yolov12-sdk.dll` **MUST RENAME**

@@ -11,6 +11,7 @@ import "C"
 import (
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"unsafe"
 )
 
@@ -281,27 +282,44 @@ type LLM struct {
 
 func NewLLM(input LlmCreateInput) (*LLM, error) {
 
-	// Qnn
-	basePath := filepath.Dir(input.ModelPath)
-	input.ModelPath = filepath.Join(basePath, "qwen3-npu", "weight_sharing_model_1_of_1_w8.serialized.bin")
-	input.TokenizerPath = filepath.Join(basePath, "qwen3-npu", "tokenizer.json")
-	// Qnn
-
 	slog.Debug("NewLLM called", "input", input)
 
 	cInput := input.toCPtr()
 	defer freeLlmCreateInput(cInput)
 
 	// Qnn
-	cInput.config.system_library_path = C.CString(filepath.Join(basePath, "htp-files-2.36", "QnnSystem.dll"))
+	if cInput.model_path != nil {
+		C.free(unsafe.Pointer(cInput.model_path))
+	}
+	if cInput.tokenizer_path != nil {
+		C.free(unsafe.Pointer(cInput.tokenizer_path))
+	}
+	basePath := filepath.Dir(input.ModelPath)
+	slog.Debug("Using Qwen3-NPU model", "basePath", basePath)
+	if strings.HasSuffix(basePath, "qwen3-npu") {
+		cInput.model_path = C.CString(filepath.Join(basePath, "qwen3-npu", "weight_sharing_model_1_of_1_w8.serialized.bin"))
+		cInput.tokenizer_path = C.CString(filepath.Join(basePath, "qwen3-npu", "tokenizer.json"))
+		cInput.config.system_library_path = C.CString(filepath.Join(basePath, "htp-files-2.36", "QnnSystem.dll"))
+		cInput.config.backend_library_path = C.CString(filepath.Join(basePath, "htp-files-2.36", "QnnHtp.dll"))
+		cInput.config.extension_library_path = C.CString(filepath.Join(basePath, "htp-files-2.36", "QnnHtpNetRunExtensions.dll"))
+		cInput.config.config_file_path = C.CString(filepath.Join(basePath, "qwen3-npu", "htp_backend_ext_config.json"))
+		cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "qwen3-npu", "qwen3_embedding_layer.npy"))
+	} else if strings.HasSuffix(basePath, "qwen3-4B-npu") {
+		basePath := filepath.Dir(input.ModelPath)
+		cInput.model_path = C.CString(filepath.Join(basePath, "qwen3-npu", "weight_sharing_model_1_of_2.serialized.bin"))
+		cInput.tokenizer_path = C.CString(filepath.Join(basePath, "qwen3-npu", "tokenizer.json"))
+		cInput.config.model_path_1 = C.CString(filepath.Join(basePath, "qwen3-npu", "weight_sharing_model_2_of_2.serialized.bin"))
+		cInput.config.system_library_path = C.CString(filepath.Join(basePath, "htp-files-2.36", "QnnSystem.dll"))
+		cInput.config.backend_library_path = C.CString(filepath.Join(basePath, "htp-files-2.36", "QnnHtp.dll"))
+		cInput.config.extension_library_path = C.CString(filepath.Join(basePath, "htp-files-2.36", "QnnHtpNetRunExtensions.dll"))
+		cInput.config.config_file_path = C.CString(filepath.Join(basePath, "qwen3-npu", "htp_backend_ext_config.json"))
+		cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "qwen3-npu", "qwen3_embedding_layer.npy"))
+		defer C.free(unsafe.Pointer(cInput.config.model_path_1))
+	}
 	defer C.free(unsafe.Pointer(cInput.config.system_library_path))
-	cInput.config.backend_library_path = C.CString(filepath.Join(basePath, "htp-files-2.36", "QnnHtp.dll"))
 	defer C.free(unsafe.Pointer(cInput.config.backend_library_path))
-	cInput.config.extension_library_path = C.CString(filepath.Join(basePath, "htp-files-2.36", "QnnHtpNetRunExtensions.dll"))
 	defer C.free(unsafe.Pointer(cInput.config.extension_library_path))
-	cInput.config.config_file_path = C.CString(filepath.Join(basePath, "qwen3-npu", "htp_backend_ext_config.json"))
 	defer C.free(unsafe.Pointer(cInput.config.config_file_path))
-	cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "qwen3-npu", "qwen3_embedding_layer.npy"))
 	defer C.free(unsafe.Pointer(cInput.config.embedded_tokens_path))
 	cInput.config.max_tokens = 256
 	cInput.config.enable_thinking = true

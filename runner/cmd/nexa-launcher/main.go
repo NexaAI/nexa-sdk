@@ -41,20 +41,28 @@ func setRuntimeEnv() {
 		}
 	}
 
-	backend := "yolov12"
+	llmBackend := "qwen3"
 	for _, arg := range os.Args[1:] {
-		if strings.Contains(arg, "paddleocr") {
-			backend = "paddleocr"
+		if strings.HasSuffix(arg, "qwen3-4B-npu") {
+			llmBackend = "qwen3-4B"
 			break
 		}
 	}
+	llmBackend = filepath.Join(baseDir, llmBackend)
 
-	backend = filepath.Join(baseDir, backend)
+	cvBackend := "yolov12"
+	for _, arg := range os.Args[1:] {
+		if strings.HasSuffix(arg, "paddleocr-npu") {
+			cvBackend = "paddleocr"
+			break
+		}
+	}
+	cvBackend = filepath.Join(baseDir, cvBackend)
+
 	switch runtime.GOOS {
 	case "windows":
-		prependPath("PATH", backend)
-	case "linux":
-		prependPath("LD_LIBRARY_PATH", backend)
+		prependPath("PATH", llmBackend)
+		prependPath("PATH", cvBackend)
 	default:
 		panic("unsupported OS: " + runtime.GOOS)
 	}

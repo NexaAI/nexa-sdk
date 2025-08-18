@@ -5,8 +5,7 @@ package nexa_sdk
 #cgo darwin LDFLAGS: -Wl,-rpath,${SRCDIR}/../build
 
 #cgo CFLAGS: -I../build
-#cgo windows LDFLAGS: -L../build -lqwen3-sdk -lomni-neural-sdk -L../build/yolov12 -lyolov12-sdk
-#cgo linux LDFLAGS: -L../build -lnexa_bridge
+#cgo windows LDFLAGS: -L../build/qwen3 -lqwen3-sdk -L../build -lomni-neural-sdk -L../build/yolov12 -lyolov12-sdk
 
 #include <stdlib.h>
 #include "ml.h"
