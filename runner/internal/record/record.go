@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+
+	"github.com/NexaAI/nexa-sdk/runner/internal/render"
 )
 
 type Recorder struct {
@@ -13,8 +15,24 @@ type Recorder struct {
 	outputFile string
 }
 
+func tipInstallSox() {
+	fmt.Println(render.GetTheme().Warning.Sprintf("sox is not installed. Try:"))
+	switch runtime.GOOS {
+	case "darwin":
+		fmt.Println(render.GetTheme().Warning.Sprintf("  brew install sox"))
+	case "linux":
+		fmt.Println(render.GetTheme().Warning.Sprintf("  sudo apt install sox       # Debian/Ubuntu"))
+		fmt.Println(render.GetTheme().Warning.Sprintf("  sudo yum install sox       # RHEL/CentOS/Fedora"))
+	case "windows":
+		fmt.Println(render.GetTheme().Warning.Sprintf("  winget install --id=ChrisBagwell.SoX -e"))
+	default:
+		fmt.Println(render.GetTheme().Warning.Sprintf("sox is not installed. Please install it manually for your OS: %s\n", runtime.GOOS))
+	}
+}
+
 func NewRecorder(outputFile string) (*Recorder, error) {
 	if _, err := exec.LookPath("sox"); err != nil {
+		tipInstallSox()
 		return nil, err
 	}
 
