@@ -92,6 +92,13 @@ func infer() *cobra.Command {
 			fmt.Println(render.GetTheme().Quant.Sprintf("🔹 Quant=%s", quant))
 		}
 
+		switch {
+		case strings.Contains(args[0], "paddleocr"):
+			manifest.PluginId = "paddleocr"
+		case strings.Contains(args[0], "yolov12"):
+			manifest.PluginId = "yolov12"
+		}
+
 		nexa_sdk.Init()
 		defer nexa_sdk.DeInit()
 
