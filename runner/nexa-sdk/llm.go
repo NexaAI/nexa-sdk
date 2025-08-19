@@ -59,6 +59,8 @@ func (lci LlmCreateInput) toCPtr() *C.ml_LlmCreateInput {
 		n_ubatch:        C.int32_t(lci.Config.NUbatch),
 		n_seq_max:       C.int32_t(lci.Config.NSeqMax),
 		//n_gpu_layers:    C.int32_t(lci.Config.NGpuLayers),
+		enable_sampling: C.bool(lci.Config.EnableSampling),
+		enable_thinking: C.bool(lci.Config.EnableThinking),
 	}
 	if lci.Config.ChatTemplatePath != "" {
 		cPtr.config.chat_template_path = C.CString(lci.Config.ChatTemplatePath)
@@ -321,7 +323,6 @@ func NewLLM(input LlmCreateInput) (*LLM, error) {
 	defer C.free(unsafe.Pointer(cInput.config.config_file_path))
 	defer C.free(unsafe.Pointer(cInput.config.embedded_tokens_path))
 	cInput.config.max_tokens = 256
-	cInput.config.enable_thinking = false
 	cInput.config.verbose = false
 	// Qnn
 	var cHandle *C.ml_LLM

@@ -249,6 +249,7 @@ type ModelConfig struct {
 	NSeqMax             int32
 	NGpuLayers          int32
 	EnableSampling      bool
+	EnableThinking      bool
 	ChatTemplatePath    string
 	ChatTemplateContent string
 }

@@ -162,8 +162,10 @@ func inferLLM(plugin, modelfile string) {
 		ModelPath: modelfile,
 		PluginID:  plugin,
 		Config: nexa_sdk.ModelConfig{
-			NCtx:       4096,
-			NGpuLayers: ngl,
+			NCtx:           4096,
+			NGpuLayers:     ngl,
+			EnableSampling: enableSampling,
+			EnableThinking: enableThink,
 		},
 	})
 	spin.Stop()
