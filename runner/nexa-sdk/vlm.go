@@ -22,6 +22,8 @@ type VlmCreateInput struct {
 	Config        ModelConfig
 	PluginID      string
 	DeviceID      string
+	LicenseID     string
+	LicenseKey    string
 }
 
 func (vci VlmCreateInput) toCPtr() *C.ml_VlmCreateInput {
@@ -42,6 +44,12 @@ func (vci VlmCreateInput) toCPtr() *C.ml_VlmCreateInput {
 	}
 	if vci.DeviceID != "" {
 		cPtr.device_id = C.CString(vci.DeviceID)
+	}
+	if vci.LicenseID != "" {
+		cPtr.license_id = C.CString(vci.LicenseID)
+	}
+	if vci.LicenseKey != "" {
+		cPtr.license_key = C.CString(vci.LicenseKey)
 	}
 
 	// Directly assign the ModelConfig to the C structure because it's not a pointer
@@ -84,6 +92,12 @@ func freeVlmCreateInput(cPtr *C.ml_VlmCreateInput) {
 		}
 		if cPtr.device_id != nil {
 			C.free(unsafe.Pointer(cPtr.device_id))
+		}
+		if cPtr.license_id != nil {
+			C.free(unsafe.Pointer(cPtr.license_id))
+		}
+		if cPtr.license_key != nil {
+			C.free(unsafe.Pointer(cPtr.license_key))
 		}
 
 		// Free nested ModelConfig string fields

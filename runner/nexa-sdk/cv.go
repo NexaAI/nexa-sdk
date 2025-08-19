@@ -208,9 +208,11 @@ func freeCVModelConfig(cPtr *C.ml_CVModelConfig) {
 
 // CVCreateInput represents input parameters for CV model creation
 type CVCreateInput struct {
-	Config   CVModelConfig
-	PluginID string
-	DeviceID string
+	Config     CVModelConfig
+	PluginID   string
+	DeviceID   string
+	LicenseID  string
+	LicenseKey string
 }
 
 func (cvi CVCreateInput) toCPtr() *C.ml_CVCreateInput {
@@ -228,6 +230,12 @@ func (cvi CVCreateInput) toCPtr() *C.ml_CVCreateInput {
 	if cvi.DeviceID != "" {
 		cPtr.device_id = C.CString(cvi.DeviceID)
 	}
+	if cvi.LicenseID != "" {
+		cPtr.license_id = C.CString(cvi.LicenseID)
+	}
+	if cvi.LicenseKey != "" {
+		cPtr.license_key = C.CString(cvi.LicenseKey)
+	}
 
 	return cPtr
 }
@@ -240,6 +248,12 @@ func freeCVCreateInput(cPtr *C.ml_CVCreateInput) {
 		}
 		if cPtr.device_id != nil {
 			C.free(unsafe.Pointer(cPtr.device_id))
+		}
+		if cPtr.license_id != nil {
+			C.free(unsafe.Pointer(cPtr.license_id))
+		}
+		if cPtr.license_key != nil {
+			C.free(unsafe.Pointer(cPtr.license_key))
 		}
 		C.free(unsafe.Pointer(cPtr))
 	}

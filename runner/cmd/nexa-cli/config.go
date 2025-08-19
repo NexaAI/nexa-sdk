@@ -2,9 +2,7 @@ package main
 
 import (
 	"fmt"
-	"os"
 
-	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
@@ -31,17 +29,12 @@ func configGetCmd() *cobra.Command {
 	license := &cobra.Command{
 		Use: "license",
 		Run: func(cmd *cobra.Command, args []string) {
-			s := store.Get()
-
-			tw := table.NewWriter()
-			tw.SetOutputMirror(os.Stdout)
-			tw.SetStyle(table.StyleLight)
-			tw.AppendHeader(table.Row{"Key", "Value"})
-			for _, key := range []string{"license"} {
-				value, _ := s.ConfigGet(key)
-				tw.AppendRow(table.Row{"license", value})
+			value, err := store.Get().ConfigGet("license")
+			if err != nil {
+				fmt.Println(render.GetTheme().Error.Sprintf("Failed to get configuration: %s", err))
+				return
 			}
-			tw.Render()
+			fmt.Println(render.GetTheme().Info.Sprintf("%s", value))
 		},
 	}
 
@@ -67,16 +60,6 @@ func configSetCmd() *cobra.Command {
 				fmt.Println(render.GetTheme().Error.Sprintf("Failed to set configuration: %s", err))
 				return
 			}
-
-			tw := table.NewWriter()
-			tw.SetOutputMirror(os.Stdout)
-			tw.SetStyle(table.StyleLight)
-			tw.AppendHeader(table.Row{"Key", "Value"})
-			for _, key := range []string{"license"} {
-				value, _ := s.ConfigGet(key)
-				tw.AppendRow(table.Row{"license", value})
-			}
-			tw.Render()
 		},
 	}
 
@@ -97,15 +80,10 @@ func configListCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			s := store.Get()
 
-			tw := table.NewWriter()
-			tw.SetOutputMirror(os.Stdout)
-			tw.SetStyle(table.StyleLight)
-			tw.AppendHeader(table.Row{"Key", "Value"})
 			for _, key := range []string{"license"} {
 				value, _ := s.ConfigGet(key)
-				tw.AppendRow(table.Row{"license", value})
+				fmt.Println(render.GetTheme().Info.Sprintf("%s: %s", key, value))
 			}
-			tw.Render()
 		},
 	}
 }

@@ -31,6 +31,8 @@ type LlmCreateInput struct {
 	Config        ModelConfig
 	PluginID      string
 	DeviceID      string
+	LicenseID     string
+	LicenseKey    string
 }
 
 func (lci LlmCreateInput) toCPtr() *C.ml_LlmCreateInput {
@@ -48,6 +50,12 @@ func (lci LlmCreateInput) toCPtr() *C.ml_LlmCreateInput {
 	}
 	if lci.DeviceID != "" {
 		cPtr.device_id = C.CString(lci.DeviceID)
+	}
+	if lci.LicenseID != "" {
+		cPtr.license_id = C.CString(lci.LicenseID)
+	}
+	if lci.LicenseKey != "" {
+		cPtr.license_key = C.CString(lci.LicenseKey)
 	}
 
 	// no need to use toCPtr() here, because we are not using the config pointer
@@ -87,6 +95,12 @@ func freeLlmCreateInput(cPtr *C.ml_LlmCreateInput) {
 		}
 		if cPtr.device_id != nil {
 			C.free(unsafe.Pointer(cPtr.device_id))
+		}
+		if cPtr.license_id != nil {
+			C.free(unsafe.Pointer(cPtr.license_id))
+		}
+		if cPtr.license_key != nil {
+			C.free(unsafe.Pointer(cPtr.license_key))
 		}
 
 		// Free nested ModelConfig - config is a value, not a pointer

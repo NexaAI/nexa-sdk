@@ -78,6 +78,11 @@ func infer() *cobra.Command {
 	inferCmd.Run = func(cmd *cobra.Command, args []string) {
 		s := store.Get()
 
+		licenseKey, err := s.ConfigGet("license")
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("get license error: %s", err))
+			return
+		}
 		manifest, err := ensureModelAvailable(s, normalizeModelName(args[0]), cmd, args)
 		if err != nil {
 			fmt.Println(render.GetTheme().Error.Sprintf("parse manifest error: %s", err))
@@ -100,13 +105,13 @@ func infer() *cobra.Command {
 		modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
 		switch manifest.ModelType {
 		case types.ModelTypeLLM:
-			inferLLM(manifest.PluginId, modelfile)
+			inferLLM(manifest.PluginId, modelfile, licenseKey)
 		case types.ModelTypeVLM:
 			var mmprojfile string
 			if manifest.MMProjFile.Name != "" {
 				mmprojfile = s.ModelfilePath(manifest.Name, manifest.MMProjFile.Name)
 			}
-			inferVLM(manifest.PluginId, modelfile, mmprojfile)
+			inferVLM(manifest.PluginId, modelfile, mmprojfile, licenseKey)
 		case types.ModelTypeEmbedder:
 			inferEmbedder(manifest.PluginId, modelfile)
 		case types.ModelTypeReranker:
@@ -116,7 +121,7 @@ func infer() *cobra.Command {
 		case types.ModelTypeASR:
 			inferASR(manifest.PluginId, modelfile, "")
 		case types.ModelTypeCV:
-			inferCV(manifest.PluginId, modelfile)
+			inferCV(manifest.PluginId, modelfile, licenseKey)
 		case types.ModelTypeImageGen:
 			// ImageGen model is a directory, not a file
 			inferImageGen(manifest.PluginId, s.ModelfilePath(manifest.Name, ""))
@@ -157,7 +162,7 @@ func selectQuant(manifest *types.ModelManifest) (string, error) {
 	return quant, nil
 }
 
-func inferLLM(plugin, modelfile string) {
+func inferLLM(plugin, modelfile string, licenseKey string) {
 	spin := render.NewSpinner("loading model...")
 	spin.Start()
 	p, err := nexa_sdk.NewLLM(nexa_sdk.LlmCreateInput{
@@ -170,6 +175,7 @@ func inferLLM(plugin, modelfile string) {
 			MaxTokens:      maxTokens,
 			EnableThinking: enableThink,
 		},
+		LicenseKey: licenseKey,
 	})
 	spin.Stop()
 
@@ -255,7 +261,7 @@ func ResizeToTemp(path string, width, height int) (string, error) {
 	return tmpFile.Name(), nil
 }
 
-func inferVLM(plugin, modelfile string, mmprojfile string) {
+func inferVLM(plugin, modelfile string, mmprojfile string, licenseKey string) {
 	spin := render.NewSpinner("loading model...")
 	spin.Start()
 	p, err := nexa_sdk.NewVLM(nexa_sdk.VlmCreateInput{
@@ -269,6 +275,7 @@ func inferVLM(plugin, modelfile string, mmprojfile string) {
 			MaxTokens:      maxTokens,
 			EnableThinking: enableThink,
 		},
+		LicenseKey: licenseKey,
 	})
 	spin.Stop()
 
@@ -490,7 +497,7 @@ func inferASR(plugin, modelfile string, tokenizerPath string) {
 	})
 }
 
-func inferCV(plugin, modelfile string) {
+func inferCV(plugin, modelfile string, licenseKey string) {
 	spin := render.NewSpinner("loading CV model...")
 	spin.Start()
 
@@ -507,8 +514,9 @@ func inferCV(plugin, modelfile string) {
 			ExtensionLibraryPath: "",
 			InputImagePath:       "",
 		},
-		PluginID: plugin,
-		DeviceID: "",
+		PluginID:   plugin,
+		DeviceID:   "",
+		LicenseKey: licenseKey,
 	}
 
 	p, err := nexa_sdk.NewCV(cvInput)
