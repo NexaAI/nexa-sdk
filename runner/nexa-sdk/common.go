@@ -248,10 +248,11 @@ type ModelConfig struct {
 	NUbatch             int32
 	NSeqMax             int32
 	NGpuLayers          int32
-	EnableSampling      bool
-	EnableThinking      bool
 	ChatTemplatePath    string
 	ChatTemplateContent string
+	EnableSampling      bool
+	MaxTokens           int32
+	EnableThinking      bool
 }
 
 // TODO: check this if it's needed, llm has it self.

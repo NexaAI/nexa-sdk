@@ -33,6 +33,7 @@ const modelLoadFailMsg = `⚠️ Oops. Model failed to load.
 var (
 	// disableStream *bool // reuse in run.go
 	ngl            int32
+	maxTokens      int32
 	enableThink    bool
 	enableSampling bool
 	tool           []string
@@ -59,6 +60,7 @@ func infer() *cobra.Command {
 
 	inferCmd.Flags().SortFlags = false
 	inferCmd.Flags().Int32VarP(&ngl, "ngl", "n", 999, "[llm|vlm] num of layers pass to gpu")
+	inferCmd.Flags().Int32VarP(&maxTokens, "max-tokens", "m", 512, "[llm|vlm] max tokens for generation")
 	inferCmd.Flags().StringArrayVarP(&tool, "tool", "t", nil, "[llm|vlm] add tool to make function call")
 	inferCmd.Flags().BoolVarP(&enableThink, "think", "", true, "[llm] Qwen3 enable thinking mode")
 	inferCmd.Flags().BoolVarP(&enableSampling, "enable-json", "", false, "[vlm] omini-neural enable json output")
@@ -165,6 +167,7 @@ func inferLLM(plugin, modelfile string) {
 			NCtx:           4096,
 			NGpuLayers:     ngl,
 			EnableSampling: enableSampling,
+			MaxTokens:      maxTokens,
 			EnableThinking: enableThink,
 		},
 	})
@@ -263,6 +266,8 @@ func inferVLM(plugin, modelfile string, mmprojfile string) {
 			NCtx:           4096,
 			NGpuLayers:     ngl,
 			EnableSampling: enableSampling,
+			MaxTokens:      maxTokens,
+			EnableThinking: enableThink,
 		},
 	})
 	spin.Stop()

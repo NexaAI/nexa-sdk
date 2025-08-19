@@ -53,6 +53,8 @@ func (vci VlmCreateInput) toCPtr() *C.ml_VlmCreateInput {
 		n_seq_max:       C.int32_t(vci.Config.NSeqMax),
 		//n_gpu_layers:    C.int32_t(vci.Config.NGpuLayers),
 		enable_sampling: C.bool(vci.Config.EnableSampling),
+		max_tokens:      C.int32_t(vci.Config.MaxTokens),
+		enable_thinking: C.bool(vci.Config.EnableThinking),
 	}
 	if vci.Config.ChatTemplatePath != "" {
 		cPtr.config.chat_template_path = C.CString(vci.Config.ChatTemplatePath)
