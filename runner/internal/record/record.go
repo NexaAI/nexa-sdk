@@ -15,7 +15,7 @@ type Recorder struct {
 	outputFile string
 }
 
-func tipInstallSox() {
+func TipInstallSox() {
 	fmt.Println(render.GetTheme().Warning.Sprintf("sox is not installed. Try:"))
 	switch runtime.GOOS {
 	case "darwin":
@@ -32,7 +32,7 @@ func tipInstallSox() {
 
 func NewRecorder(outputFile string) (*Recorder, error) {
 	if _, err := exec.LookPath("sox"); err != nil {
-		tipInstallSox()
+		TipInstallSox()
 		return nil, err
 	}
 

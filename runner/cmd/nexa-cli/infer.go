@@ -7,6 +7,7 @@ import (
 	"image/jpeg"
 	"log/slog"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/image/draw"
 
+	"github.com/NexaAI/nexa-sdk/runner/internal/record"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
@@ -261,6 +263,35 @@ func ImageResize(path string, width, height int) (string, error) {
 	return tmpFile.Name(), nil
 }
 
+func AudiosCombiningSampling(inputs []string, sampleRate int, channels int) (string, error) {
+	if _, err := exec.LookPath("sox"); err != nil {
+		record.TipInstallSox()
+		return "", err
+	}
+
+	tmpFile, err := os.CreateTemp("", "combined-*.wav")
+	if err != nil {
+		return "", fmt.Errorf("create temp file: %w", err)
+	}
+	output := tmpFile.Name()
+	tmpFile.Close()
+
+	args := append(inputs,
+		"-r", fmt.Sprintf("%d", sampleRate),
+		"-c", fmt.Sprintf("%d", channels),
+		output,
+	)
+
+	cmd := exec.Command("sox", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("sox combine: %w", err)
+	}
+
+	return output, nil
+}
+
 func inferVLM(plugin, modelfile string, mmprojfile string, licenseKey string) {
 	spin := render.NewSpinner("loading model...")
 	spin.Start()
@@ -316,7 +347,16 @@ func inferVLM(plugin, modelfile string, mmprojfile string, licenseKey string) {
 				}
 				msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeImage, Text: image})
 			}
-			for _, audio := range audios {
+
+			audioPaths := make([]string, 0, 1)
+			if len(audios) > 0 {
+				// make omini-neural happy in this params
+				audio, err := AudiosCombiningSampling(audios, 16000, 1)
+				if err != nil {
+					return "", nexa_sdk.ProfileData{}, err
+				}
+				slog.Debug("combined audio", "audio", audio)
+				audioPaths = append(audioPaths, audio)
 				msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeAudio, Text: audio})
 			}
 
@@ -328,7 +368,7 @@ func inferVLM(plugin, modelfile string, mmprojfile string, licenseKey string) {
 				Config: &nexa_sdk.GenerationConfig{
 					MaxTokens:  maxTokens,
 					ImagePaths: images,
-					AudioPaths: audios,
+					AudioPaths: audioPaths,
 				},
 			})
 			if err != nil {
