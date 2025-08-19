@@ -36,6 +36,7 @@ func RootCmd() *cobra.Command {
 		pull(), remove(), clean(), list(),
 		infer(), // genImage(),
 		serve(), run(),
+		_config(),
 		version(), update(),
 	)
 
