@@ -302,6 +302,9 @@ func repl(cfg ReplConfig) {
 			case "</think>":
 				fmt.Print(token)
 				render.GetTheme().Set(render.GetTheme().ModelOutput)
+			case string("\x20\xef\xbf\xbd"):
+				fmt.Print("\x20")
+			case string("\xef\xbf\xbd"):
 			default:
 				fmt.Print(token)
 			}
