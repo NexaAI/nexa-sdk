@@ -15,6 +15,12 @@ var modelMapping = map[string]string{
 	"qwen3-4B-npu":  "nexaml/qwen3-4B-npu",
 	"paddleocr-npu": "nexaml/paddleocr-npu",
 	"yolov12-npu":   "nexaml/yolov12-npu",
+
+	"omni-neural-npu-encrypt": "nexaml/omni-neural-npu-encrypt",
+	"qwen3-1.7B-npu-encrypt":  "nexaml/qwen3-1.7B-npu-encrypt",
+	"qwen3-4B-npu-encrypt":    "nexaml/qwen3-4B-npu-encrypt",
+	"paddleocr-npu-encrypt":   "nexaml/paddleocr-npu-encrypt",
+	"yolov12-npu-encrypt":     "nexaml/yolov12-npu-encrypt",
 }
 
 func GetModelMapping(shortcut string) (string, bool) {
