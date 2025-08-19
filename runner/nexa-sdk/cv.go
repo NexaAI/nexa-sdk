@@ -330,6 +330,10 @@ func NewCV(input CVCreateInput) (*CV, error) {
 		input.Config.ConfigFilePath = filepath.Join(basePath, "yolo", "htp_backend_ext_config.json")
 		input.Config.CharDictPath = filepath.Join(basePath, "yolo", "coco.names")
 		input.Config.InputImagePath = filepath.Join(basePath, "yolo", "")
+	} else if strings.HasSuffix(basePath, "paddleocr-npu-encrypt") {
+		input.Config.ModelPath = filepath.Join(basePath, "weights-1-1.nexa")
+	} else if strings.HasSuffix(basePath, "yolov12-npu-encrypt") {
+		input.Config.ModelPath = filepath.Join(basePath, "weights-1-1.nexa")
 	}
 
 	input.Config.SystemLibraryPath = filepath.Join(getHtpPath(), "QnnSystem.dll")

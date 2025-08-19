@@ -311,6 +311,15 @@ func NewLLM(input LlmCreateInput) (*LLM, error) {
 		cInput.config.config_file_path = C.CString(filepath.Join(basePath, "qwen3-npu", "htp_backend_ext_config.json"))
 		cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "qwen3-npu", "qwen3_embedding_layer.npy"))
 		defer C.free(unsafe.Pointer(cInput.config.model_path_1))
+	} else if strings.HasSuffix(basePath, "qwen3-1.7B-npu-encrypt") {
+		cInput.model_path = C.CString(filepath.Join(basePath, "weights-1-2.nexa"))
+		cInput.tokenizer_path = C.CString(filepath.Join(basePath, "files-1-1.nexa"))
+		cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "weights-2-2.nexa"))
+	} else if strings.HasSuffix(basePath, "qwen3-4B-npu-encrypt") {
+		cInput.model_path = C.CString(filepath.Join(basePath, "weights-1-3.nexa"))
+		cInput.tokenizer_path = C.CString(filepath.Join(basePath, "files-1-1.nexa"))
+		cInput.config.model_path_1 = C.CString(filepath.Join(basePath, "weights-2-3.nexa"))
+		cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "weights-3-3.nexa"))
 	}
 
 	cInput.config.system_library_path = C.CString(filepath.Join(getHtpPath(), "QnnSystem.dll"))

@@ -10,6 +10,7 @@ import "C"
 import (
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"unsafe"
 )
 
@@ -392,42 +393,57 @@ type VLM struct {
 func NewVLM(input VlmCreateInput) (*VLM, error) {
 	// Qnn
 	basePath := filepath.Dir(input.ModelPath)
-	input.ModelPath = filepath.Join(basePath, "omni-neural", "llm", "ar128-ar1-cl4096", "weight_sharing_model_1_of_2.serialized.bin")
-	input.MmprojPath = filepath.Join(basePath, "omni-neural", "llm", "ar128-ar1-cl4096", "weight_sharing_model_2_of_2.serialized.bin")
-	input.TokenizerPath = filepath.Join(basePath, "omni-neural", "tokenizer.json")
-	// Qnn
+	if strings.HasSuffix(basePath, "omni-neural-encrypt") {
+		input.ModelPath = filepath.Join(basePath, "weights-1-8.nexa")
+		input.MmprojPath = filepath.Join(basePath, "weights-2-8.nexa")
+		input.TokenizerPath = filepath.Join(basePath, "files-1-1.nexa")
+	} else {
+		input.ModelPath = filepath.Join(basePath, "omni-neural", "llm", "ar128-ar1-cl4096", "weight_sharing_model_1_of_2.serialized.bin")
+		input.MmprojPath = filepath.Join(basePath, "omni-neural", "llm", "ar128-ar1-cl4096", "weight_sharing_model_2_of_2.serialized.bin")
+		input.TokenizerPath = filepath.Join(basePath, "omni-neural", "tokenizer.json")
+	}
 
 	slog.Debug("NewVLM called", "input", input)
-
 	cInput := input.toCPtr()
 	defer freeVlmCreateInput(cInput)
 
-	// Qnn
-	cInput.config.config_file_path = C.CString(filepath.Join(basePath, "omni-neural", "llm", "ar128-ar1-cl4096_conf_files", "htp_backend_ext_config.json"))
-	defer C.free(unsafe.Pointer(cInput.config.config_file_path))
-	cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "omni-neural", "llm", "embed_tokens.npy"))
-	defer C.free(unsafe.Pointer(cInput.config.embedded_tokens_path))
-	cInput.config.patch_embed_path = C.CString(filepath.Join(basePath, "omni-neural", "vit", "patch_embed.serialized.bin"))
-	defer C.free(unsafe.Pointer(cInput.config.patch_embed_path))
-	cInput.config.vit_model_path = C.CString(filepath.Join(basePath, "omni-neural", "vit", "vit.serialized.bin"))
-	defer C.free(unsafe.Pointer(cInput.config.vit_model_path))
-	cInput.config.vit_config_file_path = C.CString(filepath.Join(basePath, "omni-neural", "vit", "htp_backend_ext_config.json"))
-	defer C.free(unsafe.Pointer(cInput.config.vit_config_file_path))
-	cInput.config.audio_encoder_helper0_path = C.CString(filepath.Join(basePath, "omni-neural", "audio_encoder", "audio_encoder_helper0.serialized.bin"))
-	defer C.free(unsafe.Pointer(cInput.config.audio_encoder_helper0_path))
-	cInput.config.audio_encoder_helper1_path = C.CString(filepath.Join(basePath, "omni-neural", "audio_encoder", "audio_encoder_helper1.serialized.bin"))
-	defer C.free(unsafe.Pointer(cInput.config.audio_encoder_helper1_path))
-	cInput.config.audio_encoder_model_path = C.CString(filepath.Join(basePath, "omni-neural", "audio_encoder", "audio_encoder.serialized.bin"))
-	defer C.free(unsafe.Pointer(cInput.config.audio_encoder_model_path))
-	cInput.config.audio_encoder_config_file_path = C.CString(filepath.Join(basePath, "omni-neural", "audio_encoder", "htp_backend_ext_config.json"))
-	defer C.free(unsafe.Pointer(cInput.config.audio_encoder_config_file_path))
+	if strings.HasSuffix(basePath, "omni-neural-encrypt") {
+		// cInput.config.config_file_path = C.CString(filepath.Join(basePath, "ar128-ar1-cl4096_conf_files", "htp_backend_ext_config.json"))
+		cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "weights-8-8.nexa"))
+		cInput.config.patch_embed_path = C.CString(filepath.Join(basePath, "weights-3-8.nexa"))
+		cInput.config.vit_model_path = C.CString(filepath.Join(basePath, "weights-4-8.nexa"))
+		// cInput.config.vit_config_file_path = C.CString(filepath.Join(basePath, "htp_backend_ext_config.json"))
+		cInput.config.audio_encoder_helper0_path = C.CString(filepath.Join(basePath, "weights-5-8.nexa"))
+		cInput.config.audio_encoder_helper1_path = C.CString(filepath.Join(basePath, "weights-6-8.nexa"))
+		cInput.config.audio_encoder_model_path = C.CString(filepath.Join(basePath, "weights-7-8.nexa"))
+		// cInput.config.audio_encoder_config_file_path = C.CString(filepath.Join(basePath, "htp_backend_ext_config.json"))
 
-	cInput.config.max_tokens = 256
+	} else {
+		cInput.config.config_file_path = C.CString(filepath.Join(basePath, "omni-neural", "llm", "ar128-ar1-cl4096_conf_files", "htp_backend_ext_config.json"))
+		cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "omni-neural", "llm", "embed_tokens.npy"))
+		cInput.config.patch_embed_path = C.CString(filepath.Join(basePath, "omni-neural", "vit", "patch_embed.serialized.bin"))
+		cInput.config.vit_model_path = C.CString(filepath.Join(basePath, "omni-neural", "vit", "vit.serialized.bin"))
+		cInput.config.vit_config_file_path = C.CString(filepath.Join(basePath, "omni-neural", "vit", "htp_backend_ext_config.json"))
+		cInput.config.audio_encoder_helper0_path = C.CString(filepath.Join(basePath, "omni-neural", "audio_encoder", "audio_encoder_helper0.serialized.bin"))
+		cInput.config.audio_encoder_helper1_path = C.CString(filepath.Join(basePath, "omni-neural", "audio_encoder", "audio_encoder_helper1.serialized.bin"))
+		cInput.config.audio_encoder_model_path = C.CString(filepath.Join(basePath, "omni-neural", "audio_encoder", "audio_encoder.serialized.bin"))
+		cInput.config.audio_encoder_config_file_path = C.CString(filepath.Join(basePath, "omni-neural", "audio_encoder", "htp_backend_ext_config.json"))
+	}
+
 	cInput.config.verbose = false
-
 	cInput.config.system_library_path = C.CString(filepath.Join(getHtpPath(), "QnnSystem.dll"))
 	cInput.config.backend_library_path = C.CString(filepath.Join(getHtpPath(), "QnnHtp.dll"))
 	cInput.config.extension_library_path = C.CString(filepath.Join(getHtpPath(), "QnnHtpNetRunExtensions.dll"))
+
+	defer C.free(unsafe.Pointer(cInput.config.config_file_path))
+	defer C.free(unsafe.Pointer(cInput.config.embedded_tokens_path))
+	defer C.free(unsafe.Pointer(cInput.config.patch_embed_path))
+	defer C.free(unsafe.Pointer(cInput.config.vit_model_path))
+	defer C.free(unsafe.Pointer(cInput.config.vit_config_file_path))
+	defer C.free(unsafe.Pointer(cInput.config.audio_encoder_helper0_path))
+	defer C.free(unsafe.Pointer(cInput.config.audio_encoder_helper1_path))
+	defer C.free(unsafe.Pointer(cInput.config.audio_encoder_model_path))
+	defer C.free(unsafe.Pointer(cInput.config.audio_encoder_config_file_path))
 	defer C.free(unsafe.Pointer(cInput.config.system_library_path))
 	defer C.free(unsafe.Pointer(cInput.config.backend_library_path))
 	defer C.free(unsafe.Pointer(cInput.config.extension_library_path))
