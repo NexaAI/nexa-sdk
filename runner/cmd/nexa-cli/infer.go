@@ -212,7 +212,7 @@ func inferLLM(plugin, modelfile string) {
 				PromptUTF8: templateOutput.FormattedText,
 				OnToken:    on_token,
 				Config: &nexa_sdk.GenerationConfig{
-					MaxTokens: 2048,
+					MaxTokens: maxTokens,
 				},
 			},
 			)
@@ -319,7 +319,7 @@ func inferVLM(plugin, modelfile string, mmprojfile string) {
 				PromptUTF8: prompt,
 				OnToken:    on_token,
 				Config: &nexa_sdk.GenerationConfig{
-					MaxTokens:  2048,
+					MaxTokens:  maxTokens,
 					ImagePaths: images,
 					AudioPaths: audios,
 				},
