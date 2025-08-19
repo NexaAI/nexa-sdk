@@ -69,6 +69,10 @@ typedef enum {
     ML_ERROR_COMMON_IMG_PROMPT     = -100502, /**< Invalid image prompt */
     ML_ERROR_COMMON_IMG_DIMENSION  = -100503, /**< Invalid image dimensions */
 
+    /* Validation errors */
+    ML_ERROR_COMMON_LICENSE_INVALID = -100601, /**< Invalid license */
+    ML_ERROR_COMMON_LICENSE_EXPIRED = -100602, /**< License expired */
+
     /* ====================================================================== */
     /*                              LLM ERRORS (200xxx)                        */
     /* ====================================================================== */
@@ -425,6 +429,8 @@ typedef struct {
     ml_ModelConfig config;         /** Model configuration */
     ml_PluginId    plugin_id;      /** plugin to use for the model */
     const char*    device_id;      /** device to use for the model, NULL for default device */
+    const char*    license_id;     /** licence id for loading NPU models, must be provided upon the first use of the license key. null terminated string */
+    const char*    license_key;    /** licence key for loading NPU models, null terminated string */
 } ml_LlmCreateInput;
 
 /**
@@ -573,6 +579,8 @@ typedef struct {
     ml_ModelConfig config;         /** Model configuration */
     ml_PluginId    plugin_id;      /** Plugin to use for the model */
     const char*    device_id;      /** device to use for the model */
+    const char*    license_id;     /** licence id for loading NPU models, must be provided upon the first use of the license key. null terminated string */
+    const char*    license_key;    /** licence key for loading NPU models, null terminated string */
 } ml_VlmCreateInput;
 
 /**
@@ -1260,6 +1268,8 @@ typedef struct {
     ml_CVModelConfig config;
     ml_PluginId      plugin_id;
     const char*      device_id;
+    const char*      license_id;     /** licence id for loading NPU models, must be provided upon the first use of the license key. null terminated string */
+    const char*      license_key;    /** licence key for loading NPU models, null terminated string */
 } ml_CVCreateInput;
 
 /* ====================  Lifecycle Management  ============================== */
