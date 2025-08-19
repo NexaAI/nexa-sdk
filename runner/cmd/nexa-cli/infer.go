@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"image/color"
 	"image/jpeg"
 	"log/slog"
 	"os"
@@ -234,7 +235,7 @@ func inferLLM(plugin, modelfile string, licenseKey string) {
 	})
 }
 
-func ImageResize(path string, width, height int) (string, error) {
+func ImageResizeAndPad(path string, dstW, dstH int, bgColor color.Color) (string, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return "", fmt.Errorf("open input: %w", err)
@@ -246,9 +247,29 @@ func ImageResize(path string, width, height int) (string, error) {
 		return "", fmt.Errorf("decode image: %w", err)
 	}
 
-	dst := image.NewRGBA(image.Rect(0, 0, width, height))
+	srcW := img.Bounds().Dx()
+	srcH := img.Bounds().Dy()
 
-	draw.CatmullRom.Scale(dst, dst.Bounds(), img, img.Bounds(), draw.Over, nil)
+	scaleW := float64(dstW) / float64(srcW)
+	scaleH := float64(dstH) / float64(srcH)
+	scale := scaleW
+	if scaleH < scaleW {
+		scale = scaleH
+	}
+
+	newW := int(float64(srcW) * scale)
+	newH := int(float64(srcH) * scale)
+
+	scaledImg := image.NewRGBA(image.Rect(0, 0, newW, newH))
+	draw.CatmullRom.Scale(scaledImg, scaledImg.Bounds(), img, img.Bounds(), draw.Over, nil)
+
+	dst := image.NewRGBA(image.Rect(0, 0, dstW, dstH))
+	draw.Draw(dst, dst.Bounds(), &image.Uniform{C: bgColor}, image.Point{}, draw.Src)
+
+	offsetX := (dstW - newW) / 2
+	offsetY := (dstH - newH) / 2
+	drawRect := image.Rect(offsetX, offsetY, offsetX+newW, offsetY+newH)
+	draw.Draw(dst, drawRect, scaledImg, image.Point{0, 0}, draw.Over)
 
 	tmpFile, err := os.CreateTemp("", "resized-*.jpg")
 	if err != nil {
@@ -257,6 +278,7 @@ func ImageResize(path string, width, height int) (string, error) {
 	defer tmpFile.Close()
 
 	if err := jpeg.Encode(tmpFile, dst, &jpeg.Options{Quality: 95}); err != nil {
+		os.Remove(tmpFile.Name())
 		return "", fmt.Errorf("encode jpeg: %w", err)
 	}
 
@@ -337,9 +359,11 @@ func inferVLM(plugin, modelfile string, mmprojfile string, licenseKey string) {
 			msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeText, Text: prompt})
 			for i, image := range images {
 				// omni-neural resize
-				if strings.Contains(modelfile, "nexaml-models") {
+				if strings.Contains(modelfile, "omni-neural") {
 					var err error
-					if image, err = ImageResize(image, 448, 448); err != nil {
+					white := color.RGBA{R: 255, G: 255, B: 255, A: 255}
+					// black := color.RGBA{R: 0, G: 0, B: 0, A: 255}
+					if image, err = ImageResizeAndPad(image, 448, 448, white); err != nil {
 						return "", nexa_sdk.ProfileData{}, err
 					}
 					slog.Info("resized image", "image", image)
