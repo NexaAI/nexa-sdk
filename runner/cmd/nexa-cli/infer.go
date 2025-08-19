@@ -232,7 +232,7 @@ func inferLLM(plugin, modelfile string, licenseKey string) {
 	})
 }
 
-func ResizeToTemp(path string, width, height int) (string, error) {
+func ImageResize(path string, width, height int) (string, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return "", fmt.Errorf("open input: %w", err)
@@ -308,7 +308,7 @@ func inferVLM(plugin, modelfile string, mmprojfile string, licenseKey string) {
 				// omni-neural resize
 				if strings.Contains(modelfile, "nexaml-models") {
 					var err error
-					if image, err = ResizeToTemp(image, 448, 448); err != nil {
+					if image, err = ImageResize(image, 448, 448); err != nil {
 						return "", nexa_sdk.ProfileData{}, err
 					}
 					slog.Info("resized image", "image", image)
