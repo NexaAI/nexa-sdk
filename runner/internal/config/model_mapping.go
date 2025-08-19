@@ -10,10 +10,11 @@ var modelMapping = map[string]string{
 	"gpt-oss-mlx": "NexaAI/gpt-oss-20b-MLX-4bit",
 
 	// QNN
-	"omni-neural": "nexaml/omni-neural",
-	"qwen3-npu": "nexaml/qwen3-npu",
+	"omni-neural":   "nexaml/omni-neural",
+	"qwen3-npu":     "nexaml/qwen3-npu",
+	"qwen3-4B-npu":  "nexaml/qwen3-4B-npu",
 	"paddleocr-npu": "nexaml/paddleocr-npu",
-	"yolov12-npu": "nexaml/yolov12-npu",
+	"yolov12-npu":   "nexaml/yolov12-npu",
 }
 
 func GetModelMapping(shortcut string) (string, bool) {
