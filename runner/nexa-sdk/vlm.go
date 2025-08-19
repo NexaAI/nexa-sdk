@@ -403,12 +403,6 @@ func NewVLM(input VlmCreateInput) (*VLM, error) {
 	defer freeVlmCreateInput(cInput)
 
 	// Qnn
-	cInput.config.system_library_path = C.CString(filepath.Join(basePath, "htp-files-2.36", "QnnSystem.dll"))
-	defer C.free(unsafe.Pointer(cInput.config.system_library_path))
-	cInput.config.backend_library_path = C.CString(filepath.Join(basePath, "htp-files-2.36", "QnnHtp.dll"))
-	defer C.free(unsafe.Pointer(cInput.config.backend_library_path))
-	cInput.config.extension_library_path = C.CString(filepath.Join(basePath, "htp-files-2.36", "QnnHtpNetRunExtensions.dll"))
-	defer C.free(unsafe.Pointer(cInput.config.extension_library_path))
 	cInput.config.config_file_path = C.CString(filepath.Join(basePath, "omni-neural", "llm", "ar128-ar1-cl4096_conf_files", "htp_backend_ext_config.json"))
 	defer C.free(unsafe.Pointer(cInput.config.config_file_path))
 	cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "omni-neural", "llm", "embed_tokens.npy"))
@@ -431,6 +425,12 @@ func NewVLM(input VlmCreateInput) (*VLM, error) {
 	cInput.config.max_tokens = 256
 	cInput.config.verbose = false
 
+	cInput.config.system_library_path = C.CString(filepath.Join(getHtpPath(), "QnnSystem.dll"))
+	cInput.config.backend_library_path = C.CString(filepath.Join(getHtpPath(), "QnnHtp.dll"))
+	cInput.config.extension_library_path = C.CString(filepath.Join(getHtpPath(), "QnnHtpNetRunExtensions.dll"))
+	defer C.free(unsafe.Pointer(cInput.config.system_library_path))
+	defer C.free(unsafe.Pointer(cInput.config.backend_library_path))
+	defer C.free(unsafe.Pointer(cInput.config.extension_library_path))
 	// Qnn
 
 	var cHandle *C.ml_VLM

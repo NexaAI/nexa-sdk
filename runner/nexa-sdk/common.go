@@ -7,6 +7,8 @@ package nexa_sdk
 import "C"
 
 import (
+	"os"
+	"path/filepath"
 	"unsafe"
 )
 
@@ -365,4 +367,12 @@ func freeTools(cPtr *C.ml_Tool, count C.int32_t) {
 	}
 
 	C.free(unsafe.Pointer(cPtr))
+}
+
+func getHtpPath() string {
+	exe, err := os.Executable()
+	if err != nil {
+		panic(err)
+	}
+	return filepath.Join(filepath.Dir(exe), "htp-files")
 }

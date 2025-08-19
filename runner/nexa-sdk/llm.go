@@ -301,9 +301,6 @@ func NewLLM(input LlmCreateInput) (*LLM, error) {
 	if strings.HasSuffix(basePath, "qwen3-npu") {
 		cInput.model_path = C.CString(filepath.Join(basePath, "qwen3-npu", "weight_sharing_model_1_of_1_w8.serialized.bin"))
 		cInput.tokenizer_path = C.CString(filepath.Join(basePath, "qwen3-npu", "tokenizer.json"))
-		cInput.config.system_library_path = C.CString(filepath.Join(basePath, "htp-files-2.36", "QnnSystem.dll"))
-		cInput.config.backend_library_path = C.CString(filepath.Join(basePath, "htp-files-2.36", "QnnHtp.dll"))
-		cInput.config.extension_library_path = C.CString(filepath.Join(basePath, "htp-files-2.36", "QnnHtpNetRunExtensions.dll"))
 		cInput.config.config_file_path = C.CString(filepath.Join(basePath, "qwen3-npu", "htp_backend_ext_config.json"))
 		cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "qwen3-npu", "qwen3_embedding_layer.npy"))
 	} else if strings.HasSuffix(basePath, "qwen3-4B-npu") {
@@ -311,13 +308,15 @@ func NewLLM(input LlmCreateInput) (*LLM, error) {
 		cInput.model_path = C.CString(filepath.Join(basePath, "qwen3-npu", "weight_sharing_model_1_of_2.serialized.bin"))
 		cInput.tokenizer_path = C.CString(filepath.Join(basePath, "qwen3-npu", "tokenizer.json"))
 		cInput.config.model_path_1 = C.CString(filepath.Join(basePath, "qwen3-npu", "weight_sharing_model_2_of_2.serialized.bin"))
-		cInput.config.system_library_path = C.CString(filepath.Join(basePath, "htp-files-2.36", "QnnSystem.dll"))
-		cInput.config.backend_library_path = C.CString(filepath.Join(basePath, "htp-files-2.36", "QnnHtp.dll"))
-		cInput.config.extension_library_path = C.CString(filepath.Join(basePath, "htp-files-2.36", "QnnHtpNetRunExtensions.dll"))
 		cInput.config.config_file_path = C.CString(filepath.Join(basePath, "qwen3-npu", "htp_backend_ext_config.json"))
 		cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "qwen3-npu", "qwen3_embedding_layer.npy"))
 		defer C.free(unsafe.Pointer(cInput.config.model_path_1))
 	}
+
+	cInput.config.system_library_path = C.CString(filepath.Join(getHtpPath(), "QnnSystem.dll"))
+	cInput.config.backend_library_path = C.CString(filepath.Join(getHtpPath(), "QnnHtp.dll"))
+	cInput.config.extension_library_path = C.CString(filepath.Join(getHtpPath(), "QnnHtpNetRunExtensions.dll"))
+
 	defer C.free(unsafe.Pointer(cInput.config.system_library_path))
 	defer C.free(unsafe.Pointer(cInput.config.backend_library_path))
 	defer C.free(unsafe.Pointer(cInput.config.extension_library_path))
