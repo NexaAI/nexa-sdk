@@ -78,9 +78,6 @@ sign_artifacts() {
         return
     fi
 
-    log_info "Installing AzureSignTool..."
-    dotnet tool install --global AzureSignTool
-
     log_info "Recursively signing all executables and DLLs in artifacts directory..."
 
     find "$ARTIFACTS_DIR" -type f \( -name "*.exe" -o -name "*.dll" \) | while IFS= read -r file; do
