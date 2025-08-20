@@ -407,7 +407,7 @@ type VLM struct {
 func NewVLM(input VlmCreateInput) (*VLM, error) {
 	// Qnn
 	basePath := filepath.Dir(input.ModelPath)
-	if strings.HasSuffix(basePath, "omni-neural-encrypt") {
+	if strings.HasSuffix(basePath, "omni-neural-npu-encrypt") {
 		input.ModelPath = filepath.Join(basePath, "weights-1-8.nexa")
 		input.MmprojPath = filepath.Join(basePath, "weights-2-8.nexa")
 		input.TokenizerPath = filepath.Join(basePath, "files-1-1.nexa")
@@ -421,7 +421,7 @@ func NewVLM(input VlmCreateInput) (*VLM, error) {
 	cInput := input.toCPtr()
 	defer freeVlmCreateInput(cInput)
 
-	if strings.HasSuffix(basePath, "omni-neural-encrypt") {
+	if strings.HasSuffix(basePath, "omni-neural-npu-encrypt") {
 		// cInput.config.config_file_path = C.CString(filepath.Join(basePath, "ar128-ar1-cl4096_conf_files", "htp_backend_ext_config.json"))
 		cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "weights-8-8.nexa"))
 		cInput.config.patch_embed_path = C.CString(filepath.Join(basePath, "weights-3-8.nexa"))
