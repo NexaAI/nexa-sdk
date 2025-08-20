@@ -40,10 +40,11 @@ Nexa SDK is an on-device inference framework that runs any model on any device, 
 </td>
 </tr>
 <tr>
-<td></td>
-<td width="50%">
+<td colspan="2" align="center">
+<div style="width: 50%; margin: 0 auto;">
 <img width="100%" src="assets/PC_Demo_Audio.gif" alt="Multi-Audio Comparison Demo">
 <p align="center"><b>🎶 Multi-Audio Comparison</b><br>Tell the difference between two music clips locally.</p>
+</div>
 </td>
 </tr>
 </table>
