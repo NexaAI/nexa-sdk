@@ -65,7 +65,7 @@ func infer() *cobra.Command {
 	inferCmd.Flags().Int32VarP(&ngl, "ngl", "n", 999, "[llm|vlm] num of layers pass to gpu")
 	inferCmd.Flags().Int32VarP(&maxTokens, "max-tokens", "m", 512, "[llm|vlm] max tokens for generation")
 	inferCmd.Flags().StringArrayVarP(&tool, "tool", "t", nil, "[llm|vlm] add tool to make function call")
-	inferCmd.Flags().BoolVarP(&enableThink, "think", "", true, "[llm] Qwen3 enable thinking mode")
+	inferCmd.Flags().BoolVarP(&enableThink, "think", "", false, "[llm] Qwen3 enable thinking mode")
 	inferCmd.Flags().BoolVarP(&enableSampling, "enable-json", "", false, "[vlm] omini-neural enable json output")
 	inferCmd.Flags().StringArrayVarP(&prompt, "prompt", "p", nil, "[embedder|tts] pass prompt")
 	inferCmd.Flags().StringVarP(&query, "query", "q", "", "[reranker] query")
