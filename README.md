@@ -25,7 +25,7 @@
 
 Nexa SDK is an on-device inference framework that runs any model on any device, across any backend. It runs on CPUs and GPUs with backend support for CUDA, Metal, and Vulkan. It handles multiple input modalities including text 📝, image 🖼️, and audio 🎧. The SDK includes an OpenAI-compatible API server with support for JSON schema-based function calling and streaming. It supports model formats such as GGUF and MLX, enabling efficient quantized inference across diverse platforms.
 
-## Qualcomm NPU Demos
+## Qualcomm NPU PC Demos
 
 <table>
 <tr>
@@ -44,9 +44,10 @@ Nexa SDK is an on-device inference framework that runs any model on any device, 
 ## Recent updates
 #### 📣  **2025.08.20: Qualcomm NPU Support**
 - Qualcomm NPU support for GGUF models.
-OmniNeural-4B is the first multimodal AI model built natively for NPUs — handling text, images, and audio in one model.
+OmniNeural-4B is the **first multimodal AI model built natively for NPUs** — handling text, images, and audio in one model.
 - Check the model and demos at [Hugginface repo](https://huggingface.co/NexaAI/OmniNeural-4B)
 - Check our [OmniNeural-4B technical blog](https://nexa.ai/blogs/omnineural-4b)
+- Download our [arm64 with Qualcomm NPU support](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_windows_arm64.exe) installer and try it!
 
 #### 📣  **2025.08.12: ASR & TTS Support in MLX format
 - ASR & TTS model support in MLX format.
@@ -69,7 +70,18 @@ curl -fsSL https://raw.githubusercontent.com/NexaAI/nexa-sdk/main/release/linux/
 
 ## Supported Models
 
-You can run any compatible GGUF or MLX model from 🤗 Hugging Face by using the `<full repo name>`.
+You can run any compatible GGUF or MLX model from 🤗 Hugging Face by using the `<full repo name>`. On Qualcomm snapdragon laptop, you can run **OmniNeural-4B** model with NPU support.
+
+### Qualcomm NPU models
+> [!TIP]
+> this model runs on windows arm64 with Qualcomm NPU support.
+🖼️ Run and chat with our multimodal model, OmniNeural-4B:
+
+```bash
+nexa infer omni-neural
+nexa infer NexaAI/OmniNeural-4B
+```
+
 
 ### GGUF models
 
