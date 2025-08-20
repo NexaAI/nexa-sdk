@@ -31,20 +31,17 @@ Nexa SDK is an on-device inference framework that runs any model on any device, 
 <table>
 <tr>
 <td width="33%">
-<video controls width="100%" preload="metadata"
-  src="assets/PC_demo_2_image.gif"></video>
+<img width="100%" src="assets/PC_demo_2_image.gif" alt="Multi-Image Reasoning Demo">
 <p align="center"><b>🖼️ Multi-Image Reasoning</b><br>Spot the difference across two images in multi-round dialogue.</p>
 </td>
 
 <td width="33%">
-<video controls width="100%" preload="metadata"
-  src="assets/PC_demo_agent.gif"></video>
+<img width="100%" src="assets/PC_Demo_Agent.gif" alt="Image + Audio Function Call Demo">
 <p align="center"><b>🎤 Image + Audio → Function Call</b><br>Snap a poster, add a voice note, and AI agent creates a calendar event.</p>
 </td>
 
 <td width="33%">
-<video controls width="100%" preload="metadata"
-  src="assets/PC_demo_audio.gif"></video>
+<img width="100%" src="assets/PC_Demo_Audio.gif" alt="Multi-Audio Comparison Demo">
 <p align="center"><b>🎶 Multi-Audio Comparison</b><br>Tell the difference between two music clips locally.</p>
 </td>
 </tr>
