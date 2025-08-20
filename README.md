@@ -23,9 +23,39 @@
 
 # Nexa SDK
 
-Nexa SDK is an on-device inference framework that runs any model on any device, across any backend. It runs on CPUs and GPUs with backend support for CUDA, Metal, and Vulkan. It handles multiple input modalities including text 📝, image 🖼️, and audio 🎧. The SDK includes an OpenAI-compatible API server with support for JSON schema-based function calling and streaming. It supports model formats such as GGUF and MLX, enabling efficient quantized inference across diverse platforms.
+Nexa SDK is an on-device inference framework that runs any model on any device, across any backend. It runs on CPUs, GPUs, NPUs with backend support for CUDA, Metal, Vulkan, and Qualcomm NPU. It handles multiple input modalities including text 📝, image 🖼️, and audio 🎧. The SDK includes an OpenAI-compatible API server with support for JSON schema-based function calling and streaming. It supports model formats such as GGUF, MLX, Nexa AI's own `.nexa` format, enabling efficient quantized inference across diverse platforms.
+
+## Qualcomm NPU PC Demos
+
+<table>
+<tr>
+<td width="50%">
+<img width="100%" src="assets/PC_demo_2_image.gif" alt="Multi-Image Reasoning Demo">
+<p align="center"><b>🖼️ Multi-Image Reasoning</b><br>Spot the difference across two images in multi-round dialogue.</p>
+</td>
+
+<td width="50%">
+<img width="100%" src="assets/PC_Demo_Agent.gif" alt="Image + Audio Function Call Demo">
+<p align="center"><b>🎤 Image + Text → Function Call</b><br>Snap a poster, add a voice note, and AI agent creates a calendar event.</p>
+</td>
+</tr>
+<tr>
+<td colspan="2" align="center">
+<img width="50%" src="assets/PC_Demo_Audio.gif" alt="Multi-Audio Comparison Demo">
+<p align="center"><b>🎶 Multi-Audio Comparison</b><br>Tell the difference between two music clips locally.</p>
+</td>
+</tr>
+</table>
+
 
 ## Recent updates
+#### 📣  **2025.08.20: Qualcomm NPU Support**
+- Qualcomm NPU support for GGUF models.
+OmniNeural-4B is the **first multimodal AI model built natively for NPUs** — handling text, images, and audio in one model.
+- Check the model and demos at [Hugginface repo](https://huggingface.co/NexaAI/OmniNeural-4B)
+- Check our [OmniNeural-4B technical blog](https://nexa.ai/blogs/omnineural-4b)
+- Download our [arm64 with Qualcomm NPU support](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_windows_arm64.exe) installer and try it!
+
 #### 📣  **2025.08.12: ASR & TTS Support in MLX format
 - ASR & TTS model support in MLX format.
 - new "> /mic" mode to transcribe live speech directly in your terminal.
@@ -33,10 +63,11 @@ Nexa SDK is an on-device inference framework that runs any model on any device, 
 ## Installation
 
 ### macOS
-* [arm64](https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_macos_arm64.pkg)
+* [arm64](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_windows_arm64.exe)
 * [x86_64](https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_macos_x86_64.pkg)
 
 ### Windows
+* [arm64 with Qualcomm NPU support](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_windows_arm64.exe)
 * [x86_64](https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_windows_x86_64.exe)
 
 ### Linux
@@ -46,7 +77,20 @@ curl -fsSL https://raw.githubusercontent.com/NexaAI/nexa-sdk/main/release/linux/
 
 ## Supported Models
 
-You can run any compatible GGUF or MLX model from 🤗 Hugging Face by using the `<full repo name>`.
+You can run any compatible GGUF，MLX, or nexa model from 🤗 Hugging Face by using the `<full repo name>`.
+
+### Qualcomm NPU models
+> [!TIP]
+> You need to download the [arm64 with Qualcomm NPU support](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_windows_arm64.exe) and make sure you have Snapdragon® X Elite chip on your laptop.
+
+
+🖼️ Run and chat with our multimodal model, OmniNeural-4B:
+
+```bash
+nexa infer omni-neural
+nexa infer NexaAI/OmniNeural-4B
+```
+
 
 ### GGUF models
 
