@@ -25,26 +25,19 @@
 
 Nexa SDK is an on-device inference framework that runs any model on any device, across any backend. It runs on CPUs and GPUs with backend support for CUDA, Metal, and Vulkan. It handles multiple input modalities including text 📝, image 🖼️, and audio 🎧. The SDK includes an OpenAI-compatible API server with support for JSON schema-based function calling and streaming. It supports model formats such as GGUF and MLX, enabling efficient quantized inference across diverse platforms.
 
-## ✨ PC NPU - Capabilities Highlights
-
+## Qualcomm NPU Demos
 
 <table>
 <tr>
-<td width="33%">
+<td width="50%">
 <img width="100%" src="assets/PC_demo_2_image.gif" alt="Multi-Image Reasoning Demo">
 <p align="center"><b>🖼️ Multi-Image Reasoning</b><br>Spot the difference across two images in multi-round dialogue.</p>
 </td>
 
-<td width="33%">
+<td width="50%">
 <img width="100%" src="assets/PC_Demo_Agent.gif" alt="Image + Audio Function Call Demo">
 <p align="center"><b>🎤 Image + Audio → Function Call</b><br>Snap a poster, add a voice note, and AI agent creates a calendar event.</p>
 </td>
-
-<td width="33%">
-<img width="100%" src="assets/PC_Demo_Audio.gif" alt="Multi-Audio Comparison Demo">
-<p align="center"><b>🎶 Multi-Audio Comparison</b><br>Tell the difference between two music clips locally.</p>
-</td>
-</tr>
 </table>
 
 
@@ -52,8 +45,8 @@ Nexa SDK is an on-device inference framework that runs any model on any device, 
 #### 📣  **2025.08.20: Qualcomm NPU Support**
 - Qualcomm NPU support for GGUF models.
 OmniNeural-4B is the first multimodal AI model built natively for NPUs — handling text, images, and audio in one model.
-- [Hugginface repo](https://huggingface.co/NexaAI/OmniNeural-4B)
-- For demos and details, see [OmniNeural-4B technical blog](https://nexa.ai/blogs/omnineural-4b)
+- Check the model and demos at [Hugginface repo](https://huggingface.co/NexaAI/OmniNeural-4B)
+- Check our [OmniNeural-4B technical blog](https://nexa.ai/blogs/omnineural-4b)
 
 #### 📣  **2025.08.12: ASR & TTS Support in MLX format
 - ASR & TTS model support in MLX format.
