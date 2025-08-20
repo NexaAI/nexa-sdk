@@ -359,16 +359,14 @@ func inferVLM(plugin, modelfile string, mmprojfile string, licenseKey string) {
 			msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeText, Text: prompt})
 			for i, image := range images {
 				// omni-neural resize
-				if strings.Contains(modelfile, "omni-neural") {
-					var err error
-					white := color.RGBA{R: 255, G: 255, B: 255, A: 255}
-					// black := color.RGBA{R: 0, G: 0, B: 0, A: 255}
-					if image, err = ImageResizeAndPad(image, 448, 448, white); err != nil {
-						return "", nexa_sdk.ProfileData{}, err
-					}
-					slog.Info("resized image", "image", image)
-					images[i] = image
+				var err error
+				white := color.RGBA{R: 255, G: 255, B: 255, A: 255}
+				// black := color.RGBA{R: 0, G: 0, B: 0, A: 255}
+				if image, err = ImageResizeAndPad(image, 448, 448, white); err != nil {
+					return "", nexa_sdk.ProfileData{}, err
 				}
+				slog.Info("resized image", "image", image)
+				images[i] = image
 				msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeImage, Text: image})
 			}
 
