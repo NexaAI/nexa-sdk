@@ -25,7 +25,15 @@
 
 Nexa SDK is an on-device inference framework that runs any model on any device, across any backend. It runs on CPUs and GPUs with backend support for CUDA, Metal, and Vulkan. It handles multiple input modalities including text 📝, image 🖼️, and audio 🎧. The SDK includes an OpenAI-compatible API server with support for JSON schema-based function calling and streaming. It supports model formats such as GGUF and MLX, enabling efficient quantized inference across diverse platforms.
 
+<video src="assets/PC_Demo_Agent.mov" controls width="600"></video>
+
 ## Recent updates
+#### 📣  **2025.08.20: Qualcomm NPU Support**
+- Qualcomm NPU support for GGUF models.
+OmniNeural-4B is the first multimodal AI model built natively for NPUs — handling text, images, and audio in one model.
+- [Hugginface repo](https://huggingface.co/NexaAI/OmniNeural-4B)
+- For demos and details, see [OmniNeural-4B technical blog](https://nexa.ai/blogs/omnineural-4b)
+
 #### 📣  **2025.08.12: ASR & TTS Support in MLX format
 - ASR & TTS model support in MLX format.
 - new "> /mic" mode to transcribe live speech directly in your terminal.
@@ -33,10 +41,11 @@ Nexa SDK is an on-device inference framework that runs any model on any device, 
 ## Installation
 
 ### macOS
-* [arm64](https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_macos_arm64.pkg)
+* [arm64](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_windows_arm64.exe)
 * [x86_64](https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_macos_x86_64.pkg)
 
 ### Windows
+* [arm64 with Qualcomm NPU support](https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_windows_arm64.exe)
 * [x86_64](https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_windows_x86_64.exe)
 
 ### Linux
