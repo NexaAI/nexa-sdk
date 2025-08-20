@@ -174,7 +174,7 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 			mf.PluginId = "mlx"
 		case strings.Contains(lowerName, "ort"), strings.Contains(lowerName, "onnx"):
 			mf.PluginId = "ort"
-		case strings.Contains(lowerName, "npu"), strings.Contains(lowerName, "omni-neural"):
+		case strings.Contains(lowerName, "npu"), strings.Contains(lowerName, "omni"):
 			mf.PluginId = "qnn"
 		default:
 			mf.PluginId = "llama_cpp"
