@@ -335,11 +335,11 @@ type CV struct {
 func NewCV(input CVCreateInput) (*CV, error) {
 	// Qnn
 	basePath := filepath.Dir(input.Config.DetModelPath)
-	if strings.HasSuffix(basePath, "NexaAI/paddleocr-npu") {
+	if strings.HasSuffix(basePath, "NexaAI\\paddleocr-npu") {
 		input.Config.ModelPath = filepath.Join(basePath, "weights-1-1.nexa")
 		input.Config.ConfigFilePath = filepath.Join(basePath, "htp_backend_ext_config.json")
 		input.Config.CharDictPath = filepath.Join(basePath, "ppocr_keys_v1.txt")
-	} else if strings.HasSuffix(basePath, "NexaAI/yolov12-npu") {
+	} else if strings.HasSuffix(basePath, "NexaAI\\yolov12-npu") {
 		input.Config.ModelPath = filepath.Join(basePath, "weights-1-1.nexa")
 		input.Config.ConfigFilePath = filepath.Join(basePath, "htp_backend_ext_config.json")
 		input.Config.CharDictPath = filepath.Join(basePath, "coco.names")
