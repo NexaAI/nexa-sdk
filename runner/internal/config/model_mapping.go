@@ -10,11 +10,11 @@ var modelMapping = map[string]string{
 	"gpt-oss-mlx": "NexaAI/gpt-oss-20b-MLX-4bit",
 
 	// QNN
-	"omni-neural":   "nexaml/omni-neural",
-	"qwen3-npu":     "nexaml/qwen3-npu",
-	"qwen3-4B-npu":  "nexaml/qwen3-4B-npu",
-	"paddleocr-npu": "nexaml/paddleocr-npu",
-	"yolov12-npu":   "nexaml/yolov12-npu",
+	"omni-neural":   "NexaAI/OmniNeural-4B",
+	"qwen3-npu":     "NexaAI/qwen3-1.7B-npu",
+	"qwen3-4B-npu":  "NexaAI/qwen3-4B-npu",
+	"paddleocr-npu": "NexaAI/paddleocr-npu",
+	"yolov12-npu":   "NexaAI/yolov12-npu",
 
 	"omni-neural-npu-encrypt": "nexaml/omni-neural-npu-encrypt",
 	"qwen3-1.7B-npu-encrypt":  "nexaml/qwen3-1.7B-npu-encrypt",

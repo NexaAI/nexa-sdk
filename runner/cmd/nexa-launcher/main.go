@@ -43,7 +43,7 @@ func setRuntimeEnv() {
 
 	llmBackend := "qwen3"
 	for _, arg := range os.Args[1:] {
-		if strings.HasSuffix(arg, "qwen3-4B-npu") {
+		if strings.Contains(arg, "qwen3-4B-npu") {
 			llmBackend = "qwen3-4B"
 			break
 		}
@@ -52,7 +52,7 @@ func setRuntimeEnv() {
 
 	cvBackend := "yolov12"
 	for _, arg := range os.Args[1:] {
-		if strings.HasSuffix(arg, "paddleocr-npu") {
+		if strings.Contains(arg, "paddleocr-npu") {
 			cvBackend = "paddleocr"
 			break
 		}
