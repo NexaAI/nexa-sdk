@@ -25,7 +25,31 @@
 
 Nexa SDK is an on-device inference framework that runs any model on any device, across any backend. It runs on CPUs and GPUs with backend support for CUDA, Metal, and Vulkan. It handles multiple input modalities including text 📝, image 🖼️, and audio 🎧. The SDK includes an OpenAI-compatible API server with support for JSON schema-based function calling and streaming. It supports model formats such as GGUF and MLX, enabling efficient quantized inference across diverse platforms.
 
-<img src="assets/PC_Demo_Agent.gif" width="600" alt="Nexa SDK Demo">
+## ✨ PC NPU - Capabilities Highlights
+
+
+<table>
+<tr>
+<td width="33%">
+<video controls width="100%" preload="metadata"
+  src="assets/PC_demo_2_image.gif"></video>
+<p align="center"><b>🖼️ Multi-Image Reasoning</b><br>Spot the difference across two images in multi-round dialogue.</p>
+</td>
+
+<td width="33%">
+<video controls width="100%" preload="metadata"
+  src="assets/PC_demo_agent.gif"></video>
+<p align="center"><b>🎤 Image + Audio → Function Call</b><br>Snap a poster, add a voice note, and AI agent creates a calendar event.</p>
+</td>
+
+<td width="33%">
+<video controls width="100%" preload="metadata"
+  src="assets/PC_demo_audio.gif"></video>
+<p align="center"><b>🎶 Multi-Audio Comparison</b><br>Tell the difference between two music clips locally.</p>
+</td>
+</tr>
+</table>
+
 
 ## Recent updates
 #### 📣  **2025.08.20: Qualcomm NPU Support**
