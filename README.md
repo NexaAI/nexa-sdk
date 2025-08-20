@@ -60,7 +60,7 @@ OmniNeural-4B is the **first multimodal AI model built natively for NPUs** — h
 * [x86_64](https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_macos_x86_64.pkg)
 
 ### Windows
-* [arm64 with Qualcomm NPU support](https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_windows_arm64.exe)
+* [arm64 with Qualcomm NPU support](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_windows_arm64.exe)
 * [x86_64](https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_windows_x86_64.exe)
 
 ### Linux
@@ -74,7 +74,9 @@ You can run any compatible GGUF or MLX model from 🤗 Hugging Face by using the
 
 ### Qualcomm NPU models
 > [!TIP]
-> this model runs on windows arm64 with Qualcomm NPU support.
+> this model runs on windows arm64 with Qualcomm NPU support, you need to download the [arm64 with Qualcomm NPU support](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_windows_arm64.exe) first.
+
+
 🖼️ Run and chat with our multimodal model, OmniNeural-4B:
 
 ```bash
