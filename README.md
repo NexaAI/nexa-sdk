@@ -70,11 +70,11 @@ curl -fsSL https://raw.githubusercontent.com/NexaAI/nexa-sdk/main/release/linux/
 
 ## Supported Models
 
-You can run any compatible GGUF or MLX model from 🤗 Hugging Face by using the `<full repo name>`. On Qualcomm snapdragon laptop, you can run **OmniNeural-4B** model with NPU support.
+You can run any compatible GGUF，MLX, or nexa model from 🤗 Hugging Face by using the `<full repo name>`.
 
 ### Qualcomm NPU models
 > [!TIP]
-> this model runs on windows arm64 with Qualcomm NPU support, you need to download the [arm64 with Qualcomm NPU support](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_windows_arm64.exe) first.
+> You need to download the [arm64 with Qualcomm NPU support](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_windows_arm64.exe) and make sure you have Snapdragon® X Elite chip on your laptop.
 
 
 🖼️ Run and chat with our multimodal model, OmniNeural-4B:
