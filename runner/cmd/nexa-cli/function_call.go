@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"log/slog"
+	"strings"
 
-	"github.com/bytedance/sonic"
 	"github.com/spf13/cobra"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
@@ -66,50 +66,11 @@ func functionCall() *cobra.Command {
 	return fcCmd
 }
 
-func parseTools(tools []string) (parsedTools []nexa_sdk.Tool, err error) {
-	parsedTools = make([]nexa_sdk.Tool, len(tools))
-
-	var tempTool struct {
-		Type     string `json:"type"`
-		Function struct {
-			Name        string `json:"name"`
-			Description string `json:"description"`
-			Parameters  any    `json:"parameters" default:"{}"`
-		} `json:"function"`
-	}
-
-	for i, tool := range tools {
-		err = sonic.UnmarshalString(tool, &tempTool)
-		if err != nil {
-			return nil, err
-		}
-		param, err := sonic.Marshal(tempTool.Function.Parameters)
-		if err != nil {
-			return nil, err
-		}
-		parsedTools[i] = nexa_sdk.Tool{
-			Type: tempTool.Type,
-			Function: &nexa_sdk.ToolFunction{
-				Name:        tempTool.Function.Name,
-				Description: tempTool.Function.Description,
-				Parameters:  string(param),
-			},
-		}
-	}
-
-	return parsedTools, nil
-}
-
-func checkParseTools(tools []string) ([]nexa_sdk.Tool, error) {
+func checkParseTools(tools []string) (string, error) {
 	if len(tools) == 0 {
-		return nil, fmt.Errorf("no tools provided")
+		return "", fmt.Errorf("no tools provided")
 	}
-
-	if len(prompt) == 0 {
-		return nil, fmt.Errorf("prompt is required (use --prompt)")
-	}
-
-	return parseTools(tools)
+	return "[" + strings.Join(tools, ",") + "]", nil
 }
 
 func fcLLM(plugin, modelfile string) {

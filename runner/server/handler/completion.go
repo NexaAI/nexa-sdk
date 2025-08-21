@@ -135,21 +135,14 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 
 	// Prepare tools if provided
 	parseTool := len(param.Tools) > 0
-	tools := make([]nexa_sdk.Tool, 0, len(param.Tools))
-	for _, tool := range param.Tools {
-		paramStr, err := sonic.MarshalString(tool.Function.Parameters)
+	var tools string
+	if parseTool {
+		tools, err = sonic.MarshalString(param.Tools)
 		if err != nil {
-			slog.Warn("marshal tool parameters error", "error", err)
-			continue
+			slog.Error("marshal tools error", "error", err)
+			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+			return
 		}
-		tools = append(tools, nexa_sdk.Tool{
-			Type: string(tool.Type),
-			Function: &nexa_sdk.ToolFunction{
-				Name:        tool.Function.Name,
-				Description: tool.Function.Description.Value,
-				Parameters:  paramStr,
-			},
-		})
 	}
 
 	// Format prompt using chat template
@@ -349,21 +342,14 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 
 	// Prepare tools if provided
 	parseTool := len(param.Tools) > 0
-	tools := make([]nexa_sdk.Tool, 0, len(param.Tools))
-	for _, tool := range param.Tools {
-		paramStr, err := sonic.MarshalString(tool.Function.Parameters)
+	var tools string
+	if parseTool {
+		tools, err = sonic.MarshalString(param.Tools)
 		if err != nil {
-			slog.Warn("marshal tool parameters error", "error", err)
-			continue
+			slog.Error("marshal tools error", "error", err)
+			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+			return
 		}
-		tools = append(tools, nexa_sdk.Tool{
-			Type: string(tool.Type),
-			Function: &nexa_sdk.ToolFunction{
-				Name:        tool.Function.Name,
-				Description: tool.Function.Description.Value,
-				Parameters:  paramStr,
-			},
-		})
 	}
 
 	// Format prompt using VLM chat template
