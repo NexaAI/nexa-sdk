@@ -14,12 +14,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: sdk-windows-8-core-2
-            arch: x86_64
+          # - runner: sdk-windows-8-core-2
+          #   arch: x86_64
+          - runner: windows-11-arm
+            arch: arm64
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Detect Tag Version
         if: startsWith(github.ref, 'refs/tags/v')
@@ -37,19 +41,35 @@ jobs:
           go-version: 1.24.3
           cache-dependency-path: runner/go.sum
 
-      - name: Setup MinGW
-        run: |
-          choco install mingw -y
-          g++ --version
+      - name: Setup MSYS2 for ARM64
+        if: matrix.arch == 'arm64'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: CLANGARM64
+          location: C:/Tools
+          update: true
+          install: >-
+            mingw-w64-clang-aarch64-clang
+            mingw-w64-clang-aarch64-lld
 
-      - name: Download runtime
+      - name: Setup Compile Environment
+        if: matrix.arch == 'arm64'
+        shell: bash
         run: |
-          cd runner
-          make download ARCH=${{ matrix.arch }}
+          echo "CGO_ENABLED=1" >> $GITHUB_ENV
+          echo "GOARCH=arm64" >> $GITHUB_ENV
+          echo "CC=C:/Tools/msys64/clangarm64/bin/clang.exe" >> $GITHUB_ENV
+          echo "CXX=C:/Tools/msys64/clangarm64/bin/clang++.exe" >> $GITHUB_ENV
+
+      # - name: Download runtime
+      #   run: |
+      #     cd runner
+      #     make download ARCH=${{ matrix.arch }}
 
       - name: Build Nexa Cli
         run: |
           cd runner
+          go env
           make build ARCH=${{ matrix.arch }}
           Remove-Item build/ml.h
 
@@ -69,8 +89,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: sdk-windows-8-core-2
-            arch: x86_64
+          # - runner: sdk-windows-8-core-2
+          #   arch: x86_64
+          - runner: windows-11-arm
+            arch: arm64
     env:
       VERSION: ${{ github.ref_name }}
       ARCH: ${{ matrix.arch }}
@@ -85,22 +107,10 @@ jobs:
           name: nexa-cli_windows_${{ matrix.arch }}
           path: artifacts
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install Python dependencies
+      - name: Build Nexa Launcher
         run: |
           pip install pyinstaller
-
-      - name: Build launcher with PyInstaller
-        run: |
           pyinstaller --onefile --noconsole --distpath artifacts --name "nexa-cli-launcher" --icon="runner/release/windows/nexa_logo.ico" runner/release/windows/nexa_launcher.py
-
-      - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v4.1.0
-        with:
-          dotnet-version: 8.0.403
 
       - name: Sign executables with AzureSignTool
         shell: pwsh
@@ -118,16 +128,6 @@ jobs:
               -td sha256 `
               $_.FullName
           }
-
-          azuresigntool sign `
-            -kvu "${{ secrets.AZURE_KEY_VAULT_URI }}" `
-            -kvc "${{ secrets.AZURE_CERT_NAME }}" `
-            -kvi "${{ secrets.AZURE_CLIENT_ID }}" `
-            -kvs "${{ secrets.AZURE_CLIENT_SECRET }}" `
-            --azure-key-vault-tenant-id "${{ secrets.AZURE_TENANT_ID }}" `
-            -tr http://timestamp.globalsign.com/tsa/advanced `
-            -td sha256 `
-            "artifacts\nexa-cli-launcher.exe"
 
       - name: Compile Installer
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.6
