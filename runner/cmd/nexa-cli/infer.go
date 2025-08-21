@@ -579,7 +579,6 @@ func inferImageGen(plugin, modeldir string) {
 	p, err := nexa_sdk.NewImageGen(nexa_sdk.ImageGenCreateInput{
 		ModelPath: modeldir,
 		PluginID:  plugin,
-		DeviceID:  "cuda", // Currently only CUDA is supported
 	})
 	spin.Stop()
 	if err != nil {
