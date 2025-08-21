@@ -199,49 +199,10 @@ func freeVlmChatMessages(cPtr *C.ml_VlmChatMessage, count C.int32_t) {
 	C.free(unsafe.Pointer(cPtr))
 }
 
-// ToolFunction represents a tool function definition
-type ToolFunction struct {
-	Name        string
-	Description string
-	Parameters  string // JSON schema
-}
-
-func (tf ToolFunction) toCPtr() *C.ml_ToolFunction {
-	cPtr := (*C.ml_ToolFunction)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_ToolFunction{}))))
-	*cPtr = C.ml_ToolFunction{}
-
-	if tf.Name != "" {
-		cPtr.name = C.CString(tf.Name)
-	}
-	if tf.Description != "" {
-		cPtr.description = C.CString(tf.Description)
-	}
-	if tf.Parameters != "" {
-		cPtr.parameters_json = C.CString(tf.Parameters)
-	}
-
-	return cPtr
-}
-
-func freeToolFunction(cPtr *C.ml_ToolFunction) {
-	if cPtr != nil {
-		if cPtr.name != nil {
-			C.free(unsafe.Pointer(cPtr.name))
-		}
-		if cPtr.description != nil {
-			C.free(unsafe.Pointer(cPtr.description))
-		}
-		if cPtr.parameters_json != nil {
-			C.free(unsafe.Pointer(cPtr.parameters_json))
-		}
-		C.free(unsafe.Pointer(cPtr))
-	}
-}
-
 // VlmApplyChatTemplateInput represents input for applying VLM chat template
 type VlmApplyChatTemplateInput struct {
-	Messages []VlmChatMessage
-	Tools    []Tool
+	Messages    []VlmChatMessage
+	Tools       string
 	EnableThink bool
 }
 
@@ -255,10 +216,8 @@ func (vati VlmApplyChatTemplateInput) toCPtr() *C.ml_VlmApplyChatTemplateInput {
 		cPtr.message_count = C.int32_t(messageCount)
 	}
 
-	if len(vati.Tools) > 0 {
-		cTools, toolCount := tools(vati.Tools).toCPtr()
-		cPtr.tools = cTools
-		cPtr.tool_count = C.int32_t(toolCount)
+	if vati.Tools != "" {
+		cPtr.tools = C.CString(vati.Tools)
 	}
 
 	cPtr.enable_thinking = C.bool(vati.EnableThink)
@@ -272,7 +231,9 @@ func freeVlmApplyChatTemplateInput(cPtr *C.ml_VlmApplyChatTemplateInput) {
 	}
 
 	freeVlmChatMessages(cPtr.messages, cPtr.message_count)
-	freeTools(cPtr.tools, cPtr.tool_count)
+	if cPtr.tools != nil {
+		C.free(unsafe.Pointer(cPtr.tools))
+	}
 	C.free(unsafe.Pointer(cPtr))
 }
 
