@@ -144,16 +144,6 @@ func repl(cfg ReplConfig) {
 			fmt.Println()
 			return
 		case errors.Is(err, readline.ErrInterrupt):
-			if rec != nil {
-				if err = rec.Stop(); err != nil {
-					fmt.Printf("stop record failed: %v\n", err)
-				}
-
-				line = rec.GetOutputFile()
-				rec = nil
-				break
-			}
-
 			if line == "" {
 				fmt.Println("\nUse Ctrl + d or /exit to exit.")
 				fmt.Println()
