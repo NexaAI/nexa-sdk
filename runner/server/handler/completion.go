@@ -63,7 +63,8 @@ type ChatCompletionNewParams openai.ChatCompletionNewParams
 // ChatCompletionRequest defines the request body for the chat completions API.
 // example: { "model": "nexaml/nexaml-models", "messages": [ { "role": "user", "content": "why is the sky blue?" } ] }
 type ChatCompletionRequest struct {
-	Stream bool `json:"stream" default:"false"`
+	Stream      bool `json:"stream" default:"false"`
+	EnableThink bool `json:"enable_think" default:"true"`
 
 	ChatCompletionNewParams
 }
@@ -134,27 +135,21 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 
 	// Prepare tools if provided
 	parseTool := len(param.Tools) > 0
-	tools := make([]nexa_sdk.Tool, 0, len(param.Tools))
-	for _, tool := range param.Tools {
-		paramStr, err := sonic.MarshalString(tool.Function.Parameters)
+	var tools string
+	if parseTool {
+		tools, err = sonic.MarshalString(param.Tools)
 		if err != nil {
-			slog.Warn("marshal tool parameters error", "error", err)
-			continue
+			slog.Error("marshal tools error", "error", err)
+			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+			return
 		}
-		tools = append(tools, nexa_sdk.Tool{
-			Type: string(tool.Type),
-			Function: &nexa_sdk.ToolFunction{
-				Name:        tool.Function.Name,
-				Description: tool.Function.Description.Value,
-				Parameters:  paramStr,
-			},
-		})
 	}
 
 	// Format prompt using chat template
 	formatted, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
-		Messages: messages,
-		Tools:    tools,
+		Messages:    messages,
+		Tools:       tools,
+		EnableThink: param.EnableThink,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
@@ -179,9 +174,9 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 				},
 				Config: &nexa_sdk.GenerationConfig{
 					MaxTokens: 2048,
-				}},
+				},
+			},
 			)
-
 			if err != nil {
 				slog.Warn("Generate Error", "error", err)
 			}
@@ -229,7 +224,8 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 			PromptUTF8: formatted.FormattedText,
 			Config: &nexa_sdk.GenerationConfig{
 				MaxTokens: 2048,
-			}},
+			},
+		},
 		)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
@@ -346,27 +342,21 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 
 	// Prepare tools if provided
 	parseTool := len(param.Tools) > 0
-	tools := make([]nexa_sdk.Tool, 0, len(param.Tools))
-	for _, tool := range param.Tools {
-		paramStr, err := sonic.MarshalString(tool.Function.Parameters)
+	var tools string
+	if parseTool {
+		tools, err = sonic.MarshalString(param.Tools)
 		if err != nil {
-			slog.Warn("marshal tool parameters error", "error", err)
-			continue
+			slog.Error("marshal tools error", "error", err)
+			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+			return
 		}
-		tools = append(tools, nexa_sdk.Tool{
-			Type: string(tool.Type),
-			Function: &nexa_sdk.ToolFunction{
-				Name:        tool.Function.Name,
-				Description: tool.Function.Description.Value,
-				Parameters:  paramStr,
-			},
-		})
 	}
 
 	// Format prompt using VLM chat template
 	formatted, err := p.ApplyChatTemplate(nexa_sdk.VlmApplyChatTemplateInput{
-		Messages: messages,
-		Tools:    tools,
+		Messages:    messages,
+		Tools:       tools,
+		EnableThink: param.EnableThink,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
@@ -392,7 +382,8 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 					MaxTokens:  2048,
 					ImagePaths: images,
 					AudioPaths: audios,
-				}},
+				},
+			},
 			)
 
 			close(dataCh)
@@ -431,7 +422,8 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 				MaxTokens:  2048,
 				ImagePaths: images,
 				AudioPaths: audios,
-			}},
+			},
+		},
 		)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
@@ -480,6 +472,6 @@ func profile2Usage(p nexa_sdk.ProfileData) openai.CompletionUsage {
 	return openai.CompletionUsage{
 		CompletionTokens: p.GeneratedTokens,
 		PromptTokens:     p.PromptTokens,
-		TotalTokens:      p.TotalTokens,
+		TotalTokens:      p.TotalTokens(),
 	}
 }

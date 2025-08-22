@@ -97,27 +97,37 @@ func go_generate_stream_on_token(token *C.char, _ *C.void) C.bool {
 /* ========================================================================== */
 
 type ProfileData struct {
-	TTFTUs          int64
-	TotalTimeUs     int64
-	PromptTimeUs    int64
-	DecodeTimeUs    int64
-	TokensPerSecond float64
-	TotalTokens     int64
+	TTFT            int64
+	PromptTime      int64
+	DecodeTime      int64
 	PromptTokens    int64
 	GeneratedTokens int64
+	AudioDuration   int64
+	PrefillSpeed    float64
+	DecodingSpeed   float64
+	RealTimeFactor  float64
 	StopReason      string
+}
+
+func (p ProfileData) TotalTokens() int64 {
+	return p.PromptTokens + p.GeneratedTokens
+}
+
+func (p ProfileData) TotalTimeUs() int64 {
+	return p.PromptTime + p.DecodeTime
 }
 
 func newProfileDataFromCPtr(c C.ml_ProfileData) ProfileData {
 	return ProfileData{
-		TTFTUs:          int64(c.ttft_us),
-		TotalTimeUs:     int64(c.total_time_us),
-		PromptTimeUs:    int64(c.prompt_time_us),
-		DecodeTimeUs:    int64(c.decode_time_us),
-		TokensPerSecond: float64(c.tokens_per_second),
-		TotalTokens:     int64(c.total_tokens),
+		TTFT:            int64(c.ttft),
+		PromptTime:      int64(c.prompt_time),
+		DecodeTime:      int64(c.decode_time),
 		PromptTokens:    int64(c.prompt_tokens),
 		GeneratedTokens: int64(c.generated_tokens),
+		AudioDuration:   int64(c.audio_duration),
+		PrefillSpeed:    float64(c.prefill_speed),
+		DecodingSpeed:   float64(c.decoding_speed),
+		RealTimeFactor:  float64(c.real_time_factor),
 		StopReason:      C.GoString(c.stop_reason),
 	}
 }
@@ -237,6 +247,7 @@ type ModelConfig struct {
 	NBatch              int32
 	NUbatch             int32
 	NSeqMax             int32
+	NGpuLayers          int32
 	ChatTemplatePath    string
 	ChatTemplateContent string
 }
@@ -305,50 +316,3 @@ type KVCacheLoadOutput struct {
 // 		return
 // 	}
 // }
-
-// Tool represents a tool definition
-type Tool struct {
-	Type     string
-	Function *ToolFunction
-}
-
-type tools []Tool
-
-func (vts tools) toCPtr() (*C.ml_Tool, C.int32_t) {
-	if len(vts) == 0 {
-		return nil, 0
-	}
-
-	count := len(vts)
-	raw := C.malloc(C.size_t(count * C.sizeof_ml_Tool))
-	cTools := unsafe.Slice((*C.ml_Tool)(raw), count)
-
-	for i, vt := range vts {
-		if vt.Type != "" {
-			cTools[i]._type = C.CString(vt.Type)
-		}
-		if vt.Function != nil {
-			cTools[i].function = vt.Function.toCPtr()
-		}
-	}
-
-	return (*C.ml_Tool)(raw), C.int32_t(count)
-}
-
-func freeTools(cPtr *C.ml_Tool, count C.int32_t) {
-	if cPtr == nil || count == 0 {
-		return
-	}
-
-	cTools := unsafe.Slice(cPtr, int(count))
-	for i := range count {
-		if cTools[i]._type != nil {
-			C.free(unsafe.Pointer(cTools[i]._type))
-		}
-		if cTools[i].function != nil {
-			freeToolFunction(cTools[i].function)
-		}
-	}
-
-	C.free(unsafe.Pointer(cPtr))
-}

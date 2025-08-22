@@ -196,15 +196,13 @@ func runFunc(cmd *cobra.Command, args []string) {
 				if chunk.Usage.PromptTokens > 0 {
 					profileData.PromptTokens = chunk.Usage.PromptTokens
 					profileData.GeneratedTokens = chunk.Usage.CompletionTokens
-					profileData.TotalTokens = chunk.Usage.TotalTokens
 				}
 			}
 			end := time.Now()
-			profileData.TTFTUs = firstToken.Sub(start).Microseconds()
-			profileData.TotalTimeUs = end.Sub(start).Microseconds()
-			profileData.PromptTimeUs = 0
-			profileData.DecodeTimeUs = 0
-			profileData.TokensPerSecond = float64(profileData.GeneratedTokens) / float64(end.Sub(firstToken).Seconds())
+			profileData.TTFT = firstToken.Sub(start).Microseconds()
+			profileData.PromptTime = 0
+			profileData.DecodeTime = end.Sub(firstToken).Microseconds()
+			profileData.DecodingSpeed = float64(profileData.GeneratedTokens) / float64(end.Sub(firstToken).Seconds())
 
 			if len(acc.Choices) > 0 {
 				history = append(history, openai.AssistantMessage(acc.Choices[0].Message.Content))

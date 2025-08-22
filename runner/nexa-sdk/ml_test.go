@@ -22,8 +22,8 @@ func TestMain(m *testing.M) {
 	// initTTS()
 	// defer deinitTTS()
 
-	// initASR()
-	// defer deinitASR()
+	initASR()
+	defer deinitASR()
 
 	// initEmbedder()
 	// defer deinitEmbedder()
@@ -36,6 +36,9 @@ func TestMain(m *testing.M) {
 
 	// initReranker()
 	// defer deinitReranker()
+
+	initImageGen()
+	defer deinitImageGen()
 
 	code := m.Run()
 	os.Exit(code)

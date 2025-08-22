@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -27,18 +28,6 @@ import (
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 )
 
-//var completer = readline.NewPrefixCompleter(
-//	readline.PcItem("/?"),
-//	readline.PcItem("/h"),
-//	readline.PcItem("/help"),
-//
-//	readline.PcItem("/exit"),
-//
-//	readline.PcItem("/clear"),
-//	readline.PcItem("/load", readline.PcItemDynamic(listFiles("./"))),
-//	readline.PcItem("/save", readline.PcItemDynamic(listFiles("./"))),
-//)
-
 var help = [][2]string{
 	{"/?, /h, /help", "Show this help message"},
 	{"/exit", "Exit the REPL"},
@@ -48,21 +37,8 @@ var help = [][2]string{
 	{"/mic", "Record audio for transcription"},
 }
 
-// TODO: support sub dir
-//func listFiles(path string) func(string) []string {
-//	return func(line string) []string {
-//		names := make([]string, 0)
-//		files, _ := os.ReadDir(path)
-//		for _, f := range files {
-//			names = append(names, f.Name())
-//		}
-//		return names
-//	}
-//}
-
 // LLM, VLM
 type ReplConfig struct {
-	//Stream    bool
 	ParseFile bool
 
 	Reset       func() error
@@ -86,24 +62,31 @@ func (cfg *ReplConfig) fill() {
 	}
 }
 
-func printProfile(profileData nexa_sdk.ProfileData) {
-	var profileText string
+func printProfile(pd nexa_sdk.ProfileData) {
+	var text string
 
-	if profileData.TokensPerSecond != 0 {
-		profileText = fmt.Sprintf("— %.1f tok/s • %d tok • %.1f s first token -",
-			profileData.TokensPerSecond,
-			profileData.GeneratedTokens,
-			float64(profileData.TTFTUs)/1e6)
+	if pd.AudioDuration > 0 { // ASR TTS
+		text = fmt.Sprintf("processing_time %.2fs  |  audio_duration %.2fs  |  RTF %.2f (%.1fx realtime)",
+			float64(pd.TotalTimeUs())/1e6,
+			float64(pd.AudioDuration)/1e6,
+			pd.RealTimeFactor,
+			1.0/pd.RealTimeFactor)
+
+	} else if pd.DecodingSpeed != 0 {
+		text = fmt.Sprintf("— %.1f tok/s • %d tok • %.1f s first token -",
+			pd.DecodingSpeed,
+			pd.GeneratedTokens,
+			float64(pd.TTFT)/1e6)
 
 	} else {
-		if profileData.TotalTimeUs != 0 {
-			profileText = fmt.Sprintf("- %.1f s -",
-				float64(profileData.TotalTimeUs)/1e6, // Convert microseconds to seconds
+		if pd.TotalTimeUs() != 0 {
+			text = fmt.Sprintf("- %.1f s -",
+				float64(pd.TotalTimeUs())/1e6,
 			)
 		}
 	}
 
-	fmt.Print(render.GetTheme().Profile.Sprint(profileText))
+	fmt.Print(render.GetTheme().Profile.Sprint(text))
 	fmt.Println()
 	fmt.Println()
 }
@@ -116,16 +99,8 @@ const (
 )
 
 func repl(cfg ReplConfig) {
-	// fmt.Println(text.FgBlue.Sprintf("Send a message, press /? for help"))
 	cfg.fill()
 
-	//l, err := readline.NewEx(&readline.Config{
-	//	Prompt:          text.Colors{text.FgGreen, text.Bold}.Sprint("> "),
-	//	AutoComplete:    completer,
-	//	InterruptPrompt: "^C",
-	//	EOFPrompt:       "^D",
-	//	HistoryFile:     store.Get().HistoryFilePath(),
-	//})
 	l, err := readline.New(readline.Prompt{
 		Prompt:         render.GetTheme().Prompt.Sprint("> "),
 		AltPrompt:      render.GetTheme().Prompt.Sprint(". "),
@@ -153,10 +128,17 @@ func repl(cfg ReplConfig) {
 
 	var sb strings.Builder
 	var multiline MultilineState
-	var rec *record.Recorder
+	var recordAudios []string
+
 	for {
+		// print stashed content
+		if multiline == MultilineNone && len(recordAudios) > 0 {
+			fmt.Println(render.GetTheme().Info.Sprintf("Current stash audios: %s", strings.Join(recordAudios, ", ")))
+		}
+
 		line, err := l.Readline()
 
+		// check err or exit
 		switch {
 		case errors.Is(err, io.EOF):
 			fmt.Println()
@@ -183,6 +165,7 @@ func repl(cfg ReplConfig) {
 			return
 		}
 
+		// check multiline state and paste state
 		switch {
 		case multiline != MultilineNone:
 			// check if there's a multiline terminating string
@@ -215,19 +198,23 @@ func repl(cfg ReplConfig) {
 			sb.WriteString(line)
 		}
 
-		if sb.Len() == 0 || multiline != MultilineNone {
+		// empty input or multiline state
+		if (sb.Len() == 0 && len(recordAudios) == 0) ||
+			multiline != MultilineNone {
 			continue
 		}
 
+		// read input
 		line = sb.String()
 		sb.Reset()
 
-		// paser file
+		// parse file
 		var images, audios []string
 		if cfg.ParseFile {
 			line, images, audios = parseFiles(line)
 		}
 
+		// check if it's a command
 		if len(images) == 0 && len(audios) == 0 && strings.HasPrefix(line, "/") {
 
 			fileds := strings.Fields(strings.TrimSpace(line))
@@ -245,6 +232,7 @@ func repl(cfg ReplConfig) {
 
 			case "/clear":
 				cfg.Reset()
+				recordAudios = nil
 				fmt.Print("\033[H\033[2J")
 
 			case "/load":
@@ -273,24 +261,24 @@ func repl(cfg ReplConfig) {
 				}
 
 			case "/mic":
-				if rec != nil {
-					fmt.Println(render.GetTheme().Error.Sprint("Recording is going on, press Ctrl-C to stop"))
-					continue
-				}
+				fmt.Println(render.GetTheme().Info.Sprint("Recording is going on, press Ctrl-C to stop"))
 
 				t := strconv.Itoa(int(time.Now().Unix()))
 				outputFile := filepath.Join(os.TempDir(), "nexa-cli", t+".wav")
-				rec, err = record.NewRecorder(outputFile)
+				rec, err := record.NewRecorder(outputFile)
 				if err != nil {
 					fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 					fmt.Println()
 					continue
 				}
-				if err = rec.Start(); err != nil {
+				if err = rec.Run(); err != nil {
 					fmt.Println(render.GetTheme().Error.Sprintf("Failed to start recording: %s", err))
 					fmt.Println()
 					continue
 				}
+
+				recordAudios = append(recordAudios, rec.GetOutputFile())
+				fmt.Println()
 
 			default:
 				fmt.Println(render.GetTheme().Error.Sprintf("Unknown command: %s", fileds[0]))
@@ -300,8 +288,6 @@ func repl(cfg ReplConfig) {
 			continue
 		}
 
-		// chat
-		//if cfg.Stream {
 		// run async
 		ctx, cancelFunc := context.WithCancel(context.Background())
 		cancel = cancelFunc
@@ -309,6 +295,9 @@ func repl(cfg ReplConfig) {
 		firstToken := true
 		spin := render.NewSpinner("encoding...")
 		spin.Start()
+
+		audios = append(audios, recordAudios...)
+		recordAudios = nil // clear after use
 
 		_, profileData, err := cfg.Run(line, images, audios, func(token string) bool {
 			if firstToken {
@@ -333,34 +322,13 @@ func repl(cfg ReplConfig) {
 		render.GetTheme().Reset()
 		fmt.Println()
 		fmt.Println()
-
 		printProfile(profileData)
 
-		// check error
 		if err != nil {
 			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s\n", err))
 			fmt.Println()
 			return
 		}
-		//} else {
-		//	fmt.Print(text.FgMagenta.EscapeSeq())
-		//	res, profileData, err := cfg.Run(line, images, audios, nil)
-		//	// append color to think
-		//	res = strings.ReplaceAll(res, "<think>", text.FgBlack.EscapeSeq()+"<think>")
-		//	res = strings.ReplaceAll(res, "</think>", "</think>"+text.FgYellow.EscapeSeq())
-		//	fmt.Println(text.FgYellow.Sprint(res))
-		//	fmt.Println()
-
-		//	printProfiling(profileData)
-
-		//	fmt.Print(text.Reset.EscapeSeq())
-		//	if err != nil {
-		//		fmt.Println(render.GetTheme().Error.Sprintf("Error: %s\n", err))
-		//		fmt.Println()
-		//		return
-		//	}
-		//}
-
 	}
 }
 
@@ -401,10 +369,10 @@ func parseFiles(prompt string) (string, []string, []string) {
 		switch realFile[len(realFile)-3:] {
 		case "mp3", "wav":
 			audios = append(audios, realFile)
-			fmt.Println(render.GetTheme().AddFiles.Sprintf("add audio: %s", realFile))
+			slog.Debug("add audio", "file", realFile)
 		default:
 			images = append(images, realFile)
-			fmt.Println(render.GetTheme().AddFiles.Sprintf("add image: %s", realFile))
+			slog.Debug("add image", "file", realFile)
 		}
 
 		prompt = strings.ReplaceAll(prompt, "'"+realFile+"'", "")
@@ -501,7 +469,7 @@ func chooseModelType() (types.ModelType, error) {
 		Title("Choose Model Type").
 		Options(huh.NewOptions(
 			types.ModelTypeLLM, types.ModelTypeVLM, types.ModelTypeEmbedder, types.ModelTypeReranker,
-			types.ModelTypeASR, types.ModelTypeTTS, types.ModelTypeCV)...).
+			types.ModelTypeASR, types.ModelTypeTTS, types.ModelTypeCV, types.ModelTypeImageGen)...).
 		Value(&modelType).
 		Run(); err != nil {
 		return "", err

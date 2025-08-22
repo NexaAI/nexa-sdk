@@ -27,9 +27,8 @@ trap cleanup EXIT
 
 # --- Global Variables ---
 SUDO=""
-NEXA_INSTALL_DIR="/opt/nexa-cli"
+NEXA_INSTALL_DIR="/opt/nexa_sdk"
 BINDIR="/usr/local/bin"
-IS_WSL2=false
 
 # --- Prerequisite and Environment Checks ---
 
@@ -49,25 +48,6 @@ require_tools() {
     echo "$missing_tools"
 }
 
-# Detect system environment
-detect_system_environment() {
-    # Detect system architecture
-    ARCH=$(uname -m)
-    status "Detected architecture: $ARCH"
-    case "$ARCH" in
-        x86_64) ARCH="amd64" ;;
-        # aarch64|arm64) ARCH="arm64" ;;
-        *) error "Unsupported architecture: $ARCH" ;;
-    esac
-
-    # Detect WSL2 environment
-    KERN=$(uname -r)
-    case "$KERN" in
-        *icrosoft*WSL2 | *icrosoft*wsl2) IS_WSL2=true; status "WSL2 environment detected" ;;
-        *icrosoft) error "Microsoft WSL1 is not currently supported. Please use WSL2 with 'wsl --set-version <distro> 2'" ;;
-        *) ;;
-    esac
-}
 
 # Sets up the SUDO variable if not running as root
 setup_sudo() {
@@ -137,72 +117,6 @@ install_nexa_sdk() {
     status "Nexa SDK files installed successfully."
 }
 
-# --- Systemd Service Configuration ---
-
-# Creates the nexa system user and adds to relevant groups
-create_system_user() {
-    if ! id nexa >/dev/null 2>&1; then
-        status "Creating system user 'nexa'..."
-        $SUDO useradd -r -s /bin/false -U -m -d /usr/share/nexa nexa
-    fi
-    if getent group render >/dev/null 2>&1; then
-        status "Adding 'nexa' user to 'render' group..."
-        $SUDO usermod -a -G render nexa
-    fi
-    if getent group video >/dev/null 2>&1; then
-        status "Adding 'nexa' user to 'video' group..."
-        $SUDO usermod -a -G video nexa
-    fi
-
-    status "Adding current user ($(whoami)) to 'nexa' group..."
-    $SUDO usermod -a -G nexa "$(whoami)"
-}
-
-# Creates the systemd service unit file
-create_systemd_service() {
-    status "Creating nexa systemd service..."
-    # Using a heredoc with sudo tee to write the file as root
-    $SUDO tee /etc/systemd/system/nexa.service >/dev/null <<EOF
-[Unit]
-Description=Nexa Background Service
-After=network-online.target
-
-[Service]
-Type=simple
-ExecStart=$BINDIR/nexa serve
-User=nexa
-Group=nexa
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=default.target
-EOF
-}
-
-# Enables and starts the systemd service if systemd is running
-enable_systemd_service() {
-    local systemctl_running
-    systemctl_running="$(systemctl is-system-running 2>/dev/null || echo 'unknown')"
-
-    case "$systemctl_running" in
-        running|degraded)
-            status "Enabling and starting nexa service via systemd..."
-            $SUDO systemctl daemon-reload
-            $SUDO systemctl enable nexa.service
-            $SUDO systemctl restart nexa.service
-            ;;
-        *)
-            warning "systemd does not appear to be running."
-            if [ "$IS_WSL2" = true ]; then
-                warning "To enable systemd in WSL2, see: https://devblogs.microsoft.com/commandline/systemd-support-is-now-available-in-wsl/"
-            fi
-            warning "The nexa service has been installed but not started."
-            ;;
-    esac
-}
-
-# --- Main Execution ---
 
 # Main function to orchestrate the installation
 main() {
@@ -213,14 +127,9 @@ main() {
     status "Starting Nexa SDK installer..."
 
     setup_sudo
-    detect_system_environment
     validate_requirements
 
     install_nexa_sdk
-
-    create_system_user
-    create_systemd_service
-    enable_systemd_service
 
     status "${plain}Install complete! The Nexa SDK is now installed."
     status "You can use the 'nexa' commands from your terminal."

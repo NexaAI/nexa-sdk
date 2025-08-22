@@ -27,7 +27,8 @@ const modelLoadFailMsg = `⚠️ Oops. Model failed to load.
 
 var (
 	// disableStream *bool // reuse in run.go
-	tool         []string
+	ngl          int32
+	enableThink  bool
 	prompt       []string
 	query        string
 	document     []string
@@ -50,7 +51,8 @@ func infer() *cobra.Command {
 	inferCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
 
 	inferCmd.Flags().SortFlags = false
-	inferCmd.Flags().StringArrayVarP(&tool, "tool", "t", nil, "[llm|vlm] add tool to make function call")
+	inferCmd.Flags().Int32VarP(&ngl, "ngl", "n", 999, "[llm|vlm] num of layers pass to gpu")
+	inferCmd.Flags().BoolVarP(&enableThink, "think", "", true, "[llm|vlm] enable thinking mode")
 	inferCmd.Flags().StringArrayVarP(&prompt, "prompt", "p", nil, "[embedder|tts] pass prompt")
 	inferCmd.Flags().StringVarP(&query, "query", "q", "", "[reranker] query")
 	inferCmd.Flags().StringArrayVarP(&document, "document", "d", nil, "[reranker] documents")
@@ -63,46 +65,19 @@ func infer() *cobra.Command {
 	// inferCmd.Flags().BoolVarP(&listLanguage, "list-language", "", false, "[asr] list available languages")        // TODO: Language support not implemented yet
 
 	inferCmd.Run = func(cmd *cobra.Command, args []string) {
-		model := normalizeModelName(args[0])
-
 		s := store.Get()
 
-		manifest, err := s.GetManifest(model)
-		if errors.Is(err, os.ErrNotExist) {
-			fmt.Println(render.GetTheme().Info.Sprintf("model not found, start download"))
-
-			pull().Run(cmd, args)
-			// check agin
-			manifest, err = s.GetManifest(model)
-		}
+		manifest, err := ensureModelAvailable(s, normalizeModelName(args[0]), cmd, args)
 		if err != nil {
 			fmt.Println(render.GetTheme().Error.Sprintf("parse manifest error: %s", err))
 			return
 		}
 
-		var quant string
-		var options []huh.Option[string]
-		for k, v := range manifest.ModelFile {
-			if v.Downloaded {
-				options = append(options, huh.NewOption(
-					fmt.Sprintf("%-10s [%7s]", k, humanize.IBytes(uint64(v.Size))),
-					k,
-				))
-			}
+		quant, err := selectQuant(manifest)
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("quant error: %s", err))
+			return
 		}
-		if len(options) >= 2 {
-			if err = huh.NewSelect[string]().
-				Title("Select a quant from local folder").
-				Options(options...).
-				Value(&quant).
-				Run(); err != nil {
-				fmt.Println(render.GetTheme().Error.Sprintf("select error: %s", err))
-				return
-			}
-		} else {
-			quant = options[0].Value
-		}
-
 		fmt.Println(render.GetTheme().Quant.Sprintf("🔹 Quant=%s", quant))
 
 		nexa_sdk.Init()
@@ -129,11 +104,44 @@ func infer() *cobra.Command {
 			inferASR(manifest.PluginId, modelfile, "")
 		case types.ModelTypeCV:
 			inferCV(manifest.PluginId, modelfile)
+		case types.ModelTypeImageGen:
+			// ImageGen model is a directory, not a file
+			inferImageGen(manifest.PluginId, s.ModelfilePath(manifest.Name, ""))
 		default:
 			panic("not support model type")
 		}
 	}
 	return inferCmd
+}
+
+func ensureModelAvailable(s *store.Store, model string, cmd *cobra.Command, args []string) (*types.ModelManifest, error) {
+	manifest, err := s.GetManifest(model)
+	if errors.Is(err, os.ErrNotExist) {
+		fmt.Println(render.GetTheme().Info.Sprintf("model not found, start download"))
+		pull().Run(cmd, args)
+		manifest, err = s.GetManifest(model)
+	}
+	return manifest, err
+}
+
+func selectQuant(manifest *types.ModelManifest) (string, error) {
+	var options []huh.Option[string]
+	for k, v := range manifest.ModelFile {
+		if v.Downloaded {
+			options = append(options, huh.NewOption(fmt.Sprintf("%-10s [%7s]", k, humanize.IBytes(uint64(v.Size))), k))
+		}
+	}
+	if len(options) == 0 {
+		return "", fmt.Errorf("no quant found")
+	}
+	if len(options) == 1 {
+		return options[0].Value, nil
+	}
+	var quant string
+	if err := huh.NewSelect[string]().Title("Select a quant from local folder").Options(options...).Value(&quant).Run(); err != nil {
+		return "", err
+	}
+	return quant, nil
 }
 
 func inferLLM(plugin, modelfile string) {
@@ -143,7 +151,8 @@ func inferLLM(plugin, modelfile string) {
 		ModelPath: modelfile,
 		PluginID:  plugin,
 		Config: nexa_sdk.ModelConfig{
-			NCtx: 4096,
+			NCtx:       4096,
+			NGpuLayers: ngl,
 		},
 	})
 	spin.Stop()
@@ -175,7 +184,10 @@ func inferLLM(plugin, modelfile string) {
 		Run: func(prompt string, _, _ []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			history = append(history, nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
 
-			templateOutput, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{Messages: history})
+			templateOutput, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
+				Messages:    history,
+				EnableThink: enableThink,
+			})
 			if err != nil {
 				return "", nexa_sdk.ProfileData{}, err
 			}
@@ -206,7 +218,8 @@ func inferVLM(plugin, modelfile string, mmprojfile string) {
 		MmprojPath: mmprojfile,
 		PluginID:   plugin,
 		Config: nexa_sdk.ModelConfig{
-			NCtx: 4096,
+			NCtx:       4096,
+			NGpuLayers: ngl,
 		},
 	})
 	spin.Stop()
@@ -245,7 +258,10 @@ func inferVLM(plugin, modelfile string, mmprojfile string) {
 
 			history = append(history, msg)
 
-			tmplOut, err := p.ApplyChatTemplate(nexa_sdk.VlmApplyChatTemplateInput{Messages: history})
+			tmplOut, err := p.ApplyChatTemplate(nexa_sdk.VlmApplyChatTemplateInput{
+				Messages:    history,
+				EnableThink: enableThink,
+			})
 			if err != nil {
 				return "", nexa_sdk.ProfileData{}, err
 			}
@@ -357,9 +373,8 @@ func inferTTS(plugin, modelfile string, vocoderfile string) {
 		return
 	}
 
-	fmt.Println(render.GetTheme().Success.Sprintf("✓ Audio saved to: %s", result.Result.AudioPath))
-	// fmt.Printf("  Duration: %.2f seconds\n", result.Result.DurationSeconds)
-	// fmt.Printf("  Sample rate: %d Hz\n", result.Result.SampleRate)
+	fmt.Println(render.GetTheme().Success.Sprintf("✓ Audio saved: %s", result.Result.AudioPath))
+	printProfile(result.ProfileData)
 }
 
 func inferASR(plugin, modelfile string, tokenizerPath string) {
@@ -396,6 +411,10 @@ func inferASR(plugin, modelfile string, tokenizerPath string) {
 		ParseFile: true,
 
 		Run: func(_prompt string, _images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			if len(audios) == 0 {
+				return "", nexa_sdk.ProfileData{}, errors.New("no audio file provided")
+			}
+
 			asrConfig := &nexa_sdk.ASRConfig{
 				Timestamps: "segment",
 				BeamSize:   5,
@@ -417,7 +436,7 @@ func inferASR(plugin, modelfile string, tokenizerPath string) {
 			}
 			on_token(result.Result.Transcript)
 
-			return result.Result.Transcript, nexa_sdk.ProfileData{}, nil
+			return result.Result.Transcript, result.ProfileData, nil
 		},
 	})
 }
@@ -545,6 +564,73 @@ func inferEmbedder(plugin, modelfile string) {
 	}
 
 	fmt.Println()
+}
+
+func inferImageGen(plugin, modeldir string) {
+	prompts := prompt
+	if len(prompts) == 0 {
+		fmt.Println(render.GetTheme().Error.Sprintf("text prompt is required for image generation (use --prompt)"))
+		fmt.Println()
+		return
+	}
+
+	spin := render.NewSpinner("loading ImageGen model...")
+	spin.Start()
+	p, err := nexa_sdk.NewImageGen(nexa_sdk.ImageGenCreateInput{
+		ModelPath: modeldir,
+		PluginID:  plugin,
+	})
+	spin.Stop()
+	if err != nil {
+		slog.Error("failed to create ImageGen", "error", err)
+		fmt.Println(modelLoadFailMsg)
+		return
+	}
+	defer p.Destroy()
+
+	if output == "" {
+		output = fmt.Sprintf("imagegen_output_%d.png", time.Now().Unix())
+	}
+
+	fmt.Println(render.GetTheme().Info.Sprintf("Generating image: \"%s\"", prompts[0]))
+
+	result, err := p.Txt2Img(nexa_sdk.ImageGenTxt2ImgInput{
+		PromptUTF8: prompts[0],
+		Config: &nexa_sdk.ImageGenerationConfig{
+			Prompts:         prompts,
+			NegativePrompts: []string{"blurry, low quality, distorted"},
+			Height:          512,
+			Width:           512,
+			SamplerConfig: nexa_sdk.ImageSamplerConfig{
+				Method:        "ddim",
+				Steps:         20,
+				GuidanceScale: 7.5,
+				Eta:           0.0,
+				Seed:          42,
+			},
+			SchedulerConfig: nexa_sdk.SchedulerConfig{
+				Type:              "ddim",
+				NumTrainTimesteps: 1000,
+				StepsOffset:       1,
+				BetaStart:         0.00085,
+				BetaEnd:           0.012,
+				BetaSchedule:      "scaled_linear",
+				PredictionType:    "epsilon",
+				TimestepType:      "discrete",
+				TimestepSpacing:   "leading",
+				InterpolationType: "linear",
+				ConfigPath:        "",
+			},
+			Strength: 1.0,
+		},
+		OutputPath: output,
+	})
+	if err != nil {
+		fmt.Println(render.GetTheme().Error.Sprintf("Image generation failed: %s", err))
+		return
+	}
+
+	fmt.Println(render.GetTheme().Success.Sprintf("✓ Image saved to: %s", result.OutputImagePath))
 }
 
 func inferReranker(plugin, modelfile string) {
