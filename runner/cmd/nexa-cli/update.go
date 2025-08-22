@@ -56,15 +56,12 @@ func update() *cobra.Command {
 }
 
 func updateImpl() error {
-	rls, err := getLatestRelease()
+	ck, rls, err := checkForUpdate(true)
 	if err != nil {
 		return err
 	}
-	need, err := needUpdate(Version, rls.TagName)
-	if err != nil {
-		return err
-	}
-	if !need {
+
+	if !ck.UpdateAvailable {
 		fmt.Println("Already up-to-date.")
 		return nil
 	}
@@ -87,15 +84,6 @@ func updateImpl() error {
 
 	if err = download(ast.BrowserDownloadURL, dst, progress); err != nil {
 		return err
-	}
-
-	ck := updateCheck{
-		CheckTime:     time.Now(),
-		LastNotify:    time.Now(),
-		LatestVersion: rls.TagName,
-	}
-	if err = setLastCheck(&ck); err != nil {
-		return fmt.Errorf("failed to set last check: %w", err)
 	}
 
 	if err = installUpdate(dst); err != nil {
@@ -176,7 +164,7 @@ func findMatchingAsset(rls release) (*asset, error) {
 		}
 	}
 
-	return nil, errors.New("can not find matching asset")
+	return nil, fmt.Errorf("no matching asset found: %s/%s", rls.TagName, assetName)
 }
 
 // download a file from url to dst with progress
@@ -249,9 +237,10 @@ func installUpdate(pkgPath string) error {
 }
 
 type updateCheck struct {
-	CheckTime     time.Time `json:"check_time"`
-	LastNotify    time.Time `json:"last_notify"`
-	LatestVersion string    `json:"latest_version"`
+	CheckTime       time.Time `json:"check_time"`
+	LastNotify      time.Time `json:"last_notify"`
+	LatestVersion   string    `json:"latest_version"`
+	UpdateAvailable bool      `json:"update_available"`
 }
 
 func getLastCheck() (updateCheck, error) {
@@ -263,6 +252,9 @@ func getLastCheck() (updateCheck, error) {
 	checkFile := filepath.Join(configDir, "nexa-cli", ".updatecheck")
 
 	data, err := os.ReadFile(checkFile)
+	if errors.Is(err, os.ErrNotExist) {
+		err = setLastCheck(&ck)
+	}
 	if err != nil {
 		return ck, err
 	}
@@ -292,41 +284,47 @@ func setLastCheck(ck *updateCheck) error {
 	return os.WriteFile(checkFile, data, 0644)
 }
 
-func notifyUpdate() {
-	ck, _ := getLastCheck()
-	if time.Since(ck.CheckTime) < updateCheckInterval {
-		return
+func checkForUpdate(manual bool) (updateCheck, release, error) {
+	ck, err := getLastCheck()
+	if err != nil {
+		return ck, release{}, err
+	}
+
+	if !manual && time.Since(ck.CheckTime) < updateCheckInterval {
+		return ck, release{}, nil
 	}
 
 	rls, err := getLatestRelease()
 	if err != nil {
-		fmt.Println("Failed to check for updates:", err)
-		return
+		return ck, rls, err
+	}
+
+	upAvail, err := needUpdate(Version, rls.TagName)
+	if err != nil {
+		return ck, rls, err
 	}
 
 	ck.CheckTime = time.Now()
-	defer setLastCheck(&ck)
+	ck.LatestVersion = rls.TagName
+	ck.UpdateAvailable = upAvail
+	return ck, rls, setLastCheck(&ck)
+}
 
-	need, err := needUpdate(Version, rls.TagName)
-	if err != nil {
-		fmt.Println("Failed to check for updates:", err)
+func notifyUpdate() {
+	ck, _ := getLastCheck()
+	if !ck.UpdateAvailable || time.Since(ck.LastNotify) < notificationInterval {
 		return
 	}
-	if !need {
-		return
-	}
 
-	if rls.TagName != ck.LatestVersion || time.Since(ck.LastNotify) > notificationInterval {
-		ck.LatestVersion = rls.TagName
-		ck.LastNotify = time.Now()
+	ck.LastNotify = time.Now()
+	setLastCheck(&ck)
 
-		fmt.Fprintf(os.Stderr, "\n\n%s %s → %s\n",
-			render.GetTheme().Warning.Sprintf("A new version of nexa-cli is available:"),
-			render.GetTheme().Success.Sprint(Version),
-			render.GetTheme().Success.Sprint(rls.TagName))
+	fmt.Fprintf(os.Stderr, "\n\n%s %s → %s\n",
+		render.GetTheme().Warning.Sprintf("A new version of nexa-cli is available:"),
+		render.GetTheme().Success.Sprint(Version),
+		render.GetTheme().Success.Sprint(ck.LatestVersion))
 
-		fmt.Fprintf(os.Stderr, "%s\n\n",
-			render.GetTheme().Warning.Sprint("To update, run: `nexa update`"),
-		)
-	}
+	fmt.Fprintf(os.Stderr, "%s\n\n",
+		render.GetTheme().Warning.Sprint("To update, run: `nexa update`"),
+	)
 }

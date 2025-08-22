@@ -189,7 +189,8 @@ func freeAsrTranscribeInput(cPtr *C.ml_AsrTranscribeInput) {
 
 // AsrTranscribeOutput represents output from ASR transcription
 type AsrTranscribeOutput struct {
-	Result ASRResult
+	Result      ASRResult
+	ProfileData ProfileData
 }
 
 func newAsrTranscribeOutputFromCPtr(c *C.ml_AsrTranscribeOutput) AsrTranscribeOutput {
@@ -200,6 +201,7 @@ func newAsrTranscribeOutputFromCPtr(c *C.ml_AsrTranscribeOutput) AsrTranscribeOu
 	}
 
 	output.Result = newASRResultFromCPtr(&c.result)
+	output.ProfileData = newProfileDataFromCPtr(c.profile_data)
 	return output
 }
 
