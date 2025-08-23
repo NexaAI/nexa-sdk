@@ -144,9 +144,14 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 		if manifest.MMProjFile.Name != "" {
 			mmproj = s.ModelfilePath(manifest.Name, manifest.MMProjFile.Name)
 		}
+		var tokenizer string
+		if manifest.TokenizerFile.Name != "" {
+			tokenizer = s.ModelfilePath(manifest.Name, manifest.TokenizerFile.Name)
+		}
 		t, e = nexa_sdk.NewVLM(nexa_sdk.VlmCreateInput{
-			ModelPath:  modelfile,
-			MmprojPath: mmproj,
+			ModelPath:     modelfile,
+			MmprojPath:    mmproj,
+			TokenizerPath: tokenizer,
 			Config: nexa_sdk.ModelConfig{
 				NCtx: param.NCtx,
 			},

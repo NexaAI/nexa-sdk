@@ -58,7 +58,11 @@ func functionCall() *cobra.Command {
 			if manifest.MMProjFile.Name != "" {
 				mmprojfile = s.ModelfilePath(manifest.Name, manifest.MMProjFile.Name)
 			}
-			fcVLM(manifest.PluginId, modelfile, mmprojfile)
+			var tokenizerfile string
+			if manifest.TokenizerFile.Name != "" {
+				tokenizerfile = s.ModelfilePath(manifest.Name, manifest.TokenizerFile.Name)
+			}
+			fcVLM(manifest.PluginId, modelfile, mmprojfile, tokenizerfile)
 		default:
 			panic("not support model type")
 		}
@@ -130,7 +134,7 @@ func fcLLM(plugin, modelfile string) {
 	printProfile(res.ProfileData)
 }
 
-func fcVLM(plugin, modelfile, mmprojfile string) {
+func fcVLM(plugin, modelfile, mmprojfile, tokenizerfile string) {
 	tools, err := checkParseTools(tool)
 	if err != nil {
 		fmt.Println(render.GetTheme().Error.Sprint(err))
@@ -139,9 +143,10 @@ func fcVLM(plugin, modelfile, mmprojfile string) {
 	spin := render.NewSpinner("loading model...")
 	spin.Start()
 	p, err := nexa_sdk.NewVLM(nexa_sdk.VlmCreateInput{
-		ModelPath:  modelfile,
-		MmprojPath: mmprojfile,
-		PluginID:   plugin,
+		ModelPath:     modelfile,
+		MmprojPath:    mmprojfile,
+		TokenizerPath: tokenizerfile,
+		PluginID:      plugin,
 		Config: nexa_sdk.ModelConfig{
 			NCtx:       4096,
 			NGpuLayers: ngl,

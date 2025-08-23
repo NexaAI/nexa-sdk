@@ -93,7 +93,11 @@ func infer() *cobra.Command {
 			if manifest.MMProjFile.Name != "" {
 				mmprojfile = s.ModelfilePath(manifest.Name, manifest.MMProjFile.Name)
 			}
-			inferVLM(manifest.PluginId, modelfile, mmprojfile)
+			var tokenizerfile string
+			if manifest.TokenizerFile.Name != "" {
+				tokenizerfile = s.ModelfilePath(manifest.Name, manifest.TokenizerFile.Name)
+			}
+			inferVLM(manifest.PluginId, modelfile, mmprojfile, tokenizerfile)
 		case types.ModelTypeEmbedder:
 			inferEmbedder(manifest.PluginId, modelfile)
 		case types.ModelTypeReranker:
@@ -210,13 +214,14 @@ func inferLLM(plugin, modelfile string) {
 	})
 }
 
-func inferVLM(plugin, modelfile string, mmprojfile string) {
+func inferVLM(plugin, modelfile string, mmprojfile string, tokenizerfile string) {
 	spin := render.NewSpinner("loading model...")
 	spin.Start()
 	p, err := nexa_sdk.NewVLM(nexa_sdk.VlmCreateInput{
-		ModelPath:  modelfile,
-		MmprojPath: mmprojfile,
-		PluginID:   plugin,
+		ModelPath:     modelfile,
+		MmprojPath:    mmprojfile,
+		TokenizerPath: tokenizerfile,
+		PluginID:      plugin,
 		Config: nexa_sdk.ModelConfig{
 			NCtx:       4096,
 			NGpuLayers: ngl,
