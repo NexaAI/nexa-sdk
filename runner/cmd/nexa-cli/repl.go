@@ -440,7 +440,7 @@ func getFileSizesConcurrent(name string, files []string) (map[string]int64, erro
 			defer wg.Done()
 			defer func() { <-sem }()
 
-			size, err := store.Get().HFFileSize(context.TODO(), name, filename)
+			size, err := store.Get().FileSize(context.TODO(), name, filename)
 
 			errorMutex.Lock()
 			fileSizes[filename] = size
@@ -628,7 +628,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 		case 1:
 			res.MMProjFile.Name = mmprojs[0]
 			spin.Start()
-			size, err := store.Get().HFFileSize(context.TODO(), name, mmprojs[0])
+			size, err := store.Get().FileSize(context.TODO(), name, mmprojs[0])
 			spin.Stop()
 			if err != nil {
 				fmt.Println(render.GetTheme().Error.Sprintf("get filesize error: [%s] %s", mmprojs[0], err))
