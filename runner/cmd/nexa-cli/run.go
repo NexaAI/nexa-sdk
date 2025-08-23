@@ -57,7 +57,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			// download manifest
 			spin := render.NewSpinner("download manifest from: " + model)
 			spin.Start()
-			files, err := store.Get().HFModelInfo(context.TODO(), model)
+			files, err := store.Get().ModelInfo(context.TODO(), model)
 			spin.Stop()
 			if err != nil {
 				fmt.Println(render.GetTheme().Error.Sprintf("Get manifest from huggingface error: %s", err))
