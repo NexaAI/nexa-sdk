@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/smithy-go/logging"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 )
@@ -22,10 +23,12 @@ import (
 var vcClient = func() *s3.Client {
 	key, _ := base64.StdEncoding.DecodeString("QUtMVE5qRmxNV001TjJRd1ltVm1OR05qWlRsaVl6ZGlZV0UxTnpBNE4yRm1Zak0=")
 	secret, _ := base64.StdEncoding.DecodeString("VDFkU2FsbHRUWHBPVkdjelRrUkplazVIV1ROWlYwbDRUbTFPYVZwVWF6Rk9la1Y2V1RKRmVrOUVUUT09")
+
 	cfg, err := config.LoadDefaultConfig(
 		context.TODO(),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(string(key), string(secret), "")),
 		config.WithRegion("cn-beijing"),
+		config.WithLogger(logging.Nop{}),
 	)
 	if err != nil {
 		panic("unable to load SDK config, " + err.Error())
