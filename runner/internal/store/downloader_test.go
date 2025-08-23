@@ -26,27 +26,15 @@ func TestFileSize(t *testing.T) {
 }
 
 func TestDownload(t *testing.T) {
-	s := Get()
-	infoCh, errCh := s.Pull(context.Background(), types.ModelManifest{
-		Name: "NexaAI/OmniNeural-4B",
-	})
-	for {
-		select {
-		case info, ok := <-infoCh:
-			if !ok {
-				infoCh = nil
-				continue
-			}
-			t.Log(info)
-		case err, ok := <-errCh:
-			if !ok {
-				errCh = nil
-				continue
-			}
-			t.Error(err)
+	progress := make(chan types.DownloadInfo)
+	d := NewDownloader(1165936148, progress)
+	go func() {
+		for p := range progress {
+			t.Logf("Downloaded %d / %d", p.CurrentDownloaded, p.CurrentSize)
 		}
-		if infoCh == nil && errCh == nil {
-			break
-		}
+	}()
+	err := d.Download(context.Background(), "https://huggingface.co/NexaAI/OmniNeural-4B/resolve/main/weights-2-8.nexa", "/tmp/weights-2-8.nexa")
+	if err != nil {
+		t.Error(err)
 	}
 }

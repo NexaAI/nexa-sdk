@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,7 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 )
@@ -57,24 +57,17 @@ func (s *Store) VCModelInfo(ctx context.Context, name string) ([]string, error) 
 
 func (s *Store) VCFileSize(ctx context.Context, modelName, fileName string) (int64, error) {
 	name := strings.ReplaceAll(modelName, "NexaAI/", "model/") + "/" + fileName
-	fmt.Println("VCFileSize:", name)
 
-	data, err := vcClient.GetObjectAttributes(ctx, &s3.GetObjectAttributesInput{
-		Bucket:           aws.String("nexa-model-hub-bucket"),
-		Key:              aws.String(name),
-		ObjectAttributes: []s3types.ObjectAttributes{s3types.ObjectAttributesObjectSize},
+	data, err := vcClient.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String("nexa-model-hub-bucket"),
+		Key:    aws.String(name),
 	})
-
-	// data, err := vcClient.GetObject(ctx, &s3.GetObjectInput{
-	// 	Bucket: aws.String("nexa-model-hub-bucket"),
-	// 	Key:    aws.String(name),
-	// })
 
 	if err != nil {
 		return 0, err
 	}
 
-	return *data.ObjectSize, nil
+	return *data.ContentLength, nil
 }
 
 func (s *Store) VCGetQuantInfo(ctx context.Context, modelName string) (int, error) {
@@ -97,12 +90,15 @@ type VCDownloader struct {
 }
 
 func (d *VCDownloader) Download(ctx context.Context, url, outputPath string) error {
+	slog.Debug("VC Download", "url", url, "outputPath", outputPath)
+
 	// parse url
 	url = strings.TrimPrefix(url, HF_ENDPOINT+"/")
 	url = strings.TrimSuffix(url, "?download=true")
 	url = strings.ReplaceAll(url, "/resolve/main/", "/")
 
-	name := strings.ReplaceAll(url, "NexaAI/", "model/") + "/"
+	name := strings.ReplaceAll(url, "NexaAI/", "model/")
+	slog.Info("VC Download", "objectKey", name)
 	d.filename = filepath.Base(name)
 
 	// download from volces
@@ -117,11 +113,18 @@ func (d *VCDownloader) Download(ctx context.Context, url, outputPath string) err
 	}
 	defer data.Body.Close()
 
-	file, err := os.OpenFile(outputPath, os.O_WRONLY, 0644)
+	if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
+		return fmt.Errorf("failed to create directory: %v", err)
+	}
+	file, err := os.OpenFile(outputPath, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
+	err = file.Truncate(*data.ContentLength)
+	if err != nil {
+		return fmt.Errorf("failed to truncate file: %v", err)
+	}
 
 	for {
 		n, err := io.CopyN(file, data.Body, 4*1024*1024)

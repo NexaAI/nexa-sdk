@@ -3,27 +3,79 @@ package store
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 	"github.com/bytedance/sonic"
+	"resty.dev/v3"
 )
 
 func (s *Store) ModelInfo(ctx context.Context, name string) ([]string, error) {
-	// return s.HFModelInfo(ctx, name)
-	return s.VCModelInfo(ctx, name)
+	if CheckChinaMainland() {
+		return s.VCModelInfo(ctx, name)
+	} else {
+		return s.HFModelInfo(ctx, name)
+	}
 }
 
 func (s *Store) FileSize(ctx context.Context, modelName, fileName string) (int64, error) {
-	// return s.HFFileSize(ctx, modelName, fileName)
-	return s.VCFileSize(ctx, modelName, fileName)
+	if CheckChinaMainland() {
+		return s.VCFileSize(ctx, modelName, fileName)
+	} else {
+		return s.HFFileSize(ctx, modelName, fileName)
+	}
 }
 
 func (s *Store) GetQuantInfo(ctx context.Context, modelName string) (int, error) {
-	//return s.HFGetQuantInfo(ctx, modelName)
-	return s.VCGetQuantInfo(ctx, modelName)
+	if CheckChinaMainland() {
+		return s.VCGetQuantInfo(ctx, modelName)
+	} else {
+		return s.HFGetQuantInfo(ctx, modelName)
+	}
+}
+
+var isChinaMainland bool
+var checkOnce sync.Once
+
+func CheckChinaMainland() bool {
+	checkOnce.Do(func() {
+		client := resty.New()
+		client.SetTimeout(2 * time.Second)
+		defer client.Close()
+
+		for _, ep := range [][]string{
+			{"http://ip-api.com/json", "countryCode"},
+			{"https://ipapi.co/json", "country_code"},
+			{"https://ipinfo.io/json", "country"},
+		} {
+			res, err := client.R().
+				// EnableDebug().
+				Get(ep[0])
+			if err != nil {
+				continue
+			}
+
+			n, err := sonic.GetFromString(res.String(), ep[1])
+			if err != nil {
+				continue
+			}
+
+			code, err := n.String()
+			if err != nil {
+				continue
+			}
+
+			slog.Info("Detected country code", "endpoint", ep[0], "code", code)
+			isChinaMainland = code == "CN"
+			break
+		}
+	})
+	return isChinaMainland
 }
 
 type Downloader interface {
@@ -31,8 +83,11 @@ type Downloader interface {
 }
 
 func NewDownloader(totalSize int64, progress chan<- types.DownloadInfo) Downloader {
-	//return NewHFDownloader(totalSize, progress)
-	return NewVCDownloader(totalSize, progress)
+	if CheckChinaMainland() {
+		return NewVCDownloader(totalSize, progress)
+	} else {
+		return NewHFDownloader(totalSize, progress)
+	}
 }
 
 // Pull downloads a model from HuggingFace and stores it locally
