@@ -481,6 +481,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 	// check gguf
 	var mmprojs []string
 	var tokenizers []string
+	var onnxFiles []string
 	ggufGroups := make(map[string][]string)
 	// qwen2.5-7b-instruct-q8_0-00003-of-00003.gguf original name is qwen2.5-7b-instruct-q8_0
 	// *d-of-*d like this
@@ -495,6 +496,8 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 			}
 		} else if strings.HasSuffix(lower, "tokenizer.json") {
 			tokenizers = append(tokenizers, file)
+		} else if strings.HasSuffix(lower, ".onnx") {
+			onnxFiles = append(onnxFiles, file)
 		}
 	}
 
@@ -646,24 +649,40 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 			res.MMProjFile.Downloaded = true
 		}
 
-		// detect tokenizer
-		switch len(tokenizers) {
-		case 0:
-			// No tokenizer file found - skip
-		case 1:
-			res.TokenizerFile.Name = tokenizers[0]
+		// fallback to onnx file as mmproj if no regular mmproj found and exactly one onnx file exists
+		if res.MMProjFile.Name == "" && len(onnxFiles) == 1 {
+			res.MMProjFile.Name = onnxFiles[0]
 			spin.Start()
-			size, err := store.Get().HFFileSize(context.TODO(), name, tokenizers[0])
+			size, err := store.Get().HFFileSize(context.TODO(), name, onnxFiles[0])
 			spin.Stop()
 			if err != nil {
-				fmt.Println(render.GetTheme().Error.Sprintf("get filesize error: [%s] %s", tokenizers[0], err))
+				fmt.Println(render.GetTheme().Error.Sprintf("get filesize error: [%s] %s", onnxFiles[0], err))
 				return res, err
 			}
-			res.TokenizerFile.Size = size
-			res.TokenizerFile.Downloaded = true
+			res.MMProjFile.Size = size
+			res.MMProjFile.Downloaded = true
+		}
 
-		default:
-			return res, fmt.Errorf("multiple tokenizer files found: %v. Expected exactly one tokenizer file", tokenizers)
+		// detect tokenizer - only if both gguf and onnx files are found - specifically for gemma 3n in ort-llama-cpp case
+		if len(onnxFiles) > 0 {
+			switch len(tokenizers) {
+			case 0:
+				// No tokenizer file found - skip
+			case 1:
+				res.TokenizerFile.Name = tokenizers[0]
+				spin.Start()
+				size, err := store.Get().HFFileSize(context.TODO(), name, tokenizers[0])
+				spin.Stop()
+				if err != nil {
+					fmt.Println(render.GetTheme().Error.Sprintf("get filesize error: [%s] %s", tokenizers[0], err))
+					return res, err
+				}
+				res.TokenizerFile.Size = size
+				res.TokenizerFile.Downloaded = true
+
+			default:
+				return res, fmt.Errorf("multiple tokenizer files found: %v. Expected exactly one tokenizer file", tokenizers)
+			}
 		}
 	} else {
 		// other format
