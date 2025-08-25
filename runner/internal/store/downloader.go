@@ -176,12 +176,10 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 		switch {
 		case strings.Contains(name, "mlx"):
 			mf.PluginId = "mlx"
-		case strings.Contains(name, "ort-llama"):
-			if strings.Contains(name, "cuda") {
-				mf.PluginId = "ort_cuda_llama_cpp"
-			} else {
-				mf.PluginId = "ort_dml_llama_cpp"
-			}
+		case strings.Contains(name, "ort_llama_cpp_cuda"):
+			mf.PluginId = "ort_cuda_llama_cpp"
+		case strings.Contains(name, "ort-llama-cpp-dml"):
+			mf.PluginId = "ort_dml_llama_cpp"
 		case strings.Contains(name, "ort"):
 			if strings.Contains(name, "cuda") {
 				mf.PluginId = "ort_cuda"
