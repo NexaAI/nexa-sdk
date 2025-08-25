@@ -1,7 +1,7 @@
 AGS ?= infer Qwen/Qwen3-0.6B-GGUF
 #ARGS ?= serve
 
-BRIDGE_VERSION ?= v1.0.4-rc3
+BRIDGE_VERSION ?= v1.0.4-rc11
 
 ifeq ($(OS), Windows_NT)
 	OS := windows
@@ -11,6 +11,7 @@ ifeq ($(OS), Windows_NT)
 	EXE := .exe
 	RM := powershell Remove-Item -Recurse -Force -Path
 	MKDIR := powershell New-Item -ItemType Directory -Force -Path
+	UNZIP := powershell Expand-Archive -Path
 else
 	UNAME := $(shell uname -s)
 	ARCH := $(shell uname -m)
@@ -27,6 +28,7 @@ else
 	EXE :=
 	RM := rm -rf
 	MKDIR := mkdir -p
+	UNZIP := unzip
 endif
 
 .PHONY: run build doc test link download release clean
@@ -67,7 +69,11 @@ download:
 	@echo "ARCH: $(ARCH)"
 	@echo "BRIDGE_VERSION: $(BRIDGE_VERSION)"
 	curl -L -o build/nexasdk-bridge.zip https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexasdk/$(BRIDGE_VERSION)/$(OS)_$(ARCH)/nexasdk-bridge.zip
-	cd ./build && unzip ./nexasdk-bridge.zip
+ifeq ($(OS), windows)
+	cd ./build && $(UNZIP) ./nexasdk-bridge.zip -DestinationPath ./
+else
+	cd ./build && $(UNZIP) ./nexasdk-bridge.zip
+endif
 	-$(RM) ./build/nexasdk-bridge.zip
 
 release:
