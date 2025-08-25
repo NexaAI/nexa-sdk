@@ -14,11 +14,12 @@ import (
 
 // VlmCreateInput represents input parameters for creating a VLM instance
 type VlmCreateInput struct {
-	ModelPath  string
-	MmprojPath string
-	Config     ModelConfig
-	PluginID   string
-	DeviceID   string
+	ModelPath     string
+	MmprojPath    string
+	TokenizerPath string
+	Config        ModelConfig
+	PluginID      string
+	DeviceID      string
 }
 
 func (vci VlmCreateInput) toCPtr() *C.ml_VlmCreateInput {
@@ -30,6 +31,9 @@ func (vci VlmCreateInput) toCPtr() *C.ml_VlmCreateInput {
 	}
 	if vci.MmprojPath != "" {
 		cPtr.mmproj_path = C.CString(vci.MmprojPath)
+	}
+	if vci.TokenizerPath != "" {
+		cPtr.tokenizer_path = C.CString(vci.TokenizerPath)
 	}
 	if vci.PluginID != "" {
 		cPtr.plugin_id = C.CString(vci.PluginID)
@@ -66,6 +70,9 @@ func freeVlmCreateInput(cPtr *C.ml_VlmCreateInput) {
 		}
 		if cPtr.mmproj_path != nil {
 			C.free(unsafe.Pointer(cPtr.mmproj_path))
+		}
+		if cPtr.tokenizer_path != nil {
+			C.free(unsafe.Pointer(cPtr.tokenizer_path))
 		}
 		if cPtr.plugin_id != nil {
 			C.free(unsafe.Pointer(cPtr.plugin_id))

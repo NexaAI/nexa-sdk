@@ -24,9 +24,10 @@ type ModelManifest struct {
 	ModelType ModelType
 	PluginId  string
 
-	ModelFile  map[string]ModeFileInfo // quant -> modelfile
-	MMProjFile ModeFileInfo
-	ExtraFiles []ModeFileInfo
+	ModelFile     map[string]ModeFileInfo // quant -> modelfile
+	MMProjFile    ModeFileInfo
+	TokenizerFile ModeFileInfo
+	ExtraFiles    []ModeFileInfo
 }
 
 func (m ModelManifest) GetSize() int64 {
@@ -39,6 +40,9 @@ func (m ModelManifest) GetSize() int64 {
 	}
 	if m.MMProjFile.Downloaded {
 		count += m.MMProjFile.Size
+	}
+	if m.TokenizerFile.Downloaded {
+		count += m.TokenizerFile.Size
 	}
 	for _, v := range m.ExtraFiles {
 		if v.Downloaded {

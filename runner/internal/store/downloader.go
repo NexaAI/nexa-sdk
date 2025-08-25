@@ -140,6 +140,11 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 				needs = append(needs, mf.MMProjFile.Name)
 			}
 		}
+		if mf.TokenizerFile.Name != "" {
+			if mf.TokenizerFile.Downloaded {
+				needs = append(needs, mf.TokenizerFile.Name)
+			}
+		}
 		for _, f := range mf.ExtraFiles {
 			if f.Downloaded {
 				needs = append(needs, f.Name)
@@ -171,6 +176,10 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 		switch {
 		case strings.Contains(name, "mlx"):
 			mf.PluginId = "mlx"
+		case strings.Contains(name, "ort_llama_cpp_cuda"):
+			mf.PluginId = "ort_cuda_llama_cpp"
+		case strings.Contains(name, "ort-llama-cpp-dml"):
+			mf.PluginId = "ort_dml_llama_cpp"
 		case strings.Contains(name, "ort"):
 			if strings.Contains(name, "cuda") {
 				mf.PluginId = "ort_cuda"
@@ -182,12 +191,13 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 		}
 
 		model := types.ModelManifest{
-			Name:       mf.Name,
-			ModelType:  mf.ModelType,
-			PluginId:   mf.PluginId,
-			ModelFile:  mf.ModelFile,
-			MMProjFile: mf.MMProjFile,
-			ExtraFiles: mf.ExtraFiles,
+			Name:          mf.Name,
+			ModelType:     mf.ModelType,
+			PluginId:      mf.PluginId,
+			ModelFile:     mf.ModelFile,
+			MMProjFile:    mf.MMProjFile,
+			TokenizerFile: mf.TokenizerFile,
+			ExtraFiles:    mf.ExtraFiles,
 		}
 		manifestPath := filepath.Join(s.home, "models", mf.Name, "nexa.manifest")
 		manifestData, _ := sonic.Marshal(model) // JSON marshal won't fail, ignore error
@@ -227,6 +237,9 @@ func (s *Store) PullExtraQuant(ctx context.Context, omf, nmf types.ModelManifest
 				needs = append(needs, f.Name)
 			}
 		}
+		if nmf.TokenizerFile.Downloaded && !omf.TokenizerFile.Downloaded {
+			needs = append(needs, nmf.TokenizerFile.Name)
+		}
 		for q, f := range nmf.ExtraFiles {
 			if f.Downloaded && !omf.ExtraFiles[q].Downloaded {
 				needs = append(needs, f.Name)
@@ -254,12 +267,13 @@ func (s *Store) PullExtraQuant(ctx context.Context, omf, nmf types.ModelManifest
 		}
 
 		model := types.ModelManifest{
-			Name:       nmf.Name,
-			ModelType:  nmf.ModelType,
-			PluginId:   nmf.PluginId,
-			ModelFile:  nmf.ModelFile,
-			MMProjFile: nmf.MMProjFile,
-			ExtraFiles: nmf.ExtraFiles,
+			Name:          nmf.Name,
+			ModelType:     nmf.ModelType,
+			PluginId:      nmf.PluginId,
+			ModelFile:     nmf.ModelFile,
+			MMProjFile:    nmf.MMProjFile,
+			TokenizerFile: nmf.TokenizerFile,
+			ExtraFiles:    nmf.ExtraFiles,
 		}
 		manifestPath := filepath.Join(s.home, "models", nmf.Name, "nexa.manifest")
 		manifestData, _ := sonic.Marshal(model) // JSON marshal won't fail, ignore error
