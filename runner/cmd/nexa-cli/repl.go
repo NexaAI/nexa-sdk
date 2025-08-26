@@ -453,6 +453,19 @@ func getFileSizesConcurrent(name string, files []string) (map[string]int64, erro
 	return fileSizes, firstError
 }
 
+func chooseModelTypeByName(modelName string) (types.ModelType, error) {
+	// Hardcoded model type mapping for specific models
+	switch modelName {
+	case "NexaAI/gemma-3n", "NexaAI/gemma-3n-cuda":
+		return types.ModelTypeVLM, nil
+	case "NexaAI/sdxl-base", "NexaAI/Prefect-illustrious-XL-v2.0p":
+		return types.ModelTypeImageGen, nil
+	default:
+		// Fallback to interactive selection for unknown models
+		return chooseModelType()
+	}
+}
+
 func chooseModelType() (types.ModelType, error) {
 	var modelType types.ModelType
 	if err := huh.NewSelect[types.ModelType]().
@@ -466,6 +479,7 @@ func chooseModelType() (types.ModelType, error) {
 	}
 	return modelType, nil
 }
+
 
 func chooseFiles(name string, files []string) (res types.ModelManifest, err error) {
 	if len(files) == 0 {
