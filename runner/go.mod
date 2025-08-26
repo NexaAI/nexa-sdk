@@ -13,6 +13,7 @@ require (
 	github.com/gin-gonic/gin v1.10.1
 	github.com/gofrs/flock v0.12.1
 	github.com/gookit/color v1.5.4
+	github.com/hashicorp/go-version v1.7.0
 	github.com/jedib0t/go-pretty/v6 v6.6.7
 	github.com/ollama/ollama v0.9.5
 	github.com/openai/openai-go v1.6.0
@@ -21,13 +22,14 @@ require (
 	github.com/spf13/viper v1.20.1
 	github.com/valyala/fasthttp v1.63.0
 	resty.dev/v3 v3.0.0-beta.3
-	github.com/hashicorp/go-version v1.7.0
 )
 
 require (
-	github.com/aws/aws-sdk-go-v2 v1.38.1 // indirect
+	github.com/andybalholm/brotli v1.2.0 // indirect
+	github.com/atotto/clipboard v0.1.4 // indirect
+	github.com/aws/aws-sdk-go-v2 v1.38.1
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.0 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.18.6 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.18.6
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.4 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.4 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.4 // indirect
@@ -40,20 +42,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.28.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.33.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.38.0 // indirect
-	github.com/aws/smithy-go v1.22.5 // indirect
-	github.com/go-stack/stack v1.8.1 // indirect
-	github.com/inconshreveable/log15 v3.0.0-testing.5+incompatible // indirect
-	github.com/inconshreveable/log15/v3 v3.0.0-testing.5 // indirect
-	github.com/jpillora/backoff v1.0.0 // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
-	golang.ngrok.com/muxado/v2 v2.0.1 // indirect
-	golang.ngrok.com/ngrok/v2 v2.0.0 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
-)
-
-require (
-	github.com/andybalholm/brotli v1.2.0 // indirect
-	github.com/atotto/clipboard v0.1.4 // indirect
+	github.com/aws/smithy-go v1.22.5
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
 	github.com/catppuccin/go v0.3.0 // indirect
@@ -76,14 +65,19 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.20.0 // indirect
+	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
+	github.com/inconshreveable/log15 v3.0.0-testing.5+incompatible // indirect
+	github.com/inconshreveable/log15/v3 v3.0.0-testing.5 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.7 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
@@ -113,6 +107,8 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.uber.org/multierr v1.11.0 // indirect
+	golang.ngrok.com/muxado/v2 v2.0.1 // indirect
+	golang.ngrok.com/ngrok/v2 v2.0.0
 	golang.org/x/arch v0.8.0 // indirect
 	golang.org/x/crypto v0.39.0 // indirect
 	golang.org/x/exp v0.0.0-20250711185948-6ae5c78190dc // indirect

@@ -21,9 +21,9 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/ollama/ollama/readline"
 
+	"github.com/NexaAI/nexa-sdk/runner/internal/model_hub"
 	"github.com/NexaAI/nexa-sdk/runner/internal/record"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
-	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 )
@@ -437,7 +437,7 @@ func getFileSizesConcurrent(name string, files []string) (map[string]int64, erro
 			defer wg.Done()
 			defer func() { <-sem }()
 
-			size, err := store.Get().FileSize(context.TODO(), name, filename)
+			size, err := model_hub.FileSize(context.TODO(), name, filename)
 
 			errorMutex.Lock()
 			fileSizes[filename] = size
@@ -630,7 +630,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 		case 1:
 			res.MMProjFile.Name = mmprojs[0]
 			spin.Start()
-			size, err := store.Get().FileSize(context.TODO(), name, mmprojs[0])
+			size, err := model_hub.FileSize(context.TODO(), name, mmprojs[0])
 			spin.Stop()
 			if err != nil {
 				fmt.Println(render.GetTheme().Error.Sprintf("get filesize error: [%s] %s", mmprojs[0], err))
@@ -667,7 +667,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 		if res.MMProjFile.Name == "" && len(onnxFiles) == 1 {
 			res.MMProjFile.Name = onnxFiles[0]
 			spin.Start()
-			size, err := store.Get().HFFileSize(context.TODO(), name, onnxFiles[0])
+			size, err := model_hub.FileSize(context.TODO(), name, onnxFiles[0])
 			spin.Stop()
 			if err != nil {
 				fmt.Println(render.GetTheme().Error.Sprintf("get filesize error: [%s] %s", onnxFiles[0], err))
@@ -685,7 +685,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 			case 1:
 				res.TokenizerFile.Name = tokenizers[0]
 				spin.Start()
-				size, err := store.Get().HFFileSize(context.TODO(), name, tokenizers[0])
+				size, err := model_hub.FileSize(context.TODO(), name, tokenizers[0])
 				spin.Stop()
 				if err != nil {
 					fmt.Println(render.GetTheme().Error.Sprintf("get filesize error: [%s] %s", tokenizers[0], err))
@@ -705,7 +705,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 		var quant string
 		if q := strings.ToUpper(quantRegix.FindString(name)); q != "" {
 			quant = q
-		} else if q, err := store.Get().GetQuantInfo(context.TODO(), name); err == nil && q != 0 {
+		} else if q, err := model_hub.GetQuantInfo(context.TODO(), name); err == nil && q != 0 {
 			quant = fmt.Sprintf("%dBIT", q)
 		} else {
 			quant = "N/A"

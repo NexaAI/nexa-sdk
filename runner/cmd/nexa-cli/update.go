@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -12,7 +11,6 @@ import (
 	"time"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
-	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 	"github.com/bytedance/sonic"
 	goverision "github.com/hashicorp/go-version"
@@ -78,7 +76,7 @@ func updateImpl() error {
 	go func() {
 		defer bar.Exit()
 		for pg := range progress {
-			bar.Set(pg.TotalDownloaded)
+			bar.Set(pg.Downloaded)
 		}
 	}()
 
@@ -184,19 +182,16 @@ func download(url, dst string, progress chan types.DownloadInfo) error {
 
 		if progress != nil {
 			progress <- types.DownloadInfo{
-				CurrentName:     ast.Name,
-				CurrentSize:     int64(ast.Size),
-				TotalDownloaded: int64(ast.Size),
-				TotalSize:       int64(ast.Size),
+				Downloaded: int64(ast.Size),
 			}
 		}
 		return nil
 	}
 
-	downloader := store.NewHFDownloader(0, progress)
-	if err = downloader.Download(context.Background(), url, dst); err != nil {
-		return err
-	}
+	//downloader := store.NewHFDownloader(0, progress)
+	//if err = downloader.Download(context.Background(), url, dst); err != nil {
+	//	return err
+	//}
 
 	info, err := os.Stat(dst)
 	if err != nil {

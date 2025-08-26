@@ -14,8 +14,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/config"
+	"github.com/NexaAI/nexa-sdk/runner/internal/model_hub"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
-	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 )
@@ -57,7 +57,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			// download manifest
 			spin := render.NewSpinner("download manifest from: " + model)
 			spin.Start()
-			files, err := store.Get().ModelInfo(context.TODO(), model)
+			files, err := model_hub.ModelInfo(context.TODO(), model)
 			spin.Stop()
 			if err != nil {
 				fmt.Println(render.GetTheme().Error.Sprintf("Get manifest from huggingface error: %s", err))
@@ -86,7 +86,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			bar := render.NewProgressBar(manifest.GetSize(), "downloading")
 			for stream.Next() {
 				event := stream.Current()
-				bar.Set(event.TotalDownloaded)
+				bar.Set(event.Downloaded)
 			}
 			bar.Exit()
 

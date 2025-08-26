@@ -1,4 +1,4 @@
-package store
+package downloader
 
 import (
 	"context"
@@ -12,36 +12,34 @@ import (
 
 	"github.com/valyala/fasthttp"
 
-	"github.com/NexaAI/nexa-sdk/runner/internal/config"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 )
 
-type HFDownloader struct {
+type HTTPDownloader struct {
 	client fasthttp.Client
 
-	filename        string
-	totalSize       int64
+	token           string
 	totalDownloaded atomic.Int64
-	downloaded      atomic.Int64
 	progress        chan<- types.DownloadInfo
 }
 
-func NewHFDownloader(totalSize int64, progress chan<- types.DownloadInfo) *HFDownloader {
-	slog.Debug("NewHFDownloader", "totalSize", totalSize)
-
-	return &HFDownloader{
+func NewDownloader(progress chan<- types.DownloadInfo) *HTTPDownloader {
+	return &HTTPDownloader{
 		client: fasthttp.Client{
 			NoDefaultUserAgentHeader:  true,
 			MaxIdemponentCallAttempts: 3,
 			ReadBufferSize:            64 * 1024,
 			WriteBufferSize:           64 * 1024,
 		},
-		totalSize: totalSize,
-		progress:  progress,
+		progress: progress,
 	}
 }
 
-func (d *HFDownloader) Download(ctx context.Context, url, outputPath string) error {
+func (d *HTTPDownloader) SetToken(token string) {
+	d.token = token
+}
+
+func (d *HTTPDownloader) Download(ctx context.Context, url, outputPath string) error {
 	slog.Debug("Download", "url", url, "outputPath", outputPath)
 
 	url, err := d.handleRedirect(url, 3)
@@ -69,10 +67,6 @@ func (d *HFDownloader) Download(ctx context.Context, url, outputPath string) err
 		}
 	}
 
-	d.filename = filepath.Base(outputPath)
-	d.totalSize = contentLength
-	d.downloaded.Store(0)
-
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, 8)
 	cancelCtx, cancel := context.WithCancel(ctx)
@@ -81,6 +75,7 @@ func (d *HFDownloader) Download(ctx context.Context, url, outputPath string) err
 	errCh := make(chan error, 1)
 
 	for start := int64(0); start < contentLength; start += chunkSize {
+		slog.Info("Scheduling chunk", "start", start, "contentLength", contentLength)
 		end := start + chunkSize - 1
 		if end >= contentLength {
 			end = contentLength - 1
@@ -96,10 +91,13 @@ func (d *HFDownloader) Download(ctx context.Context, url, outputPath string) err
 				if err := d.downloadChunk(cancelCtx, url, outputPath, start, end); err != nil {
 					select { // non-blocking send error
 					case errCh <- err:
+						slog.Error("Download chunk failed", "start", start, "end", end, "error", err)
 					default:
 					}
 					cancel()
 				}
+
+				slog.Error("Download chunk done", "start", start, "end", end, "error", err)
 			}(start, end)
 
 		case <-cancelCtx.Done():
@@ -118,7 +116,7 @@ func (d *HFDownloader) Download(ctx context.Context, url, outputPath string) err
 	}
 }
 
-func (d *HFDownloader) getFilesSize(url string) (int64, error) {
+func (d *HTTPDownloader) getFilesSize(url string) (int64, error) {
 	req := fasthttp.AcquireRequest()
 	resp := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseRequest(req)
@@ -126,7 +124,9 @@ func (d *HFDownloader) getFilesSize(url string) (int64, error) {
 
 	req.SetRequestURI(url)
 	req.Header.SetMethod(fasthttp.MethodHead)
-	d.setToken(req)
+	if d.token != "" {
+		req.Header.Set("Authorization", "Bearer "+d.token)
+	}
 	req.Header.Set("Accept-Encoding", "identity")
 
 	if err := d.client.Do(req, resp); err != nil {
@@ -136,13 +136,7 @@ func (d *HFDownloader) getFilesSize(url string) (int64, error) {
 	return int64(resp.Header.ContentLength()), nil
 }
 
-func (d *HFDownloader) setToken(req *fasthttp.Request) {
-	if config.Get().HFToken != "" {
-		req.Header.Set("Authorization", "Bearer "+config.Get().HFToken)
-	}
-}
-
-func (d *HFDownloader) handleRedirect(url string, maxRedirect int) (string, error) {
+func (d *HTTPDownloader) handleRedirect(url string, maxRedirect int) (string, error) {
 	currentURL := url
 
 	req := fasthttp.AcquireRequest()
@@ -156,7 +150,9 @@ func (d *HFDownloader) handleRedirect(url string, maxRedirect int) (string, erro
 
 		req.SetRequestURI(currentURL)
 		req.Header.SetMethod(fasthttp.MethodHead)
-		d.setToken(req)
+		if d.token != "" {
+			req.Header.Set("Authorization", "Bearer "+d.token)
+		}
 
 		if err := d.client.Do(req, resp); err != nil {
 			return "", fmt.Errorf("request failed: %w", err)
@@ -216,7 +212,7 @@ func calcChunkSize(totalSize int64) int64 {
 }
 
 // TODO: ctx not work for fasthttp
-func (d *HFDownloader) downloadChunk(_ context.Context, url, outputPath string, start, end int64) error {
+func (d *HTTPDownloader) downloadChunk(_ context.Context, url, outputPath string, start, end int64) error {
 	req := fasthttp.AcquireRequest()
 	resp := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseRequest(req)
@@ -224,7 +220,9 @@ func (d *HFDownloader) downloadChunk(_ context.Context, url, outputPath string, 
 
 	req.SetRequestURI(url)
 	req.Header.SetMethod(fasthttp.MethodGet)
-	d.setToken(req)
+	if d.token != "" {
+		req.Header.Set("Authorization", "Bearer "+d.token)
+	}
 	req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", start, end))
 
 	if err := d.client.Do(req, resp); err != nil {
@@ -250,14 +248,9 @@ func (d *HFDownloader) downloadChunk(_ context.Context, url, outputPath string, 
 		return fmt.Errorf("write incomplete: wrote %d bytes, expected %d", n, expected)
 	}
 
-	d.downloaded.Add(int64(n))
 	d.totalDownloaded.Add(int64(n))
 	d.progress <- types.DownloadInfo{
-		CurrentName:       d.filename,
-		CurrentSize:       d.totalSize,
-		CurrentDownloaded: d.downloaded.Load(),
-		TotalSize:         d.totalSize,
-		TotalDownloaded:   d.totalDownloaded.Load(),
+		Downloaded: d.totalDownloaded.Load(),
 	}
 
 	return nil

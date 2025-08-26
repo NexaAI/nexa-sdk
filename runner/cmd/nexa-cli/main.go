@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/config"
-	"github.com/NexaAI/nexa-sdk/runner/internal/store"
+	"github.com/NexaAI/nexa-sdk/runner/internal/model_hub"
 )
 
 // RootCmd creates the main Nexa CLI command with all subcommands.
@@ -55,8 +55,8 @@ func normalizeModelName(name string) string {
 	}
 
 	// support https://huggingface.co/Qwen/Qwen3-0.6B-GGUF -> Qwen/Qwen3-0.6B-GGUF
-	if strings.HasPrefix(name, store.HF_ENDPOINT) {
-		return strings.TrimPrefix(name, store.HF_ENDPOINT+"/")
+	if strings.HasPrefix(name, model_hub.HF_ENDPOINT) {
+		return strings.TrimPrefix(name, model_hub.HF_ENDPOINT+"/")
 	}
 
 	return name
