@@ -496,7 +496,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 			}
 		} else if strings.HasSuffix(lower, "tokenizer.json") {
 			tokenizers = append(tokenizers, file)
-		} else if strings.HasSuffix(lower, ".onnx") {
+		} else if strings.HasSuffix(lower, ".onnx") || strings.HasSuffix(lower, ".nexa") {
 			onnxFiles = append(onnxFiles, file)
 		}
 	}
