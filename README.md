@@ -83,12 +83,22 @@ You can run any compatible GGUF，MLX, or nexa model from 🤗 Hugging Face by u
 > [!TIP]
 > You need to download the [arm64 with Qualcomm NPU support](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_windows_arm64.exe) and make sure you have Snapdragon® X Elite chip on your laptop.
 
+#### Quick Start (Windows arm64, Snapdragon X Elite)
 
-🖼️ Run and chat with our multimodal model, OmniNeural-4B:
+1. **Login & Get Access Token (required for Pro Models)**  
+   - Create an account at [sdk.nexa.ai](https://sdk.nexa.ai)  
+   - Go to **Deployment → Create Token**  
+   - Run this once in your terminal (replace with your token):  
+     ```bash
+     nexa config set license '<your_token_here>'
+     ```
+
+2. Run and chat with our multimodal model, OmniNeural-4B, or other models on NPU
 
 ```bash
 nexa infer omni-neural
 nexa infer NexaAI/OmniNeural-4B
+nexa infer NexaAI/qwen3-1.7B-npu
 ```
 
 
