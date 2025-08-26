@@ -9,6 +9,7 @@ public protocol Model {
     @NexaAIActor func load(_ options: ModelOptions) throws
 
     @NexaAIActor func applyChatTemplate(messages: [ChatMessage], options: ChatTemplateOptions) throws -> String
+    @NexaAIActor func generationStream(messages: [ChatMessage], options: GenerationOptions) throws -> GenerateResult
     @NexaAIActor func generationAsyncStream(messages: [ChatMessage], options: GenerationOptions) throws -> AsyncThrowingStream<String, Error>
     @NexaAIActor var lastProfileData: ProfileData? { get }
     @NexaAIActor func reset()
@@ -17,6 +18,11 @@ public protocol Model {
 
     var isLoaded: Bool { get }
     var type: ModelType { get }
+}
+
+public struct GenerateResult {
+    public var response: String
+    public var profileData: ProfileData
 }
 
 public struct GenerationOptions {

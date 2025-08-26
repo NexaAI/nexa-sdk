@@ -90,6 +90,13 @@ final public class LLMLlama: Model {
         isLoaded = true
     }
 
+    public func generationStream(messages: [ChatMessage], options: GenerationOptions = .init()) throws -> GenerateResult  {
+        let prompt = try applyChatTemplate(messages: messages, options: options.templeteOptions)
+        return try generationStream(prompt: prompt, config: options.config) { [weak self] _ in
+            return self?.continueStream ?? true
+        }
+    }
+
     public func generationAsyncStream(messages: [ChatMessage], options: GenerationOptions = .init()) throws -> AsyncThrowingStream<String, Error> {
         let prompt = try applyChatTemplate(messages: messages, options: options.templeteOptions)
         return generationAsyncStream(prompt: prompt, config: options.config)
@@ -200,7 +207,7 @@ final public class LLMLlama: Model {
         prompt: String,
         config: GenerationConfig,
         onToken: @escaping (String) -> Bool
-    ) throws -> LlmGenerateResult {
+    ) throws -> GenerateResult {
         let cPrompt = strdup(prompt)
         defer { free(cPrompt) }
 

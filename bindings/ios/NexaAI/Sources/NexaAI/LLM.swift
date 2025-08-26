@@ -1,11 +1,6 @@
 import Foundation
 import NexaBridge
 
-public struct LlmGenerateResult {
-    public var response: String
-    public var profileData: ProfileData
-}
-
 public enum LLMError: LocalizedError, CustomStringConvertible {
     case createFailed
     case modelLoadingFailed(Int32)

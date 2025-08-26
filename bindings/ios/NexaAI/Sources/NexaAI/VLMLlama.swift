@@ -93,6 +93,13 @@ final public class VLMLlama: Model {
         continueStream = false
     }
 
+    public func generationStream(messages: [ChatMessage], options: GenerationOptions) throws -> GenerateResult {
+        let prompt = try applyChatTemplate(messages: messages, options: options.templeteOptions)
+        return try generationStream(prompt: prompt, config: options.config) { [weak self] _ in
+            return self?.continueStream ?? true
+        }
+    }
+
     public func generationAsyncStream(
         messages: [ChatMessage],
         options: GenerationOptions = .init()
@@ -224,7 +231,7 @@ final public class VLMLlama: Model {
         prompt: String,
         config: GenerationConfig,
         onToken: @escaping (String) -> Bool
-    ) throws -> VlmGenerateResult {
+    ) throws -> GenerateResult {
         let cPrompt = strdup(prompt)
         defer { free(cPrompt) }
 
