@@ -57,7 +57,7 @@ func infer() *cobra.Command {
 	inferCmd.Flags().StringVarP(&query, "query", "q", "", "[reranker] query")
 	inferCmd.Flags().StringArrayVarP(&document, "document", "d", nil, "[reranker] documents")
 	inferCmd.Flags().StringVarP(&input, "input", "i", "", "[cv] input file (image for cv)")
-	inferCmd.Flags().StringVarP(&output, "output", "o", "", "[tts] output file (audio for tts)")
+	inferCmd.Flags().StringVarP(&output, "output", "o", "", "[tts|image_gen] output file (audio for tts / image for image_gen)")
 	inferCmd.Flags().StringVarP(&voice, "voice", "", "", "[tts] voice identifier")
 	inferCmd.Flags().BoolVarP(&listVoice, "list-voice", "", false, "[tts] list available voices")
 	inferCmd.Flags().Float64VarP(&speechSpeed, "speech-speed", "", 1.0, "[tts] speech speed (1.0 = normal)")
