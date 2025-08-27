@@ -18,7 +18,7 @@ type ModelHub interface {
 }
 
 var hubs = []ModelHub{
-	//NewVocles(),
+	NewVocles(),
 	NewHuggingFace(),
 }
 
