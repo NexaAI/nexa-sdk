@@ -9,6 +9,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
+	"github.com/NexaAI/nexa-sdk/runner/internal/model_hub"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 )
@@ -47,10 +48,10 @@ func pull() *cobra.Command {
 
 		spin := render.NewSpinner("download manifest from: " + name)
 		spin.Start()
-		files, err := s.HFModelInfo(context.TODO(), name)
+		files, err := model_hub.ModelInfo(context.TODO(), name)
 		spin.Stop()
 		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("Get manifest from huggingface error: %s", err))
+			fmt.Println(render.GetTheme().Error.Sprintf("Download manifest error: %s", err))
 			return
 		}
 
