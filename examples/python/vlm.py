@@ -15,34 +15,36 @@ from typing import List, Optional
 from nexaai.vlm import VLM, GenerationConfig
 from nexaai.common import ModelConfig, MultiModalMessage, MultiModalMessageContent
 
+
 def parse_media_from_input(user_input: str) -> tuple[str, Optional[List[str]], Optional[List[str]]]:
     quoted_pattern = r'["\']([^"\']*)["\']'
     quoted_matches = re.findall(quoted_pattern, user_input)
-    
+
     prompt = re.sub(quoted_pattern, '', user_input).strip()
-    
+
     image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'}
     audio_extensions = {'.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a'}
-    
+
     image_paths = []
     audio_paths = []
-    
+
     for quoted_file in quoted_matches:
         if quoted_file:
             if quoted_file.startswith('~'):
                 quoted_file = os.path.expanduser(quoted_file)
-            
+
             if not os.path.exists(quoted_file):
                 print(f"Warning: File '{quoted_file}' not found")
                 continue
-                
+
             file_ext = os.path.splitext(quoted_file.lower())[1]
             if file_ext in image_extensions:
                 image_paths.append(quoted_file)
             elif file_ext in audio_extensions:
                 audio_paths.append(quoted_file)
-    
+
     return prompt, image_paths if image_paths else None, audio_paths if audio_paths else None
+
 
 def main():
     # Your model path
@@ -53,7 +55,7 @@ def main():
 
     # Load model
     instance: VLM = VLM.from_(name_or_path=model, mmproj_path=mmproj_path, m_cfg=m_cfg, plugin_id="mlx", device_id="")
-    
+
     conversation: List[MultiModalMessage] = [MultiModalMessage(role="system", content=[MultiModalMessageContent(type="text", text="You are a helpful assistant.")])]
     strbuff = io.StringIO()
 
