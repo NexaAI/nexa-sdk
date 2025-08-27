@@ -48,13 +48,13 @@ def parse_media_from_input(user_input: str) -> tuple[str, Optional[List[str]], O
 
 def main():
     # Your model path
-    model = os.path.expanduser("~/.cache/nexa.ai/nexa_sdk/models/mlx-community/gemma-3-4b-it-8bit/model-00001-of-00002.safetensors")
-    mmproj_path = os.path.expanduser("")
+    model = os.path.expanduser("~/.cache/nexa.ai/nexa_sdk/models/NexaAI/gemma-3n-E4B-it-4bit-MLX/model-00001-of-00002.safetensors")
+
     # Model configuration
     m_cfg = ModelConfig()
 
     # Load model
-    instance: VLM = VLM.from_(name_or_path=model, mmproj_path=mmproj_path, m_cfg=m_cfg, plugin_id="mlx", device_id="")
+    instance: VLM = VLM.from_(name_or_path=model, mmproj_path="", m_cfg=m_cfg, plugin_id="mlx", device_id="")
 
     conversation: List[MultiModalMessage] = [MultiModalMessage(role="system", content=[MultiModalMessageContent(type="text", text="You are a helpful assistant.")])]
     strbuff = io.StringIO()
@@ -87,7 +87,7 @@ def main():
                 continue
 
         prompt, images, audios = parse_media_from_input(user_input)
-        print(prompt, images, audios)
+
         contents = []
         if prompt:
             contents.append(MultiModalMessageContent(type="text", text=prompt))
@@ -99,7 +99,6 @@ def main():
                 contents.append(MultiModalMessageContent(type="audio", text=audio))
         conversation.append(MultiModalMessage(role="user", content=contents))
 
-        print(f"conversation: {conversation}")
         # Apply the chat template
         prompt = instance.apply_chat_template(conversation)
 
@@ -112,7 +111,7 @@ def main():
             print(token, end="", flush=True)
             strbuff.write(token)
 
-        conversation.append(MultiModalMessage(role="assistant", content=strbuff.getvalue()))
+        conversation.append(MultiModalMessage(role="assistant", content=[MultiModalMessageContent(type="text", text=strbuff.getvalue())]))
 
 
 if __name__ == "__main__":

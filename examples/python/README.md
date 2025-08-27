@@ -9,7 +9,7 @@ This directory contains examples for using the NexaAI Python SDK.
 
     For example:
     ```bash
-    pip install nexaai==1.0.4rc14
+    pip install nexaai==1.0.4rc15
     ```
 
 ## Running Examples
@@ -24,7 +24,7 @@ python llm.py
 ### Multi-Modal
 
 ```bash
-nexa pull mlx-community/gemma-3-4b-it-8bit
+nexa pull NexaAI/gemma-3n-E4B-it-4bit-MLX
 
 python vlm.py
 ```
