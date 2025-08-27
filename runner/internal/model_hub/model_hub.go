@@ -27,6 +27,8 @@ var hubs = []ModelHub{
 var errNotAvailable = fmt.Errorf("no available model hub")
 
 func ModelInfo(ctx context.Context, modelName string) ([]string, error) {
+	slog.Debug("fetching model info", "model", modelName)
+
 	for _, hub := range hubs {
 		if err := hub.CheckAvailable(ctx, modelName); err != nil {
 			slog.Warn("hub not available, try next", "hub", hub, "err", err)
@@ -38,6 +40,8 @@ func ModelInfo(ctx context.Context, modelName string) ([]string, error) {
 }
 
 func FileSize(ctx context.Context, modelName, fileName string) (int64, error) {
+	slog.Debug("Get file size", "model", modelName, "file", fileName)
+
 	for _, hub := range hubs {
 		if err := hub.CheckAvailable(ctx, modelName); err != nil {
 			slog.Warn("hub not available, try next", "hub", hub, "err", err)
@@ -49,6 +53,8 @@ func FileSize(ctx context.Context, modelName, fileName string) (int64, error) {
 }
 
 func GetQuantInfo(ctx context.Context, modelName string) (int, error) {
+	slog.Debug("Get quant info", "model", modelName)
+
 	for _, hub := range hubs {
 		if err := hub.CheckAvailable(ctx, modelName); err != nil {
 			slog.Warn("hub not available, try next", "hub", hub, "err", err)
@@ -60,6 +66,8 @@ func GetQuantInfo(ctx context.Context, modelName string) (int, error) {
 }
 
 func StartDownload(ctx context.Context, modelName, outputPath string, files []string) (resChan chan types.DownloadInfo, errChan chan error) {
+	slog.Debug("Starting download", "model", modelName, "outputPath", outputPath, "files", files)
+
 	for _, hub := range hubs {
 		if err := hub.CheckAvailable(ctx, modelName); err != nil {
 			slog.Warn("hub not available, try next", "hub", hub, "err", err)

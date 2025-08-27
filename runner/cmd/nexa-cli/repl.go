@@ -480,7 +480,6 @@ func chooseModelType() (types.ModelType, error) {
 	return modelType, nil
 }
 
-
 func chooseFiles(name string, files []string) (res types.ModelManifest, err error) {
 	if len(files) == 0 {
 		err = fmt.Errorf("repo is empty")
@@ -497,6 +496,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 	var tokenizers []string
 	var onnxFiles []string
 	ggufGroups := make(map[string][]string)
+	ggufGroupMap := make(map[string]string)
 	// qwen2.5-7b-instruct-q8_0-00003-of-00003.gguf original name is qwen2.5-7b-instruct-q8_0
 	// *d-of-*d like this
 	for _, file := range files {
@@ -507,6 +507,7 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 			} else {
 				name := partRegex.ReplaceAllString(file, "")
 				ggufGroups[name] = append(ggufGroups[name], file)
+				ggufGroupMap[file] = name
 			}
 		} else if strings.HasSuffix(lower, "tokenizer.json") {
 			tokenizers = append(tokenizers, file)
@@ -551,15 +552,18 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 			spin.Start()
 			// key is gguf file name, value is file size total containts part file
 			fileSizes := make(map[string]int64)
+
+			ggufFiles := make([]string, 0)
 			for _, gguf := range ggufs {
-				sizes, err := getFileSizesConcurrent(name, ggufGroups[gguf])
-				if err != nil {
-					fmt.Println(render.GetTheme().Error.Sprintf("get filesize error: [%s] %s", gguf, err))
-					return res, err
-				}
-				for _, size := range sizes {
-					fileSizes[gguf] += size
-				}
+				ggufFiles = append(ggufFiles, ggufGroups[gguf]...)
+			}
+			sizes, err := getFileSizesConcurrent(name, ggufFiles)
+			if err != nil {
+				fmt.Println(render.GetTheme().Error.Sprintf("get filesize error: %s", err))
+				return res, err
+			}
+			for ggufFileName, size := range sizes {
+				fileSizes[ggufGroupMap[ggufFileName]] += size
 			}
 			spin.Stop()
 
