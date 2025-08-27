@@ -53,7 +53,7 @@ func infer() *cobra.Command {
 	inferCmd.Flags().SortFlags = false
 	inferCmd.Flags().Int32VarP(&ngl, "ngl", "n", 999, "[llm|vlm] num of layers pass to gpu")
 	inferCmd.Flags().BoolVarP(&enableThink, "think", "", true, "[llm|vlm] enable thinking mode")
-	inferCmd.Flags().StringArrayVarP(&prompt, "prompt", "p", nil, "[embedder|tts] pass prompt")
+	inferCmd.Flags().StringArrayVarP(&prompt, "prompt", "p", nil, "[embedder|tts|image_gen] pass prompt")
 	inferCmd.Flags().StringVarP(&query, "query", "q", "", "[reranker] query")
 	inferCmd.Flags().StringArrayVarP(&document, "document", "d", nil, "[reranker] documents")
 	inferCmd.Flags().StringVarP(&input, "input", "i", "", "[cv] input file (image for cv)")
