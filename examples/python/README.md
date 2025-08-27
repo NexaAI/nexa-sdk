@@ -32,15 +32,15 @@ python vlm.py
 ### Reranker
 
 ```bash
-nexa pull nexaml/jina-v2-rerank-mlx
+nexa pull NexaAI/jina-v2-rerank-mlx
 
-python reranker.py
+python rerank.py
 ```
 
 ### Embedder
 
 ```bash
-nexa pull nexaml/jina-v2-fp16-mlx
+nexa pull NexaAI/jina-v2-fp16-mlx
 
 python embedder.py
 ```
@@ -50,7 +50,7 @@ python embedder.py
 #### OCR
 
 ```bash
-nexa pull nexaml/paddle-ocr-mlx
+nexa pull NexaAI/paddle-ocr-mlx
 
 python cv_ocr.py
 ```

@@ -12,16 +12,18 @@ from nexaai.rerank import Reranker, RerankConfig
 
 
 def main():
-    model_path = os.path.expanduser("~/.cache/nexa.ai/nexa_sdk/models/nexaml/jina-v2-rerank-mlx/jina-reranker-v2-base-multilingual-f16.safetensors")
+    model_path = os.path.expanduser("~/.cache/nexa.ai/nexa_sdk/models/NexaAI/jina-v2-rerank-mlx/jina-reranker-v2-base-multilingual-f16.safetensors")
+    
+    # For now, this modality is only supported in MLX.
     reranker: Reranker = Reranker.from_(name_or_path=model_path, plugin_id="mlx")
     documents = [
-        "Machine learning is a subset of artificial intelligence.",
-        "Machine learning algorithms learn patterns from data.",
-        "The weather is sunny today.",
-        "Deep learning is a type of machine learning."
+        "On-device AI is a type of AI that is processed on the device itself, rather than in the cloud.",
+        "edge computing",
+        "A ragdoll is a breed of cat that is known for its long, flowing hair and gentle personality.",
+        "The capital of France is Paris."
     ]
 
-    query = "What is machine learning?"
+    query = "Where is on-device AI?"
 
     scores = reranker.rerank(query=query, documents=documents, config=RerankConfig(batch_size=len(documents)))
 
