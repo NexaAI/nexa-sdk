@@ -5,10 +5,12 @@ This directory contains examples for using the NexaAI Python SDK.
 ## Prerequisites
 
 - Python 3.10
-- Install the NexaAI Python SDK
-```bash
-pip install nexaai==1.0.4rc10
-```
+- Install the latest NexaAI Python SDK from [PyPI](https://pypi.org/project/nexaai/#history).
+
+    For example:
+    ```bash
+    pip install nexaai==1.0.4rc14
+    ```
 
 ## Running Examples
 
