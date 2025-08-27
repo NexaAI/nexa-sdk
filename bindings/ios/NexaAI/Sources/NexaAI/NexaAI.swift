@@ -45,12 +45,12 @@ private func setLogLevelGlobal(_ options: [LogLevel]) {
     ml_set_log(logCallback)
 }
 
-public struct DeviceList {
-    public let deviceIds: [String]
-    public let deviceNames: [String]
-    init(deviceIds: [String], deviceNames: [String]) {
-        self.deviceIds = deviceIds
-        self.deviceNames = deviceNames
+public struct Device {
+    public let id: String
+    public let name: String
+    init(id: String, name: String) {
+        self.id = id
+        self.name = name
     }
 }
 
@@ -65,13 +65,13 @@ public class NexaSdk {
         setLogLevel(logLevel)
     }
 
-    public class func getLlamaDeviceList() -> DeviceList? {
+    public class func getLlamaDeviceList() -> [Device] {
         ml_init()
 
         var result = ml_register_plugin(plugin_id, createLlamaPlugin)
         if result < 0 {
             ml_deinit()
-            return nil
+            return []
         }
 
         var input = ml_GetDeviceListInput(plugin_id: plugin_id())
@@ -79,7 +79,7 @@ public class NexaSdk {
         result = ml_get_device_list(&input, &output)
         if result < 0 {
             ml_deinit()
-            return nil
+            return []
         }
 
         var ids = [String]()
@@ -102,7 +102,16 @@ public class NexaSdk {
         ml_free(output.device_ids)
         ml_deinit()
 
-        return .init(deviceIds: ids, deviceNames: names)
+        if ids.count != names.count {
+            return []
+        }
+
+        var devices = [Device]()
+        for (idx, id) in ids.enumerated() {
+            let device = Device(id: id, name: names[idx])
+            devices.append(device)
+        }
+        return devices
     }
 
     class func setLogLevel(_ logLevel: [LogLevel]) {
