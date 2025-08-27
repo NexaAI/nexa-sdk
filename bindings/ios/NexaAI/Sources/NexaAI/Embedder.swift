@@ -39,6 +39,40 @@ final public class Embedder {
         }
     }
 
+    public func embed(inputIds: [[Int32]], config: EmbeddingConfig) throws -> EmbedResult {
+        var output = ml_EmbedderEmbedOutput()
+        let rowCount = inputIds.count
+        let rowLengths = inputIds.map { Int32($0.count) }
+
+        var cInputIds: [UnsafePointer<Int32>?] = []
+        var buffers: [UnsafeBufferPointer<Int32>] = []
+
+        for inputId in inputIds {
+            inputId.withUnsafeBufferPointer { buf in
+                buffers.append(buf)
+                cInputIds.append(buf.baseAddress)
+            }
+        }
+
+        let result = config.withUnsafePointerC { mConfig in
+            return cInputIds.withUnsafeMutableBufferPointer { inputIdsBuffer in
+                return rowLengths.withUnsafeBufferPointer { rowLengths in
+                    var input = ml_EmbedderEmbedInput(texts: nil, text_count: 0, config: mConfig, input_ids_2d: inputIdsBuffer.baseAddress, input_ids_row_lengths: rowLengths.baseAddress, input_ids_row_count: Int32(rowCount))
+                    return ml_embedder_embed(handle, &input, &output)
+                }
+            }
+        }
+
+        if result != ML_SUCCESS.rawValue {
+            throw EmbedderError.embedFailed(result)
+        }
+
+        guard let out = output.embeddings else { return .init(embeddings: [], profileData: .init(from: output.profile_data)) }
+        defer { free(out) }
+        let buffer = UnsafeBufferPointer(start: out, count: Int(output.embedding_count))
+        return .init(embeddings: Array(buffer), profileData: ProfileData(from: output.profile_data))
+    }
+
     public func embed(texts: [String], config: EmbeddingConfig) throws -> EmbedResult {
         var output = ml_EmbedderEmbedOutput()
 
