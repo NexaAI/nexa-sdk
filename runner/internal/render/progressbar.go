@@ -39,6 +39,11 @@ func (p *ProgressBar) Set(current int64) {
 	p.bar.Set64(current)
 }
 
+// Set sets the current progress
+func (p *ProgressBar) Add(chunk int64) {
+	p.bar.Add64(chunk)
+}
+
 // Exit finishes the progress bar
 func (p *ProgressBar) Exit() {
 	p.bar.Exit()

@@ -14,11 +14,11 @@ type ModelHub interface {
 	ModelInfo(ctx context.Context, modelName string) ([]string, error)
 	FileSize(ctx context.Context, modelName, fileName string) (int64, error)
 	GetQuantInfo(ctx context.Context, modelName string) (int, error)
-	StartDownload(ctx context.Context, modelName, filePath, outputPath string) (chan types.DownloadInfo, chan error)
+	StartDownload(ctx context.Context, modelName, outputPath string, files []string) (chan types.DownloadInfo, chan error)
 }
 
 var hubs = []ModelHub{
-	NewVocles(),
+	//NewVocles(),
 	NewHuggingFace(),
 }
 
@@ -59,15 +59,16 @@ func GetQuantInfo(ctx context.Context, modelName string) (int, error) {
 	return 0, errNotAvailable
 }
 
-func StartDownload(ctx context.Context, modelName, filePath, outputPath string) (resChan chan types.DownloadInfo, errChan chan error) {
+func StartDownload(ctx context.Context, modelName, outputPath string, files []string) (resChan chan types.DownloadInfo, errChan chan error) {
 	for _, hub := range hubs {
 		if err := hub.CheckAvailable(ctx, modelName); err != nil {
 			slog.Warn("hub not available, try next", "hub", hub, "err", err)
 			continue
 		}
-		return hub.StartDownload(ctx, modelName, filePath, outputPath)
+		return hub.StartDownload(ctx, modelName, outputPath, files)
 	}
 
+	// no available hub
 	resCh := make(chan types.DownloadInfo)
 	close(resCh)
 	errCh := make(chan error, 1)

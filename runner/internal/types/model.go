@@ -58,6 +58,9 @@ type ModelParam struct {
 }
 
 type DownloadInfo struct {
-	Downloaded int64
-	Total      int64
+	// CurrentFileName   string
+	// CurrentDownloaded int64
+	// CurrentSize       int64
+	TotalDownloaded int64
+	TotalSize       int64
 }

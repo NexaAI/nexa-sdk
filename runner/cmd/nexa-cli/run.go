@@ -86,7 +86,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			bar := render.NewProgressBar(manifest.GetSize(), "downloading")
 			for stream.Next() {
 				event := stream.Current()
-				bar.Set(event.Downloaded)
+				bar.Set(event.TotalDownloaded)
 			}
 			bar.Exit()
 

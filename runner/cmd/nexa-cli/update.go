@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,8 +11,8 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/NexaAI/nexa-sdk/runner/internal/downloader"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
-	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 	"github.com/bytedance/sonic"
 	goverision "github.com/hashicorp/go-version"
 	"github.com/spf13/cobra"
@@ -71,12 +72,12 @@ func updateImpl() error {
 	fmt.Printf("New version found, file: %s, version: %s\n", ast.Name, rls.TagName)
 
 	dst := filepath.Join(os.TempDir(), "nexa", rls.TagName, ast.Name)
-	progress := make(chan types.DownloadInfo)
+	progress := make(chan int64)
 	bar := render.NewProgressBar(int64(ast.Size), "downloading")
 	go func() {
 		defer bar.Exit()
 		for pg := range progress {
-			bar.Set(pg.Downloaded)
+			bar.Add(pg)
 		}
 	}()
 
@@ -166,7 +167,7 @@ func findMatchingAsset(rls release) (*asset, error) {
 }
 
 // download a file from url to dst with progress
-func download(url, dst string, progress chan types.DownloadInfo) error {
+func download(url, dst string, progress chan int64) error {
 	if progress != nil {
 		defer close(progress)
 	}
@@ -181,17 +182,15 @@ func download(url, dst string, progress chan types.DownloadInfo) error {
 		}
 
 		if progress != nil {
-			progress <- types.DownloadInfo{
-				Downloaded: int64(ast.Size),
-			}
+			progress <- int64(ast.Size)
 		}
 		return nil
 	}
 
-	//downloader := store.NewHFDownloader(0, progress)
-	//if err = downloader.Download(context.Background(), url, dst); err != nil {
-	//	return err
-	//}
+	downloader := downloader.NewDownloader()
+	if err = downloader.Download(context.Background(), url, dst, progress); err != nil {
+		return err
+	}
 
 	info, err := os.Stat(dst)
 	if err != nil {

@@ -152,66 +152,80 @@ func (d *Vocles) GetQuantInfo(ctx context.Context, modelName string) (int, error
 	return -1, errNotSupported
 }
 
-func (d *Vocles) StartDownload(ctx context.Context, modelName, filePath, outputPath string) (chan types.DownloadInfo, chan error) {
-	slog.Debug("Vocles Download", "modelName", modelName, "filePath", filePath, "outputPath", outputPath)
+func (d *Vocles) StartDownload(ctx context.Context, modelName, outputPath string, files []string) (chan types.DownloadInfo, chan error) {
+	slog.Debug("Vocles StartDownload", "modelName", modelName, "outputPath", outputPath, "files", files)
 
 	resCh := make(chan types.DownloadInfo, 8)
 	errCh := make(chan error, 1)
 
 	go func() {
-		defer close(errCh)
-		defer close(resCh)
+		progressCh := make(chan int64, 8)
+		defer close(progressCh)
 
-		// download from volces
-		name := strings.ReplaceAll(modelName, "NexaAI/", "model/") + "/" + filePath
-		data, err := d.s3Client.GetObject(ctx, &s3.GetObjectInput{
-			Bucket: aws.String("nexa-model-hub-bucket"),
-			Key:    aws.String(name),
-		})
+		go func() {
+			defer close(errCh)
+			defer close(resCh)
 
-		if err != nil {
-			errCh <- err
-			return
-		}
-		defer data.Body.Close()
-
-		if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
-			errCh <- err
-			return
-		}
-
-		file, err := os.OpenFile(outputPath, os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			errCh <- err
-			return
-		}
-		defer file.Close()
-
-		err = file.Truncate(*data.ContentLength)
-		if err != nil {
-			errCh <- err
-			return
-		}
-
-		var downloaded int64
-
-		for {
-			n, err := io.CopyN(file, data.Body, 4*1024*1024) // update progress every 4MB
-
-			if err == io.EOF {
-				downloaded += n
-				resCh <- types.DownloadInfo{Downloaded: downloaded}
-				return
+			var info types.DownloadInfo
+			for p := range progressCh {
+				info.TotalDownloaded += p
+				/// info.TotalSize = 0 // TODO: get total size
+				resCh <- info
 			}
+		}()
 
-			if err != nil {
+		for _, file := range files {
+			input := strings.ReplaceAll(modelName, "NexaAI/", "model/") + "/" + file
+			if err := d.downloadFile(ctx, input, filepath.Join(outputPath, file), progressCh); err != nil {
 				errCh <- err
 				return
 			}
-
-			downloaded += n
-			resCh <- types.DownloadInfo{Downloaded: downloaded}
 		}
 	}()
 	return resCh, errCh
+}
+
+func (d *Vocles) downloadFile(ctx context.Context, input, output string, progress chan int64) error {
+	slog.Debug("Vocles Download", "input", input, "output", output)
+
+	// download from volces
+	data, err := d.s3Client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String("nexa-model-hub-bucket"),
+		Key:    aws.String(input),
+	})
+
+	if err != nil {
+		return err
+	}
+	defer data.Body.Close()
+
+	if err := os.MkdirAll(filepath.Dir(output), 0o755); err != nil {
+		return err
+	}
+
+	outFile, err := os.OpenFile(output, os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer outFile.Close()
+
+	err = outFile.Truncate(*data.ContentLength)
+	if err != nil {
+		return err
+	}
+
+	for {
+		n, err := io.CopyN(outFile, data.Body, 4*1024*1024) // update progress every 4MB
+
+		if err == io.EOF {
+			progress <- n
+			return nil
+		}
+
+		if err != nil {
+			return err
+		}
+
+		progress <- n
+	}
 }

@@ -147,16 +147,13 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 		}
 
 		// Create modelfile for storing downloaded content
-		for _, file := range needs {
-			outputPath := filepath.Join(s.home, "models", mf.Name, file)
-			res, err := model_hub.StartDownload(ctx, mf.Name, file, outputPath)
-			for d := range res {
-				infoC <- d
-			}
-			for e := range err {
-				errC <- e
-				return
-			}
+		resCh, errCh := model_hub.StartDownload(ctx, mf.Name, filepath.Join(s.home, "models", mf.Name), needs)
+		for d := range resCh {
+			infoC <- d
+		}
+		for e := range errCh {
+			errC <- e
+			return
 		}
 
 		// Detect plugin
@@ -238,17 +235,13 @@ func (s *Store) PullExtraQuant(ctx context.Context, omf, nmf types.ModelManifest
 			return
 		}
 
-		// Create modelfile for storing downloaded content
-		for _, file := range needs {
-			outputPath := filepath.Join(s.home, "models", nmf.Name, file)
-			res, err := model_hub.StartDownload(ctx, nmf.Name, file, outputPath)
-			for d := range res {
-				infoC <- d
-			}
-			for e := range err {
-				errC <- e
-				return
-			}
+		resCh, errCh := model_hub.StartDownload(ctx, nmf.Name, filepath.Join(s.home, "models", nmf.Name), needs)
+		for d := range resCh {
+			infoC <- d
+		}
+		for e := range errCh {
+			errC <- e
+			return
 		}
 
 		model := types.ModelManifest{

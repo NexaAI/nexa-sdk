@@ -3,6 +3,7 @@ package model_hub
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strconv"
 
 	"github.com/bytedance/sonic"
@@ -33,7 +34,7 @@ func NewHuggingFace() *HuggingFace {
 		resty.AutoParseResponseMiddleware,
 	)
 
-	d := downloader.NewDownloader(nil)
+	d := downloader.NewDownloader()
 
 	return &HuggingFace{client: c, downloader: d}
 }
@@ -109,15 +110,35 @@ func (d *HuggingFace) GetQuantInfo(ctx context.Context, modelName string) (int, 
 	return info.QuantizationConfig.Bits, err
 }
 
-func (d *HuggingFace) StartDownload(ctx context.Context, modelName, filePath, outputPath string) (chan types.DownloadInfo, chan error) {
+func (d *HuggingFace) StartDownload(ctx context.Context, modelName, outputPath string, files []string) (chan types.DownloadInfo, chan error) {
 	d.downloader.SetToken(config.Get().HFToken)
 
-	d.downloader.Download(ctx, fmt.Sprintf("%s/%s/resolve/main/%s", HF_ENDPOINT, modelName, filePath), outputPath)
-
-	resCh := make(chan types.DownloadInfo)
-	close(resCh)
+	resCh := make(chan types.DownloadInfo, 8)
 	errCh := make(chan error, 1)
-	errCh <- errNotAvailable
-	close(errCh)
+	go func() {
+		progressCh := make(chan int64, 8)
+		defer close(progressCh)
+
+		go func() {
+			defer close(errCh)
+			defer close(resCh)
+
+			var info types.DownloadInfo
+			for p := range progressCh {
+				info.TotalDownloaded += p
+				/// info.TotalSize = 0 // TODO: get total size
+				resCh <- info
+			}
+		}()
+
+		for _, file := range files {
+			d.downloader.Download(
+				ctx,
+				fmt.Sprintf("%s/%s/resolve/main/%s", HF_ENDPOINT, modelName, file),
+				filepath.Join(outputPath, file),
+				progressCh,
+			)
+		}
+	}()
 	return resCh, errCh
 }

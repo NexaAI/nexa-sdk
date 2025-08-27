@@ -8,22 +8,17 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"sync/atomic"
 
 	"github.com/valyala/fasthttp"
-
-	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 )
 
 type HTTPDownloader struct {
 	client fasthttp.Client
 
-	token           string
-	totalDownloaded atomic.Int64
-	progress        chan<- types.DownloadInfo
+	token string
 }
 
-func NewDownloader(progress chan<- types.DownloadInfo) *HTTPDownloader {
+func NewDownloader() *HTTPDownloader {
 	return &HTTPDownloader{
 		client: fasthttp.Client{
 			NoDefaultUserAgentHeader:  true,
@@ -31,7 +26,6 @@ func NewDownloader(progress chan<- types.DownloadInfo) *HTTPDownloader {
 			ReadBufferSize:            64 * 1024,
 			WriteBufferSize:           64 * 1024,
 		},
-		progress: progress,
 	}
 }
 
@@ -39,7 +33,7 @@ func (d *HTTPDownloader) SetToken(token string) {
 	d.token = token
 }
 
-func (d *HTTPDownloader) Download(ctx context.Context, url, outputPath string) error {
+func (d *HTTPDownloader) Download(ctx context.Context, url, outputPath string, progress chan int64) error {
 	slog.Debug("Download", "url", url, "outputPath", outputPath)
 
 	url, err := d.handleRedirect(url, 3)
@@ -88,7 +82,7 @@ func (d *HTTPDownloader) Download(ctx context.Context, url, outputPath string) e
 			go func(start, end int64) {
 				defer wg.Done()
 				defer func() { <-sem }()
-				if err := d.downloadChunk(cancelCtx, url, outputPath, start, end); err != nil {
+				if err := d.downloadChunk(cancelCtx, url, outputPath, start, end, progress); err != nil {
 					select { // non-blocking send error
 					case errCh <- err:
 						slog.Error("Download chunk failed", "start", start, "end", end, "error", err)
@@ -96,8 +90,6 @@ func (d *HTTPDownloader) Download(ctx context.Context, url, outputPath string) e
 					}
 					cancel()
 				}
-
-				slog.Error("Download chunk done", "start", start, "end", end, "error", err)
 			}(start, end)
 
 		case <-cancelCtx.Done():
@@ -212,7 +204,7 @@ func calcChunkSize(totalSize int64) int64 {
 }
 
 // TODO: ctx not work for fasthttp
-func (d *HTTPDownloader) downloadChunk(_ context.Context, url, outputPath string, start, end int64) error {
+func (d *HTTPDownloader) downloadChunk(_ context.Context, url, outputPath string, start, end int64, progress chan int64) error {
 	req := fasthttp.AcquireRequest()
 	resp := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseRequest(req)
@@ -248,10 +240,8 @@ func (d *HTTPDownloader) downloadChunk(_ context.Context, url, outputPath string
 		return fmt.Errorf("write incomplete: wrote %d bytes, expected %d", n, expected)
 	}
 
-	d.totalDownloaded.Add(int64(n))
-	d.progress <- types.DownloadInfo{
-		Downloaded: d.totalDownloaded.Load(),
+	if progress != nil {
+		progress <- int64(n)
 	}
-
 	return nil
 }

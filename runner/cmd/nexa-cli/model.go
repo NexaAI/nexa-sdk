@@ -65,7 +65,7 @@ func pull() *cobra.Command {
 			bar := render.NewProgressBar(newManifest.GetSize()-mf.GetSize(), "downloading")
 
 			for pg := range pgCh {
-				bar.Set(pg.Downloaded)
+				bar.Set(pg.TotalDownloaded)
 			}
 			bar.Exit()
 
@@ -91,7 +91,7 @@ func pull() *cobra.Command {
 			bar := render.NewProgressBar(manifest.GetSize(), "downloading")
 
 			for pg := range pgCh {
-				bar.Set(pg.Downloaded)
+				bar.Set(pg.TotalDownloaded)
 			}
 			bar.Exit()
 
