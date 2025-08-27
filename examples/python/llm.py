@@ -1,10 +1,7 @@
-#!/usr/bin/env python3
-
 """
-NexaAI LLM Example - Llama Model Testing
+NexaAI LLM Example
 
-This example demonstrates how to use the NexaAI SDK to work with Llama models.
-It includes basic model initialization, text generation, streaming, and chat template functionality.
+This example demonstrates how to use the NexaAI SDK to work with LLM models.
 """
 
 import io
@@ -14,17 +11,21 @@ from typing import List
 from nexaai.llm import LLM, GenerationConfig
 from nexaai.common import ModelConfig, ChatMessage
 
+
 def main():
     # Your model path
-    model = os.path.expanduser("~/.cache/nexa.ai/nexa_sdk/models/Qwen/Qwen3-0.6B-GGUF/Qwen3-0.6B-Q8_0.gguf")
+    model = os.path.expanduser(
+        "~/.cache/nexa.ai/nexa_sdk/models/Qwen/Qwen3-0.6B-GGUF/Qwen3-0.6B-Q8_0.gguf")
 
     # Model configuration
     m_cfg = ModelConfig()
 
     # Load model
-    instance: LLM = LLM.from_(model, plugin_id="llama_cpp", device_id="cpu", m_cfg=m_cfg)
-    
-    conversation: List[ChatMessage] = []
+    instance: LLM = LLM.from_(
+        model, plugin_id="llama_cpp", device_id="cpu", m_cfg=m_cfg)
+
+    conversation: List[ChatMessage] = [ChatMessage(
+        role="system", content="You are a helpful assistant.")]
     strbuff = io.StringIO()
 
     print("Multi-round conversation started. Type '/quit' or '/exit' to end.")
@@ -72,7 +73,8 @@ def main():
             print(token, end="", flush=True)
             strbuff.write(token)
 
-        conversation.append(ChatMessage(role="assistant", content=strbuff.getvalue()))
+        conversation.append(ChatMessage(
+            role="assistant", content=strbuff.getvalue()))
 
 
 if __name__ == "__main__":
