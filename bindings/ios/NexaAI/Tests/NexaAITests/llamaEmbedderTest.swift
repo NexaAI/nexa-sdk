@@ -8,32 +8,38 @@ struct LLamaEmbedderTest {
         NexaSdk.install()
     }
 
-    @Test func testLLamaEmbedderLoad() async throws {
-        let modelPath = try modelPath(of: "jina-embeddings-v2-small-en-Q4_K_M")
-        let _ = try Embedder(modelPath: modelPath)
+    func createEmbedder(name: String = "jina-embeddings-v2-small-en-Q4_K_M") async throws -> Embedder {
+        let modelPath = try modelPath(of: name)
+        return try Embedder(modelPath: modelPath)
     }
 
-    @Test func testLLamaEmbedderDim() async throws {
-        let modelPath = try modelPath(of: "jina-embeddings-v2-small-en-Q4_K_M")
-        let embedder = try Embedder(modelPath: modelPath)
+    @Test func testCreateEmbedder() async throws {
+        let _ = try await createEmbedder()
+    }
+
+    @Test func testEmbedderCreation() async throws {
+        let embedder = try await createEmbedder()
         let dim = try embedder.embeddingDim()
         print("Embedding dimension: \(dim)")
     }
 
-    @Test func testLLamaEmbedderEmbed() async throws {
-        let modelPath = try modelPath(of: "jina-embeddings-v2-small-en-Q4_K_M")
-        let embedder = try Embedder(modelPath: modelPath)
-        let texts = [
-            "Hello world", "Good morning",
-            "Machine learning is fascinating",
-            "Natural language processing"
-        ]
-        let cfg = EmbeddingConfig(batchSize: 4, normalize: true, normalizeMethod: .l2)
+    @Test func testEmbedderSingleText() async throws {
+        let embedder = try await createEmbedder()
+        let texts = ["🥳 🎂 Once upon a time"]
+
+        let cfg = EmbeddingConfig(
+            batchSize: 32,
+            normalize: true,
+            normalizeMethod: .l2
+        )
+
         let result = try embedder.embed(texts: texts, config: cfg)
         let embeddings = result.embeddings
-        print("Texts: ", texts)
-        print("Total embeddings: \(embeddings.count)")
-        print("Embeddings:", embeddings.prefix(20))
+        #expect(embeddings.count == texts.count)
+
+        let dim = try embedder.embeddingDim()
+        let expectedTotalFloats = dim * Int32(embeddings.count)
+        print(expectedTotalFloats)
 
         let count = Float(embeddings.count)
         let mean = (embeddings.reduce(0.0, +)) / count
@@ -52,15 +58,31 @@ struct LLamaEmbedderTest {
         print("ProfileData: \n", result.profileData)
     }
 
+    @Test func testEmbedderBatchProcessing() async throws {
+        let embedder = try await createEmbedder()
+        let texts = [
+            "Hello world", "Good morning",
+            "Machine learning is fascinating",
+            "Natural language processing"
+        ]
+        let cfg = EmbeddingConfig(batchSize: 4, normalize: true, normalizeMethod: .l2)
+        let result = try embedder.embed(texts: texts, config: cfg)
+        let embeddings = result.embeddings
+        print("Texts: ", texts)
+        print("Total embeddings: \(embeddings.count)")
+        print("Embeddings:", embeddings.prefix(20))
+        print("ProfileData: \n", result.profileData)
+    }
 }
 
 
-struct LlamaDeviceListTest {
+struct NexaSdkTest {
 
     @Test func testGetDeviceList() {
-        if let deviceList = NexaSdk.getLlamaDeviceList() {
-            print(deviceList)
-        }
+        print(NexaSdk.getLlamaDeviceList())
     }
 
+    @Test func testGetVersion() {
+        print(NexaSdk.version)
+    }
 }
