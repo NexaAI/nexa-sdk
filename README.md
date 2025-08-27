@@ -63,12 +63,12 @@ OmniNeural-4B is the **first multimodal AI model built natively for NPUs** — h
 ## Installation
 
 ### macOS
-* [arm64](https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_macos_arm64.pkg)
-* [x86_64](https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_macos_x86_64.pkg)
+* [arm64](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_macos_arm64.pkg)
+* [x86_64](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_macos_x86_64.pkg)
 
 ### Windows
 * [arm64 with Qualcomm NPU support](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_windows_arm64.exe)
-* [x86_64](https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_windows_x86_64.exe)
+* [x86_64](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_windows_x86_64.exe)
 
 ### Linux
 ```bash
