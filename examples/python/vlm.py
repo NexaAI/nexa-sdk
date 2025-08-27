@@ -1,77 +1,116 @@
 #!/usr/bin/env python3
 
 """
-NexaAI VLM Example - Vision Language Model Testing
+NexaAI VLM Example - Llama Model Testing
 
-This example demonstrates how to use the NexaAI SDK to work with Vision Language Models.
-It includes basic model initialization, text generation, image understanding, and chat functionality.
+This example demonstrates how to use the NexaAI SDK to work with Llama models.
+It includes basic model initialization, text generation, streaming, and chat template functionality.
 """
 
-import argparse
-from typing import List
+import io
+import os
+import re
+from typing import List, Optional
 
 from nexaai.vlm import VLM, GenerationConfig
+from nexaai.common import ModelConfig, MultiModalMessage, MultiModalMessageContent
 
-from nexaai.common import MultiModalMessage
-
+def parse_media_from_input(user_input: str) -> tuple[str, Optional[List[str]], Optional[List[str]]]:
+    quoted_pattern = r'["\']([^"\']*)["\']'
+    quoted_matches = re.findall(quoted_pattern, user_input)
+    
+    prompt = re.sub(quoted_pattern, '', user_input).strip()
+    
+    image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'}
+    audio_extensions = {'.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a'}
+    
+    image_paths = []
+    audio_paths = []
+    
+    for quoted_file in quoted_matches:
+        if quoted_file:
+            if quoted_file.startswith('~'):
+                quoted_file = os.path.expanduser(quoted_file)
+            
+            if not os.path.exists(quoted_file):
+                print(f"Warning: File '{quoted_file}' not found")
+                continue
+                
+            file_ext = os.path.splitext(quoted_file.lower())[1]
+            if file_ext in image_extensions:
+                image_paths.append(quoted_file)
+            elif file_ext in audio_extensions:
+                audio_paths.append(quoted_file)
+    
+    return prompt, image_paths if image_paths else None, audio_paths if audio_paths else None
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--model", type=str, default="ggml-org/Qwen2.5-Omni-3B-GGUF", help="Path to the model")
-    parser.add_argument("--mmproj", type=str, default="",
-                        help="Path to the mmproj")
-    parser.add_argument("--plugin_id", type=str,
-                        default="llama_cpp", help="Plugin ID(llama_cpp, mlx)")
-    parser.add_argument("--device_id", type=str, default="cpu",
-                        help="Device ID(cpu, cuda, metal)")
-    args = parser.parse_args()
+    # Your model path
+    model = os.path.expanduser("~/.cache/nexa.ai/nexa_sdk/models/mlx-community/gemma-3-4b-it-8bit/model-00001-of-00002.safetensors")
+    mmproj_path = os.path.expanduser("")
+    # Model configuration
+    m_cfg = ModelConfig()
 
     # Load model
-    try:
-        instance: VLM = VLM.from_(
-            args.model, mmproj_path=args.mmproj, plugin_id=args.plugin_id, device_id=args.device_id)
-    except Exception as e:
-        print(f"Error loading model: {e}")
-        return
+    instance: VLM = VLM.from_(name_or_path=model, mmproj_path=mmproj_path, m_cfg=m_cfg, plugin_id="mlx", device_id="")
+    
+    conversation: List[MultiModalMessage] = [MultiModalMessage(role="system", content=[MultiModalMessageContent(type="text", text="You are a helpful assistant.")])]
+    strbuff = io.StringIO()
 
-    conversation: List[MultiModalMessage] = []
-
-    print("Multi-round conversation started. Type 'quit' or 'exit' to end.")
+    print("Multi-round conversation started. Type '/quit' or '/exit' to end.")
     print("=" * 50)
 
     while True:
         user_input = input("\nUser: ").strip()
-
-        if user_input.lower() in ["quit", "exit", "q"]:
-            print("Goodbye!")
-            break
-
         if not user_input:
-            print("Please provide an input or type 'quit' to exit.")
+            print("Please provide an input or type '/quit' to exit.")
             continue
 
-        conversation.append(MultiModalMessage(role="user", content=user_input))
+        if user_input.startswith("/"):
+            cmds = user_input.split()
+            if cmds[0] in {"/quit", "/exit", "/q"}:
+                print("Goodbye!")
+                break
+            elif cmds[0] in {"/save", "/s"}:
+                instance.save_kv_cache(cmds[1])
+                print("KV cache saved to", cmds[1])
+                continue
+            elif cmds[0] in {"/load", "/l"}:
+                instance.load_kv_cache(cmds[1])
+                print("KV cache loaded from", cmds[1])
+                continue
+            elif cmds[0] in {"/reset", "/r"}:
+                instance.reset()
+                print("KV cache reset")
+                continue
 
+        prompt, images, audios = parse_media_from_input(user_input)
+        print(prompt, images, audios)
+        contents = []
+        if prompt:
+            contents.append(MultiModalMessageContent(type="text", text=prompt))
+        if images:
+            for image in images:
+                contents.append(MultiModalMessageContent(type="image", text=image))
+        if audios:
+            for audio in audios:
+                contents.append(MultiModalMessageContent(type="audio", text=audio))
+        conversation.append(MultiModalMessage(role="user", content=contents))
+
+        print(f"conversation: {conversation}")
         # Apply the chat template
-        try:
-            prompt = instance.apply_chat_template(conversation)
-        except Exception as e:
-            print(f"Error applying chat template: {e}")
-            continue
+        prompt = instance.apply_chat_template(conversation)
+
+        strbuff.truncate(0)
+        strbuff.seek(0)
 
         print("Assistant: ", end="", flush=True)
+        # Generate the model response
+        for token in instance.generate_stream(prompt, g_cfg=GenerationConfig(max_tokens=100, image_paths=images, audio_paths=audios)):
+            print(token, end="", flush=True)
+            strbuff.write(token)
 
-        try:
-            strbuff = ""
-            # Generate the model response
-            for token in instance.generate_stream(prompt, g_cfg=GenerationConfig(max_tokens=100)):
-                print(token, end="", flush=True)
-                strbuff += token
-            conversation.append(MultiModalMessage(
-                role="assistant", content=strbuff))
-        except Exception as e:
-            print(f"Error generating response: {e}")
+        conversation.append(MultiModalMessage(role="assistant", content=strbuff.getvalue()))
 
 
 if __name__ == "__main__":
