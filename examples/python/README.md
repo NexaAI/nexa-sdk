@@ -5,6 +5,11 @@ This directory contains examples for using the NexaAI Python SDK.
 ## Prerequisites
 
 - Python 3.10
+    - if you are using conda, you can create a new environment via
+        ```sh
+        conda create -n nexaai python=3.10
+        conda activate nexaai
+        ```
 - Install the latest NexaAI Python SDK from [PyPI](https://pypi.org/project/nexaai/#history).
 
     For example:
