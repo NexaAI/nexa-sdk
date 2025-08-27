@@ -202,8 +202,9 @@ final public class LLMLlama: Model {
         }
     }
 
+    @NexaAIActor
     @discardableResult
-    private func generationStream(
+    public func generationStream(
         prompt: String,
         config: GenerationConfig,
         onToken: @escaping (String) -> Bool

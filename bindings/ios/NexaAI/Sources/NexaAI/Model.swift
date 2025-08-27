@@ -23,6 +23,10 @@ public protocol Model {
 public struct GenerateResult {
     public var response: String
     public var profileData: ProfileData
+    public init(response: String, profileData: ProfileData) {
+        self.response = response
+        self.profileData = profileData
+    }
 }
 
 public struct GenerationOptions {

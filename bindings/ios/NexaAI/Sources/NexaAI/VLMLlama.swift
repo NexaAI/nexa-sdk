@@ -93,7 +93,10 @@ final public class VLMLlama: Model {
         continueStream = false
     }
 
-    public func generationStream(messages: [ChatMessage], options: GenerationOptions) throws -> GenerateResult {
+    public func generationStream(
+        messages: [ChatMessage],
+        options: GenerationOptions = .init()
+    ) throws -> GenerateResult {
         let prompt = try applyChatTemplate(messages: messages, options: options.templeteOptions)
         return try generationStream(prompt: prompt, config: options.config) { [weak self] _ in
             return self?.continueStream ?? true
@@ -103,10 +106,7 @@ final public class VLMLlama: Model {
     public func generationAsyncStream(
         messages: [ChatMessage],
         options: GenerationOptions = .init()
-    ) throws -> AsyncThrowingStream<
-        String,
-        Error
-    > {
+    ) throws -> AsyncThrowingStream<String,Error> {
         let prompt = try applyChatTemplate(messages: messages, options: options.templeteOptions)
         return generationAsyncStream(prompt: prompt, config: options.config)
     }
@@ -226,10 +226,11 @@ final public class VLMLlama: Model {
         }
     }
 
+    @NexaAIActor
     @discardableResult
-    private func generationStream(
+    public func generationStream(
         prompt: String,
-        config: GenerationConfig,
+        config: GenerationConfig = .default,
         onToken: @escaping (String) -> Bool
     ) throws -> GenerateResult {
         let cPrompt = strdup(prompt)
