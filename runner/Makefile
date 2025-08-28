@@ -27,7 +27,6 @@ else
     RM_FILE := rm -f
     RM_DIR  := rm -rf
     MKDIR   := mkdir -p
-    LN      := ln -s
 endif
 
 .PHONY: build link xcopy download clean
@@ -41,15 +40,17 @@ build:
 		./cmd/nexa-cli
 
 link: clean
+    $(MKDIR) build
 	@echo "====> Linking bridge lib to build"
 	cd build && ln -s ../../../nexasdk-bridge/build/out/* ./
 	cd nexa-sdk && ln -sf  ../../../nexasdk-bridge/modelfiles .
 
 xcopy: clean
+    $(MKDIR) build
 	xcopy ..\\..\\nexasdk-bridge\\build\\out\\* build /E /R /Y
 
-# Use `winget install -e GnuWin32.UnZip` to install unzip on windows
 download: clean
+    $(MKDIR) build
 	@echo "====> Download runtime"
 	@echo "OS: $(OS)"
 	@echo "ARCH: $(ARCH)"
@@ -60,4 +61,3 @@ download: clean
 
 clean:
 	-$(RM_DIR) build
-	$(MKDIR) build
