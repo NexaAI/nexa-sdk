@@ -72,7 +72,7 @@ OmniNeural-4B is the **first multimodal AI model built natively for NPUs** — h
 
 ### Linux
 ```bash
-curl -fsSL https://raw.githubusercontent.com/NexaAI/nexa-sdk/main/release/linux/install.sh -o install.sh && chmod +x install.sh && ./install.sh
+curl -fsSL https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_linux_x86_64.sh -o install.sh && chmod +x install.sh && ./install.sh && rm install.sh
 ```
 
 ## Supported Models
