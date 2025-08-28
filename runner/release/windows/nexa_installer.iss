@@ -1,6 +1,7 @@
 #define MyAppName "Nexa CLI"
 #define MyAppVersion GetEnv('VERSION')
 #define MyAppArch GetEnv('ARCH')
+#define MyAppORT GetEnv('BRIDGE_ORT')
 #define MyAppPublisher "Nexa AI"
 #define MyAppExeName "nexa.exe"
 #define MyAppServiceName "NexaService"
@@ -13,8 +14,8 @@ AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 DefaultDirName={localappdata}\{#MyAppName}
 DefaultGroupName={#MyAppName}
-OutputDir=..\..\..\artifacts
-OutputBaseFilename=nexa-cli_windows_{#MyAppArch}
+OutputDir=..\..\..\
+OutputBaseFilename=nexa-cli_windows_{#MyAppArch}_{#MyAppORT}
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
@@ -28,7 +29,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 
 [Files]
 ; Main executables
-Source: "..\..\..\artifacts\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\..\..\artifacts_{#MyAppORT}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Registry]
 ; Launcher registration (primary application)
@@ -47,9 +48,6 @@ Root: HKCU; Subkey: "SOFTWARE\Classes\Applications\{#MyAppExeName}\DefaultIcon";
 [Code]
 const
   EnvironmentKey = 'Environment';
-
-var
-  VersionPage: TInputOptionWizardPage;
 
 function InitializeSetup(): Boolean;
 var

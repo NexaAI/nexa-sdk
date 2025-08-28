@@ -37,11 +37,6 @@ jobs:
           go-version: 1.24.3
           cache-dependency-path: runner/go.sum
 
-      - name: Setup MinGW
-        run: |
-          choco install mingw -y
-          g++ --version
-
       - name: Download runtime
         run: |
           cd runner
@@ -85,22 +80,11 @@ jobs:
           name: nexa-cli_windows_${{ matrix.arch }}
           path: artifacts
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install Python dependencies
-        run: |
-          pip install pyinstaller
 
       - name: Build launcher with PyInstaller
         run: |
+          pip install pyinstaller
           pyinstaller --onefile --noconsole --distpath artifacts --name "nexa-cli-launcher" --icon="runner/release/windows/nexa_logo.ico" runner/release/windows/nexa_launcher.py
-
-      - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v4.1.0
-        with:
-          dotnet-version: 8.0.403
 
       - name: Sign executables with AzureSignTool
         shell: pwsh
@@ -119,24 +103,32 @@ jobs:
               $_.FullName
           }
 
-          azuresigntool sign `
-            -kvu "${{ secrets.AZURE_KEY_VAULT_URI }}" `
-            -kvc "${{ secrets.AZURE_CERT_NAME }}" `
-            -kvi "${{ secrets.AZURE_CLIENT_ID }}" `
-            -kvs "${{ secrets.AZURE_CLIENT_SECRET }}" `
-            --azure-key-vault-tenant-id "${{ secrets.AZURE_TENANT_ID }}" `
-            -tr http://timestamp.globalsign.com/tsa/advanced `
-            -td sha256 `
-            "artifacts\nexa-cli-launcher.exe"
+      - name: Prepare Installer Files
+        shell: bash
+        run: |
+          cp -r artifacts artifacts_dml
+          rm -r artifacts_dml/nexa_cuda*
 
-      - name: Compile Installer
+          cp -r artifacts artifacts_cuda
+          rm -r artifacts_cuda/nexa_dml*
+
+      - name: Compile Installer (CUDA)
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.6
         with:
           path: runner/release/windows/nexa_installer.iss
           options: /O+
+        env:
+          BRIDGE_ORT: cuda
+
+      - name: Compile Installer (DML)
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.6
+        with:
+          path: runner/release/windows/nexa_installer.iss
+          options: /O+
+        env:
+          BRIDGE_ORT: dml
 
       - name: Sign Installer
-        shell: pwsh
         run: |
           azuresigntool sign `
             -kvu "${{ secrets.AZURE_KEY_VAULT_URI }}" `
@@ -146,7 +138,17 @@ jobs:
             --azure-key-vault-tenant-id "${{ secrets.AZURE_TENANT_ID }}" `
             -tr http://timestamp.globalsign.com/tsa/advanced `
             -td sha256 `
-            "artifacts/nexa-cli_windows_${{ matrix.arch }}.exe"
+            "nexa-cli_windows_${{ matrix.arch }}_cuda.exe"
+
+          azuresigntool sign `
+            -kvu "${{ secrets.AZURE_KEY_VAULT_URI }}" `
+            -kvc "${{ secrets.AZURE_CERT_NAME }}" `
+            -kvi "${{ secrets.AZURE_CLIENT_ID }}" `
+            -kvs "${{ secrets.AZURE_CLIENT_SECRET }}" `
+            --azure-key-vault-tenant-id "${{ secrets.AZURE_TENANT_ID }}" `
+            -tr http://timestamp.globalsign.com/tsa/advanced `
+            -td sha256 `
+            "nexa-cli_windows_${{ matrix.arch }}_dml.exe"
 
       - name: Create GitHub Release
         id: create_release
@@ -154,7 +156,9 @@ jobs:
         with:
           repository: NexaAI/nexa-sdk
           tag_name: ${{ env.VERSION }}
-          files: artifacts/nexa-cli_windows_${{ matrix.arch }}.exe
+          files: |
+            nexa-cli_windows_${{ matrix.arch }}_cuda.exe
+            nexa-cli_windows_${{ matrix.arch }}_dml.exe
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.ZACK_ACCESS_TOKEN }}
