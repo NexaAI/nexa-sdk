@@ -83,7 +83,7 @@ def main():
                 continue
             elif cmds[0] in {"/reset", "/r"}:
                 instance.reset()
-                print("KV cache reset")
+                print("Conversation reset")
                 continue
 
         prompt, images, audios = parse_media_from_input(user_input)

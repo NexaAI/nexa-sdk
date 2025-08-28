@@ -49,7 +49,7 @@ def main():
                 continue
             elif cmds[0] in {"/reset", "/r"}:
                 instance.reset()
-                print("KV cache reset")
+                print("Conversation reset")
                 continue
             else:
                 print("Unknown command")
