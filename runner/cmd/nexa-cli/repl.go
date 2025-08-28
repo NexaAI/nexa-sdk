@@ -495,8 +495,8 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 	var mmprojs []string
 	var tokenizers []string
 	var onnxFiles []string
-	ggufGroups := make(map[string][]string)
-	ggufGroupMap := make(map[string]string)
+	ggufFragments := make(map[string][]string)
+	ggufFragmentMap := make(map[string]string)
 	// qwen2.5-7b-instruct-q8_0-00003-of-00003.gguf original name is qwen2.5-7b-instruct-q8_0
 	// *d-of-*d like this
 	for _, file := range files {
@@ -506,8 +506,8 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 				mmprojs = append(mmprojs, file)
 			} else {
 				name := partRegex.ReplaceAllString(file, "")
-				ggufGroups[name] = append(ggufGroups[name], file)
-				ggufGroupMap[file] = name
+				ggufFragments[name] = append(ggufFragments[name], file)
+				ggufFragmentMap[file] = name
 			}
 		} else if strings.HasSuffix(lower, "tokenizer.json") {
 			tokenizers = append(tokenizers, file)
@@ -516,31 +516,31 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 		}
 	}
 
-	ggufs := make([]string, 0, len(ggufGroups))
-	for gguf := range ggufGroups {
-		ggufs = append(ggufs, gguf)
+	ggufEntires := make([]string, 0, len(ggufFragments))
+	for gguf := range ggufFragments {
+		ggufEntires = append(ggufEntires, gguf)
 	}
 
 	// choose model file
-	if len(ggufs) > 0 {
+	if len(ggufEntires) > 0 {
 		// detect gguf
-		if len(ggufs) == 1 {
+		if len(ggufEntires) == 1 {
 			// single quant
 			fileInfo := types.ModeFileInfo{}
-			fileInfo.Name = ggufs[0]
+			fileInfo.Name = ggufEntires[0]
 			fileInfo.Downloaded = true
 			spin.Start()
-			fileSizes, err := getFileSizesConcurrent(name, ggufGroups[ggufs[0]])
+			fileSizes, err := getFileSizesConcurrent(name, ggufFragments[ggufEntires[0]])
 			spin.Stop()
 			if err != nil {
-				fmt.Println(render.GetTheme().Error.Sprintf("get filesize error: [%s] %s", ggufs[0], err))
+				fmt.Println(render.GetTheme().Error.Sprintf("get filesize error: [%s] %s", ggufEntires[0], err))
 				return res, err
 			}
 			for _, size := range fileSizes {
 				fileInfo.Size += size
 			}
 
-			quant := strings.ToUpper(quantRegix.FindString(ggufs[0]))
+			quant := strings.ToUpper(quantRegix.FindString(ggufEntires[0]))
 			if quant == "" {
 				quant = "N/A"
 			}
@@ -554,8 +554,8 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 			fileSizes := make(map[string]int64)
 
 			ggufFiles := make([]string, 0)
-			for _, gguf := range ggufs {
-				ggufFiles = append(ggufFiles, ggufGroups[gguf]...)
+			for _, gguf := range ggufEntires {
+				ggufFiles = append(ggufFiles, ggufFragments[gguf]...)
 			}
 			sizes, err := getFileSizesConcurrent(name, ggufFiles)
 			if err != nil {
@@ -563,13 +563,13 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 				return res, err
 			}
 			for ggufFileName, size := range sizes {
-				fileSizes[ggufGroupMap[ggufFileName]] += size
+				fileSizes[ggufFragmentMap[ggufFileName]] += size
 			}
 			spin.Stop()
 
 			// select default gguf
 			var file, quant string
-			for _, gguf := range ggufs {
+			for _, gguf := range ggufEntires {
 				ggufQuant := quantRegix.FindString(gguf)
 				if quantGreaterThan(ggufQuant, quant, []string{"Q4_K_M", "Q4_0", "Q8_0"}) {
 					quant = ggufQuant
@@ -578,19 +578,19 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 			}
 
 			// Find the longest quant name for alignment
-			options := make([]huh.Option[string], 0, len(ggufs)+1)
+			options := make([]huh.Option[string], 0, len(ggufEntires)+1)
 			if file != "" {
 				sizeStr := humanize.IBytes(uint64(fileSizes[file]))
 				options = append(options, huh.NewOption(
 					fmt.Sprintf("%-10s [%7s] (default)", strings.ToUpper(quant), sizeStr), file,
 				))
 			}
-			for i := range ggufs {
-				quant := strings.ToUpper(quantRegix.FindString(ggufs[i]))
-				if quant != "" && file != ggufs[i] {
-					sizeStr := humanize.IBytes(uint64(fileSizes[ggufs[i]]))
+			for i := range ggufEntires {
+				quant := strings.ToUpper(quantRegix.FindString(ggufEntires[i]))
+				if quant != "" && file != ggufEntires[i] {
+					sizeStr := humanize.IBytes(uint64(fileSizes[ggufEntires[i]]))
 					options = append(options, huh.NewOption(
-						fmt.Sprintf("%-10s [%7s]", quant, sizeStr), ggufs[i],
+						fmt.Sprintf("%-10s [%7s]", quant, sizeStr), ggufEntires[i],
 					))
 				}
 			}
@@ -608,11 +608,11 @@ func chooseFiles(name string, files []string) (res types.ModelManifest, err erro
 				return res, err
 			}
 
-			for k := range ggufGroups {
+			for k := range ggufFragments {
 				downloaded := k == file
 				quant := strings.ToUpper(quantRegix.FindString(k))
 				// sort files by name
-				files := ggufGroups[k]
+				files := ggufFragments[k]
 				slices.Sort(files)
 				res.ModelFile[quant] = types.ModeFileInfo{
 					Name:       files[0],
