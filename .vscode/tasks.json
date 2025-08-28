@@ -1,0 +1,59 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "shell",
+			"label": "Make: xcopy",
+			"command": "make",
+			"args": [
+				"xcopy"
+			],
+			"group": "build",
+			"options": {
+				"cwd": "${workspaceFolder}/runner"
+			}
+		},
+		{
+			"type": "shell",
+			"label": "Make: download",
+			"command": "make",
+			"args": [
+				"download"
+			],
+			"group": "build",
+			"options": {
+				"cwd": "${workspaceFolder}/runner"
+			}
+		},
+		{
+			"type": "shell",
+			"label": "Make: clean",
+			"command": "make",
+			"args": [
+				"clean"
+			],
+			"group": "build",
+			"options": {
+				"cwd": "${workspaceFolder}/runner"
+			}
+		},
+		{
+			"type": "shell",
+			"label": "Make: build",
+			"command": "make",
+			"args": [
+				"build"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": [
+				"$go"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/runner"
+			}
+		}
+	]
+}
