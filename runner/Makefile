@@ -1,4 +1,4 @@
-BRIDGE_VERSION ?= v1.0.4-rc14
+BRIDGE_VERSION ?= v1.0.4
 
 ifeq ($(OS), Windows_NT)
     OS      := windows
@@ -40,17 +40,17 @@ build:
 		./cmd/nexa-cli
 
 link: clean
-    $(MKDIR) build
+	$(MKDIR) build
 	@echo "====> Linking bridge lib to build"
 	cd build && ln -s ../../../nexasdk-bridge/build/out/* ./
 	cd nexa-sdk && ln -sf  ../../../nexasdk-bridge/modelfiles .
 
 xcopy: clean
-    $(MKDIR) build
+	$(MKDIR) build
 	xcopy ..\\..\\nexasdk-bridge\\build\\out\\* build /E /R /Y
 
 download: clean
-    $(MKDIR) build
+	$(MKDIR) build
 	@echo "====> Download runtime"
 	@echo "OS: $(OS)"
 	@echo "ARCH: $(ARCH)"
