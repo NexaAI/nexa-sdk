@@ -106,13 +106,20 @@ func (d *Vocles) CheckAvailable(ctx context.Context, modelName string) error {
 	}
 
 	modelName = strings.ReplaceAll(modelName, "NexaAI/", "model/") + "/"
-	_, err := d.s3Client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+	res, err := d.s3Client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
 		Bucket:  aws.String("nexa-model-hub-bucket"),
 		Prefix:  aws.String(modelName),
 		MaxKeys: aws.Int32(1),
 	})
+	if err != nil {
+		return err
+	}
 
-	return err
+	if aws.ToInt32(res.KeyCount) == 0 {
+		return fmt.Errorf("model %s not found", modelName)
+	}
+
+	return nil
 }
 
 func (d *Vocles) ModelInfo(ctx context.Context, modelName string) ([]string, error) {
