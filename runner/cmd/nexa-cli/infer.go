@@ -526,6 +526,7 @@ func inferASR(plugin, modelfile string, tokenizerPath string) {
 	}
 
 	repl(ReplConfig{
+		isASR:     true,
 		ParseFile: true,
 
 		Run: func(_prompt string, _images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {

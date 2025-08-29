@@ -40,6 +40,7 @@ var help = [][2]string{
 // LLM, VLM
 type ReplConfig struct {
 	ParseFile bool
+	isASR     bool
 
 	Reset       func() error
 	SaveKVCache func(path string) error
@@ -264,7 +265,9 @@ func repl(cfg ReplConfig) {
 				if err = rec.Run(); err != nil {
 					fmt.Println(render.GetTheme().Error.Sprintf("Failed to start recording: %s", err))
 					fmt.Println()
-					continue
+					if !cfg.isASR {
+						continue
+					}
 				}
 
 				recordAudios = append(recordAudios, rec.GetOutputFile())
@@ -275,7 +278,9 @@ func repl(cfg ReplConfig) {
 				fmt.Println()
 			}
 
-			continue
+			if !cfg.isASR {
+				continue
+			}
 		}
 
 		// run async
