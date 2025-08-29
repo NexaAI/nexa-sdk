@@ -7,6 +7,8 @@ package nexa_sdk
 import "C"
 import (
 	"log/slog"
+	"path/filepath"
+	"strings"
 	"unsafe"
 )
 
@@ -266,6 +268,34 @@ func NewASR(input AsrCreateInput) (*ASR, error) {
 
 	cInput := input.toCPtr()
 	defer freeAsrCreateInput(cInput)
+
+	// Qnn
+	if cInput.model_path != nil {
+		C.free(unsafe.Pointer(cInput.model_path))
+	}
+	if cInput.tokenizer_path != nil {
+		C.free(unsafe.Pointer(cInput.tokenizer_path))
+	}
+	basePath := filepath.Dir(input.ModelPath)
+	if strings.HasSuffix(basePath, "parakeet-npu") {
+		cInput.encoder_model_path = C.CString(filepath.Join(basePath, "encoder.serialized.bin"))
+		cInput.encoder_config_file_path = C.CString(filepath.Join(basePath, "htp_backend_ext_config.json"))
+		cInput.decoder_model_path = C.CString(filepath.Join(basePath, "dec_rnn.bin"))
+		cInput.decoder_config_file_path = C.CString(filepath.Join(basePath, "htp_backend_ext_config.json"))
+		cInput.jointer_model_path = C.CString(filepath.Join(basePath, "jointer.bin"))
+		cInput.jointer_config_file_path = C.CString(filepath.Join(basePath, "htp_backend_ext_config.json"))
+		cInput.embed_weight_path = C.CString(filepath.Join(basePath, "parakeet_emb.npy"))
+		cInput.pos_emb_path = C.CString(filepath.Join(basePath, "pos_emb_4_3.npy"))
+		cInput.vocab_path = C.CString(filepath.Join(basePath, "vocab.json"))
+		cInput.audio_path = C.CString("")
+		cInput.verbose = C.bool(false)
+	}
+	cInput.system_library_path = C.CString(filepath.Join(getHtpPath(), "QnnSystem.dll"))
+	cInput.backend_library_path = C.CString(filepath.Join(getHtpPath(), "QnnHtp.dll"))
+	cInput.extension_library_path = C.CString(filepath.Join(getHtpPath(), "QnnHtpNetRunExtensions.dll"))
+	defer C.free(unsafe.Pointer(cInput.system_library_path))
+	defer C.free(unsafe.Pointer(cInput.backend_library_path))
+	defer C.free(unsafe.Pointer(cInput.extension_library_path))
 
 	var cHandle *C.ml_ASR
 	res := C.ml_asr_create(cInput, &cHandle)
