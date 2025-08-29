@@ -1004,11 +1004,27 @@ typedef struct ml_ASR ml_ASR; /* Opaque ASR handle */
 
 /** Input structure for creating an ASR instance */
 typedef struct {
-    ml_Path     model_path;     /** Path to the model file */
-    ml_Path     tokenizer_path; /** Path to the tokenizer file (may be NULL) */
-    const char* language;       /** Language code (ISO 639-1 or NULL) */
-    ml_PluginId plugin_id;      /** Plugin to use for the model */
-    const char* device_id;      /** Device to use for the model, NULL for default device */
+    ml_Path     model_path;         /** Path to the model file */
+    ml_Path     tokenizer_path;     /** Path to the tokenizer file (may be NULL) */
+    const char* language;           /** Language code (ISO 639-1 or NULL) */
+    ml_PluginId plugin_id;          /** Plugin to use for the model */
+    const char* device_id;          /** Device to use for the model, NULL for default device */
+
+    // QNN library paths (for QNN backend registration and loading)
+    ml_Path encoder_model_path;
+    ml_Path encoder_config_file_path;
+    ml_Path decoder_model_path;
+    ml_Path decoder_config_file_path;
+    ml_Path jointer_model_path;
+    ml_Path jointer_config_file_path;
+    ml_Path system_library_path;
+    ml_Path backend_library_path;
+    ml_Path extension_library_path;
+    ml_Path embed_weight_path;
+    ml_Path pos_emb_path;
+    ml_Path vocab_path;
+    ml_Path audio_path;
+    bool verbose;
 } ml_AsrCreateInput;
 
 /**

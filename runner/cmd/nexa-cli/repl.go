@@ -479,6 +479,8 @@ func chooseModelTypeByName(modelName string) (types.ModelType, error) {
 		return types.ModelTypeVLM, nil
 	case "nexaml/paddleocr-npu", "nexaml/yolov12-npu", "nexaml/paddleocr-npu-encrypt", "nexaml/yolov12-npu-encrypt", "NexaAI/paddleocr-npu", "NexaAI/yolov12-npu":
 		return types.ModelTypeCV, nil
+	case "nexaml/parakeet-npu", "NexaAI/parakeet-npu":
+		return types.ModelTypeASR, nil
 	default:
 		// Fallback to interactive selection for unknown models
 		return chooseModelType()
