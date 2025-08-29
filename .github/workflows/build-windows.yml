@@ -106,11 +106,10 @@ jobs:
       - name: Prepare Installer Files
         shell: bash
         run: |
-          cp -r artifacts artifacts_dml
-          rm -r artifacts_dml/nexa_cuda*
-
           cp -r artifacts artifacts_cuda
           rm -r artifacts_cuda/nexa_dml*
+
+          rm -r artifacts/nexa_cuda*
 
       - name: Compile Installer (CUDA)
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.6
@@ -118,7 +117,7 @@ jobs:
           path: runner/release/windows/nexa_installer.iss
           options: /O+
         env:
-          BRIDGE_ORT: cuda
+          ORT: "_cuda"
 
       - name: Compile Installer (DML)
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.6
@@ -126,7 +125,7 @@ jobs:
           path: runner/release/windows/nexa_installer.iss
           options: /O+
         env:
-          BRIDGE_ORT: dml
+          ORT: ""
 
       - name: Sign Installer
         run: |
@@ -148,7 +147,7 @@ jobs:
             --azure-key-vault-tenant-id "${{ secrets.AZURE_TENANT_ID }}" `
             -tr http://timestamp.globalsign.com/tsa/advanced `
             -td sha256 `
-            "nexa-cli_windows_${{ matrix.arch }}_dml.exe"
+            "nexa-cli_windows_${{ matrix.arch }}.exe"
 
       - name: Create GitHub Release
         id: create_release
@@ -158,7 +157,7 @@ jobs:
           tag_name: ${{ env.VERSION }}
           files: |
             nexa-cli_windows_${{ matrix.arch }}_cuda.exe
-            nexa-cli_windows_${{ matrix.arch }}_dml.exe
+            nexa-cli_windows_${{ matrix.arch }}.exe
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.ZACK_ACCESS_TOKEN }}
