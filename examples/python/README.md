@@ -14,7 +14,7 @@ This directory contains examples for using the NexaAI Python SDK.
 
     For example:
     ```bash
-    pip install nexaai==1.0.4rc15
+    pip install nexaai==1.0.4
     ```
 
 ## Running Examples
