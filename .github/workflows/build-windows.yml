@@ -80,11 +80,11 @@ jobs:
           name: nexa-cli_windows_${{ matrix.arch }}
           path: artifacts
 
-
-      - name: Build launcher with PyInstaller
+      - name: Build launcher
         run: |
-          pip install pyinstaller
-          pyinstaller --onefile --noconsole --distpath artifacts --name "nexa-cli-launcher" --icon="runner/release/windows/nexa_logo.ico" runner/release/windows/nexa_launcher.py
+          cd runner/release/windows
+          windres resource.rc launcher.syso
+          go build -ldflags "-H windowsgui" -o ../../../artifacts/nexa-cli-launcher.exe
 
       - name: Sign executables with AzureSignTool
         shell: pwsh
