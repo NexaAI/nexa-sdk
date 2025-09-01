@@ -9,18 +9,12 @@ class ModelManager {
     private var isGenerating: Bool = false
     var isLoadingModel: Bool = false
 
-    private(set) var forceRefesh: Bool = false
-
     init(model: Model? = nil) {
         self.model = model
     }
 
     var isLoaded: Bool {
         model?.isLoaded ?? false
-    }
-
-    func reload() {
-        forceRefesh.toggle()
     }
 
     func unload() async {
@@ -50,7 +44,7 @@ class ModelManager {
             let audios = $0.audios.map { $0.path() }
             return ChatMessage(role: $0.isUser ? .user : .assistant, content: $0.content, images: images, audios: audios)
         })
-        let result = try await model.generationStream(messages: msgs, options: options)
+        let result = try await model.generate(messages: msgs, options: options)
         return result.response
     }
 
@@ -65,7 +59,7 @@ class ModelManager {
             let audios = $0.audios.map { $0.path() }
             return ChatMessage(role: $0.isUser ? .user : .assistant, content: $0.content, images: images, audios: audios)
         })
-        return try await model.generationAsyncStream(messages: msgs, options: options)
+        return try await model.generateAsyncStream(messages: msgs, options: options)
     }
 
     func reset() async {

@@ -4,7 +4,7 @@ import NexaBridge
 private typealias ml_Embedder = OpaquePointer
 
 public struct EmbedResult {
-    public let embeddings: [Float]
+    public let embeddings: [[Float]]
     public let profileData: ProfileData
 }
 
@@ -69,8 +69,17 @@ final public class Embedder {
 
         guard let out = output.embeddings else { return .init(embeddings: [], profileData: .init(from: output.profile_data)) }
         defer { free(out) }
-        let buffer = UnsafeBufferPointer(start: out, count: Int(output.embedding_count))
-        return .init(embeddings: Array(buffer), profileData: ProfileData(from: output.profile_data))
+        let dim = try Int(embeddingDim())
+        let count = Int(output.embedding_count)
+        var embeddings = [[Float]]()
+        let embeddings1D = Array(UnsafeBufferPointer(start: out, count: dim * count))
+        for i in 0..<count {
+            let start = i * dim
+            let end = start + dim - 1
+            let sub = embeddings1D[start...end]
+            embeddings.append(Array(sub))
+        }
+        return .init(embeddings: embeddings, profileData: ProfileData(from: output.profile_data))
     }
 
     public func embed(texts: [String], config: EmbeddingConfig) throws -> EmbedResult {
@@ -87,11 +96,21 @@ final public class Embedder {
         if result != ML_SUCCESS.rawValue {
             throw EmbedderError.embedFailed(result)
         }
-        
+
         guard let out = output.embeddings else { return .init(embeddings: [], profileData: .init(from: output.profile_data)) }
         defer { free(out) }
-        let buffer = UnsafeBufferPointer(start: out, count: Int(output.embedding_count))
-        return .init(embeddings: Array(buffer), profileData: ProfileData(from: output.profile_data))
+
+        let dim = try Int(embeddingDim())
+        let count = Int(output.embedding_count)
+        var embeddings = [[Float]]()
+        let embeddings1D = Array(UnsafeBufferPointer(start: out, count: dim * count))
+        for i in 0..<count {
+            let start = i * dim
+            let end = start + dim - 1
+            let sub = embeddings1D[start...end]
+            embeddings.append(Array(sub))
+        }
+        return .init(embeddings: embeddings, profileData: ProfileData(from: output.profile_data))
     }
 
     public func embeddingDim() throws -> Int32 {

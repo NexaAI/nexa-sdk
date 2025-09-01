@@ -55,14 +55,14 @@ struct LLamaLLMTest {
 
     @Test func testKVCacheSave() async throws {
         let llmLlama = try await loadModel()
-        let result = try await llmLlama.generationStream(messages: [.init(role: .user, content: "Tell me a story about 100 words")])
+        let result = try await llmLlama.generate(messages: [.init(role: .user, content: "Tell me a story about 100 words")])
         print(result.response)
         try llmLlama.saveKVCache(to: "./kvcache")
     }
 
     @Test func testKVCacheLoad() async throws {
         let llmLlama = try await loadModel()
-        let result = try await llmLlama.generationStream(messages: [.init(role: .user, content: "Tell me a story about 100 words")])
+        let result = try await llmLlama.generate(messages: [.init(role: .user, content: "Tell me a story about 100 words")])
         print(result.response)
         try llmLlama.saveKVCache(to: "./kvcache")
 
@@ -74,13 +74,13 @@ struct LLamaLLMTest {
     @Test func generateStream() async throws {
         let llmLlama = try await loadModel()
         let config = GenerationConfig(maxTokens: 32)
-        let result = try await llmLlama.generationStream(prompt: "Tell me a story about 100 words", config: config) { token in
+        let stream = await llmLlama.generateAsyncStream(prompt: "Tell me a story about 100 words", config: config)
+
+        for try await token in stream {
             print(token, terminator: "")
-            return true
         }
         print("\n")
-        print(result.response)
-        print(result.profileData)
+        print(await llmLlama.lastProfileData?.description ?? "")
     }
 
     @Test func testGenerateChatMultiRound() async throws {
@@ -97,7 +97,7 @@ struct LLamaLLMTest {
         messages.append(.init(role: .system, content: system))
         for userMsg in userMsgs {
             messages.append(.init(role: .user, content: userMsg))
-            let stream = try await llmLlama.generationAsyncStream(messages: messages)
+            let stream = try await llmLlama.generateAsyncStream(messages: messages)
             print("-----------------------------")
             print("User: ", userMsg)
             print("AI: ")
@@ -148,7 +148,7 @@ struct LLamaLLMTest {
         var messages = [ChatMessage(role: .user, content: userMsg)]
         let options = GenerationOptions(templeteOptions: .init(tools: weatherTool, enableThinking: true))
 
-        let stream = try await llmLlama.generationAsyncStream(messages: messages, options: options)
+        let stream = try await llmLlama.generateAsyncStream(messages: messages, options: options)
         print("-----------------------------")
         print("User: ", userMsg)
         print("AI: ")

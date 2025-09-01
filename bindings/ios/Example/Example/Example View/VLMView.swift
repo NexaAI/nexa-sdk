@@ -58,7 +58,7 @@ class VLMViewModel {
                 var config = GenerationConfig.default
                 config.imagePaths = images
                 let message = ChatMessage(role: .user, content: "Describe this image", images: images)
-                let stream = try await vlmLlama.generationAsyncStream(messages: [message], options: .init(config: config))
+                let stream = try await vlmLlama.generateAsyncStream(messages: [message], options: .init(config: config))
                 for try await token in stream {
                     print(token, terminator: "")
                 }
@@ -87,7 +87,7 @@ class VLMViewModel {
                     config.maxTokens = 100
                     config.imagePaths = user.images
                     messages.append(user)
-                    let stream = try await vlmLlama.generationAsyncStream(messages: messages, options: .init(config: config))
+                    let stream = try await vlmLlama.generateAsyncStream(messages: messages, options: .init(config: config))
                     print("-----------------------------")
                     var response = ""
                     for try await token in stream {

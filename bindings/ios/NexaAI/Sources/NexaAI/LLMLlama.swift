@@ -90,16 +90,17 @@ final public class LLMLlama: Model {
         isLoaded = true
     }
 
-    public func generationStream(messages: [ChatMessage], options: GenerationOptions = .init()) throws -> GenerateResult  {
-        let prompt = try applyChatTemplate(messages: messages, options: options.templeteOptions)
-        return try generationStream(prompt: prompt, config: options.config) { [weak self] _ in
+    @NexaAIActor
+    public func generate(prompt: String, config: GenerationConfig = .default) throws -> GenerateResult {
+        return try generate(prompt: prompt, config: config) { [weak self] _ in
             return self?.continueStream ?? true
         }
     }
 
-    public func generationAsyncStream(messages: [ChatMessage], options: GenerationOptions = .init()) throws -> AsyncThrowingStream<String, Error> {
+    @NexaAIActor
+    public func generateAsyncStream(messages: [ChatMessage], options: GenerationOptions = .init()) throws -> AsyncThrowingStream<String, Error> {
         let prompt = try applyChatTemplate(messages: messages, options: options.templeteOptions)
-        return generationAsyncStream(prompt: prompt, config: options.config)
+        return generateAsyncStream(prompt: prompt, config: options.config)
     }
 
     public func applyChatTemplate(messages: [ChatMessage], options: ChatTemplateOptions = .init()) throws -> String {
@@ -183,13 +184,13 @@ final public class LLMLlama: Model {
     }
 
     @NexaAIActor
-    private func generationAsyncStream(prompt: String, config: GenerationConfig = .default) -> AsyncThrowingStream<String, Error> {
+    public func generateAsyncStream(prompt: String, config: GenerationConfig = .default) -> AsyncThrowingStream<String, Error> {
         return .init { continuation in
             Task {
                 do {
                     lastProfileData = nil
                     continueStream = true
-                    let result = try generationStream(prompt: prompt, config: config) { [weak self] token in
+                    let result = try generate(prompt: prompt, config: config) { [weak self] token in
                         continuation.yield(token)
                         return self?.continueStream ?? true
                     }
@@ -204,7 +205,7 @@ final public class LLMLlama: Model {
 
     @NexaAIActor
     @discardableResult
-    public func generationStream(
+    public func generate(
         prompt: String,
         config: GenerationConfig,
         onToken: @escaping (String) -> Bool

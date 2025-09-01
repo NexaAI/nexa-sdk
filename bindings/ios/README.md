@@ -118,25 +118,27 @@ let texts = [
     "Machine learning is fascinating",
     "Natural language processing"
 ]
-let cfg = EmbeddingConfig(batchSize: 4, normalize: true, normalizeMethod: .l2)
+let cfg = EmbeddingConfig(batchSize: texts.count, normalize: true, normalizeMethod: .l2)
 let result = try embedder.embed(texts: texts, config: cfg)
-let embeddings = result.embeddings
-print("Texts: ", texts)
-print("Total embeddings: \(embeddings.count)")
-print("Embeddings:", embeddings.prefix(20))
+for embedding in result.embeddings {
+    print("Embeding result(prefix 20): \(embedding.prefix(20)), ...")
 
-let count = Float(embeddings.count)
-let mean = (embeddings.reduce(0.0, +)) / count
+    print("Calculate and print stats")
+    let count = Float(embedding.count)
+    let mean = (embedding.reduce(0.0, +)) / count
 
-let variance =
-(embeddings.map {
-    let diff = mean - $0
-    return diff * diff
+    let variance =
+        (embedding.map {
+            let diff = mean - $0
+            return diff * diff
+        }
+        .reduce(0.0, +)) / count
+
+    let std = sqrt(variance)
+    print(
+        "Embedding stats: min=\(embedding.min()!), max=\(embedding.max()!), mean=\(mean), std=\(std)"
+    )
 }
-    .reduce(0.0, +)) / count
-
-let std = sqrt(variance)
-print("Embedding stats: min=\(embeddings.min()!), max=\(embeddings.max()!), mean=\(mean), std=\(std)")
 print("ProfileData: \n", result.profileData)
 ```
 

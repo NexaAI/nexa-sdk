@@ -1,7 +1,11 @@
 import SwiftUI
 import NexaAI
 
+@MainActor
+@Observable
 class LLMViewModel {
+    var logVM: LogViewModel = .init(text: "\nClick ellipsis button to test\n")
+
     var llmLlama: LLMLlama?
     var options: ModelOptions = .init(modelPath: "")
 
@@ -13,7 +17,11 @@ class LLMViewModel {
         guard let llmLlama else {
             return
         }
+
         Task {
+            await llmLlama.reset()
+            logVM.append("\n-------- Begin Generate(multi-round) ------\n")
+
             let system = "You are a helpful AI assistant "
             let userMsgs = [
                 "What is 1+1?",
@@ -27,20 +35,25 @@ class LLMViewModel {
             for userMsg in userMsgs {
                 do {
                     messages.append(.init(role: .user, content: userMsg))
-                    let stream = try await llmLlama.generationAsyncStream(messages: messages)
-                    print("-----------------------------")
+                    let stream = try await llmLlama.generateAsyncStream(messages: messages)
+                    logVM.append("-----------------------------")
+                    logVM.append("User: \(userMsg)")
+                    logVM.append("AI:", enableEnter: false)
                     var response = ""
                     for try await token in stream {
-                        print(token, terminator: "")
+                        logVM.append("\(token)", enableEnter: false)
                         response += token
                     }
-                    print("\n")
+                    logVM.append("\n")
                     messages.append(.init(role: .assistant, content: response))
-                    print(await llmLlama.lastProfileData?.stopReason ?? "")
+                    logVM.append("Profile Data: ")
+                    logVM.append(await llmLlama.lastProfileData?.description ?? "")
                 } catch {
                     print(error)
                 }
             }
+
+            logVM.append("\n-------- End Generate ------\n")
         }
     }
 
@@ -52,12 +65,15 @@ class LLMViewModel {
 
     func load() {
         Task {
+            logVM.append("\n-------- Begin Load ------\n")
+            logVM.append(options.modelPath)
             do {
                 llmLlama = LLMLlama()
                 try await llmLlama?.load(options)
             } catch {
                 print(error)
             }
+            logVM.append("\n-------- End Load ------\n")
         }
     }
 }
@@ -69,24 +85,22 @@ struct LLMView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            Button("load") {
-                loadModelFile()
-            }
-
-            Button("unload") {
-                vm.unload()
-            }
-
-            Button("chat") {
-                vm.generate()
-            }
-            Button("reset") {
-                vm.reset()
+            LogView(vm: vm.logVM)
+        }
+        .buttonStyle(.bordered)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button("load") { loadModelFile() }
+                    Button("unload") { vm.unload() }
+                    Button("chat") { vm.generate() }
+                    Button("reset") { vm.reset() }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
             }
         }
-        .padding()
         .fileImpoter($fileImporter)
-        .buttonStyle(.bordered)
     }
 
     func loadModelFile() {

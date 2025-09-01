@@ -27,13 +27,13 @@ struct LLamaVLMTest {
     @Test func generateStream() async throws {
         let vlmLlama = try await loadModel()
         let config = GenerationConfig(maxTokens: 32)
-        let result = try await vlmLlama.generationStream(prompt: "Tell me a story about 100 words", config: config) { token in
+        let stream = await vlmLlama.generateAsyncStream(prompt: "Tell me a story about 100 words", config: config)
+
+        for try await token in stream {
             print(token, terminator: "")
-            return true
         }
         print("\n")
-        print(result.response)
-        print(result.profileData)
+        print(await vlmLlama.lastProfileData ?? "")
     }
 
     @Test func testGenerateChatMultiRound() async throws {
@@ -50,7 +50,7 @@ struct LLamaVLMTest {
         messages.append(.init(role: .system, content: system))
         for userMsg in userMsgs {
             messages.append(.init(role: .user, content: userMsg))
-            let stream = try await vlmLlama.generationAsyncStream(messages: messages)
+            let stream = try await vlmLlama.generateAsyncStream(messages: messages)
             print("-----------------------------")
             print("User: ", userMsg)
             print("AI: ")
@@ -73,7 +73,7 @@ struct LLamaVLMTest {
         var config = GenerationConfig.default
         config.imagePaths = images
         let message = ChatMessage(role: .user, content: "What do you see in this image", images: images)
-        let stream = try await vlmLlama.generationAsyncStream(messages: [message], options: .init(config: config))
+        let stream = try await vlmLlama.generateAsyncStream(messages: [message], options: .init(config: config))
         print("--------------------")
         for try await token in stream {
             print(token, terminator: "")

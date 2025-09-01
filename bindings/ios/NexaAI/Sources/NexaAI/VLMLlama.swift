@@ -4,6 +4,7 @@ import NexaBridge
 private typealias vlmHandle = OpaquePointer
 
 final public class VLMLlama: Model {
+
     private var handle: vlmHandle?
 
     public private(set) var lastProfileData: ProfileData?
@@ -84,7 +85,7 @@ final public class VLMLlama: Model {
         let result = ml_vlm_create(&input, &handle)
         if result < 0 {
             ml_deinit()
-            throw LLMError.modelLoadingFailed(result)
+            throw VLMError.modelLoadingFailed(result)
         }
         isLoaded = true
     }
@@ -93,22 +94,30 @@ final public class VLMLlama: Model {
         continueStream = false
     }
 
-    public func generationStream(
-        messages: [ChatMessage],
-        options: GenerationOptions = .init()
-    ) throws -> GenerateResult {
-        let prompt = try applyChatTemplate(messages: messages, options: options.templeteOptions)
-        return try generationStream(prompt: prompt, config: options.config) { [weak self] _ in
+    @NexaAIActor
+    public func generate(prompt: String, config: GenerationConfig = .default) throws -> GenerateResult {
+        return try generate(prompt: prompt, config: config) { [weak self] _ in
             return self?.continueStream ?? true
         }
     }
 
-    public func generationAsyncStream(
+    @NexaAIActor
+    public func generate(
+        messages: [ChatMessage],
+        options: GenerationOptions = .init()
+    ) throws -> GenerateResult {
+        let prompt = try applyChatTemplate(messages: messages, options: options.templeteOptions)
+        return try generate(prompt: prompt, config: options.config) { [weak self] _ in
+            return self?.continueStream ?? true
+        }
+    }
+
+    public func generateAsyncStream(
         messages: [ChatMessage],
         options: GenerationOptions = .init()
     ) throws -> AsyncThrowingStream<String,Error> {
         let prompt = try applyChatTemplate(messages: messages, options: options.templeteOptions)
-        return generationAsyncStream(prompt: prompt, config: options.config)
+        return generateAsyncStream(prompt: prompt, config: options.config)
     }
 
     public func applyChatTemplate(
@@ -207,13 +216,13 @@ final public class VLMLlama: Model {
     }
 
     @NexaAIActor
-    private func generationAsyncStream(prompt: String, config: GenerationConfig = .default) -> AsyncThrowingStream<String, Error> {
+    public func generateAsyncStream(prompt: String, config: GenerationConfig = .default) -> AsyncThrowingStream<String, Error> {
         return .init { continuation in
             Task {
                 do {
                     lastProfileData = nil
                     continueStream = true
-                    let result = try generationStream(prompt: prompt, config: config) { [weak self] token in
+                    let result = try generate(prompt: prompt, config: config) { [weak self] token in
                         continuation.yield(token)
                         return self?.continueStream ?? true
                     }
@@ -228,7 +237,7 @@ final public class VLMLlama: Model {
 
     @NexaAIActor
     @discardableResult
-    public func generationStream(
+    public func generate(
         prompt: String,
         config: GenerationConfig = .default,
         onToken: @escaping (String) -> Bool
@@ -246,11 +255,11 @@ final public class VLMLlama: Model {
         }
 
         if result < 0 {
-            throw LLMError.generateFailed(result)
+            throw VLMError.generateFailed(result)
         }
 
         guard let fullText = output.full_text else {
-            throw LLMError.generateEmptyString
+            throw VLMError.generateEmptyString
         }
         defer { ml_free(fullText) }
 
