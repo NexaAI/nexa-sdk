@@ -309,6 +309,13 @@ func repl(cfg ReplConfig) {
 			return ctx.Err() == nil
 		})
 
+		// reset spin when no token received
+		if firstToken {
+			spin.Stop()
+			firstToken = false
+		}
+
+		// reset color
 		render.GetTheme().Reset()
 		fmt.Println()
 		fmt.Println()
