@@ -46,6 +46,12 @@ func setRuntimeEnv() {
 		if strings.Contains(arg, "qwen3-4B-npu") {
 			llmBackend = "qwen3-4B"
 			break
+		} else if strings.Contains(arg, "llama3-1B-npu") {
+			llmBackend = "llama3-1B"
+			break
+		} else if strings.Contains(arg, "llama3-3B-npu") {
+			llmBackend = "llama3-3B"
+			break
 		}
 	}
 	llmBackend = filepath.Join(baseDir, llmBackend)

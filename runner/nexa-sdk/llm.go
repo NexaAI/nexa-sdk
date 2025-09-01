@@ -312,43 +312,29 @@ func NewLLM(input LlmCreateInput) (*LLM, error) {
 		C.free(unsafe.Pointer(cInput.tokenizer_path))
 	}
 	basePath := filepath.Dir(input.ModelPath)
-	if strings.HasSuffix(basePath, "NexaAI\\qwen3-1.7B-npu") {
+	if strings.HasSuffix(basePath, "qwen3-1.7B-npu") {
 		cInput.model_path = C.CString(filepath.Join(basePath, "weights-1-2.nexa"))
 		cInput.tokenizer_path = C.CString(filepath.Join(basePath, "files-1-1.nexa"))
 		cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "weights-2-2.nexa"))
-		cInput.config.config_file_path = C.CString(filepath.Join(basePath, "htp_backend_ext_config.json"))
-	} else if strings.HasSuffix(basePath, "NexaAI\\qwen3-4B-npu") {
-		cInput.model_path = C.CString(filepath.Join(basePath, "weights-1-3.nexa"))
-		cInput.tokenizer_path = C.CString(filepath.Join(basePath, "files-1-1.nexa"))
-		cInput.config.model_path_1 = C.CString(filepath.Join(basePath, "weights-2-3.nexa"))
-		cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "weights-3-3.nexa"))
-		cInput.config.config_file_path = C.CString(filepath.Join(basePath, "htp_backend_ext_config.json"))
-	} else if strings.HasSuffix(basePath, "qwen3-npu") {
-		cInput.model_path = C.CString(filepath.Join(basePath, "qwen3-npu", "weight_sharing_model_1_of_1_w8.serialized.bin"))
-		cInput.tokenizer_path = C.CString(filepath.Join(basePath, "qwen3-npu", "tokenizer.json"))
-		cInput.config.config_file_path = C.CString(filepath.Join(basePath, "qwen3-npu", "htp_backend_ext_config.json"))
-		cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "qwen3-npu", "qwen3_embedding_layer.npy"))
+		cInput.config.config_file_path = C.CString(filepath.Join(basePath, "attachments-1-1.nexa"))
 	} else if strings.HasSuffix(basePath, "qwen3-4B-npu") {
-		basePath := filepath.Dir(input.ModelPath)
-		cInput.model_path = C.CString(filepath.Join(basePath, "qwen3-npu", "weight_sharing_model_1_of_2.serialized.bin"))
-		cInput.tokenizer_path = C.CString(filepath.Join(basePath, "qwen3-npu", "tokenizer.json"))
-		cInput.config.model_path_1 = C.CString(filepath.Join(basePath, "qwen3-npu", "weight_sharing_model_2_of_2.serialized.bin"))
-		cInput.config.config_file_path = C.CString(filepath.Join(basePath, "qwen3-npu", "htp_backend_ext_config.json"))
-		cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "qwen3-npu", "qwen3_embedding_layer.npy"))
-		defer C.free(unsafe.Pointer(cInput.config.model_path_1))
-	} else if strings.HasSuffix(basePath, "qwen3-1.7B-npu-encrypt") {
-		cInput.model_path = C.CString(filepath.Join(basePath, "weights-1-2.nexa"))
-		cInput.tokenizer_path = C.CString(filepath.Join(basePath, "files-1-1.nexa"))
-		cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "weights-2-2.nexa"))
-		cInput.config.config_file_path = C.CString(filepath.Join(basePath, "htp_backend_ext_config.json"))
-	} else if strings.HasSuffix(basePath, "qwen3-4B-npu-encrypt") {
 		cInput.model_path = C.CString(filepath.Join(basePath, "weights-1-3.nexa"))
 		cInput.tokenizer_path = C.CString(filepath.Join(basePath, "files-1-1.nexa"))
 		cInput.config.model_path_1 = C.CString(filepath.Join(basePath, "weights-2-3.nexa"))
 		cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "weights-3-3.nexa"))
-		cInput.config.config_file_path = C.CString(filepath.Join(basePath, "htp_backend_ext_config.json"))
+		cInput.config.config_file_path = C.CString(filepath.Join(basePath, "attachments-1-1.nexa"))
+	} else if strings.HasSuffix(basePath, "llama3-1B-npu") {
+		cInput.model_path = C.CString(filepath.Join(basePath, "weights-1-2.nexa"))
+		cInput.tokenizer_path = C.CString(filepath.Join(basePath, "files-1-2.nexa"))
+		cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "weights-2-2.nexa"))
+		cInput.config.config_file_path = C.CString(filepath.Join(basePath, "files-2-2.nexa"))
+	} else if strings.HasSuffix(basePath, "llama3-3B-npu") {
+		cInput.model_path = C.CString(filepath.Join(basePath, "weights-1-3.nexa"))
+		cInput.tokenizer_path = C.CString(filepath.Join(basePath, "files-1-2.nexa"))
+		cInput.config.model_path_1 = C.CString(filepath.Join(basePath, "weights-2-3.nexa"))
+		cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "weights-3-3.nexa"))
+		cInput.config.config_file_path = C.CString(filepath.Join(basePath, "files-2-2.nexa"))
 	}
-
 	cInput.config.system_library_path = C.CString(filepath.Join(getHtpPath(), "QnnSystem.dll"))
 	cInput.config.backend_library_path = C.CString(filepath.Join(getHtpPath(), "QnnHtp.dll"))
 	cInput.config.extension_library_path = C.CString(filepath.Join(getHtpPath(), "QnnHtpNetRunExtensions.dll"))

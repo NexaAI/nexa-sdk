@@ -278,15 +278,15 @@ func NewASR(input AsrCreateInput) (*ASR, error) {
 	}
 	basePath := filepath.Dir(input.ModelPath)
 	if strings.HasSuffix(basePath, "parakeet-npu") {
-		cInput.encoder_model_path = C.CString(filepath.Join(basePath, "encoder.serialized.bin"))
-		cInput.encoder_config_file_path = C.CString(filepath.Join(basePath, "htp_backend_ext_config.json"))
-		cInput.decoder_model_path = C.CString(filepath.Join(basePath, "dec_rnn.bin"))
-		cInput.decoder_config_file_path = C.CString(filepath.Join(basePath, "htp_backend_ext_config.json"))
-		cInput.jointer_model_path = C.CString(filepath.Join(basePath, "jointer.bin"))
-		cInput.jointer_config_file_path = C.CString(filepath.Join(basePath, "htp_backend_ext_config.json"))
-		cInput.embed_weight_path = C.CString(filepath.Join(basePath, "parakeet_emb.npy"))
-		cInput.pos_emb_path = C.CString(filepath.Join(basePath, "pos_emb_4_3.npy"))
-		cInput.vocab_path = C.CString(filepath.Join(basePath, "vocab.json"))
+		cInput.encoder_model_path = C.CString(filepath.Join(basePath, "weights-1-5.nexa"))
+		cInput.encoder_config_file_path = C.CString(filepath.Join(basePath, "files-1-2.nexa"))
+		cInput.decoder_model_path = C.CString(filepath.Join(basePath, "weights-2-5.nexa"))
+		cInput.decoder_config_file_path = C.CString(filepath.Join(basePath, "files-1-2.nexa"))
+		cInput.jointer_model_path = C.CString(filepath.Join(basePath, "weights-3-5.nexa"))
+		cInput.jointer_config_file_path = C.CString(filepath.Join(basePath, "files-1-2.nexa"))
+		cInput.embed_weight_path = C.CString(filepath.Join(basePath, "weights-4-5.nexa"))
+		cInput.pos_emb_path = C.CString(filepath.Join(basePath, "weights-5-5.nexa"))
+		cInput.vocab_path = C.CString(filepath.Join(basePath, "files-2-2.nexa"))
 		cInput.audio_path = C.CString("")
 		cInput.verbose = C.bool(false)
 	}
@@ -338,6 +338,7 @@ func (a *ASR) Transcribe(input AsrTranscribeInput) (AsrTranscribeOutput, error) 
 	}
 
 	output := newAsrTranscribeOutputFromCPtr(&cOutput)
+
 	return output, nil
 }
 
