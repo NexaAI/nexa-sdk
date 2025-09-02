@@ -289,6 +289,17 @@ func repl(cfg ReplConfig) {
 		audios = append(audios, recordAudios...)
 		recordAudios = nil // clear after use
 
+		const (
+			STATE_START = iota
+			STATE_ASSISTANT
+			STATE_CHANNEL
+			STATE_ANALYSIS
+			STATE_FINAL
+			STATE_THINK_MESSAGE
+			STATE_NORMAL_MESSAGE
+		)
+		state := STATE_ASSISTANT
+
 		_, profileData, err := cfg.Run(line, images, audios, func(token string) bool {
 			if firstToken {
 				spin.Stop()
@@ -296,14 +307,50 @@ func repl(cfg ReplConfig) {
 			}
 
 			switch token {
-			case "<think>":
-				render.GetTheme().Set(render.GetTheme().ThinkOutput)
-				fmt.Print(token)
-			case "</think>":
-				fmt.Print(token)
-				render.GetTheme().Set(render.GetTheme().ModelOutput)
+			case "<|channel|>":
+				if state == STATE_ASSISTANT {
+					state = STATE_CHANNEL
+				}
+			case "<|message|>":
+				switch state {
+				case STATE_ANALYSIS:
+					if !hidethinking {
+						render.GetTheme().Set(render.GetTheme().ThinkOutput)
+						fmt.Print("<think>\n")
+					}
+					state = STATE_THINK_MESSAGE
+				case STATE_FINAL:
+					state = STATE_NORMAL_MESSAGE
+				}
+			case "<|end|>":
+				switch state {
+				case STATE_THINK_MESSAGE:
+					if !hidethinking {
+						fmt.Print("\n</think>\n\n")
+						render.GetTheme().Set(render.GetTheme().ModelOutput)
+					}
+					state = STATE_START
+				case STATE_NORMAL_MESSAGE:
+					state = STATE_START
+				}
+			case "<|start|>":
+				state = STATE_START
+			case "analysis":
+				if state == STATE_CHANNEL {
+					state = STATE_ANALYSIS
+				}
+			case "assistant":
+				if state == STATE_START {
+					state = STATE_ASSISTANT
+				}
+			case "final":
+				if state == STATE_CHANNEL {
+					state = STATE_FINAL
+				}
 			default:
-				fmt.Print(token)
+				if state == STATE_NORMAL_MESSAGE || !hidethinking {
+					fmt.Print(token)
+				}
 			}
 
 			return ctx.Err() == nil
