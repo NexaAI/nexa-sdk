@@ -31,7 +31,6 @@ func initLLM() {
 			NSeqMax: 64,
 		},
 		PluginID: "llama_cpp",
-		DeviceID: "cpu",
 	}
 
 	llm, err = NewLLM(input)
@@ -74,6 +73,34 @@ func TestLLMGenerateStream(t *testing.T) {
 	}
 
 	t.Logf("GenerateStream: %s", stream.FullText)
+}
+
+func TestLLMMultiTurn(t *testing.T) {
+	testRounds := []LlmChatMessage{
+		{Role: "user", Content: "let a = 1; let b = 2;"},
+		{Role: "user", Content: "what is the value of a + b?"},
+	}
+	history := []LlmChatMessage{}
+
+	for i, round := range testRounds {
+		history = append(history, round)
+		tpl, err := llm.ApplyChatTemplate(LlmApplyChatTemplateInput{Messages: history,EnableThink: true})
+		if err != nil {
+			t.Fatalf("Failed to generate text: %v", err)
+		}
+		stream, err := llm.Generate(LlmGenerateInput{
+			PromptUTF8: tpl.FormattedText,
+			OnToken: func(token string) bool {
+				t.Logf("<< %s", token)
+				return true
+			},
+		})
+		if err != nil {
+			t.Fatalf("Failed to generate text: %v", err)
+		}
+		t.Logf("Turn %d reply: %s", i+1, stream.FullText)
+		history = append(history, LlmChatMessage{Role: LLMRoleAssistant, Content: stream.FullText})
+	}
 }
 
 func TestLLMSaveKVCache(t *testing.T) {
