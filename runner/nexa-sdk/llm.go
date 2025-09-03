@@ -558,6 +558,10 @@ func (l *LLM) Generate(input LlmGenerateInput) (LlmGenerateOutput, error) {
 
 	res := C.ml_llm_generate(l.ptr, cInput, &cOutput)
 	if res < 0 {
+		// Check for context length exceeded error
+		if res == C.ML_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH {
+			return LlmGenerateOutput{}, ContextLimitExceededError{}
+		}
 		return LlmGenerateOutput{}, SDKError(res)
 	}
 

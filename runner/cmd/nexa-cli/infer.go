@@ -226,6 +226,14 @@ func inferLLM(plugin, modelfile string, licenseKey string) {
 			},
 			)
 			if err != nil {
+				// Check if it's a context length exceeded error
+				var contextErr nexa_sdk.ContextLimitExceededError
+				if errors.As(err, &contextErr) {
+					// Print the message with success theme and return empty response
+					fmt.Println("\n")
+					fmt.Println(render.GetTheme().Success.Sprintf("context length limit reached, please start a new conversation"))
+					return "", nexa_sdk.ProfileData{}, nil
+				}
 				return "", nexa_sdk.ProfileData{}, err
 			}
 
@@ -394,6 +402,14 @@ func inferVLM(plugin, modelfile string, mmprojfile string, licenseKey string) {
 				},
 			})
 			if err != nil {
+				// Check if it's a context length exceeded error
+				var contextErr nexa_sdk.ContextLimitExceededError
+				if errors.As(err, &contextErr) {
+					// Print the message with success theme and return empty response
+					fmt.Println("\n")
+					fmt.Println(render.GetTheme().Success.Sprintf("context length limit reached, please start a new conversation"))
+					return "", nexa_sdk.ProfileData{}, nil
+				}
 				return "", nexa_sdk.ProfileData{}, err
 			}
 

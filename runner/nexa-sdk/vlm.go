@@ -555,6 +555,10 @@ func (v *VLM) Generate(input VlmGenerateInput) (*VlmGenerateOutput, error) {
 
 	res := C.ml_vlm_generate(v.ptr, cInput, &cOutput)
 	if res < 0 {
+		// Check for context length exceeded error
+		if res == C.ML_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH {
+			return nil, ContextLimitExceededError{}
+		}
 		return nil, SDKError(res)
 	}
 
