@@ -15,7 +15,7 @@ var modelMapping = map[string]string{
 	"qwen3-4B-npu":  "NexaAI/qwen3-4B-npu",
 	"paddleocr-npu": "NexaAI/paddleocr-npu",
 	"yolov12-npu":   "NexaAI/yolov12-npu",
-	"parakeet-npu":  "NexaAI/parakeet-npu",
+	"parakeet-npu":  "NexaAI/parakeet-tdt-0.6b-v3-npu",
 	"llama3-1B-npu": "NexaAI/llama3-1B-npu",
 	"llama3-3B-npu": "NexaAI/llama3-3B-npu",
 

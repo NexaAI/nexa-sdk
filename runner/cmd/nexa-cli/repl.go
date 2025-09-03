@@ -511,7 +511,7 @@ func chooseModelTypeByName(modelName string) (types.ModelType, error) {
 
 	// Check for ASR models
 	asrSuffixes := []string{
-		"parakeet-npu",
+		"parakeet-npu", "parakeet-tdt-0.6b-v3-npu",
 	}
 	for _, suffix := range asrSuffixes {
 		if strings.HasSuffix(strings.ToLower(modelName), strings.ToLower(suffix)) {

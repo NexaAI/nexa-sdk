@@ -277,7 +277,7 @@ func NewASR(input AsrCreateInput) (*ASR, error) {
 		C.free(unsafe.Pointer(cInput.tokenizer_path))
 	}
 	basePath := filepath.Dir(input.ModelPath)
-	if strings.HasSuffix(basePath, "parakeet-npu") {
+	if strings.HasSuffix(basePath, "parakeet-tdt-0.6b-v3-npu") || strings.HasSuffix(basePath, "parakeet-npu") {
 		cInput.encoder_model_path = C.CString(filepath.Join(basePath, "weights-1-5.nexa"))
 		cInput.encoder_config_file_path = C.CString(filepath.Join(basePath, "files-1-2.nexa"))
 		cInput.decoder_model_path = C.CString(filepath.Join(basePath, "weights-2-5.nexa"))
