@@ -173,7 +173,13 @@ func inferLLM(plugin, modelfile string) {
 	repl(ReplConfig{
 		ParseFile: false,
 
-		Reset: p.Reset,
+		Reset: func() error {
+			err := p.Reset()
+			if err == nil {
+				history = nil
+			}
+			return err
+		},
 
 		SaveKVCache: func(path string) error {
 			_, err := p.SaveKVCache(nexa_sdk.LlmSaveKVCacheInput{Path: path})
@@ -182,6 +188,9 @@ func inferLLM(plugin, modelfile string) {
 
 		LoadKVCache: func(path string) error {
 			_, err := p.LoadKVCache(nexa_sdk.LlmLoadKVCacheInput{Path: path})
+			if err == nil {
+				history = nil
+			}
 			return err
 		},
 
@@ -241,14 +250,12 @@ func inferVLM(plugin, modelfile string, mmprojfile string, tokenizerfile string)
 	repl(ReplConfig{
 		ParseFile: true,
 
-		Reset: p.Reset,
-
-		SaveKVCache: func(path string) error {
-			return fmt.Errorf("VLM does not support KV cache saving")
-		},
-
-		LoadKVCache: func(path string) error {
-			return fmt.Errorf("VLM does not support KV cache loading")
+		Reset: func() error {
+			err := p.Reset()
+			if err == nil {
+				history = nil
+			}
+			return err
 		},
 
 		Run: func(prompt string, images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
