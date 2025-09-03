@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/charmbracelet/huh"
 	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/text"
@@ -178,29 +177,11 @@ func inferLLM(plugin, modelfile string) {
 
 		SaveKVCache: func(path string) error {
 			_, err := p.SaveKVCache(nexa_sdk.LlmSaveKVCacheInput{Path: path})
-			if err != nil {
-				return err
-			}
-
-			hisData, _ := sonic.Marshal(history) // won't fail
-			return os.WriteFile(path+".chat.json", hisData, 0644)
+			return err
 		},
 
 		LoadKVCache: func(path string) error {
-			var tempHistory []nexa_sdk.LlmChatMessage
-
-			hisData, err := os.ReadFile(path + ".chat.json")
-			if err != nil {
-				return err
-			}
-			err = sonic.Unmarshal(hisData, &tempHistory)
-			if err != nil {
-				return err
-			}
-			_, err = p.LoadKVCache(nexa_sdk.LlmLoadKVCacheInput{Path: path})
-			if err == nil {
-				history = tempHistory
-			}
+			_, err := p.LoadKVCache(nexa_sdk.LlmLoadKVCacheInput{Path: path})
 			return err
 		},
 
