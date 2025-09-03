@@ -41,28 +41,55 @@ func setRuntimeEnv() {
 		}
 	}
 
-	llmBackend := "qwen3"
-	for _, arg := range os.Args[1:] {
-		if strings.Contains(arg, "qwen3-4B-npu") {
-			llmBackend = "qwen3-4B"
-			break
-		} else if strings.Contains(arg, "llama3-1B-npu") {
-			llmBackend = "llama3-1B"
-			break
-		} else if strings.Contains(arg, "llama3-3B-npu") {
-			llmBackend = "llama3-3B"
-			break
+	// LLM backend mapping - if any of these model names are found in args, use the corresponding backend
+	llmBackendMap := map[string][]string{
+		"qwen3-4B": {
+			"qwen3-4B-npu",
+			"jan-v1-4B-npu",
+			"Qwen3-4B-Thinking-2507-npu",
+			"Qwen3-4B-Instruct-2507-npu",
+		},
+		"llama3-3B-turbo": {
+			"Llama3.2-3B-NPU-Turbo",
+		},
+		"llama3-3B": {
+			"Llama3.2-3B-NPU",
+		},
+	}
+
+	llmBackend := "qwen3" // default backend
+	for backend, modelNames := range llmBackendMap {
+		for _, arg := range os.Args[1:] {
+			for _, modelName := range modelNames {
+				if strings.Contains(arg, modelName) {
+					llmBackend = backend
+					goto foundLLMBackend
+				}
+			}
 		}
 	}
+foundLLMBackend:
 	llmBackend = filepath.Join(baseDir, llmBackend)
 
-	cvBackend := "yolov12"
-	for _, arg := range os.Args[1:] {
-		if strings.Contains(arg, "paddleocr-npu") {
-			cvBackend = "paddleocr"
-			break
+	// CV backend mapping
+	cvBackendMap := map[string][]string{
+		"paddleocr": {
+			"paddleocr-npu",
+		},
+	}
+
+	cvBackend := "yolov12" // default backend
+	for backend, modelNames := range cvBackendMap {
+		for _, arg := range os.Args[1:] {
+			for _, modelName := range modelNames {
+				if strings.Contains(arg, modelName) {
+					cvBackend = backend
+					goto foundCVBackend
+				}
+			}
 		}
 	}
+foundCVBackend:
 	cvBackend = filepath.Join(baseDir, cvBackend)
 
 	switch runtime.GOOS {
