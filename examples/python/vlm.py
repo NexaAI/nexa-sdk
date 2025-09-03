@@ -111,6 +111,11 @@ def main():
             print(token, end="", flush=True)
             strbuff.write(token)
 
+        # Get profiling data
+        profiling_data = instance.get_profiling_data()
+        if profiling_data is not None:
+            print(profiling_data)
+
         conversation.append(MultiModalMessage(role="assistant", content=[MultiModalMessageContent(type="text", text=strbuff.getvalue())]))
 
 
