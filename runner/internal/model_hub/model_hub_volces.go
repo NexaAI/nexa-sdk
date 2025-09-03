@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -19,8 +17,6 @@ import (
 	"github.com/aws/smithy-go/logging"
 	"github.com/bytedance/sonic"
 	"resty.dev/v3"
-
-	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 )
 
 type Vocles struct {
@@ -122,7 +118,7 @@ func (d *Vocles) CheckAvailable(ctx context.Context, modelName string) error {
 	return nil
 }
 
-func (d *Vocles) ModelInfo(ctx context.Context, modelName string) ([]string, error) {
+func (d *Vocles) ModelInfo(ctx context.Context, modelName string) ([]ModelFileInfo, error) {
 	modelName = strings.ReplaceAll(modelName, "NexaAI/", "model/") + "/"
 
 	data, err := d.s3Client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
@@ -133,106 +129,116 @@ func (d *Vocles) ModelInfo(ctx context.Context, modelName string) ([]string, err
 		return nil, err
 	}
 
-	res := make([]string, len(data.Contents))
+	res := make([]ModelFileInfo, len(data.Contents))
 	for i, item := range data.Contents {
-		res[i] = strings.TrimPrefix(*item.Key, modelName)
+		res[i] = ModelFileInfo{
+			Name: strings.TrimPrefix(*item.Key, modelName),
+			Size: *item.Size,
+		}
 	}
 	return res, nil
 }
 
-func (d *Vocles) FileSize(ctx context.Context, modelName, fileName string) (int64, error) {
+func (d *Vocles) GetFileContent(ctx context.Context, modelName, fileName string, offset, limit int64, writer io.Writer) error {
 	name := strings.ReplaceAll(modelName, "NexaAI/", "model/") + "/" + fileName
 
-	data, err := d.s3Client.GetObject(ctx, &s3.GetObjectInput{
+	slog.Debug("Vocles GetFileContent", "modelName", modelName, "fileName", fileName, "offset", offset, "limit", limit)
+
+	input := &s3.GetObjectInput{
 		Bucket: aws.String("nexa-model-hub-bucket"),
 		Key:    aws.String(name),
-	})
-
-	if err != nil {
-		return 0, err
 	}
 
-	return *data.ContentLength, nil
-}
+	if limit > 0 {
+		input.Range = aws.String(fmt.Sprintf("bytes=%d-%d", offset, offset+limit-1))
+	} else if offset > 0 {
+		input.Range = aws.String(fmt.Sprintf("bytes=%d-", offset))
+	}
 
-func (d *Vocles) GetQuantInfo(ctx context.Context, modelName string) (int, error) {
-	return -1, errNotSupported
-}
-
-func (d *Vocles) StartDownload(ctx context.Context, modelName, outputPath string, files []string) (chan types.DownloadInfo, chan error) {
-	slog.Debug("Vocles StartDownload", "modelName", modelName, "outputPath", outputPath, "files", files)
-
-	resCh := make(chan types.DownloadInfo, 8)
-	errCh := make(chan error, 1)
-
-	go func() {
-		progressCh := make(chan int64, 8)
-		defer close(progressCh)
-
-		go func() {
-			defer close(errCh)
-			defer close(resCh)
-
-			var info types.DownloadInfo
-			for p := range progressCh {
-				info.TotalDownloaded += p
-				/// info.TotalSize = 0 // TODO: get total size
-				resCh <- info
-			}
-		}()
-
-		for _, file := range files {
-			input := strings.ReplaceAll(modelName, "NexaAI/", "model/") + "/" + file
-			if err := d.downloadFile(ctx, input, filepath.Join(outputPath, file), progressCh); err != nil {
-				errCh <- err
-				return
-			}
-		}
-	}()
-	return resCh, errCh
-}
-
-func (d *Vocles) downloadFile(ctx context.Context, input, output string, progress chan int64) error {
-	slog.Debug("Vocles Download", "input", input, "output", output)
-
-	// download from volces
-	data, err := d.s3Client.GetObject(ctx, &s3.GetObjectInput{
-		Bucket: aws.String("nexa-model-hub-bucket"),
-		Key:    aws.String(input),
-	})
-
+	data, err := d.s3Client.GetObject(ctx, input)
 	if err != nil {
 		return err
 	}
 	defer data.Body.Close()
 
-	if err := os.MkdirAll(filepath.Dir(output), 0o755); err != nil {
-		return err
-	}
-
-	outFile, err := os.OpenFile(output, os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer outFile.Close()
-
-	err = outFile.Truncate(*data.ContentLength)
-	if err != nil {
-		return err
-	}
-
-	for {
-		n, err := io.CopyN(outFile, data.Body, 4*1024*1024) // update progress every 4MB
-
-		if err == io.EOF {
-			progress <- n
-			return nil
-		}
-
-		if err != nil {
-			return err
-		}
-
-		progress <- n
-	}
+	_, err = io.Copy(writer, data.Body)
+	return err
 }
+
+// func (d *Vocles) StartDownload(ctx context.Context, modelName, outputPath string, files []string) (chan types.DownloadInfo, chan error) {
+// 	slog.Debug("Vocles StartDownload", "modelName", modelName, "outputPath", outputPath, "files", files)
+//
+// 	resCh := make(chan types.DownloadInfo, 8)
+// 	errCh := make(chan error, 1)
+//
+// 	go func() {
+// 		progressCh := make(chan int64, 8)
+// 		defer close(progressCh)
+//
+// 		go func() {
+// 			defer close(errCh)
+// 			defer close(resCh)
+//
+// 			var info types.DownloadInfo
+// 			for p := range progressCh {
+// 				info.TotalDownloaded += p
+// 				/// info.TotalSize = 0 // TODO: get total size
+// 				resCh <- info
+// 			}
+// 		}()
+//
+// 		for _, file := range files {
+// 			input := strings.ReplaceAll(modelName, "NexaAI/", "model/") + "/" + file
+// 			if err := d.downloadFile(ctx, input, filepath.Join(outputPath, file), progressCh); err != nil {
+// 				errCh <- err
+// 				return
+// 			}
+// 		}
+// 	}()
+// 	return resCh, errCh
+// }
+//
+// func (d *Vocles) downloadFile(ctx context.Context, input, output string, progress chan int64) error {
+// 	slog.Debug("Vocles Download", "input", input, "output", output)
+//
+// 	// download from volces
+// 	data, err := d.s3Client.GetObject(ctx, &s3.GetObjectInput{
+// 		Bucket: aws.String("nexa-model-hub-bucket"),
+// 		Key:    aws.String(input),
+// 	})
+//
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer data.Body.Close()
+//
+// 	if err := os.MkdirAll(filepath.Dir(output), 0o755); err != nil {
+// 		return err
+// 	}
+//
+// 	outFile, err := os.OpenFile(output, os.O_CREATE|os.O_WRONLY, 0644)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer outFile.Close()
+//
+// 	err = outFile.Truncate(*data.ContentLength)
+// 	if err != nil {
+// 		return err
+// 	}
+//
+// 	for {
+// 		n, err := io.CopyN(outFile, data.Body, 4*1024*1024) // update progress every 4MB
+//
+// 		if err == io.EOF {
+// 			progress <- n
+// 			return nil
+// 		}
+//
+// 		if err != nil {
+// 			return err
+// 		}
+//
+// 		progress <- n
+// 	}
+// }

@@ -50,7 +50,7 @@ func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]string, err
 		} `json:"siblings"`
 	}{}
 	_, err := d.client.R().
-		// EnableDebug().
+		EnableDebug().
 		SetAuthToken(config.Get().HFToken).
 		SetResult(&info).
 		Get(fmt.Sprintf("%s/api/models/%s", HF_ENDPOINT, name))

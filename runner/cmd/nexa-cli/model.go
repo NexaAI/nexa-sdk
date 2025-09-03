@@ -60,7 +60,6 @@ func pull() *cobra.Command {
 			if err != nil {
 				return
 			}
-			// TODO: replace with go-pretty
 			pgCh, errCh := s.PullExtraQuant(context.TODO(), *mf, *newManifest)
 			bar := render.NewProgressBar(newManifest.GetSize()-mf.GetSize(), "downloading")
 
