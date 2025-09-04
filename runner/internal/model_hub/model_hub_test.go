@@ -16,13 +16,13 @@ func TestMain(m *testing.M) {
 	})))
 
 	// only test huggingface
-	// hubs = hubs[1:]
+	hubs = hubs[1:]
 
 	os.Exit(m.Run())
 }
 
 func TestModelInfo(t *testing.T) {
-	data, err := ModelInfo(context.Background(), "NexaAI/OmniNeural-4B")
+	data, _, err := ModelInfo(context.Background(), "NexaAI/OmniNeural-4B")
 	if err != nil {
 		t.Error(err)
 	}
@@ -30,7 +30,7 @@ func TestModelInfo(t *testing.T) {
 }
 
 func TestGetFileContent(t *testing.T) {
-	data, err := GetFileContent(context.Background(), "NexaAI/OmniNeural-4B", "assets/PC_Demo_Agent.mov")
+	data, err := GetFileContent(context.Background(), "NexaAI/OmniNeural-4B", ".gitattributes")
 	if err != nil {
 		t.Error(err)
 		return
@@ -40,7 +40,7 @@ func TestGetFileContent(t *testing.T) {
 }
 
 func TestDownload(t *testing.T) {
-	files, err := ModelInfo(context.Background(), "NexaAI/OmniNeural-4B")
+	files, _, err := ModelInfo(context.Background(), "NexaAI/OmniNeural-4B")
 	if err != nil {
 		t.Error(err)
 		return

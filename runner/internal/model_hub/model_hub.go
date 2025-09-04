@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
+	"github.com/bytedance/sonic"
 )
 
 type ModelFileInfo struct {
@@ -28,7 +29,7 @@ type ModelHub interface {
 
 var hubs = []ModelHub{
 	NewVocles(),
-	//NewHuggingFace(),
+	NewHuggingFace(),
 }
 
 var errNotAvailable = fmt.Errorf("no available model hub")
@@ -50,8 +51,31 @@ func ModelInfo(ctx context.Context, modelName string) ([]ModelFileInfo, *types.M
 			return nil, nil, err
 		}
 
-		// if !slices.Contains(files, "nexa.manifest") {
-		// }
+		// parse manifest if exists
+		const manifestFile = "nexa.manifest"
+		var hasManifest bool
+		for i := 0; i < len(files); i++ {
+			if files[i].Name == manifestFile {
+				files = append(files[:i], files[i+1:]...)
+				hasManifest = true
+				break
+			}
+		}
+		if hasManifest {
+			data, err := GetFileContent(ctx, modelName, manifestFile)
+			if err != nil {
+				slog.Warn("failed to get manifest file, ignore", "error", err)
+				break
+			}
+
+			var manifest types.ModelManifest
+			if err := sonic.Unmarshal(data, &manifest); err != nil {
+				slog.Warn("failed to parse manifest file, ignore", "error", err)
+				break
+			}
+
+			return files, &manifest, nil
+		}
 
 		return files, nil, nil
 

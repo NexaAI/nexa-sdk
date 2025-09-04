@@ -57,19 +57,32 @@ func runFunc(cmd *cobra.Command, args []string) {
 			// download manifest
 			spin := render.NewSpinner("download manifest from: " + model)
 			spin.Start()
-			files, err := model_hub.ModelInfo(context.TODO(), model)
+			files, hmf, err := model_hub.ModelInfo(context.TODO(), model)
 			spin.Stop()
 			if err != nil {
 				fmt.Println(render.GetTheme().Error.Sprintf("Get manifest from huggingface error: %s", err))
 				return
 			}
 
-			modelType, err := chooseModelType()
-			if err != nil {
-				return
+			var manifest types.ModelManifest
+
+			if hmf != nil {
+				manifest.PluginId = hmf.PluginId
+				manifest.ModelType = hmf.ModelType
 			}
 
-			manifest, err := chooseFiles(model, files)
+			if manifest.PluginId == "" {
+				manifest.PluginId = choosePluginId(model)
+			}
+			if manifest.ModelType == "" {
+				if ctype, err := chooseModelType(); err != nil {
+					return
+				} else {
+					manifest.ModelType = ctype
+				}
+			}
+
+			err = chooseFiles(model, files, &manifest)
 			if err != nil {
 				return
 			}
@@ -77,7 +90,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			var raw *http.Response
 			err = client.Post(context.TODO(), "/models", nil, &raw,
 				option.WithJSONSet("Name", manifest.Name),
-				option.WithJSONSet("ModelType", modelType),
+				option.WithJSONSet("ModelType", manifest.ModelType),
 				option.WithJSONSet("ModelFile", manifest.ModelFile),
 				option.WithJSONSet("MMProjFile", manifest.MMProjFile),
 				option.WithJSONSet("ExtraFiles", manifest.ExtraFiles),

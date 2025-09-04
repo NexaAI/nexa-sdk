@@ -82,7 +82,7 @@ func (d *HTTPDownloader) Download(ctx context.Context, url, outputPath string, p
 			go func(start, end int64) {
 				defer wg.Done()
 				defer func() { <-sem }()
-				if err := d.downloadChunk(cancelCtx, url, outputPath, start, end, progress); err != nil {
+				if err := d.DownloadChunk(cancelCtx, url, outputPath, start, end, progress); err != nil {
 					select { // non-blocking send error
 					case errCh <- err:
 						slog.Error("Download chunk failed", "start", start, "end", end, "error", err)
@@ -204,7 +204,7 @@ func calcChunkSize(totalSize int64) int64 {
 }
 
 // TODO: ctx not work for fasthttp
-func (d *HTTPDownloader) downloadChunk(_ context.Context, url, outputPath string, start, end int64, progress chan int64) error {
+func (d *HTTPDownloader) DownloadChunk(_ context.Context, url, outputPath string, start, end int64, progress chan int64) error {
 	req := fasthttp.AcquireRequest()
 	resp := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseRequest(req)
