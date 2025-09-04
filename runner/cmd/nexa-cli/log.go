@@ -3,6 +3,9 @@ package main
 import (
 	"io"
 	"log/slog"
+	"os"
+
+	"github.com/lmittmann/tint"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/config"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
@@ -18,19 +21,24 @@ const (
 )
 
 func applyLogLevel() {
+	options := tint.Options{AddSource: true}
+
 	switch config.Get().Log {
 	case LogLevelNone:
 		slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
+		return
 	case LogLevelTrace:
 		nexa_sdk.EnableBridgeLog(true)
-		slog.SetLogLoggerLevel(slog.LevelDebug)
+		options.Level = slog.LevelDebug
 	case LogLevelDebug:
-		slog.SetLogLoggerLevel(slog.LevelDebug)
+		options.Level = slog.LevelDebug
 	case LogLevelInfo:
-		slog.SetLogLoggerLevel(slog.LevelInfo)
+		options.Level = slog.LevelInfo
 	case LogLevelWarn:
-		slog.SetLogLoggerLevel(slog.LevelWarn)
+		options.Level = slog.LevelWarn
 	case LogLevelError:
-		slog.SetLogLoggerLevel(slog.LevelError)
+		options.Level = slog.LevelError
 	}
+
+	slog.SetDefault(slog.New(tint.NewHandler(os.Stderr, &options)))
 }
