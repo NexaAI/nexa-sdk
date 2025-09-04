@@ -307,6 +307,16 @@ func repl(cfg ReplConfig) {
 			}
 
 			switch token {
+			case "<think>":
+				state = STATE_THINK_MESSAGE
+				render.GetTheme().Set(render.GetTheme().ThinkOutput)
+			case "</think>":
+				defer func() {
+					state = STATE_NORMAL_MESSAGE
+					render.GetTheme().Set(render.GetTheme().ModelOutput)
+				}()
+
+				// gpt-oss
 			case "<|channel|>":
 				if state == STATE_ASSISTANT {
 					state = STATE_CHANNEL
@@ -314,22 +324,22 @@ func repl(cfg ReplConfig) {
 			case "<|message|>":
 				switch state {
 				case STATE_ANALYSIS:
-					if !hidethinking {
-						render.GetTheme().Set(render.GetTheme().ThinkOutput)
-						fmt.Print("<think>\n")
-					}
 					state = STATE_THINK_MESSAGE
+					render.GetTheme().Set(render.GetTheme().ThinkOutput)
+					token = "<think>\n"
 				case STATE_FINAL:
 					state = STATE_NORMAL_MESSAGE
+					render.GetTheme().Set(render.GetTheme().ModelOutput)
+					token = ""
 				}
 			case "<|end|>":
 				switch state {
 				case STATE_THINK_MESSAGE:
-					if !hidethinking {
-						fmt.Print("\n</think>\n\n")
-						render.GetTheme().Set(render.GetTheme().ModelOutput)
-					}
-					state = STATE_START
+					defer func() {
+						state = STATE_START
+					}()
+					token = "\n</think>\n\n"
+
 				case STATE_NORMAL_MESSAGE:
 					state = STATE_START
 				}
@@ -347,10 +357,10 @@ func repl(cfg ReplConfig) {
 				if state == STATE_CHANNEL {
 					state = STATE_FINAL
 				}
-			default:
-				if state == STATE_NORMAL_MESSAGE || !hidethinking {
-					fmt.Print(token)
-				}
+			}
+
+			if state == STATE_NORMAL_MESSAGE || (!hidethinking && state == STATE_THINK_MESSAGE) {
+				fmt.Print(token)
 			}
 
 			return ctx.Err() == nil
