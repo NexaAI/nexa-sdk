@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -43,7 +42,6 @@ func setRuntimeEnv() {
 	}
 
 	// LLM backend mapping - if any of these model names are found in args, use the corresponding backend
-	fmt.Println("os.Args[1:]", os.Args[1:])
 	llmBackendMap := map[string][]string{
 		"qwen3-4B": {
 			"qwen3-4B-npu",
@@ -65,7 +63,6 @@ func setRuntimeEnv() {
 			for _, modelName := range modelNames {
 				if strings.Contains(arg, modelName) {
 					llmBackend = backend
-					fmt.Println("llmBackend", llmBackend)
 					goto foundLLMBackend
 				}
 			}
