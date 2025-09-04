@@ -15,6 +15,7 @@ require (
 	github.com/gookit/color v1.5.4
 	github.com/hashicorp/go-version v1.7.0
 	github.com/jedib0t/go-pretty/v6 v6.6.7
+	github.com/lmittmann/tint v1.1.2
 	github.com/ollama/ollama v0.9.5
 	github.com/openai/openai-go v1.6.0
 	github.com/schollz/progressbar/v3 v3.18.0

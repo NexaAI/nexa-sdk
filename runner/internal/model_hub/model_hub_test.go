@@ -5,10 +5,19 @@ import (
 	"log/slog"
 	"os"
 	"testing"
+
+	"github.com/lmittmann/tint"
 )
 
 func TestMain(m *testing.M) {
-	slog.SetLogLoggerLevel(slog.LevelDebug)
+	slog.SetDefault(slog.New(tint.NewHandler(os.Stderr, &tint.Options{
+		AddSource: true,
+		Level:     slog.LevelDebug,
+	})))
+
+	// only test huggingface
+	// hubs = hubs[1:]
+
 	os.Exit(m.Run())
 }
 
@@ -29,7 +38,6 @@ func TestFileSize(t *testing.T) {
 }
 
 func TestDownload(t *testing.T) {
-	//hubs = hubs[1:] // only test huggingface
 	files := []string{"weights-1-8.nexa", "weights-2-8.nexa", "weights-3-8.nexa", "weights-4-8.nexa", "weights-5-8.nexa", "weights-6-8.nexa", "weights-7-8.nexa", "weights-8-8.nexa"}
 	resCh, errCh := StartDownload(context.Background(), "NexaAI/OmniNeural-4B", "/tmp/OmniNeural-4B", files)
 	for p := range resCh {
