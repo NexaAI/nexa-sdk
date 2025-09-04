@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
@@ -20,7 +21,6 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/image/draw"
 
-	"github.com/NexaAI/nexa-sdk/runner/internal/record"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
@@ -294,8 +294,18 @@ func ImageResizeAndPad(path string, dstW, dstH int, bgColor color.Color) (string
 }
 
 func AudiosCombiningSampling(inputs []string, sampleRate int, channels int) (string, error) {
-	if _, err := exec.LookPath("sox"); err != nil {
-		record.TipInstallSox()
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		fmt.Println(render.GetTheme().Warning.Sprintf("ffmpeg is not installed. Try:"))
+		switch runtime.GOOS {
+		case "darwin":
+			fmt.Println(render.GetTheme().Warning.Sprintf("  brew install ffmpeg"))
+		case "linux":
+			fmt.Println(render.GetTheme().Warning.Sprintf("  sudo apt install ffmpeg"))
+		case "windows":
+			fmt.Println(render.GetTheme().Warning.Sprintf("  winget install BtbN.FFmpeg.GPL -e"))
+		default:
+			fmt.Println(render.GetTheme().Warning.Sprintf("Please install it manually for your OS: %s\n", runtime.GOOS))
+		}
 		return "", err
 	}
 
@@ -306,17 +316,28 @@ func AudiosCombiningSampling(inputs []string, sampleRate int, channels int) (str
 	output := tmpFile.Name()
 	tmpFile.Close()
 
-	args := append(inputs,
-		"-r", fmt.Sprintf("%d", sampleRate),
-		"-c", fmt.Sprintf("%d", channels),
-		output,
-	)
+	listFile, err := os.CreateTemp("", "concat-*.txt")
+	if err != nil {
+		return "", fmt.Errorf("create concat list: %w", err)
+	}
+	for _, f := range inputs {
+		fmt.Fprintf(listFile, "file '%s'\n", f)
+	}
+	listFile.Close()
 
-	cmd := exec.Command("sox", args...)
+	args := []string{
+		"-f", "concat", "-safe", "0", "-hide_banner", "-loglevel", "error", "-y",
+		"-i", listFile.Name(),
+		"-ar", fmt.Sprintf("%d", sampleRate),
+		"-ac", fmt.Sprintf("%d", channels),
+		output,
+	}
+
+	cmd := exec.Command("ffmpeg", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("sox combine: %w", err)
+		return "", fmt.Errorf("ffmpeg combine: %w", err)
 	}
 
 	return output, nil
