@@ -570,6 +570,10 @@ func inferASR(plugin, modelfile string, tokenizerPath string) {
 			if len(audios) == 0 {
 				return "", nexa_sdk.ProfileData{}, errors.New("no audio file provided")
 			}
+			audio, err := AudiosCombiningSampling(audios, 16000, 1)
+			if err != nil {
+				return "", nexa_sdk.ProfileData{}, err
+			}
 
 			asrConfig := &nexa_sdk.ASRConfig{
 				Timestamps: "segment",
@@ -578,12 +582,12 @@ func inferASR(plugin, modelfile string, tokenizerPath string) {
 			}
 
 			transcribeInput := nexa_sdk.AsrTranscribeInput{
-				AudioPath: audios[0],
+				AudioPath: audio,
 				Language:  language,
 				Config:    asrConfig,
 			}
 
-			fmt.Println(render.GetTheme().Success.Sprintf("Transcribing audio file: %s", audios[0]))
+			fmt.Println(render.GetTheme().Success.Sprintf("Transcribing audio file: %s", audio))
 
 			result, err := p.Transcribe(transcribeInput)
 			if err != nil {
