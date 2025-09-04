@@ -37,7 +37,6 @@ var help = [][2]string{
 	{"/mic", "Record audio for transcription"},
 }
 
-// LLM, VLM
 type ReplConfig struct {
 	ParseFile bool
 
@@ -62,34 +61,7 @@ func (cfg *ReplConfig) fill() {
 	}
 }
 
-func printProfile(pd nexa_sdk.ProfileData) {
-	var text string
-
-	if pd.AudioDuration > 0 { // ASR TTS
-		text = fmt.Sprintf("processing_time %.2fs  |  audio_duration %.2fs  |  RTF %.2f (%.1fx realtime)",
-			float64(pd.TotalTimeUs())/1e6,
-			float64(pd.AudioDuration)/1e6,
-			pd.RealTimeFactor,
-			1.0/pd.RealTimeFactor)
-
-	} else if pd.DecodingSpeed != 0 {
-		text = fmt.Sprintf("— %.1f tok/s • %d tok • %.1f s first token -",
-			pd.DecodingSpeed,
-			pd.GeneratedTokens,
-			float64(pd.TTFT)/1e6)
-
-	} else {
-		if pd.TotalTimeUs() != 0 {
-			text = fmt.Sprintf("- %.1f s -",
-				float64(pd.TotalTimeUs())/1e6,
-			)
-		}
-	}
-
-	fmt.Print(render.GetTheme().Profile.Sprint(text))
-	fmt.Println()
-	fmt.Println()
-}
+// ========= repl tool ========
 
 type MultilineState int
 
@@ -289,22 +261,14 @@ func repl(cfg ReplConfig) {
 		audios = append(audios, recordAudios...)
 		recordAudios = nil // clear after use
 
+		state := STATE_ASSISTANT
 		_, profileData, err := cfg.Run(line, images, audios, func(token string) bool {
 			if firstToken {
 				spin.Stop()
 				firstToken = false
 			}
 
-			switch token {
-			case "<think>":
-				render.GetTheme().Set(render.GetTheme().ThinkOutput)
-				fmt.Print(token)
-			case "</think>":
-				fmt.Print(token)
-				render.GetTheme().Set(render.GetTheme().ModelOutput)
-			default:
-				fmt.Print(token)
-			}
+			fsmEvent(&state, token)
 
 			return ctx.Err() == nil
 		})
@@ -312,7 +276,6 @@ func repl(cfg ReplConfig) {
 		// reset spin when no token received
 		if firstToken {
 			spin.Stop()
-			firstToken = false
 		}
 
 		// reset color
@@ -329,7 +292,116 @@ func repl(cfg ReplConfig) {
 	}
 }
 
-// =============== file name parse ===============
+// print profile data
+
+func printProfile(pd nexa_sdk.ProfileData) {
+	var text string
+
+	if pd.AudioDuration > 0 { // ASR TTS
+		text = fmt.Sprintf("processing_time %.2fs  |  audio_duration %.2fs  |  RTF %.2f (%.1fx realtime)",
+			float64(pd.TotalTimeUs())/1e6,
+			float64(pd.AudioDuration)/1e6,
+			pd.RealTimeFactor,
+			1.0/pd.RealTimeFactor)
+
+	} else if pd.DecodingSpeed != 0 {
+		text = fmt.Sprintf("— %.1f tok/s • %d tok • %.1f s first token -",
+			pd.DecodingSpeed,
+			pd.GeneratedTokens,
+			float64(pd.TTFT)/1e6)
+
+	} else {
+		if pd.TotalTimeUs() != 0 {
+			text = fmt.Sprintf("- %.1f s -",
+				float64(pd.TotalTimeUs())/1e6,
+			)
+		}
+	}
+
+	fmt.Print(render.GetTheme().Profile.Sprint(text))
+	fmt.Println()
+	fmt.Println()
+}
+
+// output parse
+
+const (
+	STATE_ASSISTANT = iota // init state
+	STATE_THINK
+	STATE_NORMAL
+
+	STATE_START
+	STATE_CHANNEL
+	STATE_ANALYSIS
+	STATE_FINAL
+	STATE_END
+)
+
+var fsm = map[[2]any][2]any{
+	// normal
+	{STATE_ASSISTANT, "<think>"}: {STATE_THINK, thinkStart(false)},
+	{STATE_THINK, "</think>"}:    {STATE_NORMAL, thinkEnd(false)},
+
+	// gpt-oss
+	{STATE_ASSISTANT, "<|channel|>"}: {STATE_CHANNEL, nil},
+	{STATE_CHANNEL, "analysis"}:      {STATE_ANALYSIS, nil},
+	{STATE_CHANNEL, "final"}:         {STATE_FINAL, nil},
+	{STATE_ANALYSIS, "<|message|>"}:  {STATE_THINK, thinkStart(true)},
+	{STATE_FINAL, "<|message|>"}:     {STATE_NORMAL, nil},
+	{STATE_THINK, "<|end|>"}:         {STATE_END, thinkEnd(true)},
+	{STATE_NORMAL, "<|end|>"}:        {STATE_END, nil},
+	{STATE_END, "<|start|>"}:         {STATE_START, nil},
+	{STATE_START, "assistant"}:       {STATE_ASSISTANT, nil},
+}
+
+var (
+	thinkSpin  = render.NewSpinner("thinking...")
+	thinkStart = func(extraLine bool) func() {
+		return func() {
+			if hideThink {
+				thinkSpin.Start()
+			} else {
+				render.GetTheme().Set(render.GetTheme().ThinkOutput)
+				if extraLine {
+					fmt.Print("<think>\n")
+				} else {
+					fmt.Print("<think>")
+				}
+			}
+		}
+	}
+	thinkEnd = func(extraLine bool) func() {
+		return func() {
+			if hideThink {
+				thinkSpin.Stop()
+			} else {
+				if extraLine {
+					fmt.Print("\n</think>\n\n")
+				} else {
+					fmt.Print("</think>")
+				}
+				render.GetTheme().Set(render.GetTheme().ModelOutput)
+			}
+		}
+	}
+)
+
+func fsmEvent(state *int, token string) {
+	next, ok := fsm[[2]any{*state, token}]
+	if ok {
+		*state = next[0].(int)
+		if next[1] != nil {
+			next[1].(func())()
+		}
+		return
+	}
+
+	if !(hideThink && *state == STATE_THINK) {
+		fmt.Print(token)
+	}
+}
+
+// file name parse
 
 var fileRegex = regexp.MustCompile(`(?:[a-zA-Z]:)?(?:\./|/|\\)[\S\\ ]+?\.(?i:jpg|jpeg|png|webp|mp3|wav)\b`)
 var partRegex = regexp.MustCompile(`-\d+-of-\d+\.gguf$`)
@@ -379,7 +451,8 @@ func parseFiles(prompt string) (string, []string, []string) {
 	return strings.TrimSpace(prompt), images, audios
 }
 
-// =============== quant name parse ===============
+// =============== user select ===============
+
 var quantRegix = regexp.MustCompile(`(` + strings.Join([]string{
 	"[fF][pP][0-9]+",                 // FP32, FP16, FP64
 	"[fF][0-9]+",                     // F64, F32, F16
