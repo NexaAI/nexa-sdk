@@ -7,9 +7,9 @@ ifeq ($(OS), Windows_NT)
     EXT     := dll
     EXE     := .exe
 
-    RM_FILE := del /f /q
-    RM_DIR  := rmdir /s /q
-    MKDIR   := mkdir
+    RM_FILE := cmd /c del /f /q
+    RM_DIR  := cmd /c rmdir /s /q
+    MKDIR   := cmd /c mkdir
 else
     UNAME := $(shell uname -s)
     ARCH  := $(shell uname -m)
