@@ -28,6 +28,13 @@ func (s SDKError) Error() string {
 	return fmt.Sprintf("SDKError(%s)", C.GoString(C.ml_get_error_message(C.ml_ErrorCode(s))))
 }
 
+// ContextLimitExceededError represents a context length exceeded error
+type ContextLimitExceededError struct{}
+
+func (e ContextLimitExceededError) Error() string {
+	return "context length limit reached"
+}
+
 // Init initializes the Nexa SDK by calling the underlying C library initialization
 // This must be called before using any other SDK functions
 func Init() {

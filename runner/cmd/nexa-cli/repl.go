@@ -40,6 +40,7 @@ var help = [][2]string{
 // LLM, VLM
 type ReplConfig struct {
 	ParseFile bool
+	isASR     bool
 
 	Reset       func() error
 	SaveKVCache func(path string) error
@@ -264,7 +265,9 @@ func repl(cfg ReplConfig) {
 				if err = rec.Run(); err != nil {
 					fmt.Println(render.GetTheme().Error.Sprintf("Failed to start recording: %s", err))
 					fmt.Println()
-					continue
+					if !cfg.isASR {
+						continue
+					}
 				}
 
 				recordAudios = append(recordAudios, rec.GetOutputFile())
@@ -275,7 +278,9 @@ func repl(cfg ReplConfig) {
 				fmt.Println()
 			}
 
-			continue
+			if !cfg.isASR {
+				continue
+			}
 		}
 
 		// run async
@@ -471,18 +476,51 @@ func chooseModelType() (types.ModelType, error) {
 }
 
 func chooseModelTypeByName(modelName string) (types.ModelType, error) {
-	// Hardcoded model type mapping for specific models
-	switch modelName {
-	case "nexaml/qwen3-npu", "nexaml/qwen3-4B-npu", "nexaml/qwen3-1.7B-npu-encrypt", "nexaml/qwen3-4B-npu-encrypt", "NexaAI/qwen3-1.7B-npu", "NexaAI/qwen3-4B-npu":
-		return types.ModelTypeLLM, nil
-	case "nexaml/omni-neural", "nexaml/omni-neural-npu-encrypt", "NexaAI/OmniNeural-4B":
-		return types.ModelTypeVLM, nil
-	case "nexaml/paddleocr-npu", "nexaml/yolov12-npu", "nexaml/paddleocr-npu-encrypt", "nexaml/yolov12-npu-encrypt", "NexaAI/paddleocr-npu", "NexaAI/yolov12-npu":
-		return types.ModelTypeCV, nil
-	default:
-		// Fallback to interactive selection for unknown models
-		return chooseModelType()
+	// Model type mapping using postfix matching
+
+	// Check for LLM models
+	llmSuffixes := []string{
+		"qwen3-npu", "qwen3-4B-npu", "Llama3.2-3B-NPU-Turbo", "qwen3-1.7B-npu", "Llama3.2-3B-NPU",
+		"Qwen3-4B-Instruct-2507-npu", "Qwen3-4B-Thinking-2507-npu", "jan-v1-4B-npu",
 	}
+	for _, suffix := range llmSuffixes {
+		if strings.HasSuffix(strings.ToLower(modelName), strings.ToLower(suffix)) {
+			return types.ModelTypeLLM, nil
+		}
+	}
+
+	// Check for VLM models
+	vlmSuffixes := []string{
+		"omni-neural", "omni-neural-npu", "OmniNeural-4B",
+	}
+	for _, suffix := range vlmSuffixes {
+		if strings.HasSuffix(strings.ToLower(modelName), strings.ToLower(suffix)) {
+			return types.ModelTypeVLM, nil
+		}
+	}
+
+	// Check for CV models
+	cvSuffixes := []string{
+		"paddleocr-npu", "yolov12-npu",
+	}
+	for _, suffix := range cvSuffixes {
+		if strings.HasSuffix(strings.ToLower(modelName), strings.ToLower(suffix)) {
+			return types.ModelTypeCV, nil
+		}
+	}
+
+	// Check for ASR models
+	asrSuffixes := []string{
+		"parakeet-npu", "parakeet-tdt-0.6b-v3-npu",
+	}
+	for _, suffix := range asrSuffixes {
+		if strings.HasSuffix(strings.ToLower(modelName), strings.ToLower(suffix)) {
+			return types.ModelTypeASR, nil
+		}
+	}
+
+	// Fallback to interactive selection for unknown models
+	return chooseModelType()
 }
 
 func chooseFiles(name string, files []string) (res types.ModelManifest, err error) {

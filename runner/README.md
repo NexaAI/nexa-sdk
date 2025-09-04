@@ -44,4 +44,4 @@ Build and Run
   - `paddleocr-sdk.dll -> paddleocr/yolov12-sdk.dll` **MUST RENAME**
 - run `make build`
 - set env token `$env:NEXA_HFTOKEN="hf_xxxxxxxxxxxxx"`
-- run `./build/nexa infer [nexaml/qwen3-4B-npu|nexaml/qwen3-npu|nexaml/omni-neural|nexaml/paddleocr-npu|nexaml/yolov12-npu]`
+- run `./build/nexa infer [huggingface model name]`

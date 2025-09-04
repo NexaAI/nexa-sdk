@@ -15,6 +15,9 @@ var modelMapping = map[string]string{
 	"qwen3-4B-npu":  "NexaAI/qwen3-4B-npu",
 	"paddleocr-npu": "NexaAI/paddleocr-npu",
 	"yolov12-npu":   "NexaAI/yolov12-npu",
+	"parakeet-npu":  "NexaAI/parakeet-tdt-0.6b-v3-npu",
+	"llama3-1B-npu": "NexaAI/llama3-1B-npu",
+	"llama3-3B-npu": "NexaAI/llama3-3B-npu",
 
 	"omni-neural-npu-encrypt": "nexaml/omni-neural-npu-encrypt",
 	"qwen3-1.7B-npu-encrypt":  "nexaml/qwen3-1.7B-npu-encrypt",

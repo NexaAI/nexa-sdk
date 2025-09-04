@@ -7,6 +7,8 @@ package nexa_sdk
 import "C"
 import (
 	"log/slog"
+	"path/filepath"
+	"strings"
 	"unsafe"
 )
 
@@ -267,6 +269,34 @@ func NewASR(input AsrCreateInput) (*ASR, error) {
 	cInput := input.toCPtr()
 	defer freeAsrCreateInput(cInput)
 
+	// Qnn
+	if cInput.model_path != nil {
+		C.free(unsafe.Pointer(cInput.model_path))
+	}
+	if cInput.tokenizer_path != nil {
+		C.free(unsafe.Pointer(cInput.tokenizer_path))
+	}
+	basePath := filepath.Dir(input.ModelPath)
+	if strings.HasSuffix(basePath, "parakeet-tdt-0.6b-v3-npu") || strings.HasSuffix(basePath, "parakeet-npu") {
+		cInput.encoder_model_path = C.CString(filepath.Join(basePath, "weights-1-5.nexa"))
+		cInput.encoder_config_file_path = C.CString(filepath.Join(basePath, "files-1-2.nexa"))
+		cInput.decoder_model_path = C.CString(filepath.Join(basePath, "weights-2-5.nexa"))
+		cInput.decoder_config_file_path = C.CString(filepath.Join(basePath, "files-1-2.nexa"))
+		cInput.jointer_model_path = C.CString(filepath.Join(basePath, "weights-3-5.nexa"))
+		cInput.jointer_config_file_path = C.CString(filepath.Join(basePath, "files-1-2.nexa"))
+		cInput.embed_weight_path = C.CString(filepath.Join(basePath, "weights-4-5.nexa"))
+		cInput.pos_emb_path = C.CString(filepath.Join(basePath, "weights-5-5.nexa"))
+		cInput.vocab_path = C.CString(filepath.Join(basePath, "files-2-2.nexa"))
+		cInput.audio_path = C.CString("")
+		cInput.verbose = C.bool(false)
+	}
+	cInput.system_library_path = C.CString(filepath.Join(getHtpPath(), "QnnSystem.dll"))
+	cInput.backend_library_path = C.CString(filepath.Join(getHtpPath(), "QnnHtp.dll"))
+	cInput.extension_library_path = C.CString(filepath.Join(getHtpPath(), "QnnHtpNetRunExtensions.dll"))
+	defer C.free(unsafe.Pointer(cInput.system_library_path))
+	defer C.free(unsafe.Pointer(cInput.backend_library_path))
+	defer C.free(unsafe.Pointer(cInput.extension_library_path))
+
 	var cHandle *C.ml_ASR
 	res := C.ml_asr_create(cInput, &cHandle)
 	if res < 0 {
@@ -308,6 +338,7 @@ func (a *ASR) Transcribe(input AsrTranscribeInput) (AsrTranscribeOutput, error) 
 	}
 
 	output := newAsrTranscribeOutputFromCPtr(&cOutput)
+
 	return output, nil
 }
 
