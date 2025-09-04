@@ -1,15 +1,9 @@
 BRIDGE_VERSION ?= v1.0.4
 
 ifeq ($(OS), Windows_NT)
-    OS      := windows
-    ARCH    ?= x86_64
-    LIB     :=
-    EXT     := dll
-    EXE     := .exe
-
-    RM_FILE := del /f /q
-    RM_DIR  := rmdir /s /q
-    MKDIR   := mkdir
+    OS   := windows
+    ARCH ?= x86_64
+	EXE  := .exe
 else
     UNAME := $(shell uname -s)
     ARCH  := $(shell uname -m)
@@ -22,11 +16,8 @@ else
         LIB := lib
         EXT := dylib
     endif
-    EXE     :=
 
-    RM_FILE := rm -f
-    RM_DIR  := rm -rf
-    MKDIR   := mkdir -p
+    EXE :=
 endif
 
 .PHONY: build link xcopy download clean
@@ -40,24 +31,24 @@ build:
 		./cmd/nexa-cli
 
 link: clean
-	$(MKDIR) build
+	mkdir -p build
 	@echo "====> Linking bridge lib to build"
 	cd build && ln -s ../../../nexasdk-bridge/build/out/* ./
 	cd nexa-sdk && ln -sf  ../../../nexasdk-bridge/modelfiles .
 
 xcopy: clean
-	$(MKDIR) build
+	mkdir -p build
 	xcopy ..\\..\\nexasdk-bridge\\build\\out\\* build /E /R /Y
 
 download: clean
-	$(MKDIR) build
+	mkdir -p build
 	@echo "====> Download runtime"
 	@echo "OS: $(OS)"
 	@echo "ARCH: $(ARCH)"
 	@echo "BRIDGE_VERSION: $(BRIDGE_VERSION)"
 	curl -L -o build/nexasdk-bridge.zip \
 		https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexasdk/$(BRIDGE_VERSION)/$(OS)_$(ARCH)/nexasdk-bridge.zip
-	cd build && unzip -q nexasdk-bridge.zip && $(RM_FILE) nexasdk-bridge.zip
+	cd build && unzip -q nexasdk-bridge.zip && rm -f nexasdk-bridge.zip
 
 clean:
-	-$(RM_DIR) build
+	rm -rf build
