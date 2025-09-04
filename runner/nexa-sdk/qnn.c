@@ -107,23 +107,23 @@ int32_t ml_imagegen_img2img(ml_ImageGen *handle,
   return -1;
 }
 
-// int32_t ml_asr_create(const ml_AsrCreateInput *input, ml_ASR **out_handle) {
-//   return -1;
-// }
+int32_t ml_asr_create(const ml_AsrCreateInput *input, ml_ASR **out_handle) {
+  return -1;
+}
 
-// int32_t ml_asr_destroy(ml_ASR *handle) { return -1; }
+int32_t ml_asr_destroy(ml_ASR *handle) { return -1; }
 
-// int32_t ml_asr_transcribe(ml_ASR *handle, const ml_AsrTranscribeInput *input,
-//                           ml_AsrTranscribeOutput *output) {
-//   return -1;
-// }
+int32_t ml_asr_transcribe(ml_ASR *handle, const ml_AsrTranscribeInput *input,
+                          ml_AsrTranscribeOutput *output) {
+  return -1;
+}
 
-// int32_t
-// ml_asr_list_supported_languages(const ml_ASR *handle,
-//                                 const ml_AsrListSupportedLanguagesInput *input,
-//                                 ml_AsrListSupportedLanguagesOutput *output) {
-//   return -1;
-// }
+int32_t
+ml_asr_list_supported_languages(const ml_ASR *handle,
+                                const ml_AsrListSupportedLanguagesInput *input,
+                                ml_AsrListSupportedLanguagesOutput *output) {
+  return -1;
+}
 
 int32_t ml_tts_create(const ml_TtsCreateInput *input, ml_TTS **out_handle) {
   return -1;
