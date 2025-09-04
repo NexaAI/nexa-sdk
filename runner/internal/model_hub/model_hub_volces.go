@@ -79,8 +79,8 @@ func (d *Vocles) checkChinaMainland() bool {
 }
 
 func (d *Vocles) initS3Client() {
-	key, _ := base64.StdEncoding.DecodeString("QUtMVE5qRmxNV001TjJRd1ltVm1OR05qWlRsaVl6ZGlZV0UxTnpBNE4yRm1Zak0=")
-	secret, _ := base64.StdEncoding.DecodeString("VDFkU2FsbHRUWHBPVkdjelRrUkplazVIV1ROWlYwbDRUbTFPYVZwVWF6Rk9la1Y2V1RKRmVrOUVUUT09")
+	key, _ := base64.StdEncoding.DecodeString("QUtMVFptWTNZbUkzTmpJMk1tWmpORGRtTVRsaFkyUmpZVFpoTm1SallXSTVOamM=")
+	secret, _ := base64.StdEncoding.DecodeString("VG1wamVVOVhWWGxPTWtwcFQwUnJlVTVIVVhoTlZHaHFXa2RXYVU1SFJUUk9hbFY0V1cxT2EwMXFUUT09")
 
 	cfg, err := config.LoadDefaultConfig(
 		context.TODO(),
