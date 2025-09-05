@@ -180,7 +180,7 @@ func StartDownload(ctx context.Context, modelName, outputPath string, files []Mo
 				}
 
 				// enqueue tasks
-				chunkSize := min(max(minChunkSize, f.Size/128), f.Size)
+				chunkSize := max(minChunkSize, f.Size/128)
 				slog.Info("Downlaod file", "name", f.Name, "size", f.Size, "chunkSize", chunkSize)
 				for task.Offset = 0; task.Offset < f.Size; task.Offset += chunkSize {
 					task.Limit = min(chunkSize, f.Size-task.Offset)
