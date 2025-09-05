@@ -69,7 +69,7 @@ func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileIn
 	for i := range info.Siblings {
 		wg.Add(1)
 		sem <- struct{}{}
-		go func() {
+		go func(i int) {
 			defer wg.Done()
 			defer func() { <-sem }()
 
@@ -85,7 +85,7 @@ func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileIn
 				Name: info.Siblings[i].RFileName,
 				Size: size,
 			}
-		}()
+		}(i)
 	}
 	wg.Wait()
 

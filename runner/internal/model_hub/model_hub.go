@@ -128,7 +128,7 @@ func StartDownload(ctx context.Context, modelName, outputPath string, files []Mo
 	var hub ModelHub
 	for _, h := range hubs {
 		if err := h.CheckAvailable(ctx, modelName); err != nil {
-			slog.Warn("hub not available, try next", "hub", hub, "err", err)
+			slog.Warn("hub not available, try next", "hub", reflect.TypeOf(hub), "err", err)
 		} else {
 			hub = h
 			break
