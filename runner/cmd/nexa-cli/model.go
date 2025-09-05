@@ -4,7 +4,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
+	"slices"
+	"sort"
+	"strings"
 
+	"github.com/bytedance/sonic"
+	"github.com/charmbracelet/huh"
 	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
@@ -12,6 +18,7 @@ import (
 	"github.com/NexaAI/nexa-sdk/runner/internal/model_hub"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
+	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 )
 
 // pull creates a command to download and cache a model by name.
@@ -48,7 +55,7 @@ func pull() *cobra.Command {
 
 		spin := render.NewSpinner("download manifest from: " + name)
 		spin.Start()
-		files, err := model_hub.ModelInfo(context.TODO(), name)
+		files, hmf, err := model_hub.ModelInfo(context.TODO(), name)
 		spin.Stop()
 		if err != nil {
 			fmt.Println(render.GetTheme().Error.Sprintf("Download manifest error: %s", err))
@@ -60,7 +67,6 @@ func pull() *cobra.Command {
 			if err != nil {
 				return
 			}
-			// TODO: replace with go-pretty
 			pgCh, errCh := s.PullExtraQuant(context.TODO(), *mf, *newManifest)
 			bar := render.NewProgressBar(newManifest.GetSize()-mf.GetSize(), "downloading")
 
@@ -74,17 +80,30 @@ func pull() *cobra.Command {
 				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 			}
 		} else {
-			modelType, err := chooseModelTypeByName(name)
-			if err != nil {
-				return
+			var manifest types.ModelManifest
+
+			if hmf != nil {
+				manifest.PluginId = hmf.PluginId
+				manifest.ModelType = hmf.ModelType
 			}
 
-			manifest, err := chooseFiles(name, files)
-			if err != nil {
-				return
+			if manifest.PluginId == "" {
+				manifest.PluginId = choosePluginId(name)
+			}
+			if manifest.ModelType == "" {
+				if ctype, err := chooseModelType(); err != nil {
+					fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
+					return
+				} else {
+					manifest.ModelType = ctype
+				}
 			}
 
-			manifest.ModelType = modelType
+			err := chooseFiles(name, files, &manifest)
+			if err != nil {
+				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
+				return
+			}
 
 			// TODO: replace with go-pretty
 			pgCh, errCh := s.Pull(context.TODO(), manifest)
@@ -181,4 +200,354 @@ func list() *cobra.Command {
 	}
 
 	return listCmd
+}
+
+// =============== quant name parse ===============
+var quantRegix = regexp.MustCompile(`(` + strings.Join([]string{
+	"[fF][pP][0-9]+",                 // FP32, FP16, FP64
+	"[fF][0-9]+",                     // F64, F32, F16
+	"[iI][0-9]+",                     // I64, I32, I16, I8
+	"[qQ][0-9]+(_[A-Za-z0-9]+)*",     // Q8_0, Q8_1, Q8_K, Q6_K, Q5_0, Q5_1, Q5_K, Q4_0, Q4_1, Q4_K, Q3_K, Q2_K
+	"[iI][qQ][0-9]+(_[A-Za-z0-9]+)*", // IQ4_NL, IQ4_XS, IQ3_S, IQ3_XXS, IQ2_XXS, IQ2_S, IQ2_XS, IQ1_S, IQ1_M
+	"[bB][fF][0-9]+",                 // BF16
+	"[0-9]+[bB][iI][tT]",             // 1bit, 2bit, 3bit, 4bit, 16bit, 1BIT, 16Bit, etc.
+}, "|") + `)`)
+
+// order big to small
+func quantGreaterThan(a, b string, order []string) bool {
+	// empty
+	if a == "" || b == "" {
+		return a != ""
+	}
+
+	a = strings.ToUpper(a)
+	b = strings.ToUpper(b)
+
+	// same
+	if a == b {
+		return false
+	}
+
+	// order
+	ca := slices.Index(order, a)
+	cb := slices.Index(order, b)
+	if ca >= 0 && cb >= 0 {
+		return ca < cb
+	} else if ca >= 0 || cb >= 0 {
+		return ca >= 0
+	}
+
+	// normal
+	if a[0] == b[0] {
+		return a > b
+	} else {
+		return a[0] == 'F'
+	}
+}
+
+func choosePluginId(name string) string {
+	switch {
+	case strings.Contains(name, "mlx"):
+		return "mlx"
+	case strings.Contains(name, "gemma-3n-cuda"):
+		return "nexa_cuda_ort_llama_cpp"
+	case strings.Contains(name, "gemma-3n"):
+		return "nexa_dml_llama_cpp"
+	case strings.Contains(name, "prefect-illustrious") || strings.Contains(name, "sdxl-base"):
+		return "nexa_dml"
+		// return "nexa_cuda"
+	default:
+		return "llama_cpp"
+	}
+
+}
+
+func chooseModelType() (types.ModelType, error) {
+	var modelType types.ModelType
+	if err := huh.NewSelect[types.ModelType]().
+		Title("Choose Model Type").
+		Options(huh.NewOptions(
+			types.ModelTypeLLM, types.ModelTypeVLM, types.ModelTypeEmbedder, types.ModelTypeReranker,
+			types.ModelTypeASR, types.ModelTypeTTS, types.ModelTypeCV, types.ModelTypeImageGen)...).
+		Value(&modelType).
+		Run(); err != nil {
+		return "", err
+	}
+	return modelType, nil
+}
+
+func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelManifest) (err error) {
+	if len(files) == 0 {
+		err = fmt.Errorf("repo is empty")
+		return
+	}
+
+	res.Name = name
+	res.ModelFile = make(map[string]types.ModelFileInfo)
+
+	// check gguf
+	var mmprojs []model_hub.ModelFileInfo
+	var tokenizers []model_hub.ModelFileInfo
+	var onnxFiles []model_hub.ModelFileInfo
+	ggufs := make(map[string][]model_hub.ModelFileInfo) // key is gguf name without part
+	// qwen2.5-7b-instruct-q8_0-00003-of-00003.gguf original name is qwen2.5-7b-instruct-q8_0 *d-of-*d like this
+
+	for _, file := range files {
+		name := strings.ToLower(file.Name)
+		if strings.HasSuffix(name, ".gguf") {
+			if strings.HasPrefix(name, "mmproj") {
+				mmprojs = append(mmprojs, file)
+			} else {
+				name := partRegex.ReplaceAllString(file.Name, "")
+				ggufs[name] = append(ggufs[name], file)
+			}
+		} else if strings.HasSuffix(name, "tokenizer.json") {
+			tokenizers = append(tokenizers, file)
+		} else if strings.HasSuffix(name, ".onnx") || strings.HasSuffix(name, ".nexa") {
+			onnxFiles = append(onnxFiles, file)
+		}
+	}
+
+	// choose model file
+	if len(ggufs) > 0 {
+		// detect gguf
+		if len(ggufs) == 1 {
+			// single quant
+			fileInfo := types.ModelFileInfo{}
+			for quant, gguf := range ggufs {
+				fileInfo.Name = gguf[0].Name
+				fileInfo.Size = gguf[0].Size
+				fileInfo.Downloaded = true
+				res.ModelFile[quant] = fileInfo
+				// other fragments
+				for _, file := range gguf[1:] {
+					res.ExtraFiles = append(res.ExtraFiles, types.ModelFileInfo{
+						Name:       file.Name,
+						Downloaded: true,
+						Size:       file.Size,
+					})
+				}
+			}
+
+		} else {
+			// interactive choose
+			var file string
+
+			// sort key by quant
+			ggufNames := make([]string, 0, len(ggufs))
+			for k := range ggufs {
+				ggufNames = append(ggufNames, k)
+				// choose default quant
+				if quantGreaterThan(
+					strings.ToUpper(quantRegix.FindString(k)),
+					strings.ToUpper(quantRegix.FindString(file)),
+					[]string{"Q4_K_M", "Q4_0", "Q8_0"}) {
+					file = k
+				}
+			}
+			sort.Slice(ggufNames, func(i, j int) bool {
+				return sumSize(ggufs[ggufNames[i]]) > sumSize(ggufs[ggufNames[j]])
+			})
+
+			var options []huh.Option[string]
+			for _, ggufName := range ggufNames {
+				fmtStr := "%-10s [%7s]"
+				if ggufName == file {
+					fmtStr += " (default)"
+				}
+				quant := strings.ToUpper(quantRegix.FindString(ggufName))
+				options = append(options, huh.NewOption(
+					fmt.Sprintf(fmtStr, quant, humanize.IBytes(uint64(sumSize(ggufs[ggufName])))),
+					ggufName,
+				))
+			}
+
+			if err = huh.NewSelect[string]().
+				Title("Choose a quant version to download").
+				Options(options...).
+				Value(&file).
+				Run(); err != nil {
+				return err
+			}
+
+			for k, gguf := range ggufs {
+				downloaded := k == file
+				quant := strings.ToUpper(quantRegix.FindString(k))
+				// sort files by name
+				sort.Slice(gguf, func(i, j int) bool {
+					return gguf[i].Name < gguf[j].Name
+				})
+				res.ModelFile[quant] = types.ModelFileInfo{
+					Name:       gguf[0].Name,
+					Downloaded: downloaded,
+					Size:       sumSize(ggufs[k]),
+				}
+				for _, file := range ggufs[k][1:] {
+					res.ExtraFiles = append(res.ExtraFiles, types.ModelFileInfo{
+						Name:       file.Name,
+						Downloaded: downloaded,
+						Size:       file.Size,
+					})
+				}
+			}
+		}
+
+		// detect mmproj
+		switch len(mmprojs) {
+		case 0:
+			// fallback to onnx file as mmproj if no regular mmproj found and exactly one onnx file exists
+			if len(onnxFiles) == 1 {
+				res.MMProjFile.Name = onnxFiles[0].Name
+				res.MMProjFile.Size = onnxFiles[0].Size
+				res.MMProjFile.Downloaded = true
+			}
+		case 1:
+			res.MMProjFile.Name = mmprojs[0].Name
+			res.MMProjFile.Size = mmprojs[0].Size
+			res.MMProjFile.Downloaded = true
+
+		default:
+			// match biggest
+			var file model_hub.ModelFileInfo
+			for _, mmproj := range mmprojs {
+				if mmproj.Size > file.Size {
+					file = mmproj
+				}
+			}
+
+			res.MMProjFile.Name = file.Name
+			res.MMProjFile.Size = file.Size
+			res.MMProjFile.Downloaded = true
+		}
+
+		if len(onnxFiles) > 0 {
+			// detect tokenizer - only if both gguf and onnx files are found - specifically for gemma 3n in ort-llama-cpp case
+			switch len(tokenizers) {
+			case 0:
+				// No tokenizer file found - skip
+			case 1:
+				res.TokenizerFile.Name = tokenizers[0].Name
+				res.TokenizerFile.Size = tokenizers[0].Size
+				res.TokenizerFile.Downloaded = true
+
+			default:
+				return fmt.Errorf("multiple tokenizer files found: %v. Expected exactly one tokenizer file", tokenizers)
+			}
+		}
+
+	} else {
+		// mlx
+
+		// quant
+		var quant string
+		if q := strings.ToUpper(quantRegix.FindString(name)); q != "" {
+			quant = q
+		} else if q, err := model_hub.GetFileContent(context.TODO(), name, "config.json"); err != nil {
+			quant = "N/A"
+		} else if b, err := sonic.Get(q, "quantization_config", "bits"); err != nil {
+			quant = "N/A"
+		} else if q, err := b.Float64(); err != nil {
+			quant = "N/A"
+		} else {
+			quant = fmt.Sprintf("%dBIT", uint32(q))
+		}
+
+		// detect main model file
+		// add other files
+		for _, file := range files {
+			if res.ModelFile[quant].Name == "" {
+				lower := strings.ToLower(file.Name)
+				if strings.HasSuffix(lower, "safetensors") || strings.HasSuffix(lower, "npz") {
+					res.ModelFile[quant] = types.ModelFileInfo{Name: file.Name, Size: file.Size}
+					continue
+				}
+			}
+			res.ExtraFiles = append(res.ExtraFiles, types.ModelFileInfo{Name: file.Name, Size: file.Size})
+		}
+
+		// fallback to first file
+		if res.ModelFile[quant].Name == "" {
+			res.ModelFile[quant] = types.ModelFileInfo{Name: files[0].Name, Size: files[0].Size}
+			res.ExtraFiles = res.ExtraFiles[1:]
+		}
+
+		res.ModelFile[quant] = types.ModelFileInfo{
+			Name:       res.ModelFile[quant].Name,
+			Downloaded: true,
+			Size:       res.ModelFile[quant].Size,
+		}
+		for i, v := range res.ExtraFiles {
+			res.ExtraFiles[i] = types.ModelFileInfo{
+				Name:       v.Name,
+				Downloaded: true,
+				Size:       v.Size,
+			}
+		}
+	}
+
+	return
+}
+
+func chooseQuantFiles(old types.ModelManifest) (*types.ModelManifest, error) {
+	var mf types.ModelManifest
+	d, _ := sonic.Marshal(old)
+	sonic.Unmarshal(d, &mf)
+
+	// sort key by quant
+	ggufQuants := make([]string, 0, len(mf.ModelFile))
+	for k := range mf.ModelFile {
+		ggufQuants = append(ggufQuants, k)
+	}
+	sort.Slice(ggufQuants, func(i, j int) bool {
+		return mf.ModelFile[ggufQuants[i]].Size > mf.ModelFile[ggufQuants[j]].Size
+	})
+
+	options := make([]huh.Option[string], 0, len(mf.ModelFile))
+	for _, q := range ggufQuants {
+		m := mf.ModelFile[q]
+		if m.Downloaded {
+			continue
+		}
+		options = append(options, huh.NewOption(
+			fmt.Sprintf("%-10s [%7s]", q, humanize.IBytes(uint64(m.Size))), q,
+		))
+	}
+
+	var quant string
+	if err := huh.NewSelect[string]().
+		Title("Choose a quant version to download").
+		Options(options...).
+		Value(&quant).
+		Run(); err != nil {
+		return nil, err
+	}
+
+	mf.ModelFile[quant] = types.ModelFileInfo{
+		Name:       mf.ModelFile[quant].Name,
+		Downloaded: true,
+		Size:       mf.ModelFile[quant].Size,
+	}
+
+	// other fragments
+	file := mf.ModelFile[quant].Name
+	ggufName := partRegex.ReplaceAllString(file, "")
+	for i, f := range mf.ExtraFiles {
+		if ggufName == partRegex.ReplaceAllString(f.Name, "") {
+			mf.ExtraFiles[i] = types.ModelFileInfo{
+				Name:       f.Name,
+				Downloaded: true,
+			}
+		}
+
+	}
+
+	return &mf, nil
+}
+
+func sumSize(files []model_hub.ModelFileInfo) int64 {
+	var size int64
+	for _, f := range files {
+		size += f.Size
+	}
+	return size
 }

@@ -13,7 +13,7 @@ const (
 	ModelTypeCV       ModelType = "cv"
 )
 
-type ModeFileInfo struct {
+type ModelFileInfo struct {
 	Name       string
 	Downloaded bool
 	Size       int64
@@ -24,10 +24,10 @@ type ModelManifest struct {
 	ModelType ModelType
 	PluginId  string
 
-	ModelFile     map[string]ModeFileInfo // quant -> modelfile
-	MMProjFile    ModeFileInfo
-	TokenizerFile ModeFileInfo
-	ExtraFiles    []ModeFileInfo
+	ModelFile     map[string]ModelFileInfo // quant -> modelfile
+	MMProjFile    ModelFileInfo
+	TokenizerFile ModelFileInfo
+	ExtraFiles    []ModelFileInfo
 }
 
 func (m ModelManifest) GetSize() int64 {
