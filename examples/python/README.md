@@ -20,7 +20,7 @@ This directory contains examples for using the NexaAI Python SDK.
     ```
   - macOS:
     ```bash
-    pip install nexaai[mlx]
+    pip install 'nexaai[mlx]'
     ```
 
 ## Running Examples
