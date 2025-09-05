@@ -39,48 +39,45 @@ var errNotAvailable = fmt.Errorf("no available model hub")
 func ModelInfo(ctx context.Context, modelName string) ([]ModelFileInfo, *types.ModelManifest, error) {
 	slog.Debug("fetching model info", "model", modelName)
 
-	for _, hub := range hubs {
-		if err := hub.CheckAvailable(ctx, modelName); err != nil {
-			slog.Warn("hub not available, try next", "hub", reflect.TypeOf(hub), "err", err)
-			continue
-		}
-		slog.Info("hub available", "hub", reflect.TypeOf(hub))
-
-		files, err := hub.ModelInfo(ctx, modelName)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		// parse manifest if exists
-		const manifestFile = "nexa.manifest"
-		var hasManifest bool
-		for i := 0; i < len(files); i++ {
-			if files[i].Name == manifestFile {
-				files = append(files[:i], files[i+1:]...)
-				hasManifest = true
-				break
-			}
-		}
-		if hasManifest {
-			data, err := GetFileContent(ctx, modelName, manifestFile)
-			if err != nil {
-				slog.Warn("failed to get manifest file, ignore", "error", err)
-				break
-			}
-
-			var manifest types.ModelManifest
-			if err := sonic.Unmarshal(data, &manifest); err != nil {
-				slog.Warn("failed to parse manifest file, ignore", "error", err)
-				break
-			}
-
-			return files, &manifest, nil
-		}
-
-		return files, nil, nil
-
+	hub, err := getHub(ctx, modelName)
+	if err != nil {
+		return nil, nil, err
 	}
-	return nil, nil, errNotAvailable
+
+	files, err := hub.ModelInfo(ctx, modelName)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// check manifest available
+	const manifestFile = "nexa.manifest"
+	var hasManifest bool
+	for i := 0; i < len(files); i++ {
+		if files[i].Name == manifestFile {
+			files = append(files[:i], files[i+1:]...)
+			hasManifest = true
+			break
+		}
+	}
+	if !hasManifest {
+		return files, nil, nil
+	}
+
+	// parse manifest
+	data, err := GetFileContent(ctx, modelName, manifestFile)
+	if err != nil {
+		slog.Warn("failed to get manifest file, ignore", "error", err)
+		return nil, nil, err
+	}
+
+	var manifest types.ModelManifest
+	if err := sonic.Unmarshal(data, &manifest); err != nil {
+		slog.Warn("failed to parse manifest file, ignore", "error", err)
+		return nil, nil, err
+	}
+
+	return files, &manifest, nil
+
 }
 
 // Get single file content
@@ -88,22 +85,16 @@ func ModelInfo(ctx context.Context, modelName string) ([]ModelFileInfo, *types.M
 func GetFileContent(ctx context.Context, modelName, fileName string) ([]byte, error) {
 	slog.Debug("fetching file content", "model", modelName, "file", fileName)
 
-	for _, hub := range hubs {
-		if err := hub.CheckAvailable(ctx, modelName); err != nil {
-			slog.Warn("hub not available, try next", "hub", reflect.TypeOf(hub), "err", err)
-			continue
-		}
-		slog.Info("hub available", "hub", reflect.TypeOf(hub))
-
-		buf := bytes.NewBuffer(nil)
-
-		if err := hub.GetFileContent(ctx, modelName, fileName, 0, 0, buf); err != nil {
-			return nil, err
-		}
-
-		return buf.Bytes(), nil
+	hub, err := getHub(ctx, modelName)
+	if err != nil {
+		return nil, err
 	}
-	return nil, errNotAvailable
+
+	buf := bytes.NewBuffer(nil)
+	if err := hub.GetFileContent(ctx, modelName, fileName, 0, 0, buf); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 // Batch download
@@ -125,23 +116,13 @@ const (
 func StartDownload(ctx context.Context, modelName, outputPath string, files []ModelFileInfo) (resChan chan types.DownloadInfo, errChan chan error) {
 	slog.Debug("Starting download", "model", modelName, "outputPath", outputPath, "files", files)
 
-	var hub ModelHub
-	for _, h := range hubs {
-		if err := h.CheckAvailable(ctx, modelName); err != nil {
-			slog.Warn("hub not available, try next", "hub", reflect.TypeOf(hub), "err", err)
-		} else {
-			hub = h
-			break
-		}
-	}
-
 	resCh := make(chan types.DownloadInfo)
 	errCh := make(chan error, maxConcurrency)
 
-	// no available hub
-	if hub == nil {
-		close(resCh)
-		errCh <- errNotAvailable
+	hub, err := getHub(ctx, modelName)
+	if err != nil {
+		errCh := make(chan error, 1)
+		errCh <- err
 		close(errCh)
 		return resCh, errCh
 	}
@@ -181,7 +162,7 @@ func StartDownload(ctx context.Context, modelName, outputPath string, files []Mo
 
 				// enqueue tasks
 				chunkSize := max(minChunkSize, f.Size/128)
-				slog.Info("Downlaod file", "name", f.Name, "size", f.Size, "chunkSize", chunkSize)
+				slog.Info("Download file", "name", f.Name, "size", f.Size, "chunkSize", chunkSize)
 				for task.Offset = 0; task.Offset < f.Size; task.Offset += chunkSize {
 					task.Limit = min(chunkSize, f.Size-task.Offset)
 
@@ -227,6 +208,18 @@ func StartDownload(ctx context.Context, modelName, outputPath string, files []Mo
 	}()
 
 	return resCh, errCh
+}
+
+func getHub(ctx context.Context, modelName string) (ModelHub, error) {
+	for _, h := range hubs {
+		if err := h.CheckAvailable(ctx, modelName); err != nil {
+			slog.Warn("hub not available, try next", "hub", reflect.TypeOf(h), "err", err)
+		} else {
+			slog.Info("hub available", "hub", reflect.TypeOf(h))
+			return h, nil
+		}
+	}
+	return nil, errNotAvailable
 }
 
 func doTask(ctx context.Context, hub ModelHub, task downloadTask) error {
