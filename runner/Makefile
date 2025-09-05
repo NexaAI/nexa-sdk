@@ -1,4 +1,4 @@
-BRIDGE_VERSION ?= v1.0.4
+BRIDGE_VERSION ?= v1.0.5
 
 ifeq ($(OS), Windows_NT)
     OS      := windows
