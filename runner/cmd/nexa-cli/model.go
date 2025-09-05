@@ -315,10 +315,18 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 			// single quant
 			fileInfo := types.ModelFileInfo{}
 			for quant, gguf := range ggufs {
-				fileInfo.Name = name
-				fileInfo.Size = sumSize(gguf)
+				fileInfo.Name = gguf[0].Name
+				fileInfo.Size = gguf[0].Size
 				fileInfo.Downloaded = true
 				res.ModelFile[quant] = fileInfo
+				// other fragments
+				for _, file := range gguf[1:] {
+					res.ExtraFiles = append(res.ExtraFiles, types.ModelFileInfo{
+						Name:       file.Name,
+						Downloaded: true,
+						Size:       file.Size,
+					})
+				}
 			}
 
 		} else {
