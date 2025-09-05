@@ -3,6 +3,7 @@ package downloader
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 
@@ -30,7 +31,7 @@ func (d *HTTPDownloader) SetToken(token string) {
 	d.token = token
 }
 
-func (d *HTTPDownloader) Download(ctx context.Context, url, outputPath string, progress chan int64) error {
+func (d *HTTPDownloader) Download(ctx context.Context, modelName, fileName string, offset, limit int64, writer io.Writer) error {
 	// 	slog.Debug("Download", "url", url, "outputPath", outputPath)
 
 	// 	url, err := d.handleRedirect(url, 3)
