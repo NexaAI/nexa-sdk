@@ -9,6 +9,7 @@ extern bool go_generate_stream_on_token(char*, void*);
 import "C"
 import (
 	"log/slog"
+	"os"
 	"path/filepath"
 	"strings"
 	"unsafe"
@@ -407,53 +408,44 @@ type VLM struct {
 func NewVLM(input VlmCreateInput) (*VLM, error) {
 	// Qnn
 	basePath := filepath.Dir(input.ModelPath)
-	if strings.HasSuffix(basePath, "NexaAI\\OmniNeural-4B") {
+	if strings.HasSuffix(basePath, "OmniNeural-4B") {
 		input.ModelPath = filepath.Join(basePath, "weights-1-8.nexa")
 		input.MmprojPath = filepath.Join(basePath, "weights-2-8.nexa")
 		input.TokenizerPath = filepath.Join(basePath, "files-1-1.nexa")
-	} else if strings.HasSuffix(basePath, "omni-neural-npu-encrypt") {
-		input.ModelPath = filepath.Join(basePath, "weights-1-8.nexa")
-		input.MmprojPath = filepath.Join(basePath, "weights-2-8.nexa")
-		input.TokenizerPath = filepath.Join(basePath, "files-1-1.nexa")
-	} else {
-		input.ModelPath = filepath.Join(basePath, "omni-neural", "llm", "ar128-ar1-cl4096", "weight_sharing_model_1_of_2.serialized.bin")
-		input.MmprojPath = filepath.Join(basePath, "omni-neural", "llm", "ar128-ar1-cl4096", "weight_sharing_model_2_of_2.serialized.bin")
-		input.TokenizerPath = filepath.Join(basePath, "omni-neural", "tokenizer.json")
 	}
 
 	slog.Debug("NewVLM called", "input", input)
 	cInput := input.toCPtr()
 	defer freeVlmCreateInput(cInput)
-	if strings.HasSuffix(basePath, "NexaAI\\OmniNeural-4B") {
-		cInput.config.config_file_path = C.CString(filepath.Join(basePath, "llm", "attachements-1-3.nexa"))
+	if strings.HasSuffix(basePath, "OmniNeural-4B") {
+		// Check if attachements-1-3.nexa exists, fallback to htp_backend_ext_config.json
+		configPath := filepath.Join(basePath, "llm", "attachements-1-3.nexa")
+		if _, err := os.Stat(configPath); os.IsNotExist(err) {
+			configPath = filepath.Join(basePath, "llm", "htp_backend_ext_config.json")
+		}
+		cInput.config.config_file_path = C.CString(configPath)
+
 		cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "weights-8-8.nexa"))
 		cInput.config.patch_embed_path = C.CString(filepath.Join(basePath, "weights-3-8.nexa"))
 		cInput.config.vit_model_path = C.CString(filepath.Join(basePath, "weights-4-8.nexa"))
-		cInput.config.vit_config_file_path = C.CString(filepath.Join(basePath, "vit", "attachement-2-3.nexa"))
+
+		// Check if vit attachement-2-3.nexa exists, fallback to htp_backend_ext_config.json
+		vitConfigPath := filepath.Join(basePath, "vit", "attachement-2-3.nexa")
+		if _, err := os.Stat(vitConfigPath); os.IsNotExist(err) {
+			vitConfigPath = filepath.Join(basePath, "vit", "htp_backend_ext_config.json")
+		}
+		cInput.config.vit_config_file_path = C.CString(vitConfigPath)
+
 		cInput.config.audio_encoder_helper0_path = C.CString(filepath.Join(basePath, "weights-5-8.nexa"))
 		cInput.config.audio_encoder_helper1_path = C.CString(filepath.Join(basePath, "weights-6-8.nexa"))
 		cInput.config.audio_encoder_model_path = C.CString(filepath.Join(basePath, "weights-7-8.nexa"))
-		cInput.config.audio_encoder_config_file_path = C.CString(filepath.Join(basePath, "audio", "attachements-3-3.nexa"))
-	} else if strings.HasSuffix(basePath, "omni-neural-npu-encrypt") {
-		cInput.config.config_file_path = C.CString(filepath.Join(basePath, "llm", "attachements-1-3.nexa"))
-		cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "weights-8-8.nexa"))
-		cInput.config.patch_embed_path = C.CString(filepath.Join(basePath, "weights-3-8.nexa"))
-		cInput.config.vit_model_path = C.CString(filepath.Join(basePath, "weights-4-8.nexa"))
-		cInput.config.vit_config_file_path = C.CString(filepath.Join(basePath, "vlm", "attachement-2-3.nexa"))
-		cInput.config.audio_encoder_helper0_path = C.CString(filepath.Join(basePath, "weights-5-8.nexa"))
-		cInput.config.audio_encoder_helper1_path = C.CString(filepath.Join(basePath, "weights-6-8.nexa"))
-		cInput.config.audio_encoder_model_path = C.CString(filepath.Join(basePath, "weights-7-8.nexa"))
-		cInput.config.audio_encoder_config_file_path = C.CString(filepath.Join(basePath, "audio", "attachements-3-3.nexa"))
-	} else {
-		cInput.config.config_file_path = C.CString(filepath.Join(basePath, "omni-neural", "llm", "ar128-ar1-cl4096_conf_files", "htp_backend_ext_config.json"))
-		cInput.config.embedded_tokens_path = C.CString(filepath.Join(basePath, "omni-neural", "llm", "embed_tokens.npy"))
-		cInput.config.patch_embed_path = C.CString(filepath.Join(basePath, "omni-neural", "vit", "patch_embed.serialized.bin"))
-		cInput.config.vit_model_path = C.CString(filepath.Join(basePath, "omni-neural", "vit", "vit.serialized.bin"))
-		cInput.config.vit_config_file_path = C.CString(filepath.Join(basePath, "omni-neural", "vit", "htp_backend_ext_config.json"))
-		cInput.config.audio_encoder_helper0_path = C.CString(filepath.Join(basePath, "omni-neural", "audio_encoder", "audio_encoder_helper0.serialized.bin"))
-		cInput.config.audio_encoder_helper1_path = C.CString(filepath.Join(basePath, "omni-neural", "audio_encoder", "audio_encoder_helper1.serialized.bin"))
-		cInput.config.audio_encoder_model_path = C.CString(filepath.Join(basePath, "omni-neural", "audio_encoder", "audio_encoder.serialized.bin"))
-		cInput.config.audio_encoder_config_file_path = C.CString(filepath.Join(basePath, "omni-neural", "audio_encoder", "htp_backend_ext_config.json"))
+
+		// Check if audio attachements-3-3.nexa exists, fallback to htp_backend_ext_config.json
+		audioConfigPath := filepath.Join(basePath, "audio", "attachements-3-3.nexa")
+		if _, err := os.Stat(audioConfigPath); os.IsNotExist(err) {
+			audioConfigPath = filepath.Join(basePath, "audio", "htp_backend_ext_config.json")
+		}
+		cInput.config.audio_encoder_config_file_path = C.CString(audioConfigPath)
 	}
 
 	cInput.config.verbose = false
