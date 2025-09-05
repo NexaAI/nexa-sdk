@@ -2,7 +2,9 @@ package downloader
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"net/url"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/config"
 	"github.com/valyala/fasthttp"
@@ -23,83 +25,38 @@ func NewDownloader() *HTTPDownloader {
 	}
 }
 
-func (d *HTTPDownloader) Download(ctx context.Context, url string, offset, limit int64, writer io.Writer) error {
-	// 	slog.Debug("Download", "url", url, "outputPath", outputPath)
+func (d *HTTPDownloader) DownloadChunk(ctx context.Context, url string, offset, limit int64, writer io.Writer) error {
+	req := fasthttp.AcquireRequest()
+	resp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseRequest(req)
+	defer fasthttp.ReleaseResponse(resp)
 
-	// 	url, err := d.handleRedirect(url, 3)
-	// 	if err != nil {
-	// 		return fmt.Errorf("failed to handle redirect: %v", err)
-	// 	}
+	currentURL, err := FastHTTPResolveRedirect(&d.Client, url, 3)
+	if err != nil {
+		return err
+	}
 
-	// 	contentLength, err := d.GetFilesSize(url)
-	// 	if err != nil {
-	// 		return fmt.Errorf("failed to get file size: %v", err)
-	// 	}
+	req.SetRequestURI(currentURL)
+	req.Header.SetMethod(fasthttp.MethodGet)
+	if config.Get().HFToken != "" {
+		req.Header.Set("Authorization", "Bearer "+config.Get().HFToken)
+	}
+	req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", offset, offset+limit-1))
 
-	// 	{ // pre-allocate file
-	// 		if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
-	// 			return fmt.Errorf("failed to create directory: %v", err)
-	// 		}
-	// 		file, err := os.OpenFile(outputPath, os.O_CREATE|os.O_WRONLY, 0o644)
-	// 		if err != nil {
-	// 			return fmt.Errorf("failed to create file: %v", err)
-	// 		}
-	// 		err = file.Truncate(contentLength)
-	// 		file.Close()
-	// 		if err != nil {
-	// 			return fmt.Errorf("failed to truncate file: %v", err)
-	// 		}
-	// 	}
+	if err := d.Client.Do(req, resp); err != nil {
+		return err
+	}
 
-	// 	var wg sync.WaitGroup
-	// 	sem := make(chan struct{}, 8)
-	// 	cancelCtx, cancel := context.WithCancel(ctx)
-	// 	defer cancel()
-	// 	chunkSize := calcChunkSize(contentLength)
-	// 	errCh := make(chan error, 1)
+	if resp.StatusCode() != fasthttp.StatusPartialContent && resp.StatusCode() != fasthttp.StatusOK {
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode())
+	}
 
-	// 	for start := int64(0); start < contentLength; start += chunkSize {
-	// 		slog.Info("Scheduling chunk", "start", start, "contentLength", contentLength)
-	// 		end := start + chunkSize - 1
-	// 		if end >= contentLength {
-	// 			end = contentLength - 1
-	// 		}
+	_, err = writer.Write(resp.Body())
+	if err != nil {
+		return err
+	}
 
-	// 		select {
-	// 		case sem <- struct{}{}:
-	// 			wg.Add(1)
-
-	// 			go func(start, end int64) {
-	// 				defer wg.Done()
-	// 				defer func() { <-sem }()
-	// 				if err := d.DownloadChunk(cancelCtx, url, outputPath, start, end, progress); err != nil {
-	// 					select { // non-blocking send error
-	// 					case errCh <- err:
-	// 						slog.Error("Download chunk failed", "start", start, "end", end, "error", err)
-	// 					default:
-	// 					}
-	// 					cancel()
-	// 				}
-	// 			}(start, end)
-
-	// 		case <-cancelCtx.Done():
-	// 			wg.Wait()
-	// 			return fmt.Errorf("download canceled: %v", cancelCtx.Err())
-	// 		}
-	// 	}
-	// 	wg.Wait()
-
-	// select {
-	// case err := <-errCh:
-	//
-	//	os.Remove(outputPath)
-	//	return err
-	//
-	// default:
-	//
-	//		return nil
-	//	}
-	panic("unimplemented")
+	return nil
 }
 
 func (d *HTTPDownloader) GetFileSize(url string) (int64, error) {
@@ -108,7 +65,12 @@ func (d *HTTPDownloader) GetFileSize(url string) (int64, error) {
 	defer fasthttp.ReleaseRequest(req)
 	defer fasthttp.ReleaseResponse(resp)
 
-	req.SetRequestURI(url)
+	currentURL, err := FastHTTPResolveRedirect(&d.Client, url, 3)
+	if err != nil {
+		return -1, err
+	}
+
+	req.SetRequestURI(currentURL)
 	req.Header.SetMethod(fasthttp.MethodHead)
 	if config.Get().HFToken != "" {
 		req.Header.Set("Authorization", "Bearer "+config.Get().HFToken)
@@ -120,4 +82,62 @@ func (d *HTTPDownloader) GetFileSize(url string) (int64, error) {
 	}
 
 	return int64(resp.Header.ContentLength()), nil
+}
+
+func FastHTTPResolveRedirect(client *fasthttp.Client, currentURL string, maxRedirect int) (string, error) {
+	req := fasthttp.AcquireRequest()
+	resp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseRequest(req)
+	defer fasthttp.ReleaseResponse(resp)
+
+	for range maxRedirect {
+		req.Reset()
+		resp.Reset()
+
+		req.SetRequestURI(currentURL)
+		req.Header.SetMethod(fasthttp.MethodHead)
+		if config.Get().HFToken != "" {
+			req.Header.Set("Authorization", "Bearer "+config.Get().HFToken)
+		}
+
+		if err := client.Do(req, resp); err != nil {
+			return "", fmt.Errorf("request failed: %w", err)
+		}
+
+		statusCode := resp.StatusCode()
+		if statusCode >= 300 && statusCode < 400 {
+			location := resp.Header.Peek("Location")
+			if len(location) == 0 {
+				return "", fmt.Errorf("redirect status %d with no Location", statusCode)
+			}
+			currentURL = resolveRelativeURL(currentURL, string(location))
+			req.Reset()
+			resp.Reset()
+			continue
+		}
+
+		if statusCode >= 200 && statusCode < 300 {
+			return currentURL, nil
+		}
+
+		return "", fmt.Errorf("unexpected status code: %d (%s)", statusCode, currentURL)
+	}
+
+	return "", fmt.Errorf("exceeded max redirects (%d)", maxRedirect)
+}
+
+func resolveRelativeURL(base, location string) string {
+	u, err := url.Parse(location)
+	if err != nil {
+		return location
+	}
+	if u.IsAbs() {
+		return location
+	}
+
+	baseURL, err := url.Parse(base)
+	if err != nil {
+		return location
+	}
+	return baseURL.ResolveReference(u).String()
 }

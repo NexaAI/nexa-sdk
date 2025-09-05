@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"strconv"
 	"sync"
 
 	"github.com/bytedance/sonic"
@@ -18,21 +17,11 @@ import (
 const HF_ENDPOINT = "https://huggingface.co"
 
 type HuggingFace struct {
-	client     *fasthttp.Client
 	downloader *downloader.HTTPDownloader
 }
 
 func NewHuggingFace() *HuggingFace {
-	c := &fasthttp.Client{
-		NoDefaultUserAgentHeader:  true,
-		MaxIdemponentCallAttempts: 3,
-		ReadBufferSize:            64 * 1024,
-		WriteBufferSize:           64 * 1024,
-	}
-
-	d := downloader.NewDownloader()
-
-	return &HuggingFace{client: c, downloader: d}
+	return &HuggingFace{downloader: downloader.NewDownloader()}
 }
 
 func (d *HuggingFace) CheckAvailable(ctx context.Context, name string) error {
@@ -51,13 +40,17 @@ func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileIn
 	defer fasthttp.ReleaseRequest(req)
 	defer fasthttp.ReleaseResponse(resp)
 
-	req.SetRequestURI(fmt.Sprintf("%s/api/models/%s", HF_ENDPOINT, name))
+	url, err := downloader.FastHTTPResolveRedirect(&d.downloader.Client, fmt.Sprintf("%s/api/models/%s", HF_ENDPOINT, name), 3)
+	if err != nil {
+		return nil, err
+	}
+	req.SetRequestURI(url)
 	req.Header.SetMethod(fasthttp.MethodGet)
 	if config.Get().HFToken != "" {
 		req.Header.Set("Authorization", "Bearer "+config.Get().HFToken)
 	}
 
-	if err := d.client.Do(req, resp); err != nil {
+	if err := d.downloader.Client.Do(req, resp); err != nil {
 		return nil, err
 	}
 
@@ -80,7 +73,7 @@ func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileIn
 			defer wg.Done()
 			defer func() { <-sem }()
 
-			size, err := d.fileSize(ctx, name, info.Siblings[i].RFileName)
+			size, err := d.downloader.GetFileSize(fmt.Sprintf("%s/%s/resolve/main/%s", HF_ENDPOINT, name, info.Siblings[i].RFileName))
 			if err != nil {
 				slog.Error("Get file size error", "model", name, "file", info.Siblings[i].RFileName, "err", err)
 				return
@@ -106,60 +99,6 @@ func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileIn
 	return res, nil
 }
 
-func (d *HuggingFace) fileSize(_ context.Context, modelName, fileName string) (int64, error) {
-	url := fmt.Sprintf("%s/%s/resolve/main/%s", HF_ENDPOINT, modelName, fileName)
-
-	req := fasthttp.AcquireRequest()
-	resp := fasthttp.AcquireResponse()
-	defer fasthttp.ReleaseRequest(req)
-	defer fasthttp.ReleaseResponse(resp)
-
-	req.SetRequestURI(url)
-	req.Header.SetMethod(fasthttp.MethodHead)
-	if config.Get().HFToken != "" {
-		req.Header.Set("Authorization", "Bearer "+config.Get().HFToken)
-	}
-	req.Header.Set("Accept-Encoding", "")
-
-	if err := d.client.Do(req, resp); err != nil {
-		return -1, err
-	}
-
-	length := string(resp.Header.Peek("Content-Length"))
-	if length == "" {
-		return -1, fmt.Errorf("HEAD response missing Content-Length: %s", fileName)
-	}
-
-	size, err := strconv.ParseInt(length, 10, 64)
-	if err != nil {
-		return -1, fmt.Errorf("invalid Content-Length: %w, %s", err, fileName)
-	}
-
-	return size, nil
-}
-
 func (d *HuggingFace) GetFileContent(ctx context.Context, modelName, fileName string, offset, limit int64, writer io.Writer) error {
-	req := fasthttp.AcquireRequest()
-	resp := fasthttp.AcquireResponse()
-	defer fasthttp.ReleaseRequest(req)
-	defer fasthttp.ReleaseResponse(resp)
-
-	req.SetRequestURI(fmt.Sprintf("%s/%s/resolve/main/%s", HF_ENDPOINT, modelName, fileName))
-	req.Header.SetMethod(fasthttp.MethodGet)
-	if config.Get().HFToken != "" {
-		req.Header.Set("Authorization", "Bearer "+config.Get().HFToken)
-	}
-
-	if offset > 0 {
-		req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", offset, offset+limit-1))
-	} else if limit > 0 {
-		req.Header.Set("Range", fmt.Sprintf("bytes=0-%d", limit-1))
-	}
-
-	if err := d.client.Do(req, resp); err != nil {
-		return err
-	}
-
-	_, err := writer.Write(resp.Body())
-	return err
+	return d.downloader.DownloadChunk(ctx, fmt.Sprintf("%s/%s/resolve/main/%s", HF_ENDPOINT, modelName, fileName), offset, limit, writer)
 }

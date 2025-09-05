@@ -187,9 +187,26 @@ func download(url, dst string, progress chan int64) error {
 		return nil
 	}
 
-	downloader := downloader.NewDownloader()
-	if err = downloader.Download(context.Background(), url, dst, progress); err != nil {
+	file, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
 		return err
+	}
+	defer file.Close()
+
+	downloader := downloader.NewDownloader()
+	size, err := downloader.GetFileSize(url)
+	if err != nil {
+		return err
+	}
+	for offset := int64(0); offset < size; offset += 1024 * 1024 {
+		limit := int64(1024 * 1024)
+		if offset+limit > size {
+			limit = size - offset
+		}
+		if err = downloader.DownloadChunk(context.Background(), url, offset, limit, file); err != nil {
+			return err
+		}
+		progress <- int64(limit)
 	}
 
 	info, err := os.Stat(dst)
