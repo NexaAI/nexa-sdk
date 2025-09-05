@@ -8,7 +8,8 @@ import (
 	"strconv"
 	"sync"
 
-	"resty.dev/v3"
+	"github.com/bytedance/sonic"
+	"github.com/valyala/fasthttp"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/config"
 	"github.com/NexaAI/nexa-sdk/runner/internal/downloader"
@@ -17,22 +18,17 @@ import (
 const HF_ENDPOINT = "https://huggingface.co"
 
 type HuggingFace struct {
-	client     *resty.Client
+	client     *fasthttp.Client
 	downloader *downloader.HTTPDownloader
 }
 
 func NewHuggingFace() *HuggingFace {
-	c := resty.New()
-	c.SetResponseMiddlewares(
-		// httpCodeToError
-		func(c *resty.Client, r *resty.Response) error {
-			if r.StatusCode() >= 400 {
-				return fmt.Errorf("HTTPError: [%d] %s", r.StatusCode(), r.String())
-			}
-			return nil
-		},
-		resty.AutoParseResponseMiddleware,
-	)
+	c := &fasthttp.Client{
+		NoDefaultUserAgentHeader:  true,
+		MaxIdemponentCallAttempts: 3,
+		ReadBufferSize:            64 * 1024,
+		WriteBufferSize:           64 * 1024,
+	}
 
 	d := downloader.NewDownloader()
 
@@ -49,12 +45,27 @@ func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileIn
 			RFileName string `json:"rfilename"`
 		} `json:"siblings"`
 	}{}
-	_, err := d.client.R().
-		//EnableDebug().
-		SetAuthToken(config.Get().HFToken).
-		SetResult(&info).
-		Get(fmt.Sprintf("%s/api/models/%s", HF_ENDPOINT, name))
-	if err != nil {
+
+	req := fasthttp.AcquireRequest()
+	resp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseRequest(req)
+	defer fasthttp.ReleaseResponse(resp)
+
+	req.SetRequestURI(fmt.Sprintf("%s/api/models/%s", HF_ENDPOINT, name))
+	req.Header.SetMethod(fasthttp.MethodGet)
+	if config.Get().HFToken != "" {
+		req.Header.Set("Authorization", "Bearer "+config.Get().HFToken)
+	}
+
+	if err := d.client.Do(req, resp); err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode() >= 400 {
+		return nil, fmt.Errorf("HTTPError: [%d] %s", resp.StatusCode(), string(resp.Body()))
+	}
+
+	if err := sonic.Unmarshal(resp.Body(), &info); err != nil {
 		return nil, err
 	}
 
@@ -95,18 +106,26 @@ func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileIn
 	return res, nil
 }
 
-func (d *HuggingFace) fileSize(ctx context.Context, modelName, fileName string) (int64, error) {
+func (d *HuggingFace) fileSize(_ context.Context, modelName, fileName string) (int64, error) {
 	url := fmt.Sprintf("%s/%s/resolve/main/%s", HF_ENDPOINT, modelName, fileName)
-	resp, err := d.client.R().
-		SetContext(ctx).
-		SetAuthToken(config.Get().HFToken).
-		SetHeader("Accept-Encoding", "").
-		Head(url)
-	if err != nil {
+
+	req := fasthttp.AcquireRequest()
+	resp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseRequest(req)
+	defer fasthttp.ReleaseResponse(resp)
+
+	req.SetRequestURI(url)
+	req.Header.SetMethod(fasthttp.MethodHead)
+	if config.Get().HFToken != "" {
+		req.Header.Set("Authorization", "Bearer "+config.Get().HFToken)
+	}
+	req.Header.Set("Accept-Encoding", "")
+
+	if err := d.client.Do(req, resp); err != nil {
 		return -1, err
 	}
 
-	length := resp.Header().Get("Content-Length")
+	length := string(resp.Header.Peek("Content-Length"))
 	if length == "" {
 		return -1, fmt.Errorf("HEAD response missing Content-Length: %s", fileName)
 	}
@@ -120,25 +139,27 @@ func (d *HuggingFace) fileSize(ctx context.Context, modelName, fileName string) 
 }
 
 func (d *HuggingFace) GetFileContent(ctx context.Context, modelName, fileName string, offset, limit int64, writer io.Writer) error {
-	url := fmt.Sprintf("%s/%s/resolve/main/%s", HF_ENDPOINT, modelName, fileName)
-	var rangeStr string
-	if offset > 0 {
-		if limit > 0 {
-			rangeStr = fmt.Sprintf("bytes=%d-%d", offset, offset+limit-1)
-		} else {
-			rangeStr = fmt.Sprintf("bytes=%d-", offset)
-		}
+	req := fasthttp.AcquireRequest()
+	resp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseRequest(req)
+	defer fasthttp.ReleaseResponse(resp)
+
+	req.SetRequestURI(fmt.Sprintf("%s/%s/resolve/main/%s", HF_ENDPOINT, modelName, fileName))
+	req.Header.SetMethod(fasthttp.MethodGet)
+	if config.Get().HFToken != "" {
+		req.Header.Set("Authorization", "Bearer "+config.Get().HFToken)
 	}
-	resp, err := d.client.R().
-		SetContext(ctx).
-		SetAuthToken(config.Get().HFToken).
-		SetHeader("Accept-Encoding", "identity").
-		SetHeader("Range", rangeStr).
-		Get(url)
-	if err != nil {
+
+	if offset > 0 {
+		req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", offset, offset+limit-1))
+	} else if limit > 0 {
+		req.Header.Set("Range", fmt.Sprintf("bytes=0-%d", limit-1))
+	}
+
+	if err := d.client.Do(req, resp); err != nil {
 		return err
 	}
 
-	_, err = io.Copy(writer, resp.Body)
+	_, err := writer.Write(resp.Body())
 	return err
 }
