@@ -121,7 +121,7 @@ func StartDownload(ctx context.Context, modelName, outputPath string, files []Mo
 
 	hub, err := getHub(ctx, modelName)
 	if err != nil {
-		errCh := make(chan error, 1)
+		close(resCh)
 		errCh <- err
 		close(errCh)
 		return resCh, errCh

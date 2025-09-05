@@ -528,10 +528,11 @@ func chooseQuantFiles(old types.ModelManifest) (*types.ModelManifest, error) {
 		Size:       mf.ModelFile[quant].Size,
 	}
 
+	// other fragments
 	file := mf.ModelFile[quant].Name
 	ggufName := partRegex.ReplaceAllString(file, "")
 	for i, f := range mf.ExtraFiles {
-		if ggufName == partRegex.ReplaceAllString(file, "") {
+		if ggufName == partRegex.ReplaceAllString(f.Name, "") {
 			mf.ExtraFiles[i] = types.ModelFileInfo{
 				Name:       f.Name,
 				Downloaded: true,

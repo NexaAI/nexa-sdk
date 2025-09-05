@@ -89,13 +89,6 @@ func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileIn
 	}
 	wg.Wait()
 
-	// check res
-	for _, info := range res {
-		if info.Name == "" {
-			return nil, fmt.Errorf("failed to get file size: %s", info.Name)
-		}
-	}
-
 	return res, nil
 }
 
