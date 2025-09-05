@@ -5,16 +5,22 @@ This directory contains examples for using the NexaAI Python SDK.
 ## Prerequisites
 
 - Python 3.10
-    - if you are using conda, you can create a new environment via
-        ```sh
-        conda create -n nexaai python=3.10
-        conda activate nexaai
-        ```
+  - if you are using conda, you can create a new environment via
+    ```sh
+    conda create -n nexaai python=3.10
+    conda activate nexaai
+    ```
 - Install the latest NexaAI Python SDK from [PyPI](https://pypi.org/project/nexaai/#history).
 
-    For example:
+  Install command by OS:
+
+  - Windows and Linux:
     ```bash
-    pip install nexaai==1.0.4
+    pip install nexaai
+    ```
+  - macOS:
+    ```bash
+    pip install nexaai[mlx]
     ```
 
 ## Running Examples
@@ -26,6 +32,7 @@ nexa pull Qwen/Qwen3-0.6B-GGUF
 
 python llm.py
 ```
+
 ### Multi-Modal
 
 ```bash
