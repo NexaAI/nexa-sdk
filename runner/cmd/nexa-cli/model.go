@@ -323,29 +323,37 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 
 		} else {
 			// interactive choose
+			var file string
 
 			// sort key by quant
-			ggufQuants := make([]string, 0, len(ggufs))
+			ggufNames := make([]string, 0, len(ggufs))
 			for k := range ggufs {
-				ggufQuants = append(ggufQuants, k)
+				ggufNames = append(ggufNames, k)
+				// choose default quant
+				if quantGreaterThan(
+					strings.ToUpper(quantRegix.FindString(k)),
+					strings.ToUpper(quantRegix.FindString(file)),
+					[]string{"Q4_K_M", "Q4_0", "Q8_0"}) {
+					file = k
+				}
 			}
-			sort.Slice(ggufQuants, func(i, j int) bool {
-				return quantGreaterThan(ggufQuants[i], ggufQuants[j], []string{"Q4_K_M", "Q4_0", "Q8_0"})
+			sort.Slice(ggufNames, func(i, j int) bool {
+				return sumSize(ggufs[ggufNames[i]]) > sumSize(ggufs[ggufNames[j]])
 			})
 
 			var options []huh.Option[string]
-			for i, ggufQuant := range ggufQuants {
+			for _, ggufName := range ggufNames {
 				fmtStr := "%-10s [%7s]"
-				if i == 0 {
+				if ggufName == file {
 					fmtStr += " (default)"
 				}
+				quant := strings.ToUpper(quantRegix.FindString(ggufName))
 				options = append(options, huh.NewOption(
-					fmt.Sprintf("%-10s [%7s]", ggufQuant, humanize.IBytes(uint64(sumSize(ggufs[ggufQuant])))),
-					ggufQuant,
+					fmt.Sprintf(fmtStr, quant, humanize.IBytes(uint64(sumSize(ggufs[ggufName])))),
+					ggufName,
 				))
 			}
 
-			var file string
 			if err = huh.NewSelect[string]().
 				Title("Choose a quant version to download").
 				Options(options...).
@@ -481,13 +489,24 @@ func chooseQuantFiles(old types.ModelManifest) (*types.ModelManifest, error) {
 	d, _ := sonic.Marshal(old)
 	sonic.Unmarshal(d, &mf)
 
+	// sort key by quant
+	ggufQuants := make([]string, 0, len(mf.ModelFile))
+	for k := range mf.ModelFile {
+		ggufQuants = append(ggufQuants, k)
+	}
+	sort.Slice(ggufQuants, func(i, j int) bool {
+		return mf.ModelFile[ggufQuants[i]].Size > mf.ModelFile[ggufQuants[j]].Size
+	})
+
 	options := make([]huh.Option[string], 0, len(mf.ModelFile))
-	for q, m := range mf.ModelFile {
-		if !m.Downloaded {
-			options = append(options, huh.NewOption(
-				fmt.Sprintf("%-10s [%7s]", q, humanize.IBytes(uint64(m.Size))), q,
-			))
+	for _, q := range ggufQuants {
+		m := mf.ModelFile[q]
+		if m.Downloaded {
+			continue
 		}
+		options = append(options, huh.NewOption(
+			fmt.Sprintf("%-10s [%7s]", q, humanize.IBytes(uint64(m.Size))), q,
+		))
 	}
 
 	var quant string
