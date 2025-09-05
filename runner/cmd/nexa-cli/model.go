@@ -92,6 +92,7 @@ func pull() *cobra.Command {
 			}
 			if manifest.ModelType == "" {
 				if ctype, err := chooseModelType(); err != nil {
+					fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 					return
 				} else {
 					manifest.ModelType = ctype
@@ -100,6 +101,7 @@ func pull() *cobra.Command {
 
 			err := chooseFiles(name, files, &manifest)
 			if err != nil {
+				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 				return
 			}
 
@@ -274,11 +276,6 @@ func chooseModelType() (types.ModelType, error) {
 	return modelType, nil
 }
 
-type ggufEntireInfo struct {
-	Quant string
-	Size  int64
-}
-
 func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelManifest) (err error) {
 	if len(files) == 0 {
 		err = fmt.Errorf("repo is empty")
@@ -292,76 +289,59 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 	var mmprojs []model_hub.ModelFileInfo
 	var tokenizers []model_hub.ModelFileInfo
 	var onnxFiles []model_hub.ModelFileInfo
-	ggufFragments := make(map[string][]model_hub.ModelFileInfo)
+	ggufs := make(map[string][]model_hub.ModelFileInfo) // key is gguf name without part
 	// qwen2.5-7b-instruct-q8_0-00003-of-00003.gguf original name is qwen2.5-7b-instruct-q8_0 *d-of-*d like this
+
 	for _, file := range files {
-		lower := strings.ToLower(file.Name)
-		if strings.HasSuffix(lower, ".gguf") {
-			if strings.HasPrefix(lower, "mmproj") {
+		name := strings.ToLower(file.Name)
+		if strings.HasSuffix(name, ".gguf") {
+			if strings.HasPrefix(name, "mmproj") {
 				mmprojs = append(mmprojs, file)
 			} else {
 				name := partRegex.ReplaceAllString(file.Name, "")
-				ggufFragments[name] = append(ggufFragments[name], file)
+				ggufs[name] = append(ggufs[name], file)
 			}
-		} else if strings.HasSuffix(lower, "tokenizer.json") {
+		} else if strings.HasSuffix(name, "tokenizer.json") {
 			tokenizers = append(tokenizers, file)
-		} else if strings.HasSuffix(lower, ".onnx") || strings.HasSuffix(lower, ".nexa") {
+		} else if strings.HasSuffix(name, ".onnx") || strings.HasSuffix(name, ".nexa") {
 			onnxFiles = append(onnxFiles, file)
 		}
 	}
 
-	ggufEntires := make(map[string]ggufEntireInfo, len(ggufFragments))
-	for gguf := range ggufFragments {
-		var size int64
-		for _, f := range ggufFragments[gguf] {
-			size += f.Size
-		}
-		quant := strings.ToUpper(quantRegix.FindString(gguf))
-		if quant == "" {
-			quant = "N/A"
-		}
-		ggufEntires[gguf] = ggufEntireInfo{Quant: quant, Size: size}
-	}
-
 	// choose model file
-	if len(ggufEntires) > 0 {
+	if len(ggufs) > 0 {
 		// detect gguf
-		if len(ggufEntires) == 1 {
+		if len(ggufs) == 1 {
 			// single quant
 			fileInfo := types.ModelFileInfo{}
-			for name, ggufEntire := range ggufEntires {
+			for quant, gguf := range ggufs {
 				fileInfo.Name = name
-				fileInfo.Size = ggufEntire.Size
+				fileInfo.Size = sumSize(gguf)
 				fileInfo.Downloaded = true
-				res.ModelFile[ggufEntire.Quant] = fileInfo
+				res.ModelFile[quant] = fileInfo
 			}
 
 		} else {
 			// interactive choose
 
 			// sort key by quant
-			ggufEntireNames := make([]string, 0, len(ggufEntires))
-			for k := range ggufEntires {
-				ggufEntireNames = append(ggufEntireNames, k)
+			ggufQuants := make([]string, 0, len(ggufs))
+			for k := range ggufs {
+				ggufQuants = append(ggufQuants, k)
 			}
-			sort.Slice(ggufEntireNames, func(i, j int) bool {
-				return quantGreaterThan(
-					ggufEntires[ggufEntireNames[i]].Quant,
-					ggufEntires[ggufEntireNames[j]].Quant,
-					[]string{"Q4_K_M", "Q4_0", "Q8_0"})
+			sort.Slice(ggufQuants, func(i, j int) bool {
+				return quantGreaterThan(ggufQuants[i], ggufQuants[j], []string{"Q4_K_M", "Q4_0", "Q8_0"})
 			})
 
 			var options []huh.Option[string]
-			for i, ggufEntireName := range ggufEntireNames {
+			for i, ggufQuant := range ggufQuants {
 				fmtStr := "%-10s [%7s]"
 				if i == 0 {
 					fmtStr += " (default)"
 				}
 				options = append(options, huh.NewOption(
-					fmt.Sprintf("%-10s [%7s]",
-						ggufEntires[ggufEntireName].Quant,
-						humanize.IBytes(uint64(ggufEntires[ggufEntireName].Size))),
-					ggufEntireName,
+					fmt.Sprintf("%-10s [%7s]", ggufQuant, humanize.IBytes(uint64(sumSize(ggufs[ggufQuant])))),
+					ggufQuant,
 				))
 			}
 
@@ -374,19 +354,19 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 				return err
 			}
 
-			for k, ggufFragment := range ggufFragments {
+			for k, gguf := range ggufs {
 				downloaded := k == file
 				quant := strings.ToUpper(quantRegix.FindString(k))
 				// sort files by name
-				sort.Slice(ggufFragment, func(i, j int) bool {
-					return ggufFragment[i].Name < ggufFragment[j].Name
+				sort.Slice(gguf, func(i, j int) bool {
+					return gguf[i].Name < gguf[j].Name
 				})
 				res.ModelFile[quant] = types.ModelFileInfo{
-					Name:       ggufFragment[0].Name,
+					Name:       gguf[0].Name,
 					Downloaded: downloaded,
-					Size:       ggufEntires[k].Size,
+					Size:       sumSize(ggufs[k]),
 				}
-				for _, file := range ggufFragments[k][1:] {
+				for _, file := range ggufs[k][1:] {
 					res.ExtraFiles = append(res.ExtraFiles, types.ModelFileInfo{
 						Name:       file.Name,
 						Downloaded: downloaded,
@@ -399,18 +379,18 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 		// detect mmproj
 		switch len(mmprojs) {
 		case 0:
+			// fallback to onnx file as mmproj if no regular mmproj found and exactly one onnx file exists
+			if len(onnxFiles) == 1 {
+				res.MMProjFile.Name = onnxFiles[0].Name
+				res.MMProjFile.Size = onnxFiles[0].Size
+				res.MMProjFile.Downloaded = true
+			}
 		case 1:
 			res.MMProjFile.Name = mmprojs[0].Name
 			res.MMProjFile.Size = mmprojs[0].Size
 			res.MMProjFile.Downloaded = true
 
 		default:
-			// Get mmproj file sizes for display
-			if err != nil {
-				fmt.Println(render.GetTheme().Error.Sprintf("get filesize error: %s", err))
-				return err
-			}
-
 			// match biggest
 			var file model_hub.ModelFileInfo
 			for _, mmproj := range mmprojs {
@@ -424,15 +404,8 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 			res.MMProjFile.Downloaded = true
 		}
 
-		// fallback to onnx file as mmproj if no regular mmproj found and exactly one onnx file exists
-		if res.MMProjFile.Name == "" && len(onnxFiles) == 1 {
-			res.MMProjFile.Name = onnxFiles[0].Name
-			res.MMProjFile.Size = onnxFiles[0].Size
-			res.MMProjFile.Downloaded = true
-		}
-
-		// detect tokenizer - only if both gguf and onnx files are found - specifically for gemma 3n in ort-llama-cpp case
 		if len(onnxFiles) > 0 {
+			// detect tokenizer - only if both gguf and onnx files are found - specifically for gemma 3n in ort-llama-cpp case
 			switch len(tokenizers) {
 			case 0:
 				// No tokenizer file found - skip
@@ -449,8 +422,9 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 				return fmt.Errorf("multiple tokenizer files found: %v. Expected exactly one tokenizer file", tokenizers)
 			}
 		}
+
 	} else {
-		// other format
+		// mlx
 
 		// quant
 		var quant string
@@ -506,7 +480,7 @@ func chooseQuantFiles(old types.ModelManifest) (*types.ModelManifest, error) {
 	var mf types.ModelManifest
 	d, _ := sonic.Marshal(old)
 	sonic.Unmarshal(d, &mf)
-	// Find the longest quant name for alignment
+
 	options := make([]huh.Option[string], 0, len(mf.ModelFile))
 	for q, m := range mf.ModelFile {
 		if !m.Downloaded {
@@ -544,4 +518,12 @@ func chooseQuantFiles(old types.ModelManifest) (*types.ModelManifest, error) {
 	}
 
 	return &mf, nil
+}
+
+func sumSize(files []model_hub.ModelFileInfo) int64 {
+	var size int64
+	for _, f := range files {
+		size += f.Size
+	}
+	return size
 }

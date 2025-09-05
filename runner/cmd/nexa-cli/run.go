@@ -76,6 +76,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			}
 			if manifest.ModelType == "" {
 				if ctype, err := chooseModelType(); err != nil {
+					fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 					return
 				} else {
 					manifest.ModelType = ctype
@@ -84,6 +85,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 
 			err = chooseFiles(model, files, &manifest)
 			if err != nil {
+				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 				return
 			}
 
