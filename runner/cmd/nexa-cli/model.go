@@ -427,10 +427,6 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 				// No tokenizer file found - skip
 			case 1:
 				res.TokenizerFile.Name = tokenizers[0].Name
-				if err != nil {
-					fmt.Println(render.GetTheme().Error.Sprintf("get filesize error: [%s] %s", tokenizers[0], err))
-					return err
-				}
 				res.TokenizerFile.Size = tokenizers[0].Size
 				res.TokenizerFile.Downloaded = true
 
