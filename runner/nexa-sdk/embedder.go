@@ -190,7 +190,7 @@ type EmbedderEmbedOutput struct {
 	ProfileData ProfileData
 }
 
-func newEmbedderEmbedOutputFromCPtr(c *C.ml_EmbedderEmbedOutput) EmbedderEmbedOutput {
+func newEmbedderEmbedOutputFromCPtr(c *C.ml_EmbedderEmbedOutput, embeddingDim int32) EmbedderEmbedOutput {
 	output := EmbedderEmbedOutput{}
 
 	if c == nil {
@@ -200,9 +200,12 @@ func newEmbedderEmbedOutputFromCPtr(c *C.ml_EmbedderEmbedOutput) EmbedderEmbedOu
 	output.ProfileData = newProfileDataFromCPtr(c.profile_data)
 
 	// Convert embeddings array
+	// c.embedding_count = number of embeddings (texts)
+	// c.embeddings = flat array of embedding_count * embedding_dimension floats
 	if c.embeddings != nil && c.embedding_count > 0 {
-		embeddings := unsafe.Slice((*C.float)(unsafe.Pointer(c.embeddings)), int(c.embedding_count))
-		output.Embeddings = make([]float32, c.embedding_count)
+		totalFloats := int(c.embedding_count * C.int32_t(embeddingDim))
+		embeddings := unsafe.Slice((*C.float)(unsafe.Pointer(c.embeddings)), totalFloats)
+		output.Embeddings = make([]float32, totalFloats)
 		for i := range output.Embeddings {
 			output.Embeddings[i] = float32(embeddings[i])
 		}
@@ -277,6 +280,12 @@ func (e *Embedder) Destroy() error {
 func (e *Embedder) Embed(input EmbedderEmbedInput) (EmbedderEmbedOutput, error) {
 	slog.Debug("Embed called", "input", input)
 
+	// First get embedding dimension
+	dimOutput, err := e.EmbeddingDimension()
+	if err != nil {
+		return EmbedderEmbedOutput{}, err
+	}
+
 	cInput := input.toCPtr()
 	defer freeEmbedderEmbedInput(cInput)
 
@@ -288,7 +297,7 @@ func (e *Embedder) Embed(input EmbedderEmbedInput) (EmbedderEmbedOutput, error) 
 		return EmbedderEmbedOutput{}, SDKError(res)
 	}
 
-	output := newEmbedderEmbedOutputFromCPtr(&cOutput)
+	output := newEmbedderEmbedOutputFromCPtr(&cOutput, dimOutput.Dimension)
 	return output, nil
 }
 
