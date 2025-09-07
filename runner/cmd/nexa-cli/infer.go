@@ -570,11 +570,19 @@ func inferEmbedder(plugin, modelfile string) {
 
 	fmt.Println(render.GetTheme().Success.Sprintf("✓ Embedding generation completed successfully"))
 
+	embeddingDim := int(dimOutput.Dimension)
 	for i, text := range prompts {
-		if i < len(result.Embeddings) {
-			fmt.Printf("\n%s [%d]: %s\n", render.GetTheme().Info.Sprintf("Prompt"), i+1, text)
-			fmt.Printf("%s: [%.6f]\n", render.GetTheme().Info.Sprintf("Embedding"), result.Embeddings[i])
-		}
+		startIdx := i * embeddingDim
+		endIdx := startIdx + embeddingDim
+
+		fmt.Printf("\n%s [%d]: %s\n", render.GetTheme().Info.Sprintf("Prompt"), i+1, text)
+		embedding := result.Embeddings[startIdx:endIdx]
+
+		fmt.Printf("%s: [%.6f, %.6f, %.6f, ..., %.6f, %.6f, %.6f] (length: %d)\n",
+			render.GetTheme().Info.Sprintf("Embedding"),
+			embedding[0], embedding[1], embedding[2],
+			embedding[len(embedding)-3], embedding[len(embedding)-2], embedding[len(embedding)-1],
+			len(embedding))
 	}
 
 	fmt.Println()
