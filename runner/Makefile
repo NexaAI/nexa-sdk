@@ -1,4 +1,4 @@
-BRIDGE_VERSION ?= v1.0.5
+BRIDGE_VERSION ?= v1.0.6-rc1
 
 ifeq ($(OS), Windows_NT)
     OS      := windows
@@ -8,6 +8,7 @@ ifeq ($(OS), Windows_NT)
     RM_FILE := cmd /c del /f /q
     RM_DIR  := cmd /c rmdir /s /q
     MKDIR   := cmd /c mkdir
+    UNZIP   := powershell -Command "Expand-Archive -Path 'nexasdk-bridge.zip' -DestinationPath '.' -Force"
 else
     UNAME := $(shell uname -s)
     ARCH  := $(shell uname -m)
@@ -21,6 +22,7 @@ else
     RM_FILE := rm -f
     RM_DIR  := rm -rf
     MKDIR   := mkdir -p
+    UNZIP   := unzip -q
 endif
 
 .PHONY: build link xcopy download clean
@@ -51,7 +53,11 @@ download: clean
 	@echo "BRIDGE_VERSION: $(BRIDGE_VERSION)"
 	curl -L -o build/nexasdk-bridge.zip \
 		https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexasdk/$(BRIDGE_VERSION)/$(OS)_$(ARCH)/nexasdk-bridge.zip
-	cd build && unzip -q nexasdk-bridge.zip && $(RM_FILE) nexasdk-bridge.zip
+ifeq ($(OS), windows)
+	cd build && $(UNZIP) && $(RM_FILE) nexasdk-bridge.zip
+else
+	cd build && $(UNZIP) nexasdk-bridge.zip && $(RM_FILE) nexasdk-bridge.zip
+endif
 
 clean:
 	-$(RM_DIR) build
