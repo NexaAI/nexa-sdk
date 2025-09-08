@@ -1,5 +1,6 @@
 BRIDGE_VERSION ?= v1.0.19-rc19
 
+VERSION ?= $(shell git rev-parse --short HEAD)
 ifeq ($(OS), Windows_NT)
 	OS      := windows
 	ARCH    ?= $(shell powershell -NoProfile -NonInteractive "switch ((Get-CimInstance Win32_Processor).Architecture) { 0 {'x86'} 5 {'arm'} 9 {'x86_64'} 12 {'arm64'} Default {'unknown'} }")
@@ -22,7 +23,7 @@ else
 	MKLINK  := ln -s ../../nexasdk-bridge/build/out build
 endif
 
-.PHONY: build link download clean
+.PHONY: build link download clean package
 
 build:
 	go build -ldflags "-s -w" -o build/nexa$(EXE) ./cmd/nexa-launcher
@@ -39,7 +40,19 @@ download: clean
 	$(MKDIR) build
 	curl -L -o build/nexasdk-bridge.zip \
 		https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexasdk/$(BRIDGE_VERSION)/$(OS)_$(ARCH)/nexasdk-bridge.zip
-	cd build && tar -xf nexasdk-bridge.zip && $(RM) nexasdk-bridge.zip && $(RM) nexa_bridge.lib
+	cd build && tar -xf nexasdk-bridge.zip && $(RM_FILE) nexasdk-bridge.zip
+
+package: build
+	-$(RM) artifacts
+	@echo "====> Creating installer package for $(OS)_$(ARCH)"
+	@if [ "$(OS)" = "windows" ]; then \
+		bash release/package_windows.sh $(VERSION); \
+	elif [ "$(OS)" = "macos" ]; then \
+		release/package_darwin.sh $(VERSION) $(ARCH); \
+	elif [ "$(OS)" = "linux" ]; then \
+		bash release/package_linux.sh $(VERSION); \
+	fi
 
 clean:
 	-$(RM) build
+	-$(RM) artifacts

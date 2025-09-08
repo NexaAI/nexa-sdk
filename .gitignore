@@ -1,5 +1,6 @@
 # Build and binary files
 build/
+artifacts/
 *.exe
 *.exe~
 *.dll
