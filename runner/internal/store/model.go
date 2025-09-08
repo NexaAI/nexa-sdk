@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/bytedance/sonic"
 
@@ -117,25 +116,25 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 		defer s.UnlockModel(mf.Name)
 
 		// filter download file
-		var needs []string
+		var needs []model_hub.ModelFileInfo
 		for _, f := range mf.ModelFile {
 			if f.Downloaded {
-				needs = append(needs, f.Name)
+				needs = append(needs, model_hub.ModelFileInfo{Name: f.Name, Size: f.Size})
 			}
 		}
 		if mf.MMProjFile.Name != "" {
 			if mf.MMProjFile.Downloaded {
-				needs = append(needs, mf.MMProjFile.Name)
+				needs = append(needs, model_hub.ModelFileInfo{Name: mf.MMProjFile.Name, Size: mf.MMProjFile.Size})
 			}
 		}
 		if mf.TokenizerFile.Name != "" {
 			if mf.TokenizerFile.Downloaded {
-				needs = append(needs, mf.TokenizerFile.Name)
+				needs = append(needs, model_hub.ModelFileInfo{Name: mf.TokenizerFile.Name, Size: mf.TokenizerFile.Size})
 			}
 		}
 		for _, f := range mf.ExtraFiles {
 			if f.Downloaded {
-				needs = append(needs, f.Name)
+				needs = append(needs, model_hub.ModelFileInfo{Name: f.Name, Size: f.Size})
 			}
 		}
 
@@ -154,22 +153,6 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 		for e := range errCh {
 			errC <- e
 			return
-		}
-
-		// Detect plugin
-		name := strings.ToLower(mf.Name)
-		switch {
-		case strings.Contains(name, "mlx"):
-			mf.PluginId = "mlx"
-		case strings.Contains(name, "gemma-3n-cuda"):
-			mf.PluginId = "nexa_cuda_llama_cpp"
-		case strings.Contains(name, "gemma-3n"):
-			mf.PluginId = "nexa_dml_llama_cpp"
-		case strings.Contains(name, "prefect-illustrious") || strings.Contains(name, "sdxl-base"):
-			mf.PluginId = "nexa_dml"
-			// mf.PluginId = "nexa_cuda"
-		default:
-			mf.PluginId = "llama_cpp"
 		}
 
 		model := types.ModelManifest{
@@ -213,18 +196,18 @@ func (s *Store) PullExtraQuant(ctx context.Context, omf, nmf types.ModelManifest
 		defer s.UnlockModel(nmf.Name)
 
 		// filter download file
-		var needs []string
+		var needs []model_hub.ModelFileInfo
 		for q, f := range nmf.ModelFile {
 			if f.Downloaded && !omf.ModelFile[q].Downloaded {
-				needs = append(needs, f.Name)
+				needs = append(needs, model_hub.ModelFileInfo{Name: f.Name, Size: f.Size})
 			}
 		}
 		if nmf.TokenizerFile.Downloaded && !omf.TokenizerFile.Downloaded {
-			needs = append(needs, nmf.TokenizerFile.Name)
+			needs = append(needs, model_hub.ModelFileInfo{Name: nmf.TokenizerFile.Name, Size: nmf.TokenizerFile.Size})
 		}
 		for q, f := range nmf.ExtraFiles {
 			if f.Downloaded && !omf.ExtraFiles[q].Downloaded {
-				needs = append(needs, f.Name)
+				needs = append(needs, model_hub.ModelFileInfo{Name: f.Name, Size: f.Size})
 			}
 		}
 
