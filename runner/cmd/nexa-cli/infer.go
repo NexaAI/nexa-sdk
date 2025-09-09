@@ -461,15 +461,10 @@ func inferCV(plugin, modelfile string) {
 
 	cvInput := nexa_sdk.CVCreateInput{
 		Config: nexa_sdk.CVModelConfig{
-			Capabilities:         nexa_sdk.CVCapabilityOCR,
-			DetModelPath:         modelfile,
-			RecModelPath:         modelfile,
-			ModelPath:            "",
-			ConfigFilePath:       "",
-			CharDictPath:         "",
-			SystemLibraryPath:    "",
-			BackendLibraryPath:   "",
-			ExtensionLibraryPath: "",
+			Capabilities: nexa_sdk.CVCapabilityOCR,
+			DetModelPath: modelfile,
+			RecModelPath: modelfile,
+			CharDictPath: "",
 		},
 		PluginID: plugin,
 		DeviceID: "",
