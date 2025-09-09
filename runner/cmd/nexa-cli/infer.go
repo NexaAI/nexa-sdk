@@ -145,7 +145,9 @@ func inferLLM(manifest *types.ModelManifest, quant string) {
 	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
 	spin := render.NewSpinner("loading model...")
 	spin.Start()
+
 	p, err := nexa_sdk.NewLLM(nexa_sdk.LlmCreateInput{
+		ModelName: manifest.ModelName,
 		ModelPath: modelfile,
 		PluginID:  manifest.PluginId,
 		Config: nexa_sdk.ModelConfig{
@@ -231,6 +233,7 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 	spin := render.NewSpinner("loading model...")
 	spin.Start()
 	p, err := nexa_sdk.NewVLM(nexa_sdk.VlmCreateInput{
+		ModelName:     manifest.ModelName,
 		ModelPath:     modelfile,
 		MmprojPath:    mmprojfile,
 		TokenizerPath: tokenizerfile,
@@ -315,6 +318,7 @@ func inferTTS(manifest *types.ModelManifest, quant string) {
 	spin.Start()
 
 	ttsInput := nexa_sdk.TtsCreateInput{
+		ModelName:   manifest.ModelName,
 		ModelPath:   modelfile,
 		VocoderPath: vocoderfile,
 		PluginID:    manifest.PluginId,
@@ -404,6 +408,7 @@ func inferASR(manifest *types.ModelManifest, quant string) {
 	spin.Start()
 
 	asrInput := nexa_sdk.AsrCreateInput{
+		ModelName:     manifest.ModelName,
 		ModelPath:     modelfile,
 		TokenizerPath: tokenizerPath,
 		PluginID:      manifest.PluginId,
@@ -470,10 +475,11 @@ func inferCV(manifest *types.ModelManifest, quant string) {
 	spin.Start()
 
 	cvInput := nexa_sdk.CVCreateInput{
+		ModelName: manifest.ModelName,
 		Config: nexa_sdk.CVModelConfig{
-			Capabilities:         nexa_sdk.CVCapabilityOCR,
-			DetModelPath:         modelfile,
-			RecModelPath:         modelfile,
+			Capabilities: nexa_sdk.CVCapabilityOCR,
+			DetModelPath: modelfile,
+			RecModelPath: modelfile,
 		},
 		PluginID: manifest.PluginId,
 		DeviceID: "",
@@ -529,6 +535,7 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) {
 	spin.Start()
 
 	embedderInput := nexa_sdk.EmbedderCreateInput{
+		ModelName: manifest.ModelName,
 		ModelPath: modelfile,
 		PluginID:  manifest.PluginId,
 	}
@@ -607,6 +614,7 @@ func inferImageGen(manifest *types.ModelManifest, quant string) {
 	spin := render.NewSpinner("loading ImageGen model...")
 	spin.Start()
 	p, err := nexa_sdk.NewImageGen(nexa_sdk.ImageGenCreateInput{
+		ModelName: manifest.ModelName,
 		ModelPath: modeldir,
 		PluginID:  manifest.PluginId,
 	})
@@ -670,6 +678,7 @@ func inferReranker(manifest *types.ModelManifest, quant string) {
 	spin.Start()
 
 	rerankerInput := nexa_sdk.RerankerCreateInput{
+		ModelName: manifest.ModelName,
 		ModelPath: modelfile,
 		PluginID:  manifest.PluginId,
 	}
