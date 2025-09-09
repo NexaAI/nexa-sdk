@@ -9,6 +9,7 @@ import (
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/config"
 	"github.com/NexaAI/nexa-sdk/runner/internal/model_hub"
+	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 )
 
 // RootCmd creates the main Nexa CLI command with all subcommands.
@@ -28,6 +29,12 @@ func RootCmd() *cobra.Command {
 				go checkForUpdate(false)
 			}
 
+			license, err := store.Get().ConfigGet("license")
+			if err != nil || license == "" {
+				slog.Warn("license is not set", "err", err)
+			} else if err := os.Setenv("NEXA_TOKEN", license); err != nil {
+				return err
+			}
 			return nil
 		},
 	}
