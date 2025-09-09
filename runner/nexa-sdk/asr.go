@@ -95,6 +95,7 @@ func freeASRResult(ptr *C.ml_ASRResult) {
 
 // AsrCreateInput represents input parameters for ASR creation
 type AsrCreateInput struct {
+	ModelName     string
 	ModelPath     string
 	TokenizerPath string
 	Language      string
@@ -106,6 +107,9 @@ func (aci AsrCreateInput) toCPtr() *C.ml_AsrCreateInput {
 	cPtr := (*C.ml_AsrCreateInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_AsrCreateInput{}))))
 	*cPtr = C.ml_AsrCreateInput{}
 
+	if aci.ModelName != "" {
+		cPtr.model_name = C.CString(aci.ModelName)
+	}
 	if aci.ModelPath != "" {
 		cPtr.model_path = C.CString(aci.ModelPath)
 	}

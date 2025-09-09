@@ -127,13 +127,7 @@ type CVModelConfig struct {
 	// MLX-OCR
 	DetModelPath string // Detection model path
 	RecModelPath string // Recognition model path
-	// QNN
-	ModelPath            string
-	SystemLibraryPath    string
-	BackendLibraryPath   string
-	ExtensionLibraryPath string
-	ConfigFilePath       string
-	CharDictPath         string
+	CharDictPath string
 }
 
 func (cmc CVModelConfig) toCPtr() *C.ml_CVModelConfig {
@@ -147,21 +141,6 @@ func (cmc CVModelConfig) toCPtr() *C.ml_CVModelConfig {
 	}
 	if cmc.RecModelPath != "" {
 		cPtr.rec_model_path = C.CString(cmc.RecModelPath)
-	}
-	if cmc.ModelPath != "" {
-		cPtr.model_path = C.CString(cmc.ModelPath)
-	}
-	if cmc.SystemLibraryPath != "" {
-		cPtr.system_library_path = C.CString(cmc.SystemLibraryPath)
-	}
-	if cmc.BackendLibraryPath != "" {
-		cPtr.backend_library_path = C.CString(cmc.BackendLibraryPath)
-	}
-	if cmc.ExtensionLibraryPath != "" {
-		cPtr.extension_library_path = C.CString(cmc.ExtensionLibraryPath)
-	}
-	if cmc.ConfigFilePath != "" {
-		cPtr.config_file_path = C.CString(cmc.ConfigFilePath)
 	}
 	if cmc.CharDictPath != "" {
 		cPtr.char_dict_path = C.CString(cmc.CharDictPath)
@@ -178,21 +157,6 @@ func freeCVModelConfig(cPtr *C.ml_CVModelConfig) {
 		if cPtr.rec_model_path != nil {
 			C.free(unsafe.Pointer(cPtr.rec_model_path))
 		}
-		if cPtr.model_path != nil {
-			C.free(unsafe.Pointer(cPtr.model_path))
-		}
-		if cPtr.system_library_path != nil {
-			C.free(unsafe.Pointer(cPtr.system_library_path))
-		}
-		if cPtr.backend_library_path != nil {
-			C.free(unsafe.Pointer(cPtr.backend_library_path))
-		}
-		if cPtr.extension_library_path != nil {
-			C.free(unsafe.Pointer(cPtr.extension_library_path))
-		}
-		if cPtr.config_file_path != nil {
-			C.free(unsafe.Pointer(cPtr.config_file_path))
-		}
 		if cPtr.char_dict_path != nil {
 			C.free(unsafe.Pointer(cPtr.char_dict_path))
 		}
@@ -202,9 +166,10 @@ func freeCVModelConfig(cPtr *C.ml_CVModelConfig) {
 
 // CVCreateInput represents input parameters for CV model creation
 type CVCreateInput struct {
-	Config   CVModelConfig
-	PluginID string
-	DeviceID string
+	ModelName string
+	Config    CVModelConfig
+	PluginID  string
+	DeviceID  string
 }
 
 func (cvi CVCreateInput) toCPtr() *C.ml_CVCreateInput {
@@ -216,6 +181,9 @@ func (cvi CVCreateInput) toCPtr() *C.ml_CVCreateInput {
 	cPtr.config = *configPtr
 	C.free(unsafe.Pointer(configPtr))
 
+	if cvi.ModelName != "" {
+		cPtr.model_name = C.CString(cvi.ModelName)
+	}
 	if cvi.PluginID != "" {
 		cPtr.plugin_id = C.CString(cvi.PluginID)
 	}

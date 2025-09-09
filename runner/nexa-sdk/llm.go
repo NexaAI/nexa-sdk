@@ -24,6 +24,7 @@ const (
 )
 
 type LlmCreateInput struct {
+	ModelName     string
 	ModelPath     string
 	TokenizerPath string
 	Config        ModelConfig
@@ -35,6 +36,9 @@ func (lci LlmCreateInput) toCPtr() *C.ml_LlmCreateInput {
 	cPtr := (*C.ml_LlmCreateInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_LlmCreateInput{}))))
 	*cPtr = C.ml_LlmCreateInput{}
 
+	if lci.ModelName != "" {
+		cPtr.model_name = C.CString(lci.ModelName)
+	}
 	if lci.ModelPath != "" {
 		cPtr.model_path = C.CString(lci.ModelPath)
 	}
@@ -212,8 +216,8 @@ func freeLlmChatMessages(cPtr *C.ml_LlmChatMessage, count C.int32_t) {
 }
 
 type LlmApplyChatTemplateInput struct {
-	Messages []LlmChatMessage
-	Tools    string
+	Messages    []LlmChatMessage
+	Tools       string
 	EnableThink bool
 }
 

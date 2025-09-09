@@ -12,16 +12,20 @@ import (
 
 // ImageGenCreateInput represents input parameters for creating an ImageGen instance
 type ImageGenCreateInput struct {
-	ModelPath            string
-	SchedulerConfigPath  string
-	PluginID             string
-	DeviceID             string
+	ModelName           string
+	ModelPath           string
+	SchedulerConfigPath string
+	PluginID            string
+	DeviceID            string
 }
 
 func (igci ImageGenCreateInput) toCPtr() *C.ml_ImageGenCreateInput {
 	cPtr := (*C.ml_ImageGenCreateInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_ImageGenCreateInput{}))))
 	*cPtr = C.ml_ImageGenCreateInput{}
 
+	if igci.ModelName != "" {
+		cPtr.model_name = C.CString(igci.ModelName)
+	}
 	if igci.ModelPath != "" {
 		cPtr.model_path = C.CString(igci.ModelPath)
 	}
@@ -91,17 +95,17 @@ func freeImageSamplerConfig(cPtr *C.ml_ImageSamplerConfig) {
 
 // SchedulerConfig represents scheduler configuration
 type SchedulerConfig struct {
-	Type                string
-	NumTrainTimesteps   int32
-	StepsOffset         int32
-	BetaStart           float32
-	BetaEnd             float32
-	BetaSchedule        string
-	PredictionType      string
-	TimestepType        string
-	TimestepSpacing     string
-	InterpolationType   string
-	ConfigPath          string
+	Type              string
+	NumTrainTimesteps int32
+	StepsOffset       int32
+	BetaStart         float32
+	BetaEnd           float32
+	BetaSchedule      string
+	PredictionType    string
+	TimestepType      string
+	TimestepSpacing   string
+	InterpolationType string
+	ConfigPath        string
 }
 
 func (sc SchedulerConfig) toCPtr() *C.ml_SchedulerConfig {
@@ -166,13 +170,13 @@ func freeSchedulerConfig(cPtr *C.ml_SchedulerConfig) {
 
 // ImageGenerationConfig represents image generation configuration
 type ImageGenerationConfig struct {
-	Prompts           []string
-	NegativePrompts   []string
-	Height            int32
-	Width             int32
-	SamplerConfig     ImageSamplerConfig
-	SchedulerConfig   SchedulerConfig
-	Strength          float32
+	Prompts         []string
+	NegativePrompts []string
+	Height          int32
+	Width           int32
+	SamplerConfig   ImageSamplerConfig
+	SchedulerConfig SchedulerConfig
+	Strength        float32
 }
 
 func (igc ImageGenerationConfig) toCPtr() *C.ml_ImageGenerationConfig {
@@ -187,7 +191,7 @@ func (igc ImageGenerationConfig) toCPtr() *C.ml_ImageGenerationConfig {
 	}
 	cPtr.height = C.int32_t(igc.Height)
 	cPtr.width = C.int32_t(igc.Width)
-	
+
 	// Convert sampler config to C struct (not pointer)
 	if igc.SamplerConfig.Method != "" {
 		cPtr.sampler_config.method = C.CString(igc.SamplerConfig.Method)
@@ -196,7 +200,7 @@ func (igc ImageGenerationConfig) toCPtr() *C.ml_ImageGenerationConfig {
 	cPtr.sampler_config.guidance_scale = C.float(igc.SamplerConfig.GuidanceScale)
 	cPtr.sampler_config.eta = C.float(igc.SamplerConfig.Eta)
 	cPtr.sampler_config.seed = C.int32_t(igc.SamplerConfig.Seed)
-	
+
 	// Convert scheduler config to C struct (not pointer)
 	if igc.SchedulerConfig.Type != "" {
 		cPtr.scheduler_config._type = C.CString(igc.SchedulerConfig.Type)
@@ -223,7 +227,7 @@ func (igc ImageGenerationConfig) toCPtr() *C.ml_ImageGenerationConfig {
 	if igc.SchedulerConfig.ConfigPath != "" {
 		cPtr.scheduler_config.config_path = C.CString(igc.SchedulerConfig.ConfigPath)
 	}
-	
+
 	cPtr.strength = C.float(igc.Strength)
 
 	return cPtr
@@ -241,7 +245,7 @@ func freeImageGenerationConfig(cPtr *C.ml_ImageGenerationConfig) {
 	if cPtr.sampler_config.method != nil {
 		C.free(unsafe.Pointer(cPtr.sampler_config.method))
 	}
-	
+
 	// Free scheduler config strings
 	if cPtr.scheduler_config._type != nil {
 		C.free(unsafe.Pointer(cPtr.scheduler_config._type))

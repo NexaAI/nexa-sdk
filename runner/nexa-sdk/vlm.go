@@ -14,6 +14,7 @@ import (
 
 // VlmCreateInput represents input parameters for creating a VLM instance
 type VlmCreateInput struct {
+	ModelName     string
 	ModelPath     string
 	MmprojPath    string
 	TokenizerPath string
@@ -26,6 +27,9 @@ func (vci VlmCreateInput) toCPtr() *C.ml_VlmCreateInput {
 	cPtr := (*C.ml_VlmCreateInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_VlmCreateInput{}))))
 	*cPtr = C.ml_VlmCreateInput{}
 
+	if vci.ModelName != "" {
+		cPtr.model_name = C.CString(vci.ModelName)
+	}
 	if vci.ModelPath != "" {
 		cPtr.model_path = C.CString(vci.ModelPath)
 	}

@@ -103,6 +103,7 @@ func freeTTSResult(ptr *C.ml_TTSResult) {
 
 // TtsCreateInput represents input parameters for TTS creation
 type TtsCreateInput struct {
+	ModelName   string
 	ModelPath   string
 	VocoderPath string
 	PluginID    string
@@ -113,6 +114,9 @@ func (tci TtsCreateInput) toCPtr() *C.ml_TtsCreateInput {
 	cPtr := (*C.ml_TtsCreateInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_TtsCreateInput{}))))
 	*cPtr = C.ml_TtsCreateInput{}
 
+	if tci.ModelName != "" {
+		cPtr.model_name = C.CString(tci.ModelName)
+	}
 	if tci.ModelPath != "" {
 		cPtr.model_path = C.CString(tci.ModelPath)
 	}
@@ -232,7 +236,7 @@ func freeTtsListAvailableVoicesInput(cPtr *C.ml_TtsListAvailableVoicesInput) {
 
 // TtsListAvailableVoicesOutput represents output for listing available voices
 type TtsListAvailableVoicesOutput struct {
-	VoiceIDs   []string
+	VoiceIDs []string
 }
 
 func newTtsListAvailableVoicesOutputFromCPtr(c *C.ml_TtsListAvailableVoicesOutput) TtsListAvailableVoicesOutput {
@@ -331,4 +335,3 @@ func (t *TTS) ListAvailableVoices() (TtsListAvailableVoicesOutput, error) {
 	output := newTtsListAvailableVoicesOutputFromCPtr(&cOutput)
 	return output, nil
 }
-

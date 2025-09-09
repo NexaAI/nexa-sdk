@@ -41,6 +41,7 @@ func freeEmbeddingConfig(cPtr *C.ml_EmbeddingConfig) {
 
 // EmbedderCreateInput represents input parameters for embedder creation
 type EmbedderCreateInput struct {
+	ModelName     string
 	ModelPath     string
 	TokenizerPath string
 	PluginID      string
@@ -50,6 +51,9 @@ func (eci EmbedderCreateInput) toCPtr() *C.ml_EmbedderCreateInput {
 	cPtr := (*C.ml_EmbedderCreateInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_EmbedderCreateInput{}))))
 	*cPtr = C.ml_EmbedderCreateInput{}
 
+	if eci.ModelName != "" {
+		cPtr.model_name = C.CString(eci.ModelName)
+	}
 	if eci.ModelPath != "" {
 		cPtr.model_path = C.CString(eci.ModelPath)
 	}
