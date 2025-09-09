@@ -142,7 +142,7 @@ func remove() *cobra.Command {
 		s := store.Get()
 		e := s.Remove(name)
 		if e != nil {
-			fmt.Println(e)
+			fmt.Println(render.GetTheme().Error.Sprintf("✘  Failed to remove model: %s", name))
 		} else {
 			fmt.Printf("✔  Removed %s\n", name)
 		}
@@ -179,6 +179,7 @@ func list() *cobra.Command {
 		Short:   "List all cached models",
 		Long:    "Display all cached models in a formatted table, showing model names, types, and sizes.",
 	}
+	verbose := listCmd.Flags().BoolP("verbose", "v", false, "show detailed model info")
 
 	listCmd.Run = func(cmd *cobra.Command, args []string) {
 		s := store.Get()
@@ -192,9 +193,33 @@ func list() *cobra.Command {
 		tw := table.NewWriter()
 		tw.SetOutputMirror(os.Stdout)
 		tw.SetStyle(table.StyleLight)
-		tw.AppendHeader(table.Row{"NAME", "SIZE"})
-		for _, model := range models {
-			tw.AppendRow(table.Row{model.Name, humanize.IBytes(uint64(model.GetSize()))})
+		if *verbose {
+			tw.AppendHeader(table.Row{"NAME", "SIZE", "PLUGIN", "TYPE", "QUANTS"})
+			for _, model := range models {
+				tw.AppendRow(table.Row{
+					model.Name,
+					humanize.IBytes(uint64(model.GetSize())),
+					model.PluginId,
+					model.ModelType,
+					strings.Join(func() []string {
+						quants := make([]string, 0)
+						for q := range model.ModelFile {
+							if model.ModelFile[q].Downloaded {
+								quants = append(quants, q)
+							}
+						}
+						sort.Slice(quants, func(i, j int) bool {
+							return quants[i] < quants[j]
+						})
+						return quants
+					}(), ","),
+				})
+			}
+		} else {
+			tw.AppendHeader(table.Row{"NAME", "SIZE"})
+			for _, model := range models {
+				tw.AppendRow(table.Row{model.Name, humanize.IBytes(uint64(model.GetSize()))})
+			}
 		}
 		tw.Render()
 	}
@@ -213,36 +238,12 @@ var quantRegix = regexp.MustCompile(`(` + strings.Join([]string{
 	"[0-9]+[bB][iI][tT]",             // 1bit, 2bit, 3bit, 4bit, 16bit, 1BIT, 16Bit, etc.
 }, "|") + `)`)
 
-// order big to small
-func quantGreaterThan(a, b string, order []string) bool {
-	// empty
-	if a == "" || b == "" {
-		return a != ""
+func getQuant(name string) string {
+	quant := strings.ToUpper(quantRegix.FindString(name))
+	if quant == "" {
+		quant = "N/A"
 	}
-
-	a = strings.ToUpper(a)
-	b = strings.ToUpper(b)
-
-	// same
-	if a == b {
-		return false
-	}
-
-	// order
-	ca := slices.Index(order, a)
-	cb := slices.Index(order, b)
-	if ca >= 0 && cb >= 0 {
-		return ca < cb
-	} else if ca >= 0 || cb >= 0 {
-		return ca >= 0
-	}
-
-	// normal
-	if a[0] == b[0] {
-		return a > b
-	} else {
-		return a[0] == 'F'
-	}
+	return quant
 }
 
 func choosePluginId(name string) string {
@@ -314,11 +315,11 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 		if len(ggufs) == 1 {
 			// single quant
 			fileInfo := types.ModelFileInfo{}
-			for quant, gguf := range ggufs {
+			for name, gguf := range ggufs {
 				fileInfo.Name = gguf[0].Name
 				fileInfo.Size = gguf[0].Size
 				fileInfo.Downloaded = true
-				res.ModelFile[quant] = fileInfo
+				res.ModelFile[getQuant(name)] = fileInfo
 				// other fragments
 				for _, file := range gguf[1:] {
 					res.ExtraFiles = append(res.ExtraFiles, types.ModelFileInfo{
@@ -337,11 +338,17 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 			ggufNames := make([]string, 0, len(ggufs))
 			for k := range ggufs {
 				ggufNames = append(ggufNames, k)
-				// choose default quant
-				if quantGreaterThan(
-					strings.ToUpper(quantRegix.FindString(k)),
-					strings.ToUpper(quantRegix.FindString(file)),
-					[]string{"Q4_K_M", "Q4_0", "Q8_0"}) {
+
+				if file == "" {
+					file = k
+					continue
+				}
+
+				// prefer Q4_K_M, Q4_0, Q8_0
+				kq := getQuant(k)
+				fq := getQuant(file)
+				sortKey := []string{"Q8_0", "Q4_0", "Q4_K_M"}
+				if slices.Index(sortKey, kq) > slices.Index(sortKey, fq) {
 					file = k
 				}
 			}
@@ -355,9 +362,8 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 				if ggufName == file {
 					fmtStr += " (default)"
 				}
-				quant := strings.ToUpper(quantRegix.FindString(ggufName))
 				options = append(options, huh.NewOption(
-					fmt.Sprintf(fmtStr, quant, humanize.IBytes(uint64(sumSize(ggufs[ggufName])))),
+					fmt.Sprintf(fmtStr, getQuant(ggufName), humanize.IBytes(uint64(sumSize(ggufs[ggufName])))),
 					ggufName,
 				))
 			}
@@ -372,12 +378,11 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 
 			for k, gguf := range ggufs {
 				downloaded := k == file
-				quant := strings.ToUpper(quantRegix.FindString(k))
 				// sort files by name
 				sort.Slice(gguf, func(i, j int) bool {
 					return gguf[i].Name < gguf[j].Name
 				})
-				res.ModelFile[quant] = types.ModelFileInfo{
+				res.ModelFile[getQuant(k)] = types.ModelFileInfo{
 					Name:       gguf[0].Name,
 					Downloaded: downloaded,
 					Size:       sumSize(ggufs[k]),
@@ -439,17 +444,14 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 		// mlx
 
 		// quant
-		var quant string
-		if q := strings.ToUpper(quantRegix.FindString(name)); q != "" {
-			quant = q
-		} else if q, err := model_hub.GetFileContent(context.TODO(), name, "config.json"); err != nil {
-			quant = "N/A"
-		} else if b, err := sonic.Get(q, "quantization_config", "bits"); err != nil {
-			quant = "N/A"
-		} else if q, err := b.Float64(); err != nil {
-			quant = "N/A"
-		} else {
-			quant = fmt.Sprintf("%dBIT", uint32(q))
+		quant := getQuant(name)
+		if quant == "N/A" {
+			if q, err := model_hub.GetFileContent(context.TODO(), name, "config.json"); err != nil {
+			} else if b, err := sonic.Get(q, "quantization_config", "bits"); err != nil {
+			} else if q, err := b.Float64(); err != nil {
+			} else {
+				quant = fmt.Sprintf("%dBIT", uint32(q))
+			}
 		}
 
 		// detect main model file
