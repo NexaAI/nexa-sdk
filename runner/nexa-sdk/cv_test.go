@@ -15,14 +15,10 @@ func initCV() {
 
 	input := CVCreateInput{
 		Config: CVModelConfig{
-			Capabilities:         CVCapabilityOCR,
-			ModelPath:            "modelfiles/mlx/paddle-ocr-ml/ch_ptocr_v4_det_infer.safetensors",
-			RecModelPath:         "modelfiles/mlx/paddle-ocr-ml/ch_ptocr_v4_rec_infer_f16.safetensors",
-			ConfigFilePath:       "",
-			CharDictPath:         "",
-			SystemLibraryPath:    "",
-			BackendLibraryPath:   "",
-			ExtensionLibraryPath: "",
+			Capabilities: CVCapabilityOCR,
+			RecModelPath: "modelfiles/mlx/paddle-ocr-ml/ch_ptocr_v4_rec_infer_f16.safetensors",
+			DetModelPath: "modelfiles/mlx/paddle-ocr-ml/ch_ptocr_v4_det_infer_f16.safetensors",
+			CharDictPath: "",
 		},
 		PluginID: "mlx",
 		DeviceID: "",
