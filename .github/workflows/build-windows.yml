@@ -39,7 +39,7 @@ jobs:
           go-version: 1.24.3
           cache-dependency-path: runner/go.sum
 
-      - name: Setup MSYS2 for ARM64
+      - name: Setup MSYS2 (ARM64)
         if: matrix.arch == 'arm64'
         uses: msys2/setup-msys2@v2
         with:
@@ -50,7 +50,7 @@ jobs:
             mingw-w64-clang-aarch64-clang
             mingw-w64-clang-aarch64-lld
 
-      - name: Setup Compile Environment
+      - name: Setup Compile Environment (ARM64)
         if: matrix.arch == 'arm64'
         shell: bash
         run: |
@@ -60,15 +60,18 @@ jobs:
           echo "CXX=C:/Tools/msys64/clangarm64/bin/clang++.exe" >> $GITHUB_ENV
 
       - name: Download runtime
+        shell: bash
         run: |
           cd runner
           make download ARCH=${{ matrix.arch }}
+          ls build
 
       - name: Build Nexa Cli
+        shell: bash
         run: |
           cd runner
           make build ARCH=${{ matrix.arch }}
-          Remove-Item build/ml.h
+          rm -f build/ml.h
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -79,7 +82,6 @@ jobs:
 
   build-installer:
     name: Build Windows Installer & Release
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: build-cli
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -127,14 +129,15 @@ jobs:
           }
 
       - name: Prepare Installer Files
+        if: matrix.arch == 'x86_64'
         shell: bash
         run: |
           cp -r artifacts artifacts_cuda
           rm -r artifacts_cuda/nexa_dml*
-
           rm -r artifacts/nexa_cuda*
 
       - name: Compile Installer (CUDA)
+        if: matrix.arch == 'x86_64'
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.6
         with:
           path: runner/release/windows/nexa_installer.iss
@@ -142,7 +145,7 @@ jobs:
         env:
           ORT: "_cuda"
 
-      - name: Compile Installer (DML)
+      - name: Compile Installer
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.6
         with:
           path: runner/release/windows/nexa_installer.iss
@@ -187,7 +190,14 @@ jobs:
             -td sha256 `
             "nexa-cli_windows_${{ matrix.arch }}.exe"
 
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexa-cli_windows_${{ matrix.arch }}_installer
+          path: nexa-cli_windows_${{ matrix.arch }}*.exe
+
       - name: Create GitHub Release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         id: create_release
         uses: softprops/action-gh-release@v2
         with:

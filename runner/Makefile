@@ -5,10 +5,9 @@ ifeq ($(OS), Windows_NT)
     ARCH    ?= x86_64
     EXE     := .exe
 
-    RM_FILE := cmd /c del /f /q
-    RM_DIR  := cmd /c rmdir /s /q
-    MKDIR   := cmd /c mkdir
-    UNZIP   := powershell -Command "Expand-Archive -Force -DestinationPath . -Path"
+    RM      := powershell -NoProfile Remove-Item -Recurse -Force -Path
+    MKDIR   := powershell -NoProfile New-Item -ItemType Directory -Force -Path
+    UNZIP   := powershell -NoProfile Expand-Archive -Force -DestinationPath . -Path
 else
     UNAME := $(shell uname -s)
     ARCH  := $(shell uname -m)
@@ -19,8 +18,7 @@ else
     endif
     EXE     :=
 
-    RM_FILE := rm -f
-    RM_DIR  := rm -rf
+    RM      := rm -rf
     MKDIR   := mkdir -p
     UNZIP   := unzip -q
 endif
@@ -32,6 +30,7 @@ build:
 	go build \
 		-tags="sonic avx" \
 		-ldflags "-X 'main.Version=$(VERSION)'" \
+		-ldflags "-s -w" \
 		-o ./build/nexa-cli$(EXE) \
 		./cmd/nexa-cli
 
@@ -53,7 +52,7 @@ download: clean
 	@echo "BRIDGE_VERSION: $(BRIDGE_VERSION)"
 	curl -L -o build/nexasdk-bridge.zip \
 		https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexasdk/$(BRIDGE_VERSION)/$(OS)_$(ARCH)/nexasdk-bridge.zip
-	cd build && $(UNZIP) nexasdk-bridge.zip && $(RM_FILE) nexasdk-bridge.zip
+	cd build && $(UNZIP) nexasdk-bridge.zip && $(RM) nexasdk-bridge.zip && $(RM) nexa_bridge.lib
 
 clean:
-	-$(RM_DIR) build
+	-$(RM) build
