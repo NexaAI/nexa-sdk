@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/bytedance/sonic"
 
@@ -268,6 +269,11 @@ func (s *Store) scanModelDir() ([]string, error) {
 	res := make([]string, 0)
 	for _, org := range orgs {
 		if !org.IsDir() {
+			continue
+		}
+
+		ignoreDirs := []string{".cache"}
+		if slices.Contains(ignoreDirs, org.Name()) {
 			continue
 		}
 
