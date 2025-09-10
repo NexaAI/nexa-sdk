@@ -124,12 +124,15 @@ func (vcs vlmContents) toCPtr() (*C.ml_VlmContent, C.int32_t) {
 	cContents := unsafe.Slice((*C.ml_VlmContent)(raw), count)
 
 	for i, vc := range vcs {
+		// Initialize all fields to prevent garbage memory
+		cContents[i]._type = nil
+		cContents[i].text = nil
+		
 		if vc.Type != "" {
 			cContents[i]._type = C.CString(string(vc.Type))
 		}
-		if vc.Text != "" {
-			cContents[i].text = C.CString(vc.Text)
-		}
+		// Always allocate text field, even for empty strings to prevent garbage memory
+		cContents[i].text = C.CString(vc.Text)
 	}
 
 	return (*C.ml_VlmContent)(raw), C.int32_t(count)
