@@ -1,26 +1,26 @@
 BRIDGE_VERSION ?= v1.0.11-rc1
 
 ifeq ($(OS), Windows_NT)
-    OS      := windows
-    ARCH    ?= x86_64
-    EXE     := .exe
+	OS      := windows
+	ARCH    ?= $(shell powershell -NoProfile -NonInteractive "switch ((Get-CimInstance Win32_Processor).Architecture) { 0 {'x86'} 5 {'arm'} 9 {'x86_64'} 12 {'arm64'} Default {'unknown'} }")
+	EXE     := .exe
 
-    RM      := powershell -NoProfile Remove-Item -Recurse -Force -Path
-    MKDIR   := powershell -NoProfile New-Item -ItemType Directory -Force -Path
-    UNZIP   := powershell -NoProfile Expand-Archive -Force -DestinationPath . -Path
+	RM      := powershell -NoProfile -NonInteractive Remove-Item -Recurse -Force -Path
+	MKDIR   := powershell -NoProfile -NonInteractive New-Item -ItemType Directory -Force -Path
+	UNZIP   := powershell -NoProfile -NonInteractive Expand-Archive -Force -DestinationPath . -Path
 else
-    UNAME := $(shell uname -s)
-    ARCH  := $(shell uname -m)
-    ifeq ($(UNAME), Linux)
-        OS  := linux
+	UNAME   := $(shell uname -s)
+	ARCH    := $(shell uname -m)
+	ifeq ($(UNAME), Linux)
+		OS  := linux
     else ifeq ($(UNAME), Darwin)
-        OS  := macos
-    endif
-    EXE     :=
+		OS  := macos
+	endif
+	EXE     :=
 
-    RM      := rm -rf
-    MKDIR   := mkdir -p
-    UNZIP   := unzip -q
+	RM      := rm -rf
+	MKDIR   := mkdir -p
+	UNZIP   := unzip -q
 endif
 
 .PHONY: build link xcopy download clean
