@@ -16,6 +16,8 @@ jobs:
         include:
           - runner: sdk-windows-8-core-2
             arch: x86_64
+          - runner: windows-11-arm
+            arch: arm64
 
     steps:
       - name: Checkout repository
@@ -36,6 +38,26 @@ jobs:
         with:
           go-version: 1.24.3
           cache-dependency-path: runner/go.sum
+
+      - name: Setup MSYS2 for ARM64
+        if: matrix.arch == 'arm64'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: CLANGARM64
+          location: C:/Tools
+          update: true
+          install: >-
+            mingw-w64-clang-aarch64-clang
+            mingw-w64-clang-aarch64-lld
+
+      - name: Setup Compile Environment
+        if: matrix.arch == 'arm64'
+        shell: bash
+        run: |
+          echo "CGO_ENABLED=1" >> $GITHUB_ENV
+          echo "GOARCH=arm64" >> $GITHUB_ENV
+          echo "CC=C:/Tools/msys64/clangarm64/bin/clang.exe" >> $GITHUB_ENV
+          echo "CXX=C:/Tools/msys64/clangarm64/bin/clang++.exe" >> $GITHUB_ENV
 
       - name: Download runtime
         run: |
@@ -66,6 +88,8 @@ jobs:
         include:
           - runner: sdk-windows-8-core-2
             arch: x86_64
+          - runner: windows-11-arm
+            arch: arm64
     env:
       VERSION: ${{ github.ref_name }}
       ARCH: ${{ matrix.arch }}
@@ -79,7 +103,6 @@ jobs:
         with:
           name: nexa-cli_windows_${{ matrix.arch }}
           path: artifacts
-
 
       - name: Build launcher with PyInstaller
         run: |
@@ -128,6 +151,21 @@ jobs:
           ORT: ""
 
       - name: Sign Installer
+        if: matrix.arch == 'arm64'
+        shell: pwsh
+        run: |
+          azuresigntool sign `
+            -kvu "${{ secrets.AZURE_KEY_VAULT_URI }}" `
+            -kvc "${{ secrets.AZURE_CERT_NAME }}" `
+            -kvi "${{ secrets.AZURE_CLIENT_ID }}" `
+            -kvs "${{ secrets.AZURE_CLIENT_SECRET }}" `
+            --azure-key-vault-tenant-id "${{ secrets.AZURE_TENANT_ID }}" `
+            -tr http://timestamp.globalsign.com/tsa/advanced `
+            -td sha256 `
+            "nexa-cli_windows_${{ matrix.arch }}.exe"
+
+      - name: Sign Installer
+        if: matrix.arch == 'x86_64'
         run: |
           azuresigntool sign `
             -kvu "${{ secrets.AZURE_KEY_VAULT_URI }}" `
