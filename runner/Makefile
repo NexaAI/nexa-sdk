@@ -1,5 +1,6 @@
 BRIDGE_VERSION ?= v1.0.6-rc1
 
+VERSION ?= $(shell git rev-parse --short HEAD)
 ifeq ($(OS), Windows_NT)
     OS      := windows
     ARCH    ?= x86_64
@@ -25,7 +26,7 @@ else
     UNZIP   := unzip -q
 endif
 
-.PHONY: build link xcopy download clean
+.PHONY: build link xcopy download clean package
 
 build:
 	go build -o ./build/nexa$(EXE) ./cmd/nexa-launcher
@@ -55,5 +56,17 @@ download: clean
 		https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexasdk/$(BRIDGE_VERSION)/$(OS)_$(ARCH)/nexasdk-bridge.zip
 	cd build && $(UNZIP) nexasdk-bridge.zip && $(RM_FILE) nexasdk-bridge.zip
 
+package: build
+	-$(RM_DIR) artifacts
+	@echo "====> Creating installer package for $(OS)_$(ARCH)"
+	@if [ "$(OS)" = "windows" ]; then \
+		bash release/package_windows.sh $(VERSION); \
+	elif [ "$(OS)" = "macos" ]; then \
+		release/package_darwin.sh $(VERSION) $(ARCH); \
+	elif [ "$(OS)" = "linux" ]; then \
+		bash release/package_linux.sh $(VERSION); \
+	fi
+
 clean:
 	-$(RM_DIR) build
+	-$(RM_DIR) artifacts
