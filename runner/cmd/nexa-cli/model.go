@@ -467,7 +467,9 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 		for _, file := range files {
 			if res.ModelFile[quant].Name == "" {
 				lower := strings.ToLower(file.Name)
-				if strings.HasSuffix(lower, "safetensors") || strings.HasSuffix(lower, "npz") {
+				if strings.HasSuffix(lower, "safetensors") ||
+					strings.HasSuffix(lower, "npz") ||
+					strings.HasSuffix(lower, "nexa") {
 					res.ModelFile[quant] = types.ModelFileInfo{Name: file.Name, Size: file.Size}
 					continue
 				}
