@@ -18,7 +18,6 @@ import (
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/record"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
-	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 )
 
@@ -32,8 +31,8 @@ var help = [][2]string{
 }
 
 type ReplConfig struct {
-	ModelType types.ModelType
-	ParseFile bool
+	MicImmediate bool
+	ParseFile    bool
 
 	Reset       func() error
 	SaveKVCache func(path string) error
@@ -183,6 +182,7 @@ func repl(cfg ReplConfig) {
 					fmt.Printf("  %-25s %s\n", h[0], h[1])
 				}
 				fmt.Println()
+				continue
 
 			case "/exit":
 				return
@@ -191,6 +191,7 @@ func repl(cfg ReplConfig) {
 				cfg.Reset()
 				recordAudios = nil
 				fmt.Print("\033[H\033[2J")
+				continue
 
 			case "/load":
 				if len(fileds) != 2 {
@@ -204,6 +205,7 @@ func repl(cfg ReplConfig) {
 					fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 					fmt.Println()
 				}
+				continue
 
 			case "/save":
 				if len(fileds) != 2 {
@@ -216,6 +218,7 @@ func repl(cfg ReplConfig) {
 					fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 					fmt.Println()
 				}
+				continue
 
 			case "/mic":
 				fmt.Println(render.GetTheme().Info.Sprint("Recording is going on, press Ctrl-C to stop"))
@@ -231,20 +234,18 @@ func repl(cfg ReplConfig) {
 				if err = rec.Run(); err != nil {
 					fmt.Println(render.GetTheme().Error.Sprintf("Failed to start recording: %s", err))
 					fmt.Println()
-					if cfg.ModelType != types.ModelTypeASR {
-						continue
-					}
+					continue
 				}
 
 				recordAudios = append(recordAudios, rec.GetOutputFile())
 				fmt.Println()
+				if !cfg.MicImmediate {
+					continue
+				}
 
 			default:
 				fmt.Println(render.GetTheme().Error.Sprintf("Unknown command: %s", fileds[0]))
 				fmt.Println()
-			}
-
-			if cfg.ModelType != types.ModelTypeASR {
 				continue
 			}
 		}
@@ -283,7 +284,6 @@ func repl(cfg ReplConfig) {
 		fmt.Println()
 		fmt.Println()
 		printProfile(profileData)
-
 
 		switch {
 		case err == nil:

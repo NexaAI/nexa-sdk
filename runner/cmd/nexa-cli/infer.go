@@ -437,7 +437,7 @@ func inferASR(manifest *types.ModelManifest, quant string) {
 	}
 
 	repl(ReplConfig{
-		ModelType: types.ModelTypeASR,
+		MicImmediate: true,
 		ParseFile: true,
 
 		Run: func(_prompt string, _images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
