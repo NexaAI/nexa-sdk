@@ -38,7 +38,7 @@ func (s SDKError) Error() string {
 }
 
 var (
-	SDKErrorContextLimitExceeded = SDKError(C.ML_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH)
+	ErrLlmTokenizationContextLength = SDKError(C.ML_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH)
 )
 
 // Init initializes the Nexa SDK by calling the underlying C library initialization

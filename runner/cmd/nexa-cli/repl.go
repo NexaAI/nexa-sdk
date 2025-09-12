@@ -31,7 +31,8 @@ var help = [][2]string{
 }
 
 type ReplConfig struct {
-	ParseFile bool
+	MicImmediate bool
+	ParseFile    bool
 
 	Reset       func() error
 	SaveKVCache func(path string) error
@@ -181,6 +182,7 @@ func repl(cfg ReplConfig) {
 					fmt.Printf("  %-25s %s\n", h[0], h[1])
 				}
 				fmt.Println()
+				continue
 
 			case "/exit":
 				return
@@ -189,6 +191,7 @@ func repl(cfg ReplConfig) {
 				cfg.Reset()
 				recordAudios = nil
 				fmt.Print("\033[H\033[2J")
+				continue
 
 			case "/load":
 				if len(fileds) != 2 {
@@ -202,6 +205,7 @@ func repl(cfg ReplConfig) {
 					fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 					fmt.Println()
 				}
+				continue
 
 			case "/save":
 				if len(fileds) != 2 {
@@ -214,6 +218,7 @@ func repl(cfg ReplConfig) {
 					fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 					fmt.Println()
 				}
+				continue
 
 			case "/mic":
 				fmt.Println(render.GetTheme().Info.Sprint("Recording is going on, press Ctrl-C to stop"))
@@ -234,13 +239,15 @@ func repl(cfg ReplConfig) {
 
 				recordAudios = append(recordAudios, rec.GetOutputFile())
 				fmt.Println()
+				if !cfg.MicImmediate {
+					continue
+				}
 
 			default:
 				fmt.Println(render.GetTheme().Error.Sprintf("Unknown command: %s", fileds[0]))
 				fmt.Println()
+				continue
 			}
-
-			continue
 		}
 
 		// run async
@@ -265,6 +272,7 @@ func repl(cfg ReplConfig) {
 
 			return ctx.Err() == nil
 		})
+		slog.Debug("profileData", "profileData", profileData)
 
 		// reset spin when no token received
 		if firstToken {
@@ -277,12 +285,15 @@ func repl(cfg ReplConfig) {
 		fmt.Println()
 		printProfile(profileData)
 
-		switch err {
-		case nil:
-		case nexa_sdk.SDKErrorContextLimitExceeded:
+		switch {
+		case err == nil:
+		case errors.Is(err, nexa_sdk.ErrLlmTokenizationContextLength):
 			fmt.Println(render.GetTheme().Info.Sprintf("Context length exceeded, please start a new conversation"))
 			fmt.Println()
 			return
+		case errors.Is(err, ErrNoAudio):
+			fmt.Println(render.GetTheme().Error.Sprintf("No audio file provided, please provide an audio file or use /mic command"))
+			fmt.Println()
 		default:
 			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s\n", err))
 			fmt.Println()
