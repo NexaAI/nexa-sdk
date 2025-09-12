@@ -44,7 +44,7 @@ var (
 )
 
 var (
-	ErrorInferASRNoAudio = errors.New("no audio file provided")
+	ErrNoAudio = errors.New("no audio file provided")
 )
 
 func infer() *cobra.Command {
@@ -442,7 +442,7 @@ func inferASR(manifest *types.ModelManifest, quant string) {
 
 		Run: func(_prompt string, _images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			if len(audios) == 0 {
-				return "", nexa_sdk.ProfileData{}, ErrorInferASRNoAudio
+				return "", nexa_sdk.ProfileData{}, ErrNoAudio
 			}
 
 			asrConfig := &nexa_sdk.ASRConfig{

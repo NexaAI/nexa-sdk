@@ -287,10 +287,10 @@ func repl(cfg ReplConfig) {
 
 		switch {
 		case err == nil:
-		case errors.Is(err, nexa_sdk.SDKErrorContextLimitExceeded):
+		case errors.Is(err, nexa_sdk.ErrLlmTokenizationContextLength):
 			fmt.Println(render.GetTheme().Info.Sprintf("Context length exceeded, please start a new conversation"))
 			return
-		case errors.Is(err, ErrorInferASRNoAudio):
+		case errors.Is(err, ErrNoAudio):
 			fmt.Println(render.GetTheme().Error.Sprintf("No audio file provided, please provide an audio file or use /mic command"))
 		default:
 			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s\n", err))
