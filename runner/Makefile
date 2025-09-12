@@ -1,28 +1,26 @@
-BRIDGE_VERSION ?= v1.0.6-rc1
+BRIDGE_VERSION ?= v1.0.11-rc2
 
 ifeq ($(OS), Windows_NT)
-    OS      := windows
-    ARCH    ?= x86_64
-    EXE     := .exe
+	OS      := windows
+	ARCH    ?= $(shell powershell -NoProfile -NonInteractive "switch ((Get-CimInstance Win32_Processor).Architecture) { 0 {'x86'} 5 {'arm'} 9 {'x86_64'} 12 {'arm64'} Default {'unknown'} }")
+	EXE     := .exe
 
-    RM_FILE := cmd /c del /f /q
-    RM_DIR  := cmd /c rmdir /s /q
-    MKDIR   := cmd /c mkdir
-    UNZIP   := powershell -Command "Expand-Archive -Force -DestinationPath . -Path"
+	RM      := powershell -NoProfile -NonInteractive Remove-Item -Recurse -Force -Path
+	MKDIR   := powershell -NoProfile -NonInteractive New-Item -ItemType Directory -Force -Path
+	UNZIP   := powershell -NoProfile -NonInteractive Expand-Archive -Force -DestinationPath . -Path
 else
-    UNAME := $(shell uname -s)
-    ARCH  := $(shell uname -m)
-    ifeq ($(UNAME), Linux)
-        OS  := linux
+	UNAME   := $(shell uname -s)
+	ARCH    := $(shell uname -m)
+	ifeq ($(UNAME), Linux)
+		OS  := linux
     else ifeq ($(UNAME), Darwin)
-        OS  := macos
-    endif
-    EXE     :=
+		OS  := macos
+	endif
+	EXE     :=
 
-    RM_FILE := rm -f
-    RM_DIR  := rm -rf
-    MKDIR   := mkdir -p
-    UNZIP   := unzip -q
+	RM      := rm -rf
+	MKDIR   := mkdir -p
+	UNZIP   := unzip -q
 endif
 
 .PHONY: build link xcopy download clean
@@ -32,6 +30,7 @@ build:
 	go build \
 		-tags="sonic avx" \
 		-ldflags "-X 'main.Version=$(VERSION)'" \
+		-ldflags "-s -w" \
 		-o ./build/nexa-cli$(EXE) \
 		./cmd/nexa-cli
 
@@ -53,7 +52,7 @@ download: clean
 	@echo "BRIDGE_VERSION: $(BRIDGE_VERSION)"
 	curl -L -o build/nexasdk-bridge.zip \
 		https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexasdk/$(BRIDGE_VERSION)/$(OS)_$(ARCH)/nexasdk-bridge.zip
-	cd build && $(UNZIP) nexasdk-bridge.zip && $(RM_FILE) nexasdk-bridge.zip
+	cd build && $(UNZIP) nexasdk-bridge.zip && $(RM) nexasdk-bridge.zip && $(RM) nexa_bridge.lib
 
 clean:
-	-$(RM_DIR) build
+	-$(RM) build

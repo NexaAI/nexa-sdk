@@ -158,6 +158,7 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 
 		model := types.ModelManifest{
 			Name:          mf.Name,
+			ModelName:     mf.ModelName,
 			ModelType:     mf.ModelType,
 			PluginId:      mf.PluginId,
 			ModelFile:     mf.ModelFile,
@@ -230,6 +231,7 @@ func (s *Store) PullExtraQuant(ctx context.Context, omf, nmf types.ModelManifest
 
 		model := types.ModelManifest{
 			Name:          nmf.Name,
+			ModelName:     nmf.ModelName,
 			ModelType:     nmf.ModelType,
 			PluginId:      nmf.PluginId,
 			ModelFile:     nmf.ModelFile,

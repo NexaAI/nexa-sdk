@@ -1,14 +1,19 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/config"
 	"github.com/NexaAI/nexa-sdk/runner/internal/model_hub"
+	"github.com/NexaAI/nexa-sdk/runner/internal/render"
+	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 )
 
 // RootCmd creates the main Nexa CLI command with all subcommands.
@@ -20,13 +25,23 @@ func RootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use: "nexa",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			// log
 			applyLogLevel()
-
+			// update
 			calledCmd := cmd.CalledAs()
 			if calledCmd != "update" && calledCmd != "version" {
 				notifyUpdate()
 				go checkForUpdate(false)
 			}
+			// license
+			license, err := store.Get().ConfigGet("license")
+			if err != nil || license == "" {
+				slog.Warn("license is not set", "err", err)
+			} else if err := os.Setenv("NEXA_TOKEN", license); err != nil {
+				return err
+			}
+			// dependencies
+			checkDependency()
 
 			return nil
 		},
@@ -41,6 +56,38 @@ func RootCmd() *cobra.Command {
 	)
 
 	return rootCmd
+}
+
+func checkDependency() {
+	if _, err := exec.LookPath("sox"); err != nil {
+		fmt.Println(render.GetTheme().Warning.Sprintf("sox is not installed. Try:"))
+		switch runtime.GOOS {
+		case "darwin":
+			fmt.Println(render.GetTheme().Warning.Sprintf("  brew install sox"))
+		case "linux":
+			fmt.Println(render.GetTheme().Warning.Sprintf("  sudo apt install sox       # Debian/Ubuntu"))
+			fmt.Println(render.GetTheme().Warning.Sprintf("  sudo yum install sox       # RHEL/CentOS/Fedora"))
+		case "windows":
+			fmt.Println(render.GetTheme().Warning.Sprintf("  winget install --id=ChrisBagwell.SoX -e"))
+		default:
+			fmt.Println(render.GetTheme().Warning.Sprintf("sox is not installed. Please install it manually for your OS: %s\n", runtime.GOOS))
+		}
+	}
+
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		fmt.Println(render.GetTheme().Warning.Sprintf("ffmpeg is not installed. Try:"))
+		switch runtime.GOOS {
+		case "darwin":
+			fmt.Println(render.GetTheme().Warning.Sprintf("  brew install ffmpeg"))
+		case "linux":
+			fmt.Println(render.GetTheme().Warning.Sprintf("  sudo apt install ffmpeg    # Debian/Ubuntu"))
+			fmt.Println(render.GetTheme().Warning.Sprintf("  sudo yum install ffmpeg    # RHEL/CentOS/Fedora"))
+		case "windows":
+			fmt.Println(render.GetTheme().Warning.Sprintf("  winget install --id=BtbN.FFmpeg.GPL -e"))
+		default:
+			fmt.Println(render.GetTheme().Warning.Sprintf("ffmpeg is not installed. Please install it manually for your OS: %s\n", runtime.GOOS))
+		}
+	}
 }
 
 func normalizeModelName(name string) string {

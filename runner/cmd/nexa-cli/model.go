@@ -83,10 +83,14 @@ func pull() *cobra.Command {
 			var manifest types.ModelManifest
 
 			if hmf != nil {
+				manifest.ModelName = hmf.ModelName
 				manifest.PluginId = hmf.PluginId
 				manifest.ModelType = hmf.ModelType
 			}
 
+			if manifest.ModelName == "" {
+				manifest.ModelName = name
+			}
 			if manifest.PluginId == "" {
 				manifest.PluginId = choosePluginId(name)
 			}

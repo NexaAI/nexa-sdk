@@ -133,6 +133,7 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 	switch reflect.TypeFor[T]() {
 	case reflect.TypeFor[nexa_sdk.LLM]():
 		t, e = nexa_sdk.NewLLM(nexa_sdk.LlmCreateInput{
+			ModelName: manifest.ModelName,
 			ModelPath: modelfile,
 			Config: nexa_sdk.ModelConfig{
 				NCtx: param.NCtx,
@@ -149,6 +150,7 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 			tokenizer = s.ModelfilePath(manifest.Name, manifest.TokenizerFile.Name)
 		}
 		t, e = nexa_sdk.NewVLM(nexa_sdk.VlmCreateInput{
+			ModelName:     manifest.ModelName,
 			ModelPath:     modelfile,
 			MmprojPath:    mmproj,
 			TokenizerPath: tokenizer,

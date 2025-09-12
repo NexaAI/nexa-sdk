@@ -41,6 +41,7 @@ func freeRerankConfig(cPtr *C.ml_RerankConfig) {
 
 // RerankerCreateInput represents input parameters for reranker creation
 type RerankerCreateInput struct {
+	ModelName     string
 	ModelPath     string
 	TokenizerPath string
 	PluginID      string
@@ -50,6 +51,9 @@ func (rci RerankerCreateInput) toCPtr() *C.ml_RerankerCreateInput {
 	cPtr := (*C.ml_RerankerCreateInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_RerankerCreateInput{}))))
 	*cPtr = C.ml_RerankerCreateInput{}
 
+	if rci.ModelName != "" {
+		cPtr.model_name = C.CString(rci.ModelName)
+	}
 	if rci.ModelPath != "" {
 		cPtr.model_path = C.CString(rci.ModelPath)
 	}

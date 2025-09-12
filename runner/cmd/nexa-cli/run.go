@@ -67,10 +67,14 @@ func runFunc(cmd *cobra.Command, args []string) {
 			var manifest types.ModelManifest
 
 			if hmf != nil {
+				manifest.ModelName = hmf.ModelName
 				manifest.PluginId = hmf.PluginId
 				manifest.ModelType = hmf.ModelType
 			}
 
+			if manifest.ModelName == "" {
+				manifest.ModelName = model
+			}
 			if manifest.PluginId == "" {
 				manifest.PluginId = choosePluginId(model)
 			}

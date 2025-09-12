@@ -11,12 +11,21 @@ package nexa_sdk
 #include "ml.h"
 
 extern void go_log_wrap(ml_LogLevel level, char *msg);
+
+static void set_token(const char* token) {
+#if defined(_WIN32)
+	_putenv_s("NEXA_TOKEN", token);
+#else
+	setenv("NEXA_TOKEN", token, 1);
+#endif
+}
 */
 import "C"
 
 import (
 	"fmt"
 	"log/slog"
+	"os"
 	"unsafe"
 )
 
@@ -28,6 +37,10 @@ func (s SDKError) Error() string {
 	return fmt.Sprintf("SDKError(%s)", C.GoString(C.ml_get_error_message(C.ml_ErrorCode(s))))
 }
 
+var (
+	SDKErrorContextLimitExceeded = SDKError(C.ML_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH)
+)
+
 // Init initializes the Nexa SDK by calling the underlying C library initialization
 // This must be called before using any other SDK functions
 func Init() {
@@ -35,6 +48,7 @@ func Init() {
 	if bridgeLogEnabled {
 		C.ml_set_log((C.ml_log_callback)(C.go_log_wrap))
 	}
+	C.set_token(C.CString(os.Getenv("NEXA_TOKEN"))) // sync token to C env
 	C.ml_init()
 }
 

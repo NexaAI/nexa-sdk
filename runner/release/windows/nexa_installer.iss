@@ -49,6 +49,9 @@ Root: HKCU; Subkey: "SOFTWARE\Classes\Applications\{#MyAppExeName}\DefaultIcon";
 const
   EnvironmentKey = 'Environment';
 
+var
+  VersionPage: TInputOptionWizardPage;
+
 function InitializeSetup(): Boolean;
 var
   UninstallString: String;

@@ -14,6 +14,7 @@ import (
 
 // VlmCreateInput represents input parameters for creating a VLM instance
 type VlmCreateInput struct {
+	ModelName     string
 	ModelPath     string
 	MmprojPath    string
 	TokenizerPath string
@@ -26,6 +27,9 @@ func (vci VlmCreateInput) toCPtr() *C.ml_VlmCreateInput {
 	cPtr := (*C.ml_VlmCreateInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_VlmCreateInput{}))))
 	*cPtr = C.ml_VlmCreateInput{}
 
+	if vci.ModelName != "" {
+		cPtr.model_name = C.CString(vci.ModelName)
+	}
 	if vci.ModelPath != "" {
 		cPtr.model_path = C.CString(vci.ModelPath)
 	}
@@ -120,12 +124,15 @@ func (vcs vlmContents) toCPtr() (*C.ml_VlmContent, C.int32_t) {
 	cContents := unsafe.Slice((*C.ml_VlmContent)(raw), count)
 
 	for i, vc := range vcs {
+		// Initialize all fields to prevent garbage memory
+		cContents[i]._type = nil
+		cContents[i].text = nil
+		
 		if vc.Type != "" {
 			cContents[i]._type = C.CString(string(vc.Type))
 		}
-		if vc.Text != "" {
-			cContents[i].text = C.CString(vc.Text)
-		}
+		// Always allocate text field, even for empty strings to prevent garbage memory
+		cContents[i].text = C.CString(vc.Text)
 	}
 
 	return (*C.ml_VlmContent)(raw), C.int32_t(count)

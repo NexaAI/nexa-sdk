@@ -16,6 +16,8 @@ jobs:
         include:
           - runner: sdk-windows-8-core-2
             arch: x86_64
+          - runner: windows-11-arm
+            arch: arm64
 
     steps:
       - name: Checkout repository
@@ -37,16 +39,39 @@ jobs:
           go-version: 1.24.3
           cache-dependency-path: runner/go.sum
 
+      - name: Setup MSYS2 (ARM64)
+        if: matrix.arch == 'arm64'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: CLANGARM64
+          location: C:/Tools
+          update: true
+          install: >-
+            mingw-w64-clang-aarch64-clang
+            mingw-w64-clang-aarch64-lld
+
+      - name: Setup Compile Environment (ARM64)
+        if: matrix.arch == 'arm64'
+        shell: bash
+        run: |
+          echo "CGO_ENABLED=1" >> $GITHUB_ENV
+          echo "GOARCH=arm64" >> $GITHUB_ENV
+          echo "CC=C:/Tools/msys64/clangarm64/bin/clang.exe" >> $GITHUB_ENV
+          echo "CXX=C:/Tools/msys64/clangarm64/bin/clang++.exe" >> $GITHUB_ENV
+
       - name: Download runtime
+        shell: bash
         run: |
           cd runner
           make download ARCH=${{ matrix.arch }}
+          ls build
 
       - name: Build Nexa Cli
+        shell: bash
         run: |
           cd runner
           make build ARCH=${{ matrix.arch }}
-          Remove-Item build/ml.h
+          rm -f build/ml.h
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -57,7 +82,6 @@ jobs:
 
   build-installer:
     name: Build Windows Installer & Release
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: build-cli
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -66,6 +90,8 @@ jobs:
         include:
           - runner: sdk-windows-8-core-2
             arch: x86_64
+          - runner: windows-11-arm
+            arch: arm64
     env:
       VERSION: ${{ github.ref_name }}
       ARCH: ${{ matrix.arch }}
@@ -79,7 +105,6 @@ jobs:
         with:
           name: nexa-cli_windows_${{ matrix.arch }}
           path: artifacts
-
 
       - name: Build launcher with PyInstaller
         run: |
@@ -104,14 +129,15 @@ jobs:
           }
 
       - name: Prepare Installer Files
+        if: matrix.arch == 'x86_64'
         shell: bash
         run: |
           cp -r artifacts artifacts_cuda
           rm -r artifacts_cuda/nexa_dml*
-
           rm -r artifacts/nexa_cuda*
 
       - name: Compile Installer (CUDA)
+        if: matrix.arch == 'x86_64'
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.6
         with:
           path: runner/release/windows/nexa_installer.iss
@@ -119,7 +145,7 @@ jobs:
         env:
           ORT: "_cuda"
 
-      - name: Compile Installer (DML)
+      - name: Compile Installer
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.6
         with:
           path: runner/release/windows/nexa_installer.iss
@@ -128,6 +154,21 @@ jobs:
           ORT: ""
 
       - name: Sign Installer
+        if: matrix.arch == 'arm64'
+        shell: pwsh
+        run: |
+          azuresigntool sign `
+            -kvu "${{ secrets.AZURE_KEY_VAULT_URI }}" `
+            -kvc "${{ secrets.AZURE_CERT_NAME }}" `
+            -kvi "${{ secrets.AZURE_CLIENT_ID }}" `
+            -kvs "${{ secrets.AZURE_CLIENT_SECRET }}" `
+            --azure-key-vault-tenant-id "${{ secrets.AZURE_TENANT_ID }}" `
+            -tr http://timestamp.globalsign.com/tsa/advanced `
+            -td sha256 `
+            "nexa-cli_windows_${{ matrix.arch }}.exe"
+
+      - name: Sign Installer
+        if: matrix.arch == 'x86_64'
         run: |
           azuresigntool sign `
             -kvu "${{ secrets.AZURE_KEY_VAULT_URI }}" `
@@ -149,7 +190,14 @@ jobs:
             -td sha256 `
             "nexa-cli_windows_${{ matrix.arch }}.exe"
 
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexa-cli_windows_${{ matrix.arch }}_installer
+          path: nexa-cli_windows_${{ matrix.arch }}*.exe
+
       - name: Create GitHub Release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
