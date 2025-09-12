@@ -145,7 +145,7 @@ jobs:
           repository: NexaAI/nexa-sdk
           tag_name: ${{ env.VERSION }}
           files: |
-            "artifacts/nexa-cli_macos_${{ matrix.arch }}.pkg"
+            artifacts/nexa-cli_macos_${{ matrix.arch }}.pkg
           draft: ${{ contains(github.ref, '-rc') }}
           generate_release_notes: true
           make_latest: ${{ !contains(github.ref, '-rc') }}
