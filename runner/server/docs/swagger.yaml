@@ -279,7 +279,7 @@ components:
         stream:
           type: boolean
           description: If set, partial message deltas will be sent
-          stream: false
+          default: false
         stop:
           oneOf:
             - type: string
