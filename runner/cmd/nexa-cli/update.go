@@ -14,7 +14,7 @@ import (
 	"github.com/NexaAI/nexa-sdk/runner/internal/downloader"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
 	"github.com/bytedance/sonic"
-	goverision "github.com/hashicorp/go-version"
+	goversion "github.com/hashicorp/go-version"
 	"github.com/spf13/cobra"
 )
 
@@ -93,11 +93,11 @@ func updateImpl() error {
 }
 
 func needUpdate(cur, latest string) (bool, error) {
-	curVer, err := goverision.NewVersion(cur)
+	curVer, err := goversion.NewVersion(cur)
 	if err != nil {
 		return false, fmt.Errorf("invalid SemVer %s: %w", cur, err)
 	}
-	latestVer, err := goverision.NewVersion(latest)
+	latestVer, err := goversion.NewVersion(latest)
 	if err != nil {
 		return false, fmt.Errorf("invalid SemVer %s: %w", latest, err)
 	}

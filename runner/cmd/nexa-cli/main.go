@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -27,21 +28,35 @@ func RootCmd() *cobra.Command {
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// log
 			applyLogLevel()
-			// update
-			calledCmd := cmd.CalledAs()
-			if calledCmd != "update" && calledCmd != "version" {
-				notifyUpdate()
+
+			subCmd := cmd.CalledAs()
+
+			// force check migrate
+			if !slices.Contains([]string{"migrate"}, subCmd) {
+				err := checkMigrate()
+				if err != nil &&
+					slices.Contains([]string{"infer", "functioncall", "fc", "serve", "run"}, subCmd) {
+					fmt.Println(render.GetTheme().Error.Sprintf("Error: need migrate"))
+					os.Exit(1)
+				}
+			}
+
+			// skip update check
+			if !slices.Contains([]string{"version", "update", "migrate"}, subCmd) {
 				go checkForUpdate(false)
 			}
+
+			notifyUpdate()
+
+			checkDependency()
+
 			// license
 			license, err := store.Get().ConfigGet("license")
 			if err != nil || license == "" {
 				slog.Warn("license is not set", "err", err)
 			} else if err := os.Setenv("NEXA_TOKEN", license); err != nil {
-				return err
+				panic(err)
 			}
-			// dependencies
-			checkDependency()
 
 			return nil
 		},
@@ -52,7 +67,7 @@ func RootCmd() *cobra.Command {
 		infer(), functionCall(),
 		serve(), run(),
 		_config(),
-		version(), update(),
+		version(), update(), migrate(),
 	)
 
 	return rootCmd

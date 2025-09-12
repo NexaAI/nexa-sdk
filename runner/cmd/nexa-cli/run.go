@@ -64,12 +64,18 @@ func runFunc(cmd *cobra.Command, args []string) {
 				return
 			}
 
+			if !isValidVersion(hmf.MinSDKVersion) {
+				fmt.Println(render.GetTheme().Error.Sprintf("Model requires NexaSDK CLI version %s or higher. Please upgrade your NexaSDK CLI.", hmf.MinSDKVersion))
+				return
+			}
+
 			var manifest types.ModelManifest
 
 			if hmf != nil {
 				manifest.ModelName = hmf.ModelName
 				manifest.PluginId = hmf.PluginId
 				manifest.ModelType = hmf.ModelType
+				manifest.MinSDKVersion = hmf.MinSDKVersion
 			}
 
 			if manifest.ModelName == "" {
@@ -96,9 +102,13 @@ func runFunc(cmd *cobra.Command, args []string) {
 			var raw *http.Response
 			err = client.Post(context.TODO(), "/models", nil, &raw,
 				option.WithJSONSet("Name", manifest.Name),
+				option.WithJSONSet("ModelName", manifest.ModelName),
+				option.WithJSONSet("PluginId", manifest.PluginId),
 				option.WithJSONSet("ModelType", manifest.ModelType),
+				option.WithJSONSet("MinSDKVersion", manifest.MinSDKVersion),
 				option.WithJSONSet("ModelFile", manifest.ModelFile),
 				option.WithJSONSet("MMProjFile", manifest.MMProjFile),
+				option.WithJSONSet("TokenizerFile", manifest.TokenizerFile),
 				option.WithJSONSet("ExtraFiles", manifest.ExtraFiles),
 			)
 			stream := ssestream.NewStream[types.DownloadInfo](ssestream.NewDecoder(raw), err)
@@ -126,6 +136,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			return
 		}
 	}
+
 	var manifest types.ModelManifest
 	sonic.UnmarshalString(modelInfo.RawJSON(), &manifest)
 
