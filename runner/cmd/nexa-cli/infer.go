@@ -43,6 +43,10 @@ var (
 	listLanguage bool
 )
 
+var (
+	ErrorInferASRNoAudio = errors.New("no audio file provided")
+)
+
 func infer() *cobra.Command {
 	inferCmd := &cobra.Command{
 		Use:   "infer <model-name>",
@@ -315,14 +319,12 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 func inferTTS(manifest *types.ModelManifest, quant string) {
 	s := store.Get()
 	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
-	vocoderfile := ""
 	spin := render.NewSpinner("loading TTS model...")
 	spin.Start()
 
 	ttsInput := nexa_sdk.TtsCreateInput{
 		ModelName:   manifest.ModelName,
 		ModelPath:   modelfile,
-		VocoderPath: vocoderfile,
 		PluginID:    manifest.PluginId,
 	}
 
@@ -405,14 +407,12 @@ func inferTTS(manifest *types.ModelManifest, quant string) {
 func inferASR(manifest *types.ModelManifest, quant string) {
 	s := store.Get()
 	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
-	tokenizerPath := ""
 	spin := render.NewSpinner("loading ASR model...")
 	spin.Start()
 
 	asrInput := nexa_sdk.AsrCreateInput{
 		ModelName:     manifest.ModelName,
 		ModelPath:     modelfile,
-		TokenizerPath: tokenizerPath,
 		PluginID:      manifest.PluginId,
 		Language:      language,
 	}
@@ -437,11 +437,12 @@ func inferASR(manifest *types.ModelManifest, quant string) {
 	}
 
 	repl(ReplConfig{
+		ModelType: types.ModelTypeASR,
 		ParseFile: true,
 
 		Run: func(_prompt string, _images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			if len(audios) == 0 {
-				return "", nexa_sdk.ProfileData{}, errors.New("no audio file provided")
+				return "", nexa_sdk.ProfileData{}, ErrorInferASRNoAudio
 			}
 
 			asrConfig := &nexa_sdk.ASRConfig{
@@ -460,7 +461,6 @@ func inferASR(manifest *types.ModelManifest, quant string) {
 
 			result, err := p.Transcribe(transcribeInput)
 			if err != nil {
-				fmt.Println(render.GetTheme().Error.Sprintf("Transcription failed: %s", err))
 				return "", nexa_sdk.ProfileData{}, err
 			}
 			on_token(result.Result.Transcript)

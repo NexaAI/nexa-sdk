@@ -18,6 +18,7 @@ import (
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/record"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
+	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 )
 
@@ -31,6 +32,7 @@ var help = [][2]string{
 }
 
 type ReplConfig struct {
+	ModelType types.ModelType
 	ParseFile bool
 
 	Reset       func() error
@@ -229,7 +231,9 @@ func repl(cfg ReplConfig) {
 				if err = rec.Run(); err != nil {
 					fmt.Println(render.GetTheme().Error.Sprintf("Failed to start recording: %s", err))
 					fmt.Println()
-					continue
+					if cfg.ModelType != types.ModelTypeASR {
+						continue
+					}
 				}
 
 				recordAudios = append(recordAudios, rec.GetOutputFile())
@@ -240,7 +244,9 @@ func repl(cfg ReplConfig) {
 				fmt.Println()
 			}
 
-			continue
+			if cfg.ModelType != types.ModelTypeASR {
+				continue
+			}
 		}
 
 		// run async
@@ -265,6 +271,7 @@ func repl(cfg ReplConfig) {
 
 			return ctx.Err() == nil
 		})
+		slog.Debug("profileData", "profileData", profileData)
 
 		// reset spin when no token received
 		if firstToken {
@@ -277,17 +284,19 @@ func repl(cfg ReplConfig) {
 		fmt.Println()
 		printProfile(profileData)
 
-		switch err {
-		case nil:
-		case nexa_sdk.SDKErrorContextLimitExceeded:
+
+		switch {
+		case err == nil:
+		case errors.Is(err, nexa_sdk.SDKErrorContextLimitExceeded):
 			fmt.Println(render.GetTheme().Info.Sprintf("Context length exceeded, please start a new conversation"))
-			fmt.Println()
 			return
+		case errors.Is(err, ErrorInferASRNoAudio):
+			fmt.Println(render.GetTheme().Error.Sprintf("No audio file provided, please provide an audio file or use /mic command"))
 		default:
 			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s\n", err))
-			fmt.Println()
 			return
 		}
+		fmt.Println()
 	}
 }
 
