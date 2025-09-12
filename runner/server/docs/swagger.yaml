@@ -92,6 +92,7 @@ components:
         model:
           type: string
           description: ID of the model to use
+          default: "Qwen/Qwen3-1.7B-GGUF"
         prompt:
           oneOf:
             - type: string
@@ -104,29 +105,35 @@ components:
                 type: array
                 items: { type: integer }
           description: The prompt(s) to generate completions for
+          default: "print hello world"
         max_tokens:
           type: integer
           minimum: 1
           description: The maximum number of tokens that can be generated in the completion
+          default: 4096
         temperature:
           type: number
           format: float
           minimum: 0
           maximum: 2
+          default: 0.8
           description: What sampling temperature to use, between 0 and 2
         top_p:
           type: number
           format: float
           minimum: 0
           maximum: 1
+          default: 0.95
           description: An alternative to sampling with temperature, called nucleus sampling
         n:
           type: integer
           minimum: 1
           description: How many completions to generate for each prompt
+          default: 2048
         stream:
           type: boolean
           description: Whether to stream back partial progress
+          default: false
         logprobs:
           type: integer
           minimum: 0
@@ -146,12 +153,14 @@ components:
           format: float
           minimum: -2
           maximum: 2
+          default: 0.0
           description: Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far
         frequency_penalty:
           type: number
           format: float
           minimum: -2
           maximum: 2
+          default: 0.0
           description: Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far
         best_of:
           type: integer
@@ -165,6 +174,7 @@ components:
         user:
           type: string
           description: A unique identifier representing your end-user
+          default: "role"
 
     CompletionResponse:
       type: object
@@ -236,6 +246,7 @@ components:
         model:
           type: string
           description: ID of the model to use
+          default: "Qwen/Qwen3-1.7B-GGUF"
         messages:
           type: array
           items:
@@ -245,42 +256,50 @@ components:
           type: integer
           minimum: 1
           description: The maximum number of tokens that can be generated in the chat completion
+          default: 4096
         temperature:
           type: number
           format: float
           minimum: 0
           maximum: 2
+          default: 0.8
           description: What sampling temperature to use, between 0 and 2
         top_p:
           type: number
           format: float
           minimum: 0
           maximum: 1
+          default: 0.95
           description: An alternative to sampling with temperature, called nucleus sampling
         n:
           type: integer
           minimum: 1
           description: How many chat completion choices to generate for each input message
+          default: 2048
         stream:
           type: boolean
           description: If set, partial message deltas will be sent
+          stream: false
         stop:
           oneOf:
             - type: string
             - type: array
               items: { type: string }
           description: Up to 4 sequences where the API will stop generating further tokens
+          default: ""
         presence_penalty:
           type: number
           format: float
           minimum: -2
           maximum: 2
+          default: 0.0
           description: Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far
         frequency_penalty:
           type: number
           format: float
           minimum: -2
           maximum: 2
+          default: 0.0
           description: Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far
         logit_bias:
           type: object
@@ -290,20 +309,24 @@ components:
         user:
           type: string
           description: A unique identifier representing your end-user
+          default: "role"
         tools:
           type: array
           items:
             $ref: '#/components/schemas/ChatCompletionTool'
           description: A list of tools the model may call
+          default: []
         tool_choice:
           oneOf:
             - type: string
             - $ref: '#/components/schemas/ChatCompletionToolChoice'
           description: Controls which (if any) function is called by the model
+          default: ""
 
     ChatMessage:
       type: object
       required: [role, content]
+      default: { "role": "user", "content": "What is the weather like in Boston today?" }
       properties:
         role:
           type: string
