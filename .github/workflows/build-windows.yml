@@ -84,6 +84,7 @@ jobs:
     name: Build Windows Installer & Release
     needs: build-cli
     runs-on: ${{ matrix.runner }}
+    if: github.ref_type == 'tag'
     strategy:
       fail-fast: false
       matrix:
@@ -190,15 +191,7 @@ jobs:
             -td sha256 `
             "nexa-cli_windows_${{ matrix.arch }}.exe"
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: nexa-cli_windows_${{ matrix.arch }}_installer
-          path: nexa-cli_windows_${{ matrix.arch }}*.exe
-
       - name: Create GitHub Release
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-        id: create_release
         uses: softprops/action-gh-release@v2
         with:
           repository: NexaAI/nexa-sdk
@@ -206,6 +199,8 @@ jobs:
           files: |
             nexa-cli_windows_${{ matrix.arch }}_cuda.exe
             nexa-cli_windows_${{ matrix.arch }}.exe
-          make_latest: true
+          draft: ${{ contains(github.ref, '-rc') }}
+          generate_release_notes: true
+          make_latest: ${{ !contains(github.ref, '-rc') }}
         env:
           GITHUB_TOKEN: ${{ secrets.ZACK_ACCESS_TOKEN }}

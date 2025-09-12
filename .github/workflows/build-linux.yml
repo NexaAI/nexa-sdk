@@ -55,12 +55,11 @@ jobs:
           path: runner/build
           include-hidden-files: true
 
-
   package-and-release:
     name: Package for ${{ matrix.runner }}_${{ matrix.arch }}
     needs: build-cli
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ${{ matrix.runner }}
+    if: github.ref_type == 'tag'
     strategy:
       fail-fast: false
       matrix:
@@ -94,8 +93,12 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           repository: NexaAI/nexa-sdk
-          files: nexa-cli_linux_${{ matrix.arch }}.sh
           tag_name: ${{ env.VERSION }}
-          make_latest: true
+          files: |
+            nexa-cli_linux_${{ matrix.arch }}.sh
+          draft: ${{ contains(github.ref, '-rc') }}
+          generate_release_notes: true
+          make_latest: ${{ !contains(github.ref, '-rc') }}
         env:
           GITHUB_TOKEN: ${{ secrets.ZACK_ACCESS_TOKEN }}
+
