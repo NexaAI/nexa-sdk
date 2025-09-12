@@ -37,6 +37,10 @@ func (s SDKError) Error() string {
 	return fmt.Sprintf("SDKError(%s)", C.GoString(C.ml_get_error_message(C.ml_ErrorCode(s))))
 }
 
+var (
+	SDKErrorContextLimitExceeded = SDKError(C.ML_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH)
+)
+
 // Init initializes the Nexa SDK by calling the underlying C library initialization
 // This must be called before using any other SDK functions
 func Init() {
