@@ -30,7 +30,6 @@ func checkMigrate() error {
 		fmt.Println(render.GetTheme().Warning.Sprintf(`
 A new version of Nexa CLI is detected. Please run "nexa migrate" to migrate your models.
 Use "nexa migrate --help" to see more options.
-
 		`))
 		return errors.New("need migrate")
 	}
@@ -47,17 +46,22 @@ func migrate() *cobra.Command {
 	skip := migrateCmd.Flags().Bool("skip", false, "force skip migration")
 	deleteOnly := migrateCmd.Flags().Bool("delete-only", false, "delete outdated models instead of migrating")
 
-	migrateCmd.RunE = func(cmd *cobra.Command, args []string) error {
+	migrateCmd.Run = func(cmd *cobra.Command, args []string) {
 		if *skip {
+			err := os.WriteFile(filepath.Join(store.Get().DataPath(), "last_version"), []byte(Version), 0o600)
+			if err != nil {
+				fmt.Println(render.GetTheme().Error.Sprintf("Failed to write last_version: %v", err))
+			}
 			fmt.Println(render.GetTheme().Warning.Sprintf("Migration skipped. Please make sure your models are compatible with the current version."))
-			return os.WriteFile(filepath.Join(store.Get().DataPath(), "last_version"), []byte(Version), 0o600)
+			return
 		}
 
 		s := store.Get()
 
 		models, err := s.List()
 		if err != nil {
-			return err
+			fmt.Println(render.GetTheme().Error.Sprintf("Failed to get model list: %v", err))
+			return
 		}
 
 		for _, model := range models {
@@ -69,22 +73,22 @@ func migrate() *cobra.Command {
 
 			if err != nil {
 				fmt.Println(render.GetTheme().Error.Sprintf("Failed to get model info for %s: %v", model.Name, err))
-				return err
+				return
 			}
 
-			if model.MinSDKVersion == hmf.MinSDKVersion {
+			if hmf == nil || model.MinSDKVersion == hmf.MinSDKVersion {
 				continue
 			}
 
 			if !isValidVersion(hmf.MinSDKVersion) {
 				fmt.Println(render.GetTheme().Error.Sprintf("Model %s requires NexaSDK CLI version %s or higher. Please upgrade your NexaSDK CLI.", model.Name, hmf.MinSDKVersion))
-				return nil
+				return
 			}
 
 			// start migrate
 			if err := s.Remove(model.Name); err != nil {
 				fmt.Println(render.GetTheme().Error.Sprintf("Failed to delete model %s: %v", model.Name, err))
-				return err
+				return
 			}
 
 			if *deleteOnly {
@@ -132,7 +136,7 @@ func migrate() *cobra.Command {
 				err := chooseFiles(model.Name, files, &manifest)
 				if err != nil {
 					fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
-					return err
+					return
 				}
 
 				pgCh, errCh := s.Pull(context.TODO(), manifest)
@@ -150,7 +154,12 @@ func migrate() *cobra.Command {
 			}
 		}
 
-		return os.WriteFile(filepath.Join(store.Get().DataPath(), "last_version"), []byte(Version), 0o600)
+		err = os.WriteFile(filepath.Join(store.Get().DataPath(), "last_version"), []byte(Version), 0o600)
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("Failed to write last_version: %v", err))
+			return
+		}
+		fmt.Println(render.GetTheme().Success.Sprintf("Migration completed successfully."))
 	}
 	return migrateCmd
 }
