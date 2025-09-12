@@ -30,7 +30,6 @@ func checkMigrate() error {
 		fmt.Println(render.GetTheme().Warning.Sprintf(`
 A new version of Nexa CLI is detected. Please run "nexa migrate" to migrate your models.
 Use "nexa migrate --help" to see more options.
-
 		`))
 		return errors.New("need migrate")
 	}
