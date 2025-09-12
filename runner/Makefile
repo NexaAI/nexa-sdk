@@ -26,11 +26,13 @@ endif
 .PHONY: build link xcopy download clean
 
 build:
-	go build -o ./build/nexa$(EXE) ./cmd/nexa-launcher
+	go build \
+		-ldflags "-s -w" \
+		-o ./build/nexa$(EXE) \
+		./cmd/nexa-launcher
 	go build \
 		-tags="sonic avx" \
-		-ldflags "-X 'main.Version=$(VERSION)'" \
-		-ldflags "-s -w" \
+		-ldflags "-X 'main.Version=$(VERSION)' -s -w" \
 		-o ./build/nexa-cli$(EXE) \
 		./cmd/nexa-cli
 
