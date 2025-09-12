@@ -28,6 +28,7 @@ const modelLoadFailMsg = `⚠️ Oops. Model failed to load.
 var (
 	// disableStream *bool // reuse in run.go
 	ngl          int32
+	maxTokens    int32
 	enableThink  bool
 	hideThink    bool
 	prompt       []string
@@ -53,6 +54,7 @@ func infer() *cobra.Command {
 
 	inferCmd.Flags().SortFlags = false
 	inferCmd.Flags().Int32VarP(&ngl, "ngl", "n", 999, "[llm|vlm] num of layers pass to gpu")
+	inferCmd.Flags().Int32VarP(&maxTokens, "max-tokens", "", 2048, "[llm|vlm] max tokens")
 	inferCmd.Flags().BoolVarP(&enableThink, "think", "", true, "[llm|vlm] enable thinking mode")
 	inferCmd.Flags().BoolVarP(&hideThink, "hide-think", "", false, "[llm|vlm] hide thinking output")
 	inferCmd.Flags().StringArrayVarP(&prompt, "prompt", "p", nil, "[embedder|tts|image_gen] pass prompt")
@@ -205,7 +207,7 @@ func inferLLM(manifest *types.ModelManifest, quant string) {
 				PromptUTF8: templateOutput.FormattedText,
 				OnToken:    on_token,
 				Config: &nexa_sdk.GenerationConfig{
-					MaxTokens: 2048,
+					MaxTokens: maxTokens,
 				},
 			},
 			)
@@ -289,7 +291,7 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 				PromptUTF8: tmplOut.FormattedText,
 				OnToken:    on_token,
 				Config: &nexa_sdk.GenerationConfig{
-					MaxTokens:  2048,
+					MaxTokens:  maxTokens,
 					ImagePaths: images,
 					AudioPaths: audios,
 				},

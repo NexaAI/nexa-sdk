@@ -278,6 +278,7 @@ func repl(cfg ReplConfig) {
 		printProfile(profileData)
 
 		switch err {
+		case nil:
 		case nexa_sdk.SDKErrorContextLimitExceeded:
 			fmt.Println(render.GetTheme().Info.Sprintf("Context length exceeded, please start a new conversation"))
 			fmt.Println()
