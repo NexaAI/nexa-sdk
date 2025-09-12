@@ -161,6 +161,7 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 			ModelName:     mf.ModelName,
 			ModelType:     mf.ModelType,
 			PluginId:      mf.PluginId,
+			MinSDKVersion: mf.MinSDKVersion,
 			ModelFile:     mf.ModelFile,
 			MMProjFile:    mf.MMProjFile,
 			TokenizerFile: mf.TokenizerFile,
@@ -249,6 +250,10 @@ func (s *Store) PullExtraQuant(ctx context.Context, omf, nmf types.ModelManifest
 	}()
 
 	return
+}
+
+func (s *Store) DataPath() string {
+	return s.home
 }
 
 func (s *Store) ModelDirPath() string {

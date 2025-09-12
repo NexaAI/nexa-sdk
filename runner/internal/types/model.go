@@ -20,10 +20,11 @@ type ModelFileInfo struct {
 }
 
 type ModelManifest struct {
-	Name      string // OrgName/RepoName
-	ModelName string // model arch name like "qwen3-4b", "yolov12", etc.
-	ModelType ModelType
-	PluginId  string
+	Name          string // OrgName/RepoName
+	ModelName     string // model arch name like "qwen3-4b", "yolov12", etc.
+	ModelType     ModelType
+	PluginId      string
+	MinSDKVersion string
 
 	ModelFile     map[string]ModelFileInfo // quant -> modelfile
 	MMProjFile    ModelFileInfo

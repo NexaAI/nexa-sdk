@@ -62,6 +62,11 @@ func pull() *cobra.Command {
 			return
 		}
 
+		if !isValidVersion(hmf.MinSDKVersion) {
+			fmt.Println(render.GetTheme().Error.Sprintf("Model requires NexaSDK version %s or higher. Please upgrade your NexaSDK CLI.", hmf.MinSDKVersion))
+			return
+		}
+
 		if mf != nil {
 			newManifest, err := chooseQuantFiles(*mf)
 			if err != nil {
@@ -86,6 +91,7 @@ func pull() *cobra.Command {
 				manifest.ModelName = hmf.ModelName
 				manifest.PluginId = hmf.PluginId
 				manifest.ModelType = hmf.ModelType
+				manifest.MinSDKVersion = hmf.MinSDKVersion
 			}
 
 			if manifest.ModelName == "" {
@@ -212,9 +218,7 @@ func list() *cobra.Command {
 								quants = append(quants, q)
 							}
 						}
-						sort.Slice(quants, func(i, j int) bool {
-							return quants[i] < quants[j]
-						})
+						slices.Sort(quants)
 						return quants
 					}(), ","),
 				})

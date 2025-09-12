@@ -603,7 +603,7 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) {
 	fmt.Println()
 }
 
-func inferImageGen(manifest *types.ModelManifest, quant string) {
+func inferImageGen(manifest *types.ModelManifest, _ string) {
 	s := store.Get()
 	modeldir := s.ModelfilePath(manifest.Name, "")
 	prompts := prompt

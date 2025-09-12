@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"log/slog"
 
-	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
+	goversion "github.com/hashicorp/go-version"
 	"github.com/spf13/cobra"
+
+	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 )
 
-var Version = "Unknown"
+var Version string
 
 func version() *cobra.Command {
 	versionCmd := &cobra.Command{
@@ -35,4 +37,22 @@ func version() *cobra.Command {
 	}
 
 	return versionCmd
+}
+
+func isValidVersion(minVersion string) bool {
+	// community repo or dev version
+	if minVersion == "" || Version == "" {
+		return true
+	}
+
+	slog.Debug("check version", "minVersion", minVersion, "curVersion", Version)
+	minV, err := goversion.NewVersion(minVersion)
+	if err != nil {
+		panic(err)
+	}
+	curV, err := goversion.NewVersion(Version)
+	if err != nil {
+		panic(err)
+	}
+	return curV.GreaterThanOrEqual(minV)
 }
