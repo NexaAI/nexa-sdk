@@ -72,7 +72,7 @@ func migrate() *cobra.Command {
 				return err
 			}
 
-			if model.MinSDKVersion == hmf.MinSDKVersion {
+			if hmf == nil || model.MinSDKVersion == hmf.MinSDKVersion {
 				continue
 			}
 
