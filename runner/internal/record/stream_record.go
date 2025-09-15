@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 	"os/exec"
 	"runtime"
 )
@@ -59,13 +60,6 @@ func (sr *StreamRecorder) Start() error {
 	return sr.cmd.Start()
 }
 
-// func (sr *StreamRecorder) Read(p []byte) (int, error) {
-// 	if sr.stdout == nil {
-// 		return 0, fmt.Errorf("recorder not started")
-// 	}
-// 	return sr.stdout.Read(p)
-// }
-
 func (sr *StreamRecorder) ReadFloat32(buffer []float32) (int, error) {
 	if sr.stdout == nil {
 		return 0, fmt.Errorf("recorder not started")
@@ -80,7 +74,7 @@ func (sr *StreamRecorder) ReadFloat32(buffer []float32) (int, error) {
 	sampleCount := n / 4
 	for i := range sampleCount {
 		bits := binary.LittleEndian.Uint32(rawBytes[i*4 : (i+1)*4])
-		buffer[i] = float32(bits)
+		buffer[i] = math.Float32frombits(bits)
 	}
 
 	return sampleCount, nil
@@ -92,10 +86,3 @@ func (sr *StreamRecorder) Stop() error {
 	}
 	return nil
 }
-
-// func (sr *StreamRecorder) Close() error {
-// 	if sr.stdout != nil {
-// 		return sr.stdout.Close()
-// 	}
-// 	return nil
-// }

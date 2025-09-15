@@ -462,14 +462,6 @@ func inferASR(manifest *types.ModelManifest, quant string) {
 	repl(ReplConfig{
 		ParseFile: true,
 
-		// stream_config.chunk_duration   = 4.0f;   // 4 second chunks
-		// stream_config.overlap_duration = 3.0f;   // 3 second overlap (less overlap for NPU)
-		// stream_config.sample_rate      = 16000;  // 16kHz
-		// stream_config.max_queue_size   = 10;
-		// stream_config.buffer_size      = 1024;  // Larger buffer for NPU
-		// stream_config.timestamps       = "segment";
-		// stream_config.beam_size        = 4;
-
 		Record: func() (*string, error) {
 			streamConfig := nexa_sdk.ASRStreamConfig{
 				ChunkDuration:   4.0,
@@ -489,8 +481,7 @@ func inferASR(manifest *types.ModelManifest, quant string) {
 				UserData: nil,
 			})
 			slog.Debug("ASR StreamBegin", "error", err)
-
-			if err != nil && !errors.Is(err, &nexa_sdk.ErrCommonNotSupport) {
+			if err != nil && !errors.Is(err, nexa_sdk.ErrCommonNotSupport) {
 				return nil, err
 			}
 			defer p.StreamStop(nexa_sdk.AsrStreamStopInput{})
