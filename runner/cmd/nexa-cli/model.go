@@ -62,7 +62,7 @@ func pull() *cobra.Command {
 			return
 		}
 
-		if !isValidVersion(hmf.MinSDKVersion) {
+		if hmf != nil && !isValidVersion(hmf.MinSDKVersion) {
 			fmt.Println(render.GetTheme().Error.Sprintf("Model requires NexaSDK version %s or higher. Please upgrade your NexaSDK CLI.", hmf.MinSDKVersion))
 			return
 		}
