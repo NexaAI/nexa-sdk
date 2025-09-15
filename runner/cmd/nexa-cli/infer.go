@@ -34,6 +34,7 @@ var (
 	enableThink  bool
 	hideThink    bool
 	prompt       []string
+	taskType     string
 	query        string
 	document     []string
 	input        string
@@ -64,6 +65,7 @@ func infer() *cobra.Command {
 	inferCmd.Flags().BoolVarP(&enableThink, "think", "", true, "[llm|vlm] enable thinking mode")
 	inferCmd.Flags().BoolVarP(&hideThink, "hide-think", "", false, "[llm|vlm] hide thinking output")
 	inferCmd.Flags().StringArrayVarP(&prompt, "prompt", "p", nil, "[embedder|tts|image_gen] pass prompt")
+	inferCmd.Flags().StringVarP(&taskType, "task-type", "", "default", "[embedder] task type: default|search_query|search_document")
 	inferCmd.Flags().StringVarP(&query, "query", "q", "", "[reranker] query")
 	inferCmd.Flags().StringArrayVarP(&document, "document", "d", nil, "[reranker] documents")
 	inferCmd.Flags().StringVarP(&input, "input", "i", "", "[cv] input file (image for cv)")
@@ -641,7 +643,8 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) {
 	fmt.Println(render.GetTheme().Success.Sprintf("Processing %d prompts", len(prompts)))
 
 	embedInput := nexa_sdk.EmbedderEmbedInput{
-		Texts: prompts,
+		TaskType: taskType,
+		Texts:    prompts,
 		Config: &nexa_sdk.EmbeddingConfig{
 			BatchSize:       int32(len(prompts)),
 			Normalize:       true,
