@@ -92,6 +92,16 @@ func go_generate_stream_on_token(token *C.char, _ *C.void) C.bool {
 	return C.bool(onToken(C.GoString(token)))
 }
 
+var onASRTranscription ASRTranscriptionCallback = nil
+
+//export go_asr_stream_on_transcription
+func go_asr_stream_on_transcription(text *C.char, _ *C.void) {
+	if onASRTranscription == nil {
+		return
+	}
+	onASRTranscription(C.GoString(text), nil)
+}
+
 /* ========================================================================== */
 /*                              Common Types & Utilities					  */
 /* ========================================================================== */

@@ -3,8 +3,11 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -12,6 +15,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
+	"github.com/NexaAI/nexa-sdk/runner/internal/record"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
@@ -31,6 +35,7 @@ var (
 	enableThink  bool
 	hideThink    bool
 	prompt       []string
+	taskType     string
 	query        string
 	document     []string
 	input        string
@@ -61,6 +66,7 @@ func infer() *cobra.Command {
 	inferCmd.Flags().BoolVarP(&enableThink, "think", "", true, "[llm|vlm] enable thinking mode")
 	inferCmd.Flags().BoolVarP(&hideThink, "hide-think", "", false, "[llm|vlm] hide thinking output")
 	inferCmd.Flags().StringArrayVarP(&prompt, "prompt", "p", nil, "[embedder|tts|image_gen] pass prompt")
+	inferCmd.Flags().StringVarP(&taskType, "task-type", "", "default", "[embedder] task type: default|search_query|search_document")
 	inferCmd.Flags().StringVarP(&query, "query", "q", "", "[reranker] query")
 	inferCmd.Flags().StringArrayVarP(&document, "document", "d", nil, "[reranker] documents")
 	inferCmd.Flags().StringVarP(&input, "input", "i", "", "[cv] input file (image for cv)")
@@ -270,6 +276,24 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 			return err
 		},
 
+		Record: func() (*string, error) {
+			t := strconv.Itoa(int(time.Now().Unix()))
+			outputFile := filepath.Join(os.TempDir(), "nexa-cli", t+".wav")
+			rec, err := record.NewRecorder(outputFile)
+			if err != nil {
+				return nil, err
+			}
+
+			fmt.Println(render.GetTheme().Info.Sprint("Recording is going on, press Ctrl-C to stop"))
+
+			err = rec.Run()
+			if err != nil {
+				return nil, err
+			}
+			outfile := rec.GetOutputFile()
+			return &outfile, nil
+		},
+
 		Run: func(prompt string, images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			msg := nexa_sdk.VlmChatMessage{Role: nexa_sdk.VlmRoleUser}
 			msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeText, Text: prompt})
@@ -436,8 +460,111 @@ func inferASR(manifest *types.ModelManifest, quant string) {
 	}
 
 	repl(ReplConfig{
-		MicImmediate: true,
-		ParseFile:    true,
+		ParseFile: true,
+
+		Record: func() (*string, error) {
+			streamConfig := nexa_sdk.ASRStreamConfig{
+				ChunkDuration:   4.0,
+				OverlapDuration: 3.5,
+				SampleRate:      16000,
+				MaxQueueSize:    10,
+				BufferSize:      1024,
+				Timestamps:      "segment",
+				BeamSize:        4,
+			}
+			_, err := p.StreamBegin(nexa_sdk.AsrStreamBeginInput{
+				StreamConfig: &streamConfig,
+				Language:     "en",
+				OnTranscription: func(text string, _ any) {
+					tWidth := getTerminalWidth()
+					if len(text) > tWidth {
+						text = "..." + text[len(text)-tWidth+3:]
+					}
+					text += strings.Repeat(" ", tWidth-len(text))
+
+					fmt.Print("\r")
+					fmt.Print(render.GetTheme().ModelOutput.Sprint(text))
+				},
+				UserData: nil,
+			})
+			slog.Debug("ASR StreamBegin", "error", err)
+			if err != nil && !errors.Is(err, nexa_sdk.ErrCommonNotSupport) {
+				return nil, err
+			}
+			defer p.StreamStop(nexa_sdk.AsrStreamStopInput{})
+
+			// streaming not supported, fallback to file input
+			if err != nil {
+				t := strconv.Itoa(int(time.Now().Unix()))
+				outputFile := filepath.Join(os.TempDir(), "nexa-cli", t+".wav")
+				rec, err := record.NewRecorder(outputFile)
+				if err != nil {
+					return nil, err
+				}
+
+				fmt.Println(render.GetTheme().Info.Sprint("Recording is going on, press Ctrl-C to stop"))
+
+				err = rec.Run()
+				if err != nil {
+					return nil, err
+				}
+				outfile := rec.GetOutputFile()
+
+				asrConfig := &nexa_sdk.ASRConfig{
+					Timestamps: "segment",
+					BeamSize:   5,
+					Stream:     false,
+				}
+
+				transcribeInput := nexa_sdk.AsrTranscribeInput{
+					AudioPath: outfile,
+					Language:  language,
+					Config:    asrConfig,
+				}
+
+				result, err := p.Transcribe(transcribeInput)
+				if err != nil {
+					return nil, err
+				}
+
+				fmt.Println(render.GetTheme().ModelOutput.Sprint(result.Result.Transcript))
+				render.GetTheme().Reset()
+				fmt.Println()
+				printProfile(result.ProfileData)
+
+			} else {
+
+				rec, err := record.NewStreamRecorder()
+				if err != nil {
+					return nil, err
+				}
+				fmt.Println(render.GetTheme().Info.Sprint("Streaming ASR recording started, press Ctrl-C to stop"))
+				fmt.Println()
+
+				if err := rec.Start(); err != nil {
+					return nil, err
+				}
+				defer rec.Stop()
+
+				buffer := make([]float32, streamConfig.BufferSize)
+				for {
+					n, err := rec.ReadFloat32(buffer)
+					if err == io.EOF {
+						break
+					}
+
+					if err := p.StreamPushAudio(nexa_sdk.AsrStreamPushAudioInput{
+						AudioData: buffer[:n],
+					}); err != nil {
+						fmt.Println(render.GetTheme().Error.Sprintf("error pushing audio data: %s", err))
+						fmt.Println()
+						return nil, err
+					}
+				}
+			}
+
+			return nil, nil
+		},
 
 		Run: func(_prompt string, _images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			if len(audios) == 0 {
@@ -566,7 +693,8 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) {
 	fmt.Println(render.GetTheme().Success.Sprintf("Processing %d prompts", len(prompts)))
 
 	embedInput := nexa_sdk.EmbedderEmbedInput{
-		Texts: prompts,
+		TaskType: taskType,
+		Texts:    prompts,
 		Config: &nexa_sdk.EmbeddingConfig{
 			BatchSize:       int32(len(prompts)),
 			Normalize:       true,

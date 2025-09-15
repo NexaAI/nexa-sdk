@@ -8,15 +8,11 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/ollama/ollama/readline"
 
-	"github.com/NexaAI/nexa-sdk/runner/internal/record"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 )
@@ -31,14 +27,14 @@ var help = [][2]string{
 }
 
 type ReplConfig struct {
-	MicImmediate bool
-	ParseFile    bool
+	ParseFile bool
 
 	Reset       func() error
 	SaveKVCache func(path string) error
 	LoadKVCache func(path string) error
 
-	Run func(prompt string, images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error)
+	Record func() (*string, error)
+	Run    func(prompt string, images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error)
 }
 
 func (cfg *ReplConfig) fill() {
@@ -52,6 +48,14 @@ func (cfg *ReplConfig) fill() {
 	}
 	if cfg.LoadKVCache == nil {
 		cfg.LoadKVCache = func(string) error { return notSupport }
+	}
+	if cfg.Record == nil {
+		cfg.Record = func() (*string, error) { return nil, notSupport }
+	}
+	if cfg.Run == nil {
+		cfg.Run = func(string, []string, []string, func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			return "", nexa_sdk.ProfileData{}, notSupport
+		}
 	}
 }
 
@@ -221,27 +225,15 @@ func repl(cfg ReplConfig) {
 				continue
 
 			case "/mic":
-				fmt.Println(render.GetTheme().Info.Sprint("Recording is going on, press Ctrl-C to stop"))
-
-				t := strconv.Itoa(int(time.Now().Unix()))
-				outputFile := filepath.Join(os.TempDir(), "nexa-cli", t+".wav")
-				rec, err := record.NewRecorder(outputFile)
+				outputFile, err := cfg.Record()
 				if err != nil {
 					fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 					fmt.Println()
-					continue
 				}
-				if err = rec.Run(); err != nil {
-					fmt.Println(render.GetTheme().Error.Sprintf("Failed to start recording: %s", err))
-					fmt.Println()
-					continue
+				if outputFile != nil {
+					recordAudios = append(recordAudios, *outputFile)
 				}
-
-				recordAudios = append(recordAudios, rec.GetOutputFile())
-				fmt.Println()
-				if !cfg.MicImmediate {
-					continue
-				}
+				continue
 
 			default:
 				fmt.Println(render.GetTheme().Error.Sprintf("Unknown command: %s", fileds[0]))

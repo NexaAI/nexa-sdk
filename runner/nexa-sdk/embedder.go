@@ -88,6 +88,7 @@ type EmbedderEmbedInput struct {
 	Config             *EmbeddingConfig
 	InputIDs2D         [][]int32
 	InputIDsRowLengths []int32
+	TaskType           string
 }
 
 func (eei EmbedderEmbedInput) toCPtr() *C.ml_EmbedderEmbedInput {
@@ -145,10 +146,16 @@ func (eei EmbedderEmbedInput) toCPtr() *C.ml_EmbedderEmbedInput {
 		} else {
 			cPtr.input_ids_row_lengths = nil
 		}
+		if eei.TaskType != "" {
+			cPtr.task_type = C.CString(eei.TaskType)
+		} else {
+			cPtr.task_type = nil
+		}
 	} else {
 		cPtr.input_ids_2d = nil
 		cPtr.input_ids_row_lengths = nil
 		cPtr.input_ids_row_count = 0
+		cPtr.task_type = nil
 	}
 
 	return cPtr
@@ -183,6 +190,11 @@ func freeEmbedderEmbedInput(cPtr *C.ml_EmbedderEmbedInput) {
 	// Free input_ids_row_lengths
 	if cPtr.input_ids_row_lengths != nil {
 		C.free(unsafe.Pointer(cPtr.input_ids_row_lengths))
+	}
+
+	// Free task_type
+	if cPtr.task_type != nil {
+		C.free(unsafe.Pointer(cPtr.task_type))
 	}
 
 	C.free(unsafe.Pointer(cPtr))
