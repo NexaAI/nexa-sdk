@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 	"os/exec"
 	"runtime"
 )
@@ -21,23 +22,34 @@ func NewStreamRecorder() (*StreamRecorder, error) {
 	switch runtime.GOOS {
 	case "windows":
 		args = []string{
+			// input (device)
 			"-t", "waveaudio", "-d",
-			"-r", "16000",
+			// ----- output format options (apply to the *next* filename) -----
+			"-t", "raw", // output container/type
+			"-e", "float", // encoding: IEEE float
+			"-b", "32", // 32-bit
+			"-r", "16000", // output header params
 			"-c", "1",
-			"-e", "floating-point",
-			"-b", "32",
-			"-p",
-			"remix", "1",
+			"-", // OUTFILE = stdout
+			// ----- effects (to actually convert from device's 48k/stereo) -----
+			"rate", "16000",
+			"channels", "1",
 		}
 	case "darwin", "linux":
 		args = []string{
 			"-d",
-			"-r", "16000",
+			// input (device)
+			"-t", "waveaudio", "-d",
+			// ----- output format options (apply to the *next* filename) -----
+			"-t", "raw", // output container/type
+			"-e", "float", // encoding: IEEE float
+			"-b", "32", // 32-bit
+			"-r", "16000", // output header params
 			"-c", "1",
-			"-e", "floating-point",
-			"-b", "32",
-			"-p",
-			"remix", "1",
+			"-", // OUTFILE = stdout
+			// ----- effects (to actually convert from device's 48k/stereo) -----
+			"rate", "16000",
+			"channels", "1",
 		}
 	default:
 		return nil, fmt.Errorf("unsupported OS: %s", runtime.GOOS)
@@ -73,7 +85,7 @@ func (sr *StreamRecorder) ReadFloat32(buffer []float32) (int, error) {
 	sampleCount := n / 4
 	for i := range sampleCount {
 		bits := binary.LittleEndian.Uint32(rawBytes[i*4 : (i+1)*4])
-		buffer[i] = float32(bits)
+		buffer[i] = math.Float32frombits(bits)
 	}
 
 	return sampleCount, nil
