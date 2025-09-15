@@ -3,6 +3,8 @@ package nexa_sdk
 /*
 #include <stdlib.h>
 #include "ml.h"
+
+extern bool go_asr_stream_on_transcription(char*, void*);
 */
 import "C"
 import (
@@ -132,22 +134,22 @@ func freeASRResult(ptr *C.ml_ASRResult) {
 
 // ASRModelConfig represents ASR model configuration
 type ASRModelConfig struct {
-	NCtx              int32
-	NThreads          int32
-	NThreadsBatch     int32
-	NBatch            int32
-	NUbatch           int32
-	NSeqMax           int32
-	NGpuLayers        int32
-	ChatTemplatePath  string
+	NCtx                int32
+	NThreads            int32
+	NThreadsBatch       int32
+	NBatch              int32
+	NUbatch             int32
+	NSeqMax             int32
+	NGpuLayers          int32
+	ChatTemplatePath    string
 	ChatTemplateContent string
-	EnableSampling    bool
-	GrammarStr        string
-	MaxTokens         int32
-	EnableThinking    bool
-	Verbose           bool
-	QnnModelFolderPath string
-	QnnLibFolderPath  string
+	EnableSampling      bool
+	GrammarStr          string
+	MaxTokens           int32
+	EnableThinking      bool
+	Verbose             bool
+	QnnModelFolderPath  string
+	QnnLibFolderPath    string
 }
 
 // AsrCreateInput represents input parameters for ASR creation
@@ -352,7 +354,7 @@ func freeAsrTranscribeOutput(ptr *C.ml_AsrTranscribeOutput) {
 
 // AsrListSupportedLanguagesInput represents input for listing supported languages
 type AsrListSupportedLanguagesInput struct {
-	Reserved interface{}
+	Reserved any
 }
 
 func (asli AsrListSupportedLanguagesInput) toCPtr() *C.ml_AsrListSupportedLanguagesInput {
@@ -394,25 +396,24 @@ func freeAsrListSupportedLanguagesOutput(ptr *C.ml_AsrListSupportedLanguagesOutp
 }
 
 // ASRTranscriptionCallback represents callback function for streaming transcription updates
-type ASRTranscriptionCallback func(text string, userData interface{})
+type ASRTranscriptionCallback func(text string, userData any)
 
 // AsrStreamBeginInput represents input for beginning ASR streaming
 type AsrStreamBeginInput struct {
-	StreamConfig     *ASRStreamConfig
-	Language         string
-	OnTranscription  ASRTranscriptionCallback
-	UserData         interface{}
+	StreamConfig    *ASRStreamConfig
+	Language        string
+	OnTranscription ASRTranscriptionCallback
+	UserData        any
 }
 
 // AsrStreamBeginOutput represents output for streaming begin
 type AsrStreamBeginOutput struct {
-	Reserved interface{}
+	Reserved any
 }
 
 // AsrStreamPushAudioInput represents input for processing audio data
 type AsrStreamPushAudioInput struct {
 	AudioData []float32
-	Length    int32
 }
 
 // AsrStreamStopInput represents input for stopping streaming
@@ -496,12 +497,16 @@ func (a *ASR) ListSupportedLanguages() (AsrListSupportedLanguagesOutput, error) 
 	return output, nil
 }
 
-// StreamBegin begins streaming ASR with specified callbacks
 func (a *ASR) StreamBegin(input AsrStreamBeginInput) (AsrStreamBeginOutput, error) {
 	slog.Debug("StreamBegin called", "input", input)
 
 	cInput := input.toCPtr()
 	defer freeAsrStreamBeginInput(cInput)
+
+	// Set up the callback
+	onASRTranscription = input.OnTranscription
+
+	cInput.on_transcription = C.ml_asr_transcription_callback(C.go_asr_stream_on_transcription)
 
 	var cOutput C.ml_AsrStreamBeginOutput
 	defer freeAsrStreamBeginOutput(&cOutput)
@@ -515,9 +520,8 @@ func (a *ASR) StreamBegin(input AsrStreamBeginInput) (AsrStreamBeginOutput, erro
 	return output, nil
 }
 
-// StreamPushAudio pushes audio data to streaming ASR for processing
 func (a *ASR) StreamPushAudio(input AsrStreamPushAudioInput) error {
-	slog.Debug("StreamPushAudio called", "length", input.Length)
+	slog.Debug("StreamPushAudio called", "length", len(input.AudioData))
 
 	cInput := input.toCPtr()
 	defer freeAsrStreamPushAudioInput(cInput)
@@ -534,6 +538,8 @@ func (a *ASR) StreamPushAudio(input AsrStreamPushAudioInput) error {
 func (a *ASR) StreamStop(input AsrStreamStopInput) error {
 	slog.Debug("StreamStop called", "graceful", input.Graceful)
 
+	onASRTranscription = nil // reset to default
+
 	cInput := input.toCPtr()
 	defer freeAsrStreamStopInput(cInput)
 
@@ -545,38 +551,24 @@ func (a *ASR) StreamStop(input AsrStreamStopInput) error {
 	return nil
 }
 
-// Note: C callback wrapper for ASR transcription would be implemented here
-// when the C library supports proper callback mechanisms
-
-// callbackData holds the Go callback and user data for C callbacks
-type callbackData struct {
-	callback ASRTranscriptionCallback
-	userData interface{}
-}
+// Note: ASR callback is now handled via global variables in common.go
+// similar to how LLM callbacks are implemented
 
 func (asbi AsrStreamBeginInput) toCPtr() *C.ml_AsrStreamBeginInput {
 	cPtr := (*C.ml_AsrStreamBeginInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_AsrStreamBeginInput{}))))
 	*cPtr = C.ml_AsrStreamBeginInput{}
-	
+
 	if asbi.StreamConfig != nil {
 		cPtr.stream_config = asbi.StreamConfig.toCPtr()
 	}
 	if asbi.Language != "" {
 		cPtr.language = C.CString(asbi.Language)
 	}
-	
-	// Set up callback
-	if asbi.OnTranscription != nil {
-		callbackData := &callbackData{
-			callback: asbi.OnTranscription,
-			userData: asbi.UserData,
-		}
-		// Note: C callback setup would need to be implemented differently
-		// For now, we'll set it to nil and handle callbacks in Go
-		cPtr.on_transcription = nil
-		cPtr.user_data = unsafe.Pointer(callbackData)
-	}
-	
+
+	// Note: callback will be set in StreamBegin method
+	cPtr.on_transcription = nil
+	cPtr.user_data = nil
+
 	return cPtr
 }
 
@@ -587,11 +579,6 @@ func freeAsrStreamBeginInput(cPtr *C.ml_AsrStreamBeginInput) {
 		}
 		if cPtr.language != nil {
 			C.free(unsafe.Pointer(cPtr.language))
-		}
-		if cPtr.user_data != nil {
-			// Free the callback data
-			callbackData := (*callbackData)(cPtr.user_data)
-			C.free(unsafe.Pointer(callbackData))
 		}
 		C.free(unsafe.Pointer(cPtr))
 	}
@@ -613,12 +600,12 @@ func freeAsrStreamBeginOutput(ptr *C.ml_AsrStreamBeginOutput) {
 func (aspai AsrStreamPushAudioInput) toCPtr() *C.ml_AsrStreamPushAudioInput {
 	cPtr := (*C.ml_AsrStreamPushAudioInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_AsrStreamPushAudioInput{}))))
 	*cPtr = C.ml_AsrStreamPushAudioInput{}
-	
+
 	if len(aspai.AudioData) > 0 {
 		cPtr.audio_data = (*C.float)(unsafe.Pointer(&aspai.AudioData[0]))
 	}
-	cPtr.length = C.int32_t(aspai.Length)
-	
+	cPtr.length = C.int32_t(len(aspai.AudioData))
+
 	return cPtr
 }
 
@@ -631,9 +618,9 @@ func freeAsrStreamPushAudioInput(cPtr *C.ml_AsrStreamPushAudioInput) {
 func (assi AsrStreamStopInput) toCPtr() *C.ml_AsrStreamStopInput {
 	cPtr := (*C.ml_AsrStreamStopInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_AsrStreamStopInput{}))))
 	*cPtr = C.ml_AsrStreamStopInput{}
-	
+
 	cPtr.graceful = C.bool(assi.Graceful)
-	
+
 	return cPtr
 }
 

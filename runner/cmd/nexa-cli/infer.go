@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -461,13 +462,38 @@ func inferASR(manifest *types.ModelManifest, quant string) {
 	repl(ReplConfig{
 		ParseFile: true,
 
+		// stream_config.chunk_duration   = 4.0f;   // 4 second chunks
+		// stream_config.overlap_duration = 3.0f;   // 3 second overlap (less overlap for NPU)
+		// stream_config.sample_rate      = 16000;  // 16kHz
+		// stream_config.max_queue_size   = 10;
+		// stream_config.buffer_size      = 1024;  // Larger buffer for NPU
+		// stream_config.timestamps       = "segment";
+		// stream_config.beam_size        = 4;
+
 		Record: func() (*string, error) {
-			_, err := p.StreamBegin(nexa_sdk.AsrStreamBeginInput{})
+			streamConfig := nexa_sdk.ASRStreamConfig{
+				ChunkDuration:   4.0,
+				OverlapDuration: 3.0,
+				SampleRate:      16000,
+				MaxQueueSize:    10,
+				BufferSize:      1024,
+				Timestamps:      "segment",
+				BeamSize:        4,
+			}
+			_, err := p.StreamBegin(nexa_sdk.AsrStreamBeginInput{
+				StreamConfig: &streamConfig,
+				Language:     "en",
+				OnTranscription: func(text string, _ any) {
+					fmt.Print(render.GetTheme().ModelOutput.Sprint(text))
+				},
+				UserData: nil,
+			})
 			slog.Debug("ASR StreamBegin", "error", err)
 
 			if err != nil && !errors.Is(err, &nexa_sdk.ErrCommonNotSupport) {
 				return nil, err
 			}
+			defer p.StreamStop(nexa_sdk.AsrStreamStopInput{})
 
 			// streaming not supported, fallback to file input
 			if err != nil {
@@ -507,11 +533,37 @@ func inferASR(manifest *types.ModelManifest, quant string) {
 				render.GetTheme().Reset()
 				fmt.Println()
 				printProfile(result.ProfileData)
+
+			} else {
+
+				rec, err := record.NewStreamRecorder()
+				if err != nil {
+					return nil, err
+				}
+				fmt.Println(render.GetTheme().Info.Sprint("Streaming ASR recording started, press Ctrl-C to stop"))
+				fmt.Println()
+
+				if err := rec.Start(); err != nil {
+					return nil, err
+				}
+				defer rec.Stop()
+
+				buffer := make([]float32, streamConfig.BufferSize)
+				for {
+					n, err := rec.ReadFloat32(buffer)
+					if err == io.EOF {
+						break
+					}
+
+					if err := p.StreamPushAudio(nexa_sdk.AsrStreamPushAudioInput{
+						AudioData: buffer[:n],
+					}); err != nil {
+						fmt.Println(render.GetTheme().Error.Sprintf("error pushing audio data: %s", err))
+						fmt.Println()
+						return nil, err
+					}
+				}
 			}
-
-			defer p.StreamStop(nexa_sdk.AsrStreamStopInput{})
-
-			// stream
 
 			return nil, nil
 		},
