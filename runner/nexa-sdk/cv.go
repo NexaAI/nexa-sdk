@@ -234,8 +234,7 @@ func freeCVInferInput(cPtr *C.ml_CVInferInput) {
 
 // CVInferOutput represents output from CV inference
 type CVInferOutput struct {
-	Results     []CVResult
-	ResultCount int32
+	Results []CVResult
 }
 
 func newCVInferOutputFromCPtr(c *C.ml_CVInferOutput) CVInferOutput {
@@ -244,8 +243,6 @@ func newCVInferOutputFromCPtr(c *C.ml_CVInferOutput) CVInferOutput {
 	if c == nil {
 		return output
 	}
-
-	output.ResultCount = int32(c.result_count)
 
 	// Convert results array
 	if c.results != nil && c.result_count > 0 {
