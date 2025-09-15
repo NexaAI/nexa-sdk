@@ -465,31 +465,25 @@ func inferASR(manifest *types.ModelManifest, quant string) {
 		Record: func() (*string, error) {
 			streamConfig := nexa_sdk.ASRStreamConfig{
 				ChunkDuration:   4.0,
-				OverlapDuration: 3.0,
+				OverlapDuration: 3.5,
 				SampleRate:      16000,
 				MaxQueueSize:    10,
 				BufferSize:      1024,
 				Timestamps:      "segment",
 				BeamSize:        4,
 			}
-			last := ""
 			_, err := p.StreamBegin(nexa_sdk.AsrStreamBeginInput{
 				StreamConfig: &streamConfig,
 				Language:     "en",
 				OnTranscription: func(text string, _ any) {
-					commonLen := 0
-					for i := 0; i < len(last) && i < len(text); i++ {
-						if last[i] != text[i] {
-							break
-						}
-						commonLen++
+					tWidth := getTerminalWidth()
+					if len(text) > tWidth {
+						text = "..." + text[len(text)-tWidth+3:]
 					}
+					text += strings.Repeat(" ", tWidth-len(text))
 
-					for i := 0; i < len(last)-commonLen; i++ {
-						fmt.Print("\b")
-					}
-					fmt.Print(render.GetTheme().ModelOutput.Sprint(text[commonLen:]))
-					last = text
+					fmt.Print("\r")
+					fmt.Print(render.GetTheme().ModelOutput.Sprint(text))
 				},
 				UserData: nil,
 			})

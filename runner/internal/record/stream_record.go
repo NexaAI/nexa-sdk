@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"math"
 	"os/exec"
 	"runtime"
 )
@@ -74,7 +73,7 @@ func (sr *StreamRecorder) ReadFloat32(buffer []float32) (int, error) {
 	sampleCount := n / 4
 	for i := range sampleCount {
 		bits := binary.LittleEndian.Uint32(rawBytes[i*4 : (i+1)*4])
-		buffer[i] = math.Float32frombits(bits)
+		buffer[i] = float32(bits)
 	}
 
 	return sampleCount, nil
