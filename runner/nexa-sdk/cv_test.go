@@ -55,18 +55,15 @@ func TestCVInferBasic(t *testing.T) {
 	}
 
 	// Verify results structure
-	if output.ResultCount < 0 {
-		t.Errorf("Invalid result count: %d", output.ResultCount)
+	resultCount := len(output.Results)
+	if resultCount < 0 {
+		t.Errorf("Invalid result count: %d", resultCount)
 		return
 	}
 
-	t.Logf("Got %d CV results", output.ResultCount)
+	t.Logf("Got %d CV results", resultCount)
 
-	if output.ResultCount > 0 {
-		if len(output.Results) == 0 {
-			t.Errorf("Expected %d results but got 0", output.ResultCount)
-			return
-		}
+	if resultCount > 0 {
 
 		// Process each result
 		for i, result := range output.Results {

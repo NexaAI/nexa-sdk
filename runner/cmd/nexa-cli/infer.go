@@ -10,7 +10,6 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/dustin/go-humanize"
-	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
@@ -323,9 +322,9 @@ func inferTTS(manifest *types.ModelManifest, quant string) {
 	spin.Start()
 
 	ttsInput := nexa_sdk.TtsCreateInput{
-		ModelName:   manifest.ModelName,
-		ModelPath:   modelfile,
-		PluginID:    manifest.PluginId,
+		ModelName: manifest.ModelName,
+		ModelPath: modelfile,
+		PluginID:  manifest.PluginId,
 	}
 
 	p, err := nexa_sdk.NewTTS(ttsInput)
@@ -411,10 +410,10 @@ func inferASR(manifest *types.ModelManifest, quant string) {
 	spin.Start()
 
 	asrInput := nexa_sdk.AsrCreateInput{
-		ModelName:     manifest.ModelName,
-		ModelPath:     modelfile,
-		PluginID:      manifest.PluginId,
-		Language:      language,
+		ModelName: manifest.ModelName,
+		ModelPath: modelfile,
+		PluginID:  manifest.PluginId,
+		Language:  language,
 	}
 	p, err := nexa_sdk.NewASR(asrInput)
 	spin.Stop()
@@ -438,7 +437,7 @@ func inferASR(manifest *types.ModelManifest, quant string) {
 
 	repl(ReplConfig{
 		MicImmediate: true,
-		ParseFile: true,
+		ParseFile:    true,
 
 		Run: func(_prompt string, _images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			if len(audios) == 0 {
@@ -498,13 +497,13 @@ func inferCV(manifest *types.ModelManifest, quant string) {
 	defer p.Destroy()
 
 	if input == "" {
-		fmt.Println(text.FgRed.Sprintf("input image file is required for CV inference"))
+		fmt.Println(render.GetTheme().Error.Sprintf("input image file is required for CV inference"))
 		fmt.Println()
 		return
 	}
 
 	if _, err := os.Stat(input); os.IsNotExist(err) {
-		fmt.Println(text.FgRed.Sprintf("input file '%s' does not exist", input))
+		fmt.Println(render.GetTheme().Error.Sprintf("input file '%s' does not exist", input))
 		return
 	}
 
@@ -512,21 +511,19 @@ func inferCV(manifest *types.ModelManifest, quant string) {
 		InputImagePath: input,
 	}
 
-	fmt.Println(text.FgGreen.Sprintf("Performing CV inference on image: %s", input))
+	fmt.Println(render.GetTheme().Info.Sprintf("Performing CV inference on image: %s", input))
 
 	result, err := p.Infer(inferInput)
 	if err != nil {
-		fmt.Println(text.FgRed.Sprintf("CV inference failed: %s", err))
+		fmt.Println(render.GetTheme().Error.Sprintf("CV inference failed: %s", err))
 		return
 	}
 
-	fmt.Println(text.FgGreen.Sprintf("✓ CV inference completed successfully"))
-	fmt.Println(text.FgGreen.Sprintf("  Found %d results", result.ResultCount))
+	fmt.Println(render.GetTheme().Info.Sprintf("✓ CV inference completed successfully"))
+	fmt.Println(render.GetTheme().Info.Sprintf("  Found %d results", len(result.Results)))
 
 	for _, cvResult := range result.Results {
-		if cvResult.Text != "" {
-			fmt.Printf("[%s] %s\n", text.FgHiMagenta.Sprintf("%.3f", cvResult.Confidence), text.FgYellow.Sprintf("\"%s\"", cvResult.Text))
-		}
+		fmt.Printf("[%s] %s\n", render.GetTheme().Info.Sprintf("%.3f", cvResult.Confidence), render.GetTheme().Success.Sprintf("\"%s\"", cvResult.Text))
 	}
 }
 
