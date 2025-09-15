@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
+	"github.com/NexaAI/nexa-sdk/runner/internal/record"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
@@ -270,6 +273,24 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 			return err
 		},
 
+		Record: func() (*string, error) {
+			t := strconv.Itoa(int(time.Now().Unix()))
+			outputFile := filepath.Join(os.TempDir(), "nexa-cli", t+".wav")
+			rec, err := record.NewRecorder(outputFile)
+			if err != nil {
+				return nil, err
+			}
+
+			fmt.Println(render.GetTheme().Info.Sprint("Recording is going on, press Ctrl-C to stop"))
+
+			err = rec.Run()
+			if err != nil {
+				return nil, err
+			}
+			outfile := rec.GetOutputFile()
+			return &outfile, nil
+		},
+
 		Run: func(prompt string, images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			msg := nexa_sdk.VlmChatMessage{Role: nexa_sdk.VlmRoleUser}
 			msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeText, Text: prompt})
@@ -436,8 +457,62 @@ func inferASR(manifest *types.ModelManifest, quant string) {
 	}
 
 	repl(ReplConfig{
-		MicImmediate: true,
-		ParseFile:    true,
+		ParseFile: true,
+
+		Record: func() (*string, error) {
+			_, err := p.StreamBegin(nexa_sdk.AsrStreamBeginInput{})
+			slog.Debug("ASR StreamBegin", "error", err)
+
+			if err != nil && !errors.Is(err, &nexa_sdk.ErrCommonNotSupport) {
+				return nil, err
+			}
+
+			// streaming not supported, fallback to file input
+			if err != nil {
+				t := strconv.Itoa(int(time.Now().Unix()))
+				outputFile := filepath.Join(os.TempDir(), "nexa-cli", t+".wav")
+				rec, err := record.NewRecorder(outputFile)
+				if err != nil {
+					return nil, err
+				}
+
+				fmt.Println(render.GetTheme().Info.Sprint("Recording is going on, press Ctrl-C to stop"))
+
+				err = rec.Run()
+				if err != nil {
+					return nil, err
+				}
+				outfile := rec.GetOutputFile()
+
+				asrConfig := &nexa_sdk.ASRConfig{
+					Timestamps: "segment",
+					BeamSize:   5,
+					Stream:     false,
+				}
+
+				transcribeInput := nexa_sdk.AsrTranscribeInput{
+					AudioPath: outfile,
+					Language:  language,
+					Config:    asrConfig,
+				}
+
+				result, err := p.Transcribe(transcribeInput)
+				if err != nil {
+					return nil, err
+				}
+
+				fmt.Println(render.GetTheme().ModelOutput.Sprint(result.Result.Transcript))
+				render.GetTheme().Reset()
+				fmt.Println()
+				printProfile(result.ProfileData)
+			}
+
+			defer p.StreamStop(nexa_sdk.AsrStreamStopInput{})
+
+			// stream
+
+			return nil, nil
+		},
 
 		Run: func(_prompt string, _images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			if len(audios) == 0 {

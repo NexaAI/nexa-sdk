@@ -38,6 +38,7 @@ func (s SDKError) Error() string {
 }
 
 var (
+	ErrCommonNotSupport             = SDKError(C.ML_ERROR_COMMON_NOT_SUPPORTED)
 	ErrLlmTokenizationContextLength = SDKError(C.ML_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH)
 )
 
