@@ -24,25 +24,29 @@ func NewStreamRecorder() (*StreamRecorder, error) {
 	switch runtime.GOOS {
 	case "windows":
 		args = []string{
-			"-t", "waveaudio", "-d",
+			// input (device)
+			"-d",
+			// output format options
 			"-t", "raw",
 			"-e", "float",
 			"-b", "32",
 			"-r", "16000",
 			"-c", "1",
-			"-",
+			"-", // OUTFILE = stdout
 			"rate", "16000",
 			"channels", "1",
 		}
 	case "darwin", "linux":
 		args = []string{
+			// input (device)
 			"-d",
+			// output format options
 			"-t", "raw",
 			"-e", "float",
 			"-b", "32",
 			"-r", "16000",
 			"-c", "1",
-			"-",
+			"-", // OUTFILE = stdout
 			"rate", "16000",
 			"channels", "1",
 		}
