@@ -25,6 +25,7 @@ func NewStreamRecorder() (*StreamRecorder, error) {
 	case "windows":
 		args = []string{
 			// input (device)
+			"-t", "waveaudio",
 			"-d",
 			// output format options
 			"-t", "raw",
