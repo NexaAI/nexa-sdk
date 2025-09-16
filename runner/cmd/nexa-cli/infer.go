@@ -463,8 +463,17 @@ func inferASR(manifest *types.ModelManifest, quant string) {
 		ParseFile: true,
 
 		Record: func() (*string, error) {
+			streamConfig := nexa_sdk.ASRStreamConfig{
+				ChunkDuration:   4.0,
+				OverlapDuration: 3.5,
+				SampleRate:      16000,
+				MaxQueueSize:    10,
+				BufferSize:      1024,
+				Timestamps:      "segment",
+				BeamSize:        4,
+			}
 			_, err := p.StreamBegin(nexa_sdk.AsrStreamBeginInput{
-				StreamConfig: nil,
+				StreamConfig: &streamConfig,
 				Language:     "en",
 				OnTranscription: func(text string, _ any) {
 					tWidth := getTerminalWidth()
