@@ -676,13 +676,6 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) {
 	}
 	defer p.Destroy()
 
-	prompts := prompt
-	if len(prompts) == 0 {
-		fmt.Println(render.GetTheme().Error.Sprintf("at least one --prompt is required for embedding generation"))
-		fmt.Println()
-		return
-	}
-
 	dimOutput, err := p.EmbeddingDimension()
 	if err != nil {
 		fmt.Println(render.GetTheme().Error.Sprintf("failed to get embedding dimension: %s", err))
@@ -690,42 +683,44 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) {
 	}
 
 	fmt.Println(render.GetTheme().Success.Sprintf("Embedding dimension: %d", dimOutput.Dimension))
-	fmt.Println(render.GetTheme().Success.Sprintf("Processing %d prompts", len(prompts)))
 
-	embedInput := nexa_sdk.EmbedderEmbedInput{
-		TaskType: taskType,
-		Texts:    prompts,
-		Config: &nexa_sdk.EmbeddingConfig{
-			BatchSize:       int32(len(prompts)),
-			Normalize:       true,
-			NormalizeMethod: "l2",
+	repl(ReplConfig{
+		ParseFile: false,
+
+		Run: func(prompt string, _, _ []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			embedInput := nexa_sdk.EmbedderEmbedInput{
+				TaskType: taskType,
+				Texts:    []string{strings.TrimSpace(prompt)},
+				Config: &nexa_sdk.EmbeddingConfig{
+					BatchSize:       1,
+					Normalize:       true,
+					NormalizeMethod: "l2",
+				},
+			}
+
+			result, err := p.Embed(embedInput)
+			if err != nil || len(result.Embeddings) == 0 {
+				return "", result.ProfileData, err
+			}
+
+			n, emb := len(result.Embeddings), result.Embeddings
+			info := render.GetTheme().Info.Sprintf("Embedding")
+			var out string
+			if n > 6 {
+				out = render.GetTheme().Success.Sprintf(
+					"[%.6f, %.6f, %.6f, ..., %.6f, %.6f, %.6f] (length: %d)",
+					emb[0], emb[1], emb[2],
+					emb[n-3], emb[n-2], emb[n-1], n,
+				)
+			} else {
+				out = render.GetTheme().Success.Sprintf("%v (length: %d)", emb, n)
+			}
+
+			fmt.Printf("%s: %s\n", info, out)
+
+			return "", result.ProfileData, nil
 		},
-	}
-
-	result, err := p.Embed(embedInput)
-	if err != nil {
-		fmt.Println(render.GetTheme().Error.Sprintf("embedding generation failed: %s", err))
-		return
-	}
-
-	fmt.Println(render.GetTheme().Success.Sprintf("✓ Embedding generation completed successfully"))
-
-	embeddingDim := int(dimOutput.Dimension)
-	for i, text := range prompts {
-		startIdx := i * embeddingDim
-		endIdx := startIdx + embeddingDim
-
-		fmt.Printf("\n%s [%d]: %s\n", render.GetTheme().Info.Sprintf("Prompt"), i+1, text)
-		embedding := result.Embeddings[startIdx:endIdx]
-
-		fmt.Printf("%s: [%.6f, %.6f, %.6f, ..., %.6f, %.6f, %.6f] (length: %d)\n",
-			render.GetTheme().Info.Sprintf("Embedding"),
-			embedding[0], embedding[1], embedding[2],
-			embedding[len(embedding)-3], embedding[len(embedding)-2], embedding[len(embedding)-1],
-			len(embedding))
-	}
-
-	fmt.Println()
+	})
 }
 
 func inferImageGen(manifest *types.ModelManifest, _ string) {
