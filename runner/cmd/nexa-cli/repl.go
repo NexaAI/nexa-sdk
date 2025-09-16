@@ -320,6 +320,10 @@ func printProfile(pd nexa_sdk.ProfileData) {
 		}
 	}
 
+	if text == "" {
+		return
+	}
+
 	fmt.Print(render.GetTheme().Profile.Sprint(text))
 	fmt.Println()
 	fmt.Println()
