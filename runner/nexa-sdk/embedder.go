@@ -146,15 +146,15 @@ func (eei EmbedderEmbedInput) toCPtr() *C.ml_EmbedderEmbedInput {
 		} else {
 			cPtr.input_ids_row_lengths = nil
 		}
-		if eei.TaskType != "" {
-			cPtr.task_type = C.CString(eei.TaskType)
-		} else {
-			cPtr.task_type = nil
-		}
 	} else {
 		cPtr.input_ids_2d = nil
 		cPtr.input_ids_row_lengths = nil
 		cPtr.input_ids_row_count = 0
+	}
+
+	if eei.TaskType != "" {
+		cPtr.task_type = C.CString(eei.TaskType)
+	} else {
 		cPtr.task_type = nil
 	}
 
