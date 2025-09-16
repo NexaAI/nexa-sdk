@@ -262,7 +262,7 @@ func choosePluginId(name string) string {
 		return "nexa_cuda_ort_llama_cpp"
 	case strings.Contains(name, "gemma-3n"):
 		return "nexa_dml_llama_cpp"
-	case strings.Contains(name, "prefect-illustrious") || strings.Contains(name, "sdxl-base"):
+	case strings.Contains(name, "Prefect-illustrious") || strings.Contains(name, "sdxl-base"):
 		return "nexa_dml"
 		// return "nexa_cuda"
 	default:
