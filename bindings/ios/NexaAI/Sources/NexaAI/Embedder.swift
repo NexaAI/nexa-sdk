@@ -25,9 +25,11 @@ final public class Embedder {
         defer { free(dev) }
 
         var input = ml_EmbedderCreateInput(
+            model_name: nil,
             model_path: model,
             tokenizer_path: tokenizer,
-            plugin_id: plugin_id()
+            plugin_id: plugin_id(),
+            device_id: dev
         )
 
         ml_register_plugin(plugin_id, createLlamaPlugin)

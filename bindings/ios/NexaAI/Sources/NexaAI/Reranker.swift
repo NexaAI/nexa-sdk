@@ -13,7 +13,8 @@ public final class Reranker {
 
     public init(
         modelPath: String,
-        tokenizerPath: String? = nil
+        tokenizerPath: String? = nil,
+        deviceId: String? = nil
     ) throws {
         let model = strdup(modelPath)!
         defer { free(model) }
@@ -21,10 +22,15 @@ public final class Reranker {
         let tokenizer = tokenizerPath != nil ? strdup(tokenizerPath!)! : nil
         defer { free(tokenizer) }
 
+        let dev = deviceId != nil ? strdup(deviceId!) : nil
+        defer { free(dev) }
+
         var input = ml_RerankerCreateInput(
+            model_name: nil,
             model_path: model,
             tokenizer_path: tokenizer,
-            plugin_id: plugin_id()
+            plugin_id: plugin_id(),
+            device_id: dev
         )
 
         let result = ml_reranker_create(&input, &handle)

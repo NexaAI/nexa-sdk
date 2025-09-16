@@ -4,7 +4,7 @@ import NexaBridge
 private typealias vlmHandle = OpaquePointer
 
 final public class VLMLlama: Model {
-
+    
     private var handle: vlmHandle?
 
     public private(set) var lastProfileData: ProfileData?
@@ -60,17 +60,17 @@ final public class VLMLlama: Model {
             n_gpu_layers: options.gpuLayers,
             chat_template_path: chatTemplateContent == nil ? chatTemplatePath : nil,
             chat_template_content: chatTemplateContent,
-            system_library_path: nil,
-            backend_library_path: nil,
-            extension_library_path: nil,
-            config_file_path: nil,
-            embedded_tokens_path: nil,
+            enable_sampling: false,
+            grammar_str: nil,
             max_tokens: 0,
             enable_thinking: true,
-            verbose: false
+            verbose: false,
+            qnn_model_folder_path: nil,
+            qnn_lib_folder_path: nil
         )
 
         var input = ml_VlmCreateInput(
+            model_name: nil,
             model_path: cPath,
             mmproj_path: cMmprojectPath,
             config: modelConfig,

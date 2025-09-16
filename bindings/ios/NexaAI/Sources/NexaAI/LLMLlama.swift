@@ -60,17 +60,17 @@ final public class LLMLlama: Model {
             n_gpu_layers: options.gpuLayers,
             chat_template_path: chatTemplateContent == nil ? chatTemplatePath : nil,
             chat_template_content: chatTemplateContent,
-            system_library_path: nil,
-            backend_library_path: nil,
-            extension_library_path: nil,
-            config_file_path: nil,
-            embedded_tokens_path: nil,
+            enable_sampling: false,
+            grammar_str: nil,
             max_tokens: 0,
-            enable_thinking: options.enableThinking,
-            verbose: false
+            enable_thinking: true,
+            verbose: false,
+            qnn_model_folder_path: nil,
+            qnn_lib_folder_path: nil
         )
 
         var input = ml_LlmCreateInput(
+            model_name: nil,
             model_path: cPath,
             tokenizer_path: cTokenizerPath,
             config: modelConfig,
