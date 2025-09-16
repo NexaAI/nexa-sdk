@@ -4,9 +4,11 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"log/slog"
 	"math"
 	"os/exec"
 	"runtime"
+	"strings"
 )
 
 type StreamRecorder struct {
@@ -22,32 +24,25 @@ func NewStreamRecorder() (*StreamRecorder, error) {
 	switch runtime.GOOS {
 	case "windows":
 		args = []string{
-			// input (device)
 			"-t", "waveaudio", "-d",
-			// ----- output format options (apply to the *next* filename) -----
-			"-t", "raw", // output container/type
-			"-e", "float", // encoding: IEEE float
-			"-b", "32", // 32-bit
-			"-r", "16000", // output header params
+			"-t", "raw",
+			"-e", "float",
+			"-b", "32",
+			"-r", "16000",
 			"-c", "1",
-			"-", // OUTFILE = stdout
-			// ----- effects (to actually convert from device's 48k/stereo) -----
+			"-",
 			"rate", "16000",
 			"channels", "1",
 		}
 	case "darwin", "linux":
 		args = []string{
 			"-d",
-			// input (device)
-			"-t", "waveaudio", "-d",
-			// ----- output format options (apply to the *next* filename) -----
-			"-t", "raw", // output container/type
-			"-e", "float", // encoding: IEEE float
-			"-b", "32", // 32-bit
-			"-r", "16000", // output header params
+			"-t", "raw",
+			"-e", "float",
+			"-b", "32",
+			"-r", "16000",
 			"-c", "1",
-			"-", // OUTFILE = stdout
-			// ----- effects (to actually convert from device's 48k/stereo) -----
+			"-",
 			"rate", "16000",
 			"channels", "1",
 		}
@@ -55,6 +50,7 @@ func NewStreamRecorder() (*StreamRecorder, error) {
 		return nil, fmt.Errorf("unsupported OS: %s", runtime.GOOS)
 	}
 
+	slog.Debug("sox cmd", "cmd", "sox "+strings.Join(args, " "))
 	sr.cmd = exec.Command("sox", args...)
 
 	var err error
