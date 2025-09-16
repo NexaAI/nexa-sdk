@@ -690,7 +690,7 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) {
 		Run: func(prompt string, _, _ []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			embedInput := nexa_sdk.EmbedderEmbedInput{
 				TaskType: taskType,
-				Texts:    []string{prompt},
+				Texts:    []string{strings.TrimSpace(prompt)},
 				Config: &nexa_sdk.EmbeddingConfig{
 					BatchSize:       1,
 					Normalize:       true,
@@ -699,15 +699,24 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) {
 			}
 
 			result, err := p.Embed(embedInput)
-			if err != nil {
+			if err != nil || len(result.Embeddings) == 0 {
 				return "", result.ProfileData, err
 			}
 
-			fmt.Printf("%s: [%.6f, %.6f, %.6f, ..., %.6f, %.6f, %.6f] (length: %d)\n",
-				render.GetTheme().Info.Sprintf("Embedding"),
-				result.Embeddings[0], result.Embeddings[1], result.Embeddings[2],
-				result.Embeddings[len(result.Embeddings)-3], result.Embeddings[len(result.Embeddings)-2], result.Embeddings[len(result.Embeddings)-1],
-				len(result.Embeddings))
+			n, emb := len(result.Embeddings), result.Embeddings
+			info := render.GetTheme().Info.Sprintf("Embedding")
+			var out string
+			if n > 6 {
+				out = render.GetTheme().Success.Sprintf(
+					"[%.6f, %.6f, %.6f, ..., %.6f, %.6f, %.6f] (length: %d)",
+					emb[0], emb[1], emb[2],
+					emb[n-3], emb[n-2], emb[n-1], n,
+				)
+			} else {
+				out = render.GetTheme().Success.Sprintf("%v (length: %d)", emb, n)
+			}
+
+			fmt.Printf("%s: %s\n", info, out)
 
 			return "", result.ProfileData, nil
 		},
