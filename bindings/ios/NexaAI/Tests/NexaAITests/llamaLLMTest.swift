@@ -146,7 +146,7 @@ struct LLamaLLMTest {
             """
         let userMsg = "What is the weather like in Boston today?"
         var messages = [ChatMessage(role: .user, content: userMsg)]
-        let options = GenerationOptions(templeteOptions: .init(tools: weatherTool, enableThinking: true))
+        let options = GenerationOptions(templateOptions: .init(tools: weatherTool, enableThinking: true))
 
         let stream = try await llmLlama.generateAsyncStream(messages: messages, options: options)
         print("-----------------------------")

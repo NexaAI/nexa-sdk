@@ -99,7 +99,7 @@ final public class LLMLlama: Model {
 
     @NexaAIActor
     public func generateAsyncStream(messages: [ChatMessage], options: GenerationOptions = .init()) throws -> AsyncThrowingStream<String, Error> {
-        let prompt = try applyChatTemplate(messages: messages, options: options.templeteOptions)
+        let prompt = try applyChatTemplate(messages: messages, options: options.templateOptions)
         return generateAsyncStream(prompt: prompt, config: options.config)
     }
 

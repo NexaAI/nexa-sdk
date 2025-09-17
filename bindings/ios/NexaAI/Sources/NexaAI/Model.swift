@@ -26,7 +26,7 @@ extension Model {
 
     @NexaAIActor
     public func generate(messages: [ChatMessage], options: GenerationOptions = .init()) throws -> GenerateResult  {
-        let prompt = try applyChatTemplate(messages: messages, options: options.templeteOptions)
+        let prompt = try applyChatTemplate(messages: messages, options: options.templateOptions)
         return try generate(prompt: prompt, config: options.config)
     }
 
@@ -43,10 +43,10 @@ public struct GenerateResult {
 
 public struct GenerationOptions {
     public var config: GenerationConfig
-    public var templeteOptions: ChatTemplateOptions
-    public init(config: GenerationConfig = .default, templeteOptions: ChatTemplateOptions = .init()) {
+    public var templateOptions: ChatTemplateOptions
+    public init(config: GenerationConfig = .default, templateOptions: ChatTemplateOptions = .init()) {
         self.config = config
-        self.templeteOptions = templeteOptions
+        self.templateOptions = templateOptions
     }
 }
 

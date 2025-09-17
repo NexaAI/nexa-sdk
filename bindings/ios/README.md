@@ -122,22 +122,6 @@ let cfg = EmbeddingConfig(batchSize: texts.count, normalize: true, normalizeMeth
 let result = try embedder.embed(texts: texts, config: cfg)
 for embedding in result.embeddings {
     print("Embeding result(prefix 20): \(embedding.prefix(20)), ...")
-
-    print("Calculate and print stats")
-    let count = Float(embedding.count)
-    let mean = (embedding.reduce(0.0, +)) / count
-
-    let variance =
-        (embedding.map {
-            let diff = mean - $0
-            return diff * diff
-        }
-        .reduce(0.0, +)) / count
-
-    let std = sqrt(variance)
-    print(
-        "Embedding stats: min=\(embedding.min()!), max=\(embedding.max()!), mean=\(mean), std=\(std)"
-    )
 }
 print("ProfileData: \n", result.profileData)
 ```

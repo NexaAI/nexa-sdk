@@ -106,7 +106,7 @@ final public class VLMLlama: Model {
         messages: [ChatMessage],
         options: GenerationOptions = .init()
     ) throws -> GenerateResult {
-        let prompt = try applyChatTemplate(messages: messages, options: options.templeteOptions)
+        let prompt = try applyChatTemplate(messages: messages, options: options.templateOptions)
         return try generate(prompt: prompt, config: options.config) { [weak self] _ in
             return self?.continueStream ?? true
         }
@@ -116,7 +116,7 @@ final public class VLMLlama: Model {
         messages: [ChatMessage],
         options: GenerationOptions = .init()
     ) throws -> AsyncThrowingStream<String,Error> {
-        let prompt = try applyChatTemplate(messages: messages, options: options.templeteOptions)
+        let prompt = try applyChatTemplate(messages: messages, options: options.templateOptions)
         return generateAsyncStream(prompt: prompt, config: options.config)
     }
 
