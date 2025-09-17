@@ -97,8 +97,6 @@ func ChatCompletions(c *gin.Context) {
 		chatCompletionsLLM(c, param)
 	case types.ModelTypeVLM:
 		chatCompletionsVLM(c, param)
-	case types.ModelTypeEmbedder:
-		chatCompletionsEmbedder(c, param)
 	default:
 		c.JSON(http.StatusBadRequest, map[string]any{"error": "model type not support"})
 		return
@@ -468,100 +466,6 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 			return
 		}
 	}
-}
-
-func chatCompletionsEmbedder(c *gin.Context, param ChatCompletionRequest) {
-	// Get Embedder instance
-	p, err := service.KeepAliveGet[nexa_sdk.Embedder](
-		string(param.Model),
-		types.ModelParam{},
-		c.GetHeader("Nexa-KeepCache") != "true",
-	)
-	if errors.Is(err, os.ErrNotExist) {
-		c.JSON(http.StatusNotFound, map[string]any{"error": "model not found"})
-		return
-	} else if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
-		return
-	}
-
-	// Empty request for warm up, just reset model state
-	if len(param.Messages) == 0 {
-		p.Reset()
-		c.JSON(http.StatusOK, nil)
-		return
-	}
-
-	// Extract text from messages for embedding
-	var texts []string
-	for _, msg := range param.Messages {
-		content := msg.GetContent().AsAny()
-		switch content := content.(type) {
-		case *string:
-			texts = append(texts, *content)
-		case *[]openai.ChatCompletionContentPartUnionParam:
-			// Extract text from content parts
-			for _, part := range *content {
-				if *part.GetType() == "text" {
-					texts = append(texts, *part.GetText())
-				}
-			}
-		}
-	}
-
-	if len(texts) == 0 {
-		c.JSON(http.StatusBadRequest, map[string]any{"error": "no text content found in messages"})
-		return
-	}
-
-	// Create embedder input
-	embedInput := nexa_sdk.EmbedderEmbedInput{
-		Texts: texts,
-		Config: &nexa_sdk.EmbeddingConfig{
-			BatchSize:       int32(len(texts)),
-			Normalize:       true,
-			NormalizeMethod: "l2",
-		},
-	}
-
-	result, err := p.Embed(embedInput)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
-		return
-	}
-
-	embeddingDimOutput, err := p.EmbeddingDimension()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
-		return
-	}
-	embeddingDim := int(embeddingDimOutput.Dimension)
-	embeddings := make([]openai.Embedding, len(texts))
-
-	for i := range len(texts) {
-		start := i * embeddingDim
-		end := start + embeddingDim
-		embeddingSlice := result.Embeddings[start:end]
-
-		embeddingFloat64 := make([]float64, len(embeddingSlice))
-		for j, val := range embeddingSlice {
-			embeddingFloat64[j] = float64(val)
-		}
-
-		embeddings[i] = openai.Embedding{
-			Embedding: embeddingFloat64,
-			Index:     int64(i),
-		}
-	}
-
-	response := map[string]interface{}{
-		"object": "list",
-		"data":   embeddings,
-		"model":  param.Model,
-		"usage":  profile2Usage(result.ProfileData),
-	}
-
-	c.JSON(http.StatusOK, response)
 }
 
 func profile2Usage(p nexa_sdk.ProfileData) openai.CompletionUsage {
