@@ -53,7 +53,7 @@ messages.append(.init(role: .system, content: system))
 for userMsg in userMsgs {
     messages.append(.init(role: .user, content: userMsg))
     // generation
-    let stream = try await llmLlama.generationAsyncStream(messages: messages)
+    let stream = try await llmLlama.generateAsyncStream(messages: messages)
     var response = ""
     for try await token in stream {
         print(token, terminator: "")
@@ -84,7 +84,7 @@ messages.append(.init(role: .system, content: system))
 for userMsg in userMsgs {
     messages.append(.init(role: .user, content: userMsg))
     // generation
-    let stream = try await vlmLlama.generationAsyncStream(messages: messages)
+    let stream = try await vlmLlama.generateAsyncStream(messages: messages)
     var response = ""
     for try await token in stream {
         print(token, terminator: "")
@@ -98,7 +98,7 @@ let images = [try assetsPath(of: "test_image.png")]
 var config = GenerationConfig.default
 config.imagePaths = images
 let message = ChatMessage(role: .user, content: "What do you see in this image", images: images)
-let stream = try await vlmLlama.generationAsyncStream(messages: [message], options: .init(config: config))
+let stream = try await vlmLlama.generateAsyncStream(messages: [message], options: .init(config: config))
 
 for try await token in stream {
     print(token, terminator: "")
