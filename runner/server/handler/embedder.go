@@ -26,7 +26,7 @@ func Embeddings(c *gin.Context) {
 	p, err := service.KeepAliveGet[nexa_sdk.Embedder](
 		string(param.Model),
 		types.ModelParam{},
-		c.GetHeader("Nexa-KeepCache") != "true",
+		false,
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
@@ -91,13 +91,15 @@ func Embeddings(c *gin.Context) {
 		}
 	}
 
-	response := map[string]interface{}{
-		"object": "list",
-		"data":   embeddings,
-		"model":  param.Model,
-		"usage": profile2Usage(res.ProfileData),
+	response := openai.CreateEmbeddingResponse{
+		Object: "list",
+		Data:   embeddings,
+		Model:  param.Model,
+		Usage: openai.CreateEmbeddingResponseUsage{
+			PromptTokens: res.ProfileData.PromptTokens,
+			TotalTokens:  res.ProfileData.TotalTokens(),
+		},
 	}
 
 	c.JSON(http.StatusOK, response)
 }
-
