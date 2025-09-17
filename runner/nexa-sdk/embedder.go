@@ -331,3 +331,8 @@ func (e *Embedder) EmbeddingDimension() (EmbedderDimOutput, error) {
 	output := newEmbedderDimOutputFromCPtr(&cOutput)
 	return output, nil
 }
+
+func (e *Embedder) Reset() error {
+	slog.Debug("Reset called", "ptr", e.ptr)
+	return nil
+}
