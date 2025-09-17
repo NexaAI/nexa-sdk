@@ -470,8 +470,8 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 
 func profile2Usage(p nexa_sdk.ProfileData) openai.CompletionUsage {
 	return openai.CompletionUsage{
-		PromptTokens:     p.PromptTokens,
 		CompletionTokens: p.GeneratedTokens,
+		PromptTokens:     p.PromptTokens,
 		TotalTokens:      p.TotalTokens(),
 	}
 }
