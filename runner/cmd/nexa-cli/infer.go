@@ -561,6 +561,10 @@ func inferASR(manifest *types.ModelManifest, quant string) {
 						return nil, err
 					}
 				}
+
+				fmt.Println()
+				render.GetTheme().Reset()
+				fmt.Println()
 			}
 
 			return nil, nil
