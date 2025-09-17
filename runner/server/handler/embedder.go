@@ -92,9 +92,8 @@ func Embeddings(c *gin.Context) {
 	}
 
 	response := openai.CreateEmbeddingResponse{
-		Object: "list",
-		Data:   embeddings,
-		Model:  param.Model,
+		Data:  embeddings,
+		Model: param.Model,
 		Usage: openai.CreateEmbeddingResponseUsage{
 			PromptTokens: res.ProfileData.PromptTokens,
 			TotalTokens:  res.ProfileData.TotalTokens(),
