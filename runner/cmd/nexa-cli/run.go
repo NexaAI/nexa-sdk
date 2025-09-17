@@ -169,60 +169,6 @@ func runFunc(cmd *cobra.Command, args []string) {
 		},
 
 		Run: func(prompt string, images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
-			// Handle embedder models
-			if manifest.ModelType == types.ModelTypeEmbedder {
-				start := time.Now()
-				embedding, err := client.Embeddings.New(context.TODO(), openai.EmbeddingNewParams{
-					Input: openai.EmbeddingNewParamsInputUnion{
-						OfString: openai.Opt(prompt),
-					},
-					Model: openai.EmbeddingModel(model),
-				})
-				
-				if err != nil {
-					return "", nexa_sdk.ProfileData{}, err
-				}
-				
-				duration := time.Since(start)
-				
-				if len(embedding.Data) > 0 {
-					embeddingData := embedding.Data[0]
-					emb := embeddingData.Embedding
-					n := len(emb)
-					
-					// Format embedding output similar to infer.go with color theme
-					info := render.GetTheme().Info.Sprintf("Embedding")
-					var out string
-					if n > 6 {
-						out = render.GetTheme().Success.Sprintf(
-							"[%.6f, %.6f, %.6f, ..., %.6f, %.6f, %.6f] (length: %d)",
-							emb[0], emb[1], emb[2],
-							emb[n-3], emb[n-2], emb[n-1], n,
-						)
-					} else {
-						out = render.GetTheme().Success.Sprintf("%v (length: %d)", emb, n)
-					}
-					
-					// Send formatted output through on_token callback
-					result := fmt.Sprintf("%s: %s\n", info, out)
-					on_token(result)
-					
-					// Create profile data for embedder
-					profileData := nexa_sdk.ProfileData{
-						PromptTokens:    embedding.Usage.PromptTokens,
-						GeneratedTokens: 0, // Embedders don't generate tokens
-						PromptTime:      duration.Microseconds(),
-						DecodeTime:      0,
-					}
-					
-					return "", profileData, nil
-				}
-				
-				on_token("No embedding data received")
-				return "", nexa_sdk.ProfileData{}, nil
-			}
-			
-			// vlm llm
 			if len(images) > 0 || len(audios) > 0 {
 				contents := make([]openai.ChatCompletionContentPartUnionParam, 0)
 				contents = append(contents, openai.ChatCompletionContentPartUnionParam{
@@ -297,4 +243,3 @@ func runFunc(cmd *cobra.Command, args []string) {
 		},
 	})
 }
-
