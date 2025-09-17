@@ -31,7 +31,7 @@ func RegisterAPIv1(r *gin.Engine) {
 	g.POST("/completions", handler.Completions)
 	g.POST("/chat/completions", handler.ChatCompletions)
 
-	//g.POST("/embeddings", handler.Embeddings)
+	g.POST("/embeddings", handler.Embeddings)
 
 	//g.POST("/reranking", handler.Reranking)
 
