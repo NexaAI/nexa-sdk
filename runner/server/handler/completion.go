@@ -524,25 +524,25 @@ func chatCompletionsEmbedder(c *gin.Context, param ChatCompletionRequest) {
 		},
 	}
 
-	// Generate embeddings
 	result, err := p.Embed(embedInput)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 		return
 	}
 
-	// Convert embeddings to response format
-	// result.Embeddings is a flat array of float32 values
-	// We need to group them by the number of texts
-	embeddingDim := len(result.Embeddings) / len(texts)
+	embeddingDimOutput, err := p.EmbeddingDimension()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		return
+	}
+	embeddingDim := int(embeddingDimOutput.Dimension)
 	embeddings := make([]openai.Embedding, len(texts))
 
-	for i := 0; i < len(texts); i++ {
+	for i := range len(texts) {
 		start := i * embeddingDim
 		end := start + embeddingDim
 		embeddingSlice := result.Embeddings[start:end]
 
-		// Convert float32 to float64 for OpenAI API compatibility
 		embeddingFloat64 := make([]float64, len(embeddingSlice))
 		for j, val := range embeddingSlice {
 			embeddingFloat64[j] = float64(val)
@@ -554,15 +554,11 @@ func chatCompletionsEmbedder(c *gin.Context, param ChatCompletionRequest) {
 		}
 	}
 
-	// Create response in OpenAI format
 	response := map[string]interface{}{
 		"object": "list",
 		"data":   embeddings,
 		"model":  param.Model,
-		"usage": openai.CompletionUsage{
-			PromptTokens: int64(len(texts)),
-			TotalTokens:  int64(len(texts)),
-		},
+		"usage":  profile2Usage(result.ProfileData),
 	}
 
 	c.JSON(http.StatusOK, response)
