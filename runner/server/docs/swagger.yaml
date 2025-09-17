@@ -523,6 +523,7 @@ components:
         model:
           type: string
           description: ID of the model to use
+          default: "djuna/jina-embeddings-v2-small-en-Q5_K_M-GGUF"
         input:
           oneOf:
             - type: string
@@ -535,6 +536,7 @@ components:
                 type: array
                 items: { type: integer }
           description: Input text to embed
+          default: "Hello, world!"
         encoding_format:
           type: string
           enum: [float, base64]
