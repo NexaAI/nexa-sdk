@@ -536,18 +536,18 @@ func chatCompletionsEmbedder(c *gin.Context, param ChatCompletionRequest) {
 	// We need to group them by the number of texts
 	embeddingDim := len(result.Embeddings) / len(texts)
 	embeddings := make([]openai.Embedding, len(texts))
-	
+
 	for i := 0; i < len(texts); i++ {
 		start := i * embeddingDim
 		end := start + embeddingDim
 		embeddingSlice := result.Embeddings[start:end]
-		
+
 		// Convert float32 to float64 for OpenAI API compatibility
 		embeddingFloat64 := make([]float64, len(embeddingSlice))
 		for j, val := range embeddingSlice {
 			embeddingFloat64[j] = float64(val)
 		}
-		
+
 		embeddings[i] = openai.Embedding{
 			Embedding: embeddingFloat64,
 			Index:     int64(i),
@@ -570,8 +570,8 @@ func chatCompletionsEmbedder(c *gin.Context, param ChatCompletionRequest) {
 
 func profile2Usage(p nexa_sdk.ProfileData) openai.CompletionUsage {
 	return openai.CompletionUsage{
-		CompletionTokens: p.GeneratedTokens,
 		PromptTokens:     p.PromptTokens,
+		CompletionTokens: p.GeneratedTokens,
 		TotalTokens:      p.TotalTokens(),
 	}
 }

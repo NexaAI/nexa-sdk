@@ -38,15 +38,20 @@ func Embeddings(c *gin.Context) {
 	if param.Input.OfArrayOfStrings != nil {
 		texts = param.Input.OfArrayOfStrings
 	} else {
-		// Try to get string input
 		texts = []string{param.Input.OfString.String()}
+	}
+
+	numTexts := len(texts)
+	if numTexts == 0 {
+		c.JSON(http.StatusBadRequest, map[string]any{"error": "no text content found in input"})
+		return
 	}
 
 	// Create embedder input
 	embedInput := nexa_sdk.EmbedderEmbedInput{
 		Texts: texts,
 		Config: &nexa_sdk.EmbeddingConfig{
-			BatchSize:       int32(len(texts)),
+			BatchSize:       int32(numTexts),
 			Normalize:       true,
 			NormalizeMethod: "l2",
 		},
@@ -58,23 +63,28 @@ func Embeddings(c *gin.Context) {
 		return
 	}
 
+	dimOutput, err := p.EmbeddingDimension()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		return
+	}
+	embeddingDim := int(dimOutput.Dimension)
+	embeddings := make([]openai.Embedding, numTexts)
+
 	// Convert embeddings to the format expected by OpenAI API
 	// res.Embeddings is a flat array of float32 values
 	// We need to group them by the number of texts
-	embeddingDim := len(res.Embeddings) / len(texts)
-	embeddings := make([]openai.Embedding, len(texts))
-	
-	for i := 0; i < len(texts); i++ {
+	for i := range numTexts {
 		start := i * embeddingDim
 		end := start + embeddingDim
 		embeddingSlice := res.Embeddings[start:end]
-		
+
 		// Convert float32 to float64 for OpenAI API compatibility
 		embeddingFloat64 := make([]float64, len(embeddingSlice))
 		for j, val := range embeddingSlice {
 			embeddingFloat64[j] = float64(val)
 		}
-		
+
 		embeddings[i] = openai.Embedding{
 			Embedding: embeddingFloat64,
 			Index:     int64(i),
@@ -85,11 +95,9 @@ func Embeddings(c *gin.Context) {
 		"object": "list",
 		"data":   embeddings,
 		"model":  param.Model,
-		"usage": openai.CompletionUsage{
-			PromptTokens: int64(len(texts)),
-			TotalTokens:  int64(len(texts)),
-		},
+		"usage": profile2Usage(res.ProfileData),
 	}
 
 	c.JSON(http.StatusOK, response)
 }
+
