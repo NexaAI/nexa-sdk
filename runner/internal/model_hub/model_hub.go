@@ -110,7 +110,7 @@ type downloadTask struct {
 
 const (
 	minChunkSize   = 8 * 1024 * 1024 // 8MB
-	maxConcurrency = 8
+	maxConcurrency = 1
 )
 
 func StartDownload(ctx context.Context, modelName, outputPath string, files []ModelFileInfo) (resChan chan types.DownloadInfo, errChan chan error) {
