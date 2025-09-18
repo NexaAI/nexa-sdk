@@ -561,6 +561,10 @@ func inferASR(manifest *types.ModelManifest, quant string) {
 						return nil, err
 					}
 				}
+
+				fmt.Println()
+				render.GetTheme().Reset()
+				fmt.Println()
 			}
 
 			return nil, nil
@@ -716,7 +720,7 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) {
 				out = render.GetTheme().Success.Sprintf("%v (length: %d)", emb, n)
 			}
 
-			fmt.Printf("%s: %s\n", info, out)
+			on_token(fmt.Sprintf("%s: %s", info, out))
 
 			return "", result.ProfileData, nil
 		},
