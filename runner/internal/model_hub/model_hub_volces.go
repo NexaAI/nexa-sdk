@@ -2,7 +2,6 @@ package model_hub
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"log/slog"
@@ -12,7 +11,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/smithy-go/logging"
 	"github.com/bytedance/sonic"
@@ -75,21 +73,17 @@ func (d *Vocles) checkChinaMainland() bool {
 }
 
 func (d *Vocles) initS3Client() {
-	key, _ := base64.StdEncoding.DecodeString("QUtMVFptWTNZbUkzTmpJMk1tWmpORGRtTVRsaFkyUmpZVFpoTm1SallXSTVOamM=")
-	secret, _ := base64.StdEncoding.DecodeString("VG1wamVVOVhWWGxPTWtwcFQwUnJlVTVIVVhoTlZHaHFXa2RXYVU1SFJUUk9hbFY0V1cxT2EwMXFUUT09")
-
 	cfg, err := config.LoadDefaultConfig(
 		context.TODO(),
-		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(string(key), string(secret), "")),
-		config.WithRegion("cn-beijing"),
 		config.WithLogger(logging.Nop{}),
+		config.WithCredentialsProvider(aws.AnonymousCredentials{}),
+		config.WithBaseEndpoint("https://tos-s3-cn-beijing.volces.com"),
+		config.WithRegion("cn-beijing"),
 	)
 	if err != nil {
 		panic("unable to load SDK config, " + err.Error())
 	}
-	d.s3Client = s3.NewFromConfig(cfg, func(o *s3.Options) {
-		o.BaseEndpoint = aws.String("https://tos-s3-cn-beijing.volces.com")
-	})
+	d.s3Client = s3.NewFromConfig(cfg)
 }
 
 func (d *Vocles) CheckAvailable(ctx context.Context, modelName string) error {
