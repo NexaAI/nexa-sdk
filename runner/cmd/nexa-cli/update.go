@@ -151,6 +151,8 @@ func findMatchingAsset(rls release) (*asset, error) {
 		switch runtime.GOARCH {
 		case "amd64":
 			assetName = "nexa-cli_windows_x86_64.exe"
+		case "arm64":
+			assetName = "nexa-cli_windows_arm64.exe"
 		}
 
 		// 	curl -fsSL https://raw.githubusercontent.com/NexaAI/nexa-sdk/main/release/linux/install.sh -o install.sh && chmod +x install.sh && ./install.sh
