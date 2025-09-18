@@ -463,18 +463,36 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 		}
 
 		// detect main model file
-		// add other files
+		isSupportedModelFile := func(filename string) bool {
+			lower := strings.ToLower(filename)
+			return strings.HasSuffix(lower, "safetensors") ||
+				strings.HasSuffix(lower, "npz") ||
+				strings.HasSuffix(lower, "nexa")
+		}
+
+		// First pass: prefer non-nested supported files (not in subdirectories)
 		for _, file := range files {
-			if res.ModelFile[quant].Name == "" {
-				lower := strings.ToLower(file.Name)
-				if strings.HasSuffix(lower, "safetensors") ||
-					strings.HasSuffix(lower, "npz") ||
-					strings.HasSuffix(lower, "nexa") {
+			if isSupportedModelFile(file.Name) && !strings.Contains(file.Name, "/") {
+				res.ModelFile[quant] = types.ModelFileInfo{Name: file.Name, Size: file.Size}
+				break
+			}
+		}
+
+		// Second pass: if no non-nested file found, fall back to any supported file
+		if res.ModelFile[quant].Name == "" {
+			for _, file := range files {
+				if isSupportedModelFile(file.Name) {
 					res.ModelFile[quant] = types.ModelFileInfo{Name: file.Name, Size: file.Size}
-					continue
+					break
 				}
 			}
-			res.ExtraFiles = append(res.ExtraFiles, types.ModelFileInfo{Name: file.Name, Size: file.Size})
+		}
+
+		// add other files to ExtraFiles
+		for _, file := range files {
+			if file.Name != res.ModelFile[quant].Name {
+				res.ExtraFiles = append(res.ExtraFiles, types.ModelFileInfo{Name: file.Name, Size: file.Size})
+			}
 		}
 
 		// fallback to first file

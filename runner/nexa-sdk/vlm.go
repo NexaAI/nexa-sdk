@@ -127,7 +127,7 @@ func (vcs vlmContents) toCPtr() (*C.ml_VlmContent, C.int32_t) {
 		// Initialize all fields to prevent garbage memory
 		cContents[i]._type = nil
 		cContents[i].text = nil
-		
+
 		if vc.Type != "" {
 			cContents[i]._type = C.CString(string(vc.Type))
 		}
