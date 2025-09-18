@@ -8,6 +8,7 @@ var modelMapping = map[string]string{
 	"smolvlm":     "ggml-org/SmolVLM-500M-Instruct-GGUF",
 	"gpt-oss":     "NexaAI/gpt-oss-20b-GGUF",
 	"gpt-oss-mlx": "NexaAI/gpt-oss-20b-MLX-4bit",
+	"omni-neural": "NexaAI/OmniNeural-4B",
 }
 
 func GetModelMapping(shortcut string) (string, bool) {
