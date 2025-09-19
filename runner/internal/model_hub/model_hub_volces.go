@@ -136,7 +136,7 @@ func (d *Vocles) ModelInfo(ctx context.Context, modelName string) ([]ModelFileIn
 func (d *Vocles) GetFileContent(ctx context.Context, modelName, fileName string, offset, limit int64, writer io.Writer) error {
 	name := strings.ReplaceAll(modelName, "NexaAI/", "model/") + "/" + fileName
 
-	slog.Debug("Vocles GetFileContent", "modelName", modelName, "fileName", fileName, "offset", offset, "limit", limit)
+	slog.Debug("Vocles GetFileContent", "modelName", modelName, "fileName", fileName, "name", name, "offset", offset, "limit", limit)
 
 	input := &s3.GetObjectInput{
 		Bucket: aws.String("nexa-model-hub-bucket"),
