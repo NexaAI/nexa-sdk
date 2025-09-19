@@ -294,6 +294,47 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 	res.Name = name
 	res.ModelFile = make(map[string]types.ModelFileInfo)
 
+	// Check for .nexa files first (highest precedence) - only non-nested files
+	var mainNexaFile model_hub.ModelFileInfo
+	var foundNexa bool
+
+	for _, file := range files {
+		if strings.HasSuffix(strings.ToLower(file.Name), ".nexa") && !strings.Contains(file.Name, "/") {
+			if !foundNexa || file.Size > mainNexaFile.Size {
+				mainNexaFile = file
+				foundNexa = true
+			}
+		}
+	}
+
+	// If non-nested .nexa file found, download ALL files from repo
+	if foundNexa {
+		quant := getQuant(name)
+		if quant == "N/A" {
+			quant = "DEFAULT"
+		}
+
+		// Set main model file
+		res.ModelFile[quant] = types.ModelFileInfo{
+			Name:       mainNexaFile.Name,
+			Downloaded: true,
+			Size:       mainNexaFile.Size,
+		}
+
+		// Add ALL other files as extra files
+		for _, file := range files {
+			if file.Name != mainNexaFile.Name {
+				res.ExtraFiles = append(res.ExtraFiles, types.ModelFileInfo{
+					Name:       file.Name,
+					Downloaded: true,
+					Size:       file.Size,
+				})
+			}
+		}
+
+		return
+	}
+
 	// check gguf
 	var mmprojs []model_hub.ModelFileInfo
 	var tokenizers []model_hub.ModelFileInfo
@@ -312,7 +353,7 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 			}
 		} else if strings.HasSuffix(name, "tokenizer.json") {
 			tokenizers = append(tokenizers, file)
-		} else if strings.HasSuffix(name, ".onnx") || strings.HasSuffix(name, ".nexa") {
+		} else if strings.HasSuffix(name, ".onnx") {
 			onnxFiles = append(onnxFiles, file)
 		}
 	}
@@ -468,8 +509,7 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 			if res.ModelFile[quant].Name == "" {
 				lower := strings.ToLower(file.Name)
 				if strings.HasSuffix(lower, "safetensors") ||
-					strings.HasSuffix(lower, "npz") ||
-					strings.HasSuffix(lower, "nexa") {
+					strings.HasSuffix(lower, "npz") {
 					res.ModelFile[quant] = types.ModelFileInfo{Name: file.Name, Size: file.Size}
 					continue
 				}
