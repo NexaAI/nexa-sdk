@@ -111,7 +111,7 @@ type downloadTask struct {
 }
 
 const (
-	minChunkSize = 16 * 1024 * 1024 // 8MB
+	minChunkSize = 16 * 1024 * 1024 // 16MiB
 )
 
 func StartDownload(ctx context.Context, modelName, outputPath string, files []ModelFileInfo) (resChan chan types.DownloadInfo, errChan chan error) {

@@ -6,7 +6,6 @@ import (
 	"io"
 	"log/slog"
 	"strings"
-	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -15,9 +14,6 @@ import (
 )
 
 type S3 struct {
-	isChinaMainland    bool
-	chinaMainlandCheck sync.Once
-
 	s3Client *s3.Client
 }
 
