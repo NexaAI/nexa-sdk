@@ -12,6 +12,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/NexaAI/nexa-sdk/runner/internal/config"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 	"github.com/bytedance/sonic"
 )
@@ -29,6 +30,7 @@ type ModelHub interface {
 
 var hubs = []ModelHub{
 	NewVocles(),
+	NewS3(),
 	NewHuggingFace(),
 }
 
@@ -109,12 +111,16 @@ type downloadTask struct {
 }
 
 const (
-	minChunkSize   = 8 * 1024 * 1024 // 8MB
-	maxConcurrency = 1
+	minChunkSize = 16 * 1024 * 1024 // 8MB
 )
 
 func StartDownload(ctx context.Context, modelName, outputPath string, files []ModelFileInfo) (resChan chan types.DownloadInfo, errChan chan error) {
-	slog.Debug("Starting download", "model", modelName, "outputPath", outputPath, "files", files)
+	maxConcurrency := 1
+	if config.Get().HFToken != "" {
+		maxConcurrency = 16
+	}
+
+	slog.Info("Starting download", "model", modelName, "outputPath", outputPath, "files", files, "maxConcurrency", maxConcurrency)
 
 	resCh := make(chan types.DownloadInfo)
 	errCh := make(chan error, maxConcurrency)
