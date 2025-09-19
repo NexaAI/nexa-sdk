@@ -298,6 +298,7 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 	var mmprojs []model_hub.ModelFileInfo
 	var tokenizers []model_hub.ModelFileInfo
 	var onnxFiles []model_hub.ModelFileInfo
+	var nexaFiles []model_hub.ModelFileInfo
 	ggufs := make(map[string][]model_hub.ModelFileInfo) // key is gguf name without part
 	// qwen2.5-7b-instruct-q8_0-00003-of-00003.gguf original name is qwen2.5-7b-instruct-q8_0 *d-of-*d like this
 
@@ -312,8 +313,10 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 			}
 		} else if strings.HasSuffix(name, "tokenizer.json") {
 			tokenizers = append(tokenizers, file)
-		} else if strings.HasSuffix(name, ".onnx") || strings.HasSuffix(name, ".nexa") {
+		} else if strings.HasSuffix(name, ".onnx") {
 			onnxFiles = append(onnxFiles, file)
+		} else if strings.HasSuffix(name, ".nexa") {
+			nexaFiles = append(nexaFiles, file)
 		}
 	}
 
@@ -446,6 +449,15 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 			default:
 				return fmt.Errorf("multiple tokenizer files found: %v. Expected exactly one tokenizer file", tokenizers)
 			}
+		}
+
+		// Always include .nexa files as extra files when gguf is the main model
+		for _, nexaFile := range nexaFiles {
+			res.ExtraFiles = append(res.ExtraFiles, types.ModelFileInfo{
+				Name:       nexaFile.Name,
+				Downloaded: true,
+				Size:       nexaFile.Size,
+			})
 		}
 
 	} else {
