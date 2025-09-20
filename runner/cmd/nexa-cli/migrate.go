@@ -45,13 +45,13 @@ func checkMigrate() error {
 			if err := startMigrate(); err != nil {
 				return err
 			}
-			finishMigrate()
+			return finishMigrate()
 		} else {
 			fmt.Println()
-			fmt.Println(render.GetTheme().Warning.Sprintf("Miration cancelled. You can not use old models until migrate completed."))
-			fmt.Println(render.GetTheme().Warning.Sprintf("Or you can run `nexa clean` to remove all old models."))
+			fmt.Println(render.GetTheme().Warning.Sprintf("Migration cancelled. You cannot use old models until migration is completed."))
+			fmt.Println(render.GetTheme().Warning.Sprintf("You can run `nexa clean` to remove all old models."))
 			fmt.Println()
-			return errors.New("canceld")
+			return errors.New("canceled")
 		}
 	}
 
@@ -110,7 +110,7 @@ func startMigrate() error {
 
 		if !isValidVersion(hmf.MinSDKVersion) {
 			fmt.Println(render.GetTheme().Error.Sprintf("Model %s requires NexaSDK CLI version %s or higher. Please upgrade your NexaSDK CLI.", model.Name, hmf.MinSDKVersion))
-			return err
+			return fmt.Errorf("model %s requires CLI version %s or higher", model.Name, hmf.MinSDKVersion)
 		}
 
 		// start migrate
@@ -184,11 +184,11 @@ func startMigrate() error {
 	tw := table.NewWriter()
 	tw.SetOutputMirror(os.Stdout)
 	tw.SetStyle(table.StyleLight)
-	tw.AppendHeader(table.Row{render.GetTheme().Success.Sprintf("Migratetion Result")})
+	tw.AppendHeader(table.Row{"NAME", "STATUS"})
 	for _, r := range result {
 		switch r.Status {
 		case StatusSkip:
-			tw.AppendRow(table.Row{r.ModelName, render.GetTheme().Info.Sprintf("skipped (already update)")})
+			tw.AppendRow(table.Row{r.ModelName, render.GetTheme().Info.Sprintf("already up to date")})
 		case StatusSuccess:
 			tw.AppendRow(table.Row{r.ModelName, render.GetTheme().Success.Sprintf("success")})
 		case StatusFailed:
@@ -198,7 +198,7 @@ func startMigrate() error {
 	}
 	tw.Render()
 	if hasError {
-		fmt.Println(render.GetTheme().Warning.Sprintf("Some models failed to migrate. You need download it manually."))
+		fmt.Println(render.GetTheme().Warning.Sprintf("Some models failed to migrate. You need to download them manually."))
 	}
 
 	return nil
