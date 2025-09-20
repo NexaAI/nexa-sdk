@@ -62,6 +62,10 @@ func (vci VlmCreateInput) toCPtr() *C.ml_VlmCreateInput {
 	if vci.Config.ChatTemplateContent != "" {
 		cPtr.config.chat_template_content = C.CString(vci.Config.ChatTemplateContent)
 	}
+	// Add system prompt support
+	if vci.Config.SystemPrompt != "" {
+		cPtr.config.system_prompt = C.CString(vci.Config.SystemPrompt)
+	}
 
 	return cPtr
 }
@@ -91,6 +95,9 @@ func freeVlmCreateInput(cPtr *C.ml_VlmCreateInput) {
 		}
 		if cPtr.config.chat_template_content != nil {
 			C.free(unsafe.Pointer(cPtr.config.chat_template_content))
+		}
+		if cPtr.config.system_prompt != nil {
+			C.free(unsafe.Pointer(cPtr.config.system_prompt))
 		}
 
 		// Free the main structure

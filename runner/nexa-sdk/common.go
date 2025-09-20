@@ -260,6 +260,7 @@ type ModelConfig struct {
 	NGpuLayers          int32
 	ChatTemplatePath    string
 	ChatTemplateContent string
+	SystemPrompt        string
 }
 
 // TODO: check this if it's needed, llm has it self.
