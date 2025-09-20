@@ -51,7 +51,7 @@ func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileIn
 	code, url, err := downloader.FastHTTPResolveRedirect(&d.downloader.Client, fmt.Sprintf("%s/api/models/%s", HF_ENDPOINT, name), 3)
 	if err != nil {
 		if code == 401 || code == 404 {
-			return nil, fmt.Errorf("model %s not found, check model id", name)
+			return nil, fmt.Errorf("model %s not found on huggingface, please check model id", name)
 		}
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileIn
 	}
 
 	if resp.StatusCode() == 401 || resp.StatusCode() == 404 {
-		return nil, fmt.Errorf("model %s not found, check model id", name)
+		return nil, fmt.Errorf("model %s not found on huggingface, please check model id", name)
 	}
 	if resp.StatusCode() >= 400 {
 		return nil, fmt.Errorf("HTTPError: [%d] %s", resp.StatusCode(), string(resp.Body()))
