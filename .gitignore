@@ -72,3 +72,9 @@ __debug_bin
 
 # TLS certificates
 *.pem
+/.swiftpm
+/bindings/ios/Example/Example.xcodeproj/project.xcworkspace/xcuserdata
+/bindings/ios/NexaAI/.swiftpm
+/.build
+/bindings/ios/Example/Example.xcodeproj/project.xcworkspace/xcshareddata
+/bindings/ios/Example/Example.xcodeproj/xcuserdata
