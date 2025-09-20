@@ -44,10 +44,10 @@ func (cfg *ReplConfig) fill() {
 		cfg.Reset = func() error { return nil }
 	}
 	if cfg.SaveKVCache == nil {
-		cfg.SaveKVCache = func(string) error { return notSupport }
+		cfg.SaveKVCache = func(string) error { return nexa_sdk.ErrCommonNotSupport }
 	}
 	if cfg.LoadKVCache == nil {
-		cfg.LoadKVCache = func(string) error { return notSupport }
+		cfg.LoadKVCache = func(string) error { return nexa_sdk.ErrCommonNotSupport }
 	}
 	if cfg.Record == nil {
 		cfg.Record = func() (*string, error) { return nil, notSupport }
@@ -206,8 +206,13 @@ func repl(cfg ReplConfig) {
 				cfg.Reset()
 				err := cfg.LoadKVCache(fileds[1])
 				if err != nil {
-					fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
-					fmt.Println()
+					if errors.Is(err, nexa_sdk.ErrCommonNotSupport) {
+						fmt.Println(render.GetTheme().Warning.Sprintf("Load conversation history is not supported for this model yet"))
+						fmt.Println()
+					} else {
+						fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
+						fmt.Println()
+					}
 				}
 				continue
 
@@ -219,8 +224,13 @@ func repl(cfg ReplConfig) {
 				}
 				err := cfg.SaveKVCache(fileds[1])
 				if err != nil {
-					fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
-					fmt.Println()
+					if errors.Is(err, nexa_sdk.ErrCommonNotSupport) {
+						fmt.Println(render.GetTheme().Warning.Sprintf("Save conversation history is not supported for this model yet"))
+						fmt.Println()
+					} else {
+						fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
+						fmt.Println()
+					}
 				}
 				continue
 
