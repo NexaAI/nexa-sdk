@@ -28,6 +28,14 @@ func (d *HuggingFace) CheckAvailable(ctx context.Context, name string) error {
 	return nil
 }
 
+func (d *HuggingFace) MaxConcurrency() int {
+	if config.Get().HFToken != "" {
+		return 16
+	} else {
+		return 1
+	}
+}
+
 func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileInfo, error) {
 	info := struct {
 		Siblings []struct {

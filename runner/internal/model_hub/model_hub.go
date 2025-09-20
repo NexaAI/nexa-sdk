@@ -12,7 +12,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/NexaAI/nexa-sdk/runner/internal/config"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 	"github.com/bytedance/sonic"
 )
@@ -24,6 +23,7 @@ type ModelFileInfo struct {
 
 type ModelHub interface {
 	CheckAvailable(ctx context.Context, modelName string) error
+	MaxConcurrency() int
 	ModelInfo(ctx context.Context, modelName string) ([]ModelFileInfo, error)
 	GetFileContent(ctx context.Context, modelName, fileName string, offset, limit int64, writer io.Writer) error
 }
@@ -115,23 +115,24 @@ const (
 )
 
 func StartDownload(ctx context.Context, modelName, outputPath string, files []ModelFileInfo) (resChan chan types.DownloadInfo, errChan chan error) {
-	maxConcurrency := 1
-	if config.Get().HFToken != "" {
-		maxConcurrency = 16
-	}
-
-	slog.Info("Starting download", "model", modelName, "outputPath", outputPath, "files", files, "maxConcurrency", maxConcurrency)
-
-	resCh := make(chan types.DownloadInfo)
-	errCh := make(chan error, maxConcurrency)
+	slog.Info("Starting download", "model", modelName, "outputPath", outputPath, "files", files)
 
 	hub, err := getHub(ctx, modelName)
+
 	if err != nil {
+		resCh := make(chan types.DownloadInfo)
+		errCh := make(chan error, 1)
 		close(resCh)
 		errCh <- err
 		close(errCh)
 		return resCh, errCh
 	}
+
+	maxConcurrency := hub.MaxConcurrency()
+	resCh := make(chan types.DownloadInfo)
+	errCh := make(chan error, maxConcurrency)
+
+	slog.Info("GetHub", "hub", reflect.TypeOf(hub), "maxConcurrency", maxConcurrency)
 
 	go func() {
 		defer close(errCh)
