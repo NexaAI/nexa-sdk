@@ -32,7 +32,7 @@ func pull() *cobra.Command {
 
 	pullCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
 
-	pullCmd.Run = func(cmd *cobra.Command, args []string) {
+	pullCmd.RunE = func(cmd *cobra.Command, args []string) error {
 		name := normalizeModelName(args[0])
 
 		s := store.Get()
@@ -49,7 +49,7 @@ func pull() *cobra.Command {
 
 			if downloaded {
 				fmt.Println(render.GetTheme().Info.Sprint("Already downloaded all quant"))
-				return
+				return nil
 			}
 		}
 
@@ -58,19 +58,19 @@ func pull() *cobra.Command {
 		files, hmf, err := model_hub.ModelInfo(context.TODO(), name)
 		spin.Stop()
 		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("Download manifest error: %s", err))
-			return
+			fmt.Println(render.GetTheme().Error.Sprintf("Get ModelInfo error: %s", err))
+			return err
 		}
 
 		if hmf != nil && !isValidVersion(hmf.MinSDKVersion) {
 			fmt.Println(render.GetTheme().Error.Sprintf("Model requires NexaSDK version %s or higher. Please upgrade your NexaSDK CLI.", hmf.MinSDKVersion))
-			return
+			return fmt.Errorf("model requires higher version")
 		}
 
 		if mf != nil {
 			newManifest, err := chooseQuantFiles(*mf)
 			if err != nil {
-				return
+				return err
 			}
 			pgCh, errCh := s.PullExtraQuant(context.TODO(), *mf, *newManifest)
 			bar := render.NewProgressBar(newManifest.GetSize()-mf.GetSize(), "downloading")
@@ -103,7 +103,7 @@ func pull() *cobra.Command {
 			if manifest.ModelType == "" {
 				if ctype, err := chooseModelType(); err != nil {
 					fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
-					return
+					return err
 				} else {
 					manifest.ModelType = ctype
 				}
@@ -112,7 +112,7 @@ func pull() *cobra.Command {
 			err := chooseFiles(name, files, &manifest)
 			if err != nil {
 				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
-				return
+				return err
 			}
 
 			// TODO: replace with go-pretty
@@ -129,6 +129,8 @@ func pull() *cobra.Command {
 				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 			}
 		}
+
+		return nil
 	}
 
 	return pullCmd

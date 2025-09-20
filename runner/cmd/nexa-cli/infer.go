@@ -82,7 +82,7 @@ func infer() *cobra.Command {
 
 		manifest, err := ensureModelAvailable(s, normalizeModelName(args[0]), cmd, args)
 		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("parse manifest error: %s", err))
+			fmt.Println(render.GetTheme().Error.Sprintf("check model error: %s", err))
 			return
 		}
 
@@ -125,7 +125,10 @@ func ensureModelAvailable(s *store.Store, model string, cmd *cobra.Command, args
 	manifest, err := s.GetManifest(model)
 	if errors.Is(err, os.ErrNotExist) {
 		fmt.Println(render.GetTheme().Info.Sprintf("model not found, start download"))
-		pull().Run(cmd, args)
+		err := pull().RunE(cmd, args)
+		if err != nil {
+			return nil, fmt.Errorf("Download model failed")
+		}
 		manifest, err = s.GetManifest(model)
 	}
 	return manifest, err

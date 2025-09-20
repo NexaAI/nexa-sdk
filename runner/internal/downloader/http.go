@@ -31,7 +31,7 @@ func (d *HTTPDownloader) DownloadChunk(ctx context.Context, url string, offset, 
 	defer fasthttp.ReleaseRequest(req)
 	defer fasthttp.ReleaseResponse(resp)
 
-	currentURL, err := FastHTTPResolveRedirect(&d.Client, url, 3)
+	_, currentURL, err := FastHTTPResolveRedirect(&d.Client, url, 3)
 	if err != nil {
 		return err
 	}
@@ -65,7 +65,7 @@ func (d *HTTPDownloader) GetFileSize(url string) (int64, error) {
 	defer fasthttp.ReleaseRequest(req)
 	defer fasthttp.ReleaseResponse(resp)
 
-	currentURL, err := FastHTTPResolveRedirect(&d.Client, url, 3)
+	_, currentURL, err := FastHTTPResolveRedirect(&d.Client, url, 3)
 	if err != nil {
 		return -1, err
 	}
@@ -84,7 +84,7 @@ func (d *HTTPDownloader) GetFileSize(url string) (int64, error) {
 	return int64(resp.Header.ContentLength()), nil
 }
 
-func FastHTTPResolveRedirect(client *fasthttp.Client, currentURL string, maxRedirect int) (string, error) {
+func FastHTTPResolveRedirect(client *fasthttp.Client, currentURL string, maxRedirect int) (int, string, error) {
 	req := fasthttp.AcquireRequest()
 	resp := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseRequest(req)
@@ -101,14 +101,14 @@ func FastHTTPResolveRedirect(client *fasthttp.Client, currentURL string, maxRedi
 		}
 
 		if err := client.Do(req, resp); err != nil {
-			return "", fmt.Errorf("request failed: %w", err)
+			return 0, "", fmt.Errorf("request failed: %w", err)
 		}
 
 		statusCode := resp.StatusCode()
 		if statusCode >= 300 && statusCode < 400 {
 			location := resp.Header.Peek("Location")
 			if len(location) == 0 {
-				return "", fmt.Errorf("redirect status %d with no Location", statusCode)
+				return 0, "", fmt.Errorf("redirect status %d with no Location", statusCode)
 			}
 			currentURL = resolveRelativeURL(currentURL, string(location))
 			req.Reset()
@@ -117,13 +117,13 @@ func FastHTTPResolveRedirect(client *fasthttp.Client, currentURL string, maxRedi
 		}
 
 		if statusCode >= 200 && statusCode < 300 {
-			return currentURL, nil
+			return statusCode, currentURL, nil
 		}
 
-		return "", fmt.Errorf("unexpected status code: %d (%s)", statusCode, currentURL)
+		return statusCode, "", fmt.Errorf("unexpected status code: %d (%s)", statusCode, currentURL)
 	}
 
-	return "", fmt.Errorf("exceeded max redirects (%d)", maxRedirect)
+	return 0, "", fmt.Errorf("exceeded max redirects (%d)", maxRedirect)
 }
 
 func resolveRelativeURL(base, location string) string {
