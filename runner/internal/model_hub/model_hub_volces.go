@@ -25,9 +25,9 @@ type Vocles struct {
 }
 
 func NewVocles() *Vocles {
-	d := &Vocles{}
-	d.initS3Client()
-	return d
+	v := &Vocles{}
+	v.initS3Client()
+	return v
 }
 
 var (
@@ -35,8 +35,8 @@ var (
 	errNotSupported     = fmt.Errorf("not supported")
 )
 
-func (d *Vocles) checkChinaMainland() bool {
-	d.chinaMainlandCheck.Do(func() {
+func (v *Vocles) checkChinaMainland() bool {
+	v.chinaMainlandCheck.Do(func() {
 		client := resty.New()
 		client.SetTimeout(2 * time.Second)
 		defer client.Close()
@@ -64,15 +64,15 @@ func (d *Vocles) checkChinaMainland() bool {
 			}
 
 			slog.Info("Detected country code", "endpoint", ep[0], "code", code)
-			d.isChinaMainland = code == "CN"
+			v.isChinaMainland = code == "CN"
 			return
 		}
 		slog.Error("Detect country code failed")
 	})
-	return d.isChinaMainland
+	return v.isChinaMainland
 }
 
-func (d *Vocles) initS3Client() {
+func (v *Vocles) initS3Client() {
 	cfg, err := config.LoadDefaultConfig(
 		context.TODO(),
 		config.WithLogger(logging.Nop{}),
@@ -83,11 +83,11 @@ func (d *Vocles) initS3Client() {
 	if err != nil {
 		panic("unable to load SDK config, " + err.Error())
 	}
-	d.s3Client = s3.NewFromConfig(cfg)
+	v.s3Client = s3.NewFromConfig(cfg)
 }
 
-func (d *Vocles) CheckAvailable(ctx context.Context, modelName string) error {
-	if !d.checkChinaMainland() {
+func (v *Vocles) CheckAvailable(ctx context.Context, modelName string) error {
+	if !v.checkChinaMainland() {
 		return errNotChinaMainland
 	}
 
@@ -96,7 +96,7 @@ func (d *Vocles) CheckAvailable(ctx context.Context, modelName string) error {
 	}
 
 	modelName = strings.ReplaceAll(modelName, "NexaAI/", "model/") + "/"
-	res, err := d.s3Client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+	res, err := v.s3Client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
 		Bucket:  aws.String("nexa-model-hub-bucket"),
 		Prefix:  aws.String(modelName),
 		MaxKeys: aws.Int32(1),
@@ -112,14 +112,14 @@ func (d *Vocles) CheckAvailable(ctx context.Context, modelName string) error {
 	return nil
 }
 
-func (d *Vocles) MaxConcurrency() int {
+func (v *Vocles) MaxConcurrency() int {
 	return 4
 }
 
-func (d *Vocles) ModelInfo(ctx context.Context, modelName string) ([]ModelFileInfo, error) {
+func (v *Vocles) ModelInfo(ctx context.Context, modelName string) ([]ModelFileInfo, error) {
 	modelName = strings.ReplaceAll(modelName, "NexaAI/", "model/") + "/"
 
-	data, err := d.s3Client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+	data, err := v.s3Client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
 		Bucket: aws.String("nexa-model-hub-bucket"),
 		Prefix: aws.String(modelName),
 	})
@@ -137,7 +137,7 @@ func (d *Vocles) ModelInfo(ctx context.Context, modelName string) ([]ModelFileIn
 	return res, nil
 }
 
-func (d *Vocles) GetFileContent(ctx context.Context, modelName, fileName string, offset, limit int64, writer io.Writer) error {
+func (v *Vocles) GetFileContent(ctx context.Context, modelName, fileName string, offset, limit int64, writer io.Writer) error {
 	name := strings.ReplaceAll(modelName, "NexaAI/", "model/") + "/" + fileName
 
 	slog.Debug("Vocles GetFileContent", "modelName", modelName, "fileName", fileName, "name", name, "offset", offset, "limit", limit)
@@ -153,7 +153,7 @@ func (d *Vocles) GetFileContent(ctx context.Context, modelName, fileName string,
 		input.Range = aws.String(fmt.Sprintf("bytes=%d-", offset))
 	}
 
-	data, err := d.s3Client.GetObject(ctx, input)
+	data, err := v.s3Client.GetObject(ctx, input)
 	if err != nil {
 		return err
 	}

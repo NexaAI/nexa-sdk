@@ -132,6 +132,8 @@ func StartDownload(ctx context.Context, modelName, outputPath string, files []Mo
 	resCh := make(chan types.DownloadInfo)
 	errCh := make(chan error, maxConcurrency)
 
+	slog.Info("GetHub", "hub", reflect.TypeOf(hub), "maxConcurrency", maxConcurrency)
+
 	go func() {
 		defer close(errCh)
 		defer close(resCh)
