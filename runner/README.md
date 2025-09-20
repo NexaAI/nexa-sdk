@@ -39,6 +39,11 @@ Once the prerequisites and bridge library are installed, build the project:
 make build
 ```
 
+Enable debug mode
+```bash
+$env:NEXA_LOG="debug"
+```
+
 ### Windows Arm
 
 Setup GO Env
