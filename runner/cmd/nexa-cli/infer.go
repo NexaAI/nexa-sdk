@@ -43,6 +43,7 @@ var (
 	voice        string
 	listVoice    bool
 	speechSpeed  float64
+	systemPrompt string
 	language     string
 	listLanguage bool
 )
@@ -65,6 +66,7 @@ func infer() *cobra.Command {
 	inferCmd.Flags().Int32VarP(&maxTokens, "max-tokens", "", 2048, "[llm|vlm] max tokens")
 	inferCmd.Flags().BoolVarP(&enableThink, "think", "", true, "[llm|vlm] enable thinking mode")
 	inferCmd.Flags().BoolVarP(&hideThink, "hide-think", "", false, "[llm|vlm] hide thinking output")
+	inferCmd.Flags().StringVarP(&systemPrompt, "system-prompt", "s", "", "[llm|vlm] system prompt to set model behavior")
 	inferCmd.Flags().StringArrayVarP(&prompt, "prompt", "p", nil, "[embedder|tts|image_gen] pass prompt")
 	inferCmd.Flags().StringVarP(&taskType, "task-type", "", "default", "[embedder] task type: default|search_query|search_document")
 	inferCmd.Flags().StringVarP(&query, "query", "q", "", "[reranker] query")
@@ -165,8 +167,9 @@ func inferLLM(manifest *types.ModelManifest, quant string) {
 		ModelPath: modelfile,
 		PluginID:  manifest.PluginId,
 		Config: nexa_sdk.ModelConfig{
-			NCtx:       4096,
-			NGpuLayers: ngl,
+			NCtx:         4096,
+			NGpuLayers:   ngl,
+			SystemPrompt: systemPrompt,
 		},
 	})
 	spin.Stop()
@@ -179,6 +182,42 @@ func inferLLM(manifest *types.ModelManifest, quant string) {
 	defer p.Destroy()
 
 	var history []nexa_sdk.LlmChatMessage
+
+	if len(input) > 0 {
+		content, err := os.ReadFile(input)
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("read prompt file error: %s", err))
+			return
+		}
+		history = append(history, nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleUser, Content: string(content)})
+		applyChatTemplateInput, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
+			Messages:    history,
+			EnableThink: enableThink,
+		})
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("apply chat template error: %s", err))
+			return
+		}
+
+		res, err := p.Generate(nexa_sdk.LlmGenerateInput{
+			PromptUTF8: applyChatTemplateInput.FormattedText,
+			OnToken: func(token string) bool {
+				fmt.Print(token)
+				return true
+			},
+			Config: &nexa_sdk.GenerationConfig{
+				MaxTokens: maxTokens,
+			},
+		})
+		fmt.Println()
+		fmt.Println()
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("generate error: %s", err))
+			return
+		}
+		printProfile(res.ProfileData)
+		// return
+	}
 
 	repl(ReplConfig{
 		ParseFile: false,
@@ -253,8 +292,9 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 		TokenizerPath: tokenizerfile,
 		PluginID:      manifest.PluginId,
 		Config: nexa_sdk.ModelConfig{
-			NCtx:       4096,
-			NGpuLayers: ngl,
+			NCtx:         4096,
+			NGpuLayers:   ngl,
+			SystemPrompt: systemPrompt, // Add system prompt support
 		},
 	})
 	spin.Stop()
@@ -267,6 +307,42 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 	defer p.Destroy()
 
 	var history []nexa_sdk.VlmChatMessage
+
+	if len(input) > 0 {
+		content, err := os.ReadFile(input)
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("read prompt file error: %s", err))
+			return
+		}
+		history = append(history, nexa_sdk.VlmChatMessage{Role: nexa_sdk.VlmRoleUser, Contents: []nexa_sdk.VlmContent{{Type: nexa_sdk.VlmContentTypeText, Text: string(content)}}})
+		applyChatTemplateInput, err := p.ApplyChatTemplate(nexa_sdk.VlmApplyChatTemplateInput{
+			Messages:    history,
+			EnableThink: enableThink,
+		})
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("apply chat template error: %s", err))
+			return
+		}
+
+		res, err := p.Generate(nexa_sdk.VlmGenerateInput{
+			PromptUTF8: applyChatTemplateInput.FormattedText,
+			OnToken: func(token string) bool {
+				fmt.Print(token)
+				return true
+			},
+			Config: &nexa_sdk.GenerationConfig{
+				MaxTokens: maxTokens,
+			},
+		})
+		fmt.Println()
+		fmt.Println()
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("generate error: %s", err))
+			return
+		}
+		printProfile(res.ProfileData)
+		// return
+	}
 
 	repl(ReplConfig{
 		ParseFile: true,
