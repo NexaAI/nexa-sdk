@@ -112,6 +112,10 @@ func (d *Vocles) CheckAvailable(ctx context.Context, modelName string) error {
 	return nil
 }
 
+func (d *Vocles) MaxConcurrency() int {
+	return 4
+}
+
 func (d *Vocles) ModelInfo(ctx context.Context, modelName string) ([]ModelFileInfo, error) {
 	modelName = strings.ReplaceAll(modelName, "NexaAI/", "model/") + "/"
 

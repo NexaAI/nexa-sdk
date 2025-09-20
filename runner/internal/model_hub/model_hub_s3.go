@@ -58,6 +58,10 @@ func (s *S3) CheckAvailable(ctx context.Context, modelName string) error {
 	return nil
 }
 
+func (s *S3) MaxConcurrency() int {
+	return 8
+}
+
 func (s *S3) ModelInfo(ctx context.Context, modelName string) ([]ModelFileInfo, error) {
 	modelName = strings.ReplaceAll(modelName, "NexaAI/", "public/nexa_sdk/huggingface-models/") + "/"
 
