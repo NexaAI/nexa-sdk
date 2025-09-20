@@ -32,11 +32,9 @@ func RootCmd() *cobra.Command {
 			subCmd := cmd.CalledAs()
 
 			// force check migrate
-			if !slices.Contains([]string{"migrate"}, subCmd) {
-				err := checkMigrate()
-				if err != nil &&
-					slices.Contains([]string{"infer", "functioncall", "fc", "serve", "run"}, subCmd) {
-					fmt.Println(render.GetTheme().Error.Sprintf("Error: need migrate"))
+			if !slices.Contains([]string{"clean"}, subCmd) {
+				if err := checkMigrate(); err != nil {
+					fmt.Println(render.GetTheme().Error.Sprintf("Migrate error: %s", err))
 					os.Exit(1)
 				}
 			}
@@ -67,7 +65,7 @@ func RootCmd() *cobra.Command {
 		infer(), functionCall(),
 		serve(), run(),
 		_config(),
-		version(), update(), migrate(),
+		version(), update(),
 	)
 
 	return rootCmd
@@ -84,6 +82,7 @@ func checkDependency() {
 			fmt.Println(render.GetTheme().Warning.Sprintf("  sudo yum install sox       # RHEL/CentOS/Fedora"))
 		case "windows":
 			fmt.Println(render.GetTheme().Warning.Sprintf("  winget install --id=ChrisBagwell.SoX -e"))
+			fmt.Println(render.GetTheme().Warning.Sprintf("Then restart your terminal to make sure sox is in PATH"))
 		default:
 			fmt.Println(render.GetTheme().Warning.Sprintf("sox is not installed. Please install it manually for your OS: %s\n", runtime.GOOS))
 		}
@@ -99,6 +98,7 @@ func checkDependency() {
 			fmt.Println(render.GetTheme().Warning.Sprintf("  sudo yum install ffmpeg    # RHEL/CentOS/Fedora"))
 		case "windows":
 			fmt.Println(render.GetTheme().Warning.Sprintf("  winget install --id=BtbN.FFmpeg.GPL -e"))
+			fmt.Println(render.GetTheme().Warning.Sprintf("Then restart your terminal to make sure ffmpeg is in PATH"))
 		default:
 			fmt.Println(render.GetTheme().Warning.Sprintf("ffmpeg is not installed. Please install it manually for your OS: %s\n", runtime.GOOS))
 		}

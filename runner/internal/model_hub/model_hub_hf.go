@@ -30,7 +30,7 @@ func (d *HuggingFace) CheckAvailable(ctx context.Context, name string) error {
 
 func (d *HuggingFace) MaxConcurrency() int {
 	if config.Get().HFToken != "" {
-		return 16
+		return 8
 	} else {
 		return 1
 	}
@@ -77,9 +77,10 @@ func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileIn
 	}
 
 	res := make([]ModelFileInfo, len(info.Siblings))
+	var error error
 	var resLock sync.Mutex
 	var wg sync.WaitGroup
-	sem := make(chan struct{}, 16)
+	sem := make(chan struct{}, d.MaxConcurrency())
 	for i := range info.Siblings {
 		wg.Add(1)
 		sem <- struct{}{}
@@ -88,13 +89,15 @@ func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileIn
 			defer func() { <-sem }()
 
 			size, err := d.downloader.GetFileSize(fmt.Sprintf("%s/%s/resolve/main/%s", HF_ENDPOINT, name, info.Siblings[i].RFileName))
-			if err != nil {
-				slog.Error("Get file size error", "model", name, "file", info.Siblings[i].RFileName, "err", err)
-				return
-			}
 
 			resLock.Lock()
 			defer resLock.Unlock()
+
+			if err != nil {
+				slog.Error("Get file size error", "model", name, "file", info.Siblings[i].RFileName, "err", err)
+				error = err
+				return
+			}
 			res[i] = ModelFileInfo{
 				Name: info.Siblings[i].RFileName,
 				Size: size,
@@ -102,6 +105,10 @@ func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileIn
 		}(i)
 	}
 	wg.Wait()
+
+	if error != nil {
+		return nil, error
+	}
 
 	return res, nil
 }
