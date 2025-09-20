@@ -34,7 +34,7 @@ func functionCall() *cobra.Command {
 
 		manifest, err := ensureModelAvailable(s, normalizeModelName(args[0]), cmd, args)
 		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("parse manifest error: %s", err))
+			fmt.Println(render.GetTheme().Error.Sprintf("check model error: %s", err))
 			return
 		}
 
