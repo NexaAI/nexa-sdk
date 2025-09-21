@@ -301,6 +301,7 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 	var tokenizers []model_hub.ModelFileInfo
 	var onnxFiles []model_hub.ModelFileInfo
 	var nexaFiles []model_hub.ModelFileInfo
+	var npyFiles []model_hub.ModelFileInfo
 	ggufs := make(map[string][]model_hub.ModelFileInfo) // key is gguf name without part
 	// qwen2.5-7b-instruct-q8_0-00003-of-00003.gguf original name is qwen2.5-7b-instruct-q8_0 *d-of-*d like this
 
@@ -319,6 +320,8 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 			onnxFiles = append(onnxFiles, file)
 		} else if strings.HasSuffix(name, ".nexa") {
 			nexaFiles = append(nexaFiles, file)
+		} else if strings.HasSuffix(name, ".npy") {
+			npyFiles = append(npyFiles, file)
 		}
 	}
 
@@ -438,19 +441,17 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 			res.MMProjFile.Downloaded = true
 		}
 
-		if len(onnxFiles) > 0 {
-			// detect tokenizer - only if both gguf and onnx files are found - specifically for gemma 3n in ort-llama-cpp case
-			switch len(tokenizers) {
-			case 0:
-				// No tokenizer file found - skip
-			case 1:
-				res.TokenizerFile.Name = tokenizers[0].Name
-				res.TokenizerFile.Size = tokenizers[0].Size
-				res.TokenizerFile.Downloaded = true
+		// detect tokenizer for gguf models
+		switch len(tokenizers) {
+		case 0:
+			// No tokenizer file found - skip
+		case 1:
+			res.TokenizerFile.Name = tokenizers[0].Name
+			res.TokenizerFile.Size = tokenizers[0].Size
+			res.TokenizerFile.Downloaded = true
 
-			default:
-				return fmt.Errorf("multiple tokenizer files found: %v. Expected exactly one tokenizer file", tokenizers)
-			}
+		default:
+			return fmt.Errorf("multiple tokenizer files found: %v. Expected exactly one tokenizer file", tokenizers)
 		}
 
 		// Always include .nexa files as extra files when gguf is the main model
@@ -459,6 +460,15 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 				Name:       nexaFile.Name,
 				Downloaded: true,
 				Size:       nexaFile.Size,
+			})
+		}
+
+		// Always include .npy files as extra files when gguf is the main model
+		for _, npyFile := range npyFiles {
+			res.ExtraFiles = append(res.ExtraFiles, types.ModelFileInfo{
+				Name:       npyFile.Name,
+				Downloaded: true,
+				Size:       npyFile.Size,
 			})
 		}
 
