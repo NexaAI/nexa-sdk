@@ -131,7 +131,7 @@ func ensureModelAvailable(s *store.Store, model string, cmd *cobra.Command, args
 	manifest, err := s.GetManifest(model)
 	if errors.Is(err, os.ErrNotExist) {
 		fmt.Println(render.GetTheme().Info.Sprintf("model not found, start download"))
-		err := pull().RunE(cmd, args)
+		err = pull().RunE(cmd, args)
 		if err != nil {
 			return nil, fmt.Errorf("Download model failed")
 		}

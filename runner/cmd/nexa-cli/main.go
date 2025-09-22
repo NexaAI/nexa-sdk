@@ -35,7 +35,7 @@ func RootCmd() *cobra.Command {
 			if !slices.Contains([]string{"clean"}, subCmd) {
 				if err := checkMigrate(); err != nil {
 					fmt.Println(render.GetTheme().Error.Sprintf("Migrate error: %s", err))
-					os.Exit(1)
+					return err
 				}
 			}
 
@@ -56,6 +56,8 @@ func RootCmd() *cobra.Command {
 
 			return nil
 		},
+		SilenceErrors: true,
+		SilenceUsage:  true,
 	}
 
 	rootCmd.AddCommand(
