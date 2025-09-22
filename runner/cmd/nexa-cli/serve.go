@@ -19,15 +19,11 @@ func serve() *cobra.Command {
 	serveCmd.Short = "Run the Nexa AI Service"
 
 	serveCmd.Run = func(cmd *cobra.Command, args []string) {
-
-		// Initialize SDK resources and prepare AI models for serving
+		checkDependency()
 		nexa_sdk.Init()
 
-		// Start the HTTP server (blocks until shutdown signal received)
-		// This serves REST API endpoints for model inference
 		server.Serve()
 
-		// Clean up SDK resources and free memory when server stops
 		nexa_sdk.DeInit()
 	}
 
