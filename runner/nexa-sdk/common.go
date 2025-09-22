@@ -197,12 +197,13 @@ func freeSamplerConfig(cPtr *C.ml_SamplerConfig) {
 }
 
 type GenerationConfig struct {
-	MaxTokens     int32
-	Stop          []string
-	NPast         int32
-	SamplerConfig *SamplerConfig
-	ImagePaths    []string
-	AudioPaths    []string
+	MaxTokens      int32
+	Stop           []string
+	NPast          int32
+	SamplerConfig  *SamplerConfig
+	ImagePaths     []string
+	ImageMaxLength int32
+	AudioPaths     []string
 }
 
 func (gc GenerationConfig) toCPtr() *C.ml_GenerationConfig {
@@ -212,7 +213,7 @@ func (gc GenerationConfig) toCPtr() *C.ml_GenerationConfig {
 
 	cPtr.max_tokens = C.int32_t(gc.MaxTokens)
 	cPtr.n_past = C.int32_t(gc.NPast)
-
+	cPtr.image_max_length = C.int32_t(gc.ImageMaxLength)
 	if len(gc.Stop) > 0 {
 		cPtr.stop, cPtr.stop_count = sliceToCCharArray(gc.Stop)
 	}
