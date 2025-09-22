@@ -164,4 +164,4 @@ jobs:
         if: ${{ !contains(github.ref, '-rc') }}
         shell: bash
         run: |
-          aws s3 cp "nexa-cli_macos_${{ matrix.arch }}.pkg" "s3://nexa-model-hub-bucket/public/nexa_sdk/downloads/nexa-cli_macos_${{ matrix.arch }}.pkg"
+          aws s3 cp "artifacts/nexa-cli_macos_${{ matrix.arch }}.pkg" "s3://nexa-model-hub-bucket/public/nexa_sdk/downloads/nexa-cli_macos_${{ matrix.arch }}.pkg"
