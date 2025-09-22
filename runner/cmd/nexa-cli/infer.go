@@ -102,6 +102,7 @@ func infer() *cobra.Command {
 		case types.ModelTypeLLM:
 			inferLLM(manifest, quant)
 		case types.ModelTypeVLM:
+			checkDependency()
 			inferVLM(manifest, quant)
 		case types.ModelTypeEmbedder:
 			inferEmbedder(manifest, quant)
@@ -110,6 +111,7 @@ func infer() *cobra.Command {
 		case types.ModelTypeTTS:
 			inferTTS(manifest, quant)
 		case types.ModelTypeASR:
+			checkDependency()
 			inferASR(manifest, quant)
 		case types.ModelTypeCV:
 			inferCV(manifest, quant)

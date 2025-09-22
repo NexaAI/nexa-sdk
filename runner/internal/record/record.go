@@ -14,10 +14,6 @@ type Recorder struct {
 }
 
 func NewRecorder(outputFile string) (*Recorder, error) {
-	if _, err := exec.LookPath("sox"); err != nil {
-		return nil, err
-	}
-
 	var cmd *exec.Cmd
 	var args []string
 
