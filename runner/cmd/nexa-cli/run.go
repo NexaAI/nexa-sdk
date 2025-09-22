@@ -128,7 +128,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			// check again
 			modelInfo, err = client.Models.Get(context.TODO(), model)
 			if err != nil {
-				fmt.Println(render.GetTheme().Error.Sprintf("get model error: %s", err.Error()))
+				fmt.Println(render.GetTheme().Error.Sprintf("get model error: %s", "download is incorrect"))
 				return
 			}
 		} else {
