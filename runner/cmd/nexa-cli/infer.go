@@ -65,7 +65,7 @@ func infer() *cobra.Command {
 	inferCmd.Flags().SortFlags = false
 	inferCmd.Flags().Int32VarP(&ngl, "ngl", "n", 999, "[llm|vlm] num of layers pass to gpu")
 	inferCmd.Flags().Int32VarP(&maxTokens, "max-tokens", "", 2048, "[llm|vlm] max tokens")
-	inferCmd.Flags().Int32VarP(&imageMaxLength, "max-image-length", "", 512, "[vlm] max image length")
+	inferCmd.Flags().Int32VarP(&imageMaxLength, "image-max-length", "", 512, "[vlm] max image length")
 	inferCmd.Flags().BoolVarP(&enableThink, "think", "", true, "[llm|vlm] enable thinking mode")
 	inferCmd.Flags().BoolVarP(&hideThink, "hide-think", "", false, "[llm|vlm] hide thinking output")
 	inferCmd.Flags().StringVarP(&systemPrompt, "system-prompt", "s", "", "[llm|vlm] system prompt to set model behavior")
