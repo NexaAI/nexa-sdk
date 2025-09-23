@@ -32,7 +32,7 @@ func RootCmd() *cobra.Command {
 			subCmd := cmd.CalledAs()
 
 			// force check migrate
-			if !slices.Contains([]string{"clean"}, subCmd) {
+			if !slices.Contains([]string{"remove", "rm", "clean", "list", "ls"}, subCmd) {
 				if err := checkMigrate(); err != nil {
 					fmt.Println(render.GetTheme().Error.Sprintf("Migrate error: %s", err))
 					return err

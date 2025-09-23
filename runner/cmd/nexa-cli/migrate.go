@@ -43,6 +43,9 @@ func checkMigrate() error {
 		input = strings.ToLower(input)
 		if input == "y" || input == "" {
 			if err := startMigrate(); err != nil {
+				fmt.Println()
+				fmt.Println(render.GetTheme().Warning.Sprintf("Migration failed. You may want to use `nexa clean` or `nexa remove <model>` to remove old models."))
+				fmt.Println()
 				return err
 			}
 			return finishMigrate()
