@@ -71,7 +71,7 @@ func infer() *cobra.Command {
 	inferCmd.Flags().StringVarP(&taskType, "task-type", "", "default", "[embedder] task type: default|search_query|search_document")
 	inferCmd.Flags().StringVarP(&query, "query", "q", "", "[reranker] query")
 	inferCmd.Flags().StringArrayVarP(&document, "document", "d", nil, "[reranker] documents")
-	inferCmd.Flags().StringVarP(&input, "input", "i", "", "[cv] input file (image for cv)")
+	inferCmd.Flags().StringVarP(&input, "input", "i", "", "[cv|llm|vlm] input image file (cv) or prompt txt file (llm/vlm)")
 	inferCmd.Flags().StringVarP(&output, "output", "o", "", "[tts|image_gen] output file (audio for tts / image for image_gen)")
 	inferCmd.Flags().StringVarP(&voice, "voice", "", "", "[tts] voice identifier")
 	inferCmd.Flags().BoolVarP(&listVoice, "list-voice", "", false, "[tts] list available voices")
