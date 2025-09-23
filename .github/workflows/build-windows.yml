@@ -36,7 +36,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.24.3
+          go-version: 1.25.1
           cache-dependency-path: runner/go.sum
 
       - name: Setup MSYS2 (ARM64)
@@ -46,16 +46,39 @@ jobs:
           msystem: CLANGARM64
           location: C:/Tools
           update: true
-          install: >-
-            mingw-w64-clang-aarch64-clang
-            mingw-w64-clang-aarch64-lld
+          #install: mingw-w64-clang-aarch64-clang
 
       - name: Setup Compile Environment (ARM64)
         if: matrix.arch == 'arm64'
         shell: bash
         run: |
-          echo "CGO_ENABLED=1" >> $GITHUB_ENV
-          echo "GOARCH=arm64" >> $GITHUB_ENV
+          PKG=(
+            mingw-w64-clang-aarch64-clang-libs-20.1.8-2
+            mingw-w64-clang-aarch64-compiler-rt-20.1.8-2
+            mingw-w64-clang-aarch64-crt-git-13.0.0.r167.g2e31630bc-1
+            mingw-w64-clang-aarch64-gettext-runtime-0.26-1
+            mingw-w64-clang-aarch64-headers-git-13.0.0.r167.g2e31630bc-1
+            mingw-w64-clang-aarch64-libc++-20.1.8-1
+            mingw-w64-clang-aarch64-libffi-3.5.2-1
+            mingw-w64-clang-aarch64-libiconv-1.18-1
+            mingw-w64-clang-aarch64-libunwind-20.1.8-1
+            mingw-w64-clang-aarch64-libwinpthread-13.0.0.r167.g2e31630bc-1
+            mingw-w64-clang-aarch64-libxml2-2.14.6-1
+            mingw-w64-clang-aarch64-llvm-libs-20.1.8-2
+            mingw-w64-clang-aarch64-llvm-tools-20.1.8-2
+            mingw-w64-clang-aarch64-winpthreads-13.0.0.r167.g2e31630bc-1
+            mingw-w64-clang-aarch64-xz-5.8.1-2
+            mingw-w64-clang-aarch64-zlib-1.3.1-1
+            mingw-w64-clang-aarch64-zstd-1.5.7-1
+            mingw-w64-clang-aarch64-clang-20.1.8-2
+            mingw-w64-clang-aarch64-lld-20.1.8-2
+          )
+
+          for pkg in "${PKG[@]}"; do
+              echo "Downloading $pkg..."
+              curl -O "https://repo.msys2.org/mingw/clangarm64/${pkg}-any.pkg.tar.zst" -L
+          done
+          C:/Tools/msys64/usr/bin/pacman -U ./*.pkg.tar.zst --noconfirm
           echo "CC=C:/Tools/msys64/clangarm64/bin/clang.exe" >> $GITHUB_ENV
           echo "CXX=C:/Tools/msys64/clangarm64/bin/clang++.exe" >> $GITHUB_ENV
 
