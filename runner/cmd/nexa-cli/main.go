@@ -32,10 +32,10 @@ func RootCmd() *cobra.Command {
 			subCmd := cmd.CalledAs()
 
 			// force check migrate
-			if !slices.Contains([]string{"clean"}, subCmd) {
+			if !slices.Contains([]string{"remove", "rm", "clean", "list", "ls"}, subCmd) {
 				if err := checkMigrate(); err != nil {
 					fmt.Println(render.GetTheme().Error.Sprintf("Migrate error: %s", err))
-					os.Exit(1)
+					return err
 				}
 			}
 
@@ -45,8 +45,6 @@ func RootCmd() *cobra.Command {
 			}
 
 			notifyUpdate()
-
-			checkDependency()
 
 			// license
 			license, err := store.Get().ConfigGet("license")
@@ -58,6 +56,8 @@ func RootCmd() *cobra.Command {
 
 			return nil
 		},
+		SilenceErrors: true,
+		SilenceUsage:  true,
 	}
 
 	rootCmd.AddCommand(
@@ -73,7 +73,7 @@ func RootCmd() *cobra.Command {
 
 func checkDependency() {
 	if _, err := exec.LookPath("sox"); err != nil {
-		fmt.Println(render.GetTheme().Warning.Sprintf("sox is not installed. Try:"))
+		fmt.Println(render.GetTheme().Warning.Sprintf("Sox is not installed, some features may not work. Try:"))
 		switch runtime.GOOS {
 		case "darwin":
 			fmt.Println(render.GetTheme().Warning.Sprintf("  brew install sox"))
@@ -84,12 +84,12 @@ func checkDependency() {
 			fmt.Println(render.GetTheme().Warning.Sprintf("  winget install --id=ChrisBagwell.SoX -e"))
 			fmt.Println(render.GetTheme().Warning.Sprintf("Then restart your terminal to make sure sox is in PATH"))
 		default:
-			fmt.Println(render.GetTheme().Warning.Sprintf("sox is not installed. Please install it manually for your OS: %s\n", runtime.GOOS))
+			fmt.Println(render.GetTheme().Warning.Sprintf("Please install it manually for your OS: %s\n", runtime.GOOS))
 		}
 	}
 
 	if _, err := exec.LookPath("ffmpeg"); err != nil {
-		fmt.Println(render.GetTheme().Warning.Sprintf("ffmpeg is not installed. Try:"))
+		fmt.Println(render.GetTheme().Warning.Sprintf("FFmpeg is not installed, some features may not work. Try:"))
 		switch runtime.GOOS {
 		case "darwin":
 			fmt.Println(render.GetTheme().Warning.Sprintf("  brew install ffmpeg"))
@@ -100,7 +100,7 @@ func checkDependency() {
 			fmt.Println(render.GetTheme().Warning.Sprintf("  winget install --id=BtbN.FFmpeg.GPL -e"))
 			fmt.Println(render.GetTheme().Warning.Sprintf("Then restart your terminal to make sure ffmpeg is in PATH"))
 		default:
-			fmt.Println(render.GetTheme().Warning.Sprintf("ffmpeg is not installed. Please install it manually for your OS: %s\n", runtime.GOOS))
+			fmt.Println(render.GetTheme().Warning.Sprintf("Please install it manually for your OS: %s\n", runtime.GOOS))
 		}
 	}
 }

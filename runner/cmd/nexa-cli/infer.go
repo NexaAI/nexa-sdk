@@ -30,22 +30,23 @@ const modelLoadFailMsg = `⚠️ Oops. Model failed to load.
 
 var (
 	// disableStream *bool // reuse in run.go
-	ngl          int32
-	maxTokens    int32
-	enableThink  bool
-	hideThink    bool
-	prompt       []string
-	taskType     string
-	query        string
-	document     []string
-	input        string
-	output       string
-	voice        string
-	listVoice    bool
-	speechSpeed  float64
-	systemPrompt string
-	language     string
-	listLanguage bool
+	ngl            int32
+	maxTokens      int32
+	imageMaxLength int32
+	enableThink    bool
+	hideThink      bool
+	prompt         []string
+	taskType       string
+	query          string
+	document       []string
+	input          string
+	output         string
+	voice          string
+	listVoice      bool
+	speechSpeed    float64
+	systemPrompt   string
+	language       string
+	listLanguage   bool
 )
 
 var (
@@ -64,6 +65,7 @@ func infer() *cobra.Command {
 	inferCmd.Flags().SortFlags = false
 	inferCmd.Flags().Int32VarP(&ngl, "ngl", "n", 999, "[llm|vlm] num of layers pass to gpu")
 	inferCmd.Flags().Int32VarP(&maxTokens, "max-tokens", "", 2048, "[llm|vlm] max tokens")
+	inferCmd.Flags().Int32VarP(&imageMaxLength, "image-max-length", "", 512, "[vlm] max image length")
 	inferCmd.Flags().BoolVarP(&enableThink, "think", "", true, "[llm|vlm] enable thinking mode")
 	inferCmd.Flags().BoolVarP(&hideThink, "hide-think", "", false, "[llm|vlm] hide thinking output")
 	inferCmd.Flags().StringVarP(&systemPrompt, "system-prompt", "s", "", "[llm|vlm] system prompt to set model behavior")
@@ -102,6 +104,7 @@ func infer() *cobra.Command {
 		case types.ModelTypeLLM:
 			inferLLM(manifest, quant)
 		case types.ModelTypeVLM:
+			checkDependency()
 			inferVLM(manifest, quant)
 		case types.ModelTypeEmbedder:
 			inferEmbedder(manifest, quant)
@@ -110,6 +113,7 @@ func infer() *cobra.Command {
 		case types.ModelTypeTTS:
 			inferTTS(manifest, quant)
 		case types.ModelTypeASR:
+			checkDependency()
 			inferASR(manifest, quant)
 		case types.ModelTypeCV:
 			inferCV(manifest, quant)
@@ -127,7 +131,7 @@ func ensureModelAvailable(s *store.Store, model string, cmd *cobra.Command, args
 	manifest, err := s.GetManifest(model)
 	if errors.Is(err, os.ErrNotExist) {
 		fmt.Println(render.GetTheme().Info.Sprintf("model not found, start download"))
-		err := pull().RunE(cmd, args)
+		err = pull().RunE(cmd, args)
 		if err != nil {
 			return nil, fmt.Errorf("Download model failed")
 		}
@@ -294,7 +298,7 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 		Config: nexa_sdk.ModelConfig{
 			NCtx:         4096,
 			NGpuLayers:   ngl,
-			SystemPrompt: systemPrompt, // Add system prompt support
+			SystemPrompt: systemPrompt,
 		},
 	})
 	spin.Stop()
@@ -397,9 +401,10 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 				PromptUTF8: tmplOut.FormattedText,
 				OnToken:    on_token,
 				Config: &nexa_sdk.GenerationConfig{
-					MaxTokens:  maxTokens,
-					ImagePaths: images,
-					AudioPaths: audios,
+					MaxTokens:      maxTokens,
+					ImagePaths:     images,
+					ImageMaxLength: imageMaxLength,
+					AudioPaths:     audios,
 				},
 			})
 			if err != nil {
