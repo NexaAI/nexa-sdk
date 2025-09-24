@@ -147,6 +147,7 @@ func startMigrate() error {
 
 			manifest.ModelName = hmf.ModelName
 			manifest.PluginId = hmf.PluginId
+			manifest.DeviceId = hmf.DeviceId
 			manifest.ModelType = hmf.ModelType
 			manifest.MinSDKVersion = hmf.MinSDKVersion
 
@@ -155,6 +156,9 @@ func startMigrate() error {
 			}
 			if manifest.PluginId == "" {
 				manifest.PluginId = model.PluginId
+			}
+			if manifest.DeviceId == "" {
+				manifest.DeviceId = model.DeviceId
 			}
 			if manifest.ModelType == "" {
 				manifest.ModelType = model.ModelType

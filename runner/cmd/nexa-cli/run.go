@@ -74,6 +74,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			if hmf != nil {
 				manifest.ModelName = hmf.ModelName
 				manifest.PluginId = hmf.PluginId
+				manifest.DeviceId = hmf.DeviceId
 				manifest.ModelType = hmf.ModelType
 				manifest.MinSDKVersion = hmf.MinSDKVersion
 			}
@@ -83,6 +84,9 @@ func runFunc(cmd *cobra.Command, args []string) {
 			}
 			if manifest.PluginId == "" {
 				manifest.PluginId = choosePluginId(model)
+			}
+			if manifest.DeviceId == "" {
+				manifest.DeviceId = hmf.DeviceId
 			}
 			if manifest.ModelType == "" {
 				if ctype, err := chooseModelType(); err != nil {
@@ -104,6 +108,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 				option.WithJSONSet("Name", manifest.Name),
 				option.WithJSONSet("ModelName", manifest.ModelName),
 				option.WithJSONSet("PluginId", manifest.PluginId),
+				option.WithJSONSet("DeviceID", manifest.DeviceId),
 				option.WithJSONSet("ModelType", manifest.ModelType),
 				option.WithJSONSet("MinSDKVersion", manifest.MinSDKVersion),
 				option.WithJSONSet("ModelFile", manifest.ModelFile),

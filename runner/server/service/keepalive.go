@@ -139,6 +139,7 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 				NCtx: param.NCtx,
 			},
 			PluginID: manifest.PluginId,
+			DeviceID: manifest.DeviceId,
 		})
 	case reflect.TypeFor[nexa_sdk.VLM]():
 		var mmproj string
@@ -158,12 +159,14 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 				NCtx: param.NCtx,
 			},
 			PluginID: manifest.PluginId,
+			DeviceID: manifest.DeviceId,
 		})
 	case reflect.TypeFor[nexa_sdk.Embedder]():
 		t, e = nexa_sdk.NewEmbedder(nexa_sdk.EmbedderCreateInput{
 			ModelName: manifest.ModelName,
 			ModelPath: modelfile,
 			PluginID:  manifest.PluginId,
+			DeviceID:  manifest.DeviceId,
 		})
 	//case reflect.TypeFor[nexa_sdk.Reranker]():
 	//	t, e = nexa_sdk.NewReranker(modelfile, nil, param.Device)

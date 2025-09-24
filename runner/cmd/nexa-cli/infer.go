@@ -171,6 +171,7 @@ func inferLLM(manifest *types.ModelManifest, quant string) {
 		ModelName: manifest.ModelName,
 		ModelPath: modelfile,
 		PluginID:  manifest.PluginId,
+		DeviceID:  manifest.DeviceId,
 		Config: nexa_sdk.ModelConfig{
 			NCtx:         4096,
 			NGpuLayers:   ngl,
@@ -296,6 +297,7 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 		MmprojPath:    mmprojfile,
 		TokenizerPath: tokenizerfile,
 		PluginID:      manifest.PluginId,
+		DeviceID:      manifest.DeviceId,
 		Config: nexa_sdk.ModelConfig{
 			NCtx:         4096,
 			NGpuLayers:   ngl,
@@ -434,6 +436,7 @@ func inferTTS(manifest *types.ModelManifest, quant string) {
 		ModelName: manifest.ModelName,
 		ModelPath: modelfile,
 		PluginID:  manifest.PluginId,
+		DeviceID:  manifest.DeviceId,
 	}
 
 	p, err := nexa_sdk.NewTTS(ttsInput)
@@ -522,6 +525,7 @@ func inferASR(manifest *types.ModelManifest, quant string) {
 		ModelName: manifest.ModelName,
 		ModelPath: modelfile,
 		PluginID:  manifest.PluginId,
+		DeviceID:  manifest.DeviceId,
 		Language:  language,
 	}
 	p, err := nexa_sdk.NewASR(asrInput)
@@ -699,7 +703,7 @@ func inferCV(manifest *types.ModelManifest, quant string) {
 			RecModelPath: modelfile,
 		},
 		PluginID: manifest.PluginId,
-		DeviceID: "",
+		DeviceID: manifest.DeviceId,
 	}
 
 	p, err := nexa_sdk.NewCV(cvInput)
@@ -753,6 +757,7 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) {
 		ModelName: manifest.ModelName,
 		ModelPath: modelfile,
 		PluginID:  manifest.PluginId,
+		DeviceID:  manifest.DeviceId,
 	}
 
 	p, err := nexa_sdk.NewEmbedder(embedderInput)
@@ -828,6 +833,7 @@ func inferImageGen(manifest *types.ModelManifest, _ string) {
 		ModelName: manifest.ModelName,
 		ModelPath: modeldir,
 		PluginID:  manifest.PluginId,
+		DeviceID:  manifest.DeviceId,
 	})
 	spin.Stop()
 	if err != nil {
@@ -892,6 +898,7 @@ func inferReranker(manifest *types.ModelManifest, quant string) {
 		ModelName: manifest.ModelName,
 		ModelPath: modelfile,
 		PluginID:  manifest.PluginId,
+		DeviceID:  manifest.DeviceId,
 	}
 
 	p, err := nexa_sdk.NewReranker(rerankerInput)
