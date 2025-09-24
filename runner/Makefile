@@ -5,7 +5,7 @@ ifeq ($(OS), Windows_NT)
 	ARCH    ?= $(shell powershell -NoProfile -NonInteractive "switch ((Get-CimInstance Win32_Processor).Architecture) { 0 {'x86'} 5 {'arm'} 9 {'x86_64'} 12 {'arm64'} Default {'unknown'} }")
 	EXE     := .exe
 
-	RM      := powershell -NoProfile -NonInteractive Remove-Item -Recurse -Force -Path
+	RM      := powershell -NoProfile -NonInteractive Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path 
 	MKDIR   := powershell -NoProfile -NonInteractive New-Item -ItemType Directory -Force -Path
 	UNZIP   := powershell -NoProfile -NonInteractive Expand-Archive -Force -DestinationPath . -Path
 else
@@ -44,7 +44,7 @@ link: clean
 
 xcopy: clean
 	$(MKDIR) build
-	xcopy ..\\..\\nexasdk-bridge\\build\\out\\* build /E /R /Y
+	powershell -NoProfile -NonInteractive -Command "Copy-Item -Path '..\..\nexasdk-bridge\build\out\*' -Destination 'build' -Recurse -Force"
 
 download: clean
 	$(MKDIR) build
