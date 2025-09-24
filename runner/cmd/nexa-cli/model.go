@@ -43,7 +43,7 @@ func pull() *cobra.Command {
 	pullCmd.Flags().StringVarP(&localPath, "local-path", "l", "", "[localfs] path to local directory")
 
 	pullCmd.Run = func(cmd *cobra.Command, args []string) {
-		pullImpl(cmd, args)
+		pullModel(args[0])
 	}
 
 	return pullCmd
@@ -152,8 +152,8 @@ func list() *cobra.Command {
 
 // pull
 
-func pullImpl(_ *cobra.Command, args []string) error {
-	name := normalizeModelName(args[0])
+func pullModel(name string) error {
+	name = normalizeModelName(name)
 
 	s := store.Get()
 
