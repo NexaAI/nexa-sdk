@@ -76,7 +76,7 @@ Nexa SDK is an on-device inference framework that runs any model on any device, 
 - Check the model and demos at [Hugging Face repo](https://huggingface.co/NexaAI/OmniNeural-4B)
 - Check our [OmniNeural-4B technical blog](https://nexa.ai/blogs/omnineural-4b)
 
-#### 📣  **2025.08.12: ASR & TTS Support in MLX format
+#### 📣  **2025.08.12: ASR & TTS Support in MLX format**
 - Parakeet and Kokoro models support in MLX format.
 - new `/mic` mode to transcribe live speech directly in your terminal.
   
@@ -98,7 +98,7 @@ curl -fsSL https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_
 
 ## Supported Models
 
-You can run any compatible GGUF，MLX, or nexa model from 🤗 Hugging Face by using the `<full repo name>`.
+You can run any compatible GGUF, MLX, or nexa model from 🤗 Hugging Face by using the `<full repo name>`.
 
 ### Qualcomm NPU models
 > [!TIP]
