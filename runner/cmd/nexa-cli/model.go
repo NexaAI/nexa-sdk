@@ -174,6 +174,9 @@ func pullModel(name string) error {
 	}
 
 	// specify model hub
+	if localPath != "" && modelHub == "" {
+		modelHub = "localfs"
+	}
 	if modelHub != "" {
 		switch strings.ToLower(modelHub) {
 		case "volces":
