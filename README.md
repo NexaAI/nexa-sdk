@@ -49,26 +49,47 @@ Nexa SDK is an on-device inference framework that runs any model on any device, 
 
 
 ## Recent updates
-#### 📣  **2025.08.20: Qualcomm NPU Support**
-- Qualcomm NPU support for GGUF models.
-OmniNeural-4B is the **first multimodal AI model built natively for NPUs** — handling text, images, and audio in one model.
-- Check the model and demos at [Hugginface repo](https://huggingface.co/NexaAI/OmniNeural-4B)
+
+#### 📣  **2025.09.23: Intel NPU Support**
+- LLM inference with [DeepSeek-r1-distill-Qwen-1.5B](https://sdk.nexa.ai/model/DeepSeek-R1-Distill-Qwen-1.5B-Intel-NPU) and [Llama3.2-3B](https://sdk.nexa.ai/model/Llama3.2-3B-Intel-NPU) on Intel NPU
+
+#### 📣  **2025.09.23: Apple Neural Engine (ANE) Support**
+- Real-time speech recognition with [Parakeet v3 model](https://sdk.nexa.ai/model/parakeet-v3-ane)
+
+#### 📣  **2025.09.15: New Models Support**
+- First-ever [Gemma-3n](https://sdk.nexa.ai/model/Gemma3n-E4B) **multimodal** inference for GPU & CPU, in GGUF format.
+- [SDXL image generation](https://sdk.nexa.ai/model/Prefect-illustrious-XL-v2.0p) from Civitai for GPU
+- [EmbeddingGemma](https://sdk.nexa.ai/model/embeddinggemma-300m-npu) for Qualcomm NPU
+- [Phi4-mini turbo](https://sdk.nexa.ai/model/phi4-mini-npu-turbo) and [Phi3.5-mini](https://sdk.nexa.ai/model/phi3.5-mini-npu) for Qualcomm NPU
+- [Parakeet V3 model](https://sdk.nexa.ai/model/parakeet-v3-npu) for Qualcomm NPU
+
+#### 📣  **2025.09.15: Turbo Engine & Unified Interface**
+- [Nexa ML Turbo engine](https://nexa.ai/blogs/nexaml-turbo) for optimized NPU performance
+    - Try [Phi4-mini turbo](https://sdk.nexa.ai/model/phi4-mini-npu-turbo) and [Llama3.2-3B-NPU-Turbo](https://sdk.nexa.ai/model/Llama3.2-3B-NPU-Turbo)
+    - 80% faster at shorter contexts (<=2048), 33% faster at longer contexts (>2048) than current NPU solutions
+- [Unified interface](https://nexa.ai/blogs/sdk-unifiedarchitecture) supporting NPU/GPU/CPU backends:
+    - Single installer architecture eliminating dependency conflicts
+    - Lazy loading and plugin isolation for improved performance
+
+#### 📣  **2025.08.20: Qualcomm NPU Support with NexaML Turbo Engine**
+- OmniNeural-4B: the **first multimodal AI model built natively for NPUs** — handling text, images, and audio in one model
+- Check the model and demos at [Hugging Face repo](https://huggingface.co/NexaAI/OmniNeural-4B)
 - Check our [OmniNeural-4B technical blog](https://nexa.ai/blogs/omnineural-4b)
-- Download our [arm64 with Qualcomm NPU support](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_windows_arm64.exe) installer and try it!
 
 #### 📣  **2025.08.12: ASR & TTS Support in MLX format
-- ASR & TTS model support in MLX format.
-- new "> /mic" mode to transcribe live speech directly in your terminal.
+- Parakeet and Kokoro models support in MLX format.
+- new `/mic` mode to transcribe live speech directly in your terminal.
   
 ## Installation
 
 ### macOS
-* [arm64](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_macos_arm64.pkg)
+* [arm64 with Apple Neural Engine support](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_macos_arm64.pkg)
 * [x86_64](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_macos_x86_64.pkg)
 
 ### Windows
 * [arm64 with Qualcomm NPU support](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_windows_arm64.exe)
-* [x86_64](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_windows_x86_64.exe)
+* [x86_64 with Intel NPU support](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_windows_x86_64.exe)
+
 
 ### Linux
 ```bash
