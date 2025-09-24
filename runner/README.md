@@ -1,29 +1,69 @@
 ## Build
 
-### Prerequisites
-Before building, make sure the following tools are installed:
+### Setup Environment
 
-- **curl**
+#### Windows (x64)
 
----
+Setup MSYS2
+
+- `winget install --id=MSYS2.MSYS2 -e`
+- add `C:\msys64\usr\bin` to your PATH
+- `pacman -Syu`
+- `pacman -S make mingw-w64-x86_64-gcc`
+- restart terminal
+
+Setup GO Env
+
+```powershell
+go env -w CGO_ENABLED=1
+```
+
+#### Windows (arm64)
+
+Setup MSYS2
+
+- `winget install --id=MSYS2.MSYS2 -e`
+- add `C:\msys64\usr\bin`, `C:\msys64\clangarm64\bin` to your PATH
+- `pacman -Syu`
+- `pacman -S make mingw-w64-clang-aarch64-clang`
+
+Setup GO Env
+
+```powershell
+go env -w CGO_ENABLED=1
+go env -w CC=clang.exe
+go env -w CXX=clang++.exe
+```
+
+#### MacOS / Linux
+
+install `make`, `gcc` or `clang` via your package manager.
+
+Setup GO Env
+
+```bash
+go env -w CGO_ENABLED=1
+```
 
 ### Install `nexasdk-bridge`
 
 There are two ways to install the bridge library:
 
-1. **From S3 bucket**  
+1. From S3 bucket
+
 ```bash
 make download
 ```
-2. **From local files**
 
-* **Unix/macOS:** Link the bridge library to the `build` folder:
+2. From local files
+
+- **Unix/macOS:** Link the bridge library to the `build` folder:
 
 ```bash
 make link
 ```
 
-* **Windows:** Copy the bridge library from local:
+- **Windows:** Copy the bridge library from local:
 
 ```bash
 make xcopy
@@ -39,17 +79,22 @@ Once the prerequisites and bridge library are installed, build the project:
 make build
 ```
 
-Enable debug mode
-```bash
-$env:NEXA_LOG="debug"
+---
+
+### Run Project
+
+Enable debug log
+
+```
+$env:NEXA_LOG="debug" # powershell
+
+export NEXA_LOG="debug" # bash
 ```
 
-### Windows Arm
-
-Setup GO Env
+Pull model
 
 ```bash
-go env -w CGO_ENABLED=1
-go env -w CC=C:/tools/msys64/clangarm64/bin/clang.exe
-go env -w CXX=C:/tools/msys64/clangarm64/bin/clang++.exe
+nexa pull <model>
+nexa pull <model> --model-hub s3 # pull from specify model hub, [volces|s3|hf]
+nexa pull <model> --model-hub localfs --local-path /path/to/modeldir # import model from local path
 ```
