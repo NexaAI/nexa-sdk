@@ -45,6 +45,7 @@ type RerankerCreateInput struct {
 	ModelPath     string
 	TokenizerPath string
 	PluginID      string
+	DeviceID      string
 }
 
 func (rci RerankerCreateInput) toCPtr() *C.ml_RerankerCreateInput {
@@ -63,6 +64,9 @@ func (rci RerankerCreateInput) toCPtr() *C.ml_RerankerCreateInput {
 	if rci.PluginID != "" {
 		cPtr.plugin_id = C.CString(rci.PluginID)
 	}
+	if rci.DeviceID != "" {
+		cPtr.device_id = C.CString(rci.DeviceID)
+	}
 
 	return cPtr
 }
@@ -77,6 +81,9 @@ func freeRerankerCreateInput(cPtr *C.ml_RerankerCreateInput) {
 		}
 		if cPtr.plugin_id != nil {
 			C.free(unsafe.Pointer(cPtr.plugin_id))
+		}
+		if cPtr.device_id != nil {
+			C.free(unsafe.Pointer(cPtr.device_id))
 		}
 		C.free(unsafe.Pointer(cPtr))
 	}

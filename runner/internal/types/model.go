@@ -24,6 +24,7 @@ type ModelManifest struct {
 	ModelName     string // model arch name like "qwen3-4b", "yolov12", etc.
 	ModelType     ModelType
 	PluginId      string
+	DeviceId      string
 	MinSDKVersion string
 
 	ModelFile     map[string]ModelFileInfo // quant -> modelfile

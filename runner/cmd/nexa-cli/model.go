@@ -232,6 +232,7 @@ func pullModel(name string) error {
 		if hmf != nil {
 			manifest.ModelName = hmf.ModelName
 			manifest.PluginId = hmf.PluginId
+			manifest.DeviceId = hmf.DeviceId
 			manifest.ModelType = hmf.ModelType
 			manifest.MinSDKVersion = hmf.MinSDKVersion
 		}

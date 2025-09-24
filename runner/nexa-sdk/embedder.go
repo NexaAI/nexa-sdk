@@ -45,6 +45,7 @@ type EmbedderCreateInput struct {
 	ModelPath     string
 	TokenizerPath string
 	PluginID      string
+	DeviceID      string
 }
 
 func (eci EmbedderCreateInput) toCPtr() *C.ml_EmbedderCreateInput {
@@ -63,6 +64,9 @@ func (eci EmbedderCreateInput) toCPtr() *C.ml_EmbedderCreateInput {
 	if eci.PluginID != "" {
 		cPtr.plugin_id = C.CString(eci.PluginID)
 	}
+	if eci.DeviceID != "" {
+		cPtr.device_id = C.CString(eci.DeviceID)
+	}
 
 	return cPtr
 }
@@ -77,6 +81,9 @@ func freeEmbedderCreateInput(cPtr *C.ml_EmbedderCreateInput) {
 		}
 		if cPtr.plugin_id != nil {
 			C.free(unsafe.Pointer(cPtr.plugin_id))
+		}
+		if cPtr.device_id != nil {
+			C.free(unsafe.Pointer(cPtr.device_id))
 		}
 		C.free(unsafe.Pointer(cPtr))
 	}
