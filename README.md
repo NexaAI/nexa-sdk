@@ -53,7 +53,7 @@ Nexa SDK is an on-device inference framework that runs any model on any device, 
 #### 📣  **2025.09.23: Intel NPU Support**
 - LLM inference with [DeepSeek-r1-distill-Qwen-1.5B](https://sdk.nexa.ai/model/DeepSeek-R1-Distill-Qwen-1.5B-Intel-NPU) and [Llama3.2-3B](https://sdk.nexa.ai/model/Llama3.2-3B-Intel-NPU) on Intel NPU
 
-#### 📣  **2025.09.23: Apple Neural Engine (ANE) Support**
+#### 📣  **2025.09.22: Apple Neural Engine (ANE) Support**
 - Real-time speech recognition with [Parakeet v3 model](https://sdk.nexa.ai/model/parakeet-v3-ane)
 
 #### 📣  **2025.09.15: New Models Support**
@@ -63,7 +63,7 @@ Nexa SDK is an on-device inference framework that runs any model on any device, 
 - [Phi4-mini turbo](https://sdk.nexa.ai/model/phi4-mini-npu-turbo) and [Phi3.5-mini](https://sdk.nexa.ai/model/phi3.5-mini-npu) for Qualcomm NPU
 - [Parakeet V3 model](https://sdk.nexa.ai/model/parakeet-v3-npu) for Qualcomm NPU
 
-#### 📣  **2025.09.15: Turbo Engine & Unified Interface**
+#### 📣  **2025.09.05: Turbo Engine & Unified Interface**
 - [Nexa ML Turbo engine](https://nexa.ai/blogs/nexaml-turbo) for optimized NPU performance
     - Try [Phi4-mini turbo](https://sdk.nexa.ai/model/phi4-mini-npu-turbo) and [Llama3.2-3B-NPU-Turbo](https://sdk.nexa.ai/model/Llama3.2-3B-NPU-Turbo)
     - 80% faster at shorter contexts (<=2048), 33% faster at longer contexts (>2048) than current NPU solutions
