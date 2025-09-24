@@ -7,7 +7,7 @@
 Setup MSYS2
 
 - `winget install --id=MSYS2.MSYS2 -e`
-- add `C:\msys64\usr\bin` to your PATH
+- add `C:\msys64\usr\bin` and `C:\msys64\mingw64\bin` to your PATH
 - `pacman -Syu`
 - `pacman -S make mingw-w64-x86_64-gcc`
 - restart terminal
@@ -91,10 +91,16 @@ $env:NEXA_LOG="debug" # powershell
 export NEXA_LOG="debug" # bash
 ```
 
-Pull model
+Pull model from model hub
 
 ```bash
 nexa pull <model>
 nexa pull <model> --model-hub s3 # pull from specify model hub, [volces|s3|hf]
-nexa pull <model> --model-hub localfs --local-path /path/to/modeldir # import model from local path
+```
+
+Import model from local filesystem
+
+```bash
+# hf download <model> --local-dir /path/to/modeldir
+nexa pull <model> --model-hub localfs --local-path /path/to/modeldir
 ```
