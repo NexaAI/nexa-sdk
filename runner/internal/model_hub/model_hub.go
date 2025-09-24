@@ -29,12 +29,17 @@ type ModelHub interface {
 }
 
 var hubs = []ModelHub{
-	NewVocles(),
+	NewVolces(),
 	NewS3(),
 	NewHuggingFace(),
 }
 
 var errNotAvailable = fmt.Errorf("no available model hub")
+
+// Specify hub to use
+func SetHub(h ModelHub) {
+	hubs = []ModelHub{h}
+}
 
 // list model files
 
