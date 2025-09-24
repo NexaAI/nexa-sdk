@@ -32,7 +32,7 @@ func functionCall() *cobra.Command {
 	fcCmd.Run = func(cmd *cobra.Command, args []string) {
 		s := store.Get()
 
-		manifest, err := ensureModelAvailable(s, normalizeModelName(args[0]), cmd, args)
+		manifest, err := ensureModelAvailable(s, args[0])
 		if err != nil {
 			fmt.Println(render.GetTheme().Error.Sprintf("check model error: %s", err))
 			return

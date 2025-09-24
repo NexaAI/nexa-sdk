@@ -17,15 +17,15 @@ import (
 	"resty.dev/v3"
 )
 
-type Vocles struct {
+type Volces struct {
 	isChinaMainland    bool
 	chinaMainlandCheck sync.Once
 
 	s3Client *s3.Client
 }
 
-func NewVocles() *Vocles {
-	v := &Vocles{}
+func NewVolces() *Volces {
+	v := &Volces{}
 	v.initS3Client()
 	return v
 }
@@ -35,7 +35,7 @@ var (
 	errNotSupported     = fmt.Errorf("not supported")
 )
 
-func (v *Vocles) checkChinaMainland() bool {
+func (v *Volces) checkChinaMainland() bool {
 	v.chinaMainlandCheck.Do(func() {
 		client := resty.New()
 		client.SetTimeout(2 * time.Second)
@@ -72,7 +72,7 @@ func (v *Vocles) checkChinaMainland() bool {
 	return v.isChinaMainland
 }
 
-func (v *Vocles) initS3Client() {
+func (v *Volces) initS3Client() {
 	cfg, err := config.LoadDefaultConfig(
 		context.TODO(),
 		config.WithLogger(logging.Nop{}),
@@ -86,7 +86,7 @@ func (v *Vocles) initS3Client() {
 	v.s3Client = s3.NewFromConfig(cfg)
 }
 
-func (v *Vocles) CheckAvailable(ctx context.Context, modelName string) error {
+func (v *Volces) CheckAvailable(ctx context.Context, modelName string) error {
 	if !v.checkChinaMainland() {
 		return errNotChinaMainland
 	}
@@ -112,11 +112,11 @@ func (v *Vocles) CheckAvailable(ctx context.Context, modelName string) error {
 	return nil
 }
 
-func (v *Vocles) MaxConcurrency() int {
+func (v *Volces) MaxConcurrency() int {
 	return 4
 }
 
-func (v *Vocles) ModelInfo(ctx context.Context, modelName string) ([]ModelFileInfo, error) {
+func (v *Volces) ModelInfo(ctx context.Context, modelName string) ([]ModelFileInfo, error) {
 	modelName = strings.ReplaceAll(modelName, "NexaAI/", "model/") + "/"
 
 	data, err := v.s3Client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
@@ -137,10 +137,10 @@ func (v *Vocles) ModelInfo(ctx context.Context, modelName string) ([]ModelFileIn
 	return res, nil
 }
 
-func (v *Vocles) GetFileContent(ctx context.Context, modelName, fileName string, offset, limit int64, writer io.Writer) error {
+func (v *Volces) GetFileContent(ctx context.Context, modelName, fileName string, offset, limit int64, writer io.Writer) error {
 	name := strings.ReplaceAll(modelName, "NexaAI/", "model/") + "/" + fileName
 
-	slog.Debug("Vocles GetFileContent", "modelName", modelName, "fileName", fileName, "name", name, "offset", offset, "limit", limit)
+	slog.Debug("Volces GetFileContent", "modelName", modelName, "fileName", fileName, "name", name, "offset", offset, "limit", limit)
 
 	input := &s3.GetObjectInput{
 		Bucket: aws.String("nexa-model-hub-bucket"),

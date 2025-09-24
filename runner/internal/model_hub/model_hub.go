@@ -29,12 +29,17 @@ type ModelHub interface {
 }
 
 var hubs = []ModelHub{
-	NewVocles(),
+	NewVolces(),
 	NewS3(),
 	NewHuggingFace(),
 }
 
-var errNotAvailable = fmt.Errorf("no available model hub")
+var errUnavailable = fmt.Errorf("no model hub contains the model")
+
+// Specify hub to use
+func SetHub(h ModelHub) {
+	hubs = []ModelHub{h}
+}
 
 // list model files
 
@@ -226,7 +231,7 @@ func getHub(ctx context.Context, modelName string) (ModelHub, error) {
 			return h, nil
 		}
 	}
-	return nil, errNotAvailable
+	return nil, errUnavailable
 }
 
 func doTask(ctx context.Context, hub ModelHub, task downloadTask) error {

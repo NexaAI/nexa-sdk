@@ -21,116 +21,29 @@ import (
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 )
 
+var (
+	modelHub  string
+	localPath string
+)
+
 // pull creates a command to download and cache a model by name.
 // Usage: nexa pull <model-name>
 func pull() *cobra.Command {
-	pullCmd := &cobra.Command{}
-	pullCmd.Use = "pull <model-name>"
+	pullCmd := &cobra.Command{
+		Use: "pull <model-name>",
 
-	pullCmd.Short = "Pull model from HuggingFace"
-	pullCmd.Long = "Download and cache a model by name."
+		Short: "Pull model from HuggingFace",
+		Long:  "Download and cache a model by name.",
+	}
 
 	pullCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
 
-	pullCmd.RunE = func(cmd *cobra.Command, args []string) error {
-		name := normalizeModelName(args[0])
+	pullCmd.Flags().SortFlags = false
+	pullCmd.Flags().StringVarP(&modelHub, "model-hub", "", "", "specify model hub to use: volces|s3|hf|localfs")
+	pullCmd.Flags().StringVarP(&localPath, "local-path", "", "", "[localfs] path to local directory")
 
-		s := store.Get()
-
-		mf, err := s.GetManifest(name)
-		if err == nil {
-			downloaded := true
-			for _, f := range mf.ModelFile {
-				if !f.Downloaded {
-					downloaded = false
-					break
-				}
-			}
-
-			if downloaded {
-				fmt.Println(render.GetTheme().Info.Sprint("Already downloaded all quant"))
-				return nil
-			}
-		}
-
-		spin := render.NewSpinner("download manifest from: " + name)
-		spin.Start()
-		files, hmf, err := model_hub.ModelInfo(context.TODO(), name)
-		spin.Stop()
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("Get ModelInfo error: %s", err))
-			return err
-		}
-
-		if hmf != nil && !isValidVersion(hmf.MinSDKVersion) {
-			fmt.Println(render.GetTheme().Error.Sprintf("Model requires NexaSDK version %s or higher. Please upgrade your NexaSDK CLI.", hmf.MinSDKVersion))
-			return fmt.Errorf("model requires higher version")
-		}
-
-		if mf != nil {
-			newManifest, err := chooseQuantFiles(*mf)
-			if err != nil {
-				return err
-			}
-			pgCh, errCh := s.PullExtraQuant(context.TODO(), *mf, *newManifest)
-			bar := render.NewProgressBar(newManifest.GetSize()-mf.GetSize(), "downloading")
-
-			for pg := range pgCh {
-				bar.Set(pg.TotalDownloaded)
-			}
-			bar.Exit()
-
-			for err := range errCh {
-				bar.Clear()
-				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
-			}
-		} else {
-			var manifest types.ModelManifest
-
-			if hmf != nil {
-				manifest.ModelName = hmf.ModelName
-				manifest.PluginId = hmf.PluginId
-				manifest.ModelType = hmf.ModelType
-				manifest.MinSDKVersion = hmf.MinSDKVersion
-			}
-
-			if manifest.ModelName == "" {
-				manifest.ModelName = name
-			}
-			if manifest.PluginId == "" {
-				manifest.PluginId = choosePluginId(name)
-			}
-			if manifest.ModelType == "" {
-				if ctype, err := chooseModelType(); err != nil {
-					fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
-					return err
-				} else {
-					manifest.ModelType = ctype
-				}
-			}
-
-			err := chooseFiles(name, files, &manifest)
-			if err != nil {
-				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
-				return err
-			}
-
-			// TODO: replace with go-pretty
-			pgCh, errCh := s.Pull(context.TODO(), manifest)
-			bar := render.NewProgressBar(manifest.GetSize(), "downloading")
-
-			for pg := range pgCh {
-				bar.Set(pg.TotalDownloaded)
-			}
-			bar.Exit()
-
-			for err := range errCh {
-				bar.Clear()
-				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
-			}
-		}
-
-		return nil
+	pullCmd.Run = func(cmd *cobra.Command, args []string) {
+		pullModel(args[0])
 	}
 
 	return pullCmd
@@ -235,6 +148,128 @@ func list() *cobra.Command {
 	}
 
 	return listCmd
+}
+
+// pull
+
+func pullModel(name string) error {
+	name = normalizeModelName(name)
+
+	s := store.Get()
+
+	mf, err := s.GetManifest(name)
+	if err == nil {
+		downloaded := true
+		for _, f := range mf.ModelFile {
+			if !f.Downloaded {
+				downloaded = false
+				break
+			}
+		}
+
+		if downloaded {
+			fmt.Println(render.GetTheme().Info.Sprint("Already downloaded all quant"))
+			return nil
+		}
+	}
+
+	// specify model hub
+	if modelHub != "" {
+		switch strings.ToLower(modelHub) {
+		case "volces":
+			model_hub.SetHub(model_hub.NewVolces())
+		case "s3":
+			model_hub.SetHub(model_hub.NewS3())
+		case "hf", "huggingface":
+			model_hub.SetHub(model_hub.NewHuggingFace())
+		case "local", "localfs":
+			if localPath == "" {
+				return fmt.Errorf("local path is required for localfs model hub")
+			}
+			model_hub.SetHub(model_hub.NewLocalFS(localPath))
+		default:
+			return fmt.Errorf("unknown model hub: %s", modelHub)
+		}
+	}
+
+	spin := render.NewSpinner("download manifest from: " + name)
+	spin.Start()
+	files, hmf, err := model_hub.ModelInfo(context.TODO(), name)
+	spin.Stop()
+	if err != nil {
+		fmt.Println(render.GetTheme().Error.Sprintf("Get ModelInfo error: %s", err))
+		return err
+	}
+
+	if hmf != nil && !isValidVersion(hmf.MinSDKVersion) {
+		fmt.Println(render.GetTheme().Error.Sprintf("Model requires NexaSDK version %s or higher. Please upgrade your NexaSDK CLI.", hmf.MinSDKVersion))
+		return fmt.Errorf("model requires higher version")
+	}
+
+	if mf != nil {
+		newManifest, err := chooseQuantFiles(*mf)
+		if err != nil {
+			return err
+		}
+		pgCh, errCh := s.PullExtraQuant(context.TODO(), *mf, *newManifest)
+		bar := render.NewProgressBar(newManifest.GetSize()-mf.GetSize(), "downloading")
+
+		for pg := range pgCh {
+			bar.Set(pg.TotalDownloaded)
+		}
+		bar.Exit()
+
+		for err := range errCh {
+			bar.Clear()
+			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
+		}
+	} else {
+		var manifest types.ModelManifest
+
+		if hmf != nil {
+			manifest.ModelName = hmf.ModelName
+			manifest.PluginId = hmf.PluginId
+			manifest.ModelType = hmf.ModelType
+			manifest.MinSDKVersion = hmf.MinSDKVersion
+		}
+
+		if manifest.ModelName == "" {
+			manifest.ModelName = name
+		}
+		if manifest.PluginId == "" {
+			manifest.PluginId = choosePluginId(name)
+		}
+		if manifest.ModelType == "" {
+			if ctype, err := chooseModelType(); err != nil {
+				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
+				return err
+			} else {
+				manifest.ModelType = ctype
+			}
+		}
+
+		err := chooseFiles(name, files, &manifest)
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
+			return err
+		}
+
+		// TODO: replace with go-pretty
+		pgCh, errCh := s.Pull(context.TODO(), manifest)
+		bar := render.NewProgressBar(manifest.GetSize(), "downloading")
+
+		for pg := range pgCh {
+			bar.Set(pg.TotalDownloaded)
+		}
+		bar.Exit()
+
+		for err := range errCh {
+			bar.Clear()
+			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
+		}
+	}
+
+	return nil
 }
 
 // =============== quant name parse ===============
