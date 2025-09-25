@@ -176,7 +176,7 @@ func download(url, dst string, progress chan int64) error {
 
 	// Ensure destination directory exists before accessing manifest or file
 	dir := filepath.Dir(dst)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
 	manifestPath := filepath.Join(dir, "manifest.json")
