@@ -817,9 +817,36 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) {
 	})
 }
 
+func createSymlinkIfNeeded(source, target string) (string, error) {
+	parentDir := filepath.Dir(target)
+	if _, err := os.Stat(parentDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(parentDir, 0755); err != nil {
+			return "", fmt.Errorf("failed to create parent directory: %w", err)
+		}
+	}
+
+	if _, err := os.Stat(target); os.IsNotExist(err) {
+		slog.Debug("creating symlink", "source", source, "target", target)
+		if err := os.Symlink(source, target); err != nil {
+			return "", fmt.Errorf("failed to create symlink: %w", err)
+		}
+	}
+
+	return target, nil
+}
+
 func inferImageGen(manifest *types.ModelManifest, _ string) {
 	s := store.Get()
 	modeldir := s.ModelfilePath(manifest.Name, "")
+	// FIXME: remove this after upstream fix path issue
+	if strings.Contains(manifest.ModelName, "sdxl-turbo-ryzen-ai") {
+		newModeldir, err := createSymlinkIfNeeded(modeldir, filepath.Join(os.TempDir(), manifest.ModelName))
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("failed to setup model symlink: %s", err))
+			return
+		}
+		modeldir = newModeldir
+	}
 	prompts := prompt
 	if len(prompts) == 0 {
 		fmt.Println(render.GetTheme().Error.Sprintf("text prompt is required for image generation (use --prompt)"))
