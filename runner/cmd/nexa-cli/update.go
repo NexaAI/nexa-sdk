@@ -174,7 +174,12 @@ func download(url, dst string, progress chan int64) error {
 		defer close(progress)
 	}
 
-	manifestPath := filepath.Join(filepath.Dir(dst), "manifest.json")
+	// Ensure destination directory exists before accessing manifest or file
+	dir := filepath.Dir(dst)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return err
+	}
+	manifestPath := filepath.Join(dir, "manifest.json")
 	manifest, err := os.Open(manifestPath)
 	if err == nil {
 		defer manifest.Close()
@@ -189,7 +194,7 @@ func download(url, dst string, progress chan int64) error {
 		return nil
 	}
 
-	file, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
 	}
