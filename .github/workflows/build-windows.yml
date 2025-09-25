@@ -152,7 +152,7 @@ jobs:
               $_.FullName
           }
 
-      - name: Prepare Installer Files
+      - name: Prepare Installer Files (X86_64)
         if: matrix.arch == 'x86_64'
         shell: bash
         run: |
@@ -160,7 +160,7 @@ jobs:
           rm -r artifacts_cuda/nexa_dml*
           rm -r artifacts/nexa_cuda*
 
-      - name: Compile Installer (CUDA)
+      - name: Compile Installer (CUDA) (X86_64)
         if: matrix.arch == 'x86_64'
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.6
         with:
@@ -177,7 +177,7 @@ jobs:
         env:
           ORT: ""
 
-      - name: Sign Installer
+      - name: Sign Installer (ARM64)
         if: matrix.arch == 'arm64'
         shell: pwsh
         run: |
@@ -191,7 +191,7 @@ jobs:
             -td sha256 `
             "nexa-cli_windows_${{ matrix.arch }}.exe"
 
-      - name: Sign Installer
+      - name: Sign Installer (X86_64)
         if: matrix.arch == 'x86_64'
         run: |
           azuresigntool sign `
@@ -241,4 +241,9 @@ jobs:
         shell: bash
         run: |
           aws s3 cp "nexa-cli_windows_${{ matrix.arch }}.exe" "s3://nexa-model-hub-bucket/public/nexa_sdk/downloads/nexa-cli_windows_${{ matrix.arch }}.exe"
+
+      - name: Sync to S3 (CUDA) (X86_64)
+        if: ${{ !contains(github.ref, '-rc') && matrix.arch == 'x86_64' }}
+        shell: bash
+        run: |
           aws s3 cp "nexa-cli_windows_${{ matrix.arch }}_cuda.exe" "s3://nexa-model-hub-bucket/public/nexa_sdk/downloads/nexa-cli_windows_${{ matrix.arch }}_cuda.exe"
