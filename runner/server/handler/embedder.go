@@ -27,6 +27,7 @@ func Embeddings(c *gin.Context) {
 		string(param.Model),
 		types.ModelParam{},
 		false,
+		300, // default 5 minutes for embedder
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
