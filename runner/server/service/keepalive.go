@@ -127,7 +127,7 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 			break
 		}
 	}
-
+	
 	var t keepable
 	var e error
 	switch reflect.TypeFor[T]() {
@@ -165,6 +165,15 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 		t, e = nexa_sdk.NewEmbedder(nexa_sdk.EmbedderCreateInput{
 			ModelName: manifest.ModelName,
 			ModelPath: modelfile,
+			PluginID:  manifest.PluginId,
+			DeviceID:  manifest.DeviceId,
+		})
+	case reflect.TypeFor[nexa_sdk.ImageGen]():
+		// For image generation models, use the model directory path instead of specific file
+		modelDir := s.ModelfilePath(manifest.Name, "")
+		t, e = nexa_sdk.NewImageGen(nexa_sdk.ImageGenCreateInput{
+			ModelName: manifest.ModelName,
+			ModelPath: modelDir,
 			PluginID:  manifest.PluginId,
 			DeviceID:  manifest.DeviceId,
 		})
