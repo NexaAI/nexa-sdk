@@ -14,13 +14,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/openai/openai-go"
 
-	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 	"github.com/NexaAI/nexa-sdk/runner/server/service"
 )
-
-// Use OpenAI's provided structs from openai-go library
 
 // @Router			/images/generations [post]
 // @Summary		Creates an image given a prompt.
@@ -54,22 +51,6 @@ func ImageGenerations(c *gin.Context) {
 	}
 	if param.ResponseFormat == "" {
 		param.ResponseFormat = openai.ImageGenerateParamsResponseFormatURL
-	}
-
-	s := store.Get()
-	manifest, err := s.GetManifest(param.Model)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			c.JSON(http.StatusNotFound, map[string]any{"error": "model not found"})
-		} else {
-			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
-		}
-		return
-	}
-
-	if manifest.ModelType != types.ModelTypeImageGen {
-		c.JSON(http.StatusBadRequest, map[string]any{"error": "model does not support image generation"})
-		return
 	}
 
 	imageGen, err := service.KeepAliveGet[nexa_sdk.ImageGen](
