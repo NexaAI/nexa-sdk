@@ -63,6 +63,43 @@ paths:
               schema:
                 $ref: '#/components/schemas/EmbeddingResponse'
 
+  /v1/images/generations:
+    post:
+      summary: Creates an image given a prompt
+      description: Creates an image given a prompt. This endpoint follows OpenAI DALL-E 3 API specification for compatibility.
+      operationId: PostV1ImagesGenerations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImageGenerationRequest'
+      responses:
+        '200':
+          description: Successful image generation response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageGenerationResponse'
+        '400':
+          description: Bad request - invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Model not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /v1/reranking:
     post:
       summary: Reranks the given documents for the given query
@@ -581,6 +618,75 @@ components:
           type: integer
           description: The index of the embedding in the list of embeddings
 
+    # ---------- Image Generation ----------
+    ImageGenerationRequest:
+      type: object
+      required: [model, prompt]
+      properties:
+        model:
+          type: string
+          description: ID of the model to use
+          default: "nexaml/sdxl-turbo-ryzen-ai"
+        prompt:
+          type: string
+          description: A text description of the desired image(s). The maximum length is 1000 characters.
+          default: "A white cat with red eyes"
+        n:
+          type: integer
+          minimum: 1
+          maximum: 10
+          description: The number of images to generate. Must be between 1 and 10.
+          default: 1
+        size:
+          type: string
+          enum: ["512x512", "1024x1024", "1792x1024", "1024x1792"]
+          description: The size of the generated images. Must be one of the supported sizes.
+          default: "512x512"
+        quality:
+          type: string
+          enum: ["standard", "hd"]
+          description: The quality of the image that will be generated
+          default: "standard"
+        style:
+          type: string
+          enum: ["vivid", "natural"]
+          description: The style of the generated images
+          default: "vivid"
+        response_format:
+          type: string
+          enum: ["url", "b64_json"]
+          description: The format in which the generated images are returned
+          default: "url"
+        user:
+          type: string
+          description: A unique identifier representing your end-user
+
+    ImageGenerationResponse:
+      type: object
+      required: [created, data]
+      properties:
+        created:
+          type: integer
+          description: The Unix timestamp (in seconds) of when the image was created
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImageGenerationData'
+          description: The list of generated images
+
+    ImageGenerationData:
+      type: object
+      properties:
+        url:
+          type: string
+          description: The URL of the generated image, if response_format is "url"
+        b64_json:
+          type: string
+          description: The base64-encoded JSON of the generated image, if response_format is "b64_json"
+        revised_prompt:
+          type: string
+          description: The prompt that was used to generate the image, if there was a revision to the prompt
+
     # ---------- Reranking ----------
     RerankingRequest:
       type: object
@@ -643,6 +749,14 @@ components:
           description: Additional metadata about the document
 
     # ---------- Common ----------
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Error message describing what went wrong
+
     TokenUsage:
       type: object
       properties:
