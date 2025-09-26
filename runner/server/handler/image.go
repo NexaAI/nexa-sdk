@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -235,12 +234,14 @@ func validateImageGenerationParams(param ImageGenerationRequest) error {
 		return errors.New("n must be between 1 and 10")
 	}
 
-	// Validate size
-	validSizes := []string{"512x512", "1024x1024", "1792x1024", "1024x1792"}
+	// Validate size, must be divisible by 16
 	if param.Size != "" {
-		valid := slices.Contains(validSizes, param.Size)
-		if !valid {
-			return errors.New("size must be one of: 512x512, 1024x1024, 1792x1024, 1024x1792")
+		w, h, err := parseImageSize(param.Size)
+		if err != nil {
+			return err
+		}
+		if w%16 != 0 || h%16 != 0 {
+			return errors.New("width and height must be divisible by 16")
 		}
 	}
 
