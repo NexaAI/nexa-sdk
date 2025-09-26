@@ -23,7 +23,7 @@ else
 	UNZIP   := unzip -q
 endif
 
-.PHONY: build link xcopy download clean
+.PHONY: build link xcopy download clean serve
 
 build:
 	go build \
@@ -58,3 +58,6 @@ download: clean
 
 clean:
 	-$(RM) build
+
+serve:
+	./build/nexa serve
