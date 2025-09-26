@@ -19,24 +19,37 @@ import (
 	"github.com/NexaAI/nexa-sdk/runner/server/service"
 )
 
+// CompletionRequest extends openai.CompletionNewParams with keep_alive support
+type CompletionRequest struct {
+	KeepAlive *int `json:"keep_alive,omitempty"` // keep_alive time in seconds, 0 means release immediately, default: 300 (5m)
+	openai.CompletionNewParams
+}
+
 // @Router			/completions [post]
 // @Summary		completion
 // @Description	Legacy completion endpoint for text generation. It is recommended to use the Chat Completions endpoint for new applications.
 // @Accept			json
-// @Param			request	body	openai.CompletionNewParams	true	"Completion request"
+// @Param			request	body	CompletionRequest	true	"Completion request"
 // @Produce		json
 // @Success		200	{object}	openai.Completion
 func Completions(c *gin.Context) {
-	param := openai.CompletionNewParams{}
+	param := CompletionRequest{}
 	if err := c.ShouldBindJSON(&param); err != nil {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
+	}
+	
+	// Determine keep_alive time, default to 300 seconds (5 minutes)
+	keepAliveSeconds := 300
+	if param.KeepAlive != nil {
+		keepAliveSeconds = *param.KeepAlive
 	}
 
 	p, err := service.KeepAliveGet[nexa_sdk.LLM](
 		string(param.Model),
 		types.ModelParam{NCtx: 4096},
 		c.GetHeader("Nexa-KeepCache") != "true",
+		keepAliveSeconds,
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
@@ -65,6 +78,7 @@ type ChatCompletionNewParams openai.ChatCompletionNewParams
 type ChatCompletionRequest struct {
 	Stream      bool `json:"stream" default:"false"`
 	EnableThink bool `json:"enable_think" default:"true"`
+	KeepAlive   *int `json:"keep_alive,omitempty"` // keep_alive time in seconds, 0 means release immediately, default: 300 (5m)
 
 	ChatCompletionNewParams
 }
@@ -104,11 +118,18 @@ func ChatCompletions(c *gin.Context) {
 }
 
 func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
+	// Determine keep_alive time, default to 300 seconds (5 minutes)
+	keepAliveSeconds := 300
+	if param.KeepAlive != nil {
+		keepAliveSeconds = *param.KeepAlive
+	}
+	
 	// Get LLM instance
 	p, err := service.KeepAliveGet[nexa_sdk.LLM](
 		string(param.Model),
 		types.ModelParam{NCtx: 4096},
 		c.GetHeader("Nexa-KeepCache") != "true",
+		keepAliveSeconds,
 	)
 	if errors.Is(err, os.ErrNotExist) {
 		c.JSON(http.StatusNotFound, map[string]any{"error": "model not found"})
@@ -271,11 +292,18 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 }
 
 func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
+	// Determine keep_alive time, default to 300 seconds (5 minutes)
+	keepAliveSeconds := 300
+	if param.KeepAlive != nil {
+		keepAliveSeconds = *param.KeepAlive
+	}
+	
 	// Get VLM instance
 	p, err := service.KeepAliveGet[nexa_sdk.VLM](
 		string(param.Model),
 		types.ModelParam{NCtx: 4096},
 		c.GetHeader("Nexa-KeepCache") != "true",
+		keepAliveSeconds,
 	)
 	if errors.Is(err, os.ErrNotExist) {
 		c.JSON(http.StatusNotFound, map[string]any{"error": "model not found"})

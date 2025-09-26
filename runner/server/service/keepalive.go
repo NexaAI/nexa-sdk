@@ -14,8 +14,8 @@ import (
 
 // KeepAliveGet retrieves a model from the keepalive cache or creates it if not found
 // This avoids the overhead of repeatedly loading/unloading models from disk
-func KeepAliveGet[T any](name string, param types.ModelParam, reset bool) (*T, error) {
-	t, err := keepAliveGet[T](name, param, reset)
+func KeepAliveGet[T any](name string, param types.ModelParam, reset bool, keepAliveSeconds int) (*T, error) {
+	t, err := keepAliveGet[T](name, param, reset, keepAliveSeconds)
 	if err != nil {
 		return nil, err
 	}
@@ -34,9 +34,10 @@ type keepAliveService struct {
 
 // modelKeepInfo holds metadata for a cached model instance
 type modelKeepInfo struct {
-	model    keepable
-	param    types.ModelParam
-	lastTime time.Time
+	model     keepable
+	param     types.ModelParam
+	lastTime  time.Time
+	keepAlive int // keep_alive time in seconds, 0 means release immediately
 }
 
 // keepable interface defines objects that can be managed by the keepalive service
@@ -70,9 +71,27 @@ func (keepAlive *keepAliveService) start() {
 			case <-t.C:
 				keepAlive.Lock()
 				for name, model := range keepAlive.models {
-					if time.Since(model.lastTime).Milliseconds()/1000 > config.Get().KeepAlive {
-						model.model.Destroy()
-						delete(keepAlive.models, name)
+					// Use custom keep_alive time if set, otherwise use default config
+					keepAliveTime := model.keepAlive
+					if keepAliveTime < 0 {
+						// Negative values fall back to default config
+						keepAliveTime = int(config.Get().KeepAlive)
+					}
+					
+					// For keep_alive=0, release immediately (any time > 0)
+					// For other values, use the specified time
+					if keepAliveTime == 0 {
+						// Release immediately if any time has passed
+						if time.Since(model.lastTime).Milliseconds() > 0 {
+							model.model.Destroy()
+							delete(keepAlive.models, name)
+						}
+					} else {
+						// Use normal time comparison for non-zero values
+						if time.Since(model.lastTime).Milliseconds()/1000 > int64(keepAliveTime) {
+							model.model.Destroy()
+							delete(keepAlive.models, name)
+						}
 					}
 				}
 				keepAlive.Unlock()
@@ -83,7 +102,7 @@ func (keepAlive *keepAliveService) start() {
 
 // keepAliveGet retrieves a cached model or creates a new one if not found
 // Ensures only one model is kept in memory at a time by clearing others
-func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, error) {
+func keepAliveGet[T any](name string, param types.ModelParam, reset bool, keepAliveSeconds int) (any, error) {
 	keepAlive.Lock()
 	defer keepAlive.Unlock()
 
@@ -101,7 +120,12 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 		if reset {
 			model.model.Reset()
 		}
-		model.lastTime = time.Now()
+		// Only update lastTime if keep_alive > 0
+		// For keep_alive=0, we want to keep the original lastTime so model gets released
+		if keepAliveSeconds > 0 {
+			model.lastTime = time.Now()
+		}
+		model.keepAlive = keepAliveSeconds // Update keep_alive time
 		return model.model, nil
 	}
 
@@ -179,9 +203,10 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 		return nil, e
 	}
 	model = &modelKeepInfo{
-		model:    t,
-		param:    param,
-		lastTime: time.Now(),
+		model:     t,
+		param:     param,
+		lastTime:  time.Now(),
+		keepAlive: keepAliveSeconds,
 	}
 	keepAlive.models[name] = model
 
@@ -192,3 +217,4 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 func (keepAlive *keepAliveService) stop() {
 	keepAlive.stopCh <- struct{}{}
 }
+

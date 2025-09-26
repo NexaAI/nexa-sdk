@@ -11,22 +11,35 @@ import (
 	"github.com/NexaAI/nexa-sdk/runner/server/service"
 )
 
+// EmbeddingRequest extends openai.EmbeddingNewParams with keep_alive support
+type EmbeddingRequest struct {
+	KeepAlive *int `json:"keep_alive,omitempty"` // keep_alive time in seconds, 0 means release immediately, default: 300 (5m)
+	openai.EmbeddingNewParams
+}
+
 // @Router			/embeddings [post]
 // @Summary		Creates an embedding for the given input.
 // @Description	Creates an embedding for the given input.
 // @Accept			json
-// @Param			request	body	openai.EmbeddingNewParams	true	"Embedding request"
+// @Param			request	body	EmbeddingRequest	true	"Embedding request"
 func Embeddings(c *gin.Context) {
-	param := openai.EmbeddingNewParams{}
+	param := EmbeddingRequest{}
 	if err := c.ShouldBindJSON(&param); err != nil {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
+	}
+	
+	// Determine keep_alive time, default to 300 seconds (5 minutes)
+	keepAliveSeconds := 300
+	if param.KeepAlive != nil {
+		keepAliveSeconds = *param.KeepAlive
 	}
 
 	p, err := service.KeepAliveGet[nexa_sdk.Embedder](
 		string(param.Model),
 		types.ModelParam{},
 		false,
+		keepAliveSeconds,
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
