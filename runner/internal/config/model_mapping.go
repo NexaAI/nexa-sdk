@@ -22,9 +22,9 @@ var modelMappingSrc = map[string][][3]string{
 		{"darwin", "arm64", "Qwen/Qwen2.5-VL-3B-Instruct"},
 	},
 	"qwen3vl": {
-		{"windows", "amd64", "NexaAI/qwen3vl-GGUF"},
-		{"windows", "arm64", "NexaAI/qwen3vl-npu"},
-		{"darwin", "arm64", "NexaAI/qwen3vl-mlx-4bit"},
+		{"windows", "amd64", "NexaAI/Qwen3-VL-4B-GGUF"},
+		{"windows", "arm64", "NexaAI/Qwen3-VL-4B-NPU"},
+		{"darwin", "arm64", "NexaAI/Qwen3-VL-4B-MLX-4bit"},
 	},
 	"gemma3": {
 		{"", "", "ggml-org/gemma-3-4b-it-GGUF"},
