@@ -47,6 +47,18 @@ var (
 	systemPrompt   string
 	language       string
 	listLanguage   bool
+
+	// sampler config
+	temperature       float32
+	topP              float32
+	topK              int32
+	minP              float32
+	repetitionPenalty float32
+	presencePenalty   float32
+	frequencyPenalty  float32
+	seed              int32
+	grammarPath       string
+	grammaString      string
 )
 
 var (
@@ -63,6 +75,19 @@ func infer() *cobra.Command {
 	inferCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
 
 	inferCmd.Flags().SortFlags = false
+
+	// sampler config
+	inferCmd.Flags().Float32VarP(&temperature, "temperature", "", 0.0, "[llm|vlm] sampling temperature")
+	inferCmd.Flags().Float32VarP(&topP, "top-p", "", 0.0, "[llm|vlm] top-p sampling")
+	inferCmd.Flags().Int32VarP(&topK, "top-k", "", 0, "[llm|vlm] top-k sampling")
+	inferCmd.Flags().Float32VarP(&minP, "min-p", "", 0.0, "[llm|vlm] min-p sampling")
+	inferCmd.Flags().Float32VarP(&repetitionPenalty, "repetition-penalty", "", 1.0, "[llm|vlm] repetition penalty")
+	inferCmd.Flags().Float32VarP(&presencePenalty, "presence-penalty", "", 0.0, "[llm|vlm] presence penalty")
+	inferCmd.Flags().Float32VarP(&frequencyPenalty, "frequency-penalty", "", 0.0, "[llm|vlm] frequency penalty")
+	inferCmd.Flags().Int32VarP(&seed, "seed", "", 0, "[llm|vlm] random seed")
+	inferCmd.Flags().StringVarP(&grammarPath, "grammar-path", "", "", "[llm|vlm] path to grammar file")
+	inferCmd.Flags().StringVarP(&grammaString, "grammar-string", "", "", "[llm|vlm] grammar in string format")
+
 	inferCmd.Flags().Int32VarP(&ngl, "ngl", "n", 999, "[llm|vlm] num of layers pass to gpu")
 	inferCmd.Flags().Int32VarP(&maxTokens, "max-tokens", "", 2048, "[llm|vlm] max tokens")
 	inferCmd.Flags().Int32VarP(&imageMaxLength, "image-max-length", "", 512, "[vlm] max image length")
@@ -162,6 +187,22 @@ func selectQuant(manifest *types.ModelManifest) (string, error) {
 }
 
 func inferLLM(manifest *types.ModelManifest, quant string) {
+	var samplerConfig *nexa_sdk.SamplerConfig
+	if temperature > 0 || topK > 0 || topP > 0 || minP > 0 || repetitionPenalty != 1.0 || presencePenalty != 0.0 || frequencyPenalty != 0.0 || seed != 0 || grammarPath != "" || grammaString != "" {
+		samplerConfig = &nexa_sdk.SamplerConfig{
+			Temperature:       temperature,
+			TopP:              topP,
+			TopK:              topK,
+			MinP:              minP,
+			RepetitionPenalty: repetitionPenalty,
+			PresencePenalty:   presencePenalty,
+			FrequencyPenalty:  frequencyPenalty,
+			Seed:              seed,
+			GrammarPath:       grammarPath,
+			GrammarString:     grammaString,
+		}
+	}
+
 	s := store.Get()
 	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
 	spin := render.NewSpinner("loading model...")
@@ -264,7 +305,8 @@ func inferLLM(manifest *types.ModelManifest, quant string) {
 				PromptUTF8: templateOutput.FormattedText,
 				OnToken:    on_token,
 				Config: &nexa_sdk.GenerationConfig{
-					MaxTokens: maxTokens,
+					MaxTokens:     maxTokens,
+					SamplerConfig: samplerConfig,
 				},
 			},
 			)
@@ -279,6 +321,22 @@ func inferLLM(manifest *types.ModelManifest, quant string) {
 }
 
 func inferVLM(manifest *types.ModelManifest, quant string) {
+	var samplerConfig *nexa_sdk.SamplerConfig
+	if temperature > 0 || topK > 0 || topP > 0 || minP > 0 || repetitionPenalty != 1.0 || presencePenalty != 0.0 || frequencyPenalty != 0.0 || seed != 0 || grammarPath != "" || grammaString != "" {
+		samplerConfig = &nexa_sdk.SamplerConfig{
+			Temperature:       temperature,
+			TopP:              topP,
+			TopK:              topK,
+			MinP:              minP,
+			RepetitionPenalty: repetitionPenalty,
+			PresencePenalty:   presencePenalty,
+			FrequencyPenalty:  frequencyPenalty,
+			Seed:              seed,
+			GrammarPath:       grammarPath,
+			GrammarString:     grammaString,
+		}
+	}
+
 	s := store.Get()
 	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
 	var mmprojfile string
@@ -405,6 +463,7 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 				OnToken:    on_token,
 				Config: &nexa_sdk.GenerationConfig{
 					MaxTokens:      maxTokens,
+					SamplerConfig:  samplerConfig,
 					ImagePaths:     images,
 					ImageMaxLength: imageMaxLength,
 					AudioPaths:     audios,
