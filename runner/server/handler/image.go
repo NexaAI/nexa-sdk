@@ -57,6 +57,7 @@ func ImageGenerations(c *gin.Context) {
 		param.Model,
 		types.ModelParam{},
 		c.GetHeader("Nexa-KeepCache") != "true",
+		300, // default 5 minutes for image generation
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
