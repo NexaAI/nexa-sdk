@@ -1,0 +1,65 @@
+[
+  {
+    "id": "Qwen2.5-0.5B-OpenHermes2.5",
+    "name": "Qwen2.5-0.5B-OpenHermes2.5",
+    "mmprojOrTokenName": "",
+    "sizeGb": 0.68,
+    "params": "0.5 B",
+    "features": ["Chat", "Summarization"],
+    "type": "chat",
+    "modelUrl": "https://huggingface.co/artificialguybr/Qwen2.5-0.5B-OpenHermes2.5-gguf/resolve/main/model-f16.gguf",
+    "mmprojOrTokenUrl": ""
+  },
+  {
+    "id": "SmolVLM-256M-Instruct-Q8_0",
+    "displayName": "SmolVLM-256M-Instruct-Q8_0",
+    "modelName": "SmolVLM-256M-Instruct-Q8_0.gguf",
+    "mmprojOrTokenName": "mmproj-SmolVLM-256M-Instruct-Q8_0.json",
+    "sizeGb": 0.26,
+    "params": "256 M",
+    "features": ["Chat", "VLM"],
+    "type": "multimodal",
+    "supportS3": true,
+    "modelUrl": "https://huggingface.co/ggml-org/SmolVLM-256M-Instruct-GGUF/resolve/main/SmolVLM-256M-Instruct-Q8_0.gguf?download=true",
+    "mmprojOrTokenUrl": "https://huggingface.co/ggml-org/SmolVLM-256M-Instruct-GGUF/resolve/main/mmproj-SmolVLM-256M-Instruct-Q8_0.gguf?download=true"
+  },
+  {
+    "id": "SmolVLM-256M-Instruct-f16",
+    "displayName": "SmolVLM-256M-Instruct-f16",
+    "modelName": "SmolVLM-256M-Instruct-f16.gguf",
+    "mmprojOrTokenName": "mmproj-SmolVLM-256M-Instruct-f16.json",
+    "sizeGb": 0.48,
+    "params": "256 M",
+    "features": ["Chat", "VLM"],
+    "type": "multimodal",
+    "supportS3": true,
+    "modelUrl": "https://huggingface.co/ggml-org/SmolVLM-256M-Instruct-GGUF/resolve/main/SmolVLM-256M-Instruct-f16.gguf?download=true",
+    "mmprojOrTokenUrl": "https://huggingface.co/ggml-org/SmolVLM-256M-Instruct-GGUF/resolve/main/mmproj-SmolVLM-256M-Instruct-f16.gguf?download=true"
+  },
+  {
+    "id": "Qwen3-0.6B-Q8_0",
+    "displayName": "Qwen3-0.6B-Q8_0",
+    "modelName": "Qwen3-0.6B-Q8_0.gguf",
+    "mmprojOrTokenName": "",
+    "sizeGb": 0.75,
+    "params": "0.6 B",
+    "features": ["Chat"],
+    "type": "chat",
+    "supportS3": true,
+    "modelUrl": "https://huggingface.co/nexaml/Qwen3-0.6B/resolve/main/Qwen3-0.6B-Q8_0.gguf?download=true",
+    "mmprojOrTokenUrl":""
+  },
+  {
+    "id": "Qwen2.5-1.5B",
+    "displayName": "Qwen2.5-1.5B",
+    "modelName": "Qwen2.5-1.5B-Instruct.gguf",
+    "mmprojOrTokenName": "",
+    "sizeGb": 1.76,
+    "params": "1.54 B",
+    "features": ["Chat", "Summarization"],
+    "type": "chat",
+    "supportS3": true,
+    "modelUrl": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q8_0.gguf?download=true",
+    "mmprojOrTokenUrl": ""
+  }
+]
