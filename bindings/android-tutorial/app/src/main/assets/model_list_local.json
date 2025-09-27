@@ -1,0 +1,51 @@
+[
+  {
+    "id": "SmolVLM-256M-Instruct-Q8_0",
+    "displayName": "SmolVLM-256M-Instruct-Q8_0",
+    "modelName": "SmolVLM-256M-Instruct-Q8_0.gguf",
+    "mmprojOrTokenName": "mmproj-SmolVLM-256M-Instruct-Q8_0.json",
+    "sizeGb": 0.26,
+    "params": "256 M",
+    "features": ["Chat", "VLM"],
+    "type": "multimodal",
+    "modelUrl": "https://192.168.1.107:18443/demo/nexa_models/SmolVLM-256M-Instruct-Q8_0.gguf",
+    "mmprojOrTokenUrl": "https://192.168.1.107:18443/demo/nexa_models/mmproj-SmolVLM-256M-Instruct-Q8_0.json"
+  },
+  {
+    "id": "SmolVLM-256M-Instruct-f16",
+    "displayName": "SmolVLM-256M-Instruct-f16",
+    "modelName": "SmolVLM-256M-Instruct-f16.gguf",
+    "mmprojOrTokenName": "mmproj-SmolVLM-256M-Instruct-f16.json",
+    "sizeGb": 0.48,
+    "params": "256 M",
+    "features": ["Chat", "VLM"],
+    "type": "multimodal",
+    "modelUrl": "https://192.168.1.107:18443/demo/nexa_models/SmolVLM-256M-Instruct-f16.gguf",
+    "mmprojOrTokenUrl": "https://192.168.1.107:18443/demo/nexa_models/mmproj-SmolVLM-256M-Instruct-f16.json"
+  },
+  {
+    "id": "Qwen3-0.6B-Q8_0",
+    "displayName": "Qwen3-0.6B-Q8_0",
+    "modelName": "Qwen3-0.6B-Q8_0.gguf",
+    "mmprojOrTokenName": "",
+    "sizeGb": 0.75,
+    "params": "0.6 B",
+    "features": ["Chat"],
+    "type": "chat",
+    "modelUrl": "https://192.168.1.107:18443/demo/nexa_models/Qwen3-0.6B-Q8_0.gguf",
+    "mmprojOrTokenUrl":""
+  },
+  {
+    "id": "Qwen2.5-1.5B",
+    "displayName": "Qwen2.5-1.5B",
+    "modelName": "Qwen2.5-1.5B-Instruct.gguf",
+    "mmprojOrTokenName": "",
+    "sizeGb": 1.76,
+    "params": "1.54 B",
+    "features": ["Chat", "Summarization"],
+    "type": "chat",
+    "modelUrl": "https://192.168.1.107:18443/demo/nexa_models/Qwen2.5-1.5B-Instruct.gguf",
+    "mmprojOrTokenUrl": ""
+  }
+
+]
