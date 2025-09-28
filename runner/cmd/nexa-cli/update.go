@@ -39,10 +39,12 @@ type asset struct {
 }
 
 func update() *cobra.Command {
-	updateCmd := &cobra.Command{}
-	updateCmd.Use = "update"
-	updateCmd.Short = "update nexa"
-	updateCmd.Long = "Update nexa to the latest version"
+	updateCmd := &cobra.Command{
+		GroupID: "management",
+		Use:     "update",
+		Short:   "update nexa",
+		Long:    "Update nexa to the latest version",
+	}
 
 	updateCmd.Run = func(cmd *cobra.Command, args []string) {
 		if err := updateImpl(); err != nil {

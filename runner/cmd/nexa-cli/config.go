@@ -11,9 +11,10 @@ import (
 
 func _config() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "config",
-		Short: "Manage Nexa CLI configuration",
-		Long:  "Commands to manage Nexa CLI configuration, including setting and getting configuration values.",
+		GroupID: "management",
+		Use:     "config",
+		Short:   "Manage Nexa CLI configuration",
+		Long:    "Commands to manage Nexa CLI configuration, including setting and getting configuration values.",
 	}
 
 	cmd.AddCommand(

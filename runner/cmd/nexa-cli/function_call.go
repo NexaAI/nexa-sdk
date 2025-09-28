@@ -17,6 +17,7 @@ var tool []string
 
 func functionCall() *cobra.Command {
 	fcCmd := &cobra.Command{
+		GroupID: "inference",
 		Use:     "functioncall <model-name>",
 		Aliases: []string{"fc"},
 		Short:   "Function call with a model",
