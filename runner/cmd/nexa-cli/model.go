@@ -297,7 +297,7 @@ func getQuant(name string) string {
 
 func choosePluginId(name string) string {
 	switch {
-	case strings.Contains(name, "mlx"):
+	case strings.Contains(name, "mlx") || strings.Contains(name, "sdxl-turbo"):
 		return "mlx"
 	case strings.Contains(name, "gemma-3n-cuda"):
 		return "nexa_cuda_ort_llama_cpp"
