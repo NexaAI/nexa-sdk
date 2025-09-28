@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is an Android tutorial project demonstrating how to use the Nexa AI SDK to run AI models on Android devices. The project includes model downloading, loading, text generation, and visual question answering functionality.
+[`Nexa Demo`](https://github.com/NexaAI/nexa-sdk-examples/tree/main/android) is an Android tutorial project demonstrating how to use the Nexa AI SDK to run AI models on Android devices. The project includes model downloading, loading, text generation, and visual question answering functionality.
 
 ## Features
 
@@ -18,7 +18,6 @@ This is an Android tutorial project demonstrating how to use the Nexa AI SDK to 
 ### LLM Models
 - Qwen3-0.6B-Q8_0: Lightweight Chinese dialogue model
 - Qwen3-1.8B-Q8_0: Medium-scale Chinese dialogue model
-- Qwen3-4B-Q8_0: Large-scale Chinese dialogue model
 
 ### VLM Models
 - SmolVLM-256M-Instruct-Q8_0: Lightweight vision-language model
@@ -340,7 +339,6 @@ vlmWrapper.destroy()
 - **`destroy()`**: Release model resources and free memory
 - **Resource management**: Recommend calling when app exits or switching models
 
-See [`nexa-sdk-examples`](https://github.com/NexaAI/nexa-sdk-examples/android) for more usage examples.
 
 ## Configuration Options
 
