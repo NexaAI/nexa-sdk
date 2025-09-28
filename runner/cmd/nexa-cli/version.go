@@ -14,8 +14,9 @@ var Version string
 
 func version() *cobra.Command {
 	versionCmd := &cobra.Command{
-		Use:   "version",
-		Short: "show nexasdk version",
+		GroupID: "management",
+		Use:     "version",
+		Short:   "show nexasdk version",
 	}
 
 	versionCmd.Run = func(cmd *cobra.Command, args []string) {

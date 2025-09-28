@@ -30,7 +30,8 @@ var (
 // Usage: nexa pull <model-name>
 func pull() *cobra.Command {
 	pullCmd := &cobra.Command{
-		Use: "pull <model-name>",
+		GroupID: "model",
+		Use:     "pull <model-name>",
 
 		Short: "Pull model from HuggingFace",
 		Long:  "Download and cache a model by name.",
@@ -53,6 +54,7 @@ func pull() *cobra.Command {
 // Usage: nexa remove <model-name>
 func remove() *cobra.Command {
 	removeCmd := &cobra.Command{
+		GroupID: "model",
 		Use:     "remove <model-name>",
 		Aliases: []string{"rm"},
 		Short:   "Remove cached model",
@@ -80,9 +82,10 @@ func remove() *cobra.Command {
 // Usage: nexa clean
 func clean() *cobra.Command {
 	cleanCmd := &cobra.Command{
-		Use:   "clean",
-		Short: "remove all cached models",
-		Long:  "Remove all cached models and free up storage. This will delete all model files from the local cache.",
+		GroupID: "model",
+		Use:     "clean",
+		Short:   "remove all cached models",
+		Long:    "Remove all cached models and free up storage. This will delete all model files from the local cache.",
 	}
 
 	cleanCmd.Run = func(cmd *cobra.Command, args []string) {
@@ -99,6 +102,7 @@ func clean() *cobra.Command {
 // Usage: nexa list
 func list() *cobra.Command {
 	listCmd := &cobra.Command{
+		GroupID: "model",
 		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "List all cached models",

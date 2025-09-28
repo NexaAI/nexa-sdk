@@ -22,9 +22,10 @@ import (
 
 func run() *cobra.Command {
 	runCmd := &cobra.Command{
-		Use:   "run <model-name>",
-		Short: "Run a model in REPL mode",
-		Long:  "Run a model in REPL mode. The server must be running and the model should be downloaded and cached locally.",
+		GroupID: "inference",
+		Use:     "run <model-name>",
+		Short:   "Run a model in REPL mode",
+		Long:    "Run a model in REPL mode. The server must be running and the model should be downloaded and cached locally.",
 	}
 
 	runCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)

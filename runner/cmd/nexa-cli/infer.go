@@ -10,10 +10,12 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/charmbracelet/huh"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/record"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
@@ -67,44 +69,106 @@ var (
 
 func infer() *cobra.Command {
 	inferCmd := &cobra.Command{
-		Use:   "infer <model-name>",
-		Short: "Infer with a model",
-		Long:  "Run inference with a specified model. The model must be downloaded and cached locally.",
+		GroupID: "inference",
+		Use:     "infer <model-name>",
+		Short:   "Infer with a model",
+		Long:    "Run inference with a specified model. The model must be downloaded and cached locally.",
 	}
 
 	inferCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
 
-	inferCmd.Flags().SortFlags = false
+	// NOTE: flagset use same flag name will be ignored, but usage is different, so we keep them in different flagset
 
-	// sampler config
-	inferCmd.Flags().Float32VarP(&temperature, "temperature", "", 0.0, "[llm|vlm] sampling temperature")
-	inferCmd.Flags().Float32VarP(&topP, "top-p", "", 0.0, "[llm|vlm] top-p sampling")
-	inferCmd.Flags().Int32VarP(&topK, "top-k", "", 0, "[llm|vlm] top-k sampling")
-	inferCmd.Flags().Float32VarP(&minP, "min-p", "", 0.0, "[llm|vlm] min-p sampling")
-	inferCmd.Flags().Float32VarP(&repetitionPenalty, "repetition-penalty", "", 1.0, "[llm|vlm] repetition penalty")
-	inferCmd.Flags().Float32VarP(&presencePenalty, "presence-penalty", "", 0.0, "[llm|vlm] presence penalty")
-	inferCmd.Flags().Float32VarP(&frequencyPenalty, "frequency-penalty", "", 0.0, "[llm|vlm] frequency penalty")
-	inferCmd.Flags().Int32VarP(&seed, "seed", "", 0, "[llm|vlm] random seed")
-	inferCmd.Flags().StringVarP(&grammarPath, "grammar-path", "", "", "[llm|vlm] path to grammar file")
-	inferCmd.Flags().StringVarP(&grammaString, "grammar-string", "", "", "[llm|vlm] grammar in string format")
+	samplerFlags := pflag.NewFlagSet("LLM/VLM Sampler", pflag.ExitOnError)
+	samplerFlags.SortFlags = false
+	samplerFlags.Float32VarP(&temperature, "temperature", "", 0.0, "sampling temperature")
+	samplerFlags.Float32VarP(&topP, "top-p", "", 0.0, "top-p sampling")
+	samplerFlags.Int32VarP(&topK, "top-k", "", 0, "top-k sampling")
+	samplerFlags.Float32VarP(&minP, "min-p", "", 0.0, "min-p sampling")
+	samplerFlags.Float32VarP(&repetitionPenalty, "repetition-penalty", "", 1.0, "repetition penalty")
+	samplerFlags.Float32VarP(&presencePenalty, "presence-penalty", "", 0.0, "presence penalty")
+	samplerFlags.Float32VarP(&frequencyPenalty, "frequency-penalty", "", 0.0, "frequency penalty")
+	samplerFlags.Int32VarP(&seed, "seed", "", 0, "random seed")
+	samplerFlags.StringVarP(&grammarPath, "grammar-path", "", "", "path to grammar file")
+	samplerFlags.StringVarP(&grammaString, "grammar-string", "", "", "grammar in string format")
+	inferCmd.Flags().AddFlagSet(samplerFlags)
 
-	inferCmd.Flags().Int32VarP(&ngl, "ngl", "n", 999, "[llm|vlm] num of layers pass to gpu")
-	inferCmd.Flags().Int32VarP(&maxTokens, "max-tokens", "", 2048, "[llm|vlm] max tokens")
-	inferCmd.Flags().Int32VarP(&imageMaxLength, "image-max-length", "", 512, "[vlm] max image length")
-	inferCmd.Flags().BoolVarP(&enableThink, "think", "", true, "[llm|vlm] enable thinking mode")
-	inferCmd.Flags().BoolVarP(&hideThink, "hide-think", "", false, "[llm|vlm] hide thinking output")
-	inferCmd.Flags().StringVarP(&systemPrompt, "system-prompt", "s", "", "[llm|vlm] system prompt to set model behavior")
-	inferCmd.Flags().StringArrayVarP(&prompt, "prompt", "p", nil, "[embedder|tts|image_gen] pass prompt")
-	inferCmd.Flags().StringVarP(&taskType, "task-type", "", "default", "[embedder] task type: default|search_query|search_document")
-	inferCmd.Flags().StringVarP(&query, "query", "q", "", "[reranker] query")
-	inferCmd.Flags().StringArrayVarP(&document, "document", "d", nil, "[reranker] documents")
-	inferCmd.Flags().StringVarP(&input, "input", "i", "", "[cv|llm|vlm] input image file (cv) or prompt txt file (llm/vlm)")
-	inferCmd.Flags().StringVarP(&output, "output", "o", "", "[tts|image_gen] output file (audio for tts / image for image_gen)")
-	inferCmd.Flags().StringVarP(&voice, "voice", "", "", "[tts] voice identifier")
-	inferCmd.Flags().BoolVarP(&listVoice, "list-voice", "", false, "[tts] list available voices")
-	inferCmd.Flags().Float64VarP(&speechSpeed, "speech-speed", "", 1.0, "[tts] speech speed (1.0 = normal)")
+	llmFlags := pflag.NewFlagSet("LLM/VLM Model", pflag.ExitOnError)
+	llmFlags.SortFlags = false
+	llmFlags.Int32VarP(&ngl, "ngl", "n", 999, "num of layers pass to gpu")
+	llmFlags.Int32VarP(&maxTokens, "max-tokens", "", 2048, "max tokens")
+	llmFlags.BoolVarP(&enableThink, "think", "", true, "enable thinking mode")
+	llmFlags.BoolVarP(&hideThink, "hide-think", "", false, "hide thinking output")
+	llmFlags.StringVarP(&systemPrompt, "system-prompt", "s", "", "system prompt to set model behavior")
+	llmFlags.StringVarP(&input, "input", "i", "", "prompt txt file")
+	inferCmd.Flags().AddFlagSet(llmFlags)
+
+	vlmFlags := pflag.NewFlagSet("VLM Specific", pflag.ExitOnError)
+	vlmFlags.SortFlags = false
+	vlmFlags.Int32VarP(&imageMaxLength, "image-max-length", "", 512, "max image length")
+	inferCmd.Flags().AddFlagSet(vlmFlags)
+
+	embedderFlags := pflag.NewFlagSet("Embedder", pflag.ExitOnError)
+	embedderFlags.SortFlags = false
+	embedderFlags.StringArrayVarP(&prompt, "prompt", "p", nil, "pass prompt")
+	embedderFlags.StringVarP(&taskType, "task-type", "", "default", "default|search_query|search_document")
+	inferCmd.Flags().AddFlagSet(embedderFlags)
+
+	rerankerFlags := pflag.NewFlagSet("Reranker", pflag.ExitOnError)
+	rerankerFlags.SortFlags = false
+	rerankerFlags.StringVarP(&query, "query", "q", "", "query")
+	rerankerFlags.StringArrayVarP(&document, "document", "d", nil, "documents")
+	inferCmd.Flags().AddFlagSet(rerankerFlags)
+
+	cvFlags := pflag.NewFlagSet("CV", pflag.ExitOnError)
+	cvFlags.SortFlags = false
+	cvFlags.StringVarP(&input, "input", "i", "", "input image file")
+	inferCmd.Flags().AddFlagSet(cvFlags)
+
+	ttsFlags := pflag.NewFlagSet("TTS", pflag.ExitOnError)
+	ttsFlags.SortFlags = false
+	ttsFlags.StringArrayVarP(&prompt, "prompt", "p", nil, "pass prompt")
+	ttsFlags.StringVarP(&voice, "voice", "", "", "voice identifier")
+	ttsFlags.BoolVarP(&listVoice, "list-voice", "", false, "list available voices")
+	ttsFlags.Float64VarP(&speechSpeed, "speech-speed", "", 1.0, "speech speed (1.0 = normal)")
+	ttsFlags.StringVarP(&output, "output", "o", "", "output audio file")
+	inferCmd.Flags().AddFlagSet(ttsFlags)
+
+	imageGenFlags := pflag.NewFlagSet("ImageGen", pflag.ExitOnError)
+	imageGenFlags.SortFlags = false
+	imageGenFlags.StringArrayVarP(&prompt, "prompt", "p", nil, "pass prompt")
+	imageGenFlags.StringVarP(&output, "output", "o", "", "output image file")
+	inferCmd.Flags().AddFlagSet(imageGenFlags)
+
 	// inferCmd.Flags().StringVarP(&language, "language", "", "", "[asr] language code (e.g., en, zh, ja)")           // TODO: Language support not implemented yet
 	// inferCmd.Flags().BoolVarP(&listLanguage, "list-language", "", false, "[asr] list available languages")        // TODO: Language support not implemented yet
+
+	inferCmd.SetUsageFunc(func(c *cobra.Command) error {
+		flagGroups := []*pflag.FlagSet{
+			samplerFlags, llmFlags, vlmFlags, embedderFlags, rerankerFlags, cvFlags, ttsFlags, imageGenFlags,
+		}
+		w := c.OutOrStdout()
+		fmt.Fprint(w, "Usage:")
+		if c.Runnable() {
+			fmt.Fprintf(w, "\n  %s", c.UseLine())
+		}
+		if len(c.Aliases) > 0 {
+			fmt.Fprintf(w, "\n\nAliases:\n")
+			fmt.Fprintf(w, "  %s", c.NameAndAliases())
+		}
+
+		for _, flags := range flagGroups {
+			fmt.Fprintf(w, "\n\n%s Flags:\n", flags.Name())
+			fmt.Fprint(w, strings.TrimRightFunc(flags.FlagUsages(), unicode.IsSpace))
+		}
+
+		if c.HasAvailableInheritedFlags() {
+			fmt.Fprintf(w, "\n\nGlobal Flags:\n")
+			fmt.Fprint(w, strings.TrimRightFunc(c.InheritedFlags().FlagUsages(), unicode.IsSpace))
+		}
+		fmt.Fprintln(w)
+		return nil
+	})
 
 	inferCmd.Run = func(cmd *cobra.Command, args []string) {
 		s := store.Get()
@@ -485,6 +549,146 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 	})
 }
 
+func inferEmbedder(manifest *types.ModelManifest, quant string) {
+	s := store.Get()
+	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
+	spin := render.NewSpinner("loading embedding model...")
+	spin.Start()
+
+	embedderInput := nexa_sdk.EmbedderCreateInput{
+		ModelName: manifest.ModelName,
+		ModelPath: modelfile,
+		PluginID:  manifest.PluginId,
+		DeviceID:  manifest.DeviceId,
+	}
+
+	p, err := nexa_sdk.NewEmbedder(embedderInput)
+	spin.Stop()
+
+	if err != nil {
+		slog.Error("failed to create embedder", "error", err)
+		fmt.Println(modelLoadFailMsg)
+		return
+	}
+	defer p.Destroy()
+
+	dimOutput, err := p.EmbeddingDimension()
+	if err != nil {
+		fmt.Println(render.GetTheme().Error.Sprintf("failed to get embedding dimension: %s", err))
+		return
+	}
+
+	fmt.Println(render.GetTheme().Success.Sprintf("Embedding dimension: %d", dimOutput.Dimension))
+
+	repl(ReplConfig{
+		ParseFile: false,
+
+		Run: func(prompt string, _, _ []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			embedInput := nexa_sdk.EmbedderEmbedInput{
+				TaskType: taskType,
+				Texts:    []string{strings.TrimSpace(prompt)},
+				Config: &nexa_sdk.EmbeddingConfig{
+					BatchSize:       1,
+					Normalize:       true,
+					NormalizeMethod: "l2",
+				},
+			}
+
+			result, err := p.Embed(embedInput)
+			if err != nil || len(result.Embeddings) == 0 {
+				return "", result.ProfileData, err
+			}
+
+			n, emb := len(result.Embeddings), result.Embeddings
+			info := render.GetTheme().Info.Sprintf("Embedding")
+			var out string
+			if n > 6 {
+				out = render.GetTheme().Success.Sprintf(
+					"[%.6f, %.6f, %.6f, ..., %.6f, %.6f, %.6f] (length: %d)",
+					emb[0], emb[1], emb[2],
+					emb[n-3], emb[n-2], emb[n-1], n,
+				)
+			} else {
+				out = render.GetTheme().Success.Sprintf("%v (length: %d)", emb, n)
+			}
+
+			on_token(fmt.Sprintf("%s: %s", info, out))
+
+			return "", result.ProfileData, nil
+		},
+	})
+}
+
+func inferReranker(manifest *types.ModelManifest, quant string) {
+	s := store.Get()
+	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
+	spin := render.NewSpinner("loading reranker model...")
+	spin.Start()
+
+	rerankerInput := nexa_sdk.RerankerCreateInput{
+		ModelName: manifest.ModelName,
+		ModelPath: modelfile,
+		PluginID:  manifest.PluginId,
+		DeviceID:  manifest.DeviceId,
+	}
+
+	p, err := nexa_sdk.NewReranker(rerankerInput)
+	spin.Stop()
+
+	if err != nil {
+		slog.Error("failed to create reranker", "error", err)
+		fmt.Println(modelLoadFailMsg)
+		return
+	}
+	defer p.Destroy()
+
+	// Check if query is provided
+	if query == "" {
+		fmt.Println(render.GetTheme().Error.Sprintf("--query is required for reranking"))
+		fmt.Println()
+		return
+	}
+
+	// Check if documents are provided
+	if len(document) == 0 {
+		fmt.Println(render.GetTheme().Error.Sprintf("at least one --document is required for reranking"))
+		fmt.Println()
+		return
+	}
+
+	fmt.Println(render.GetTheme().Success.Sprintf("Query: %s", query))
+	fmt.Println(render.GetTheme().Success.Sprintf("Processing %d documents", len(document)))
+
+	// Create rerank input
+	rerankInput := nexa_sdk.RerankerRerankInput{
+		Query:     query,
+		Documents: document,
+		Config: &nexa_sdk.RerankConfig{
+			BatchSize:       int32(len(document)),
+			Normalize:       true,
+			NormalizeMethod: "softmax",
+		},
+	}
+
+	// Perform reranking
+	result, err := p.Rerank(rerankInput)
+	if err != nil {
+		fmt.Println(render.GetTheme().Error.Sprintf("reranking failed: %s", err))
+		return
+	}
+
+	fmt.Println(render.GetTheme().Success.Sprintf("✓ Reranking completed successfully"))
+	fmt.Println(render.GetTheme().Success.Sprintf("  Generated %d scores", len(result.Scores)))
+
+	// Display results
+	for i, doc := range document {
+		if i < len(result.Scores) {
+			fmt.Printf("\n%s [%d]: %s\n", render.GetTheme().Info.Sprintf("Document"), i+1, doc)
+			fmt.Printf("%s: %.6f\n", render.GetTheme().Info.Sprintf("Score"), result.Scores[i])
+		}
+	}
+}
+
 func inferTTS(manifest *types.ModelManifest, quant string) {
 	s := store.Get()
 	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
@@ -806,76 +1010,6 @@ func inferCV(manifest *types.ModelManifest, quant string) {
 	}
 }
 
-func inferEmbedder(manifest *types.ModelManifest, quant string) {
-	s := store.Get()
-	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
-	spin := render.NewSpinner("loading embedding model...")
-	spin.Start()
-
-	embedderInput := nexa_sdk.EmbedderCreateInput{
-		ModelName: manifest.ModelName,
-		ModelPath: modelfile,
-		PluginID:  manifest.PluginId,
-		DeviceID:  manifest.DeviceId,
-	}
-
-	p, err := nexa_sdk.NewEmbedder(embedderInput)
-	spin.Stop()
-
-	if err != nil {
-		slog.Error("failed to create embedder", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return
-	}
-	defer p.Destroy()
-
-	dimOutput, err := p.EmbeddingDimension()
-	if err != nil {
-		fmt.Println(render.GetTheme().Error.Sprintf("failed to get embedding dimension: %s", err))
-		return
-	}
-
-	fmt.Println(render.GetTheme().Success.Sprintf("Embedding dimension: %d", dimOutput.Dimension))
-
-	repl(ReplConfig{
-		ParseFile: false,
-
-		Run: func(prompt string, _, _ []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
-			embedInput := nexa_sdk.EmbedderEmbedInput{
-				TaskType: taskType,
-				Texts:    []string{strings.TrimSpace(prompt)},
-				Config: &nexa_sdk.EmbeddingConfig{
-					BatchSize:       1,
-					Normalize:       true,
-					NormalizeMethod: "l2",
-				},
-			}
-
-			result, err := p.Embed(embedInput)
-			if err != nil || len(result.Embeddings) == 0 {
-				return "", result.ProfileData, err
-			}
-
-			n, emb := len(result.Embeddings), result.Embeddings
-			info := render.GetTheme().Info.Sprintf("Embedding")
-			var out string
-			if n > 6 {
-				out = render.GetTheme().Success.Sprintf(
-					"[%.6f, %.6f, %.6f, ..., %.6f, %.6f, %.6f] (length: %d)",
-					emb[0], emb[1], emb[2],
-					emb[n-3], emb[n-2], emb[n-1], n,
-				)
-			} else {
-				out = render.GetTheme().Success.Sprintf("%v (length: %d)", emb, n)
-			}
-
-			on_token(fmt.Sprintf("%s: %s", info, out))
-
-			return "", result.ProfileData, nil
-		},
-	})
-}
-
 func inferImageGen(manifest *types.ModelManifest, _ string) {
 	s := store.Get()
 	modeldir := s.ModelfilePath(manifest.Name, "")
@@ -945,74 +1079,4 @@ func inferImageGen(manifest *types.ModelManifest, _ string) {
 	}
 
 	fmt.Println(render.GetTheme().Success.Sprintf("✓ Image saved to: %s", result.OutputImagePath))
-}
-
-func inferReranker(manifest *types.ModelManifest, quant string) {
-	s := store.Get()
-	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
-	spin := render.NewSpinner("loading reranker model...")
-	spin.Start()
-
-	rerankerInput := nexa_sdk.RerankerCreateInput{
-		ModelName: manifest.ModelName,
-		ModelPath: modelfile,
-		PluginID:  manifest.PluginId,
-		DeviceID:  manifest.DeviceId,
-	}
-
-	p, err := nexa_sdk.NewReranker(rerankerInput)
-	spin.Stop()
-
-	if err != nil {
-		slog.Error("failed to create reranker", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return
-	}
-	defer p.Destroy()
-
-	// Check if query is provided
-	if query == "" {
-		fmt.Println(render.GetTheme().Error.Sprintf("--query is required for reranking"))
-		fmt.Println()
-		return
-	}
-
-	// Check if documents are provided
-	if len(document) == 0 {
-		fmt.Println(render.GetTheme().Error.Sprintf("at least one --document is required for reranking"))
-		fmt.Println()
-		return
-	}
-
-	fmt.Println(render.GetTheme().Success.Sprintf("Query: %s", query))
-	fmt.Println(render.GetTheme().Success.Sprintf("Processing %d documents", len(document)))
-
-	// Create rerank input
-	rerankInput := nexa_sdk.RerankerRerankInput{
-		Query:     query,
-		Documents: document,
-		Config: &nexa_sdk.RerankConfig{
-			BatchSize:       int32(len(document)),
-			Normalize:       true,
-			NormalizeMethod: "softmax",
-		},
-	}
-
-	// Perform reranking
-	result, err := p.Rerank(rerankInput)
-	if err != nil {
-		fmt.Println(render.GetTheme().Error.Sprintf("reranking failed: %s", err))
-		return
-	}
-
-	fmt.Println(render.GetTheme().Success.Sprintf("✓ Reranking completed successfully"))
-	fmt.Println(render.GetTheme().Success.Sprintf("  Generated %d scores", len(result.Scores)))
-
-	// Display results
-	for i, doc := range document {
-		if i < len(result.Scores) {
-			fmt.Printf("\n%s [%d]: %s\n", render.GetTheme().Info.Sprintf("Document"), i+1, doc)
-			fmt.Printf("%s: %.6f\n", render.GetTheme().Info.Sprintf("Score"), result.Scores[i])
-		}
-	}
 }

@@ -14,9 +14,11 @@ import (
 // The server provides REST API endpoints for AI model inference and management.
 // Usage: nexa serve
 func serve() *cobra.Command {
-	serveCmd := &cobra.Command{}
-	serveCmd.Use = "serve"
-	serveCmd.Short = "Run the Nexa AI Service"
+	serveCmd := &cobra.Command{
+		GroupID: "inference",
+		Use:     "serve",
+		Short:   "Run the Nexa AI Service",
+	}
 
 	serveCmd.Run = func(cmd *cobra.Command, args []string) {
 		checkDependency()
