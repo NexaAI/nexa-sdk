@@ -156,6 +156,7 @@ type SamplerConfig struct {
 	Seed              int32
 	GrammarPath       string
 	GrammarString     string
+	EnableJson        bool
 
 	C *C.ml_SamplerConfig
 }
@@ -173,6 +174,7 @@ func (sc SamplerConfig) toCPtr() *C.ml_SamplerConfig {
 	cPtr.presence_penalty = C.float(sc.PresencePenalty)
 	cPtr.frequency_penalty = C.float(sc.FrequencyPenalty)
 	cPtr.seed = C.int32_t(sc.Seed)
+	cPtr.enable_json = C.bool(sc.EnableJson)
 
 	if sc.GrammarPath != "" {
 		cPtr.grammar_path = C.CString(sc.GrammarPath)

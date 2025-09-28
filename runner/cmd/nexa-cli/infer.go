@@ -61,6 +61,7 @@ var (
 	seed              int32
 	grammarPath       string
 	grammaString      string
+	enableJson        bool
 )
 
 var (
@@ -91,6 +92,7 @@ func infer() *cobra.Command {
 	samplerFlags.Int32VarP(&seed, "seed", "", 0, "random seed")
 	samplerFlags.StringVarP(&grammarPath, "grammar-path", "", "", "path to grammar file")
 	samplerFlags.StringVarP(&grammaString, "grammar-string", "", "", "grammar in string format")
+	samplerFlags.BoolVarP(&enableJson, "enable-json", "", false, "enable json output")
 	inferCmd.Flags().AddFlagSet(samplerFlags)
 
 	llmFlags := pflag.NewFlagSet("LLM/VLM Model", pflag.ExitOnError)
@@ -252,7 +254,10 @@ func selectQuant(manifest *types.ModelManifest) (string, error) {
 
 func inferLLM(manifest *types.ModelManifest, quant string) {
 	var samplerConfig *nexa_sdk.SamplerConfig
-	if temperature > 0 || topK > 0 || topP > 0 || minP > 0 || repetitionPenalty != 1.0 || presencePenalty != 0.0 || frequencyPenalty != 0.0 || seed != 0 || grammarPath != "" || grammaString != "" {
+	if temperature > 0 || topK > 0 || topP > 0 || minP > 0 ||
+		repetitionPenalty != 1.0 || presencePenalty != 0.0 || frequencyPenalty != 0.0 ||
+		seed != 0 || grammarPath != "" || grammaString != "" ||
+		enableJson {
 		samplerConfig = &nexa_sdk.SamplerConfig{
 			Temperature:       temperature,
 			TopP:              topP,
@@ -264,6 +269,7 @@ func inferLLM(manifest *types.ModelManifest, quant string) {
 			Seed:              seed,
 			GrammarPath:       grammarPath,
 			GrammarString:     grammaString,
+			EnableJson:        enableJson,
 		}
 	}
 
@@ -386,7 +392,10 @@ func inferLLM(manifest *types.ModelManifest, quant string) {
 
 func inferVLM(manifest *types.ModelManifest, quant string) {
 	var samplerConfig *nexa_sdk.SamplerConfig
-	if temperature > 0 || topK > 0 || topP > 0 || minP > 0 || repetitionPenalty != 1.0 || presencePenalty != 0.0 || frequencyPenalty != 0.0 || seed != 0 || grammarPath != "" || grammaString != "" {
+	if temperature > 0 || topK > 0 || topP > 0 || minP > 0 ||
+		repetitionPenalty != 1.0 || presencePenalty != 0.0 || frequencyPenalty != 0.0 ||
+		seed != 0 || grammarPath != "" || grammaString != "" ||
+		enableJson {
 		samplerConfig = &nexa_sdk.SamplerConfig{
 			Temperature:       temperature,
 			TopP:              topP,
@@ -398,6 +407,7 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 			Seed:              seed,
 			GrammarPath:       grammarPath,
 			GrammarString:     grammaString,
+			EnableJson:        enableJson,
 		}
 	}
 
