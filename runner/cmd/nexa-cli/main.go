@@ -59,7 +59,7 @@ func RootCmd() *cobra.Command {
 	}
 
 	rootCmd.AddGroup(
-		&cobra.Group{ID: "model", Title: "Model Management Commands"},
+		&cobra.Group{ID: "model", Title: "Model Commands"},
 		&cobra.Group{ID: "inference", Title: "Inference Commands"},
 		&cobra.Group{ID: "management", Title: "Management Commands"},
 	)
