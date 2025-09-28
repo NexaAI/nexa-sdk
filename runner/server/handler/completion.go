@@ -16,6 +16,7 @@ import (
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
+	"github.com/NexaAI/nexa-sdk/runner/server/handler/utils"
 	"github.com/NexaAI/nexa-sdk/runner/server/service"
 )
 
@@ -319,17 +320,31 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 						Text: *ct.GetText(),
 					})
 				case "image_url":
+					file, err := utils.SaveURIToTempFile(ct.GetImageURL().URL)
+					slog.Debug("Saved image file", "file", file)
+					if err != nil {
+						c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+						return
+					}
+					defer os.Remove(file)
 					contents = append(contents, nexa_sdk.VlmContent{
 						Type: nexa_sdk.VlmContentTypeImage,
-						Text: ct.GetImageURL().URL,
+						Text: file,
 					})
-					images = append(images, ct.GetImageURL().URL)
+					images = append(images, file)
 				case "input_audio":
+					file, err := utils.SaveURIToTempFile(ct.GetInputAudio().Data)
+					slog.Debug("Saved audio file", "file", file)
+					if err != nil {
+						c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+						return
+					}
+					defer os.Remove(file)
 					contents = append(contents, nexa_sdk.VlmContent{
 						Type: nexa_sdk.VlmContentTypeAudio,
-						Text: ct.GetInputAudio().Data,
+						Text: file,
 					})
-					audios = append(audios, ct.GetInputAudio().Data)
+					audios = append(audios, file)
 				}
 			}
 
