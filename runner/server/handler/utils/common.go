@@ -1,4 +1,4 @@
-package handler
+package utils
 
 import (
 	"encoding/base64"
@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -19,8 +18,6 @@ func SaveURIToTempFile(uri string) (string, error) {
 	}
 
 	var data []byte
-	var fileExt string
-
 	switch u.Scheme {
 	case "http", "https":
 		resp, err := http.Get(uri)
@@ -35,36 +32,39 @@ func SaveURIToTempFile(uri string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		fileExt = getFileExtensionFromURL(u.Path)
 	case "data":
-		// format: data:[<mediatype>][;base64],<data>
 		parts := strings.SplitN(u.Opaque, ",", 2)
 		if len(parts) != 2 {
 			return "", errors.New("invalid data URI format")
 		}
-
-		fileExt = getFileExtensionFromMediaType(parts[0])
-
+		// format: data:[<mediatype>][;base64],<data>
 		if strings.Contains(parts[0], ";base64") {
 			data, err = base64.StdEncoding.DecodeString(parts[1])
 			if err != nil {
 				return "", err
 			}
+
 		} else {
+			// format: data:[<mediatype>],<data>
 			decoded, err := url.QueryUnescape(parts[1])
 			if err != nil {
 				return "", err
 			}
 			data = []byte(decoded)
 		}
-	default:
-		data, err = os.ReadFile(u.Path) // try local file
+	case "file", "":
+		data, err = os.ReadFile(u.Path)
 		if err != nil {
 			return "", err
 		}
-		fileExt = getFileExtensionFromURL(u.Path)
+	default:
+		return "", errors.New("unsupported scheme: " + u.Scheme)
 	}
 
+	fileExt := ""
+	if exts, err := mime.ExtensionsByType(http.DetectContentType(data)); err == nil && len(exts) > 0 {
+		fileExt = exts[0]
+	}
 	tmpFile, err := os.CreateTemp("", "uri-*"+fileExt)
 	if err != nil {
 		return "", err
@@ -77,21 +77,4 @@ func SaveURIToTempFile(uri string) (string, error) {
 		return "", err
 	}
 	return tmpFile.Name(), nil
-}
-
-func getFileExtensionFromURL(path string) string {
-	ext := filepath.Ext(path)
-	if ext == "" {
-		return ""
-	}
-	return ext
-}
-
-func getFileExtensionFromMediaType(mediaType string) string {
-	mediaType = strings.Split(mediaType, ";")[0]
-	mediaType = strings.TrimSpace(mediaType)
-	if exts, err := mime.ExtensionsByType(mediaType); err == nil && len(exts) > 0 {
-		return exts[0]
-	}
-	return "." + strings.SplitN(mediaType, "/", 2)[1]
 }
