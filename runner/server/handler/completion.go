@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -319,11 +320,26 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 						Text: *ct.GetText(),
 					})
 				case "image_url":
+					imageURL := ct.GetImageURL().URL
+					if isBase64ImageData(imageURL) {
+						tempFile, err := decodeBase64ImageToTempFile(imageURL)
+						if err != nil {
+							c.JSON(http.StatusBadRequest, map[string]any{"error": fmt.Sprintf("failed to decode base64 image: %v", err)})
+							return
+						}
+						defer func() {
+							slog.Debug("removing temp file", "path", tempFile)
+							if err := os.Remove(tempFile); err != nil {
+								slog.Warn("failed to remove temp file", "error", err)
+							}
+						}()
+						imageURL = tempFile
+					}
 					contents = append(contents, nexa_sdk.VlmContent{
 						Type: nexa_sdk.VlmContentTypeImage,
-						Text: ct.GetImageURL().URL,
+						Text: imageURL,
 					})
-					images = append(images, ct.GetImageURL().URL)
+					images = append(images, imageURL)
 				case "input_audio":
 					contents = append(contents, nexa_sdk.VlmContent{
 						Type: nexa_sdk.VlmContentTypeAudio,
