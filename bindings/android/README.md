@@ -2,7 +2,7 @@
 
 ## Overview
 
-NexaAI Android binding provides a complete solution for running AI models on Android platforms, supporting Large Language Models (LLM), Vision-Language Models (VLM), text embedding, and reranking tasks.
+NexaAI Android binding provides a complete solution for running AI models on Android platforms, supporting Large Language Models (LLM) and Vision-Language Models (VLM).
 
 ## Development Status
 
@@ -17,7 +17,7 @@ NexaAI Android binding provides a complete solution for running AI models on And
 
 ## Features
 
-- **Multi-Model Support**: LLM, VLM, embedding models, reranking models
+- **Multi-Model Support**: LLM, VLM
 - **Streaming Generation**: Real-time streaming output based on Kotlin Flow
 - **Coroutine Support**: Fully async API based on Kotlin coroutines
 - **Builder Pattern**: Clean and easy-to-use builder API
@@ -231,44 +231,6 @@ val formattedPrompt = llm.applyChatTemplate(
 println(formattedPrompt.formattedText)
 ```
 
-### EmbedderWrapper - Embedding Model
-
-#### Creating Instance
-
-```kotlin
-val embedder = EmbedderWrapper.builder()
-    .modelPath("/path/to/embedding_model")
-    .tokenizerPath("/path/to/tokenizer") // Optional
-    .device("cpu")
-    .build()
-    .getOrThrow()
-```
-
-#### Batch Embedding
-
-```kotlin
-val texts = arrayOf("Hello world", "AI is amazing")
-val embeddings = embedder.embed(texts, EmbeddingConfig())
-    .getOrThrow()
-
-// Get embedding dimension
-val dim = embedder.embeddingDim().getOrThrow()
-println("Embedding dimension: $dim")
-```
-
-#### LoRA Support
-
-```kotlin
-// Add LoRA adapter
-val loraId = embedder.addLora("/path/to/lora.bin").getOrThrow()
-
-// Set current LoRA
-embedder.setLora(loraId).getOrThrow()
-
-// List all LoRAs
-val loraIds = embedder.listLoras().getOrThrow()
-```
-
 ### VlmWrapper - Vision-Language Model
 
 #### Creating Instance
@@ -309,37 +271,6 @@ vlm.generateStreamFlow(formattedPrompt.formattedText, GenerationConfig())
     }
 ```
 
-### RerankerWrapper - Reranking Model
-
-#### Creating Instance
-
-```kotlin
-val reranker = RerankerWrapper.builder()
-    .modelPath("/path/to/rerank_model")
-    .tokenizerPath("/path/to/tokenizer") // Required
-    .device("cpu")
-    .build()
-    .getOrThrow()
-```
-
-#### Document Reranking
-
-```kotlin
-val query = "History of artificial intelligence"
-val documents = arrayOf(
-    "Artificial intelligence is a branch of computer science...",
-    "Machine learning is a core technology of AI...",
-    "Deep learning has driven rapid AI development..."
-)
-
-val scores = reranker.rerank(query, documents, RerankConfig())
-    .getOrThrow()
-
-// Sort documents by score
-val rankedDocs = documents.zip(scores.toList())
-    .sortedByDescending { it.second }
-    .map { it.first }
-```
 
 ## Configuration Options
 
@@ -369,14 +300,6 @@ GenerationConfig(
 )
 ```
 
-### EmbeddingConfig
-
-```kotlin
-EmbeddingConfig(
-    normalize = true,        // Whether to normalize
-    batchSize = 32          // Batch size
-)
-```
 
 ## Best Practices
 
@@ -434,9 +357,6 @@ val llm = LlmWrapper.builder()
     .build()
     .getOrThrow()
 
-// Batch processing for embeddings
-val embeddings = embedder.embed(texts, config)
-    .getOrThrow()
 ```
 
 ### 4. Memory Management
