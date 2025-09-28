@@ -139,7 +139,7 @@ print(NexaSdk.version)
 let deviceList = NexaSdk.getLlamaDeviceList()
 ```
 
-See `Tests/NexaAITests` for more usage examples.
+See [`Tests/NexaAITests`](./NexaAI/Tests/NexaAITests) and [`nexa-sdk-examples`](https://github.com/NexaAI/nexa-sdk-examples) for more usage examples.
 
 ## FAQ
 
