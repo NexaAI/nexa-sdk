@@ -13,11 +13,32 @@ import (
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/shared/constant"
 
+	"github.com/NexaAI/nexa-sdk/runner/internal/config"
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 	"github.com/NexaAI/nexa-sdk/runner/server/service"
 )
+
+type BaseParams struct {
+	// stream: if false the response will be returned as a single response object, rather than a stream of objects
+	Stream bool `json:"stream" default:"false"`
+	// keep_alive: controls how long the model will stay loaded into memory following the request (default: 5m)
+	KeepAlive *int64 `json:"keep_alive" default:"300"`
+}
+
+// getKeepAliveValue extracts the keepAlive value from BaseParams, using default if not set
+func getKeepAliveValue(param BaseParams) int64 {
+	if param.KeepAlive != nil {
+		return *param.KeepAlive
+	}
+	return config.Get().KeepAlive
+}
+
+type CompletionRequest struct {
+	BaseParams
+	openai.CompletionNewParams
+}
 
 // @Router			/completions [post]
 // @Summary		completion
@@ -27,16 +48,18 @@ import (
 // @Produce		json
 // @Success		200	{object}	openai.Completion
 func Completions(c *gin.Context) {
-	param := openai.CompletionNewParams{}
+	param := CompletionRequest{}
 	if err := c.ShouldBindJSON(&param); err != nil {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
 	}
+	slog.Debug("param", "param", param)
 
 	p, err := service.KeepAliveGet[nexa_sdk.LLM](
 		string(param.Model),
 		types.ModelParam{NCtx: 4096},
 		c.GetHeader("Nexa-KeepCache") != "true",
+		getKeepAliveValue(param.BaseParams),
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
@@ -58,18 +81,17 @@ func Completions(c *gin.Context) {
 	}
 }
 
-type ChatCompletionNewParams openai.ChatCompletionNewParams
-
 // ChatCompletionRequest defines the request body for the chat completions API.
 // example: { "model": "nexaml/nexaml-models", "messages": [ { "role": "user", "content": "why is the sky blue?" } ] }
 type ChatCompletionRequest struct {
-	Stream      bool `json:"stream" default:"false"`
 	EnableThink bool `json:"enable_think" default:"true"`
-
-	ChatCompletionNewParams
+	BaseParams
+	openai.ChatCompletionNewParams
 }
 
 var toolCallRegex = regexp.MustCompile(`<tool_call>([\s\S]+)<\/tool_call>` + "|" + "```json([\\s\\S]+)```")
+
+
 
 // @Router			/chat/completions [post]
 // @Summary		Creates a model response for the given chat conversation.
@@ -84,6 +106,8 @@ func ChatCompletions(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
 	}
+
+	slog.Debug("param", "param", param)
 
 	s := store.Get()
 	manifest, err := s.GetManifest(param.Model)
@@ -109,6 +133,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 		string(param.Model),
 		types.ModelParam{NCtx: 4096},
 		c.GetHeader("Nexa-KeepCache") != "true",
+		getKeepAliveValue(param.BaseParams),
 	)
 	if errors.Is(err, os.ErrNotExist) {
 		c.JSON(http.StatusNotFound, map[string]any{"error": "model not found"})
@@ -276,6 +301,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 		string(param.Model),
 		types.ModelParam{NCtx: 4096},
 		c.GetHeader("Nexa-KeepCache") != "true",
+		getKeepAliveValue(param.BaseParams),
 	)
 	if errors.Is(err, os.ErrNotExist) {
 		c.JSON(http.StatusNotFound, map[string]any{"error": "model not found"})
