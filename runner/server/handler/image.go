@@ -171,32 +171,3 @@ func encodeImageToBase64(imagePath string) (string, error) {
 	base64String := base64.StdEncoding.EncodeToString(imageData)
 	return fmt.Sprintf("data:%s;base64,%s", mimeType, base64String), nil
 }
-
-func isBase64ImageData(url string) bool {
-	return strings.HasPrefix(url, "data:image/")
-}
-
-func decodeBase64ImageToTempFile(base64Data string) (string, error) {
-	// Extract the base64 part after "data:image/png;base64,xxxxxxxxx"
-	parts := strings.Split(base64Data, ";base64,")
-	if len(parts) != 2 {
-		return "", fmt.Errorf("invalid base64 data format")
-	}
-	decodedData, err := base64.StdEncoding.DecodeString(parts[1])
-	if err != nil {
-		return "", fmt.Errorf("failed to decode base64 image: %v", err)
-	}
-
-	tmpFile, err := os.CreateTemp("", "decoded_image_*.png")
-	if err != nil {
-		return "", fmt.Errorf("failed to create temp file: %v", err)
-	}
-	defer tmpFile.Close()
-
-	_, err = tmpFile.Write(decodedData)
-	if err != nil {
-		return "", fmt.Errorf("failed to write to temp file: %v", err)
-	}
-
-	return tmpFile.Name(), nil
-}

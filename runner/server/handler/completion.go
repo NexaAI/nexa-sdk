@@ -2,7 +2,6 @@ package handler
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -320,32 +319,41 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 						Text: *ct.GetText(),
 					})
 				case "image_url":
-					imageURL := ct.GetImageURL().URL
-					if isBase64ImageData(imageURL) {
-						tempFile, err := decodeBase64ImageToTempFile(imageURL)
-						if err != nil {
-							c.JSON(http.StatusBadRequest, map[string]any{"error": fmt.Sprintf("failed to decode base64 image: %v", err)})
-							return
-						}
-						defer func() {
-							slog.Debug("removing temp file", "path", tempFile)
-							if err := os.Remove(tempFile); err != nil {
-								slog.Warn("failed to remove temp file", "error", err)
-							}
-						}()
-						imageURL = tempFile
+					file, err := SaveURIToTempFile(ct.GetImageURL().URL)
+					slog.Debug("Saved image file", "file", file)
+					if err != nil {
+						c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+						return
 					}
+					defer func() {
+						slog.Debug("Remove image file", "imageURL", file)
+						if err := os.Remove(file); err != nil {
+							slog.Error("Remove image file error", "error", err)
+						}
+					}()
 					contents = append(contents, nexa_sdk.VlmContent{
 						Type: nexa_sdk.VlmContentTypeImage,
-						Text: imageURL,
+						Text: file,
 					})
-					images = append(images, imageURL)
+					images = append(images, file)
 				case "input_audio":
+					file, err := SaveURIToTempFile(ct.GetInputAudio().Data)
+					slog.Debug("Saved audio file", "file", file)
+					if err != nil {
+						c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+						return
+					}
+					defer func() {
+						slog.Debug("Remove audio file", "file", file)
+						if err := os.Remove(file); err != nil {
+							slog.Error("Remove audio file error", "error", err)
+						}
+					}()
 					contents = append(contents, nexa_sdk.VlmContent{
 						Type: nexa_sdk.VlmContentTypeAudio,
-						Text: ct.GetInputAudio().Data,
+						Text: file,
 					})
-					audios = append(audios, ct.GetInputAudio().Data)
+					audios = append(audios, file)
 				}
 			}
 
