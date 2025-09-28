@@ -549,6 +549,146 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 	})
 }
 
+func inferEmbedder(manifest *types.ModelManifest, quant string) {
+	s := store.Get()
+	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
+	spin := render.NewSpinner("loading embedding model...")
+	spin.Start()
+
+	embedderInput := nexa_sdk.EmbedderCreateInput{
+		ModelName: manifest.ModelName,
+		ModelPath: modelfile,
+		PluginID:  manifest.PluginId,
+		DeviceID:  manifest.DeviceId,
+	}
+
+	p, err := nexa_sdk.NewEmbedder(embedderInput)
+	spin.Stop()
+
+	if err != nil {
+		slog.Error("failed to create embedder", "error", err)
+		fmt.Println(modelLoadFailMsg)
+		return
+	}
+	defer p.Destroy()
+
+	dimOutput, err := p.EmbeddingDimension()
+	if err != nil {
+		fmt.Println(render.GetTheme().Error.Sprintf("failed to get embedding dimension: %s", err))
+		return
+	}
+
+	fmt.Println(render.GetTheme().Success.Sprintf("Embedding dimension: %d", dimOutput.Dimension))
+
+	repl(ReplConfig{
+		ParseFile: false,
+
+		Run: func(prompt string, _, _ []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			embedInput := nexa_sdk.EmbedderEmbedInput{
+				TaskType: taskType,
+				Texts:    []string{strings.TrimSpace(prompt)},
+				Config: &nexa_sdk.EmbeddingConfig{
+					BatchSize:       1,
+					Normalize:       true,
+					NormalizeMethod: "l2",
+				},
+			}
+
+			result, err := p.Embed(embedInput)
+			if err != nil || len(result.Embeddings) == 0 {
+				return "", result.ProfileData, err
+			}
+
+			n, emb := len(result.Embeddings), result.Embeddings
+			info := render.GetTheme().Info.Sprintf("Embedding")
+			var out string
+			if n > 6 {
+				out = render.GetTheme().Success.Sprintf(
+					"[%.6f, %.6f, %.6f, ..., %.6f, %.6f, %.6f] (length: %d)",
+					emb[0], emb[1], emb[2],
+					emb[n-3], emb[n-2], emb[n-1], n,
+				)
+			} else {
+				out = render.GetTheme().Success.Sprintf("%v (length: %d)", emb, n)
+			}
+
+			on_token(fmt.Sprintf("%s: %s", info, out))
+
+			return "", result.ProfileData, nil
+		},
+	})
+}
+
+func inferReranker(manifest *types.ModelManifest, quant string) {
+	s := store.Get()
+	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
+	spin := render.NewSpinner("loading reranker model...")
+	spin.Start()
+
+	rerankerInput := nexa_sdk.RerankerCreateInput{
+		ModelName: manifest.ModelName,
+		ModelPath: modelfile,
+		PluginID:  manifest.PluginId,
+		DeviceID:  manifest.DeviceId,
+	}
+
+	p, err := nexa_sdk.NewReranker(rerankerInput)
+	spin.Stop()
+
+	if err != nil {
+		slog.Error("failed to create reranker", "error", err)
+		fmt.Println(modelLoadFailMsg)
+		return
+	}
+	defer p.Destroy()
+
+	// Check if query is provided
+	if query == "" {
+		fmt.Println(render.GetTheme().Error.Sprintf("--query is required for reranking"))
+		fmt.Println()
+		return
+	}
+
+	// Check if documents are provided
+	if len(document) == 0 {
+		fmt.Println(render.GetTheme().Error.Sprintf("at least one --document is required for reranking"))
+		fmt.Println()
+		return
+	}
+
+	fmt.Println(render.GetTheme().Success.Sprintf("Query: %s", query))
+	fmt.Println(render.GetTheme().Success.Sprintf("Processing %d documents", len(document)))
+
+	// Create rerank input
+	rerankInput := nexa_sdk.RerankerRerankInput{
+		Query:     query,
+		Documents: document,
+		Config: &nexa_sdk.RerankConfig{
+			BatchSize:       int32(len(document)),
+			Normalize:       true,
+			NormalizeMethod: "softmax",
+		},
+	}
+
+	// Perform reranking
+	result, err := p.Rerank(rerankInput)
+	if err != nil {
+		fmt.Println(render.GetTheme().Error.Sprintf("reranking failed: %s", err))
+		return
+	}
+
+	fmt.Println(render.GetTheme().Success.Sprintf("✓ Reranking completed successfully"))
+	fmt.Println(render.GetTheme().Success.Sprintf("  Generated %d scores", len(result.Scores)))
+
+	// Display results
+	for i, doc := range document {
+		if i < len(result.Scores) {
+			fmt.Printf("\n%s [%d]: %s\n", render.GetTheme().Info.Sprintf("Document"), i+1, doc)
+			fmt.Printf("%s: %.6f\n", render.GetTheme().Info.Sprintf("Score"), result.Scores[i])
+		}
+	}
+}
+
 func inferTTS(manifest *types.ModelManifest, quant string) {
 	s := store.Get()
 	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
@@ -870,76 +1010,6 @@ func inferCV(manifest *types.ModelManifest, quant string) {
 	}
 }
 
-func inferEmbedder(manifest *types.ModelManifest, quant string) {
-	s := store.Get()
-	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
-	spin := render.NewSpinner("loading embedding model...")
-	spin.Start()
-
-	embedderInput := nexa_sdk.EmbedderCreateInput{
-		ModelName: manifest.ModelName,
-		ModelPath: modelfile,
-		PluginID:  manifest.PluginId,
-		DeviceID:  manifest.DeviceId,
-	}
-
-	p, err := nexa_sdk.NewEmbedder(embedderInput)
-	spin.Stop()
-
-	if err != nil {
-		slog.Error("failed to create embedder", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return
-	}
-	defer p.Destroy()
-
-	dimOutput, err := p.EmbeddingDimension()
-	if err != nil {
-		fmt.Println(render.GetTheme().Error.Sprintf("failed to get embedding dimension: %s", err))
-		return
-	}
-
-	fmt.Println(render.GetTheme().Success.Sprintf("Embedding dimension: %d", dimOutput.Dimension))
-
-	repl(ReplConfig{
-		ParseFile: false,
-
-		Run: func(prompt string, _, _ []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
-			embedInput := nexa_sdk.EmbedderEmbedInput{
-				TaskType: taskType,
-				Texts:    []string{strings.TrimSpace(prompt)},
-				Config: &nexa_sdk.EmbeddingConfig{
-					BatchSize:       1,
-					Normalize:       true,
-					NormalizeMethod: "l2",
-				},
-			}
-
-			result, err := p.Embed(embedInput)
-			if err != nil || len(result.Embeddings) == 0 {
-				return "", result.ProfileData, err
-			}
-
-			n, emb := len(result.Embeddings), result.Embeddings
-			info := render.GetTheme().Info.Sprintf("Embedding")
-			var out string
-			if n > 6 {
-				out = render.GetTheme().Success.Sprintf(
-					"[%.6f, %.6f, %.6f, ..., %.6f, %.6f, %.6f] (length: %d)",
-					emb[0], emb[1], emb[2],
-					emb[n-3], emb[n-2], emb[n-1], n,
-				)
-			} else {
-				out = render.GetTheme().Success.Sprintf("%v (length: %d)", emb, n)
-			}
-
-			on_token(fmt.Sprintf("%s: %s", info, out))
-
-			return "", result.ProfileData, nil
-		},
-	})
-}
-
 func inferImageGen(manifest *types.ModelManifest, _ string) {
 	s := store.Get()
 	modeldir := s.ModelfilePath(manifest.Name, "")
@@ -1009,74 +1079,4 @@ func inferImageGen(manifest *types.ModelManifest, _ string) {
 	}
 
 	fmt.Println(render.GetTheme().Success.Sprintf("✓ Image saved to: %s", result.OutputImagePath))
-}
-
-func inferReranker(manifest *types.ModelManifest, quant string) {
-	s := store.Get()
-	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
-	spin := render.NewSpinner("loading reranker model...")
-	spin.Start()
-
-	rerankerInput := nexa_sdk.RerankerCreateInput{
-		ModelName: manifest.ModelName,
-		ModelPath: modelfile,
-		PluginID:  manifest.PluginId,
-		DeviceID:  manifest.DeviceId,
-	}
-
-	p, err := nexa_sdk.NewReranker(rerankerInput)
-	spin.Stop()
-
-	if err != nil {
-		slog.Error("failed to create reranker", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return
-	}
-	defer p.Destroy()
-
-	// Check if query is provided
-	if query == "" {
-		fmt.Println(render.GetTheme().Error.Sprintf("--query is required for reranking"))
-		fmt.Println()
-		return
-	}
-
-	// Check if documents are provided
-	if len(document) == 0 {
-		fmt.Println(render.GetTheme().Error.Sprintf("at least one --document is required for reranking"))
-		fmt.Println()
-		return
-	}
-
-	fmt.Println(render.GetTheme().Success.Sprintf("Query: %s", query))
-	fmt.Println(render.GetTheme().Success.Sprintf("Processing %d documents", len(document)))
-
-	// Create rerank input
-	rerankInput := nexa_sdk.RerankerRerankInput{
-		Query:     query,
-		Documents: document,
-		Config: &nexa_sdk.RerankConfig{
-			BatchSize:       int32(len(document)),
-			Normalize:       true,
-			NormalizeMethod: "softmax",
-		},
-	}
-
-	// Perform reranking
-	result, err := p.Rerank(rerankInput)
-	if err != nil {
-		fmt.Println(render.GetTheme().Error.Sprintf("reranking failed: %s", err))
-		return
-	}
-
-	fmt.Println(render.GetTheme().Success.Sprintf("✓ Reranking completed successfully"))
-	fmt.Println(render.GetTheme().Success.Sprintf("  Generated %d scores", len(result.Scores)))
-
-	// Display results
-	for i, doc := range document {
-		if i < len(result.Scores) {
-			fmt.Printf("\n%s [%d]: %s\n", render.GetTheme().Info.Sprintf("Document"), i+1, doc)
-			fmt.Printf("%s: %.6f\n", render.GetTheme().Info.Sprintf("Score"), result.Scores[i])
-		}
-	}
 }
