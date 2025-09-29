@@ -16,8 +16,8 @@ import (
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
-	"github.com/NexaAI/nexa-sdk/runner/server/handler/utils"
 	"github.com/NexaAI/nexa-sdk/runner/server/service"
+	"github.com/NexaAI/nexa-sdk/runner/server/utils"
 )
 
 func Completions(c *gin.Context) {
