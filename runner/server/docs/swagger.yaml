@@ -81,24 +81,24 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /v1/reranking:
-    post:
-      summary: Reranks the given documents for the given query
-      description: Reranks the given documents for the given query
-      operationId: PostV1Reranking
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RerankingRequest"
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RerankingResponse"
+  # /v1/reranking:
+  #   post:
+  #     summary: Reranks the given documents for the given query
+  #     description: Reranks the given documents for the given query
+  #     operationId: PostV1Reranking
+  #     requestBody:
+  #       required: true
+  #       content:
+  #         application/json:
+  #           schema:
+  #             $ref: "#/components/schemas/RerankingRequest"
+  #     responses:
+  #       "200":
+  #         description: OK
+  #         content:
+  #           application/json:
+  #             schema:
+  #               $ref: "#/components/schemas/RerankingResponse"
 
 components:
   schemas:
