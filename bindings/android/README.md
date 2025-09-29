@@ -49,6 +49,13 @@ dependencyResolutionManagement {
 The project uses Nexa AI SDK from Maven Central in `app/build.gradle.kts`:
 
 ```kotlin
+android {
+	// ...
+	packagingOptions {
+        jniLibs.useLegacyPackaging = true
+    }
+}
+
 dependencies {
     implementation("ai.nexa:core:0.0.3")
     // Other dependencies...
