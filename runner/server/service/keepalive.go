@@ -127,7 +127,7 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 			break
 		}
 	}
-	
+
 	var t keepable
 	var e error
 	switch reflect.TypeFor[T]() {
@@ -136,7 +136,8 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 			ModelName: manifest.ModelName,
 			ModelPath: modelfile,
 			Config: nexa_sdk.ModelConfig{
-				NCtx: param.NCtx,
+				NCtx:       param.NCtx,
+				NGpuLayers: param.NGpuLayers,
 			},
 			PluginID: manifest.PluginId,
 			DeviceID: manifest.DeviceId,
@@ -156,7 +157,8 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 			MmprojPath:    mmproj,
 			TokenizerPath: tokenizer,
 			Config: nexa_sdk.ModelConfig{
-				NCtx: param.NCtx,
+				NCtx:       param.NCtx,
+				NGpuLayers: param.NGpuLayers,
 			},
 			PluginID: manifest.PluginId,
 			DeviceID: manifest.DeviceId,
