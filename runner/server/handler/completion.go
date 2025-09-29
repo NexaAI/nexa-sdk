@@ -36,7 +36,7 @@ func Completions(c *gin.Context) {
 
 	p, err := service.KeepAliveGet[nexa_sdk.LLM](
 		string(param.Model),
-		types.ModelParam{NCtx: 4096},
+		types.ModelParam{NCtx: 4096, NGpuLayers: 999},
 		c.GetHeader("Nexa-KeepCache") != "true",
 	)
 	if err != nil {
@@ -108,7 +108,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 	// Get LLM instance
 	p, err := service.KeepAliveGet[nexa_sdk.LLM](
 		string(param.Model),
-		types.ModelParam{NCtx: 4096},
+		types.ModelParam{NCtx: 4096, NGpuLayers: 999},
 		c.GetHeader("Nexa-KeepCache") != "true",
 	)
 	if errors.Is(err, os.ErrNotExist) {
@@ -275,7 +275,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 	// Get VLM instance
 	p, err := service.KeepAliveGet[nexa_sdk.VLM](
 		string(param.Model),
-		types.ModelParam{NCtx: 4096},
+		types.ModelParam{NCtx: 4096, NGpuLayers: 999	},
 		c.GetHeader("Nexa-KeepCache") != "true",
 	)
 	if errors.Is(err, os.ErrNotExist) {

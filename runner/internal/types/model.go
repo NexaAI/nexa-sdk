@@ -58,6 +58,7 @@ func (m ModelManifest) GetSize() int64 {
 
 type ModelParam struct {
 	NCtx int32
+	NGpuLayers int32
 }
 
 type DownloadInfo struct {
