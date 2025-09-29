@@ -18,6 +18,11 @@ func SaveURIToTempFile(uri string) (string, error) {
 	}
 
 	var data []byte
+	// windows drive letter
+	if len(u.Scheme) == 1 && (u.Scheme[0] >= 'a' && u.Scheme[0] <= 'z' || u.Scheme[0] >= 'A' && u.Scheme[0] <= 'Z') {
+		u.Scheme = "file"
+		u.Path = uri
+	}
 	switch u.Scheme {
 	case "http", "https":
 		resp, err := http.Get(uri)
@@ -58,15 +63,8 @@ func SaveURIToTempFile(uri string) (string, error) {
 			return "", err
 		}
 	default:
-		// Check if this is a Windows file path that was incorrectly parsed,likely a Windows drive letter (e.g., "c:\path")
-		if len(u.Scheme) == 1 {
-			data, err = os.ReadFile(uri)
-			if err != nil {
-				return "", err
-			}
-		} else {
-			return "", errors.New("unsupported scheme: " + u.Scheme)
-		}
+
+		return "", errors.New("unsupported scheme: " + u.Scheme)
 	}
 
 	fileExt := ""
