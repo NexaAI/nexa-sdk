@@ -6,25 +6,6 @@ info:
     Nexa AI Server - OpenAI compatible API endpoints
 
 paths:
-  /v1/completions:
-    post:
-      summary: Creates a completion for the provided prompt and parameters
-      description: Legacy completion endpoint for text generation. It is recommended to use the Chat Completions endpoint for new applications.
-      operationId: PostV1Completions
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CompletionRequest'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CompletionResponse'
-
   /v1/chat/completions:
     post:
       summary: Creates a model response for the given chat conversation
@@ -35,14 +16,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ChatCompletionRequest'
+              $ref: "#/components/schemas/ChatCompletionRequest"
       responses:
-        '200':
+        "200":
           description: Successful response for non-streaming requests
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ChatCompletionResponse'
+                $ref: "#/components/schemas/ChatCompletionResponse"
 
   /v1/embeddings:
     post:
@@ -54,14 +35,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EmbeddingRequest'
+              $ref: "#/components/schemas/EmbeddingRequest"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EmbeddingResponse'
+                $ref: "#/components/schemas/EmbeddingResponse"
 
   /v1/images/generations:
     post:
@@ -73,32 +54,32 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ImageGenerationRequest'
+              $ref: "#/components/schemas/ImageGenerationRequest"
       responses:
-        '200':
+        "200":
           description: Successful image generation response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ImageGenerationResponse'
-        '400':
+                $ref: "#/components/schemas/ImageGenerationResponse"
+        "400":
           description: Bad request - invalid parameters
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Model not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /v1/reranking:
     post:
@@ -110,14 +91,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RerankingRequest'
+              $ref: "#/components/schemas/RerankingRequest"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RerankingResponse'
+                $ref: "#/components/schemas/RerankingResponse"
 
 components:
   schemas:
@@ -232,10 +213,10 @@ components:
         choices:
           type: array
           items:
-            $ref: '#/components/schemas/CompletionChoice'
+            $ref: "#/components/schemas/CompletionChoice"
           description: The list of completion choices the model generated for the input prompt
         usage:
-          $ref: '#/components/schemas/TokenUsage'
+          $ref: "#/components/schemas/TokenUsage"
 
     CompletionChoice:
       type: object
@@ -247,7 +228,7 @@ components:
           type: integer
           description: The index of the choice in the list of choices
         logprobs:
-          $ref: '#/components/schemas/CompletionChoiceLogprobs'
+          $ref: "#/components/schemas/CompletionChoiceLogprobs"
         finish_reason:
           type: string
           enum: [stop, length, content_filter]
@@ -287,7 +268,7 @@ components:
         messages:
           type: array
           items:
-            $ref: '#/components/schemas/ChatMessage'
+            $ref: "#/components/schemas/ChatMessage"
           description: A list of messages comprising the conversation so far
         max_tokens:
           type: integer
@@ -350,20 +331,24 @@ components:
         tools:
           type: array
           items:
-            $ref: '#/components/schemas/ChatCompletionTool'
+            $ref: "#/components/schemas/ChatCompletionTool"
           description: A list of tools the model may call
           default: []
         tool_choice:
           oneOf:
             - type: string
-            - $ref: '#/components/schemas/ChatCompletionToolChoice'
+            - $ref: "#/components/schemas/ChatCompletionToolChoice"
           description: Controls which (if any) function is called by the model
           default: ""
 
     ChatMessage:
       type: object
       required: [role, content]
-      default: { "role": "user", "content": "What is the weather like in Boston today?" }
+      default:
+        {
+          "role": "user",
+          "content": "What is the weather like in Boston today?",
+        }
       properties:
         role:
           type: string
@@ -374,7 +359,7 @@ components:
             - type: string
             - type: array
               items:
-                $ref: '#/components/schemas/ChatMessageContent'
+                $ref: "#/components/schemas/ChatMessageContent"
           description: The contents of the message
         name:
           type: string
@@ -382,10 +367,10 @@ components:
         tool_calls:
           type: array
           items:
-            $ref: '#/components/schemas/ChatCompletionMessageToolCall'
+            $ref: "#/components/schemas/ChatCompletionMessageToolCall"
           description: The tool calls generated by the model
         function_call:
-          $ref: '#/components/schemas/ChatCompletionMessageFunctionCall'
+          $ref: "#/components/schemas/ChatCompletionMessageFunctionCall"
           description: Deprecated and replaced by tool_calls
 
     ChatMessageContent:
@@ -397,7 +382,7 @@ components:
         text:
           type: string
         image_url:
-          $ref: '#/components/schemas/ChatMessageImageURL'
+          $ref: "#/components/schemas/ChatMessageImageURL"
 
     ChatMessageImageURL:
       type: object
@@ -415,7 +400,7 @@ components:
           type: string
           enum: [function]
         function:
-          $ref: '#/components/schemas/ChatCompletionToolFunction'
+          $ref: "#/components/schemas/ChatCompletionToolFunction"
 
     ChatCompletionToolFunction:
       type: object
@@ -454,7 +439,7 @@ components:
           enum: [function]
           description: The type of the tool
         function:
-          $ref: '#/components/schemas/ChatCompletionMessageToolCallFunction'
+          $ref: "#/components/schemas/ChatCompletionMessageToolCallFunction"
 
     ChatCompletionMessageToolCallFunction:
       type: object
@@ -495,10 +480,10 @@ components:
         choices:
           type: array
           items:
-            $ref: '#/components/schemas/ChatChoice'
+            $ref: "#/components/schemas/ChatChoice"
           description: A list of chat completion choices
         usage:
-          $ref: '#/components/schemas/TokenUsage'
+          $ref: "#/components/schemas/TokenUsage"
 
     ChatChoice:
       type: object
@@ -507,14 +492,14 @@ components:
           type: integer
           description: The index of the choice in the list of choices
         message:
-          $ref: '#/components/schemas/ChatMessage'
+          $ref: "#/components/schemas/ChatMessage"
           description: A chat completion message generated by the model
         finish_reason:
           type: string
           enum: [stop, length, tool_calls, content_filter, function_call]
           description: The reason the model stopped generating tokens
         logprobs:
-          $ref: '#/components/schemas/ChatCompletionChoiceLogprobs'
+          $ref: "#/components/schemas/ChatCompletionChoiceLogprobs"
 
     ChatCompletionChoiceLogprobs:
       type: object
@@ -522,7 +507,7 @@ components:
         content:
           type: array
           items:
-            $ref: '#/components/schemas/ChatCompletionTokenLogprob'
+            $ref: "#/components/schemas/ChatCompletionTokenLogprob"
 
     ChatCompletionTokenLogprob:
       type: object
@@ -538,7 +523,7 @@ components:
         top_logprobs:
           type: array
           items:
-            $ref: '#/components/schemas/ChatCompletionTokenLogprobTopLogprob'
+            $ref: "#/components/schemas/ChatCompletionTokenLogprobTopLogprob"
 
     ChatCompletionTokenLogprobTopLogprob:
       type: object
@@ -595,13 +580,13 @@ components:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/EmbeddingVector'
+            $ref: "#/components/schemas/EmbeddingVector"
           description: The list of embeddings generated by the model
         model:
           type: string
           description: The name of the model used to generate the embedding
         usage:
-          $ref: '#/components/schemas/TokenUsage'
+          $ref: "#/components/schemas/TokenUsage"
 
     EmbeddingVector:
       type: object
@@ -671,7 +656,7 @@ components:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/ImageGenerationData'
+            $ref: "#/components/schemas/ImageGenerationData"
           description: The list of generated images
 
     ImageGenerationData:
@@ -722,13 +707,13 @@ components:
         results:
           type: array
           items:
-            $ref: '#/components/schemas/RerankResult'
+            $ref: "#/components/schemas/RerankResult"
           description: The reranked documents
         model:
           type: string
           description: The name of the model used for reranking
         usage:
-          $ref: '#/components/schemas/TokenUsage'
+          $ref: "#/components/schemas/TokenUsage"
 
     RerankResult:
       type: object
