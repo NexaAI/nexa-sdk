@@ -58,7 +58,15 @@ func SaveURIToTempFile(uri string) (string, error) {
 			return "", err
 		}
 	default:
-		return "", errors.New("unsupported scheme: " + u.Scheme)
+		// Check if this is a Windows file path that was incorrectly parsed,likely a Windows drive letter (e.g., "c:\path")
+		if len(u.Scheme) == 1 {
+			data, err = os.ReadFile(uri)
+			if err != nil {
+				return "", err
+			}
+		} else {
+			return "", errors.New("unsupported scheme: " + u.Scheme)
+		}
 	}
 
 	fileExt := ""
