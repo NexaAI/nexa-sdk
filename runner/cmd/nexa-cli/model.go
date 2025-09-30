@@ -143,9 +143,17 @@ func list() *cobra.Command {
 				})
 			}
 		} else {
-			tw.AppendHeader(table.Row{"NAME", "SIZE"})
+			tw.AppendHeader(table.Row{"NAME", "SIZE", "QUANTS"})
 			for _, model := range models {
-				tw.AppendRow(table.Row{model.Name, humanize.IBytes(uint64(model.GetSize()))})
+				tw.AppendRow(table.Row{model.Name, humanize.IBytes(uint64(model.GetSize())), strings.Join(func() []string {
+					quants := make([]string, 0)
+					for q := range model.ModelFile {
+						if model.ModelFile[q].Downloaded {
+							quants = append(quants, strings.ReplaceAll(q,"N/A","",))
+						}
+					}
+					return quants
+				}(), ",")})
 			}
 		}
 		tw.Render()

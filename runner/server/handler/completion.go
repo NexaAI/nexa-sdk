@@ -240,7 +240,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 	// Get VLM instance
 	p, err := service.KeepAliveGet[nexa_sdk.VLM](
 		string(param.Model),
-		types.ModelParam{NCtx: 4096, NGpuLayers: 999	},
+		types.ModelParam{NCtx: 4096, NGpuLayers: 999},
 		c.GetHeader("Nexa-KeepCache") != "true",
 	)
 	if errors.Is(err, os.ErrNotExist) {
