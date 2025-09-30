@@ -148,8 +148,8 @@ func list() *cobra.Command {
 				tw.AppendRow(table.Row{model.Name, humanize.IBytes(uint64(model.GetSize())), strings.Join(func() []string {
 					quants := make([]string, 0)
 					for q := range model.ModelFile {
-						if model.ModelFile[q].Downloaded {
-							quants = append(quants, strings.ReplaceAll(q,"N/A","",))
+						if model.ModelFile[q].Downloaded && q != "N/A" {
+							quants = append(quants, q)
 						}
 					}
 					return quants
