@@ -419,7 +419,6 @@ func fsmEvent(state *int, token string) {
 // file name parse
 
 var fileRegex = regexp.MustCompile(`(?:[a-zA-Z]:)?(?:\./|/|\\)[\S\\ ]+?\.(?i:jpg|jpeg|png|webp|mp3|wav)\b`)
-var partRegex = regexp.MustCompile(`-\d+-of-\d+\.gguf$`)
 
 func parseFiles(prompt string) (string, []string, []string) {
 	files := fileRegex.FindAllString(prompt, -1)
