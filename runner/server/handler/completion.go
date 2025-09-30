@@ -31,6 +31,7 @@ type ChatCompletionNewParams openai.ChatCompletionNewParams
 type ChatCompletionRequest struct {
 	Stream      bool `json:"stream" default:"false"`
 	EnableThink bool `json:"enable_think" default:"true"`
+	EnableJson  bool `json:"enable_json" default:"false"`
 
 	ChatCompletionNewParams
 }
@@ -111,6 +112,8 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 		}
 	}
 
+	samplerConfig := parseSamplerConfig(param)
+
 	// Format prompt using chat template
 	formatted, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
 		Messages:    messages,
@@ -139,7 +142,8 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 					return true
 				},
 				Config: &nexa_sdk.GenerationConfig{
-					MaxTokens: 2048,
+					MaxTokens:     2048,
+					SamplerConfig: samplerConfig,
 				},
 			},
 			)
@@ -189,7 +193,8 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 		genOut, err := p.Generate(nexa_sdk.LlmGenerateInput{
 			PromptUTF8: formatted.FormattedText,
 			Config: &nexa_sdk.GenerationConfig{
-				MaxTokens: 2048,
+				MaxTokens:     2048,
+				SamplerConfig: samplerConfig,
 			},
 		},
 		)
@@ -240,7 +245,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 	// Get VLM instance
 	p, err := service.KeepAliveGet[nexa_sdk.VLM](
 		string(param.Model),
-		types.ModelParam{NCtx: 4096, NGpuLayers: 999	},
+		types.ModelParam{NCtx: 4096, NGpuLayers: 999},
 		c.GetHeader("Nexa-KeepCache") != "true",
 	)
 	if errors.Is(err, os.ErrNotExist) {
@@ -332,6 +337,8 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 		}
 	}
 
+	samplerConfig := parseSamplerConfig(param)
+
 	// Format prompt using VLM chat template
 	formatted, err := p.ApplyChatTemplate(nexa_sdk.VlmApplyChatTemplateInput{
 		Messages:    messages,
@@ -359,9 +366,10 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 					return true
 				},
 				Config: &nexa_sdk.GenerationConfig{
-					MaxTokens:  2048,
-					ImagePaths: images,
-					AudioPaths: audios,
+					MaxTokens:     2048,
+					SamplerConfig: samplerConfig,
+					ImagePaths:    images,
+					AudioPaths:    audios,
 				},
 			},
 			)
@@ -399,9 +407,10 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 		genOut, err := p.Generate(nexa_sdk.VlmGenerateInput{
 			PromptUTF8: formatted.FormattedText,
 			Config: &nexa_sdk.GenerationConfig{
-				MaxTokens:  2048,
-				ImagePaths: images,
-				AudioPaths: audios,
+				MaxTokens:     2048,
+				SamplerConfig: samplerConfig,
+				ImagePaths:    images,
+				AudioPaths:    audios,
 			},
 		},
 		)
@@ -454,4 +463,39 @@ func profile2Usage(p nexa_sdk.ProfileData) openai.CompletionUsage {
 		PromptTokens:     p.PromptTokens,
 		TotalTokens:      p.TotalTokens(),
 	}
+}
+
+func parseSamplerConfig(param ChatCompletionRequest) *nexa_sdk.SamplerConfig {
+	// parse sampling parameters
+	var samplerConfig *nexa_sdk.SamplerConfig
+	samplerConfig = &nexa_sdk.SamplerConfig{
+		Temperature:       0.8,
+		TopP:              0.95,
+		TopK:              40,
+		MinP:              0.05,
+		RepetitionPenalty: 1.0,
+		PresencePenalty:   0.0,
+		FrequencyPenalty:  0.0,
+		Seed:              -1,
+		EnableJson:        param.EnableJson,
+	}
+	if param.Temperature.Valid() {
+		samplerConfig.Temperature = float32(param.Temperature.Value)
+	}
+	if param.TopP.Valid() {
+		samplerConfig.TopP = float32(param.TopP.Value)
+	}
+	// if param.RepetitionPenalty.Valid() {
+	// 	samplerConfig.RepetitionPenalty = float32(param.RepetitionPenalty.Value)
+	// }
+	if param.PresencePenalty.Valid() {
+		samplerConfig.PresencePenalty = float32(param.PresencePenalty.Value)
+	}
+	if param.FrequencyPenalty.Valid() {
+		samplerConfig.FrequencyPenalty = float32(param.FrequencyPenalty.Value)
+	}
+	if param.Seed.Valid() {
+		samplerConfig.Seed = int32(param.Seed.Value)
+	}
+	return samplerConfig
 }

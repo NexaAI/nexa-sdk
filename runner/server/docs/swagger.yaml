@@ -340,6 +340,10 @@ components:
             - $ref: "#/components/schemas/ChatCompletionToolChoice"
           description: Controls which (if any) function is called by the model
           default: ""
+        enable_json:
+          type: boolean
+          description: Whether to enable JSON response generation
+          default: false
 
     ChatMessage:
       type: object
