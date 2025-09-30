@@ -71,7 +71,11 @@ func updateImpl() error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("New version found, file: %s, version: %s\n", ast.Name, rls.TagName)
+	fmt.Println(
+		render.GetTheme().Warning.Sprint("New version found, file: "),
+		render.GetTheme().Success.Sprint(ast.Name),
+		render.GetTheme().Warning.Sprint(", version: "),
+		render.GetTheme().Success.Sprint(rls.TagName))
 
 	dst := filepath.Join(os.TempDir(), "nexa", rls.TagName, ast.Name)
 	progress := make(chan int64)
@@ -202,7 +206,7 @@ func download(url, dst string, progress chan int64) error {
 	}
 	defer file.Close()
 
-	downloader := downloader.NewDownloader()
+	downloader := downloader.NewDownloader("")
 	size, err := downloader.GetFileSize(url)
 	if err != nil {
 		return err
