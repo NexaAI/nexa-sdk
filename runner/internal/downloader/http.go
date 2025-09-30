@@ -6,16 +6,17 @@ import (
 	"io"
 	"net/url"
 
-	"github.com/NexaAI/nexa-sdk/runner/internal/config"
 	"github.com/valyala/fasthttp"
 )
 
 type HTTPDownloader struct {
+	authToken string
 	fasthttp.Client
 }
 
-func NewDownloader() *HTTPDownloader {
+func NewDownloader(authToken string) *HTTPDownloader {
 	return &HTTPDownloader{
+		authToken: authToken,
 		Client: fasthttp.Client{
 			NoDefaultUserAgentHeader:  true,
 			MaxIdemponentCallAttempts: 3,
@@ -31,15 +32,15 @@ func (d *HTTPDownloader) DownloadChunk(ctx context.Context, url string, offset, 
 	defer fasthttp.ReleaseRequest(req)
 	defer fasthttp.ReleaseResponse(resp)
 
-	_, currentURL, err := FastHTTPResolveRedirect(&d.Client, url, 3)
+	_, currentURL, err := FastHTTPResolveRedirect(&d.Client, d.authToken, url, 3)
 	if err != nil {
 		return err
 	}
 
 	req.SetRequestURI(currentURL)
 	req.Header.SetMethod(fasthttp.MethodGet)
-	if config.Get().HFToken != "" {
-		req.Header.Set("Authorization", "Bearer "+config.Get().HFToken)
+	if d.authToken != "" {
+		req.Header.Set("Authorization", "Bearer "+d.authToken)
 	}
 	req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", offset, offset+limit-1))
 
@@ -65,15 +66,15 @@ func (d *HTTPDownloader) GetFileSize(url string) (int64, error) {
 	defer fasthttp.ReleaseRequest(req)
 	defer fasthttp.ReleaseResponse(resp)
 
-	_, currentURL, err := FastHTTPResolveRedirect(&d.Client, url, 3)
+	_, currentURL, err := FastHTTPResolveRedirect(&d.Client, d.authToken, url, 3)
 	if err != nil {
 		return -1, err
 	}
 
 	req.SetRequestURI(currentURL)
 	req.Header.SetMethod(fasthttp.MethodHead)
-	if config.Get().HFToken != "" {
-		req.Header.Set("Authorization", "Bearer "+config.Get().HFToken)
+	if d.authToken != "" {
+		req.Header.Set("Authorization", "Bearer "+d.authToken)
 	}
 	req.Header.Set("Accept-Encoding", "identity")
 
@@ -84,7 +85,7 @@ func (d *HTTPDownloader) GetFileSize(url string) (int64, error) {
 	return int64(resp.Header.ContentLength()), nil
 }
 
-func FastHTTPResolveRedirect(client *fasthttp.Client, currentURL string, maxRedirect int) (int, string, error) {
+func FastHTTPResolveRedirect(client *fasthttp.Client, authToken string, currentURL string, maxRedirect int) (int, string, error) {
 	req := fasthttp.AcquireRequest()
 	resp := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseRequest(req)
@@ -96,8 +97,8 @@ func FastHTTPResolveRedirect(client *fasthttp.Client, currentURL string, maxRedi
 
 		req.SetRequestURI(currentURL)
 		req.Header.SetMethod(fasthttp.MethodHead)
-		if config.Get().HFToken != "" {
-			req.Header.Set("Authorization", "Bearer "+config.Get().HFToken)
+		if authToken != "" {
+			req.Header.Set("Authorization", "Bearer "+authToken)
 		}
 
 		if err := client.Do(req, resp); err != nil {

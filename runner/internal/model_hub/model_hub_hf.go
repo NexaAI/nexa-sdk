@@ -21,7 +21,7 @@ type HuggingFace struct {
 }
 
 func NewHuggingFace() *HuggingFace {
-	return &HuggingFace{downloader: downloader.NewDownloader()}
+	return &HuggingFace{downloader: downloader.NewDownloader(config.Get().HFToken)}
 }
 
 func (d *HuggingFace) CheckAvailable(ctx context.Context, name string) error {
@@ -48,7 +48,7 @@ func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileIn
 	defer fasthttp.ReleaseRequest(req)
 	defer fasthttp.ReleaseResponse(resp)
 
-	code, url, err := downloader.FastHTTPResolveRedirect(&d.downloader.Client, fmt.Sprintf("%s/api/models/%s", HF_ENDPOINT, name), 3)
+	code, url, err := downloader.FastHTTPResolveRedirect(&d.downloader.Client, config.Get().HFToken, fmt.Sprintf("%s/api/models/%s", HF_ENDPOINT, name), 3)
 	if err != nil {
 		if code == 401 || code == 404 {
 			return nil, fmt.Errorf("model %s not found on huggingface, please check model id", name)
