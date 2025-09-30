@@ -17,6 +17,11 @@ import (
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 )
 
+var (
+	skipUpdate  bool
+	skipMigrate bool
+)
+
 // RootCmd creates the main Nexa CLI command with all subcommands.
 // It sets up the command tree structure for model management,
 // inference, and server operations.
@@ -32,7 +37,7 @@ func RootCmd() *cobra.Command {
 			subCmd := cmd.CalledAs()
 
 			// force check migrate
-			if slices.Contains([]string{"infer", "fc", "functioncall", "serve", "run"}, subCmd) {
+			if !skipMigrate && slices.Contains([]string{"infer", "fc", "functioncall", "serve", "run"}, subCmd) {
 				if err := checkMigrate(); err != nil {
 					fmt.Println(render.GetTheme().Error.Sprintf("Migrate error: %s", err))
 					os.Exit(1)
@@ -40,11 +45,12 @@ func RootCmd() *cobra.Command {
 			}
 
 			// skip update check
-			if !slices.Contains([]string{"version", "update", "migrate"}, subCmd) {
-				go checkForUpdate(false)
+			if !skipUpdate {
+				if !slices.Contains([]string{"version", "update", "migrate"}, subCmd) {
+					go checkForUpdate(false)
+				}
+				notifyUpdate()
 			}
-
-			notifyUpdate()
 
 			// license
 			license, err := store.Get().ConfigGet("license")
@@ -57,6 +63,8 @@ func RootCmd() *cobra.Command {
 			return nil
 		},
 	}
+	rootCmd.PersistentFlags().BoolVarP(&skipUpdate, "skip-update", "", false, "Skip checking for updates")
+	rootCmd.PersistentFlags().BoolVarP(&skipMigrate, "skip-migrate", "", false, "Skip checking for model migrations")
 
 	rootCmd.AddGroup(
 		&cobra.Group{ID: "model", Title: "Model Commands"},

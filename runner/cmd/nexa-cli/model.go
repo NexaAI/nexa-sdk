@@ -330,6 +330,8 @@ func chooseModelType() (types.ModelType, error) {
 	return modelType, nil
 }
 
+var partRegex = regexp.MustCompile(`-\d+-of-\d+\.gguf$`)
+
 func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelManifest) (err error) {
 	if len(files) == 0 {
 		err = fmt.Errorf("repo is empty")
