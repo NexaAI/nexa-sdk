@@ -5,13 +5,16 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/bytedance/sonic"
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 	"github.com/openai/openai-go/packages/ssestream"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/config"
 	"github.com/NexaAI/nexa-sdk/runner/internal/model_hub"
@@ -30,7 +33,34 @@ func run() *cobra.Command {
 
 	runCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
 
-	runCmd.Flags().SortFlags = false
+	runCmd.Flags().AddFlagSet(samplerFlags)
+
+	runCmd.SetUsageFunc(func(c *cobra.Command) error {
+		flagGroups := []*pflag.FlagSet{
+			samplerFlags,
+		}
+		w := c.OutOrStdout()
+		fmt.Fprint(w, "Usage:")
+		if c.Runnable() {
+			fmt.Fprintf(w, "\n  %s", c.UseLine())
+		}
+		if len(c.Aliases) > 0 {
+			fmt.Fprintf(w, "\n\nAliases:\n")
+			fmt.Fprintf(w, "  %s", c.NameAndAliases())
+		}
+
+		for _, flags := range flagGroups {
+			fmt.Fprintf(w, "\n\n%s Flags:\n", flags.Name())
+			fmt.Fprint(w, strings.TrimRightFunc(flags.FlagUsages(), unicode.IsSpace))
+		}
+
+		if c.HasAvailableInheritedFlags() {
+			fmt.Fprintf(w, "\n\nGlobal Flags:\n")
+			fmt.Fprint(w, strings.TrimRightFunc(c.InheritedFlags().FlagUsages(), unicode.IsSpace))
+		}
+		fmt.Fprintln(w)
+		return nil
+	})
 
 	runCmd.Run = runFunc
 	return runCmd
@@ -208,10 +238,17 @@ func runFunc(cmd *cobra.Command, args []string) {
 			start := time.Now()
 			acc := openai.ChatCompletionAccumulator{}
 			stream := client.Chat.Completions.NewStreaming(context.Background(), openai.ChatCompletionNewParams{
-				Messages:      history,
-				Model:         model,
-				StreamOptions: openai.ChatCompletionStreamOptionsParam{IncludeUsage: openai.Opt(true)},
-			}, option.WithHeaderAdd("Nexa-KeepCache", "false"))
+				Messages:         history,
+				Model:            model,
+				StreamOptions:    openai.ChatCompletionStreamOptionsParam{IncludeUsage: openai.Opt(true)},
+				Temperature:      openai.Float(float64(temperature)),
+				TopP:             openai.Float(float64(topP)),
+				PresencePenalty:  openai.Float(float64(presencePenalty)),
+				FrequencyPenalty: openai.Float(float64(frequencyPenalty)),
+				Seed:             openai.Int(int64(seed)),
+			},
+				option.WithJSONSet("enable_json", enableJson),
+				option.WithHeaderAdd("Nexa-KeepCache", "false"))
 
 			var firstToken time.Time
 			var profileData nexa_sdk.ProfileData

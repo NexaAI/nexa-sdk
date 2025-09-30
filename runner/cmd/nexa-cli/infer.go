@@ -65,6 +65,42 @@ var (
 )
 
 var (
+	samplerFlags = func() *pflag.FlagSet {
+		samplerFlags := pflag.NewFlagSet("LLM/VLM Sampler", pflag.ExitOnError)
+		samplerFlags.SortFlags = false
+		samplerFlags.Float32VarP(&temperature, "temperature", "", 0.0, "sampling temperature")
+		samplerFlags.Float32VarP(&topP, "top-p", "", 0.0, "top-p sampling")
+		samplerFlags.Int32VarP(&topK, "top-k", "", 0, "top-k sampling")
+		samplerFlags.Float32VarP(&minP, "min-p", "", 0.0, "min-p sampling")
+		samplerFlags.Float32VarP(&repetitionPenalty, "repetition-penalty", "", 1.0, "repetition penalty")
+		samplerFlags.Float32VarP(&presencePenalty, "presence-penalty", "", 0.0, "presence penalty")
+		samplerFlags.Float32VarP(&frequencyPenalty, "frequency-penalty", "", 0.0, "frequency penalty")
+		samplerFlags.Int32VarP(&seed, "seed", "", 0, "random seed")
+		samplerFlags.StringVarP(&grammarPath, "grammar-path", "", "", "path to grammar file")
+		samplerFlags.StringVarP(&grammarString, "grammar-string", "", "", "grammar in string format")
+		samplerFlags.BoolVarP(&enableJson, "enable-json", "", false, "enable json output")
+		return samplerFlags
+	}()
+	llmFlags = func() *pflag.FlagSet {
+		llmFlags := pflag.NewFlagSet("LLM/VLM Model", pflag.ExitOnError)
+		llmFlags.SortFlags = false
+		llmFlags.Int32VarP(&ngl, "ngl", "n", 999, "num of layers pass to gpu")
+		llmFlags.Int32VarP(&maxTokens, "max-tokens", "", 2048, "max tokens")
+		llmFlags.BoolVarP(&enableThink, "think", "", true, "enable thinking mode")
+		llmFlags.BoolVarP(&hideThink, "hide-think", "", false, "hide thinking output")
+		llmFlags.StringVarP(&systemPrompt, "system-prompt", "s", "", "system prompt to set model behavior")
+		llmFlags.StringVarP(&input, "input", "i", "", "prompt txt file")
+		return llmFlags
+	}()
+	vlmFlags = func() *pflag.FlagSet {
+		vlmFlags := pflag.NewFlagSet("VLM Specific", pflag.ExitOnError)
+		vlmFlags.SortFlags = false
+		vlmFlags.Int32VarP(&imageMaxLength, "image-max-length", "", 512, "max image length")
+		return vlmFlags
+	}()
+)
+
+var (
 	ErrNoAudio = errors.New("no audio file provided")
 )
 
@@ -80,34 +116,8 @@ func infer() *cobra.Command {
 
 	// NOTE: flagset use same flag name will be ignored, but usage is different, so we keep them in different flagset
 
-	samplerFlags := pflag.NewFlagSet("LLM/VLM Sampler", pflag.ExitOnError)
-	samplerFlags.SortFlags = false
-	samplerFlags.Float32VarP(&temperature, "temperature", "", 0.0, "sampling temperature")
-	samplerFlags.Float32VarP(&topP, "top-p", "", 0.0, "top-p sampling")
-	samplerFlags.Int32VarP(&topK, "top-k", "", 0, "top-k sampling")
-	samplerFlags.Float32VarP(&minP, "min-p", "", 0.0, "min-p sampling")
-	samplerFlags.Float32VarP(&repetitionPenalty, "repetition-penalty", "", 1.0, "repetition penalty")
-	samplerFlags.Float32VarP(&presencePenalty, "presence-penalty", "", 0.0, "presence penalty")
-	samplerFlags.Float32VarP(&frequencyPenalty, "frequency-penalty", "", 0.0, "frequency penalty")
-	samplerFlags.Int32VarP(&seed, "seed", "", 0, "random seed")
-	samplerFlags.StringVarP(&grammarPath, "grammar-path", "", "", "path to grammar file")
-	samplerFlags.StringVarP(&grammarString, "grammar-string", "", "", "grammar in string format")
-	samplerFlags.BoolVarP(&enableJson, "enable-json", "", false, "enable json output")
 	inferCmd.Flags().AddFlagSet(samplerFlags)
-
-	llmFlags := pflag.NewFlagSet("LLM/VLM Model", pflag.ExitOnError)
-	llmFlags.SortFlags = false
-	llmFlags.Int32VarP(&ngl, "ngl", "n", 999, "num of layers pass to gpu")
-	llmFlags.Int32VarP(&maxTokens, "max-tokens", "", 2048, "max tokens")
-	llmFlags.BoolVarP(&enableThink, "think", "", true, "enable thinking mode")
-	llmFlags.BoolVarP(&hideThink, "hide-think", "", false, "hide thinking output")
-	llmFlags.StringVarP(&systemPrompt, "system-prompt", "s", "", "system prompt to set model behavior")
-	llmFlags.StringVarP(&input, "input", "i", "", "prompt txt file")
 	inferCmd.Flags().AddFlagSet(llmFlags)
-
-	vlmFlags := pflag.NewFlagSet("VLM Specific", pflag.ExitOnError)
-	vlmFlags.SortFlags = false
-	vlmFlags.Int32VarP(&imageMaxLength, "image-max-length", "", 512, "max image length")
 	inferCmd.Flags().AddFlagSet(vlmFlags)
 
 	embedderFlags := pflag.NewFlagSet("Embedder", pflag.ExitOnError)
