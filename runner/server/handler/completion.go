@@ -29,9 +29,16 @@ type ChatCompletionNewParams openai.ChatCompletionNewParams
 // ChatCompletionRequest defines the request body for the chat completions API.
 // example: { "model": "nexaml/nexaml-models", "messages": [ { "role": "user", "content": "why is the sky blue?" } ] }
 type ChatCompletionRequest struct {
-	Stream      bool `json:"stream" default:"false"`
+	Stream bool `json:"stream" default:"false"`
+
 	EnableThink bool `json:"enable_think" default:"true"`
-	EnableJson  bool `json:"enable_json" default:"false"`
+
+	TopK              int32   `json:"top_k" default:"0"`
+	MinP              float32 `json:"min_p" default:"0.0"`
+	ReqetitionPenalty float32 `json:"repetition_penalty" default:"1.0"`
+	GrammarPath       string  `json:"grammar_path" default:""`
+	GrammarString     string  `json:"grammar_string" default:""`
+	EnableJson        bool    `json:"enable_json" default:"false"`
 
 	ChatCompletionNewParams
 }
@@ -469,33 +476,15 @@ func parseSamplerConfig(param ChatCompletionRequest) *nexa_sdk.SamplerConfig {
 	// parse sampling parameters
 	var samplerConfig *nexa_sdk.SamplerConfig
 	samplerConfig = &nexa_sdk.SamplerConfig{
-		Temperature:       0.8,
-		TopP:              0.95,
-		TopK:              40,
-		MinP:              0.05,
-		RepetitionPenalty: 1.0,
-		PresencePenalty:   0.0,
-		FrequencyPenalty:  0.0,
-		Seed:              -1,
+		Temperature:       float32(param.Temperature.Value),
+		TopP:              float32(param.TopP.Value),
+		TopK:              param.TopK,
+		MinP:              param.MinP,
+		RepetitionPenalty: param.ReqetitionPenalty,
+		PresencePenalty:   float32(param.PresencePenalty.Value),
+		FrequencyPenalty:  float32(param.FrequencyPenalty.Value),
+		Seed:              int32(param.Seed.Value),
 		EnableJson:        param.EnableJson,
-	}
-	if param.Temperature.Valid() {
-		samplerConfig.Temperature = float32(param.Temperature.Value)
-	}
-	if param.TopP.Valid() {
-		samplerConfig.TopP = float32(param.TopP.Value)
-	}
-	// if param.RepetitionPenalty.Valid() {
-	// 	samplerConfig.RepetitionPenalty = float32(param.RepetitionPenalty.Value)
-	// }
-	if param.PresencePenalty.Valid() {
-		samplerConfig.PresencePenalty = float32(param.PresencePenalty.Value)
-	}
-	if param.FrequencyPenalty.Valid() {
-		samplerConfig.FrequencyPenalty = float32(param.FrequencyPenalty.Value)
-	}
-	if param.Seed.Valid() {
-		samplerConfig.Seed = int32(param.Seed.Value)
 	}
 	return samplerConfig
 }

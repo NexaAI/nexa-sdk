@@ -33,16 +33,6 @@ func run() *cobra.Command {
 
 	runCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
 
-	runCmd.Flags().SortFlags = false
-
-	samplerFlags := pflag.NewFlagSet("LLM/VLM Sampler", pflag.ExitOnError)
-	samplerFlags.SortFlags = false
-	samplerFlags.Float32VarP(&temperature, "temperature", "", 0.0, "sampling temperature")
-	samplerFlags.Float32VarP(&topP, "top-p", "", 0.0, "top-p sampling")
-	samplerFlags.Float32VarP(&presencePenalty, "presence-penalty", "", 0.0, "presence penalty")
-	samplerFlags.Float32VarP(&frequencyPenalty, "frequency-penalty", "", 0.0, "frequency penalty")
-	samplerFlags.Int32VarP(&seed, "seed", "", 0, "random seed")
-	samplerFlags.BoolVarP(&enableJson, "enable-json", "", false, "enable json output")
 	runCmd.Flags().AddFlagSet(samplerFlags)
 
 	runCmd.SetUsageFunc(func(c *cobra.Command) error {
