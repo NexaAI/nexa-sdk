@@ -46,7 +46,6 @@ jobs:
           msystem: CLANGARM64
           location: C:/Tools
           update: true
-          #install: mingw-w64-clang-aarch64-clang
 
       - name: Setup Compile Environment (ARM64)
         if: matrix.arch == 'arm64'
@@ -134,6 +133,21 @@ jobs:
         run: |
           pip install pyinstaller
           pyinstaller --onefile --noconsole --distpath artifacts --name "nexa-cli-launcher" --icon="runner/release/windows/nexa_logo.ico" runner/release/windows/nexa_launcher.py
+
+      # === Install Inno Setup (before compiling installers) ===
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          if (Get-Command ISCC.exe -ErrorAction SilentlyContinue) { return }
+          if (Get-Command choco -ErrorAction SilentlyContinue) {
+            choco install innosetup -y --no-progress
+          } else {
+            winget install --id JRSoftware.InnoSetup -e --accept-source-agreements --accept-package-agreements
+          }
+          $inno = "${env:ProgramFiles(x86)}\Inno Setup 6"
+          if (Test-Path "$inno\ISCC.exe") {
+            "$inno" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
 
       - name: Sign executables with AzureSignTool
         shell: pwsh
