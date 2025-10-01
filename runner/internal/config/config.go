@@ -30,6 +30,11 @@ func Get() *Config {
 	return config
 }
 
+func Refresh() {
+	once = sync.Once{}
+	once.Do(get)
+}
+
 // init sets up default configuration values using Viper.
 // These defaults are used if no environment variables are provided.
 func init() {

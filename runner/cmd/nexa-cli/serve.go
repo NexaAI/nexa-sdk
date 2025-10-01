@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/NexaAI/nexa-sdk/runner/internal/config"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 	"github.com/NexaAI/nexa-sdk/runner/server"
 )
@@ -18,15 +19,6 @@ func serve() *cobra.Command {
 		GroupID: "inference",
 		Use:     "serve",
 		Short:   "Run the Nexa AI Service",
-	}
-
-	serveCmd.Run = func(cmd *cobra.Command, args []string) {
-		checkDependency()
-		nexa_sdk.Init()
-
-		server.Serve()
-
-		nexa_sdk.DeInit()
 	}
 
 	serveCmd.Flags().SortFlags = false
@@ -44,6 +36,17 @@ func serve() *cobra.Command {
 	viper.BindPFlag("certfile", serveCmd.Flags().Lookup("certfile"))
 	viper.BindPFlag("keyfile", serveCmd.Flags().Lookup("keyfile"))
 	viper.BindPFlag("ngrok", serveCmd.Flags().Lookup("ngrok"))
+
+	serveCmd.Run = func(cmd *cobra.Command, args []string) {
+		config.Refresh()
+
+		checkDependency()
+		nexa_sdk.Init()
+
+		server.Serve()
+
+		nexa_sdk.DeInit()
+	}
 
 	return serveCmd
 }
