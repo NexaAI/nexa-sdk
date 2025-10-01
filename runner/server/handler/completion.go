@@ -40,6 +40,8 @@ type ChatCompletionRequest struct {
 	GrammarString     string  `json:"grammar_string" default:""`
 	EnableJson        bool    `json:"enable_json" default:"false"`
 
+	SystemPrompt string `json:"system_prompt" default:""`
+
 	ChatCompletionNewParams
 }
 
@@ -81,7 +83,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 	// Get LLM instance
 	p, err := service.KeepAliveGet[nexa_sdk.LLM](
 		string(param.Model),
-		types.ModelParam{NCtx: 4096, NGpuLayers: 999},
+		types.ModelParam{NCtx: 4096, NGpuLayers: 999, SystemPrompt: param.SystemPrompt},
 		c.GetHeader("Nexa-KeepCache") != "true",
 	)
 	if errors.Is(err, os.ErrNotExist) {
@@ -252,7 +254,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 	// Get VLM instance
 	p, err := service.KeepAliveGet[nexa_sdk.VLM](
 		string(param.Model),
-		types.ModelParam{NCtx: 4096, NGpuLayers: 999},
+		types.ModelParam{NCtx: 4096, NGpuLayers: 999, SystemPrompt: param.SystemPrompt},
 		c.GetHeader("Nexa-KeepCache") != "true",
 	)
 	if errors.Is(err, os.ErrNotExist) {
