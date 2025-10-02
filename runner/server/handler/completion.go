@@ -105,7 +105,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 	// Prepare tools if provided
 	parseTool, tools, err := parseTools(param)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, map[string]any{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
 	}
 
@@ -265,7 +265,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 	audios := make([]string, 0)
 	for _, msg := range param.Messages {
 		if msg.GetRole() == nil {
-			c.JSON(http.StatusBadRequest, map[string]any{"error": "role or content is nil"})
+			c.JSON(http.StatusBadRequest, map[string]any{"error": "role is nil"})
 			return
 		}
 
@@ -334,7 +334,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 	// Prepare tools if provided
 	parseTool, tools, err := parseTools(param)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, map[string]any{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
 	}
 
