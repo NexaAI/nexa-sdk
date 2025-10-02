@@ -50,6 +50,10 @@ Nexa SDK is an on-device inference framework that runs any model on any device, 
 
 ## Recent updates
 
+#### 📣  **2025.10.02: Day-0 Support on NPU/GPU/CPU : IBM Granite 4.0**
+- We support [IBM Granite 4.0](https://sdk.nexa.ai/model/Granite-4-Micro) with Nexa SDK on Day-0!
+- Try it on AMD / Intel / Qualcomm / Apple GPU with `nexa infer NexaAI/granite-4.0-micro-GGUF` and on Qualcomm NPU with `nexa infer NexaAI/Granite-4-Micro-NPU`
+
 #### 📣  **2025.10.01: AMD NPU Support**
 - Image Generation with [SDXL](https://huggingface.co/NexaAI/sdxl-turbo-amd-npu) on AMD NPU
 
