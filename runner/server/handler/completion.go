@@ -504,15 +504,10 @@ func parseSamplerConfig(param ChatCompletionRequest) *nexa_sdk.SamplerConfig {
 }
 
 func parseTools(param ChatCompletionRequest) (bool, string, error) {
-	parseTool := len(param.Tools) > 0
-	if !parseTool {
+	if len(param.Tools) == 0 {
 		return false, "", nil
 	}
 
-	var tools string
 	tools, err := sonic.MarshalString(param.Tools)
-	if err != nil {
-		slog.Error("marshal tools error", "error", err)
-	}
 	return true, tools, err
 }
