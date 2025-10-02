@@ -35,9 +35,16 @@ func run() *cobra.Command {
 
 	runCmd.Flags().AddFlagSet(samplerFlags)
 
+	llmFlags := pflag.NewFlagSet("LLM/VLM Model", pflag.ExitOnError)
+	llmFlags.SortFlags = false
+	llmFlags.StringVarP(&systemPrompt, "system-prompt", "s", "", "system prompt to set model behavior")
+	runCmd.Flags().AddFlagSet(llmFlags)
+
+	//runCmd.Flags().AddFlagSet(vlmFlags)
+
 	runCmd.SetUsageFunc(func(c *cobra.Command) error {
 		flagGroups := []*pflag.FlagSet{
-			samplerFlags,
+			samplerFlags, llmFlags, //vlmFlags,
 		}
 		w := c.OutOrStdout()
 		fmt.Fprint(w, "Usage:")
@@ -192,6 +199,9 @@ func runFunc(cmd *cobra.Command, args []string) {
 
 	// repl
 	var history []openai.ChatCompletionMessageParamUnion
+	if systemPrompt != "" {
+		history = append(history, openai.SystemMessage(systemPrompt))
+	}
 	repl(ReplConfig{
 		ParseFile: manifest.ModelType == types.ModelTypeVLM,
 
