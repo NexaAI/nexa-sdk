@@ -40,8 +40,6 @@ type ChatCompletionRequest struct {
 	GrammarString     string  `json:"grammar_string" default:""`
 	EnableJson        bool    `json:"enable_json" default:"false"`
 
-	SystemPrompt string `json:"system_prompt" default:""`
-
 	ChatCompletionNewParams
 }
 
@@ -80,10 +78,43 @@ func ChatCompletions(c *gin.Context) {
 }
 
 func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
+	// Build message list for LLM template
+	var systemPrompt string
+	messages := make([]nexa_sdk.LlmChatMessage, 0, len(param.Messages))
+	for _, msg := range param.Messages {
+		if msg.GetRole() == nil {
+			c.JSON(http.StatusBadRequest, map[string]any{"error": "role is nil"})
+			return
+		}
+		switch msg.GetContent().AsAny().(type) {
+		case *string: // ok
+		default:
+			c.JSON(http.StatusBadRequest, map[string]any{"error": "content type not support"})
+			return
+		}
+		// patch for npu
+		if *msg.GetRole() == "system" {
+			systemPrompt += *msg.GetContent().AsAny().(*string)
+		}
+		messages = append(messages, nexa_sdk.LlmChatMessage{
+			Role:    nexa_sdk.LLMRole(*msg.GetRole()),
+			Content: *msg.GetContent().AsAny().(*string),
+		})
+	}
+
+	// Prepare tools if provided
+	parseTool, tools, err := parseTools(param)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
+		return
+	}
+
+	samplerConfig := parseSamplerConfig(param)
+
 	// Get LLM instance
 	p, err := service.KeepAliveGet[nexa_sdk.LLM](
 		string(param.Model),
-		types.ModelParam{NCtx: 4096, NGpuLayers: 999, SystemPrompt: param.SystemPrompt},
+		types.ModelParam{NCtx: 4096, NGpuLayers: 999, SystemPrompt: systemPrompt},
 		c.GetHeader("Nexa-KeepCache") != "true",
 	)
 	if errors.Is(err, os.ErrNotExist) {
@@ -93,35 +124,11 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 		return
 	}
-
-	// Empty request for warm up, just reset model state
+	// Empty request for warm up
 	if len(param.Messages) == 0 {
 		c.JSON(http.StatusOK, nil)
 		return
 	}
-
-	// Build message list for LLM template
-	messages := make([]nexa_sdk.LlmChatMessage, 0, len(param.Messages))
-	for _, msg := range param.Messages {
-		messages = append(messages, nexa_sdk.LlmChatMessage{
-			Role:    nexa_sdk.LLMRole(*msg.GetRole()),
-			Content: *msg.GetContent().AsAny().(*string),
-		})
-	}
-
-	// Prepare tools if provided
-	parseTool := len(param.Tools) > 0
-	var tools string
-	if parseTool {
-		tools, err = sonic.MarshalString(param.Tools)
-		if err != nil {
-			slog.Error("marshal tools error", "error", err)
-			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
-			return
-		}
-	}
-
-	samplerConfig := parseSamplerConfig(param)
 
 	// Format prompt using chat template
 	formatted, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
@@ -251,36 +258,22 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 }
 
 func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
-	// Get VLM instance
-	p, err := service.KeepAliveGet[nexa_sdk.VLM](
-		string(param.Model),
-		types.ModelParam{NCtx: 4096, NGpuLayers: 999, SystemPrompt: param.SystemPrompt},
-		c.GetHeader("Nexa-KeepCache") != "true",
-	)
-	if errors.Is(err, os.ErrNotExist) {
-		c.JSON(http.StatusNotFound, map[string]any{"error": "model not found"})
-		return
-	} else if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
-		return
-	}
-
-	// Empty request for warm up, just reset model state
-	if len(param.Messages) == 0 {
-		p.Reset()
-		c.JSON(http.StatusOK, nil)
-		return
-	}
-
 	// Build message list for VLM template
+	var systemPrompt string
 	messages := make([]nexa_sdk.VlmChatMessage, 0, len(param.Messages))
 	images := make([]string, 0)
 	audios := make([]string, 0)
 	for _, msg := range param.Messages {
-		content := msg.GetContent().AsAny()
-		switch content := content.(type) {
+		if msg.GetRole() == nil {
+			c.JSON(http.StatusBadRequest, map[string]any{"error": "role is nil"})
+			return
+		}
 
+		switch content := msg.GetContent().AsAny().(type) {
 		case *string:
+			if *msg.GetRole() == "system" {
+				systemPrompt += *content
+			}
 			messages = append(messages, nexa_sdk.VlmChatMessage{
 				Role: nexa_sdk.VlmRole(*msg.GetRole()),
 				Contents: []nexa_sdk.VlmContent{
@@ -331,22 +324,41 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 				Role:     nexa_sdk.VlmRole(*msg.GetRole()),
 				Contents: contents,
 			})
-		}
-	}
 
-	// Prepare tools if provided
-	parseTool := len(param.Tools) > 0
-	var tools string
-	if parseTool {
-		tools, err = sonic.MarshalString(param.Tools)
-		if err != nil {
-			slog.Error("marshal tools error", "error", err)
-			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		default:
+			c.JSON(http.StatusBadRequest, map[string]any{"error": "unknown content type"})
 			return
 		}
 	}
 
+	// Prepare tools if provided
+	parseTool, tools, err := parseTools(param)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
+		return
+	}
+
 	samplerConfig := parseSamplerConfig(param)
+
+	// Get VLM instance
+	p, err := service.KeepAliveGet[nexa_sdk.VLM](
+		string(param.Model),
+		types.ModelParam{NCtx: 4096, NGpuLayers: 999, SystemPrompt: systemPrompt},
+		c.GetHeader("Nexa-KeepCache") != "true",
+	)
+	if errors.Is(err, os.ErrNotExist) {
+		c.JSON(http.StatusNotFound, map[string]any{"error": "model not found"})
+		return
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		return
+	}
+
+	// Empty request for warm up, just reset model state
+	if len(param.Messages) == 0 {
+		c.JSON(http.StatusOK, nil)
+		return
+	}
 
 	// Format prompt using VLM chat template
 	formatted, err := p.ApplyChatTemplate(nexa_sdk.VlmApplyChatTemplateInput{
@@ -489,4 +501,13 @@ func parseSamplerConfig(param ChatCompletionRequest) *nexa_sdk.SamplerConfig {
 		EnableJson:        param.EnableJson,
 	}
 	return samplerConfig
+}
+
+func parseTools(param ChatCompletionRequest) (bool, string, error) {
+	if len(param.Tools) == 0 {
+		return false, "", nil
+	}
+
+	tools, err := sonic.MarshalString(param.Tools)
+	return true, tools, err
 }

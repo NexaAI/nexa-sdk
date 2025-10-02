@@ -310,6 +310,9 @@ func inferLLM(manifest *types.ModelManifest, quant string) {
 
 	var history []nexa_sdk.LlmChatMessage
 
+	if systemPrompt != "" {
+		history = append(history, nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleSystem, Content: systemPrompt})
+	}
 	if len(input) > 0 {
 		content, err := os.ReadFile(input)
 		if err != nil {
@@ -457,6 +460,9 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 
 	var history []nexa_sdk.VlmChatMessage
 
+	if systemPrompt != "" {
+		history = append(history, nexa_sdk.VlmChatMessage{Role: nexa_sdk.VlmRoleSystem, Contents: []nexa_sdk.VlmContent{{Type: nexa_sdk.VlmContentTypeText, Text: systemPrompt}}})
+	}
 	if len(input) > 0 {
 		content, err := os.ReadFile(input)
 		if err != nil {
