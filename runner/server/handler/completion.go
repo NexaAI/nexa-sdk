@@ -34,7 +34,7 @@ type ChatCompletionRequest struct {
 	EnableThink       bool    `json:"enable_think"`
 	TopK              int32   `json:"top_k"`
 	MinP              float32 `json:"min_p"`
-	ReqetitionPenalty float32 `json:"repetition_penalty"`
+	RepetitionPenalty float32 `json:"repetition_penalty"`
 	GrammarPath       string  `json:"grammar_path"`
 	GrammarString     string  `json:"grammar_string"`
 	EnableJson        bool    `json:"enable_json"`
@@ -49,7 +49,7 @@ func defaultChatCompletionRequest() ChatCompletionRequest {
 
 		TopK:              0,
 		MinP:              0.0,
-		ReqetitionPenalty: 1.0,
+		RepetitionPenalty: 1.0,
 		GrammarPath:       "",
 		GrammarString:     "",
 		EnableJson:        false,
@@ -138,7 +138,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 		return
 	}
 	// Empty request for warm up
-	if len(param.Messages) <= 0 || (systemPrompt != "" && len(param.Messages) <= 1) {
+	if len(param.Messages) == 0 || (systemPrompt != "" && len(param.Messages) <= 1) {
 		c.JSON(http.StatusOK, nil)
 		return
 	}
@@ -368,7 +368,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 	}
 
 	// Empty request for warm up, just reset model state
-	if len(param.Messages) <= 0 || (systemPrompt != "" && len(param.Messages) <= 1) {
+	if len(param.Messages) == 0 || (systemPrompt != "" && len(param.Messages) <= 1) {
 		c.JSON(http.StatusOK, nil)
 		return
 	}
@@ -507,7 +507,7 @@ func parseSamplerConfig(param ChatCompletionRequest) *nexa_sdk.SamplerConfig {
 		TopP:              float32(param.TopP.Value),
 		TopK:              param.TopK,
 		MinP:              param.MinP,
-		RepetitionPenalty: param.ReqetitionPenalty,
+		RepetitionPenalty: param.RepetitionPenalty,
 		PresencePenalty:   float32(param.PresencePenalty.Value),
 		FrequencyPenalty:  float32(param.FrequencyPenalty.Value),
 		Seed:              int32(param.Seed.Value),
