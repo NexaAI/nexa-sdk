@@ -258,7 +258,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 				Seed:             openai.Int(int64(seed)),
 			},
 				option.WithJSONSet("enable_json", enableJson),
-				option.WithHeaderAdd("Nexa-KeepCache", "false"))
+				option.WithHeaderAdd("Nexa-KeepCache", "true"))
 
 			var firstToken time.Time
 			var profileData nexa_sdk.ProfileData
