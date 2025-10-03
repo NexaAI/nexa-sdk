@@ -138,7 +138,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 		return
 	}
 	// Empty request for warm up
-	if len(param.Messages) == 0 {
+	if len(param.Messages) <= 0 || (systemPrompt != "" && len(param.Messages) <= 1) {
 		c.JSON(http.StatusOK, nil)
 		return
 	}
@@ -368,7 +368,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 	}
 
 	// Empty request for warm up, just reset model state
-	if len(param.Messages) == 0 {
+	if len(param.Messages) <= 0 || (systemPrompt != "" && len(param.Messages) <= 1) {
 		c.JSON(http.StatusOK, nil)
 		return
 	}

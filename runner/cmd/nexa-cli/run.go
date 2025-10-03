@@ -37,6 +37,7 @@ func run() *cobra.Command {
 
 	llmFlags := pflag.NewFlagSet("LLM/VLM Model", pflag.ExitOnError)
 	llmFlags.SortFlags = false
+	llmFlags.BoolVarP(&enableThink, "think", "", true, "enable thinking mode")
 	llmFlags.StringVarP(&systemPrompt, "system-prompt", "s", "", "system prompt to set model behavior")
 	runCmd.Flags().AddFlagSet(llmFlags)
 
@@ -186,10 +187,14 @@ func runFunc(cmd *cobra.Command, args []string) {
 	// warm up
 	spin := render.NewSpinner("loading model...")
 	spin.Start()
-	_, err = client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
+	warmUpRequest := openai.ChatCompletionNewParams{
 		Messages: nil,
 		Model:    model,
-	})
+	}
+	if systemPrompt != "" {
+		warmUpRequest.Messages = append(warmUpRequest.Messages, openai.SystemMessage(systemPrompt))
+	}
+	_, err = client.Chat.Completions.New(context.TODO(), warmUpRequest)
 	spin.Stop()
 
 	if err != nil {
