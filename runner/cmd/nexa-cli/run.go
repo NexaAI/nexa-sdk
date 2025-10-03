@@ -257,6 +257,13 @@ func runFunc(cmd *cobra.Command, args []string) {
 				FrequencyPenalty: openai.Float(float64(frequencyPenalty)),
 				Seed:             openai.Int(int64(seed)),
 			},
+
+				option.WithJSONSet("enable_think", enableThink),
+				option.WithJSONSet("top_k", topK),
+				option.WithJSONSet("min_p", minP),
+				option.WithJSONSet("repetition_penalty", repetitionPenalty),
+				option.WithJSONSet("grammar_path", grammarPath),
+				option.WithJSONSet("grammar_string", grammarString),
 				option.WithJSONSet("enable_json", enableJson),
 				option.WithHeaderAdd("Nexa-KeepCache", "true"))
 
