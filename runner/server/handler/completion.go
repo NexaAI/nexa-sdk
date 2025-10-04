@@ -29,18 +29,31 @@ type ChatCompletionNewParams openai.ChatCompletionNewParams
 // ChatCompletionRequest defines the request body for the chat completions API.
 // example: { "model": "nexaml/nexaml-models", "messages": [ { "role": "user", "content": "why is the sky blue?" } ] }
 type ChatCompletionRequest struct {
-	Stream bool `json:"stream" default:"false"`
+	Stream bool `json:"stream"`
 
-	EnableThink bool `json:"enable_think" default:"true"`
-
-	TopK              int32   `json:"top_k" default:"0"`
-	MinP              float32 `json:"min_p" default:"0.0"`
-	ReqetitionPenalty float32 `json:"repetition_penalty" default:"1.0"`
-	GrammarPath       string  `json:"grammar_path" default:""`
-	GrammarString     string  `json:"grammar_string" default:""`
-	EnableJson        bool    `json:"enable_json" default:"false"`
+	EnableThink       bool    `json:"enable_think"`
+	TopK              int32   `json:"top_k"`
+	MinP              float32 `json:"min_p"`
+	RepetitionPenalty float32 `json:"repetition_penalty"`
+	GrammarPath       string  `json:"grammar_path"`
+	GrammarString     string  `json:"grammar_string"`
+	EnableJson        bool    `json:"enable_json"`
 
 	ChatCompletionNewParams
+}
+
+func defaultChatCompletionRequest() ChatCompletionRequest {
+	return ChatCompletionRequest{
+		Stream:      false,
+		EnableThink: true,
+
+		TopK:              0,
+		MinP:              0.0,
+		RepetitionPenalty: 1.0,
+		GrammarPath:       "",
+		GrammarString:     "",
+		EnableJson:        false,
+	}
 }
 
 var toolCallRegex = regexp.MustCompile(`<tool_call>([\s\S]+)<\/tool_call>` + "|" + "```json([\\s\\S]+)```")
@@ -53,7 +66,7 @@ var toolCallRegex = regexp.MustCompile(`<tool_call>([\s\S]+)<\/tool_call>` + "|"
 // @Produce		json
 // @Success		200	{object}	openai.ChatCompletion	"Successful response for non-streaming requests."
 func ChatCompletions(c *gin.Context) {
-	param := ChatCompletionRequest{}
+	param := defaultChatCompletionRequest()
 	if err := c.ShouldBindJSON(&param); err != nil {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
@@ -125,7 +138,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 		return
 	}
 	// Empty request for warm up
-	if len(param.Messages) == 0 {
+	if len(param.Messages) == 0 || (systemPrompt != "" && len(param.Messages) <= 1) {
 		c.JSON(http.StatusOK, nil)
 		return
 	}
@@ -355,7 +368,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 	}
 
 	// Empty request for warm up, just reset model state
-	if len(param.Messages) == 0 {
+	if len(param.Messages) == 0 || (systemPrompt != "" && len(param.Messages) <= 1) {
 		c.JSON(http.StatusOK, nil)
 		return
 	}
@@ -494,7 +507,7 @@ func parseSamplerConfig(param ChatCompletionRequest) *nexa_sdk.SamplerConfig {
 		TopP:              float32(param.TopP.Value),
 		TopK:              param.TopK,
 		MinP:              param.MinP,
-		RepetitionPenalty: param.ReqetitionPenalty,
+		RepetitionPenalty: param.RepetitionPenalty,
 		PresencePenalty:   float32(param.PresencePenalty.Value),
 		FrequencyPenalty:  float32(param.FrequencyPenalty.Value),
 		Seed:              int32(param.Seed.Value),
