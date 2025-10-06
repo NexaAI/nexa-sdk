@@ -9,13 +9,30 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/openai/openai-go"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 )
 
 func ListModels(c *gin.Context) {
+	s := store.Get()
 
+	models, err := s.List()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		return
+	}
+
+	res := make([]openai.Model, 0, len(models))
+	for _, m := range models {
+		res = append(res, openai.Model{
+			ID:      m.Name,
+			OwnedBy: strings.Split(m.Name, "/")[0],
+		})
+	}
+
+	c.JSON(http.StatusOK, res)
 }
 
 func RetrieveModel(c *gin.Context) {
