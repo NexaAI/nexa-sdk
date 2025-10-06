@@ -32,7 +32,10 @@ func ListModels(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusOK, map[string]any{
+		"object": "list",
+		"data":   res,
+	})
 }
 
 func RetrieveModel(c *gin.Context) {
