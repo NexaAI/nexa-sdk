@@ -38,5 +38,7 @@ func RegisterAPIv1(r *gin.Engine) {
 	//g.POST("/reranking", handler.Reranking)
 
 	g.GET("/models/*model", handler.RetrieveModel)
+	g.GET("/models", handler.ListModels)
+	// extend for pull model
 	g.POST("/models", handler.PullModel)
 }
