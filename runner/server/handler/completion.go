@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"sync"
 
 	"github.com/bytedance/sonic"
 	"github.com/gin-gonic/gin"
@@ -158,10 +159,17 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 		// Streaming response mode
 		stopGen := false
 		dataCh := make(chan string)
-		resCh := make(chan nexa_sdk.LlmGenerateOutput)
 
+		var (
+			res   nexa_sdk.LlmGenerateOutput
+			err   error
+			resWg sync.WaitGroup
+		)
+
+		resWg.Add(1)
 		go func() {
-			res, err := p.Generate(nexa_sdk.LlmGenerateInput{
+			defer resWg.Done()
+			res, err = p.Generate(nexa_sdk.LlmGenerateInput{
 				PromptUTF8: formatted.FormattedText,
 				OnToken: func(token string) bool {
 					if stopGen {
@@ -174,15 +182,8 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 					MaxTokens:     2048,
 					SamplerConfig: samplerConfig,
 				},
-			},
-			)
-			if err != nil {
-				slog.Warn("Generate Error", "error", err)
-			}
-
+			})
 			close(dataCh)
-			resCh <- res
-			close(resCh)
 		}()
 
 		c.Stream(func(w io.Writer) bool {
@@ -199,22 +200,24 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 				return true
 			}
 
+			resWg.Wait()
 			if param.StreamOptions.IncludeUsage.Value {
-				res := <-resCh
 				c.SSEvent("", openai.ChatCompletionChunk{
 					Usage: profile2Usage(res.ProfileData),
 				})
 			}
 
-			c.SSEvent("", "[DONE]")
+			if err != nil {
+				c.SSEvent("", map[string]any{"error": err.Error()})
+			} else {
+				c.SSEvent("", "[DONE]")
+			}
 
 			return false
 		})
 
 		stopGen = true
 		for range dataCh {
-		}
-		for range resCh {
 		}
 
 	} else {
@@ -389,8 +392,16 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 		stopGen := false
 		dataCh := make(chan string)
 
+		var (
+			res   *nexa_sdk.VlmGenerateOutput
+			err   error
+			resWg sync.WaitGroup
+		)
+
+		resWg.Add(1)
 		go func() {
-			_, err := p.Generate(nexa_sdk.VlmGenerateInput{
+			defer resWg.Done()
+			res, err = p.Generate(nexa_sdk.VlmGenerateInput{
 				PromptUTF8: formatted.FormattedText,
 				OnToken: func(token string) bool {
 					if stopGen {
@@ -405,14 +416,9 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 					ImagePaths:    images,
 					AudioPaths:    audios,
 				},
-			},
-			)
+			})
 
 			close(dataCh)
-
-			if err != nil {
-				slog.Warn("Generate Error", "error", err)
-			}
 		}()
 
 		c.Stream(func(w io.Writer) bool {
@@ -428,7 +434,19 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 				c.SSEvent("", chunk)
 				return true
 			}
-			c.SSEvent("", "[DONE]")
+
+			resWg.Wait()
+			if param.StreamOptions.IncludeUsage.Value {
+				c.SSEvent("", openai.ChatCompletionChunk{
+					Usage: profile2Usage(res.ProfileData),
+				})
+			}
+
+			if err != nil {
+				c.SSEvent("", map[string]any{"error": err.Error()})
+			} else {
+				c.SSEvent("", "[DONE]")
+			}
 
 			return false
 		})
@@ -436,6 +454,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 		stopGen = true
 		for range dataCh {
 		}
+
 	} else {
 		// Blocking response mode
 		genOut, err := p.Generate(nexa_sdk.VlmGenerateInput{

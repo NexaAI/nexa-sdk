@@ -293,6 +293,10 @@ func runFunc(cmd *cobra.Command, args []string) {
 					profileData.GeneratedTokens = chunk.Usage.CompletionTokens
 				}
 			}
+			if stream.Err() != nil {
+				return "", profileData, stream.Err()
+			}
+
 			end := time.Now()
 			profileData.TTFT = firstToken.Sub(start).Microseconds()
 			profileData.PromptTime = 0
