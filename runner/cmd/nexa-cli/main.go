@@ -53,11 +53,15 @@ func RootCmd() *cobra.Command {
 			}
 
 			// license
-			license, err := store.Get().ConfigGet("license")
-			if err != nil || license == "" {
-				slog.Warn("license is not set", "err", err)
-			} else if err := os.Setenv("NEXA_TOKEN", license); err != nil {
-				panic(err)
+			if os.Getenv("NEXA_TOKEN") == "" {
+				license, err := store.Get().ConfigGet("license")
+				if err != nil || license == "" {
+					slog.Warn("license is not set", "err", err)
+				} else if err := os.Setenv("NEXA_TOKEN", license); err != nil {
+					panic(err)
+				}
+			} else {
+				slog.Warn("license is set by env, ignore config")
 			}
 
 			return nil
