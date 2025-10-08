@@ -13,6 +13,7 @@ import (
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/shared/constant"
 
+	"github.com/NexaAI/nexa-sdk/runner/internal/config"
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
@@ -29,7 +30,8 @@ type ChatCompletionNewParams openai.ChatCompletionNewParams
 // ChatCompletionRequest defines the request body for the chat completions API.
 // example: { "model": "nexaml/nexaml-models", "messages": [ { "role": "user", "content": "why is the sky blue?" } ] }
 type ChatCompletionRequest struct {
-	Stream bool `json:"stream"`
+	Stream    bool   `json:"stream"`
+	KeepAlive *int64 `json:"keep_alive"`
 
 	EnableThink       bool    `json:"enable_think"`
 	TopK              int32   `json:"top_k"`
@@ -124,11 +126,16 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 
 	samplerConfig := parseSamplerConfig(param)
 
+	keepAlive := config.Get().KeepAlive
+	if param.KeepAlive != nil {
+		keepAlive = *param.KeepAlive
+	}
 	// Get LLM instance
 	p, err := service.KeepAliveGet[nexa_sdk.LLM](
 		string(param.Model),
 		types.ModelParam{NCtx: 4096, NGpuLayers: 999, SystemPrompt: systemPrompt},
 		c.GetHeader("Nexa-KeepCache") != "true",
+		keepAlive,
 	)
 	if errors.Is(err, os.ErrNotExist) {
 		c.JSON(http.StatusNotFound, map[string]any{"error": "model not found"})
@@ -353,11 +360,16 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 
 	samplerConfig := parseSamplerConfig(param)
 
+	keepAlive := config.Get().KeepAlive
+	if param.KeepAlive != nil {
+		keepAlive = *param.KeepAlive
+	}
 	// Get VLM instance
 	p, err := service.KeepAliveGet[nexa_sdk.VLM](
 		string(param.Model),
 		types.ModelParam{NCtx: 4096, NGpuLayers: 999, SystemPrompt: systemPrompt},
 		c.GetHeader("Nexa-KeepCache") != "true",
+		keepAlive,
 	)
 	if errors.Is(err, os.ErrNotExist) {
 		c.JSON(http.StatusNotFound, map[string]any{"error": "model not found"})

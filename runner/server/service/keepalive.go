@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/NexaAI/nexa-sdk/runner/internal/config"
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
@@ -14,8 +13,8 @@ import (
 
 // KeepAliveGet retrieves a model from the keepalive cache or creates it if not found
 // This avoids the overhead of repeatedly loading/unloading models from disk
-func KeepAliveGet[T any](name string, param types.ModelParam, reset bool) (*T, error) {
-	t, err := keepAliveGet[T](name, param, reset)
+func KeepAliveGet[T any](name string, param types.ModelParam, reset bool, timeout int64) (*T, error) {
+	t, err := keepAliveGet[T](name, param, reset, timeout)
 	if err != nil {
 		return nil, err
 	}
@@ -37,6 +36,7 @@ type modelKeepInfo struct {
 	model    keepable
 	param    types.ModelParam
 	lastTime time.Time
+	timeout  int64 // timeout in seconds for this specific model
 }
 
 // keepable interface defines objects that can be managed by the keepalive service
@@ -70,7 +70,7 @@ func (keepAlive *keepAliveService) start() {
 			case <-t.C:
 				keepAlive.Lock()
 				for name, model := range keepAlive.models {
-					if time.Since(model.lastTime).Milliseconds()/1000 > config.Get().KeepAlive {
+					if int64(time.Since(model.lastTime).Seconds()) > model.timeout {
 						model.model.Destroy()
 						delete(keepAlive.models, name)
 					}
@@ -83,7 +83,7 @@ func (keepAlive *keepAliveService) start() {
 
 // keepAliveGet retrieves a cached model or creates a new one if not found
 // Ensures only one model is kept in memory at a time by clearing others
-func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, error) {
+func keepAliveGet[T any](name string, param types.ModelParam, reset bool, timeout int64) (any, error) {
 	keepAlive.Lock()
 	defer keepAlive.Unlock()
 
@@ -195,6 +195,7 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 		model:    t,
 		param:    param,
 		lastTime: time.Now(),
+		timeout:  timeout,
 	}
 	keepAlive.models[name] = model
 

@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/openai/openai-go"
 
+	"github.com/NexaAI/nexa-sdk/runner/internal/config"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 	"github.com/NexaAI/nexa-sdk/runner/server/service"
@@ -30,7 +31,10 @@ import (
 // @Failure		404	{object}	map[string]any	"Model not found"
 // @Failure		500	{object}	map[string]any	"Internal server error"
 func ImageGenerations(c *gin.Context) {
-	param := openai.ImageGenerateParams{}
+	param := struct {
+		openai.ImageGenerateParams
+		KeepAlive *int64 `json:"keep_alive"`
+	}{}
 	if err := c.ShouldBindJSON(&param); err != nil {
 		slog.Error("Failed to bind JSON request", "error", err)
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
@@ -53,10 +57,15 @@ func ImageGenerations(c *gin.Context) {
 		param.ResponseFormat = openai.ImageGenerateParamsResponseFormatURL
 	}
 
+	keepAlive := config.Get().KeepAlive
+	if param.KeepAlive != nil {
+		keepAlive = *param.KeepAlive
+	}
 	imageGen, err := service.KeepAliveGet[nexa_sdk.ImageGen](
 		param.Model,
 		types.ModelParam{},
 		c.GetHeader("Nexa-KeepCache") != "true",
+		keepAlive,
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
