@@ -103,8 +103,6 @@ func infer() *cobra.Command {
 			quant = options[0].Value
 		}
 
-		fmt.Println(render.GetTheme().Quant.Sprintf("🔹 Quant=%s", quant))
-
 		nexa_sdk.Init()
 		defer nexa_sdk.DeInit()
 

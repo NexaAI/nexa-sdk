@@ -172,7 +172,7 @@ func list() *cobra.Command {
 		tw := table.NewWriter()
 		tw.SetOutputMirror(os.Stdout)
 		tw.SetStyle(table.StyleLight)
-		tw.AppendHeader(table.Row{"NAME", "TYPE", "PLUGIN", "QUANT", "SIZE"})
+		tw.AppendHeader(table.Row{"NAME", "TYPE", "QUANT", "SIZE"})
 		for _, model := range models {
 			var quants []string
 			for k := range model.ModelFile {
@@ -180,7 +180,7 @@ func list() *cobra.Command {
 					quants = append(quants, k)
 				}
 			}
-			tw.AppendRow(table.Row{model.Name, model.ModelType, model.PluginId, strings.Join(quants, ","), humanize.IBytes(uint64(model.GetSize()))})
+			tw.AppendRow(table.Row{model.Name, model.ModelType, strings.Join(quants, ","), humanize.IBytes(uint64(model.GetSize()))})
 		}
 		tw.Render()
 	}
