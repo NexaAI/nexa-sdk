@@ -193,6 +193,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 				chunk.Choices = append(chunk.Choices, openai.ChatCompletionChunkChoice{
 					Delta: openai.ChatCompletionChunkChoiceDelta{
 						Content: r,
+						Role:    string(openai.MessageRoleAssistant),
 					},
 				})
 

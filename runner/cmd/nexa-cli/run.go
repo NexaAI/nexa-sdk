@@ -286,7 +286,6 @@ func runFunc(cmd *cobra.Command, args []string) {
 						stream.Close()
 						break
 					}
-					acc.AddChunk(chunk)
 				}
 				if chunk.Usage.PromptTokens > 0 {
 					profileData.PromptTokens = chunk.Usage.PromptTokens
