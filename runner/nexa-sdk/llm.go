@@ -195,8 +195,6 @@ func (lcm llmChatMessages) toCPtr() (*C.ml_LlmChatMessage, C.int32_t) {
 	for i, msg := range lcm {
 		if msg.Role != "" {
 			cMessages[i].role = C.CString(string(msg.Role))
-		}
-		if msg.Content != "" {
 			cMessages[i].content = C.CString(msg.Content)
 		}
 	}
