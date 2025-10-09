@@ -16,8 +16,8 @@ jobs:
         include:
           - runner: ubuntu-22.04
             arch: x86_64
-          # - runner: ubuntu-22.04-arm
-          #   arch: arm64
+          - runner: ubuntu-22.04-arm
+            arch: arm64
 
     steps:
       - name: Checkout repository
