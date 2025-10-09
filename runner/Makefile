@@ -11,6 +11,9 @@ ifeq ($(OS), Windows_NT)
 else
 	UNAME   := $(shell uname -s)
 	ARCH    := $(shell uname -m)
+	ifeq ($(ARCH), aarch64)
+		ARCH := arm64
+	endif
 	ifeq ($(UNAME), Linux)
 		OS  := linux
     else ifeq ($(UNAME), Darwin)
