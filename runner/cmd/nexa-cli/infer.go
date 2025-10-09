@@ -91,6 +91,7 @@ var (
 		llmFlags.BoolVarP(&enableThink, "think", "", true, "enable thinking mode")
 		llmFlags.BoolVarP(&hideThink, "hide-think", "", false, "hide thinking output")
 		llmFlags.StringVarP(&systemPrompt, "system-prompt", "s", "", "system prompt to set model behavior")
+		llmFlags.StringArrayVarP(&prompt, "prompt", "p", nil, "pass prompt")
 		llmFlags.StringVarP(&input, "input", "i", "", "prompt txt file")
 		return llmFlags
 	}()
@@ -98,6 +99,7 @@ var (
 		vlmFlags := pflag.NewFlagSet("VLM Specific", pflag.ExitOnError)
 		vlmFlags.SortFlags = false
 		vlmFlags.BoolVarP(&noInteractive, "no-interactive", "", false, "disable interactive mode")
+		vlmFlags.StringArrayVarP(&prompt, "prompt", "p", nil, "pass prompt")
 		vlmFlags.Int32VarP(&imageMaxLength, "image-max-length", "", 512, "max image length")
 		return vlmFlags
 	}()
