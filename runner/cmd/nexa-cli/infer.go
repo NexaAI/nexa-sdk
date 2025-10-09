@@ -31,6 +31,7 @@ const modelLoadFailMsg = `⚠️ Oops. Model failed to load.
 - Seek help in our discord or slack.`
 
 var (
+	noInteractive bool
 	// disableStream *bool // reuse in run.go
 	ngl            int32
 	maxTokens      int32
@@ -90,12 +91,14 @@ var (
 		llmFlags.BoolVarP(&hideThink, "hide-think", "", false, "hide thinking output")
 		llmFlags.StringVarP(&systemPrompt, "system-prompt", "s", "", "system prompt to set model behavior")
 		llmFlags.StringVarP(&input, "input", "i", "", "prompt txt file")
+		llmFlags.BoolVarP(&noInteractive, "no-interactive", "", false, "disable interactive mode")
 		return llmFlags
 	}()
 	vlmFlags = func() *pflag.FlagSet {
 		vlmFlags := pflag.NewFlagSet("VLM Specific", pflag.ExitOnError)
 		vlmFlags.SortFlags = false
 		vlmFlags.Int32VarP(&imageMaxLength, "image-max-length", "", 512, "max image length")
+		vlmFlags.BoolVarP(&noInteractive, "no-interactive", "", false, "disable interactive mode")
 		return vlmFlags
 	}()
 )
@@ -235,7 +238,7 @@ func ensureModelAvailable(s *store.Store, name string) (*types.ModelManifest, er
 		fmt.Println(render.GetTheme().Info.Sprintf("model not found, start download"))
 		err = pullModel(name)
 		if err != nil {
-			return nil, fmt.Errorf("Download model failed")
+			return nil, fmt.Errorf("download model failed")
 		}
 		manifest, err = s.GetManifest(name)
 	}
@@ -347,6 +350,45 @@ func inferLLM(manifest *types.ModelManifest, quant string) {
 		}
 		printProfile(res.ProfileData)
 		// return
+	}
+
+	if noInteractive {
+		if len(prompt) == 0 {
+			fmt.Println(render.GetTheme().Error.Sprintf("prompt is required in non-interactive mode (use --prompt)"))
+			return
+		}
+
+		promptText := strings.Join(prompt, " ")
+		history = append(history, nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleUser, Content: promptText})
+
+		templateOutput, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
+			Messages:    history,
+			EnableThink: enableThink,
+		})
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("apply chat template error: %s", err))
+			return
+		}
+
+		res, err := p.Generate(nexa_sdk.LlmGenerateInput{
+			PromptUTF8: templateOutput.FormattedText,
+			OnToken: func(token string) bool {
+				fmt.Print(token)
+				return true
+			},
+			Config: &nexa_sdk.GenerationConfig{
+				MaxTokens:     maxTokens,
+				SamplerConfig: samplerConfig,
+			},
+		})
+		fmt.Println()
+		fmt.Println()
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("generate error: %s", err))
+			return
+		}
+		printProfile(res.ProfileData)
+		return
 	}
 
 	repl(ReplConfig{
@@ -497,6 +539,59 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 		}
 		printProfile(res.ProfileData)
 		// return
+	}
+
+	if noInteractive {
+		if len(prompt) == 0 {
+			fmt.Println(render.GetTheme().Error.Sprintf("prompt is required in non-interactive mode (use --prompt)"))
+			return
+		}
+
+		promptText := strings.Join(prompt, " ")
+		msg := nexa_sdk.VlmChatMessage{Role: nexa_sdk.VlmRoleUser}
+		msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeText, Text: promptText})
+
+		_, images, audios := parseFiles(promptText)
+		for _, image := range images {
+			msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeImage, Text: image})
+		}
+		for _, audio := range audios {
+			msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeAudio, Text: audio})
+		}
+
+		history = append(history, msg)
+
+		tmplOut, err := p.ApplyChatTemplate(nexa_sdk.VlmApplyChatTemplateInput{
+			Messages:    history,
+			EnableThink: enableThink,
+		})
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("apply chat template error: %s", err))
+			return
+		}
+
+		res, err := p.Generate(nexa_sdk.VlmGenerateInput{
+			PromptUTF8: tmplOut.FormattedText,
+			OnToken: func(token string) bool {
+				fmt.Print(token)
+				return true
+			},
+			Config: &nexa_sdk.GenerationConfig{
+				MaxTokens:      maxTokens,
+				SamplerConfig:  samplerConfig,
+				ImagePaths:     images,
+				ImageMaxLength: imageMaxLength,
+				AudioPaths:     audios,
+			},
+		})
+		fmt.Println()
+		fmt.Println()
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("generate error: %s", err))
+			return
+		}
+		printProfile(res.ProfileData)
+		return
 	}
 
 	repl(ReplConfig{
