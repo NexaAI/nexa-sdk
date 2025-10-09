@@ -85,20 +85,20 @@ var (
 	llmFlags = func() *pflag.FlagSet {
 		llmFlags := pflag.NewFlagSet("LLM/VLM Model", pflag.ExitOnError)
 		llmFlags.SortFlags = false
+		llmFlags.BoolVarP(&noInteractive, "no-interactive", "", false, "disable interactive mode")
 		llmFlags.Int32VarP(&ngl, "ngl", "n", 999, "num of layers pass to gpu")
 		llmFlags.Int32VarP(&maxTokens, "max-tokens", "", 2048, "max tokens")
 		llmFlags.BoolVarP(&enableThink, "think", "", true, "enable thinking mode")
 		llmFlags.BoolVarP(&hideThink, "hide-think", "", false, "hide thinking output")
 		llmFlags.StringVarP(&systemPrompt, "system-prompt", "s", "", "system prompt to set model behavior")
 		llmFlags.StringVarP(&input, "input", "i", "", "prompt txt file")
-		llmFlags.BoolVarP(&noInteractive, "no-interactive", "", false, "disable interactive mode")
 		return llmFlags
 	}()
 	vlmFlags = func() *pflag.FlagSet {
 		vlmFlags := pflag.NewFlagSet("VLM Specific", pflag.ExitOnError)
 		vlmFlags.SortFlags = false
-		vlmFlags.Int32VarP(&imageMaxLength, "image-max-length", "", 512, "max image length")
 		vlmFlags.BoolVarP(&noInteractive, "no-interactive", "", false, "disable interactive mode")
+		vlmFlags.Int32VarP(&imageMaxLength, "image-max-length", "", 512, "max image length")
 		return vlmFlags
 	}()
 )
