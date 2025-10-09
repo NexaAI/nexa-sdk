@@ -278,8 +278,6 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 	// Build message list for VLM template
 	var systemPrompt string
 	messages := make([]nexa_sdk.VlmChatMessage, 0, len(param.Messages))
-	images := make([]string, 0)
-	audios := make([]string, 0)
 	for _, msg := range param.Messages {
 		if msg.GetRole() == nil {
 			c.JSON(http.StatusBadRequest, map[string]any{"error": "role is nil"})
@@ -320,7 +318,6 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 						Type: nexa_sdk.VlmContentTypeImage,
 						Text: file,
 					})
-					images = append(images, file)
 				case "input_audio":
 					file, err := utils.SaveURIToTempFile(ct.GetInputAudio().Data)
 					slog.Debug("Saved audio file", "file", file)
@@ -333,7 +330,6 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 						Type: nexa_sdk.VlmContentTypeAudio,
 						Text: file,
 					})
-					audios = append(audios, file)
 				}
 			}
 
@@ -386,6 +382,16 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 		return
+	}
+	images := make([]string, 0)
+	audios := make([]string, 0)
+	for _, content := range messages[len(messages)-1].Contents {
+		switch content.Type {
+		case nexa_sdk.VlmContentTypeImage:
+			images = append(images, content.Text)
+		case nexa_sdk.VlmContentTypeAudio:
+			audios = append(audios, content.Text)
+		}
 	}
 
 	if param.Stream {
