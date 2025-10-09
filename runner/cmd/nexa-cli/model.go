@@ -309,17 +309,10 @@ func getQuant(name string) string {
 
 func choosePluginId(name string) string {
 	switch {
-	case strings.Contains(name, "mlx") || strings.Contains(name, "sdxl-turbo"):
-		return "mlx"
-	case strings.Contains(name, "gemma-3n-cuda"):
-		return "nexa_cuda_ort_llama_cpp"
-	case strings.Contains(name, "gemma-3n"):
-		return "nexa_dml_llama_cpp"
-	case strings.Contains(name, "Prefect-illustrious") || strings.Contains(name, "sdxl-base"):
-		return "nexa_dml"
-		// return "nexa_cuda"
+	case strings.Contains(name, "mlx"):
+		return "metal"
 	default:
-		return "llama_cpp"
+		return "cpu_gpu"
 	}
 
 }
