@@ -111,6 +111,20 @@ var (
 	ErrNoAudio = errors.New("no audio file provided")
 )
 
+func getPromptText() (string, error) {
+	if len(input) > 0 {
+		content, err := os.ReadFile(input)
+		if err != nil {
+			return "", fmt.Errorf("read prompt file error: %s", err)
+		}
+		return string(content), nil
+	}
+	if len(prompt) == 0 {
+		return "", fmt.Errorf("prompt or input is required in non-interactive mode (use --prompt or --input)")
+	}
+	return strings.Join(prompt, " "), nil
+}
+
 func infer() *cobra.Command {
 	inferCmd := &cobra.Command{
 		GroupID: "inference",
@@ -320,7 +334,7 @@ func inferLLM(manifest *types.ModelManifest, quant string) {
 	if systemPrompt != "" {
 		history = append(history, nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleSystem, Content: systemPrompt})
 	}
-	if len(input) > 0 {
+	if len(input) > 0 && !noInteractive {
 		content, err := os.ReadFile(input)
 		if err != nil {
 			fmt.Println(render.GetTheme().Error.Sprintf("read prompt file error: %s", err))
@@ -357,12 +371,12 @@ func inferLLM(manifest *types.ModelManifest, quant string) {
 	}
 
 	if noInteractive {
-		if len(prompt) == 0 {
-			fmt.Println(render.GetTheme().Error.Sprintf("prompt is required in non-interactive mode (use --prompt)"))
+		promptText, err := getPromptText()
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("%s", err))
 			return
 		}
 
-		promptText := strings.Join(prompt, " ")
 		history = append(history, nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleUser, Content: promptText})
 
 		templateOutput, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
@@ -509,7 +523,7 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 	if systemPrompt != "" {
 		history = append(history, nexa_sdk.VlmChatMessage{Role: nexa_sdk.VlmRoleSystem, Contents: []nexa_sdk.VlmContent{{Type: nexa_sdk.VlmContentTypeText, Text: systemPrompt}}})
 	}
-	if len(input) > 0 {
+	if len(input) > 0 && !noInteractive {
 		content, err := os.ReadFile(input)
 		if err != nil {
 			fmt.Println(render.GetTheme().Error.Sprintf("read prompt file error: %s", err))
@@ -546,12 +560,12 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 	}
 
 	if noInteractive {
-		if len(prompt) == 0 {
-			fmt.Println(render.GetTheme().Error.Sprintf("prompt is required in non-interactive mode (use --prompt)"))
+		promptText, err := getPromptText()
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("%s", err))
 			return
 		}
 
-		promptText := strings.Join(prompt, " ")
 		msg := nexa_sdk.VlmChatMessage{Role: nexa_sdk.VlmRoleUser}
 		msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeText, Text: promptText})
 
