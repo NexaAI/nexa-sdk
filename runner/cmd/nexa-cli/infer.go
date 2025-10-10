@@ -101,7 +101,6 @@ var (
 		vlmFlags := pflag.NewFlagSet("VLM Specific", pflag.ExitOnError)
 		vlmFlags.SortFlags = false
 		vlmFlags.BoolVarP(&noInteractive, "no-interactive", "", false, "disable interactive mode")
-		llmFlags.Int32VarP(&nctx, "nctx", "", 4096, "context window size")
 		vlmFlags.StringArrayVarP(&prompt, "prompt", "p", nil, "pass prompt")
 		vlmFlags.Int32VarP(&imageMaxLength, "image-max-length", "", 512, "max image length")
 		return vlmFlags
