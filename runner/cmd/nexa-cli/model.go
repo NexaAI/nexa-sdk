@@ -406,10 +406,10 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 					continue
 				}
 
-				// prefer Q4_K_M, Q4_0, Q8_0
+				// prefer Q4_0, Q4_K_M, Q8_0
 				kq := getQuant(k)
 				fq := getQuant(file)
-				sortKey := []string{"Q8_0", "Q4_0", "Q4_K_M"}
+				sortKey := []string{"Q8_0", "Q4_K_M", "Q4_0"}
 				if slices.Index(sortKey, kq) > slices.Index(sortKey, fq) {
 					file = k
 				}
