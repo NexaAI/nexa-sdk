@@ -91,7 +91,7 @@ func fcLLM(plugin, modelfile string) {
 		ModelPath: modelfile,
 		PluginID:  plugin,
 		Config: nexa_sdk.ModelConfig{
-			NCtx:       4096,
+			NCtx:       nctx,
 			NGpuLayers: ngl,
 		},
 	})
@@ -149,7 +149,7 @@ func fcVLM(plugin, modelfile, mmprojfile, tokenizerfile string) {
 		TokenizerPath: tokenizerfile,
 		PluginID:      plugin,
 		Config: nexa_sdk.ModelConfig{
-			NCtx:       4096,
+			NCtx:       nctx,
 			NGpuLayers: ngl,
 		},
 	})

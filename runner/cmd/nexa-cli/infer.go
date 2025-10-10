@@ -34,6 +34,7 @@ var (
 	noInteractive bool
 	// disableStream *bool // reuse in run.go
 	ngl            int32
+	nctx           int32
 	maxTokens      int32
 	imageMaxLength int32
 	enableThink    bool
@@ -87,6 +88,7 @@ var (
 		llmFlags.SortFlags = false
 		llmFlags.BoolVarP(&noInteractive, "no-interactive", "", false, "disable interactive mode")
 		llmFlags.Int32VarP(&ngl, "ngl", "n", 999, "num of layers pass to gpu")
+		llmFlags.Int32VarP(&nctx, "nctx", "", 4096, "context window size")
 		llmFlags.Int32VarP(&maxTokens, "max-tokens", "", 2048, "max tokens")
 		llmFlags.BoolVarP(&enableThink, "think", "", true, "enable thinking mode")
 		llmFlags.BoolVarP(&hideThink, "hide-think", "", false, "hide thinking output")
@@ -299,7 +301,7 @@ func inferLLM(manifest *types.ModelManifest, quant string) {
 		PluginID:  manifest.PluginId,
 		DeviceID:  manifest.DeviceId,
 		Config: nexa_sdk.ModelConfig{
-			NCtx:         4096,
+			NCtx:         nctx,
 			NGpuLayers:   ngl,
 			SystemPrompt: systemPrompt,
 		},
@@ -488,7 +490,7 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 		PluginID:      manifest.PluginId,
 		DeviceID:      manifest.DeviceId,
 		Config: nexa_sdk.ModelConfig{
-			NCtx:         4096,
+			NCtx:         nctx,
 			NGpuLayers:   ngl,
 			SystemPrompt: systemPrompt,
 		},
