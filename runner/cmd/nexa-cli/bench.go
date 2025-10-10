@@ -11,11 +11,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
-	"github.com/spf13/cobra"
 )
 
 func bench() *cobra.Command {
@@ -38,12 +39,12 @@ type model struct {
 type param struct {
 	TestName string
 
-	modelConfig   nexa_sdk.ModelConfig
-	samplerConfig nexa_sdk.SamplerConfig
+	modelConfig    nexa_sdk.ModelConfig
+	samplerConfig  nexa_sdk.SamplerConfig
+	generateConfig nexa_sdk.GenerationConfig
 
 	// llm only
-	llmChatRounds     [][]nexa_sdk.LlmChatMessage
-	llmGenerateConfig nexa_sdk.GenerationConfig
+	llmChatRounds [][]nexa_sdk.LlmChatMessage
 }
 
 type environment struct {
@@ -70,56 +71,59 @@ type result struct {
 	RoundResult []roundResult
 }
 
-var llmDefaultTestParams = param{
-	TestName: "logic-heavy-16rounds",
-	modelConfig: nexa_sdk.ModelConfig{
-		NCtx:       4096,
-		NGpuLayers: 999,
-	},
-	samplerConfig: nexa_sdk.SamplerConfig{},
-	llmGenerateConfig: nexa_sdk.GenerationConfig{
-		MaxTokens: 2048,
-	},
-	llmChatRounds: [][]nexa_sdk.LlmChatMessage{
-		{{Role: "user", Content: "You are a technical assistant. I have an array of integers: [3,1,4,1,5,9,2,6,5]. Describe the step-by-step approach to sort it without using built-in sort."}},
-		{{Role: "user", Content: "Now provide the fully sorted array and show intermediate states after each swap (brief)."}},
-		{{Role: "user", Content: "Return the final array as a JSON list only, no extra text."}},
-		{{Role: "user", Content: "Using the same original array, compute the median and explain how you derive it in two sentences."}},
-		{{Role: "user", Content: "Suppose these numbers arrive as a stream. Describe an O(1) memory approach to approximate median (one paragraph)."}},
-		{{Role: "user", Content: "Summarize all previous algorithm steps in a single bullet-point list."}},
-		{{Role: "user", Content: "Convert that bullet list into a one-line log message suitable for automated CI logs."}},
-		{{Role: "user", Content: "Generate a Go unit test (table-driven) that asserts the sorted output equals [1,1,2,3,4,5,5,6,9]. Provide code only."}},
-		{{Role: "user", Content: "Change the input to include negatives: [-2,0,3,-1]. Give the sorted result JSON."}},
-		{{Role: "user", Content: "Explain how time complexity scales with N for the algorithm you described."}},
-		{{Role: "user", Content: "Present pseudocode for a parallelized version of the algorithm (concise)."}},
-		{{Role: "user", Content: "List edge cases that must be tested for the sorter (max 6 bullet points)."}},
-		{{Role: "user", Content: "If the input is nearly sorted (each element at most 2 positions off), which algorithm is optimal and why? One paragraph."}},
-		{{Role: "user", Content: "Provide a minimal failing test vector that would detect a stability bug (return as JSON object {input:..., expected:...})."}},
-		{{Role: "user", Content: "Assume version A produced JSON [1,1,2,3,4,5,5,6,9] and version B produced [1,1,2,3,4,5,6,5,9]. Produce a one-line human-readable diff summary."}},
-		{{Role: "user", Content: "Return only the word 'PASS' if the two arrays are identical, else return 'FAIL'."}},
-	},
-}
+var (
+	// Default test parameters for LLM benchmarking
+	defaultLLMTestParams = param{
+		TestName: "logic-heavy-16rounds",
+		modelConfig: nexa_sdk.ModelConfig{
+			NCtx:       4096,
+			NGpuLayers: 999,
+		},
+		samplerConfig: nexa_sdk.SamplerConfig{},
+		generateConfig: nexa_sdk.GenerationConfig{
+			MaxTokens: 2048,
+		},
+		llmChatRounds: [][]nexa_sdk.LlmChatMessage{
+			{{Role: "system", Content: "You are a technical assistant."}, {Role: "user", Content: "I have an array of integers: [3,1,4,1,5,9,2,6,5]. Describe the step-by-step approach to sort it without using built-in sort."}},
+			{{Role: "user", Content: "Now provide the fully sorted array and show intermediate states after each swap (brief)."}},
+			{{Role: "user", Content: "Return the final array as a JSON list only, no extra text."}},
+			{{Role: "user", Content: "Using the same original array, compute the median and explain how you derive it in two sentences."}},
+			{{Role: "user", Content: "Suppose these numbers arrive as a stream. Describe an O(1) memory approach to approximate median (one paragraph)."}},
+			{{Role: "user", Content: "Summarize all previous algorithm steps in a single bullet-point list."}},
+			{{Role: "user", Content: "Convert that bullet list into a one-line log message suitable for automated CI logs."}},
+			{{Role: "user", Content: "Generate a Go unit test (table-driven) that asserts the sorted output equals [1,1,2,3,4,5,5,6,9]. Provide code only."}},
+			{{Role: "user", Content: "Change the input to include negatives: [-2,0,3,-1]. Give the sorted result JSON."}},
+			{{Role: "user", Content: "Explain how time complexity scales with N for the algorithm you described."}},
+			{{Role: "user", Content: "Present pseudocode for a parallelized version of the algorithm (concise)."}},
+			{{Role: "user", Content: "List edge cases that must be tested for the sorter (max 6 bullet points)."}},
+			{{Role: "user", Content: "If the input is nearly sorted (each element at most 2 positions off), which algorithm is optimal and why? One paragraph."}},
+			{{Role: "user", Content: "Provide a minimal failing test vector that would detect a stability bug (return as JSON object {input:..., expected:...})."}},
+			{{Role: "user", Content: "Assume version A produced JSON [1,1,2,3,4,5,5,6,9] and version B produced [1,1,2,3,4,5,6,5,9]. Produce a one-line human-readable diff summary."}},
+			{{Role: "user", Content: "Return only the word 'PASS' if the two arrays are identical, else return 'FAIL'."}},
+		},
+	}
 
-var models = []model{
-	{"cpu_gpu", "llm", "Qwen/Qwen3-0.6B-GGUF", []param{llmDefaultTestParams}},
-	{"cpu_gpu", "llm", "unsloth/Qwen3-1.7B-GGUF", []param{llmDefaultTestParams}},
-	{"npu", "llm", "NexaAI/Llama3.2-3B-NPU-Turbo", []param{llmDefaultTestParams}},
-}
+	// Available models for benchmarking
+	benchmarkModels = []model{
+		{"cpu_gpu", "llm", "unsloth/Qwen3-1.7B-GGUF", []param{defaultLLMTestParams}},
+		{"npu", "llm", "NexaAI/Llama3.2-3B-NPU-Turbo", []param{defaultLLMTestParams}},
+	}
+)
 
 func benchFunc(cmd *cobra.Command, args []string) {
-	plugins := getHostPlugins()
-
 	plugin_models := make(map[string][]*model)
-	for _, plugin := range plugins {
-		i := sort.Search(len(models), func(i int) bool {
-			return models[i].PluginID == plugin
+	for _, plugin := range getHostPlugins() {
+		i := sort.Search(len(benchmarkModels), func(i int) bool {
+			return benchmarkModels[i].PluginID == plugin
 		})
-		plugin_models[plugin] = append(plugin_models[plugin], &models[i])
+		if i < len(benchmarkModels) {
+			plugin_models[plugin] = append(plugin_models[plugin], &benchmarkModels[i])
+		}
 	}
 
 	needDownload := []string{}
 	s := store.Get()
-	for _, model := range models {
+	for _, model := range benchmarkModels {
 		_, err := s.GetManifest(model.ModelName)
 		if err != nil {
 			needDownload = append(needDownload, model.ModelName)
@@ -199,10 +203,10 @@ func getHostBenchList() map[string][]*model {
 	plugins := getHostPlugins()
 	plugin_models := make(map[string][]*model)
 	for _, plugin := range plugins {
-		i := sort.Search(len(models), func(i int) bool {
-			return models[i].PluginID == plugin
+		i := sort.Search(len(benchmarkModels), func(i int) bool {
+			return benchmarkModels[i].PluginID == plugin
 		})
-		plugin_models[plugin] = append(plugin_models[plugin], &models[i])
+		plugin_models[plugin] = append(plugin_models[plugin], &benchmarkModels[i])
 	}
 	return plugin_models
 }
@@ -254,7 +258,7 @@ func benchLLM(manifest *types.ModelManifest, quant string, param *param) (res re
 
 		output, err := llm.Generate(nexa_sdk.LlmGenerateInput{
 			PromptUTF8: tpl.FormattedText,
-			Config:     &param.llmGenerateConfig,
+			Config:     &param.generateConfig,
 			OnToken:    func(string) bool { return true },
 		})
 		if err != nil {
