@@ -9,7 +9,7 @@ on:
 jobs:
   build-cli:
     name: ${{ matrix.runner }}_${{ matrix.arch }}
-    runs-on: sdk-linux-16-core
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
@@ -66,8 +66,8 @@ jobs:
         include:
           - runner: ubuntu-22.04
             arch: x86_64
-          # - runner: ubuntu-22.04-arm
-          #   arch: arm64
+          - runner: ubuntu-22.04-arm
+            arch: arm64
     env:
       VERSION: ${{ github.ref_name }}
 
