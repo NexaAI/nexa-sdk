@@ -82,6 +82,7 @@ func RootCmd() *cobra.Command {
 		serve(), run(),
 		_config(),
 		version(), update(),
+		bench(),
 	)
 
 	return rootCmd
