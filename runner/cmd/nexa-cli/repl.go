@@ -27,7 +27,8 @@ var help = [][2]string{
 }
 
 type ReplConfig struct {
-	ParseFile bool
+	ParseFile     bool
+	NoInteractive bool
 
 	Reset       func() error
 	SaveKVCache func(path string) error
@@ -70,6 +71,45 @@ const (
 
 func repl(cfg ReplConfig) {
 	cfg.fill()
+
+	if cfg.NoInteractive {
+		var userInput string
+		if len(prompt) > 0 {
+			userInput = strings.Join(prompt, " ")
+		} else if input != "" {
+			content, err := os.ReadFile(input)
+			if err != nil {
+				fmt.Println(render.GetTheme().Error.Sprintf("Error reading input file: %s", err))
+				return
+			}
+			userInput = string(content)
+		}
+
+		if strings.TrimSpace(userInput) == "" {
+			fmt.Println(render.GetTheme().Error.Sprintf("No input provided"))
+			return
+		}
+
+		var images, audios []string
+		if cfg.ParseFile {
+			userInput, images, audios = parseFiles(userInput)
+		}
+
+		_, profileData, err := cfg.Run(userInput, images, audios, func(token string) bool {
+			fmt.Print(render.GetTheme().ModelOutput.Sprint(token))
+			return true
+		})
+
+		render.GetTheme().Reset()
+		fmt.Println()
+		fmt.Println()
+		printProfile(profileData)
+
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
+		}
+		return
+	}
 
 	l, err := readline.New(readline.Prompt{
 		Prompt:         render.GetTheme().Prompt.Sprint("> "),
@@ -412,7 +452,7 @@ func fsmEvent(state *int, token string) {
 	}
 
 	if !(hideThink && *state == STATE_THINK) {
-		fmt.Print(token)
+		fmt.Print(render.GetTheme().ModelOutput.Sprint(token))
 	}
 }
 

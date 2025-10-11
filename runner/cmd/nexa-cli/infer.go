@@ -111,20 +111,6 @@ var (
 	ErrNoAudio = errors.New("no audio file provided")
 )
 
-func getPromptText() (string, error) {
-	if len(input) > 0 {
-		content, err := os.ReadFile(input)
-		if err != nil {
-			return "", fmt.Errorf("read prompt file error: %s", err)
-		}
-		return string(content), nil
-	}
-	if len(prompt) == 0 {
-		return "", fmt.Errorf("prompt or input is required in non-interactive mode (use --prompt or --input)")
-	}
-	return strings.Join(prompt, " "), nil
-}
-
 func infer() *cobra.Command {
 	inferCmd := &cobra.Command{
 		GroupID: "inference",
@@ -375,47 +361,9 @@ func inferLLM(manifest *types.ModelManifest, quant string) {
 		// return
 	}
 
-	if noInteractive {
-		promptText, err := getPromptText()
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("%s", err))
-			return
-		}
-
-		history = append(history, nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleUser, Content: promptText})
-
-		templateOutput, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
-			Messages:    history,
-			EnableThink: enableThink,
-		})
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("apply chat template error: %s", err))
-			return
-		}
-
-		res, err := p.Generate(nexa_sdk.LlmGenerateInput{
-			PromptUTF8: templateOutput.FormattedText,
-			OnToken: func(token string) bool {
-				fmt.Print(token)
-				return true
-			},
-			Config: &nexa_sdk.GenerationConfig{
-				MaxTokens:     maxTokens,
-				SamplerConfig: samplerConfig,
-			},
-		})
-		fmt.Println()
-		fmt.Println()
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("generate error: %s", err))
-			return
-		}
-		printProfile(res.ProfileData)
-		return
-	}
-
 	repl(ReplConfig{
-		ParseFile: false,
+		ParseFile:     false,
+		NoInteractive: noInteractive,
 
 		Reset: func() error {
 			err := p.Reset()
@@ -564,61 +512,9 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 		// return
 	}
 
-	if noInteractive {
-		promptText, err := getPromptText()
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("%s", err))
-			return
-		}
-
-		msg := nexa_sdk.VlmChatMessage{Role: nexa_sdk.VlmRoleUser}
-		msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeText, Text: promptText})
-
-		_, images, audios := parseFiles(promptText)
-		for _, image := range images {
-			msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeImage, Text: image})
-		}
-		for _, audio := range audios {
-			msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeAudio, Text: audio})
-		}
-
-		history = append(history, msg)
-
-		tmplOut, err := p.ApplyChatTemplate(nexa_sdk.VlmApplyChatTemplateInput{
-			Messages:    history,
-			EnableThink: enableThink,
-		})
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("apply chat template error: %s", err))
-			return
-		}
-
-		res, err := p.Generate(nexa_sdk.VlmGenerateInput{
-			PromptUTF8: tmplOut.FormattedText,
-			OnToken: func(token string) bool {
-				fmt.Print(token)
-				return true
-			},
-			Config: &nexa_sdk.GenerationConfig{
-				MaxTokens:      maxTokens,
-				SamplerConfig:  samplerConfig,
-				ImagePaths:     images,
-				ImageMaxLength: imageMaxLength,
-				AudioPaths:     audios,
-			},
-		})
-		fmt.Println()
-		fmt.Println()
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("generate error: %s", err))
-			return
-		}
-		printProfile(res.ProfileData)
-		return
-	}
-
 	repl(ReplConfig{
-		ParseFile: true,
+		ParseFile:     true,
+		NoInteractive: noInteractive,
 
 		Reset: func() error {
 			err := p.Reset()
@@ -724,17 +620,17 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) {
 
 	fmt.Println(render.GetTheme().Success.Sprintf("Embedding dimension: %d", dimOutput.Dimension))
 
-	// Non-interactive mode
+	// Non-interactive mode: use command line arguments directly
 	if noInteractive {
-		promptText, err := getPromptText()
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("%s", err))
+		if len(prompt) == 0 {
+			fmt.Println(render.GetTheme().Error.Sprintf("--prompt is required for embedding"))
 			return
 		}
 
+		// Create embed input
 		embedInput := nexa_sdk.EmbedderEmbedInput{
 			TaskType: taskType,
-			Texts:    []string{strings.TrimSpace(promptText)},
+			Texts:    prompt,
 			Config: &nexa_sdk.EmbeddingConfig{
 				BatchSize:       1,
 				Normalize:       true,
@@ -742,9 +638,10 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) {
 			},
 		}
 
+		// Perform embedding
 		result, err := p.Embed(embedInput)
 		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("embedding failed: %s", err))
+			fmt.Println(render.GetTheme().Error.Sprintf("Embedding failed: %s", err))
 			return
 		}
 
@@ -753,7 +650,9 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) {
 			return
 		}
 
+		// Output results
 		n, emb := len(result.Embeddings), result.Embeddings
+		info := render.GetTheme().Info.Sprintf("Embedding")
 		var out string
 		if n > 6 {
 			out = render.GetTheme().Success.Sprintf(
@@ -765,14 +664,15 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) {
 			out = render.GetTheme().Success.Sprintf("%v (length: %d)", emb, n)
 		}
 
-		fmt.Printf("%s: %s\n", render.GetTheme().Info.Sprintf("Embedding"), out)
+		fmt.Printf("%s: %s\n", info, out)
 		printProfile(result.ProfileData)
 		return
 	}
 
-	// Interactive mode
+	// Interactive mode: use repl
 	repl(ReplConfig{
-		ParseFile: false,
+		ParseFile:     false,
+		NoInteractive: false,
 
 		Run: func(prompt string, _, _ []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			embedInput := nexa_sdk.EmbedderEmbedInput{
@@ -786,8 +686,12 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) {
 			}
 
 			result, err := p.Embed(embedInput)
-			if err != nil || len(result.Embeddings) == 0 {
+			if err != nil {
 				return "", result.ProfileData, err
+			}
+
+			if len(result.Embeddings) == 0 {
+				return "", result.ProfileData, fmt.Errorf("no embeddings generated")
 			}
 
 			n, emb := len(result.Embeddings), result.Embeddings
@@ -833,24 +737,16 @@ func inferReranker(manifest *types.ModelManifest, quant string) {
 	}
 	defer p.Destroy()
 
-	// Non-interactive mode
+	// Non-interactive mode: use command line arguments directly
 	if noInteractive {
-		// Check if query is provided
 		if query == "" {
 			fmt.Println(render.GetTheme().Error.Sprintf("--query is required for reranking"))
-			fmt.Println()
 			return
 		}
-
-		// Check if documents are provided
 		if len(document) == 0 {
 			fmt.Println(render.GetTheme().Error.Sprintf("at least one --document is required for reranking"))
-			fmt.Println()
 			return
 		}
-
-		fmt.Println(render.GetTheme().Success.Sprintf("Query: %s", query))
-		fmt.Println(render.GetTheme().Success.Sprintf("Processing %d documents", len(document)))
 
 		// Create rerank input
 		rerankInput := nexa_sdk.RerankerRerankInput{
@@ -866,27 +762,31 @@ func inferReranker(manifest *types.ModelManifest, quant string) {
 		// Perform reranking
 		result, err := p.Rerank(rerankInput)
 		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("reranking failed: %s", err))
+			fmt.Println(render.GetTheme().Error.Sprintf("Reranking failed: %s", err))
 			return
 		}
 
-		fmt.Println(render.GetTheme().Success.Sprintf("✓ Reranking completed successfully"))
-		fmt.Println(render.GetTheme().Success.Sprintf("  Generated %d scores", len(result.Scores)))
+		// Output results
+		fmt.Printf("Query: %s\n", query)
+		fmt.Printf("Processing %d documents\n", len(document))
+		fmt.Printf("✓ Reranking completed successfully\n")
+		fmt.Printf("  Generated %d scores\n", len(result.Scores))
 
-		// Display results
 		for i, doc := range document {
 			if i < len(result.Scores) {
-				fmt.Printf("\n%s [%d]: %s\n", render.GetTheme().Info.Sprintf("Document"), i+1, doc)
-				fmt.Printf("%s: %.6f\n", render.GetTheme().Info.Sprintf("Score"), result.Scores[i])
+				fmt.Printf("\nDocument [%d]: %s\n", i+1, doc)
+				fmt.Printf("Score: %.6f\n", result.Scores[i])
 			}
 		}
+
 		printProfile(result.ProfileData)
 		return
 	}
 
-	// Interactive mode
+	// Interactive mode: use repl
 	repl(ReplConfig{
-		ParseFile: false,
+		ParseFile:     false,
+		NoInteractive: false,
 
 		Run: func(prompt string, _, _ []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			// Parse prompt to extract query and documents
@@ -929,7 +829,7 @@ func inferReranker(manifest *types.ModelManifest, quant string) {
 			// Format output
 			output := fmt.Sprintf("Query: %s\n", queryText)
 			output += fmt.Sprintf("Processing %d documents\n", len(documents))
-			output += fmt.Sprintf("✓ Reranking completed successfully\n")
+			output += "✓ Reranking completed successfully\n"
 			output += fmt.Sprintf("  Generated %d scores\n", len(result.Scores))
 
 			for i, doc := range documents {
@@ -978,12 +878,10 @@ func inferTTS(manifest *types.ModelManifest, quant string) {
 		return
 	}
 
-	// Non-interactive mode
+	// Non-interactive mode: use command line arguments directly
 	if noInteractive {
-		prompts := prompt
-		if len(prompts) == 0 {
+		if len(prompt) == 0 {
 			fmt.Println(render.GetTheme().Error.Sprintf("text is required for TTS synthesis (use --prompt)"))
-			fmt.Println()
 			return
 		}
 
@@ -991,13 +889,12 @@ func inferTTS(manifest *types.ModelManifest, quant string) {
 		for _, p := range prompt {
 			if strings.TrimSpace(p) == "" {
 				fmt.Println(render.GetTheme().Error.Sprintf("prompt cannot be empty"))
-				fmt.Println()
 				return
 			}
 		}
 
 		// Combine all prompt texts
-		textToSynthesize := strings.Join(prompts, " ")
+		textToSynthesize := strings.Join(prompt, " ")
 
 		// Generate output filename if not specified
 		outputFile := output
@@ -1024,25 +921,27 @@ func inferTTS(manifest *types.ModelManifest, quant string) {
 			OutputPath: outputFile,
 		}
 
-		fmt.Println(render.GetTheme().Success.Sprintf("Synthesizing speech: \"%s\"", textToSynthesize))
+		fmt.Printf("Synthesizing speech: \"%s\"\n", textToSynthesize)
 
 		result, err := p.Synthesize(synthesizeInput)
 		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("Synthesis failed: %s", err))
+			fmt.Println(render.GetTheme().Error.Sprintf("TTS synthesis failed: %s", err))
 			return
 		}
 
-		fmt.Println(render.GetTheme().Success.Sprintf("✓ Audio saved: %s", result.Result.AudioPath))
+		fmt.Printf("✓ Audio saved: %s\n", result.Result.AudioPath)
 		printProfile(result.ProfileData)
 		return
 	}
 
-	// Interactive mode
+	// Interactive mode: use repl
 	repl(ReplConfig{
-		ParseFile: false,
+		ParseFile:     false,
+		NoInteractive: false,
 
-		Run: func(prompt string, _, _ []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
-			textToSynthesize := strings.TrimSpace(prompt)
+		Run: func(promptText string, _, _ []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			// Interactive mode: use prompt input
+			textToSynthesize := strings.TrimSpace(promptText)
 			if textToSynthesize == "" {
 				return "", nexa_sdk.ProfileData{}, fmt.Errorf("text cannot be empty")
 			}
@@ -1117,7 +1016,8 @@ func inferASR(manifest *types.ModelManifest, quant string) {
 	}
 
 	repl(ReplConfig{
-		ParseFile: true,
+		ParseFile:     true,
+		NoInteractive: noInteractive,
 
 		Record: func() (*string, error) {
 			streamConfig := nexa_sdk.ASRStreamConfig{
@@ -1284,46 +1184,12 @@ func inferCV(manifest *types.ModelManifest, quant string) {
 	}
 	defer p.Destroy()
 
-	// Non-interactive mode
-	if noInteractive {
-		if input == "" {
-			fmt.Println(render.GetTheme().Error.Sprintf("input image file is required for CV inference"))
-			fmt.Println()
-			return
-		}
-
-		if _, err := os.Stat(input); os.IsNotExist(err) {
-			fmt.Println(render.GetTheme().Error.Sprintf("input file '%s' does not exist", input))
-			return
-		}
-
-		inferInput := nexa_sdk.CVInferInput{
-			InputImagePath: input,
-		}
-
-		fmt.Println(render.GetTheme().Info.Sprintf("Performing CV inference on image: %s", input))
-
-		result, err := p.Infer(inferInput)
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("CV inference failed: %s", err))
-			return
-		}
-
-		fmt.Println(render.GetTheme().Info.Sprintf("✓ CV inference completed successfully"))
-		fmt.Println(render.GetTheme().Info.Sprintf("  Found %d results", len(result.Results)))
-
-		for _, cvResult := range result.Results {
-			fmt.Printf("[%s] %s\n", render.GetTheme().Info.Sprintf("%.3f", cvResult.Confidence), render.GetTheme().Success.Sprintf("\"%s\"", cvResult.Text))
-		}
-		// printProfile(result.ProfileData) // ProfileData not available for CV
-		return
-	}
-
-	// Interactive mode
 	repl(ReplConfig{
-		ParseFile: true,
+		ParseFile:     true,
+		NoInteractive: noInteractive,
 
 		Run: func(_prompt string, images, _ []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			// Use images from prompt (repl handles non-interactive input parsing)
 			if len(images) == 0 {
 				return "", nexa_sdk.ProfileData{}, fmt.Errorf("image file is required for CV inference")
 			}
@@ -1377,81 +1243,26 @@ func inferImageGen(manifest *types.ModelManifest, _ string) {
 	}
 	defer p.Destroy()
 
-	// Non-interactive mode
-	if noInteractive {
-		prompts := prompt
-		if len(prompts) == 0 {
-			fmt.Println(render.GetTheme().Error.Sprintf("text prompt is required for image generation (use --prompt)"))
-			fmt.Println()
-			return
-		}
-
-		outputFile := output
-		if outputFile == "" {
-			outputFile = fmt.Sprintf("imagegen_output_%d.png", time.Now().Unix())
-		}
-
-		fmt.Println(render.GetTheme().Info.Sprintf("Generating image: \"%s\"", prompts[0]))
-
-		result, err := p.Txt2Img(nexa_sdk.ImageGenTxt2ImgInput{
-			PromptUTF8: prompts[0],
-			Config: &nexa_sdk.ImageGenerationConfig{
-				Prompts:         prompts,
-				NegativePrompts: []string{"blurry, low quality, distorted"},
-				Height:          512,
-				Width:           512,
-				SamplerConfig: nexa_sdk.ImageSamplerConfig{
-					Method:        "ddim",
-					Steps:         20,
-					GuidanceScale: 7.5,
-					Eta:           0.0,
-					Seed:          42,
-				},
-				SchedulerConfig: nexa_sdk.SchedulerConfig{
-					Type:              "ddim",
-					NumTrainTimesteps: 1000,
-					StepsOffset:       1,
-					BetaStart:         0.00085,
-					BetaEnd:           0.012,
-					BetaSchedule:      "scaled_linear",
-					PredictionType:    "epsilon",
-					TimestepType:      "discrete",
-					TimestepSpacing:   "leading",
-					InterpolationType: "linear",
-					ConfigPath:        "",
-				},
-				Strength: 1.0,
-			},
-			OutputPath: outputFile,
-		})
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("Image generation failed: %s", err))
-			return
-		}
-
-		fmt.Println(render.GetTheme().Success.Sprintf("✓ Image saved to: %s", result.OutputImagePath))
-		// printProfile(result.ProfileData) // ProfileData not available for ImageGen
-		return
-	}
-
-	// Interactive mode
 	repl(ReplConfig{
-		ParseFile: false,
+		ParseFile:     false,
+		NoInteractive: noInteractive,
 
-		Run: func(prompt string, _, _ []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
-			promptText := strings.TrimSpace(prompt)
-			if promptText == "" {
+		Run: func(promptText string, _, _ []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			// Use prompt input (repl handles non-interactive input parsing)
+			textToGenerate := strings.TrimSpace(promptText)
+			if textToGenerate == "" {
 				return "", nexa_sdk.ProfileData{}, fmt.Errorf("text prompt cannot be empty")
 			}
 
+			// Generate output filename
 			outputFile := fmt.Sprintf("imagegen_output_%d.png", time.Now().Unix())
 
-			on_token(fmt.Sprintf("Generating image: \"%s\"\n", promptText))
+			on_token(fmt.Sprintf("Generating image: \"%s\"\n", textToGenerate))
 
 			result, err := p.Txt2Img(nexa_sdk.ImageGenTxt2ImgInput{
-				PromptUTF8: promptText,
+				PromptUTF8: textToGenerate,
 				Config: &nexa_sdk.ImageGenerationConfig{
-					Prompts:         []string{promptText},
+					Prompts:         []string{textToGenerate},
 					NegativePrompts: []string{"blurry, low quality, distorted"},
 					Height:          512,
 					Width:           512,
