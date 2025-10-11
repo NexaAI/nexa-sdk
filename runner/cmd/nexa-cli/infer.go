@@ -767,15 +767,16 @@ func inferReranker(manifest *types.ModelManifest, quant string) {
 		}
 
 		// Output results
-		fmt.Printf("Query: %s\n", query)
-		fmt.Printf("Processing %d documents\n", len(document))
-		fmt.Printf("✓ Reranking completed successfully\n")
-		fmt.Printf("  Generated %d scores\n", len(result.Scores))
+		fmt.Println(render.GetTheme().Info.Sprintf("Query: %s", query))
+		fmt.Println(render.GetTheme().Info.Sprintf("Processing %d documents", len(document)))
+		fmt.Println(render.GetTheme().Success.Sprintf("✓ Reranking completed successfully"))
+		fmt.Println(render.GetTheme().Success.Sprintf("  Generated %d scores", len(result.Scores)))
+		fmt.Println()
 
 		for i, doc := range document {
 			if i < len(result.Scores) {
-				fmt.Printf("\nDocument [%d]: %s\n", i+1, doc)
-				fmt.Printf("Score: %.6f\n", result.Scores[i])
+				fmt.Printf("Document [%d]: %s\n", i+1, doc)
+				fmt.Printf("Score: %.6f\n\n", result.Scores[i])
 			}
 		}
 
@@ -921,7 +922,7 @@ func inferTTS(manifest *types.ModelManifest, quant string) {
 			OutputPath: outputFile,
 		}
 
-		fmt.Printf("Synthesizing speech: \"%s\"\n", textToSynthesize)
+		fmt.Println(render.GetTheme().Info.Sprintf("Synthesizing speech: \"%s\"", textToSynthesize))
 
 		result, err := p.Synthesize(synthesizeInput)
 		if err != nil {
@@ -929,7 +930,7 @@ func inferTTS(manifest *types.ModelManifest, quant string) {
 			return
 		}
 
-		fmt.Printf("✓ Audio saved: %s\n", result.Result.AudioPath)
+		fmt.Println(render.GetTheme().Success.Sprintf("✓ Audio saved: %s", result.Result.AudioPath))
 		printProfile(result.ProfileData)
 		return
 	}
@@ -968,7 +969,7 @@ func inferTTS(manifest *types.ModelManifest, quant string) {
 				OutputPath: outputFile,
 			}
 
-			on_token(fmt.Sprintf("Synthesizing speech: \"%s\"\n", textToSynthesize))
+			fmt.Println(render.GetTheme().Info.Sprintf("Synthesizing speech: \"%s\"", textToSynthesize))
 
 			result, err := p.Synthesize(synthesizeInput)
 			if err != nil {
@@ -1203,22 +1204,29 @@ func inferCV(manifest *types.ModelManifest, quant string) {
 				InputImagePath: imagePath,
 			}
 
-			on_token(fmt.Sprintf("Performing CV inference on image: %s\n", imagePath))
+			fmt.Println(render.GetTheme().Success.Sprintf("Processing image: %s", imagePath))
 
 			result, err := p.Infer(inferInput)
 			if err != nil {
 				return "", nexa_sdk.ProfileData{}, err
 			}
 
-			output := fmt.Sprintf("✓ CV inference completed successfully\n")
-			output += fmt.Sprintf("  Found %d results\n", len(result.Results))
-
-			for _, cvResult := range result.Results {
-				output += fmt.Sprintf("[%.3f] \"%s\"\n", cvResult.Confidence, cvResult.Text)
+			if len(result.Results) == 0 {
+				return "", nexa_sdk.ProfileData{}, fmt.Errorf("no OCR results found")
 			}
 
-			on_token(output)
-			return output, nexa_sdk.ProfileData{}, nil
+			// Format output with theme colors like embedder
+			info := render.GetTheme().Info.Sprintf("CV Results")
+			summary := render.GetTheme().Success.Sprintf("(found %d results)", len(result.Results))
+			on_token(fmt.Sprintf("%s: %s\n", info, summary))
+
+			for _, cvResult := range result.Results {
+				confidence := render.GetTheme().Success.Sprintf("[%.3f]", cvResult.Confidence)
+				text := render.GetTheme().ModelOutput.Sprintf("\"%s\"", cvResult.Text)
+				on_token(fmt.Sprintf("%s %s\n", confidence, text))
+			}
+
+			return "", nexa_sdk.ProfileData{}, nil
 		},
 	})
 }
@@ -1257,7 +1265,7 @@ func inferImageGen(manifest *types.ModelManifest, _ string) {
 			// Generate output filename
 			outputFile := fmt.Sprintf("imagegen_output_%d.png", time.Now().Unix())
 
-			on_token(fmt.Sprintf("Generating image: \"%s\"\n", textToGenerate))
+			fmt.Println(render.GetTheme().Info.Sprintf("Generating image: \"%s\"", textToGenerate))
 
 			result, err := p.Txt2Img(nexa_sdk.ImageGenTxt2ImgInput{
 				PromptUTF8: textToGenerate,
@@ -1294,7 +1302,7 @@ func inferImageGen(manifest *types.ModelManifest, _ string) {
 				return "", nexa_sdk.ProfileData{}, err
 			}
 
-			output := fmt.Sprintf("✓ Image saved to: %s", result.OutputImagePath)
+			output := fmt.Sprintf("✓ Image saved: %s", result.OutputImagePath)
 			on_token(output)
 			return output, nexa_sdk.ProfileData{}, nil
 		},

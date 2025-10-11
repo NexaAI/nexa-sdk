@@ -73,29 +73,30 @@ func repl(cfg ReplConfig) {
 	cfg.fill()
 
 	if cfg.NoInteractive {
-		var userInput string
+		var text string
+		var images, audios []string
 		if len(prompt) > 0 {
-			userInput = strings.Join(prompt, " ")
-		} else if input != "" {
-			content, err := os.ReadFile(input)
-			if err != nil {
-				fmt.Println(render.GetTheme().Error.Sprintf("Error reading input file: %s", err))
-				return
+			text = strings.Join(prompt, " ")
+			if cfg.ParseFile {
+				text, images, audios = parseFiles(text)
 			}
-			userInput = string(content)
-		}
-
-		if strings.TrimSpace(userInput) == "" {
+		} else if input != "" {
+			if cfg.ParseFile {
+				text, images, audios = parseFiles(input)
+			}
+			if text != "" {
+				content, err := os.ReadFile(text)
+				if err != nil {
+					fmt.Println(render.GetTheme().Error.Sprintf("Error reading input file: %s", err))
+					return
+				}
+				text = string(content)
+			}
+		} else {
 			fmt.Println(render.GetTheme().Error.Sprintf("No input provided"))
 			return
 		}
-
-		var images, audios []string
-		if cfg.ParseFile {
-			userInput, images, audios = parseFiles(userInput)
-		}
-
-		_, profileData, err := cfg.Run(userInput, images, audios, func(token string) bool {
+		_, profileData, err := cfg.Run(text, images, audios, func(token string) bool {
 			fmt.Print(render.GetTheme().ModelOutput.Sprint(token))
 			return true
 		})
