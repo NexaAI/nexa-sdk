@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -33,7 +34,7 @@ func configGetCmd() *cobra.Command {
 			value, err := store.Get().ConfigGet("license")
 			if err != nil {
 				fmt.Println(render.GetTheme().Error.Sprintf("Failed to get configuration: %s", err))
-				return
+				os.Exit(1)
 			}
 			fmt.Println(render.GetTheme().Info.Sprintf("%s", value))
 		},
@@ -59,7 +60,7 @@ func configSetCmd() *cobra.Command {
 
 			if err := s.ConfigSet(key, value); err != nil {
 				fmt.Println(render.GetTheme().Error.Sprintf("Failed to set configuration: %s", err))
-				return
+				os.Exit(1)
 			}
 		},
 	}
