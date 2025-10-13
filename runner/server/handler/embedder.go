@@ -11,11 +11,6 @@ import (
 	"github.com/NexaAI/nexa-sdk/runner/server/service"
 )
 
-// @Router			/embeddings [post]
-// @Summary		Creates an embedding for the given input.
-// @Description	Creates an embedding for the given input.
-// @Accept			json
-// @Param			request	body	openai.EmbeddingNewParams	true	"Embedding request"
 func Embeddings(c *gin.Context) {
 	param := openai.EmbeddingNewParams{}
 	if err := c.ShouldBindJSON(&param); err != nil {
