@@ -68,7 +68,7 @@ def open_folder(path: str) -> Tuple[bool, str | None]:
 
 # Build / Rebuild pipeline (kept API shape; internally builds JSON and loads to memory)
 def do_rebuild(docs_dir: str, k: int, chunk_size: int, chunk_overlap: int,
-               _model: str, _endpoint: str):
+               _model: str, endpoint: str):
     """
     Return:
       index (dict) – in-memory JSON index (NumPy arrays inside)
@@ -80,7 +80,7 @@ def do_rebuild(docs_dir: str, k: int, chunk_size: int, chunk_overlap: int,
     # Build JSON index then load
     try:
         n_docs, n_chunks = build_json_index(
-            docs_dir, index_json_path, DEFAULT_EMBED_MODEL, chunk_size, chunk_overlap
+            docs_dir, index_json_path, DEFAULT_EMBED_MODEL, chunk_size, chunk_overlap, endpoint
         )
         index = load_json_index(index_json_path)
         status = f"Indexed text chunks: {n_chunks} (from {n_docs} files)."
@@ -104,7 +104,7 @@ def chat_stream(message: str,
 
     # NumPy cosine search
     try:
-        top_idx, top_sims = search_numpy(message, index, DEFAULT_EMBED_MODEL, top_k=int(k))
+        top_idx, top_sims = search_numpy(message, index, DEFAULT_EMBED_MODEL, endpoint, top_k=int(k))
     except Exception as e:
         yield history + [[message, f"(Search failed: {e})"]], ""
         return

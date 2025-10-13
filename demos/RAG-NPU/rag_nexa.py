@@ -19,7 +19,7 @@ from langchain.schema import Document
 # Config
 DEFAULT_MODEL = "NexaAI/Qwen3-4B-GGUF"
 DEFAULT_ENDPOINT = "http://127.0.0.1:18181"
-DEFAULT_EMBED_MODEL = "all-MiniLM-L6-v2"
+DEFAULT_EMBED_MODEL = "djuna/jina-embeddings-v2-small-en-Q5_K_M-GGUF"
 DEFAULT_INDEX_JSON = "./vecdb.json"
 
 
@@ -68,6 +68,38 @@ def call_nexa_chat(model: str, messages: List[Dict[str, Any]], base: str, stream
                     piece = delta.get("content", "")
                     if piece:
                         yield piece
+
+
+def call_nexa_embeddings(embed_model: str, inputs: List[str], base: str) -> List[List[float]]:
+    """
+    Call Nexa-compatible /v1/embeddings endpoint to embed a batch of strings.
+    Returns a list of vectors aligned to 'inputs' order.
+    """
+    url = base.rstrip("/") + "/v1/embeddings"
+    # Split into small batches to avoid large payloads
+    out: List[List[float]] = []
+    B = 64
+    for i in range(0, len(inputs), B):
+        batch = inputs[i:i+B]
+        payload = {
+            "model": embed_model,
+            "input": batch,
+            "encoding_format": "float"
+        }
+        data = _post_json(url, payload)
+        # Expected shape: {"data":[{"embedding":[...],"index":0}, ...]}
+        # Sort by index to be safe
+        vecs = [None] * len(batch)
+        for item in data.get("data", []):
+            idx = item.get("index", 0)
+            vec = item.get("embedding", [])
+            if 0 <= idx < len(batch):
+                vecs[idx] = vec
+        # Fallback if no 'index' present — assume same order
+        if any(v is None for v in vecs):
+            vecs = [item.get("embedding", []) for item in data.get("data", [])]
+        out.extend(vecs)
+    return out
 
 
 # File loaders (txt/pdf/docx)
@@ -124,7 +156,7 @@ def simple_chunk(text: str, chunk_size: int = 1000, overlap: int = 150) -> List[
 
 
 # Build JSON index
-def build_json_index(data_folder: str, index_path: str, embed_model: str, chunk_size: int, overlap: int) -> Tuple[int, int]:
+def build_json_index(data_folder: str, index_path: str, embed_model: str, chunk_size: int, overlap: int, endpoint_base: str) -> Tuple[int, int]:
     """
     Read documents → chunk → embed → write a single JSON file with:
     {
@@ -137,8 +169,6 @@ def build_json_index(data_folder: str, index_path: str, embed_model: str, chunk_
     }
     Returns: (num_docs, num_chunks)
     """
-    embedder = HuggingFaceEmbeddings(model_name=embed_model)
-
     items = []
     num_docs = 0
     for path in yield_files(data_folder):
@@ -164,8 +194,8 @@ def build_json_index(data_folder: str, index_path: str, embed_model: str, chunk_
 
         # Chunk
         chunks = simple_chunk(raw, chunk_size, overlap)
-        # Embed in batches to avoid long single calls
-        vectors = embedder.embed_documents(chunks)
+        # Embed through Nexa Serve
+        vectors = call_nexa_embeddings(embed_model, chunks, endpoint_base)
 
         # Collect
         for i, (txt, vec) in enumerate(zip(chunks, vectors)):
@@ -213,9 +243,12 @@ def load_json_index(index_path: str):
 
 
 # NumPy search 
-def search_numpy(query: str, index: dict, embed_model: str, top_k: int = 5):
-    embedder = HuggingFaceEmbeddings(model_name=embed_model)
-    q_vec = np.array(embedder.embed_query(query), dtype=np.float32)  # (D,)
+def embed_query_server(query: str, embed_model: str, endpoint_base: str) -> np.ndarray:
+    vecs = call_nexa_embeddings(embed_model, [query], endpoint_base)
+    return np.array(vecs[0], dtype=np.float32)
+
+def search_numpy(query: str, index: dict, embed_model: str, endpoint_base: str, top_k: int = 5):
+    q_vec = embed_query_server(query, embed_model, endpoint_base)  # (D,)
     db = index["matrix"]  # (N, D)
 
     # Normalize (avoid division by zero)
@@ -246,8 +279,8 @@ def main():
 
     # Rebuild on start
     if args.rebuild or (not os.path.exists(args.index_json)):
-        print(f"[build] Building JSON index → {args.index_json}")
-        n_docs, n_chunks = build_json_index(args.data, args.index_json, args.embed_model, args.chunk_size, args.chunk_overlap)
+        print(f"[build] Building JSON index via server embeddings → {args.index_json}")
+        n_docs, n_chunks = build_json_index(args.data, args.index_json, args.embed_model, args.chunk_size, args.chunk_overlap, args.endpoint)
         print(f"[build] Done. docs={n_docs}, chunks={n_chunks}")
     else:
         print(f"[info] Using existing index: {args.index_json}")
@@ -271,7 +304,11 @@ def main():
             continue
 
         # NumPy search
-        top_idx, top_sims = search_numpy(q, index, args.embed_model, top_k=args.k)
+        try:
+            top_idx, top_sims = search_numpy(q, index, args.embed_model, args.endpoint, top_k=args.k)
+        except Exception as e:
+            print(f"[error] Search failed: {e}")
+            continue
 
         # Display retrieved items
         print("\n[retrieved]")
