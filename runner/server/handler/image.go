@@ -59,7 +59,7 @@ func ImageGenerations(c *gin.Context) {
 		c.GetHeader("Nexa-KeepCache") != "true",
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
 		return
 	}
 
@@ -110,7 +110,7 @@ func ImageGenerations(c *gin.Context) {
 			OutputPath: outputPath,
 		})
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, map[string]any{"error": fmt.Sprintf("image generation failed: %v", err)})
+			c.JSON(http.StatusInternalServerError, map[string]any{"error": fmt.Sprintf("image generation failed: %v", err), "code": nexa_sdk.SDKErrorCode(err)})
 			return
 		}
 

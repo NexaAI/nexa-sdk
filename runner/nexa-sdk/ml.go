@@ -37,6 +37,13 @@ func (s SDKError) Error() string {
 	return fmt.Sprintf("SDKError(%s)", C.GoString(C.ml_get_error_message(C.ml_ErrorCode(s))))
 }
 
+func SDKErrorCode(err error) int32 {
+	if sdkErr, ok := err.(SDKError); ok {
+		return int32(sdkErr)
+	}
+	return -1
+}
+
 var (
 	ErrCommonNotSupport             = SDKError(C.ML_ERROR_COMMON_NOT_SUPPORTED)
 	ErrLlmTokenizationContextLength = SDKError(C.ML_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH)
