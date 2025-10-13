@@ -645,8 +645,15 @@ func inferReranker(manifest *types.ModelManifest, quant string) {
 	}
 	defer p.Destroy()
 
+	const SEP = "\\n"
 	processor := &common.Processor{
 		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			parsedPrompt := strings.Split(prompt, SEP)
+			if len(parsedPrompt) < 2 {
+				return "", nexa_sdk.ProfileData{}, fmt.Errorf("parsed prompt failed, query and document are required for reranking")
+			}
+			query := parsedPrompt[0]
+			document := parsedPrompt[1:]
 			fmt.Println(render.GetTheme().Info.Sprintf("Query: %s", query))
 			fmt.Println(render.GetTheme().Info.Sprintf("Processing %d documents", len(document)))
 
@@ -679,8 +686,8 @@ func inferReranker(manifest *types.ModelManifest, quant string) {
 		},
 	}
 
-	if query != "" && len(document) > 0 {
-		if query == "" || len(document) == 0 {
+	if query != "" || len(document) > 0 {
+		if query == "" && len(document) == 0 {
 			fmt.Println(render.GetTheme().Error.Sprintf("query and document are required for reranking"))
 			return
 		}
@@ -688,7 +695,7 @@ func inferReranker(manifest *types.ModelManifest, quant string) {
 			if query == "" || len(document) == 0 {
 				return "", io.EOF
 			}
-			prompt := strings.Join(append([]string{query}, document...), "\n")
+			prompt := strings.Join(append([]string{query}, document...), SEP)
 			query, document = "", nil
 			return prompt, nil
 		}
