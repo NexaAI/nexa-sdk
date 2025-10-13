@@ -46,7 +46,7 @@ func Reranking(c *gin.Context) {
 		false,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
 		return
 	}
 
@@ -60,7 +60,7 @@ func Reranking(c *gin.Context) {
 		},
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
 	} else {
 		c.JSON(http.StatusOK, RerankResponse{Result: res.Scores})
 	}
