@@ -14,6 +14,7 @@ type RerankingRequest struct {
 	Model           string   `json:"model" binding:"required"`
 	Query           string   `json:"query" binding:"required"`
 	Documents       []string `json:"documents" binding:"required"`
+	BatchSize       int32    `json:"batch_size" binding:"required"`
 	NormalizeMethod string   `json:"normalize_method" binding:"required"`
 	Normalize       bool     `json:"normalize" binding:"required"`
 }
@@ -53,7 +54,7 @@ func Reranking(c *gin.Context) {
 		Query:     param.Query,
 		Documents: param.Documents,
 		Config: &nexa_sdk.RerankConfig{
-			BatchSize:       int32(len(param.Documents)),
+			BatchSize:       param.BatchSize,
 			Normalize:       param.Normalize,
 			NormalizeMethod: param.NormalizeMethod,
 		},

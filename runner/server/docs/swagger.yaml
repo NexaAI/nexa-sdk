@@ -85,8 +85,6 @@ paths:
     post:
       summary: Rerank documents based on their relevance to a query
       description: Reranks a list of documents according to their semantic relevance to the provided query. Returns relevance scores for each document. Higher scores indicate greater relevance.
-      tags:
-        - Reranking
       operationId: PostV1Reranking
       requestBody:
         required: true
@@ -95,13 +93,14 @@ paths:
             schema:
               $ref: "#/components/schemas/RerankingRequest"
             example:
-              model: "nexaml/jina-v2-rerank-mlx"
+              model: "NexaAI/jina-v2-rerank-npu"
               query: "What is machine learning?"
               documents:
                 - "Machine learning is a subset of artificial intelligence."
                 - "Machine learning algorithms learn patterns from data."
                 - "The weather is sunny today."
                 - "Deep learning is a type of machine learning."
+              batch_size: 4
               normalize: true
               normalize_method: "softmax"
       responses:
@@ -762,8 +761,8 @@ components:
         model:
           type: string
           description: ID of the reranking model to use
-          default: "nexaml/jina-v2-rerank-mlx"
-          example: "nexaml/jina-v2-rerank-mlx"
+          default: "NexaAI/jina-v2-rerank-npu"
+          example: "NexaAI/jina-v2-rerank-npu"
         query:
           type: string
           description: The search query to compare documents against
@@ -778,6 +777,11 @@ components:
             - "Machine learning algorithms learn patterns from data."
             - "The weather is sunny today."
             - "Deep learning is a type of machine learning."
+        batch_size:
+          type: integer
+          description: The batch size to use for reranking
+          default: 4
+          example: 4
         normalize:
           type: boolean
           description: Whether to normalize the relevance scores
