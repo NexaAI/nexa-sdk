@@ -527,8 +527,7 @@ func profile2Usage(p nexa_sdk.ProfileData) openai.CompletionUsage {
 
 func parseSamplerConfig(param ChatCompletionRequest) *nexa_sdk.SamplerConfig {
 	// parse sampling parameters
-	var samplerConfig *nexa_sdk.SamplerConfig
-	samplerConfig = &nexa_sdk.SamplerConfig{
+	samplerConfig := &nexa_sdk.SamplerConfig{
 		Temperature:       float32(param.Temperature.Value),
 		TopP:              float32(param.TopP.Value),
 		TopK:              param.TopK,
