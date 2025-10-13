@@ -14,8 +14,8 @@ type RerankingRequest struct {
 	Model           string   `json:"model" binding:"required"`
 	Query           string   `json:"query" binding:"required"`
 	Documents       []string `json:"documents" binding:"required"`
-	Normalize       bool     `json:"normalize" binding:"required"`
 	NormalizeMethod string   `json:"normalize_method" binding:"required"`
+	Normalize       bool     `json:"normalize" binding:"required"`
 }
 
 type RerankResponse struct {
