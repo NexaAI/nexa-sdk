@@ -10,7 +10,7 @@ if sys.platform == "win32" and os.environ.get("PROCESSOR_ARCHITECTURE") == "ARM6
 
 import platform
 import subprocess
-from typing import List, Tuple
+from typing import List, Tuple, Optional, Dict, Any
 
 import gradio as gr
 
@@ -21,180 +21,311 @@ from rag_nexa import (
 
 DOCS_DIR_DEFAULT = "./docs"
 
-# Helpers
+
+# ============================================================================
+# Helper Functions
+# ============================================================================
+
 def ensure_docs_dir(path: str) -> None:
-    if not os.path.exists(path):
-        os.makedirs(path, exist_ok=True)
+    """
+    Create directory if it doesn't exist.
+    
+    Args:
+        path: Directory path to create
+    """
+    try:
+        if not os.path.exists(path):
+            os.makedirs(path, exist_ok=True)
+    except OSError as e:
+        raise OSError(f"Failed to create directory {path}: {e}")
+
 
 def save_uploaded_files(files: List[gr.File], dest_dir: str) -> int:
+    """
+    Save uploaded files to destination directory.
+    
+    Args:
+        files: List of uploaded Gradio File objects
+        dest_dir: Destination directory path
+        
+    Returns:
+        Number of files successfully saved
+    """
     if not files:
         return 0
-    n = 0
-    for f in files:
-        src = getattr(f, "name", None) or f
-        if not src:
+    
+    saved_count = 0
+    for file in files:
+        try:
+            # Extract file path from Gradio File object
+            src = getattr(file, "name", None) or file
+            if not src:
+                continue
+            
+            # Copy file to destination
+            filename = os.path.basename(src)
+            out_path = os.path.join(dest_dir, filename)
+            
+            with open(src, "rb") as r, open(out_path, "wb") as w:
+                w.write(r.read())
+            
+            saved_count += 1
+        except Exception as e:
+            # Log error but continue with other files
+            print(f"Warning: Failed to save {src}: {e}")
             continue
-        filename = os.path.basename(src)
-        out_path = os.path.join(dest_dir, filename)
-        with open(src, "rb") as r, open(out_path, "wb") as w:
-            w.write(r.read())
-        n += 1
-    return n
+    
+    return saved_count
 
-def open_folder(path: str) -> Tuple[bool, str | None]:
+
+def open_folder(path: str) -> Tuple[bool, Optional[str]]:
+    """
+    Open folder in system file explorer.
+    
+    Args:
+        path: Folder path to open
+        
+    Returns:
+        Tuple of (success: bool, error_message: str or None)
+    """
+    if not os.path.exists(path):
+        return False, f"Path does not exist: {path}"
+    
     try:
         system = platform.system()
+        
+        # Platform-specific folder opening
         if system == "Windows":
             subprocess.Popen(["explorer", os.path.normpath(path)])
-        elif system == "Darwin":
+        elif system == "Darwin":  # macOS
             subprocess.Popen(["open", path])
-        else:
+        else:  # Linux and others
             subprocess.Popen(["xdg-open", path])
+        
         return True, None
     except Exception as e:
         return False, str(e)
 
 
-# Build / Rebuild pipeline (kept API shape; internally builds JSON and loads to memory)
+# ============================================================================
+# Core RAG Functions
+# ============================================================================
+
 def do_rebuild(docs_dir: str, k: int, chunk_size: int, chunk_overlap: int,
-               _model: str, endpoint: str):
+               _model: str, endpoint: str) -> Tuple[Optional[Dict[str, Any]], str]:
     """
-    Return:
-      index (dict) – in-memory JSON index (NumPy arrays inside)
-      status (str)
+    Build or rebuild the document index from files in docs_dir.
+    
+    Args:
+        docs_dir: Directory containing documents to index
+        k: Number of top results (unused in this function)
+        chunk_size: Size of text chunks for splitting
+        chunk_overlap: Overlap between consecutive chunks
+        _model: Model name (unused, using DEFAULT_EMBED_MODEL)
+        endpoint: API endpoint for embedding service
+        
+    Returns:
+        Tuple of (index_dict or None, status_message)
     """
-    ensure_docs_dir(docs_dir)
-    # Index path resides inside docs folder to keep UX simple
-    index_json_path = os.path.join(docs_dir, os.path.basename(DEFAULT_INDEX_JSON))
-    # Build JSON index then load
     try:
+        # Validate inputs
+        if chunk_overlap >= chunk_size:
+            return None, "Error: Chunk overlap must be less than chunk size"
+        
+        # Ensure docs directory exists
+        ensure_docs_dir(docs_dir)
+        
+        # Index path resides inside docs folder to keep UX simple
+        index_json_path = os.path.join(docs_dir, os.path.basename(DEFAULT_INDEX_JSON))
+        
+        # Build JSON index then load into memory
         n_docs, n_chunks = build_json_index(
-            docs_dir, index_json_path, DEFAULT_EMBED_MODEL, chunk_size, chunk_overlap, endpoint
+            docs_dir, index_json_path, DEFAULT_EMBED_MODEL, 
+            chunk_size, chunk_overlap, endpoint
         )
+        
+        # Load the built index into memory
         index = load_json_index(index_json_path)
-        status = f"Indexed text chunks: {n_chunks} (from {n_docs} files)."
+        status = f"✓ Indexed {n_chunks} text chunks from {n_docs} document(s)"
+        
+        return index, status
+        
+    except FileNotFoundError as e:
+        return None, f"Error: Directory not found - {e}"
+    except ValueError as e:
+        return None, f"Error: Invalid parameter value - {e}"
     except Exception as e:
-        index = None
-        status = f"Failed to index: {e}"
-    return index, status
+        return None, f"Error: Failed to build index - {e}"
 
 
-# Chat (streaming) with NumPy search
-def chat_stream(message: str,
-                history: list,
-                index,
-                model: str,
-                endpoint: str,
-                k: int):
+def chat_stream(message: str, history: list, index: Optional[Dict[str, Any]],
+                model: str, endpoint: str, k: int):
+    """
+    Stream chat responses using RAG (Retrieval-Augmented Generation).
+    
+    Args:
+        message: User's question
+        history: Chat history as list of [user_msg, assistant_msg] pairs
+        index: In-memory index with document chunks and embeddings
+        model: LLM model name
+        endpoint: API endpoint for chat service
+        k: Number of top-k chunks to retrieve
+        
+    Yields:
+        Updated chat history with streaming response
+    """
+    # Validate index exists
     if index is None:
-        yield history + [[message, "Index is empty. Upload & Rebuild first."]]
+        yield history + [[message, "⚠️ Index is empty. Please upload documents and click 'Build/Rebuild' first."]]
         return
-
-    # NumPy cosine search
+    
+    # Validate message
+    if not message or not message.strip():
+        yield history + [[message, "⚠️ Please enter a question."]]
+        return
+    
+    # Retrieve relevant document chunks using NumPy cosine similarity search
     try:
-        top_idx, top_sims = search_numpy(message, index, DEFAULT_EMBED_MODEL, endpoint, top_k=int(k))
+        top_idx, top_sims = search_numpy(
+            message, index, DEFAULT_EMBED_MODEL, endpoint, top_k=int(k)
+        )
     except Exception as e:
-        yield history + [[message, f"(Search failed: {e})"]]
+        yield history + [[message, f"⚠️ Search failed: {e}"]]
         return
-
-    # Compose context
+    
+    # No results found
+    if len(top_idx) == 0:
+        yield history + [[message, "⚠️ No relevant documents found."]]
+        return
+    
+    # Compose context from retrieved chunks
     context_text = "\n\n".join(index["texts"][i] for i in top_idx.tolist())
-
+    
+    # Build messages for LLM with system prompt containing context
     messages = [
         {
             "role": "system",
             "content": (
-                "You are a careful assistant. Use ONLY the provided context to answer.\n\n"
+                "You are a careful assistant. Use ONLY the provided context to answer. "
+                "If the context doesn't contain the answer, say so.\n\n"
                 f"<context>\n{context_text}\n</context>"
             ),
         },
         {"role": "user", "content": message},
     ]
-
+    
     response = ""
-
-    # create assistant turn in chat
+    
+    # Initialize assistant turn in chat history
     yield history + [[message, response]]
-
+    
+    # Stream response from LLM
     try:
         for piece in call_nexa_chat(model, messages, endpoint, stream=True):
             response += piece or ""
             yield history + [[message, response]]
+            
     except Exception as e:
-        # non-stream fallback
+        # Fallback to non-streaming mode if streaming fails
         try:
             response = call_nexa_chat(model, messages, endpoint, stream=False) or ""
             yield history + [[message, response]]
         except Exception as e2:
-            yield history + [[message, f"(Generation failed: {e2})"]]
+            yield history + [[message, f"⚠️ Generation failed: {e2}"]]
 
 
-# UI
+# ============================================================================
+# Gradio UI
+# ============================================================================
+
 with gr.Blocks(title="RAG System") as demo:
-    gr.Markdown("## RAG System")
-
+    gr.Markdown("## RAG System - Retrieval-Augmented Generation")
+    
     with gr.Row():
+        # Left column: Data upload and settings
         with gr.Column(scale=1):
             gr.Markdown("**Data & Settings**")
+            
+            # Document folder management
             docs_dir = gr.Textbox(label="Docs folder", value=DOCS_DIR_DEFAULT)
-            btn_open = gr.Button("Open docs folder")
-
+            btn_open = gr.Button("📁 Open docs folder")
+            
+            # File uploader for documents
             uploader = gr.Files(
                 label="Upload files (txt/pdf/docx)",
                 file_types=[".txt", ".pdf", ".docx"],
                 file_count="multiple",
             )
-
+            
+            # Model configuration
             model = gr.Textbox(label="Model", value=DEFAULT_MODEL)
             endpoint = gr.Textbox(label="Endpoint", value=DEFAULT_ENDPOINT)
-
-            k = gr.Slider(1, 20, value=5, step=1, label="Top-k")
-            chunk_size = gr.Slider(300, 2000, value=1000, step=50, label="Chunk size")
-            chunk_overlap = gr.Slider(0, 400, value=150, step=10, label="Chunk overlap")
-
+            
+            # Retrieval and chunking parameters
+            k = gr.Slider(1, 20, value=5, step=1, label="Top-k (number of chunks to retrieve)")
+            chunk_size = gr.Slider(300, 2000, value=1000, step=50, label="Chunk size (characters)")
+            chunk_overlap = gr.Slider(0, 400, value=150, step=10, label="Chunk overlap (characters)")
+            
+            # Action buttons
             with gr.Row():
-                btn_rebuild = gr.Button("Build/Rebuild", variant="primary")
-                btn_clear = gr.Button("Clear chat")
-
-            status = gr.Textbox(label="Status", value="", interactive=False)
-
+                btn_rebuild = gr.Button("🔄 Build/Rebuild Index", variant="primary")
+                btn_clear = gr.Button("🗑️ Clear chat")
+            
+            # Status display
+            status = gr.Textbox(label="Status", value="Ready", interactive=False)
+        
+        # Right column: Chat interface
         with gr.Column(scale=2):
             chat = gr.Chatbot(height=480, show_copy_button=True)
-            chat_input = gr.Textbox(placeholder="Ask something about your documents...", label="Your question")
-            btn_send = gr.Button("Send", variant="primary")
-
-    # State (stores in-memory NumPy index dict)
+            chat_input = gr.Textbox(
+                placeholder="Ask something about your documents...", 
+                label="Your question"
+            )
+            btn_send = gr.Button("📤 Send", variant="primary")
+    
+    # State: stores in-memory NumPy index dictionary
     index_state = gr.State(None)
-
-    # Events
+    
+    # ============================================================================
+    # Event Handlers
+    # ============================================================================
+    
     def on_upload(files, folder):
-        ensure_docs_dir(folder)
-        n = save_uploaded_files(files, folder)
-        return f"Saved {n} file(s) to {folder}"
-
+        """Handle file upload event."""
+        try:
+            ensure_docs_dir(folder)
+            n = save_uploaded_files(files, folder)
+            return f"✓ Saved {n} file(s) to {folder}"
+        except Exception as e:
+            return f"⚠️ Upload failed: {e}"
+    
     uploader.upload(fn=on_upload, inputs=[uploader, docs_dir], outputs=status)
-
+    
     def on_rebuild(d, k_, cs, co, m, e):
+        """Handle index rebuild event."""
         idx, msg = do_rebuild(d, k_, cs, co, m, e)
         return idx, msg
-
+    
     btn_rebuild.click(
         fn=on_rebuild,
         inputs=[docs_dir, k, chunk_size, chunk_overlap, model, endpoint],
         outputs=[index_state, status],
     )
-
+    
     def on_open(folder):
+        """Handle open folder event."""
         ok, err = open_folder(folder)
-        return "" if ok else f"Failed to open: {err}"
-
+        return "" if ok else f"⚠️ Failed to open: {err}"
+    
     btn_open.click(fn=on_open, inputs=docs_dir, outputs=status)
-
+    
     def on_clear():
+        """Handle clear chat event."""
         return []
+    
     btn_clear.click(fn=on_clear, outputs=chat)
-
-    # Stream to chat
+    
+    # Stream chat responses (both button click and enter key)
     btn_send.click(
         fn=chat_stream,
         inputs=[chat_input, chat, index_state, model, endpoint, k],
@@ -206,6 +337,8 @@ with gr.Blocks(title="RAG System") as demo:
         outputs=chat,
     )
 
+
 if __name__ == "__main__":
+    # Ensure default docs directory exists on startup
     ensure_docs_dir(DOCS_DIR_DEFAULT)
     demo.launch()

@@ -10,7 +10,7 @@ from pathlib import Path
 import requests
 
 import numpy as np
-import pdfplumber  # Changed from: import fitz
+import pdfplumber
 import docx
 
 import warnings
@@ -18,111 +18,191 @@ import sys
 from io import StringIO
 from contextlib import contextmanager
 
-# Config
+# ============================================================================
+# Configuration Constants
+# ============================================================================
 DEFAULT_MODEL = "NexaAI/Granite-4-Micro-NPU"
 DEFAULT_ENDPOINT = "http://127.0.0.1:18181"
 DEFAULT_EMBED_MODEL = "NexaAI/embeddinggemma-300m-npu"
 DEFAULT_INDEX_JSON = "./vecdb.json"
 DEFAULT_RERANK_MODEL = "NexaAI/jina-v2-rerank-npu"
 
-# Get downloads folder path
+
+# ============================================================================
+# File System Utilities
+# ============================================================================
 def get_default_data_folder() -> str:
     """
     Get the default data folder path in user's Downloads directory.
     Creates the folder if it doesn't exist.
+    
+    Returns:
+        str: Path to the data folder
     """
-    # Get user's Downloads folder
     downloads_folder = Path.home() / "Downloads" / "nexa-rag-docs"
-    
-    # Create folder if it doesn't exist
     downloads_folder.mkdir(parents=True, exist_ok=True)
-    
     return str(downloads_folder)
 
-# HTTP helper
+
+# ============================================================================
+# HTTP and API Communication
+# ============================================================================
 def _post_json(url: str, payload: dict, timeout: int = 300) -> dict:
+    """
+    Send POST request with JSON payload.
+    
+    Args:
+        url: Target endpoint URL
+        payload: JSON payload dictionary
+        timeout: Request timeout in seconds
+        
+    Returns:
+        dict: Parsed JSON response
+        
+    Raises:
+        requests.HTTPError: If request fails with 4xx or 5xx status
+    """
     headers = {"Content-Type": "application/json"}
-    resp = requests.post(url, headers=headers, data=json.dumps(payload), timeout=timeout)
-    if resp.status_code >= 400:
-        raise requests.HTTPError(f"{resp.status_code} {url}\n{resp.text}", response=resp)
-    return resp.json()
+    try:
+        resp = requests.post(url, headers=headers, data=json.dumps(payload), timeout=timeout)
+        if resp.status_code >= 400:
+            raise requests.HTTPError(f"{resp.status_code} {url}\n{resp.text}", response=resp)
+        return resp.json()
+    except requests.Timeout:
+        raise requests.HTTPError(f"Request timeout after {timeout}s: {url}")
+    except requests.RequestException as e:
+        raise requests.HTTPError(f"Request failed: {url}\n{str(e)}")
+
 
 def call_nexa_chat(model: str, messages: List[Dict[str, Any]], base: str, stream: bool = False):
     """
     Call Nexa-compatible /v1/chat/completions endpoint.
-    - If stream=False: return full text.
-    - If stream=True: yield incremental text pieces.
+    
+    Args:
+        model: Model name/identifier
+        messages: List of chat messages with 'role' and 'content'
+        base: Base URL for the API endpoint
+        stream: If True, yields text pieces; if False, returns full text
+        
+    Returns:
+        str (if stream=False): Complete response text
+        Generator[str] (if stream=True): Yields text pieces incrementally
+        
+    Raises:
+        requests.HTTPError: If API request fails
     """
     url = base.rstrip("/") + "/v1/chat/completions"
     headers = {"Content-Type": "application/json"}
     payload = {"model": model, "messages": messages, "stream": stream, "max_tokens": 512}
 
     if not stream:
+        # Non-streaming: return complete text
         data = _post_json(url, payload)
         try:
             return data["choices"][0]["message"]["content"]
-        except Exception:
+        except (KeyError, IndexError):
+            # Fallback for non-standard response formats
             return data.get("text", "") or data.get("response", "")
 
-    # stream=True (SSE)
-    with requests.post(url, headers=headers, data=json.dumps(payload), stream=True, timeout=300) as resp:
-        resp.raise_for_status()
-        for raw in resp.iter_lines(decode_unicode=True):
-            if not raw:
-                continue
-            if raw.startswith("data:"):
-                chunk = raw[len("data:"):].strip()
-                if chunk == "[DONE]":
-                    break
-                try:
-                    obj = json.loads(chunk)
-                except Exception:
+    # Streaming mode: yield text pieces via SSE
+    try:
+        with requests.post(url, headers=headers, data=json.dumps(payload), stream=True, timeout=300) as resp:
+            resp.raise_for_status()
+            for raw in resp.iter_lines(decode_unicode=True):
+                if not raw:
                     continue
-                choices = obj.get("choices", [])
-                if choices:
-                    delta = choices[0].get("delta") or {}
-                    piece = delta.get("content", "")
-                    if piece:
-                        yield piece
+                if raw.startswith("data:"):
+                    chunk = raw[len("data:"):].strip()
+                    if chunk == "[DONE]":
+                        break
+                    try:
+                        obj = json.loads(chunk)
+                        choices = obj.get("choices", [])
+                        if choices:
+                            delta = choices[0].get("delta") or {}
+                            piece = delta.get("content", "")
+                            if piece:
+                                yield piece
+                    except json.JSONDecodeError:
+                        continue  # Skip malformed JSON chunks
+    except requests.RequestException as e:
+        raise requests.HTTPError(f"Streaming request failed: {str(e)}")
 
 
 def call_nexa_embeddings(embed_model: str, inputs: List[str], base: str) -> List[List[float]]:
     """
     Call Nexa-compatible /v1/embeddings endpoint to embed a batch of strings.
-    Returns a list of vectors aligned to 'inputs' order.
+    
+    Args:
+        embed_model: Embedding model name
+        inputs: List of text strings to embed
+        base: Base URL for the API endpoint
+        
+    Returns:
+        List[List[float]]: List of embedding vectors aligned to input order
+        
+    Raises:
+        requests.HTTPError: If API request fails
+        ValueError: If response format is invalid
     """
+    if not inputs:
+        return []
+    
     url = base.rstrip("/") + "/v1/embeddings"
-    # Split into small batches to avoid large payloads
     out: List[List[float]] = []
-    B = 64
-    for i in range(0, len(inputs), B):
-        batch = inputs[i:i+B]
+    
+    # Process in batches to avoid large payloads
+    BATCH_SIZE = 64
+    for i in range(0, len(inputs), BATCH_SIZE):
+        batch = inputs[i:i+BATCH_SIZE]
         payload = {
             "model": embed_model,
             "input": batch,
             "encoding_format": "float"
         }
         data = _post_json(url, payload)
-        # Expected shape: {"data":[{"embedding":[...],"index":0}, ...]}
-        # Sort by index to be safe
+        
+        # Parse response and sort by index
         vecs = [None] * len(batch)
         for item in data.get("data", []):
             idx = item.get("index", 0)
             vec = item.get("embedding", [])
             if 0 <= idx < len(batch):
                 vecs[idx] = vec
-        # Fallback if no 'index' present — assume same order
+        
+        # Fallback: assume response order matches input order
         if any(v is None for v in vecs):
             vecs = [item.get("embedding", []) for item in data.get("data", [])]
+        
+        # Validate we got embeddings for all inputs
+        if len(vecs) != len(batch):
+            raise ValueError(f"Expected {len(batch)} embeddings, got {len(vecs)}")
+            
         out.extend(vecs)
+    
     return out
 
 
 def call_nexa_rerank(rerank_model: str, query: str, documents: List[str], base: str, top_n: int = 3) -> List[int]:
     """
     Call Nexa-compatible /v1/reranking endpoint to rerank documents.
-    Returns list of indices in reranked order (best first).
+    
+    Args:
+        rerank_model: Reranking model name
+        query: Search query string
+        documents: List of document texts to rerank
+        base: Base URL for the API endpoint
+        top_n: Number of top documents to return
+        
+    Returns:
+        List[int]: List of document indices in reranked order (best first)
+        
+    Raises:
+        requests.HTTPError: If API request fails
     """
+    if not documents:
+        return []
+    
     url = base.rstrip("/") + "/v1/reranking"
     payload = {
         "model": rerank_model,
@@ -134,15 +214,25 @@ def call_nexa_rerank(rerank_model: str, query: str, documents: List[str], base: 
     }
     data = _post_json(url, payload)
     
-    # Expected response format: {"results": [{"index": 0, "relevance_score": 0.95}, ...]}
-    # Sort by relevance_score descending and return top_n indices
+    # Sort by relevance score (descending) and return top_n indices
     results = data.get("results", [])
     sorted_results = sorted(results, key=lambda x: x.get("relevance_score", 0), reverse=True)
     return [r["index"] for r in sorted_results[:top_n]]
 
 
-# File loaders (txt/pdf/docx)
+# ============================================================================
+# Document Loaders
+# ============================================================================
 def load_txt(path: str) -> str:
+    """
+    Load text file with multiple encoding fallbacks.
+    
+    Args:
+        path: Path to text file
+        
+    Returns:
+        str: File contents (empty string if all encodings fail)
+    """
     for enc in ("utf-8", "utf-8-sig", "latin-1"):
         try:
             with open(path, "r", encoding=enc, errors="ignore") as f:
@@ -151,9 +241,10 @@ def load_txt(path: str) -> str:
             continue
     return ""
 
+
 @contextmanager
 def suppress_stderr():
-    """Context manager to temporarily suppress stderr output"""
+    """Context manager to temporarily suppress stderr output."""
     old_stderr = sys.stderr
     try:
         with open(os.devnull, 'w') as devnull:
@@ -162,30 +253,43 @@ def suppress_stderr():
     finally:
         sys.stderr = old_stderr
 
+
 def fix_missing_spaces(text: str) -> str:
     """
     Fix common cases where spaces are missing in extracted PDF text.
-    Adds spaces between:
-    - lowercase followed by uppercase letter (e.g., "wordAnother" -> "word Another")
-    - letter followed by number or number followed by letter
-    - closing punctuation followed by uppercase letter
+    Applies heuristics to add spaces between:
+    - lowercase followed by uppercase (camelCase issues)
+    - letters and numbers
+    - punctuation and following letters
+    
+    Args:
+        text: Input text with potential spacing issues
+        
+    Returns:
+        str: Text with improved spacing
     """
-    import re
     # Add space between lowercase and uppercase
     text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
     # Add space between letter and number
     text = re.sub(r'([a-zA-Z])(\d)', r'\1 \2', text)
     # Add space between number and letter
     text = re.sub(r'(\d)([a-zA-Z])', r'\1 \2', text)
-    # Add space after period/comma/semicolon if followed by letter without space
+    # Add space after punctuation if followed by letter
     text = re.sub(r'([.,;:!?])([A-Za-z])', r'\1 \2', text)
-    # Add space after closing bracket/paren if followed by uppercase letter
+    # Add space after closing bracket/paren if followed by uppercase
     text = re.sub(r'([\)\]])([A-Z])', r'\1 \2', text)
     return text
 
+
 def load_pdf(path: str) -> str:
     """
-    Load PDF text using pdfplumber with proper spacing handling
+    Load PDF text using pdfplumber with proper spacing handling.
+    
+    Args:
+        path: Path to PDF file
+        
+    Returns:
+        str: Extracted text (empty string if extraction fails)
     """
     text_parts: List[str] = []
     try:
@@ -194,70 +298,148 @@ def load_pdf(path: str) -> str:
                 for page in pdf.pages:
                     # Use layout=True for better spacing preservation
                     text = page.extract_text(layout=True)
-                    if text:  # Only add non-empty pages
+                    if text:
                         # Apply space-fixing heuristics
                         text = fix_missing_spaces(text)
                         text_parts.append(text)
     except Exception as e:
         print(f"[warn] Error extracting from {path}: {e}")
         return ""
+    
     return "\n".join(text_parts)
 
+
 def load_docx(path: str) -> str:
-    d = docx.Document(path)
-    paras = [p.text for p in d.paragraphs]
-    return "\n".join(paras)
+    """
+    Load text from Word document.
+    
+    Args:
+        path: Path to .docx file
+        
+    Returns:
+        str: Extracted text from all paragraphs
+    """
+    try:
+        d = docx.Document(path)
+        paras = [p.text for p in d.paragraphs]
+        return "\n".join(paras)
+    except Exception as e:
+        print(f"[warn] Error reading docx {path}: {e}")
+        return ""
+
 
 def normalize_ws(s: str) -> str:
+    """
+    Normalize whitespace: collapse multiple spaces/tabs into single space.
+    
+    Args:
+        s: Input string
+        
+    Returns:
+        str: String with normalized whitespace
+    """
     return re.sub(r"[ \t\u3000]+", " ", s).strip()
 
+
 def yield_files(root: str, exts=(".txt", ".pdf", ".docx")) -> Iterable[str]:
+    """
+    Recursively yield file paths matching specified extensions.
+    
+    Args:
+        root: Root directory to search
+        exts: Tuple of file extensions to include
+        
+    Yields:
+        str: File paths matching extensions
+    """
     for base, _, files in os.walk(root):
         for name in files:
             if name.lower().endswith(exts):
                 yield os.path.join(base, name)
 
 
-# Chunking
+# ============================================================================
+# Text Chunking
+# ============================================================================
 def simple_chunk(text: str, chunk_size: int = 1000, overlap: int = 150) -> List[str]:
     """
     Simple character-level chunking with overlap.
-    This keeps dependencies light for a JSON-based index.
+    Creates chunks of approximately chunk_size characters with overlap
+    to preserve context at chunk boundaries.
+    
+    Args:
+        text: Input text to chunk
+        chunk_size: Target size of each chunk in characters
+        overlap: Number of overlapping characters between chunks
+        
+    Returns:
+        List[str]: List of text chunks
     """
     text = text.replace("\r\n", "\n")
     n = len(text)
+    
+    if n == 0:
+        return []
+    
     chunks = []
     start = 0
+    
     while start < n:
         end = min(start + chunk_size, n)
         chunks.append(text[start:end])
+        
         if end == n:
             break
+        
+        # Move start forward with overlap
         start = end - overlap
         if start < 0:
             start = 0
+    
     return chunks
 
 
-# Build JSON index
-def build_json_index(data_folder: str, index_path: str, embed_model: str, chunk_size: int, overlap: int, endpoint_base: str) -> Tuple[int, int]:
+# ============================================================================
+# Index Building and Loading
+# ============================================================================
+def build_json_index(
+    data_folder: str, 
+    index_path: str, 
+    embed_model: str, 
+    chunk_size: int, 
+    overlap: int, 
+    endpoint_base: str
+) -> Tuple[int, int]:
     """
-    Read documents → chunk → embed → write a single JSON file with:
-    {
-      "embed_model": "...",
-      "dim": 384,
-      "items": [
-        {"id": 0, "text": "...", "source": "...", "chunk_index": 0, "vector": [floats...]},
-        ...
-      ]
-    }
-    Returns: (num_docs, num_chunks)
+    Build JSON-based vector index from documents in a folder.
+    
+    Process:
+    1. Read all supported documents from folder
+    2. Chunk each document with overlap
+    3. Embed chunks using API
+    4. Save to JSON file with metadata
+    
+    Args:
+        data_folder: Folder containing documents to index
+        index_path: Output path for JSON index file
+        embed_model: Embedding model name
+        chunk_size: Size of text chunks in characters
+        overlap: Overlap between chunks in characters
+        endpoint_base: Base URL for API endpoint
+        
+    Returns:
+        Tuple[int, int]: (number of documents processed, number of chunks created)
+        
+    Raises:
+        RuntimeError: If no chunks were created
     """
     items = []
     num_docs = 0
+    
     for path in yield_files(data_folder):
         num_docs += 1
-        # Load
+        
+        # Load document based on file type
         lower = path.lower()
         try:
             if lower.endswith(".txt"):
@@ -272,16 +454,25 @@ def build_json_index(data_folder: str, index_path: str, embed_model: str, chunk_
             print(f"[warn] Failed to read {path}: {e}")
             continue
 
+        # Normalize and validate
         raw = normalize_ws(raw)
         if not raw:
+            print(f"[warn] Empty content from {path}, skipping")
             continue
 
-        # Chunk
+        # Chunk the document
         chunks = simple_chunk(raw, chunk_size, overlap)
-        # Embed through Nexa Serve
-        vectors = call_nexa_embeddings(embed_model, chunks, endpoint_base)
+        if not chunks:
+            continue
+            
+        # Embed chunks via API
+        try:
+            vectors = call_nexa_embeddings(embed_model, chunks, endpoint_base)
+        except Exception as e:
+            print(f"[warn] Failed to embed chunks from {path}: {e}")
+            continue
 
-        # Collect
+        # Store chunk metadata
         for i, (txt, vec) in enumerate(zip(chunks, vectors)):
             items.append({
                 "id": len(items),
@@ -294,28 +485,66 @@ def build_json_index(data_folder: str, index_path: str, embed_model: str, chunk_
     if not items:
         raise RuntimeError("No chunks found. Check your --data path and files.")
 
+    # Build and save index
     dim = len(items[0]["vector"])
     payload = {
         "embed_model": embed_model,
         "dim": dim,
         "items": items,
     }
+    
     with open(index_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False)
 
     return num_docs, len(items)
 
 
-# Load JSON index → NumPy arrays
-def load_json_index(index_path: str):
-    with open(index_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
+def load_json_index(index_path: str) -> Dict[str, Any]:
+    """
+    Load JSON vector index into memory as NumPy arrays.
+    
+    Args:
+        index_path: Path to JSON index file
+        
+    Returns:
+        dict: Index data containing:
+            - embed_model: Model used for embeddings
+            - dim: Embedding dimension
+            - matrix: NumPy array of shape (N, D) with all vectors
+            - texts: List of chunk texts
+            - sources: List of source file paths
+            - chunk_ids: List of chunk indices within documents
+            
+    Raises:
+        FileNotFoundError: If index file doesn't exist
+        json.JSONDecodeError: If index file is malformed
+        ValueError: If index structure is invalid
+    """
+    if not os.path.exists(index_path):
+        raise FileNotFoundError(f"Index file not found: {index_path}")
+    
+    try:
+        with open(index_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        raise json.JSONDecodeError(f"Malformed index file: {index_path}", e.doc, e.pos)
+    
+    # Validate structure
+    if "items" not in data:
+        raise ValueError("Index file missing 'items' field")
+    
     items = data["items"]
+    if not items:
+        raise ValueError("Index contains no items")
+    
+    # Extract fields
     texts = [it["text"] for it in items]
     sources = [it["source"] for it in items]
     chunk_ids = [it["chunk_index"] for it in items]
-    # Build matrix [N, D]
+    
+    # Build embedding matrix
     mat = np.array([it["vector"] for it in items], dtype=np.float32)
+    
     return {
         "embed_model": data.get("embed_model", ""),
         "dim": data.get("dim", mat.shape[1]),
@@ -326,98 +555,240 @@ def load_json_index(index_path: str):
     }
 
 
-# NumPy search 
+# ============================================================================
+# Vector Search
+# ============================================================================
 def embed_query_server(query: str, embed_model: str, endpoint_base: str) -> np.ndarray:
+    """
+    Embed a single query string via API.
+    
+    Args:
+        query: Query text to embed
+        embed_model: Embedding model name
+        endpoint_base: Base URL for API endpoint
+        
+    Returns:
+        np.ndarray: Query embedding vector
+    """
     vecs = call_nexa_embeddings(embed_model, [query], endpoint_base)
     return np.array(vecs[0], dtype=np.float32)
 
-def search_numpy(query: str, index: dict, embed_model: str, endpoint_base: str, top_k: int = 5):
+
+def search_numpy(
+    query: str, 
+    index: dict, 
+    embed_model: str, 
+    endpoint_base: str, 
+    top_k: int = 5
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Search vector index using cosine similarity.
+    
+    Args:
+        query: Search query text
+        index: Loaded index dictionary from load_json_index()
+        embed_model: Embedding model name
+        endpoint_base: Base URL for API endpoint
+        top_k: Number of top results to return
+        
+    Returns:
+        Tuple[np.ndarray, np.ndarray]: 
+            - Array of top-k indices
+            - Array of corresponding similarity scores
+    """
+    # Embed query
     q_vec = embed_query_server(query, embed_model, endpoint_base)  # (D,)
     db = index["matrix"]  # (N, D)
 
-    # Normalize (avoid division by zero)
+    # Normalize vectors to compute cosine similarity
     q_norm = q_vec / (np.linalg.norm(q_vec) + 1e-8)  # (D,)
     db_norm = db / (np.linalg.norm(db, axis=1, keepdims=True) + 1e-8)  # (N, D)
 
-    # Cosine similarity = dot(q_norm, db_norm.T)
+    # Compute cosine similarity = dot product of normalized vectors
     sims = db_norm @ q_norm  # (N,)
+    
+    # Get top-k indices (sorted by similarity descending)
     top_idx = np.argsort(-sims)[:top_k]
     return top_idx, sims[top_idx]
 
 
-# CLI
+# ============================================================================
+# Main CLI Application
+# ============================================================================
 def main():
+    """Main CLI application for RAG system."""
     # Get default data folder in Downloads
     default_data_folder = get_default_data_folder()
     
-    ap = argparse.ArgumentParser(description="Local-files RAG (text-only) using JSON index + NumPy search")
-    ap.add_argument("--data", default=default_data_folder, help=f"Folder with txt/pdf/docx (default: {default_data_folder})")
-    ap.add_argument("--index_json", default=DEFAULT_INDEX_JSON, help="Path to embeddings JSON index")
-    ap.add_argument("--embed_model", default=DEFAULT_EMBED_MODEL, help="Embedding model name")
-    ap.add_argument("--chunk_size", type=int, default=1000, help="Chunk size")
-    ap.add_argument("--chunk_overlap", type=int, default=150, help="Chunk overlap")
-    ap.add_argument("--k", type=int, default=5, help="Top-k retrieval")
-    ap.add_argument("--rerank_top_n", type=int, default=3, help="Top-n after reranking")
-    ap.add_argument("--rerank_model", default=DEFAULT_RERANK_MODEL, help="Rerank model name")
-    ap.add_argument("--use_rerank", action="store_true", help="Enable reranking step")
-    ap.add_argument("--model", default=DEFAULT_MODEL, help="LLM model for generation")
-    ap.add_argument("--endpoint", default=DEFAULT_ENDPOINT, help="Nexa endpoint base, e.g. http://127.0.0.1:18181")
-    ap.add_argument("--rebuild", action="store_true", help="Rebuild JSON index before starting chat")
+    # Parse command-line arguments
+    ap = argparse.ArgumentParser(
+        description="Local-files RAG (text-only) using JSON index + NumPy search"
+    )
+    ap.add_argument(
+        "--data", 
+        default=default_data_folder, 
+        help=f"Folder with txt/pdf/docx (default: {default_data_folder})"
+    )
+    ap.add_argument(
+        "--index_json", 
+        default=DEFAULT_INDEX_JSON, 
+        help="Path to embeddings JSON index"
+    )
+    ap.add_argument(
+        "--embed_model", 
+        default=DEFAULT_EMBED_MODEL, 
+        help="Embedding model name"
+    )
+    ap.add_argument(
+        "--chunk_size", 
+        type=int, 
+        default=1000, 
+        help="Chunk size in characters"
+    )
+    ap.add_argument(
+        "--chunk_overlap", 
+        type=int, 
+        default=150, 
+        help="Chunk overlap in characters"
+    )
+    ap.add_argument(
+        "--k", 
+        type=int, 
+        default=5, 
+        help="Top-k retrieval"
+    )
+    ap.add_argument(
+        "--rerank_top_n", 
+        type=int, 
+        default=3, 
+        help="Top-n after reranking"
+    )
+    ap.add_argument(
+        "--rerank_model", 
+        default=DEFAULT_RERANK_MODEL, 
+        help="Rerank model name"
+    )
+    ap.add_argument(
+        "--use_rerank", 
+        action="store_true", 
+        help="Enable reranking step"
+    )
+    ap.add_argument(
+        "--model", 
+        default=DEFAULT_MODEL, 
+        help="LLM model for generation"
+    )
+    ap.add_argument(
+        "--endpoint", 
+        default=DEFAULT_ENDPOINT, 
+        help="Nexa endpoint base URL"
+    )
+    ap.add_argument(
+        "--rebuild", 
+        action="store_true", 
+        help="Rebuild JSON index before starting chat"
+    )
     args = ap.parse_args()
 
-    # Ensure data folder exists
+    # Setup directories
     os.makedirs(args.data, exist_ok=True)
     print(f"[info] Using data folder: {args.data}")
     
     os.makedirs(os.path.dirname(args.index_json) or ".", exist_ok=True)
 
-    # Rebuild on start
+    # Build or load index
     if args.rebuild or (not os.path.exists(args.index_json)):
         print(f"[build] Building JSON index via server embeddings → {args.index_json}")
-        n_docs, n_chunks = build_json_index(args.data, args.index_json, args.embed_model, args.chunk_size, args.chunk_overlap, args.endpoint)
-        print(f"[build] Done. docs={n_docs}, chunks={n_chunks}")
+        try:
+            n_docs, n_chunks = build_json_index(
+                args.data, 
+                args.index_json, 
+                args.embed_model, 
+                args.chunk_size, 
+                args.chunk_overlap, 
+                args.endpoint
+            )
+            print(f"[build] Done. docs={n_docs}, chunks={n_chunks}")
+        except Exception as e:
+            print(f"[error] Failed to build index: {e}")
+            return
     else:
         print(f"[info] Using existing index: {args.index_json}")
 
-    # Load index
-    index = load_json_index(args.index_json)
-    print(f"[info] Loaded index: dim={index['dim']}, rows={index['matrix'].shape[0]}, embed_model={index['embed_model']}")
+    # Load index into memory
+    try:
+        index = load_json_index(args.index_json)
+        print(f"[info] Loaded index: dim={index['dim']}, rows={index['matrix'].shape[0]}, embed_model={index['embed_model']}")
+    except Exception as e:
+        print(f"[error] Failed to load index: {e}")
+        return
 
     print(f"[info] Ready. model={args.model} endpoint={args.endpoint}")
     print("Type your question (Enter to quit). Commands: :reload (rebuild index)")
 
+    # Interactive chat loop
     while True:
-        q = input("[user] ").strip()
+        try:
+            q = input("[user] ").strip()
+        except (EOFError, KeyboardInterrupt):
+            break
+            
         if not q:
             break
+            
+        # Handle special commands
         if q.lower() == ":reload":
             print("[build] Rebuilding JSON index ...")
-            n_docs, n_chunks = build_json_index(args.data, args.index_json, args.embed_model, args.chunk_size, args.chunk_overlap, args.endpoint)
-            index = load_json_index(args.index_json)
-            print(f"[build] Done. docs={n_docs}, chunks={n_chunks}")
+            try:
+                n_docs, n_chunks = build_json_index(
+                    args.data, 
+                    args.index_json, 
+                    args.embed_model, 
+                    args.chunk_size, 
+                    args.chunk_overlap, 
+                    args.endpoint
+                )
+                index = load_json_index(args.index_json)
+                print(f"[build] Done. docs={n_docs}, chunks={n_chunks}")
+            except Exception as e:
+                print(f"[error] Failed to rebuild index: {e}")
             continue
 
-        # NumPy search
+        # Perform vector search
         try:
-            top_idx, top_sims = search_numpy(q, index, args.embed_model, args.endpoint, top_k=args.k)
+            top_idx, top_sims = search_numpy(
+                q, 
+                index, 
+                args.embed_model, 
+                args.endpoint, 
+                top_k=args.k
+            )
         except Exception as e:
             print(f"[error] Search failed: {e}")
             continue
 
         # Optional reranking step
-        if args.use_rerank:
+        if args.use_rerank and len(top_idx) > 0:
             try:
                 # Get candidate documents from initial search
                 candidate_docs = [index["texts"][i] for i in top_idx.tolist()]
+                
                 # Rerank and get top_n indices (relative to candidate_docs)
-                reranked_local_idx = call_nexa_rerank(args.rerank_model, q, candidate_docs, args.endpoint, top_n=args.rerank_top_n)
+                reranked_local_idx = call_nexa_rerank(
+                    args.rerank_model, 
+                    q, 
+                    candidate_docs, 
+                    args.endpoint, 
+                    top_n=args.rerank_top_n
+                )
+                
                 # Map back to original index positions
                 top_idx = top_idx[reranked_local_idx]
                 print(f"[rerank] Reranked to top {len(reranked_local_idx)} documents")
             except Exception as e:
                 print(f"[warn] Reranking failed, using original search results: {e}")
 
-        # Build chat messages with context
+        # Build context from retrieved chunks
         context_text = "\n\n".join([index["texts"][i] for i in top_idx.tolist()])
         messages = [
             {
@@ -430,13 +801,16 @@ def main():
             {"role": "user", "content": q},
         ]
 
+        # Generate response
         print("\n[assistant]", end="", flush=True)
         try:
+            # Try streaming first
             for piece in call_nexa_chat(args.model, messages, args.endpoint, stream=True):
                 print(piece, end="", flush=True)
             print()
         except requests.HTTPError as e:
-            print(f"\n[warn] streaming failed, fallback to non-stream. Reason: {e}")
+            # Fallback to non-streaming
+            print(f"\n[warn] Streaming failed, fallback to non-stream. Reason: {e}")
             try:
                 full = call_nexa_chat(args.model, messages, args.endpoint, stream=False)
                 print(full)
