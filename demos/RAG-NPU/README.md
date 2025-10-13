@@ -1,69 +1,81 @@
-# RAG with Nexa Serve
+# World's First Fully NPU-Supported RAG Pipeline
 
 ## 1. About
-This project is a lightweight **Retrieval-Augmented Generation (RAG)** system built on top of **[nexa serve](https://github.com/NexaAI/nexa-sdk)** with the **Qwen3-4B** model.  
+This is the **world's first fully NPU-supported RAG pipeline** running entirely on Qualcomm Snapdragon NPU with state-of-the-art models.
 
-The system lets you bring your own files — such as **PDFs, Word docs, text files** — and automatically builds a small database from them. When you ask a question, the model retrieves relevant chunks from your files and responds based on the resources you provided.  
+**What makes it special:**
+- 🔒 **100% Private** — All processing happens locally, nothing leaves your device
+- ⚡ **10× More Power Efficient** — Runs on NPU instead of GPU
+- 🌟 **State-of-the-art Models** — Best-in-class embedding, reranking, and generation
+- 🔌 **Always-On** — Efficient enough to run as a background service
 
-You can run the system directly from the **CLI**, or launch a simple **Gradio UI** for an interactive experience.
+![The Stack](./architecture.png)
 
+**The Stack:**
+- **Embedding:** Gemma-300M (Google DeepMind) — Top multilingual embedding model
+- **Rerank:** Jina Reranker v2 — SOTA cross-lingual reranking
+- **Generation:** Granite 4.0-Micro (IBM Research) — Frontier reasoning in 3B parameters
+- **Runtime:** NexaML with OpenAI-compatible APIs
 
-## 2. Preparation
-Before running this project, make sure you have the **Nexa SDK** windows arm64 installed.
-Once installed, you need to download the **embeddinggemma-300m-npu, jina-v2-rerank-npu, Granite-4-Micro-NPU model** with the following command:
+Bring your own files (PDFs, Word docs, text) and ask questions—the system retrieves relevant context and generates answers entirely on your device.
+
+---
+
+## 2. Setup
+
+### Prerequisites
+- Windows ARM64 device with Snapdragon NPU
+- Nexa SDK installed
+
+### Install Models
+Download the three NPU-optimized models:
+
 ```bash
 nexa pull NexaAI/embeddinggemma-300m-npu
 nexa pull NexaAI/jina-v2-rerank-npu
 nexa pull NexaAI/Granite-4-Micro-NPU
 ```
 
-After the model is ready, start the Nexa server in a separate terminal:
+### Start Nexa Server
+Launch the server in a separate terminal:
 
 ```bash
 nexa serve
 ```
 
-Then back to this project, create a new conda environment (optional) and install dependencies:
-
+### Install Dependencies
 ```bash
-# Create a new conda environment (optional)
+# Optional: Create conda environment
 conda create -n rag-nexa python=3.10 -y
 conda activate rag-nexa
 
-# install python dependencies
+# Install dependencies
 pip install -r requirements.txt
 ```
 
+---
 
-## 3. Run from CLI
-To run the RAG pipeline from the command line:
+## 3. Quick Start
 
+### CLI Mode
 ```bash
 python rag_nexa.py --rebuild
 ```
 
-**Note:** The system automatically creates a `nexa-rag-docs` folder in your Downloads directory to store your documents. You can also specify a custom folder with `--data /path/to/your/docs`.
+**How it works:**
+- System creates `Downloads\nexa-rag-docs` folder for your documents
+- Add files (.pdf, .txt, .docx) to this folder
+- Run with `--rebuild` flag or type `:reload` after adding new files
+- Ask questions and get answers based on your documents
 
-### Adding files
-- Place your files into the `Downloads\nexa-rag-docs` folder (created automatically). Supported formats: **.pdf, .txt, .docx**  
-- After adding new files, you need to **rebuild** the index by running with `--rebuild` flag or typing `:reload` in the CLI.  
-  Rebuilding is required because it re-indexes the new files so the model can use them.
-
-Once running, simply type your question in the terminal and the system will answer using your documents.
-
-
-## 4. Run with Gradio UI
-You can also start an interactive **Gradio web UI**:
-
+### Gradio UI Mode
 ```bash
 python gradio_ui.py
 ```
 
-Open the browser at [http://127.0.0.1:7860](http://127.0.0.1:7860).  
+Open [http://127.0.0.1:7860](http://127.0.0.1:7860) in your browser.
 
-### Using the UI
-- On the **left panel**, you can:
-  - Upload new files into the documents folder (PDFs, docs, txts).
-  - Click **Rebuild** after uploading to refresh the database.
-- On the **right panel**, use the chat window to ask questions.
-- The model will **stream answers** based on your documents.
+**Features:**
+- **Left panel:** Upload files and rebuild index
+- **Right panel:** Chat interface with streaming responses
+- Fully interactive local RAG experience
