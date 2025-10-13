@@ -8,6 +8,9 @@ build/
 *.test
 *.out
 *.txt
+__pycache__/
+docs/
+*.json
 
 # Go specific
 *.o
