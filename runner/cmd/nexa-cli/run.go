@@ -211,6 +211,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 
 	processor := &common.Processor{
 		ParseFile: manifest.ModelType == types.ModelTypeVLM,
+		TestMode:  testMode,
 		Run: func(prompt string, images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			if len(images) > 0 || len(audios) > 0 {
 				contents := make([]openai.ChatCompletionContentPartUnionParam, 0)

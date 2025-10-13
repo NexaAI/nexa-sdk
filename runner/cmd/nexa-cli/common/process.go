@@ -11,6 +11,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/bytedance/sonic"
+
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 )
@@ -20,6 +22,8 @@ var ErrNoAudio = errors.New("no audio file provided")
 type Processor struct {
 	ParseFile bool
 	HideThink bool
+
+	TestMode bool
 
 	GetPrompt func() (string, error)
 	Run       func(prompt string, images, audios []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error)
@@ -66,7 +70,7 @@ func (p *Processor) Process() {
 
 		p.fsmInit()
 		stopGen = false
-		_, profileData, err := p.Run(prompt, images, audios, func(token string) bool {
+		output, profileData, err := p.Run(prompt, images, audios, func(token string) bool {
 			if firstToken {
 				spin.Stop()
 				firstToken = false
@@ -75,7 +79,16 @@ func (p *Processor) Process() {
 			p.fsmEvent(token)
 			return !stopGen
 		})
+
 		slog.Debug("profileData", "profileData", profileData)
+		if p.TestMode {
+			pd, _ := sonic.MarshalString(map[string]any{
+				"Input":   line,
+				"Output":  output,
+				"Profile": profileData,
+			})
+			fmt.Fprintln(os.Stderr, pd)
+		}
 
 		// reset spin when no token received
 		if firstToken {
