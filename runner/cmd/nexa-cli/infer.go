@@ -222,9 +222,9 @@ func infer() *cobra.Command {
 			inferASR(manifest, quant)
 		case types.ModelTypeCV:
 			inferCV(manifest, quant)
-		// case types.ModelTypeImageGen:
-		// 	// ImageGen model is a directory, not a file
-		// 	inferImageGen(manifest, quant)
+		case types.ModelTypeImageGen:
+			// ImageGen model is a directory, not a file
+			inferImageGen(manifest, quant)
 		default:
 			panic("not support model type")
 		}
@@ -1027,8 +1027,8 @@ func inferCV(manifest *types.ModelManifest, quant string) {
 			onToken(render.GetTheme().Info.Sprintf("  Found %d results\n", len(result.Results)))
 
 			for _, cvResult := range result.Results {
-				onToken(fmt.Sprintf("[%s] %s\n", 
-					render.GetTheme().Info.Sprintf("%.3f", cvResult.Confidence), 
+				onToken(fmt.Sprintf("[%s] %s\n",
+					render.GetTheme().Info.Sprintf("%.3f", cvResult.Confidence),
 					render.GetTheme().Success.Sprintf("\"%s\"", cvResult.Text)))
 			}
 
@@ -1054,103 +1054,90 @@ func inferCV(manifest *types.ModelManifest, quant string) {
 	processor.Process()
 }
 
-// func inferImageGen(manifest *types.ModelManifest, _ string) {
-// 	s := store.Get()
-// 	modeldir := s.ModelfilePath(manifest.Name, "")
-// 	prompts := prompt
-// 	if len(prompts) == 0 {
-// 		fmt.Println(render.GetTheme().Error.Sprintf("text prompt is required for image generation (use --prompt)"))
-// 		fmt.Println()
-// 		return
-// 	}
-//
-// 	spin := render.NewSpinner("loading ImageGen model...")
-// 	spin.Start()
-// 	p, err := nexa_sdk.NewImageGen(nexa_sdk.ImageGenCreateInput{
-// 		ModelName: manifest.ModelName,
-// 		ModelPath: modeldir,
-// 		PluginID:  manifest.PluginId,
-// 		DeviceID:  manifest.DeviceId,
-// 	})
-// 	spin.Stop()
-// 	if err != nil {
-// 		slog.Error("failed to create ImageGen", "error", err)
-// 		fmt.Println(modelLoadFailMsg)
-// 		return
-// 	}
-// 	defer p.Destroy()
-//
-// 	// processor := &common.Processor{
-// 	// 	Run: ,
-// 	// }
-// 	//
-// 	// if len(prompt) > 0 || input != "" {
-// 	// 	processor.GetPrompt = func() (string, error) {
-// 	// 		if input != "" {
-// 	// 			content, err := os.ReadFile(input)
-// 	// 			fmt.Print(render.GetTheme().Prompt.Sprintf("> "))
-// 	// 			fmt.Println(render.GetTheme().Normal.Sprint(input))
-// 	// 			input = ""
-// 	// 			return string(content), err
-// 	// 		}
-// 	// 		if len(prompt) > 0 {
-// 	// 			p := prompt[0]
-// 	// 			fmt.Print(render.GetTheme().Prompt.Sprintf("> "))
-// 	// 			fmt.Println(render.GetTheme().Normal.Sprint(p))
-// 	// 			prompt = prompt[1:]
-// 	// 			return p, nil
-// 	// 		}
-// 	// 		return "", io.EOF
-// 	// 	}
-// 	// } else {
-// 	// 	repl := common.Repl{}
-// 	// 	defer repl.Close()
-// 	// 	processor.GetPrompt = repl.GetPrompt
-// 	// }
-// 	//
-// 	// processor.Process()
-//
-// 	if output == "" {
-// 		output = fmt.Sprintf("imagegen_output_%d.png", time.Now().Unix())
-// 	}
-//
-// 	fmt.Println(render.GetTheme().Info.Sprintf("Generating image: \"%s\"", prompts[0]))
-//
-// 	result, err := p.Txt2Img(nexa_sdk.ImageGenTxt2ImgInput{
-// 		PromptUTF8: prompts[0],
-// 		Config: &nexa_sdk.ImageGenerationConfig{
-// 			Prompts:         prompts,
-// 			NegativePrompts: []string{"blurry, low quality, distorted"},
-// 			Height:          512,
-// 			Width:           512,
-// 			SamplerConfig: nexa_sdk.ImageSamplerConfig{
-// 				Method:        "ddim",
-// 				Steps:         20,
-// 				GuidanceScale: 7.5,
-// 				Eta:           0.0,
-// 				Seed:          42,
-// 			},
-// 			SchedulerConfig: nexa_sdk.SchedulerConfig{
-// 				Type:              "ddim",
-// 				NumTrainTimesteps: 1000,
-// 				StepsOffset:       1,
-// 				BetaStart:         0.00085,
-// 				BetaEnd:           0.012,
-// 				BetaSchedule:      "scaled_linear",
-// 				PredictionType:    "epsilon",
-// 				TimestepType:      "discrete",
-// 				TimestepSpacing:   "leading",
-// 				InterpolationType: "linear",
-// 				ConfigPath:        "",
-// 			},
-// 			Strength: 1.0,
-// 		},
-// 		OutputPath: output,
-// 	})
-// 	if err != nil {
-// 		fmt.Println(render.GetTheme().Error.Sprintf("Image generation failed: %s", err))
-// 		return
-// 	}
-//
-// 	fmt.Println(render.GetTheme().Success.Sprintf("✓ Image saved to: %s", result.OutputImagePath))
-// }
+func inferImageGen(manifest *types.ModelManifest, _ string) {
+	s := store.Get()
+	modeldir := s.ModelfilePath(manifest.Name, "")
+
+	spin := render.NewSpinner("loading ImageGen model...")
+	spin.Start()
+	p, err := nexa_sdk.NewImageGen(nexa_sdk.ImageGenCreateInput{
+		ModelName: manifest.ModelName,
+		ModelPath: modeldir,
+		PluginID:  manifest.PluginId,
+		DeviceID:  manifest.DeviceId,
+	})
+	spin.Stop()
+
+	if err != nil {
+		slog.Error("failed to create ImageGen", "error", err)
+		fmt.Println(modelLoadFailMsg)
+		return
+	}
+	defer p.Destroy()
+
+	processor := &common.Processor{
+		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			textPrompt := strings.TrimSpace(prompt)
+			if textPrompt == "" {
+				return "", nexa_sdk.ProfileData{}, fmt.Errorf("prompt cannot be empty")
+			}
+
+			// Generate output filename if not specified
+			outputFile := output
+			if outputFile == "" {
+				outputFile = fmt.Sprintf("imagegen_output_%d.png", time.Now().Unix())
+			}
+
+			fmt.Println(render.GetTheme().Info.Sprintf("Generating image: \"%s\"", textPrompt))
+
+			result, err := p.Txt2Img(nexa_sdk.ImageGenTxt2ImgInput{
+				PromptUTF8: textPrompt,
+				Config: &nexa_sdk.ImageGenerationConfig{
+					Prompts:         []string{textPrompt},
+					NegativePrompts: []string{"blurry, low quality, distorted"},
+					Height:          512,
+					Width:           512,
+					SamplerConfig: nexa_sdk.ImageSamplerConfig{
+						Method:        "ddim",
+						Steps:         20,
+						GuidanceScale: 7.5,
+						Eta:           0.0,
+						Seed:          42,
+					},
+					SchedulerConfig: nexa_sdk.SchedulerConfig{
+						Type:              "ddim",
+						NumTrainTimesteps: 1000,
+						StepsOffset:       1,
+						BetaStart:         0.00085,
+						BetaEnd:           0.012,
+						BetaSchedule:      "scaled_linear",
+						PredictionType:    "epsilon",
+						TimestepType:      "discrete",
+						TimestepSpacing:   "leading",
+						InterpolationType: "linear",
+						ConfigPath:        "",
+					},
+					Strength: 1.0,
+				},
+				OutputPath: outputFile,
+			})
+			if err != nil {
+				return "", nexa_sdk.ProfileData{}, err
+			}
+
+			onToken(render.GetTheme().Success.Sprintf("✓ Image saved to: %s", result.OutputImagePath))
+
+			return "", nexa_sdk.ProfileData{}, nil
+		},
+	}
+
+	if len(prompt) > 0 || input != "" {
+		processor.GetPrompt = getPromptOrInput
+	} else {
+		repl := common.Repl{}
+		defer repl.Close()
+		processor.GetPrompt = repl.GetPrompt
+	}
+
+	processor.Process()
+}
