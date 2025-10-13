@@ -1,89 +1,69 @@
-# World's First Fully NPU-Supported RAG Pipeline
+# RAG with Nexa Serve
 
 ## 1. About
+This project is a lightweight **Retrieval-Augmented Generation (RAG)** system built on top of **[nexa serve](https://github.com/NexaAI/nexa-sdk)** with the **Qwen3-4B** model.  
 
-This is the **world's first fully NPU-supported Retrieval-Augmented Generation (RAG)** system that runs entirely on Neural Processing Units without cloud connectivity. The pipeline combines three state-of-the-art open models optimized for on-device inference:
+The system lets you bring your own files — such as **PDFs, Word docs, text files** — and automatically builds a small database from them. When you ask a question, the model retrieves relevant chunks from your files and responds based on the resources you provided.  
 
-- **Embedding-Gemma-300M**: Google's top multilingual text embedding model (ranked highest on MTEB benchmark)
-- **Jina Reranker v2 (278M)**: Next-generation reranker delivering SOTA performance across multilingual retrieval
-- **Granite 4.0-Micro (3B)**: IBM's compact LLM offering frontier-level reasoning for on-device inference
+You can run the system directly from the **CLI**, or launch a simple **Gradio UI** for an interactive experience.
 
-![RAG Architecture](architecture.png)
 
-**Key Benefits:**
-- 🔒 **Private**: All processing happens locally—no data leaves your device
-- ⚡ **Fast**: NPU-optimized inference with low-latency retrieval
-- 🔋 **Efficient**: Power-efficient execution compared to GPU/CPU solutions
-- 📄 **Flexible**: Supports PDFs, Word docs, and text files
-
-The system is powered by **NexaML** inference framework with OpenAI-compatible APIs and runs on a proprietary local database engine optimized for on-device use.
-
-## 2. Prerequisites
-
-**Hardware:** Windows ARM64 device with NPU support  
-**Software:** Nexa SDK for Windows ARM64
-
-### Install Models
-
-Download the required NPU-optimized models:
-
+## 2. Preparation
+Before running this project, make sure you have the **Nexa SDK** windows arm64 installed.
+Once installed, you need to download the **embeddinggemma-300m-npu, jina-v2-rerank-npu, Granite-4-Micro-NPU model** with the following command:
 ```bash
 nexa pull NexaAI/embeddinggemma-300m-npu
 nexa pull NexaAI/jina-v2-rerank-npu
 nexa pull NexaAI/Granite-4-Micro-NPU
 ```
 
-### Start Nexa Server
-
-Launch the server in a separate terminal:
+After the model is ready, start the Nexa server in a separate terminal:
 
 ```bash
 nexa serve
 ```
 
-### Setup Environment
+Then back to this project, create a new conda environment (optional) and install dependencies:
 
 ```bash
-# Create conda environment (optional)
+# Create a new conda environment (optional)
 conda create -n rag-nexa python=3.10 -y
 conda activate rag-nexa
 
-# Install dependencies
+# install python dependencies
 pip install -r requirements.txt
 ```
 
-## 3. Usage
 
-### CLI Mode
-
-Run the RAG pipeline from command line:
+## 3. Run from CLI
+To run the RAG pipeline from the command line:
 
 ```bash
-python rag_nexa.py --data docs/ --rebuild
+python rag_nexa.py --rebuild
 ```
 
-**Adding Documents:**
-- Place files in `./docs` folder (supports `.pdf`, `.txt`, `.docx`)
-- Use `--rebuild` flag to re-index after adding new files
+**Note:** The system automatically creates a `nexa-rag-docs` folder in your Downloads directory to store your documents. You can also specify a custom folder with `--data /path/to/your/docs`.
 
-### Gradio UI Mode
+### Adding files
+- Place your files into the `Downloads\nexa-rag-docs` folder (created automatically). Supported formats: **.pdf, .txt, .docx**  
+- After adding new files, you need to **rebuild** the index by running with `--rebuild` flag or typing `:reload` in the CLI.  
+  Rebuilding is required because it re-indexes the new files so the model can use them.
 
-Launch the interactive web interface:
+Once running, simply type your question in the terminal and the system will answer using your documents.
+
+
+## 4. Run with Gradio UI
+You can also start an interactive **Gradio web UI**:
 
 ```bash
 python gradio_ui.py
 ```
 
-Open your browser at [http://127.0.0.1:7860](http://127.0.0.1:7860)
+Open the browser at [http://127.0.0.1:7860](http://127.0.0.1:7860).  
 
-**Features:**
-- Upload files through the UI
-- Rebuild index with one click
-- Chat interface with streaming responses
-- Real-time RAG over your documents
-
-## 4. References
-- [Embedding-Gemma-300M-NPU](https://sdk.nexa.ai/model/embeddinggemma-300m-npu)
-- [Jina Reranker v2 NPU](https://sdk.nexa.ai/model/Jina-reranker-v2)
-- [Granite 4.0-Micro NPU](https://sdk.nexa.ai/model/Granite-4-Micro)
-**Powered by:** [Nexa SDK](https://github.com/NexaAI/nexa-sdk) 
+### Using the UI
+- On the **left panel**, you can:
+  - Upload new files into the documents folder (PDFs, docs, txts).
+  - Click **Rebuild** after uploading to refresh the database.
+- On the **right panel**, use the chat window to ask questions.
+- The model will **stream answers** based on your documents.
