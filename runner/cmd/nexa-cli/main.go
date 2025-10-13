@@ -80,7 +80,7 @@ func RootCmd() *cobra.Command {
 	rootCmd.AddCommand(
 		pull(), remove(), clean(), list(),
 		infer(), //functionCall(),
-		serve(), //run(),
+		serve(), run(),
 		_config(),
 		version(), update(),
 	)

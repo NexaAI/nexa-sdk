@@ -337,7 +337,7 @@ func inferLLM(manifest *types.ModelManifest, quant string) {
 
 	processor := &common.Processor{
 		ParseFile: false,
-
+		HideThink: hideThink,
 		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			history = append(history, nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
 
@@ -461,6 +461,7 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 
 	processor := &common.Processor{
 		ParseFile: true,
+		HideThink: hideThink,
 		Run: func(prompt string, images, audios []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			msg := nexa_sdk.VlmChatMessage{Role: nexa_sdk.VlmRoleUser}
 			msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeText, Text: prompt})
