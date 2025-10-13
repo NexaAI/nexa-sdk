@@ -1,10 +1,6 @@
 package main
 
-import (
-	"testing"
-)
-
-//  cd runner && LD_LIBRARY_PATH=$PWD/../build/lib go test ./cmd/nexa-cli -v -run TestQuantRegix_MatchMixedCaseQuantLevels
+import "testing"
 
 func TestQuantRegix_MatchAllQuantLevels(t *testing.T) {
 	// Test all quantization levels based on the provided list

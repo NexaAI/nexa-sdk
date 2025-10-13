@@ -17,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	"github.com/NexaAI/nexa-sdk/runner/cmd/nexa-cli/common"
 	"github.com/NexaAI/nexa-sdk/runner/internal/record"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
@@ -31,7 +32,6 @@ const modelLoadFailMsg = `⚠️ Oops. Model failed to load.
 - Seek help in our discord or slack.`
 
 var (
-	noInteractive bool
 	// disableStream *bool // reuse in run.go
 	ngl            int32
 	nctx           int32
@@ -86,21 +86,19 @@ var (
 	llmFlags = func() *pflag.FlagSet {
 		llmFlags := pflag.NewFlagSet("LLM/VLM Model", pflag.ExitOnError)
 		llmFlags.SortFlags = false
-		llmFlags.BoolVarP(&noInteractive, "no-interactive", "", false, "disable interactive mode")
 		llmFlags.Int32VarP(&ngl, "ngl", "n", 999, "num of layers pass to gpu")
 		llmFlags.Int32VarP(&nctx, "nctx", "", 4096, "context window size")
 		llmFlags.Int32VarP(&maxTokens, "max-tokens", "", 2048, "max tokens")
 		llmFlags.BoolVarP(&enableThink, "think", "", true, "enable thinking mode")
 		llmFlags.BoolVarP(&hideThink, "hide-think", "", false, "hide thinking output")
 		llmFlags.StringVarP(&systemPrompt, "system-prompt", "s", "", "system prompt to set model behavior")
-		llmFlags.StringArrayVarP(&prompt, "prompt", "p", nil, "pass prompt")
 		llmFlags.StringVarP(&input, "input", "i", "", "prompt txt file")
+		llmFlags.StringArrayVarP(&prompt, "prompt", "p", nil, "pass prompt")
 		return llmFlags
 	}()
 	vlmFlags = func() *pflag.FlagSet {
 		vlmFlags := pflag.NewFlagSet("VLM Specific", pflag.ExitOnError)
 		vlmFlags.SortFlags = false
-		vlmFlags.BoolVarP(&noInteractive, "no-interactive", "", false, "disable interactive mode")
 		vlmFlags.StringArrayVarP(&prompt, "prompt", "p", nil, "pass prompt")
 		vlmFlags.Int32VarP(&imageMaxLength, "image-max-length", "", 512, "max image length")
 		return vlmFlags
@@ -110,20 +108,6 @@ var (
 var (
 	ErrNoAudio = errors.New("no audio file provided")
 )
-
-func getPromptText() (string, error) {
-	if len(input) > 0 {
-		content, err := os.ReadFile(input)
-		if err != nil {
-			return "", fmt.Errorf("read prompt file error: %s", err)
-		}
-		return string(content), nil
-	}
-	if len(prompt) == 0 {
-		return "", fmt.Errorf("prompt or input is required in non-interactive mode (use --prompt or --input)")
-	}
-	return strings.Join(prompt, " "), nil
-}
 
 func infer() *cobra.Command {
 	inferCmd := &cobra.Command{
@@ -143,6 +127,7 @@ func infer() *cobra.Command {
 
 	embedderFlags := pflag.NewFlagSet("Embedder", pflag.ExitOnError)
 	embedderFlags.SortFlags = false
+	embedderFlags.StringVarP(&input, "input", "i", "", "prompt txt file")
 	embedderFlags.StringArrayVarP(&prompt, "prompt", "p", nil, "pass prompt")
 	embedderFlags.StringVarP(&taskType, "task-type", "", "default", "default|search_query|search_document")
 	inferCmd.Flags().AddFlagSet(embedderFlags)
@@ -160,6 +145,7 @@ func infer() *cobra.Command {
 
 	ttsFlags := pflag.NewFlagSet("TTS", pflag.ExitOnError)
 	ttsFlags.SortFlags = false
+	ttsFlags.StringVarP(&input, "input", "i", "", "prompt txt file")
 	ttsFlags.StringArrayVarP(&prompt, "prompt", "p", nil, "pass prompt")
 	ttsFlags.StringVarP(&voice, "voice", "", "", "voice identifier")
 	ttsFlags.BoolVarP(&listVoice, "list-voice", "", false, "list available voices")
@@ -169,6 +155,7 @@ func infer() *cobra.Command {
 
 	imageGenFlags := pflag.NewFlagSet("ImageGen", pflag.ExitOnError)
 	imageGenFlags.SortFlags = false
+	imageGenFlags.StringVarP(&input, "input", "i", "", "prompt txt file")
 	imageGenFlags.StringArrayVarP(&prompt, "prompt", "p", nil, "pass prompt")
 	imageGenFlags.StringVarP(&output, "output", "o", "", "output image file")
 	inferCmd.Flags().AddFlagSet(imageGenFlags)
@@ -232,16 +219,16 @@ func infer() *cobra.Command {
 			inferEmbedder(manifest, quant)
 		case types.ModelTypeReranker:
 			inferReranker(manifest, quant)
-		case types.ModelTypeTTS:
-			inferTTS(manifest, quant)
-		case types.ModelTypeASR:
-			checkDependency()
-			inferASR(manifest, quant)
-		case types.ModelTypeCV:
-			inferCV(manifest, quant)
-		case types.ModelTypeImageGen:
-			// ImageGen model is a directory, not a file
-			inferImageGen(manifest, quant)
+		// case types.ModelTypeTTS:
+		// 	inferTTS(manifest, quant)
+		// case types.ModelTypeASR:
+		// 	checkDependency()
+		// 	inferASR(manifest, quant)
+		// case types.ModelTypeCV:
+		// 	inferCV(manifest, quant)
+		// case types.ModelTypeImageGen:
+		// 	// ImageGen model is a directory, not a file
+		// 	inferImageGen(manifest, quant)
 		default:
 			panic("not support model type")
 		}
@@ -283,6 +270,24 @@ func selectQuant(manifest *types.ModelManifest) (string, error) {
 	return quant, nil
 }
 
+func getPromptOrInput() (string, error) {
+	if input != "" {
+		content, err := os.ReadFile(input)
+		fmt.Print(render.GetTheme().Prompt.Sprintf("> "))
+		fmt.Println(render.GetTheme().Normal.Sprint(input))
+		input = ""
+		return string(content), err
+	}
+	if len(prompt) > 0 {
+		p := prompt[0]
+		fmt.Print(render.GetTheme().Prompt.Sprintf("> "))
+		fmt.Println(render.GetTheme().Normal.Sprint(p))
+		prompt = prompt[1:]
+		return p, nil
+	}
+	return "", io.EOF
+}
+
 func inferLLM(manifest *types.ModelManifest, quant string) {
 	var samplerConfig *nexa_sdk.SamplerConfig
 	if temperature > 0 || topK > 0 || topP > 0 || minP > 0 ||
@@ -317,7 +322,7 @@ func inferLLM(manifest *types.ModelManifest, quant string) {
 		Config: nexa_sdk.ModelConfig{
 			NCtx:         nctx,
 			NGpuLayers:   ngl,
-			SystemPrompt: systemPrompt,
+			SystemPrompt: systemPrompt, // TODO: align npu
 		},
 	})
 	spin.Stop()
@@ -330,110 +335,14 @@ func inferLLM(manifest *types.ModelManifest, quant string) {
 	defer p.Destroy()
 
 	var history []nexa_sdk.LlmChatMessage
-
 	if systemPrompt != "" {
 		history = append(history, nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleSystem, Content: systemPrompt})
 	}
-	if len(input) > 0 && !noInteractive {
-		content, err := os.ReadFile(input)
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("read prompt file error: %s", err))
-			return
-		}
-		history = append(history, nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleUser, Content: string(content)})
-		applyChatTemplateInput, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
-			Messages:    history,
-			EnableThink: enableThink,
-		})
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("apply chat template error: %s", err))
-			return
-		}
 
-		res, err := p.Generate(nexa_sdk.LlmGenerateInput{
-			PromptUTF8: applyChatTemplateInput.FormattedText,
-			OnToken: func(token string) bool {
-				fmt.Print(token)
-				return true
-			},
-			Config: &nexa_sdk.GenerationConfig{
-				MaxTokens: maxTokens,
-			},
-		})
-		fmt.Println()
-		fmt.Println()
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("generate error: %s", err))
-			return
-		}
-		printProfile(res.ProfileData)
-		// return
-	}
-
-	if noInteractive {
-		promptText, err := getPromptText()
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("%s", err))
-			return
-		}
-
-		history = append(history, nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleUser, Content: promptText})
-
-		templateOutput, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
-			Messages:    history,
-			EnableThink: enableThink,
-		})
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("apply chat template error: %s", err))
-			return
-		}
-
-		res, err := p.Generate(nexa_sdk.LlmGenerateInput{
-			PromptUTF8: templateOutput.FormattedText,
-			OnToken: func(token string) bool {
-				fmt.Print(token)
-				return true
-			},
-			Config: &nexa_sdk.GenerationConfig{
-				MaxTokens:     maxTokens,
-				SamplerConfig: samplerConfig,
-			},
-		})
-		fmt.Println()
-		fmt.Println()
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("generate error: %s", err))
-			return
-		}
-		printProfile(res.ProfileData)
-		return
-	}
-
-	repl(ReplConfig{
+	processor := &common.Processor{
 		ParseFile: false,
 
-		Reset: func() error {
-			err := p.Reset()
-			if err == nil {
-				history = nil
-			}
-			return err
-		},
-
-		SaveKVCache: func(path string) error {
-			_, err := p.SaveKVCache(nexa_sdk.LlmSaveKVCacheInput{Path: path})
-			return err
-		},
-
-		LoadKVCache: func(path string) error {
-			_, err := p.LoadKVCache(nexa_sdk.LlmLoadKVCacheInput{Path: path})
-			if err == nil {
-				history = nil
-			}
-			return err
-		},
-
-		Run: func(prompt string, _, _ []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
+		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			history = append(history, nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
 
 			templateOutput, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
@@ -446,7 +355,7 @@ func inferLLM(manifest *types.ModelManifest, quant string) {
 
 			res, err := p.Generate(nexa_sdk.LlmGenerateInput{
 				PromptUTF8: templateOutput.FormattedText,
-				OnToken:    on_token,
+				OnToken:    onToken,
 				Config: &nexa_sdk.GenerationConfig{
 					MaxTokens:     maxTokens,
 					SamplerConfig: samplerConfig,
@@ -460,7 +369,38 @@ func inferLLM(manifest *types.ModelManifest, quant string) {
 			history = append(history, nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: res.FullText})
 			return res.FullText, res.ProfileData, nil
 		},
-	})
+	}
+
+	if len(prompt) > 0 || input != "" {
+		processor.GetPrompt = getPromptOrInput
+	} else {
+		repl := common.Repl{
+			Reset: func() error {
+				err := p.Reset()
+				if err == nil {
+					history = nil
+				}
+				return err
+			},
+
+			SaveKVCache: func(path string) error {
+				_, err := p.SaveKVCache(nexa_sdk.LlmSaveKVCacheInput{Path: path})
+				return err
+			},
+
+			LoadKVCache: func(path string) error {
+				_, err := p.LoadKVCache(nexa_sdk.LlmLoadKVCacheInput{Path: path})
+				if err == nil {
+					history = nil
+				}
+				return err
+			},
+		}
+		defer repl.Close()
+		processor.GetPrompt = repl.GetPrompt
+	}
+
+	processor.Process()
 }
 
 func inferVLM(manifest *types.ModelManifest, quant string) {
@@ -519,129 +459,13 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 	defer p.Destroy()
 
 	var history []nexa_sdk.VlmChatMessage
-
 	if systemPrompt != "" {
 		history = append(history, nexa_sdk.VlmChatMessage{Role: nexa_sdk.VlmRoleSystem, Contents: []nexa_sdk.VlmContent{{Type: nexa_sdk.VlmContentTypeText, Text: systemPrompt}}})
 	}
-	if len(input) > 0 && !noInteractive {
-		content, err := os.ReadFile(input)
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("read prompt file error: %s", err))
-			return
-		}
-		history = append(history, nexa_sdk.VlmChatMessage{Role: nexa_sdk.VlmRoleUser, Contents: []nexa_sdk.VlmContent{{Type: nexa_sdk.VlmContentTypeText, Text: string(content)}}})
-		applyChatTemplateInput, err := p.ApplyChatTemplate(nexa_sdk.VlmApplyChatTemplateInput{
-			Messages:    history,
-			EnableThink: enableThink,
-		})
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("apply chat template error: %s", err))
-			return
-		}
 
-		res, err := p.Generate(nexa_sdk.VlmGenerateInput{
-			PromptUTF8: applyChatTemplateInput.FormattedText,
-			OnToken: func(token string) bool {
-				fmt.Print(token)
-				return true
-			},
-			Config: &nexa_sdk.GenerationConfig{
-				MaxTokens: maxTokens,
-			},
-		})
-		fmt.Println()
-		fmt.Println()
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("generate error: %s", err))
-			return
-		}
-		printProfile(res.ProfileData)
-		// return
-	}
-
-	if noInteractive {
-		promptText, err := getPromptText()
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("%s", err))
-			return
-		}
-
-		msg := nexa_sdk.VlmChatMessage{Role: nexa_sdk.VlmRoleUser}
-		msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeText, Text: promptText})
-
-		_, images, audios := parseFiles(promptText)
-		for _, image := range images {
-			msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeImage, Text: image})
-		}
-		for _, audio := range audios {
-			msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeAudio, Text: audio})
-		}
-
-		history = append(history, msg)
-
-		tmplOut, err := p.ApplyChatTemplate(nexa_sdk.VlmApplyChatTemplateInput{
-			Messages:    history,
-			EnableThink: enableThink,
-		})
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("apply chat template error: %s", err))
-			return
-		}
-
-		res, err := p.Generate(nexa_sdk.VlmGenerateInput{
-			PromptUTF8: tmplOut.FormattedText,
-			OnToken: func(token string) bool {
-				fmt.Print(token)
-				return true
-			},
-			Config: &nexa_sdk.GenerationConfig{
-				MaxTokens:      maxTokens,
-				SamplerConfig:  samplerConfig,
-				ImagePaths:     images,
-				ImageMaxLength: imageMaxLength,
-				AudioPaths:     audios,
-			},
-		})
-		fmt.Println()
-		fmt.Println()
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("generate error: %s", err))
-			return
-		}
-		printProfile(res.ProfileData)
-		return
-	}
-
-	repl(ReplConfig{
+	processor := &common.Processor{
 		ParseFile: true,
-
-		Reset: func() error {
-			err := p.Reset()
-			if err == nil {
-				history = nil
-			}
-			return err
-		},
-
-		Record: func() (*string, error) {
-			t := strconv.Itoa(int(time.Now().Unix()))
-			outputFile := filepath.Join(os.TempDir(), "nexa-cli", t+".wav")
-			rec, err := record.NewRecorder(outputFile)
-			if err != nil {
-				return nil, err
-			}
-
-			fmt.Println(render.GetTheme().Info.Sprint("Recording is going on, press Ctrl-C to stop"))
-
-			err = rec.Run()
-			if err != nil {
-				return nil, err
-			}
-			outfile := rec.GetOutputFile()
-			return &outfile, nil
-		},
-
-		Run: func(prompt string, images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
+		Run: func(prompt string, images, audios []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			msg := nexa_sdk.VlmChatMessage{Role: nexa_sdk.VlmRoleUser}
 			msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeText, Text: prompt})
 			for _, image := range images {
@@ -663,7 +487,7 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 
 			res, err := p.Generate(nexa_sdk.VlmGenerateInput{
 				PromptUTF8: tmplOut.FormattedText,
-				OnToken:    on_token,
+				OnToken:    onToken,
 				Config: &nexa_sdk.GenerationConfig{
 					MaxTokens:      maxTokens,
 					SamplerConfig:  samplerConfig,
@@ -685,7 +509,42 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 
 			return res.FullText, res.ProfileData, nil
 		},
-	})
+	}
+
+	if len(prompt) > 0 || input != "" {
+		processor.GetPrompt = getPromptOrInput
+	} else {
+		repl := common.Repl{
+			Reset: func() error {
+				err := p.Reset()
+				if err == nil {
+					history = nil
+				}
+				return err
+			},
+			Record: func() (*string, error) {
+				t := strconv.Itoa(int(time.Now().Unix()))
+				outputFile := filepath.Join(os.TempDir(), "nexa-cli", t+".wav")
+				rec, err := record.NewRecorder(outputFile)
+				if err != nil {
+					return nil, err
+				}
+
+				fmt.Println(render.GetTheme().Info.Sprint("Recording is going on, press Ctrl-C to stop"))
+
+				err = rec.Run()
+				if err != nil {
+					return nil, err
+				}
+				outfile := rec.GetOutputFile()
+				return &outfile, nil
+			},
+		}
+		defer repl.Close()
+		processor.GetPrompt = repl.GetPrompt
+	}
+
+	processor.Process()
 }
 
 func inferEmbedder(manifest *types.ModelManifest, quant string) {
@@ -719,10 +578,8 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) {
 
 	fmt.Println(render.GetTheme().Success.Sprintf("Embedding dimension: %d", dimOutput.Dimension))
 
-	repl(ReplConfig{
-		ParseFile: false,
-
-		Run: func(prompt string, _, _ []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
+	processor := &common.Processor{
+		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			embedInput := nexa_sdk.EmbedderEmbedInput{
 				TaskType: taskType,
 				Texts:    []string{strings.TrimSpace(prompt)},
@@ -751,11 +608,21 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) {
 				out = render.GetTheme().Success.Sprintf("%v (length: %d)", emb, n)
 			}
 
-			on_token(fmt.Sprintf("%s: %s", info, out))
+			onToken(fmt.Sprintf("%s: %s", info, out))
 
 			return "", result.ProfileData, nil
 		},
-	})
+	}
+
+	if len(prompt) > 0 || input != "" {
+		processor.GetPrompt = getPromptOrInput
+	} else {
+		repl := common.Repl{}
+		defer repl.Close()
+		processor.GetPrompt = repl.GetPrompt
+	}
+
+	processor.Process()
 }
 
 func inferReranker(manifest *types.ModelManifest, quant string) {
@@ -781,441 +648,564 @@ func inferReranker(manifest *types.ModelManifest, quant string) {
 	}
 	defer p.Destroy()
 
-	// Check if query is provided
-	if query == "" {
-		fmt.Println(render.GetTheme().Error.Sprintf("--query is required for reranking"))
-		fmt.Println()
-		return
-	}
+	processor := &common.Processor{
+		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			fmt.Println(render.GetTheme().Info.Sprintf("Query: %s", query))
+			fmt.Println(render.GetTheme().Info.Sprintf("Processing %d documents", len(document)))
 
-	// Check if documents are provided
-	if len(document) == 0 {
-		fmt.Println(render.GetTheme().Error.Sprintf("at least one --document is required for reranking"))
-		fmt.Println()
-		return
-	}
-
-	fmt.Println(render.GetTheme().Success.Sprintf("Query: %s", query))
-	fmt.Println(render.GetTheme().Success.Sprintf("Processing %d documents", len(document)))
-
-	// Create rerank input
-	rerankInput := nexa_sdk.RerankerRerankInput{
-		Query:     query,
-		Documents: document,
-		Config: &nexa_sdk.RerankConfig{
-			BatchSize:       int32(len(document)),
-			Normalize:       true,
-			NormalizeMethod: "softmax",
-		},
-	}
-
-	// Perform reranking
-	result, err := p.Rerank(rerankInput)
-	if err != nil {
-		fmt.Println(render.GetTheme().Error.Sprintf("reranking failed: %s", err))
-		return
-	}
-
-	fmt.Println(render.GetTheme().Success.Sprintf("✓ Reranking completed successfully"))
-	fmt.Println(render.GetTheme().Success.Sprintf("  Generated %d scores", len(result.Scores)))
-
-	// Display results
-	for i, doc := range document {
-		if i < len(result.Scores) {
-			fmt.Printf("\n%s [%d]: %s\n", render.GetTheme().Info.Sprintf("Document"), i+1, doc)
-			fmt.Printf("%s: %.6f\n", render.GetTheme().Info.Sprintf("Score"), result.Scores[i])
-		}
-	}
-}
-
-func inferTTS(manifest *types.ModelManifest, quant string) {
-	s := store.Get()
-	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
-	spin := render.NewSpinner("loading TTS model...")
-	spin.Start()
-
-	ttsInput := nexa_sdk.TtsCreateInput{
-		ModelName: manifest.ModelName,
-		ModelPath: modelfile,
-		PluginID:  manifest.PluginId,
-		DeviceID:  manifest.DeviceId,
-	}
-
-	p, err := nexa_sdk.NewTTS(ttsInput)
-	spin.Stop()
-
-	if err != nil {
-		slog.Error("failed to create TTS", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return
-	}
-	defer p.Destroy()
-
-	if listVoice {
-		voices, err := p.ListAvailableVoices()
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("Failed to list available voices: %s", err))
-			return
-		}
-		fmt.Println(render.GetTheme().Success.Sprintf("Available voices: %v", voices.VoiceIDs))
-		return
-	}
-
-	prompts := prompt
-	if len(prompts) == 0 {
-		fmt.Println(render.GetTheme().Error.Sprintf("text is required for TTS synthesis (use --prompt)"))
-		fmt.Println()
-		return
-	}
-
-	// Check for empty strings in prompts
-	for _, p := range prompt {
-		if strings.TrimSpace(p) == "" {
-			fmt.Println(render.GetTheme().Error.Sprintf("prompt cannot be empty"))
-			fmt.Println()
-			return
-		}
-	}
-
-	// Combine all prompt texts
-	textToSynthesize := strings.Join(prompts, " ")
-
-	// Generate output filename if not specified
-	outputFile := output
-	if outputFile == "" {
-		outputFile = fmt.Sprintf("tts_output_%d.wav", time.Now().Unix())
-	}
-
-	// Create TTS config
-	ttsConfig := &nexa_sdk.TTSConfig{
-		Voice:      "af_heart",
-		Speed:      float32(speechSpeed),
-		SampleRate: 24000,
-		Seed:       42,
-	}
-
-	if voice != "" {
-		ttsConfig.Voice = voice
-	}
-
-	// Synthesize speech
-	synthesizeInput := nexa_sdk.TtsSynthesizeInput{
-		TextUTF8:   textToSynthesize,
-		Config:     ttsConfig,
-		OutputPath: outputFile,
-	}
-
-	fmt.Println(render.GetTheme().Success.Sprintf("Synthesizing speech: \"%s\"", textToSynthesize))
-
-	result, err := p.Synthesize(synthesizeInput)
-	if err != nil {
-		fmt.Println(render.GetTheme().Error.Sprintf("Synthesis failed: %s", err))
-		return
-	}
-
-	fmt.Println(render.GetTheme().Success.Sprintf("✓ Audio saved: %s", result.Result.AudioPath))
-	printProfile(result.ProfileData)
-}
-
-func inferASR(manifest *types.ModelManifest, quant string) {
-	s := store.Get()
-	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
-	spin := render.NewSpinner("loading ASR model...")
-	spin.Start()
-
-	asrInput := nexa_sdk.AsrCreateInput{
-		ModelName: manifest.ModelName,
-		ModelPath: modelfile,
-		PluginID:  manifest.PluginId,
-		DeviceID:  manifest.DeviceId,
-		Language:  language,
-	}
-	p, err := nexa_sdk.NewASR(asrInput)
-	spin.Stop()
-
-	if err != nil {
-		slog.Error("failed to create ASR", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return
-	}
-	defer p.Destroy()
-
-	if listLanguage {
-		lans, err := p.ListSupportedLanguages()
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("Failed to list available languages: %s", err))
-			return
-		}
-		fmt.Println(render.GetTheme().Success.Sprintf("Available languages: %v", lans.LanguageCodes))
-		listLanguage = false
-	}
-
-	repl(ReplConfig{
-		ParseFile: true,
-
-		Record: func() (*string, error) {
-			streamConfig := nexa_sdk.ASRStreamConfig{
-				ChunkDuration:   4.0,
-				OverlapDuration: 3.5,
-				SampleRate:      16000,
-				MaxQueueSize:    10,
-				BufferSize:      1024,
-				Timestamps:      "segment",
-				BeamSize:        4,
-			}
-			_, err := p.StreamBegin(nexa_sdk.AsrStreamBeginInput{
-				StreamConfig: &streamConfig,
-				Language:     "en",
-				OnTranscription: func(text string, _ any) {
-					tWidth := getTerminalWidth()
-					if len(text) > tWidth {
-						text = "..." + text[len(text)-tWidth+3:]
-					}
-					text += strings.Repeat(" ", tWidth-len(text))
-
-					fmt.Print("\r")
-					fmt.Print(render.GetTheme().ModelOutput.Sprint(text))
+			rerankInput := nexa_sdk.RerankerRerankInput{
+				Query:     query,
+				Documents: document,
+				Config: &nexa_sdk.RerankConfig{
+					BatchSize:       int32(len(document)),
+					Normalize:       true,
+					NormalizeMethod: "softmax",
 				},
-				UserData: nil,
-			})
-			slog.Debug("ASR StreamBegin", "error", err)
-			if err != nil && !errors.Is(err, nexa_sdk.ErrCommonNotSupport) {
-				return nil, err
 			}
-			defer p.StreamStop(nexa_sdk.AsrStreamStopInput{})
 
-			// streaming not supported, fallback to file input
+			result, err := p.Rerank(rerankInput)
 			if err != nil {
-				t := strconv.Itoa(int(time.Now().Unix()))
-				outputFile := filepath.Join(os.TempDir(), "nexa-cli", t+".wav")
-				rec, err := record.NewRecorder(outputFile)
-				if err != nil {
-					return nil, err
-				}
-
-				fmt.Println(render.GetTheme().Info.Sprint("Recording is going on, press Ctrl-C to stop"))
-
-				err = rec.Run()
-				if err != nil {
-					return nil, err
-				}
-				outfile := rec.GetOutputFile()
-
-				asrConfig := &nexa_sdk.ASRConfig{
-					Timestamps: "segment",
-					BeamSize:   5,
-					Stream:     false,
-				}
-
-				transcribeInput := nexa_sdk.AsrTranscribeInput{
-					AudioPath: outfile,
-					Language:  language,
-					Config:    asrConfig,
-				}
-
-				result, err := p.Transcribe(transcribeInput)
-				if err != nil {
-					return nil, err
-				}
-
-				fmt.Println(render.GetTheme().ModelOutput.Sprint(result.Result.Transcript))
-				render.GetTheme().Reset()
-				fmt.Println()
-				printProfile(result.ProfileData)
-
-			} else {
-
-				rec, err := record.NewStreamRecorder()
-				if err != nil {
-					return nil, err
-				}
-				fmt.Println(render.GetTheme().Info.Sprint("Streaming ASR recording started, press Ctrl-C to stop"))
-				fmt.Println()
-
-				if err := rec.Start(); err != nil {
-					return nil, err
-				}
-				defer rec.Stop()
-
-				buffer := make([]float32, 512)
-				for {
-					n, err := rec.ReadFloat32(buffer)
-					if err == io.EOF {
-						break
-					}
-
-					if err := p.StreamPushAudio(nexa_sdk.AsrStreamPushAudioInput{
-						AudioData: buffer[:n],
-					}); err != nil {
-						fmt.Println(render.GetTheme().Error.Sprintf("error pushing audio data: %s", err))
-						fmt.Println()
-						return nil, err
-					}
-				}
-
-				fmt.Println()
-				render.GetTheme().Reset()
-				fmt.Println()
+				return "", result.ProfileData, err
 			}
 
-			return nil, nil
+			fmt.Println(render.GetTheme().Success.Sprintf("✓ Reranking completed successfully"))
+			fmt.Println(render.GetTheme().Success.Sprintf("  Generated %d scores", len(result.Scores)))
+
+			// Display results
+			for i, doc := range document {
+				if i < len(result.Scores) {
+					fmt.Printf("\n%s [%d]: %s\n", render.GetTheme().Info.Sprintf("Document"), i+1, doc)
+					fmt.Printf("%s: %.6f\n", render.GetTheme().Info.Sprintf("Score"), result.Scores[i])
+				}
+			}
+			return "", result.ProfileData, nil
 		},
+	}
 
-		Run: func(_prompt string, _images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
-			if len(audios) == 0 {
-				return "", nexa_sdk.ProfileData{}, ErrNoAudio
+	if query != "" && len(document) > 0 {
+		if query == "" || len(document) == 0 {
+			fmt.Println(render.GetTheme().Error.Sprintf("query and document are required for reranking"))
+			return
+		}
+		processor.GetPrompt = func() (string, error) {
+			if query == "" || len(document) == 0 {
+				return "", io.EOF
 			}
+			prompt := strings.Join(append([]string{query}, document...), "\n")
+			query, document = "", nil
+			return prompt, nil
+		}
+	} else {
+		repl := common.Repl{}
+		defer repl.Close()
+		processor.GetPrompt = repl.GetPrompt
+	}
 
-			asrConfig := &nexa_sdk.ASRConfig{
-				Timestamps: "segment",
-				BeamSize:   5,
-				Stream:     false,
-			}
-
-			transcribeInput := nexa_sdk.AsrTranscribeInput{
-				AudioPath: audios[0],
-				Language:  language,
-				Config:    asrConfig,
-			}
-
-			fmt.Println(render.GetTheme().Success.Sprintf("Transcribing audio file: %s", audios[0]))
-
-			result, err := p.Transcribe(transcribeInput)
-			if err != nil {
-				return "", nexa_sdk.ProfileData{}, err
-			}
-			on_token(result.Result.Transcript)
-
-			return result.Result.Transcript, result.ProfileData, nil
-		},
-	})
+	processor.Process()
 }
 
-func inferCV(manifest *types.ModelManifest, quant string) {
-	s := store.Get()
-	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
-	spin := render.NewSpinner("loading CV model...")
-	spin.Start()
-
-	cvInput := nexa_sdk.CVCreateInput{
-		ModelName: manifest.ModelName,
-		Config: nexa_sdk.CVModelConfig{
-			Capabilities: nexa_sdk.CVCapabilityOCR,
-			DetModelPath: modelfile,
-			RecModelPath: modelfile,
-		},
-		PluginID: manifest.PluginId,
-		DeviceID: manifest.DeviceId,
-	}
-
-	p, err := nexa_sdk.NewCV(cvInput)
-	spin.Stop()
-
-	if err != nil {
-		slog.Error("failed to create CV", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return
-	}
-	defer p.Destroy()
-
-	if input == "" {
-		fmt.Println(render.GetTheme().Error.Sprintf("input image file is required for CV inference"))
-		fmt.Println()
-		return
-	}
-
-	if _, err := os.Stat(input); os.IsNotExist(err) {
-		fmt.Println(render.GetTheme().Error.Sprintf("input file '%s' does not exist", input))
-		return
-	}
-
-	inferInput := nexa_sdk.CVInferInput{
-		InputImagePath: input,
-	}
-
-	fmt.Println(render.GetTheme().Info.Sprintf("Performing CV inference on image: %s", input))
-
-	result, err := p.Infer(inferInput)
-	if err != nil {
-		fmt.Println(render.GetTheme().Error.Sprintf("CV inference failed: %s", err))
-		return
-	}
-
-	fmt.Println(render.GetTheme().Info.Sprintf("✓ CV inference completed successfully"))
-	fmt.Println(render.GetTheme().Info.Sprintf("  Found %d results", len(result.Results)))
-
-	for _, cvResult := range result.Results {
-		fmt.Printf("[%s] %s\n", render.GetTheme().Info.Sprintf("%.3f", cvResult.Confidence), render.GetTheme().Success.Sprintf("\"%s\"", cvResult.Text))
-	}
-}
-
-func inferImageGen(manifest *types.ModelManifest, _ string) {
-	s := store.Get()
-	modeldir := s.ModelfilePath(manifest.Name, "")
-	prompts := prompt
-	if len(prompts) == 0 {
-		fmt.Println(render.GetTheme().Error.Sprintf("text prompt is required for image generation (use --prompt)"))
-		fmt.Println()
-		return
-	}
-
-	spin := render.NewSpinner("loading ImageGen model...")
-	spin.Start()
-	p, err := nexa_sdk.NewImageGen(nexa_sdk.ImageGenCreateInput{
-		ModelName: manifest.ModelName,
-		ModelPath: modeldir,
-		PluginID:  manifest.PluginId,
-		DeviceID:  manifest.DeviceId,
-	})
-	spin.Stop()
-	if err != nil {
-		slog.Error("failed to create ImageGen", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return
-	}
-	defer p.Destroy()
-
-	if output == "" {
-		output = fmt.Sprintf("imagegen_output_%d.png", time.Now().Unix())
-	}
-
-	fmt.Println(render.GetTheme().Info.Sprintf("Generating image: \"%s\"", prompts[0]))
-
-	result, err := p.Txt2Img(nexa_sdk.ImageGenTxt2ImgInput{
-		PromptUTF8: prompts[0],
-		Config: &nexa_sdk.ImageGenerationConfig{
-			Prompts:         prompts,
-			NegativePrompts: []string{"blurry, low quality, distorted"},
-			Height:          512,
-			Width:           512,
-			SamplerConfig: nexa_sdk.ImageSamplerConfig{
-				Method:        "ddim",
-				Steps:         20,
-				GuidanceScale: 7.5,
-				Eta:           0.0,
-				Seed:          42,
-			},
-			SchedulerConfig: nexa_sdk.SchedulerConfig{
-				Type:              "ddim",
-				NumTrainTimesteps: 1000,
-				StepsOffset:       1,
-				BetaStart:         0.00085,
-				BetaEnd:           0.012,
-				BetaSchedule:      "scaled_linear",
-				PredictionType:    "epsilon",
-				TimestepType:      "discrete",
-				TimestepSpacing:   "leading",
-				InterpolationType: "linear",
-				ConfigPath:        "",
-			},
-			Strength: 1.0,
-		},
-		OutputPath: output,
-	})
-	if err != nil {
-		fmt.Println(render.GetTheme().Error.Sprintf("Image generation failed: %s", err))
-		return
-	}
-
-	fmt.Println(render.GetTheme().Success.Sprintf("✓ Image saved to: %s", result.OutputImagePath))
-}
+// func inferTTS(manifest *types.ModelManifest, quant string) {
+// 	s := store.Get()
+// 	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
+// 	spin := render.NewSpinner("loading TTS model...")
+// 	spin.Start()
+//
+// 	ttsInput := nexa_sdk.TtsCreateInput{
+// 		ModelName: manifest.ModelName,
+// 		ModelPath: modelfile,
+// 		PluginID:  manifest.PluginId,
+// 		DeviceID:  manifest.DeviceId,
+// 	}
+//
+// 	p, err := nexa_sdk.NewTTS(ttsInput)
+// 	spin.Stop()
+//
+// 	if err != nil {
+// 		slog.Error("failed to create TTS", "error", err)
+// 		fmt.Println(modelLoadFailMsg)
+// 		return
+// 	}
+// 	defer p.Destroy()
+//
+// 	if listVoice {
+// 		voices, err := p.ListAvailableVoices()
+// 		if err != nil {
+// 			fmt.Println(render.GetTheme().Error.Sprintf("Failed to list available voices: %s", err))
+// 			return
+// 		}
+// 		fmt.Println(render.GetTheme().Success.Sprintf("Available voices: %v", voices.VoiceIDs))
+// 		return
+// 	}
+//
+// 	processor := &common.Processor{
+// 		Run: func(prompt string, images, audios []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
+// 			// Check for empty strings in prompts
+// 			for _, p := range prompt {
+// 				if strings.TrimSpace(p) == "" {
+// 					fmt.Println(render.GetTheme().Error.Sprintf("prompt cannot be empty"))
+// 					fmt.Println()
+// 					return
+// 				}
+// 			}
+//
+// 			// Combine all prompt texts
+// 			textToSynthesize := strings.Join(prompts, " ")
+//
+// 			// Generate output filename if not specified
+// 			outputFile := output
+// 			if outputFile == "" {
+// 				outputFile = fmt.Sprintf("tts_output_%d.wav", time.Now().Unix())
+// 			}
+//
+// 			// Create TTS config
+// 			ttsConfig := &nexa_sdk.TTSConfig{
+// 				Voice:      "af_heart",
+// 				Speed:      float32(speechSpeed),
+// 				SampleRate: 24000,
+// 				Seed:       42,
+// 			}
+//
+// 			if voice != "" {
+// 				ttsConfig.Voice = voice
+// 			}
+//
+// 			// Synthesize speech
+// 			synthesizeInput := nexa_sdk.TtsSynthesizeInput{
+// 				TextUTF8:   textToSynthesize,
+// 				Config:     ttsConfig,
+// 				OutputPath: outputFile,
+// 			}
+//
+// 			fmt.Println(render.GetTheme().Success.Sprintf("Synthesizing speech: \"%s\"", textToSynthesize))
+//
+// 			result, err := p.Synthesize(synthesizeInput)
+// 			if err != nil {
+// 				fmt.Println(render.GetTheme().Error.Sprintf("Synthesis failed: %s", err))
+// 				return
+// 			}
+//
+// 			fmt.Println(render.GetTheme().Success.Sprintf("✓ Audio saved: %s", result.Result.AudioPath))
+// 			printProfile(result.ProfileData)
+//
+// 		},
+// 	}
+//
+// 	if len(prompt) > 0 || input != "" {
+// 		processor.GetPrompt = func() (string, error) {
+// 			if input != "" {
+// 				content, err := os.ReadFile(input)
+// 				fmt.Print(render.GetTheme().Prompt.Sprintf("> "))
+// 				fmt.Println(render.GetTheme().Normal.Sprint(input))
+// 				input = ""
+// 				return string(content), err
+// 			}
+// 			if len(prompt) > 0 {
+// 				p := prompt[0]
+// 				fmt.Print(render.GetTheme().Prompt.Sprintf("> "))
+// 				fmt.Println(render.GetTheme().Normal.Sprint(p))
+// 				prompt = prompt[1:]
+// 				return p, nil
+// 			}
+// 			return "", io.EOF
+// 		}
+// 	} else {
+// 		repl := common.Repl{}
+// 		defer repl.Close()
+// 		processor.GetPrompt = repl.GetPrompt
+// 	}
+//
+// 	processor.Process()
+// }
+//
+// func inferASR(manifest *types.ModelManifest, quant string) {
+// 	s := store.Get()
+// 	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
+// 	spin := render.NewSpinner("loading ASR model...")
+// 	spin.Start()
+//
+// 	asrInput := nexa_sdk.AsrCreateInput{
+// 		ModelName: manifest.ModelName,
+// 		ModelPath: modelfile,
+// 		PluginID:  manifest.PluginId,
+// 		DeviceID:  manifest.DeviceId,
+// 		Language:  language,
+// 	}
+// 	p, err := nexa_sdk.NewASR(asrInput)
+// 	spin.Stop()
+//
+// 	if err != nil {
+// 		slog.Error("failed to create ASR", "error", err)
+// 		fmt.Println(modelLoadFailMsg)
+// 		return
+// 	}
+// 	defer p.Destroy()
+//
+// 	if listLanguage {
+// 		lans, err := p.ListSupportedLanguages()
+// 		if err != nil {
+// 			fmt.Println(render.GetTheme().Error.Sprintf("Failed to list available languages: %s", err))
+// 			return
+// 		}
+// 		fmt.Println(render.GetTheme().Success.Sprintf("Available languages: %v", lans.LanguageCodes))
+// 		listLanguage = false
+// 	}
+//
+// 	// processor := &common.Processor{
+// 	// 	Run: ,
+// 	// }
+// 	//
+// 	// if len(prompt) > 0 || input != "" {
+// 	// 	processor.GetPrompt = func() (string, error) {
+// 	// 		if input != "" {
+// 	// 			content, err := os.ReadFile(input)
+// 	// 			fmt.Print(render.GetTheme().Prompt.Sprintf("> "))
+// 	// 			fmt.Println(render.GetTheme().Normal.Sprint(input))
+// 	// 			input = ""
+// 	// 			return string(content), err
+// 	// 		}
+// 	// 		if len(prompt) > 0 {
+// 	// 			p := prompt[0]
+// 	// 			fmt.Print(render.GetTheme().Prompt.Sprintf("> "))
+// 	// 			fmt.Println(render.GetTheme().Normal.Sprint(p))
+// 	// 			prompt = prompt[1:]
+// 	// 			return p, nil
+// 	// 		}
+// 	// 		return "", io.EOF
+// 	// 	}
+// 	// } else {
+// 	// 	repl := common.Repl{ }
+// 	// 	defer repl.Close()
+// 	// 	processor.GetPrompt = repl.GetPrompt
+// 	// }
+// 	//
+// 	// processor.Process()
+//
+// 	repl(ReplConfig{
+// 		ParseFile: true,
+//
+// 		Record: func() (*string, error) {
+// 			streamConfig := nexa_sdk.ASRStreamConfig{
+// 				ChunkDuration:   4.0,
+// 				OverlapDuration: 3.5,
+// 				SampleRate:      16000,
+// 				MaxQueueSize:    10,
+// 				BufferSize:      1024,
+// 				Timestamps:      "segment",
+// 				BeamSize:        4,
+// 			}
+// 			_, err := p.StreamBegin(nexa_sdk.AsrStreamBeginInput{
+// 				StreamConfig: &streamConfig,
+// 				Language:     "en",
+// 				OnTranscription: func(text string, _ any) {
+// 					tWidth := common.GetTerminalWidth()
+// 					if len(text) > tWidth {
+// 						text = "..." + text[len(text)-tWidth+3:]
+// 					}
+// 					text += strings.Repeat(" ", tWidth-len(text))
+//
+// 					fmt.Print("\r")
+// 					fmt.Print(render.GetTheme().ModelOutput.Sprint(text))
+// 				},
+// 				UserData: nil,
+// 			})
+// 			slog.Debug("ASR StreamBegin", "error", err)
+// 			if err != nil && !errors.Is(err, nexa_sdk.ErrCommonNotSupport) {
+// 				return nil, err
+// 			}
+// 			defer p.StreamStop(nexa_sdk.AsrStreamStopInput{})
+//
+// 			// streaming not supported, fallback to file input
+// 			if err != nil {
+// 				t := strconv.Itoa(int(time.Now().Unix()))
+// 				outputFile := filepath.Join(os.TempDir(), "nexa-cli", t+".wav")
+// 				rec, err := record.NewRecorder(outputFile)
+// 				if err != nil {
+// 					return nil, err
+// 				}
+//
+// 				fmt.Println(render.GetTheme().Info.Sprint("Recording is going on, press Ctrl-C to stop"))
+//
+// 				err = rec.Run()
+// 				if err != nil {
+// 					return nil, err
+// 				}
+// 				outfile := rec.GetOutputFile()
+//
+// 				asrConfig := &nexa_sdk.ASRConfig{
+// 					Timestamps: "segment",
+// 					BeamSize:   5,
+// 					Stream:     false,
+// 				}
+//
+// 				transcribeInput := nexa_sdk.AsrTranscribeInput{
+// 					AudioPath: outfile,
+// 					Language:  language,
+// 					Config:    asrConfig,
+// 				}
+//
+// 				result, err := p.Transcribe(transcribeInput)
+// 				if err != nil {
+// 					return nil, err
+// 				}
+//
+// 				fmt.Println(render.GetTheme().ModelOutput.Sprint(result.Result.Transcript))
+// 				render.GetTheme().Reset()
+// 				fmt.Println()
+// 				printProfile(result.ProfileData)
+//
+// 			} else {
+//
+// 				rec, err := record.NewStreamRecorder()
+// 				if err != nil {
+// 					return nil, err
+// 				}
+// 				fmt.Println(render.GetTheme().Info.Sprint("Streaming ASR recording started, press Ctrl-C to stop"))
+// 				fmt.Println()
+//
+// 				if err := rec.Start(); err != nil {
+// 					return nil, err
+// 				}
+// 				defer rec.Stop()
+//
+// 				buffer := make([]float32, 512)
+// 				for {
+// 					n, err := rec.ReadFloat32(buffer)
+// 					if err == io.EOF {
+// 						break
+// 					}
+//
+// 					if err := p.StreamPushAudio(nexa_sdk.AsrStreamPushAudioInput{
+// 						AudioData: buffer[:n],
+// 					}); err != nil {
+// 						fmt.Println(render.GetTheme().Error.Sprintf("error pushing audio data: %s", err))
+// 						fmt.Println()
+// 						return nil, err
+// 					}
+// 				}
+//
+// 				fmt.Println()
+// 				render.GetTheme().Reset()
+// 				fmt.Println()
+// 			}
+//
+// 			return nil, nil
+// 		},
+//
+// 		Run: func(_prompt string, _images, audios []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
+// 			if len(audios) == 0 {
+// 				return "", nexa_sdk.ProfileData{}, ErrNoAudio
+// 			}
+//
+// 			asrConfig := &nexa_sdk.ASRConfig{
+// 				Timestamps: "segment",
+// 				BeamSize:   5,
+// 				Stream:     false,
+// 			}
+//
+// 			transcribeInput := nexa_sdk.AsrTranscribeInput{
+// 				AudioPath: audios[0],
+// 				Language:  language,
+// 				Config:    asrConfig,
+// 			}
+//
+// 			fmt.Println(render.GetTheme().Success.Sprintf("Transcribing audio file: %s", audios[0]))
+//
+// 			result, err := p.Transcribe(transcribeInput)
+// 			if err != nil {
+// 				return "", nexa_sdk.ProfileData{}, err
+// 			}
+// 			onToken(result.Result.Transcript)
+//
+// 			return result.Result.Transcript, result.ProfileData, nil
+// 		},
+// 	})
+// }
+//
+// func inferCV(manifest *types.ModelManifest, quant string) {
+// 	s := store.Get()
+// 	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
+// 	spin := render.NewSpinner("loading CV model...")
+// 	spin.Start()
+//
+// 	cvInput := nexa_sdk.CVCreateInput{
+// 		ModelName: manifest.ModelName,
+// 		Config: nexa_sdk.CVModelConfig{
+// 			Capabilities: nexa_sdk.CVCapabilityOCR,
+// 			DetModelPath: modelfile,
+// 			RecModelPath: modelfile,
+// 		},
+// 		PluginID: manifest.PluginId,
+// 		DeviceID: manifest.DeviceId,
+// 	}
+//
+// 	p, err := nexa_sdk.NewCV(cvInput)
+// 	spin.Stop()
+//
+// 	if err != nil {
+// 		slog.Error("failed to create CV", "error", err)
+// 		fmt.Println(modelLoadFailMsg)
+// 		return
+// 	}
+// 	defer p.Destroy()
+//
+// 	// processor := &common.Processor{
+// 	// 	Run: ,
+// 	// }
+// 	//
+// 	// if len(prompt) > 0 || input != "" {
+// 	// 	processor.GetPrompt = func() (string, error) {
+// 	// 		if input != "" {
+// 	// 			content, err := os.ReadFile(input)
+// 	// 			fmt.Print(render.GetTheme().Prompt.Sprintf("> "))
+// 	// 			fmt.Println(render.GetTheme().Normal.Sprint(input))
+// 	// 			input = ""
+// 	// 			return string(content), err
+// 	// 		}
+// 	// 		if len(prompt) > 0 {
+// 	// 			p := prompt[0]
+// 	// 			fmt.Print(render.GetTheme().Prompt.Sprintf("> "))
+// 	// 			fmt.Println(render.GetTheme().Normal.Sprint(p))
+// 	// 			prompt = prompt[1:]
+// 	// 			return p, nil
+// 	// 		}
+// 	// 		return "", io.EOF
+// 	// 	}
+// 	// } else {
+// 	// 	repl := common.Repl{}
+// 	// 	defer repl.Close()
+// 	// 	processor.GetPrompt = repl.GetPrompt
+// 	// }
+// 	//
+// 	// processor.Process()
+//
+// 	if input == "" {
+// 		fmt.Println(render.GetTheme().Error.Sprintf("input image file is required for CV inference"))
+// 		fmt.Println()
+// 		return
+// 	}
+//
+// 	if _, err := os.Stat(input); os.IsNotExist(err) {
+// 		fmt.Println(render.GetTheme().Error.Sprintf("input file '%s' does not exist", input))
+// 		return
+// 	}
+//
+// 	inferInput := nexa_sdk.CVInferInput{
+// 		InputImagePath: input,
+// 	}
+//
+// 	fmt.Println(render.GetTheme().Info.Sprintf("Performing CV inference on image: %s", input))
+//
+// 	result, err := p.Infer(inferInput)
+// 	if err != nil {
+// 		fmt.Println(render.GetTheme().Error.Sprintf("CV inference failed: %s", err))
+// 		return
+// 	}
+//
+// 	fmt.Println(render.GetTheme().Info.Sprintf("✓ CV inference completed successfully"))
+// 	fmt.Println(render.GetTheme().Info.Sprintf("  Found %d results", len(result.Results)))
+//
+// 	for _, cvResult := range result.Results {
+// 		fmt.Printf("[%s] %s\n", render.GetTheme().Info.Sprintf("%.3f", cvResult.Confidence), render.GetTheme().Success.Sprintf("\"%s\"", cvResult.Text))
+// 	}
+// }
+//
+// func inferImageGen(manifest *types.ModelManifest, _ string) {
+// 	s := store.Get()
+// 	modeldir := s.ModelfilePath(manifest.Name, "")
+// 	prompts := prompt
+// 	if len(prompts) == 0 {
+// 		fmt.Println(render.GetTheme().Error.Sprintf("text prompt is required for image generation (use --prompt)"))
+// 		fmt.Println()
+// 		return
+// 	}
+//
+// 	spin := render.NewSpinner("loading ImageGen model...")
+// 	spin.Start()
+// 	p, err := nexa_sdk.NewImageGen(nexa_sdk.ImageGenCreateInput{
+// 		ModelName: manifest.ModelName,
+// 		ModelPath: modeldir,
+// 		PluginID:  manifest.PluginId,
+// 		DeviceID:  manifest.DeviceId,
+// 	})
+// 	spin.Stop()
+// 	if err != nil {
+// 		slog.Error("failed to create ImageGen", "error", err)
+// 		fmt.Println(modelLoadFailMsg)
+// 		return
+// 	}
+// 	defer p.Destroy()
+//
+// 	// processor := &common.Processor{
+// 	// 	Run: ,
+// 	// }
+// 	//
+// 	// if len(prompt) > 0 || input != "" {
+// 	// 	processor.GetPrompt = func() (string, error) {
+// 	// 		if input != "" {
+// 	// 			content, err := os.ReadFile(input)
+// 	// 			fmt.Print(render.GetTheme().Prompt.Sprintf("> "))
+// 	// 			fmt.Println(render.GetTheme().Normal.Sprint(input))
+// 	// 			input = ""
+// 	// 			return string(content), err
+// 	// 		}
+// 	// 		if len(prompt) > 0 {
+// 	// 			p := prompt[0]
+// 	// 			fmt.Print(render.GetTheme().Prompt.Sprintf("> "))
+// 	// 			fmt.Println(render.GetTheme().Normal.Sprint(p))
+// 	// 			prompt = prompt[1:]
+// 	// 			return p, nil
+// 	// 		}
+// 	// 		return "", io.EOF
+// 	// 	}
+// 	// } else {
+// 	// 	repl := common.Repl{}
+// 	// 	defer repl.Close()
+// 	// 	processor.GetPrompt = repl.GetPrompt
+// 	// }
+// 	//
+// 	// processor.Process()
+//
+// 	if output == "" {
+// 		output = fmt.Sprintf("imagegen_output_%d.png", time.Now().Unix())
+// 	}
+//
+// 	fmt.Println(render.GetTheme().Info.Sprintf("Generating image: \"%s\"", prompts[0]))
+//
+// 	result, err := p.Txt2Img(nexa_sdk.ImageGenTxt2ImgInput{
+// 		PromptUTF8: prompts[0],
+// 		Config: &nexa_sdk.ImageGenerationConfig{
+// 			Prompts:         prompts,
+// 			NegativePrompts: []string{"blurry, low quality, distorted"},
+// 			Height:          512,
+// 			Width:           512,
+// 			SamplerConfig: nexa_sdk.ImageSamplerConfig{
+// 				Method:        "ddim",
+// 				Steps:         20,
+// 				GuidanceScale: 7.5,
+// 				Eta:           0.0,
+// 				Seed:          42,
+// 			},
+// 			SchedulerConfig: nexa_sdk.SchedulerConfig{
+// 				Type:              "ddim",
+// 				NumTrainTimesteps: 1000,
+// 				StepsOffset:       1,
+// 				BetaStart:         0.00085,
+// 				BetaEnd:           0.012,
+// 				BetaSchedule:      "scaled_linear",
+// 				PredictionType:    "epsilon",
+// 				TimestepType:      "discrete",
+// 				TimestepSpacing:   "leading",
+// 				InterpolationType: "linear",
+// 				ConfigPath:        "",
+// 			},
+// 			Strength: 1.0,
+// 		},
+// 		OutputPath: output,
+// 	})
+// 	if err != nil {
+// 		fmt.Println(render.GetTheme().Error.Sprintf("Image generation failed: %s", err))
+// 		return
+// 	}
+//
+// 	fmt.Println(render.GetTheme().Success.Sprintf("✓ Image saved to: %s", result.OutputImagePath))
+// }
