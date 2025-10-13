@@ -23,16 +23,6 @@ type RerankResponse struct {
 	Result []float32 `json:"result"`
 }
 
-// @Router			/reranking [post]
-// @Summary		Rerank documents based on their relevance to a query
-// @Description	Reranks a list of documents according to their semantic relevance to the provided query. Returns relevance scores for each document. Higher scores indicate greater relevance.
-// @Tags			Reranking
-// @Accept			json
-// @Produce		json
-// @Param			request	body		RerankingRequest	true	"Reranking request with model, query, documents and normalization settings"
-// @Success		200		{object}	RerankResponse		"Successfully reranked documents with relevance scores"
-// @Failure		400		{object}	map[string]any		"Invalid request parameters"
-// @Failure		500		{object}	map[string]any		"Internal server error"
 func Reranking(c *gin.Context) {
 	param := RerankingRequest{}
 	if err := c.ShouldBindJSON(&param); err != nil {

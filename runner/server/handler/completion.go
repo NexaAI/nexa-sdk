@@ -27,8 +27,6 @@ func Completions(c *gin.Context) {
 
 type ChatCompletionNewParams openai.ChatCompletionNewParams
 
-// ChatCompletionRequest defines the request body for the chat completions API.
-// example: { "model": "nexaml/nexaml-models", "messages": [ { "role": "user", "content": "why is the sky blue?" } ] }
 type ChatCompletionRequest struct {
 	Stream bool `json:"stream"`
 
@@ -59,13 +57,6 @@ func defaultChatCompletionRequest() ChatCompletionRequest {
 
 var toolCallRegex = regexp.MustCompile(`<tool_call>([\s\S]+)<\/tool_call>` + "|" + "```json([\\s\\S]+)```")
 
-// @Router			/chat/completions [post]
-// @Summary		Creates a model response for the given chat conversation.
-// @Description	This endpoint generates a model response for a given conversation, which can include text and images. It supports both single-turn and multi-turn conversations and can be used for various tasks like question answering, code generation, and function calling.
-// @Accept			json
-// @Param			request	body	ChatCompletionRequest	true	"Chat completion request"
-// @Produce		json
-// @Success		200	{object}	openai.ChatCompletion	"Successful response for non-streaming requests."
 func ChatCompletions(c *gin.Context) {
 	param := defaultChatCompletionRequest()
 	if err := c.ShouldBindJSON(&param); err != nil {

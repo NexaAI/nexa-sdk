@@ -19,16 +19,6 @@ import (
 	"github.com/NexaAI/nexa-sdk/runner/server/service"
 )
 
-// @Router			/images/generations [post]
-// @Summary		Creates an image given a prompt.
-// @Description	Creates an image given a prompt. This endpoint follows OpenAI DALL-E 3 API specification for compatibility.
-// @Accept			json
-// @Param			request	body	openai.ImageGenerateParams	true	"Image generation request"
-// @Produce		json
-// @Success		200	{object}	openai.ImagesResponse	"Successful image generation response"
-// @Failure		400	{object}	map[string]any	"Bad request - invalid parameters"
-// @Failure		404	{object}	map[string]any	"Model not found"
-// @Failure		500	{object}	map[string]any	"Internal server error"
 func ImageGenerations(c *gin.Context) {
 	param := openai.ImageGenerateParams{}
 	if err := c.ShouldBindJSON(&param); err != nil {
