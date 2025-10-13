@@ -135,7 +135,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 		c.JSON(http.StatusNotFound, map[string]any{"error": "model not found"})
 		return
 	} else if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
 		return
 	}
 	// Empty request for warm up
@@ -151,7 +151,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 		EnableThink: param.EnableThink,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
 		return
 	}
 
@@ -209,7 +209,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 			}
 
 			if err != nil {
-				c.SSEvent("", map[string]any{"error": err.Error()})
+				c.SSEvent("", map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
 			} else {
 				c.SSEvent("", "[DONE]")
 			}
@@ -232,7 +232,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 		},
 		)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
 			return
 		}
 
@@ -363,7 +363,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 		c.JSON(http.StatusNotFound, map[string]any{"error": "model not found"})
 		return
 	} else if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
 		return
 	}
 
@@ -380,7 +380,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 		EnableThink: param.EnableThink,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
 		return
 	}
 	images := make([]string, 0)
@@ -450,7 +450,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 			}
 
 			if err != nil {
-				c.SSEvent("", map[string]any{"error": err.Error()})
+				c.SSEvent("", map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
 			} else {
 				c.SSEvent("", "[DONE]")
 			}
@@ -475,7 +475,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 		},
 		)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
 			return
 		}
 
