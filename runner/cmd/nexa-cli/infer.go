@@ -220,8 +220,8 @@ func infer() *cobra.Command {
 		case types.ModelTypeASR:
 			checkDependency()
 			inferASR(manifest, quant)
-		// case types.ModelTypeCV:
-		// 	inferCV(manifest, quant)
+		case types.ModelTypeCV:
+			inferCV(manifest, quant)
 		// case types.ModelTypeImageGen:
 		// 	// ImageGen model is a directory, not a file
 		// 	inferImageGen(manifest, quant)
@@ -977,94 +977,83 @@ func inferASR(manifest *types.ModelManifest, quant string) {
 	processor.Process()
 }
 
-// func inferCV(manifest *types.ModelManifest, quant string) {
-// 	s := store.Get()
-// 	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
-// 	spin := render.NewSpinner("loading CV model...")
-// 	spin.Start()
-//
-// 	cvInput := nexa_sdk.CVCreateInput{
-// 		ModelName: manifest.ModelName,
-// 		Config: nexa_sdk.CVModelConfig{
-// 			Capabilities: nexa_sdk.CVCapabilityOCR,
-// 			DetModelPath: modelfile,
-// 			RecModelPath: modelfile,
-// 		},
-// 		PluginID: manifest.PluginId,
-// 		DeviceID: manifest.DeviceId,
-// 	}
-//
-// 	p, err := nexa_sdk.NewCV(cvInput)
-// 	spin.Stop()
-//
-// 	if err != nil {
-// 		slog.Error("failed to create CV", "error", err)
-// 		fmt.Println(modelLoadFailMsg)
-// 		return
-// 	}
-// 	defer p.Destroy()
-//
-// 	// processor := &common.Processor{
-// 	// 	Run: ,
-// 	// }
-// 	//
-// 	// if len(prompt) > 0 || input != "" {
-// 	// 	processor.GetPrompt = func() (string, error) {
-// 	// 		if input != "" {
-// 	// 			content, err := os.ReadFile(input)
-// 	// 			fmt.Print(render.GetTheme().Prompt.Sprintf("> "))
-// 	// 			fmt.Println(render.GetTheme().Normal.Sprint(input))
-// 	// 			input = ""
-// 	// 			return string(content), err
-// 	// 		}
-// 	// 		if len(prompt) > 0 {
-// 	// 			p := prompt[0]
-// 	// 			fmt.Print(render.GetTheme().Prompt.Sprintf("> "))
-// 	// 			fmt.Println(render.GetTheme().Normal.Sprint(p))
-// 	// 			prompt = prompt[1:]
-// 	// 			return p, nil
-// 	// 		}
-// 	// 		return "", io.EOF
-// 	// 	}
-// 	// } else {
-// 	// 	repl := common.Repl{}
-// 	// 	defer repl.Close()
-// 	// 	processor.GetPrompt = repl.GetPrompt
-// 	// }
-// 	//
-// 	// processor.Process()
-//
-// 	if input == "" {
-// 		fmt.Println(render.GetTheme().Error.Sprintf("input image file is required for CV inference"))
-// 		fmt.Println()
-// 		return
-// 	}
-//
-// 	if _, err := os.Stat(input); os.IsNotExist(err) {
-// 		fmt.Println(render.GetTheme().Error.Sprintf("input file '%s' does not exist", input))
-// 		return
-// 	}
-//
-// 	inferInput := nexa_sdk.CVInferInput{
-// 		InputImagePath: input,
-// 	}
-//
-// 	fmt.Println(render.GetTheme().Info.Sprintf("Performing CV inference on image: %s", input))
-//
-// 	result, err := p.Infer(inferInput)
-// 	if err != nil {
-// 		fmt.Println(render.GetTheme().Error.Sprintf("CV inference failed: %s", err))
-// 		return
-// 	}
-//
-// 	fmt.Println(render.GetTheme().Info.Sprintf("✓ CV inference completed successfully"))
-// 	fmt.Println(render.GetTheme().Info.Sprintf("  Found %d results", len(result.Results)))
-//
-// 	for _, cvResult := range result.Results {
-// 		fmt.Printf("[%s] %s\n", render.GetTheme().Info.Sprintf("%.3f", cvResult.Confidence), render.GetTheme().Success.Sprintf("\"%s\"", cvResult.Text))
-// 	}
-// }
-//
+func inferCV(manifest *types.ModelManifest, quant string) {
+	s := store.Get()
+	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
+	spin := render.NewSpinner("loading CV model...")
+	spin.Start()
+
+	cvInput := nexa_sdk.CVCreateInput{
+		ModelName: manifest.ModelName,
+		Config: nexa_sdk.CVModelConfig{
+			Capabilities: nexa_sdk.CVCapabilityOCR,
+			DetModelPath: modelfile,
+			RecModelPath: modelfile,
+		},
+		PluginID: manifest.PluginId,
+		DeviceID: manifest.DeviceId,
+	}
+
+	p, err := nexa_sdk.NewCV(cvInput)
+	spin.Stop()
+
+	if err != nil {
+		slog.Error("failed to create CV", "error", err)
+		fmt.Println(modelLoadFailMsg)
+		return
+	}
+	defer p.Destroy()
+
+	processor := &common.Processor{
+		ParseFile: true,
+		Run: func(_ string, images, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			if len(images) == 0 {
+				return "", nexa_sdk.ProfileData{}, fmt.Errorf("no image file provided")
+			}
+
+			inferInput := nexa_sdk.CVInferInput{
+				InputImagePath: images[0],
+			}
+
+			fmt.Println(render.GetTheme().Info.Sprintf("Performing CV inference on image: %s", images[0]))
+
+			result, err := p.Infer(inferInput)
+			if err != nil {
+				return "", nexa_sdk.ProfileData{}, err
+			}
+
+			onToken(render.GetTheme().Success.Sprintf("✓ CV inference completed successfully"))
+			onToken("\n")
+			onToken(render.GetTheme().Info.Sprintf("  Found %d results\n", len(result.Results)))
+
+			for _, cvResult := range result.Results {
+				onToken(fmt.Sprintf("[%s] %s\n", 
+					render.GetTheme().Info.Sprintf("%.3f", cvResult.Confidence), 
+					render.GetTheme().Success.Sprintf("\"%s\"", cvResult.Text)))
+			}
+
+			return "", nexa_sdk.ProfileData{}, nil
+		},
+	}
+
+	if input != "" {
+		processor.GetPrompt = func() (string, error) {
+			if input == "" {
+				return "", io.EOF
+			}
+			imagePath := input
+			input = ""
+			return imagePath, nil
+		}
+	} else {
+		repl := common.Repl{}
+		defer repl.Close()
+		processor.GetPrompt = repl.GetPrompt
+	}
+
+	processor.Process()
+}
+
 // func inferImageGen(manifest *types.ModelManifest, _ string) {
 // 	s := store.Get()
 // 	modeldir := s.ModelfilePath(manifest.Name, "")
