@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	"github.com/NexaAI/nexa-sdk/runner/cmd/nexa-cli/common"
 	"github.com/NexaAI/nexa-sdk/runner/internal/config"
 	"github.com/NexaAI/nexa-sdk/runner/internal/model_hub"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
@@ -207,18 +208,9 @@ func runFunc(cmd *cobra.Command, args []string) {
 	if systemPrompt != "" {
 		history = append(history, openai.SystemMessage(systemPrompt))
 	}
-	repl(ReplConfig{
+
+	processor := &common.Processor{
 		ParseFile: manifest.ModelType == types.ModelTypeVLM,
-
-		Reset: func() error {
-			history = nil
-			_, err := client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
-				Messages: nil,
-				Model:    model,
-			})
-			return err
-		},
-
 		Run: func(prompt string, images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			if len(images) > 0 || len(audios) > 0 {
 				contents := make([]openai.ChatCompletionContentPartUnionParam, 0)
@@ -309,5 +301,18 @@ func runFunc(cmd *cobra.Command, args []string) {
 
 			return "", profileData, nil
 		},
-	})
+	}
+	repl := common.Repl{
+		Reset: func() error {
+			history = nil
+			_, err := client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
+				Messages: nil,
+				Model:    model,
+			})
+			return err
+		},
+	}
+	defer repl.Close()
+	processor.GetPrompt = repl.GetPrompt
+	processor.Process()
 }

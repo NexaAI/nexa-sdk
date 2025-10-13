@@ -1,4 +1,4 @@
-package main
+package common
 
 import (
 	"os"
@@ -6,7 +6,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-func getTerminalWidth() int {
+func GetTerminalWidth() int {
 	handle := windows.Handle(os.Stdout.Fd())
 	var info windows.ConsoleScreenBufferInfo
 	err := windows.GetConsoleScreenBufferInfo(handle, &info)

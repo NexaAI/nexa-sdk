@@ -132,7 +132,6 @@ func fcLLM(plugin, modelfile string) {
 	fmt.Println()
 	fmt.Println(render.GetTheme().Success.Sprintf("%s", res.FullText))
 	fmt.Println()
-	printProfile(res.ProfileData)
 }
 
 func fcVLM(plugin, modelfile, mmprojfile, tokenizerfile string) {
@@ -189,5 +188,4 @@ func fcVLM(plugin, modelfile, mmprojfile, tokenizerfile string) {
 	fmt.Println()
 	fmt.Println(render.GetTheme().Success.Sprintf("%s", res.FullText))
 	fmt.Println()
-	printProfile(res.ProfileData)
 }

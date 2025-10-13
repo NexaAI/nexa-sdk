@@ -1,10 +1,10 @@
-package main
+package common
 
 import (
 	"golang.org/x/sys/unix"
 )
 
-func getTerminalWidth() int {
+func GetTerminalWidth() int {
 	fd := int(unix.Stdout)
 	ws, err := unix.IoctlGetWinsize(fd, unix.TIOCGWINSZ)
 	if err != nil {

@@ -1,4 +1,4 @@
-package main
+package common
 
 import (
 	"io"
@@ -20,7 +20,7 @@ const (
 	LogLevelError string = "error"
 )
 
-func applyLogLevel() {
+func ApplyLogLevel() {
 	options := tint.Options{AddSource: true}
 
 	switch config.Get().Log {

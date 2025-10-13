@@ -308,6 +308,7 @@ func getQuant(name string) string {
 }
 
 func choosePluginId(name string) string {
+	name = strings.ToLower(name)
 	switch {
 	case strings.Contains(name, "mlx"):
 		return "metal"
