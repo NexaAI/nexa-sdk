@@ -44,7 +44,7 @@ const (
 func (r *Repl) GetPrompt() (string, error) {
 	if !r.init {
 		// fill default functions
-		notSupport := fmt.Errorf("notSupport")
+		notSupport := fmt.Errorf("NotSupport")
 		if r.Reset == nil {
 			r.Reset = func() error { return nil }
 		}
@@ -72,6 +72,7 @@ func (r *Repl) GetPrompt() (string, error) {
 		// TODO: graceful shutdown
 		fmt.Print(readline.StartBracketedPaste)
 
+		r.init = true
 	}
 
 	var sb strings.Builder
@@ -147,13 +148,18 @@ func (r *Repl) GetPrompt() (string, error) {
 		sb.Reset()
 
 		// check if it's a command
+		var fileds []string
 		if !strings.HasPrefix(line, "/") {
 			line += strings.Join(recordAudios, " ")
 			recordAudios = nil // clear stashed audios after use
 			return line, nil
 		}
-
-		fileds := strings.Fields(strings.TrimSpace(line))
+		fileds = strings.Fields(strings.TrimSpace(line))
+		if strings.Contains(fileds[0][1:], "/") || strings.Contains(fileds[0], ".") {
+			line += strings.Join(recordAudios, " ")
+			recordAudios = nil // clear stashed audios after use
+			return line, nil
+		}
 
 		switch fileds[0] {
 		case "/?", "/h", "/help":

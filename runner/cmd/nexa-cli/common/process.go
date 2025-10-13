@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"path"
 	"regexp"
 	"strings"
 
@@ -137,8 +138,9 @@ func (p *Processor) parseFiles(prompt string) (string, []string, []string) {
 			fmt.Println(render.GetTheme().Error.Sprintf("parse file error: [%s] %s", realFile, err))
 			continue
 		}
-		switch realFile[len(realFile)-3:] {
-		case "mp3", "wav":
+
+		switch path.Ext(realFile) {
+		case ".mp3", ".wav":
 			audios = append(audios, realFile)
 			slog.Debug("add audio", "file", realFile)
 		default:
