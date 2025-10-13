@@ -9,12 +9,12 @@ You can run the system directly from the **CLI**, or launch a simple **Gradio UI
 
 
 ## 2. Preparation
-Before running this project, make sure you have the **Nexa SDK** installed. Please refer to the [Nexa SDK repository](https://github.com/NexaAI/nexa-sdk) for installation instructions.  
-
-Once installed, you need to download the **Qwen3VL model** with the following command:
-
+Before running this project, make sure you have the **Nexa SDK** windows arm64 installed.
+Once installed, you need to download the **embeddinggemma-300m-npu, jina-v2-rerank-npu, Granite-4-Micro-NPU model** with the following command:
 ```bash
-nexa infer NexaAI/Qwen3-4B-GGUF
+nexa pull NexaAI/embeddinggemma-300m-npu
+nexa pull NexaAI/jina-v2-rerank-npu
+nexa pull NexaAI/Granite-4-Micro-NPU
 ```
 
 After the model is ready, start the Nexa server in a separate terminal:
@@ -39,7 +39,8 @@ pip install -r requirements.txt
 To run the RAG pipeline from the command line:
 
 ```bash
-python rag_nexa.py --data ./docs --rebuild
+New-Item -ItemType Directory -Path ".\docs" -Force
+python rag_nexa.py --data docs/ --rebuild
 ```
 
 ### Adding files

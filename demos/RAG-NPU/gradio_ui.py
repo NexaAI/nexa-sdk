@@ -1,8 +1,15 @@
 
+# Fix for ARM64 Windows matplotlib compatibility issue
 import os
+import sys
+
+# Disable Gradio's matplotlib backend manager on ARM64 Windows
+if sys.platform == "win32" and os.environ.get("PROCESSOR_ARCHITECTURE") == "ARM64":
+    os.environ["MPLBACKEND"] = "Agg"
+    os.environ["_GRADIO_SKIP_MATPLOTLIB_MANAGER"] = "1"
+
 import platform
 import subprocess
-import re
 from typing import List, Tuple
 
 import gradio as gr
@@ -15,24 +22,6 @@ from rag_nexa import (
 DOCS_DIR_DEFAULT = "./docs"
 
 # Helpers
-RE_THINK_BLOCKS = [
-    re.compile(r"<think>(.*?)</think>", re.DOTALL | re.IGNORECASE),
-    re.compile(r"\[think\](.*?)\[/think\]", re.DOTALL | re.IGNORECASE),
-    re.compile(r"【think】(.*?)【/think】", re.DOTALL),
-]
-
-def extract_think(text: str) -> str:
-    parts = []
-    for pat in RE_THINK_BLOCKS:
-        parts.extend(pat.findall(text))
-    return "\n".join(p.strip() for p in parts if p.strip())
-
-def strip_think(text: str) -> str:
-    out = text
-    for pat in RE_THINK_BLOCKS:
-        out = pat.sub("", out)
-    return out.strip()
-
 def ensure_docs_dir(path: str) -> None:
     if not os.path.exists(path):
         os.makedirs(path, exist_ok=True)
@@ -96,17 +85,16 @@ def chat_stream(message: str,
                 index,
                 model: str,
                 endpoint: str,
-                show_think: bool,
                 k: int):
     if index is None:
-        yield history + [[message, "Index is empty. Upload & Rebuild first."]], ""
+        yield history + [[message, "Index is empty. Upload & Rebuild first."]]
         return
 
     # NumPy cosine search
     try:
         top_idx, top_sims = search_numpy(message, index, DEFAULT_EMBED_MODEL, endpoint, top_k=int(k))
     except Exception as e:
-        yield history + [[message, f"(Search failed: {e})"]], ""
+        yield history + [[message, f"(Search failed: {e})"]]
         return
 
     # Compose context
@@ -116,38 +104,29 @@ def chat_stream(message: str,
         {
             "role": "system",
             "content": (
-                "You are a careful assistant. Use ONLY the provided context to answer.\n"
-                "If you produce any <think> reasoning, keep it inside tags; the UI may show it separately.\n\n"
+                "You are a careful assistant. Use ONLY the provided context to answer.\n\n"
                 f"<context>\n{context_text}\n</context>"
             ),
         },
         {"role": "user", "content": message},
     ]
 
-    raw = ""
-    visible = ""
-    reasoning = ""
+    response = ""
 
     # create assistant turn in chat
-    yield history + [[message, visible]], (reasoning if show_think else "")
+    yield history + [[message, response]]
 
     try:
         for piece in call_nexa_chat(model, messages, endpoint, stream=True):
-            raw += piece or ""
-            visible = strip_think(raw)
-            if show_think:
-                reasoning = extract_think(raw)
-            yield history + [[message, visible]], (reasoning if show_think else "")
+            response += piece or ""
+            yield history + [[message, response]]
     except Exception as e:
         # non-stream fallback
         try:
-            full = call_nexa_chat(model, messages, endpoint, stream=False) or ""
-            visible = strip_think(full)
-            if show_think:
-                reasoning = extract_think(full)
-            yield history + [[message, visible]], (reasoning if show_think else "")
+            response = call_nexa_chat(model, messages, endpoint, stream=False) or ""
+            yield history + [[message, response]]
         except Exception as e2:
-            yield history + [[message, f"(Generation failed: {e2})"]], (reasoning if show_think else "")
+            yield history + [[message, f"(Generation failed: {e2})"]]
 
 
 # UI
@@ -177,15 +156,12 @@ with gr.Blocks(title="RAG System") as demo:
                 btn_rebuild = gr.Button("Build/Rebuild", variant="primary")
                 btn_clear = gr.Button("Clear chat")
 
-            show_think = gr.Checkbox(label="Show reasoning (think)", value=True)
             status = gr.Textbox(label="Status", value="", interactive=False)
 
         with gr.Column(scale=2):
             chat = gr.Chatbot(height=480, show_copy_button=True)
             chat_input = gr.Textbox(placeholder="Ask something about your documents...", label="Your question")
             btn_send = gr.Button("Send", variant="primary")
-            with gr.Accordion("Reasoning (think)", open=True):
-                think_md = gr.Markdown("") 
 
     # State (stores in-memory NumPy index dict)
     index_state = gr.State(None)
@@ -218,16 +194,16 @@ with gr.Blocks(title="RAG System") as demo:
         return []
     btn_clear.click(fn=on_clear, outputs=chat)
 
-    # Stream to both chat and think panel
+    # Stream to chat
     btn_send.click(
         fn=chat_stream,
-        inputs=[chat_input, chat, index_state, model, endpoint, show_think, k],
-        outputs=[chat, think_md],
+        inputs=[chat_input, chat, index_state, model, endpoint, k],
+        outputs=chat,
     )
     chat_input.submit(
         fn=chat_stream,
-        inputs=[chat_input, chat, index_state, model, endpoint, show_think, k],
-        outputs=[chat, think_md],
+        inputs=[chat_input, chat, index_state, model, endpoint, k],
+        outputs=chat,
     )
 
 if __name__ == "__main__":

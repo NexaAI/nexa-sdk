@@ -6,22 +6,38 @@ import re
 import json
 import argparse
 from typing import List, Dict, Any, Iterable, Tuple
+from pathlib import Path
 import requests
 
 import numpy as np
-import fitz
+import pdfplumber  # Changed from: import fitz
 import docx
 
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain.schema import Document
-
+import warnings
+import sys
+from io import StringIO
+from contextlib import contextmanager
 
 # Config
-DEFAULT_MODEL = "NexaAI/Qwen3-4B-GGUF"
+DEFAULT_MODEL = "NexaAI/Granite-4-Micro-NPU"
 DEFAULT_ENDPOINT = "http://127.0.0.1:18181"
-DEFAULT_EMBED_MODEL = "djuna/jina-embeddings-v2-small-en-Q5_K_M-GGUF"
+DEFAULT_EMBED_MODEL = "NexaAI/embeddinggemma-300m-npu"
 DEFAULT_INDEX_JSON = "./vecdb.json"
+DEFAULT_RERANK_MODEL = "NexaAI/jina-v2-rerank-npu"
 
+# Get downloads folder path
+def get_default_data_folder() -> str:
+    """
+    Get the default data folder path in user's Downloads directory.
+    Creates the folder if it doesn't exist.
+    """
+    # Get user's Downloads folder
+    downloads_folder = Path.home() / "Downloads" / "nexa-rag-docs"
+    
+    # Create folder if it doesn't exist
+    downloads_folder.mkdir(parents=True, exist_ok=True)
+    
+    return str(downloads_folder)
 
 # HTTP helper
 def _post_json(url: str, payload: dict, timeout: int = 300) -> dict:
@@ -102,6 +118,29 @@ def call_nexa_embeddings(embed_model: str, inputs: List[str], base: str) -> List
     return out
 
 
+def call_nexa_rerank(rerank_model: str, query: str, documents: List[str], base: str, top_n: int = 3) -> List[int]:
+    """
+    Call Nexa-compatible /v1/reranking endpoint to rerank documents.
+    Returns list of indices in reranked order (best first).
+    """
+    url = base.rstrip("/") + "/v1/reranking"
+    payload = {
+        "model": rerank_model,
+        "query": query,
+        "documents": documents,
+        "batch_size": len(documents),
+        "normalize": True,
+        "normalize_method": "softmax"
+    }
+    data = _post_json(url, payload)
+    
+    # Expected response format: {"results": [{"index": 0, "relevance_score": 0.95}, ...]}
+    # Sort by relevance_score descending and return top_n indices
+    results = data.get("results", [])
+    sorted_results = sorted(results, key=lambda x: x.get("relevance_score", 0), reverse=True)
+    return [r["index"] for r in sorted_results[:top_n]]
+
+
 # File loaders (txt/pdf/docx)
 def load_txt(path: str) -> str:
     for enc in ("utf-8", "utf-8-sig", "latin-1"):
@@ -112,11 +151,56 @@ def load_txt(path: str) -> str:
             continue
     return ""
 
+@contextmanager
+def suppress_stderr():
+    """Context manager to temporarily suppress stderr output"""
+    old_stderr = sys.stderr
+    try:
+        with open(os.devnull, 'w') as devnull:
+            sys.stderr = devnull
+            yield
+    finally:
+        sys.stderr = old_stderr
+
+def fix_missing_spaces(text: str) -> str:
+    """
+    Fix common cases where spaces are missing in extracted PDF text.
+    Adds spaces between:
+    - lowercase followed by uppercase letter (e.g., "wordAnother" -> "word Another")
+    - letter followed by number or number followed by letter
+    - closing punctuation followed by uppercase letter
+    """
+    import re
+    # Add space between lowercase and uppercase
+    text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
+    # Add space between letter and number
+    text = re.sub(r'([a-zA-Z])(\d)', r'\1 \2', text)
+    # Add space between number and letter
+    text = re.sub(r'(\d)([a-zA-Z])', r'\1 \2', text)
+    # Add space after period/comma/semicolon if followed by letter without space
+    text = re.sub(r'([.,;:!?])([A-Za-z])', r'\1 \2', text)
+    # Add space after closing bracket/paren if followed by uppercase letter
+    text = re.sub(r'([\)\]])([A-Z])', r'\1 \2', text)
+    return text
+
 def load_pdf(path: str) -> str:
+    """
+    Load PDF text using pdfplumber with proper spacing handling
+    """
     text_parts: List[str] = []
-    with fitz.open(path) as doc:
-        for page in doc:
-            text_parts.append(page.get_text("text"))
+    try:
+        with suppress_stderr():
+            with pdfplumber.open(path) as pdf:
+                for page in pdf.pages:
+                    # Use layout=True for better spacing preservation
+                    text = page.extract_text(layout=True)
+                    if text:  # Only add non-empty pages
+                        # Apply space-fixing heuristics
+                        text = fix_missing_spaces(text)
+                        text_parts.append(text)
+    except Exception as e:
+        print(f"[warn] Error extracting from {path}: {e}")
+        return ""
     return "\n".join(text_parts)
 
 def load_docx(path: str) -> str:
@@ -263,18 +347,28 @@ def search_numpy(query: str, index: dict, embed_model: str, endpoint_base: str, 
 
 # CLI
 def main():
+    # Get default data folder in Downloads
+    default_data_folder = get_default_data_folder()
+    
     ap = argparse.ArgumentParser(description="Local-files RAG (text-only) using JSON index + NumPy search")
-    ap.add_argument("--data", default="./docs", help="Folder with txt/pdf/docx")
+    ap.add_argument("--data", default=default_data_folder, help=f"Folder with txt/pdf/docx (default: {default_data_folder})")
     ap.add_argument("--index_json", default=DEFAULT_INDEX_JSON, help="Path to embeddings JSON index")
     ap.add_argument("--embed_model", default=DEFAULT_EMBED_MODEL, help="Embedding model name")
     ap.add_argument("--chunk_size", type=int, default=1000, help="Chunk size")
     ap.add_argument("--chunk_overlap", type=int, default=150, help="Chunk overlap")
     ap.add_argument("--k", type=int, default=5, help="Top-k retrieval")
+    ap.add_argument("--rerank_top_n", type=int, default=3, help="Top-n after reranking")
+    ap.add_argument("--rerank_model", default=DEFAULT_RERANK_MODEL, help="Rerank model name")
+    ap.add_argument("--use_rerank", action="store_true", help="Enable reranking step")
     ap.add_argument("--model", default=DEFAULT_MODEL, help="LLM model for generation")
     ap.add_argument("--endpoint", default=DEFAULT_ENDPOINT, help="Nexa endpoint base, e.g. http://127.0.0.1:18181")
     ap.add_argument("--rebuild", action="store_true", help="Rebuild JSON index before starting chat")
     args = ap.parse_args()
 
+    # Ensure data folder exists
+    os.makedirs(args.data, exist_ok=True)
+    print(f"[info] Using data folder: {args.data}")
+    
     os.makedirs(os.path.dirname(args.index_json) or ".", exist_ok=True)
 
     # Rebuild on start
@@ -298,7 +392,7 @@ def main():
             break
         if q.lower() == ":reload":
             print("[build] Rebuilding JSON index ...")
-            n_docs, n_chunks = build_json_index(args.data, args.index_json, args.embed_model, args.chunk_size, args.chunk_overlap)
+            n_docs, n_chunks = build_json_index(args.data, args.index_json, args.embed_model, args.chunk_size, args.chunk_overlap, args.endpoint)
             index = load_json_index(args.index_json)
             print(f"[build] Done. docs={n_docs}, chunks={n_chunks}")
             continue
@@ -310,13 +404,18 @@ def main():
             print(f"[error] Search failed: {e}")
             continue
 
-        # Display retrieved items
-        print("\n[retrieved]")
-        for rank, (i, s) in enumerate(zip(top_idx.tolist(), top_sims.tolist()), start=1):
-            src = os.path.basename(index["sources"][i])
-            cid = index["chunk_ids"][i]
-            snippet = index["texts"][i][:160].replace("\n", " ")
-            print(f"  {rank}. {src}#chunk{cid}  sim={s:.4f}  {snippet}...")
+        # Optional reranking step
+        if args.use_rerank:
+            try:
+                # Get candidate documents from initial search
+                candidate_docs = [index["texts"][i] for i in top_idx.tolist()]
+                # Rerank and get top_n indices (relative to candidate_docs)
+                reranked_local_idx = call_nexa_rerank(args.rerank_model, q, candidate_docs, args.endpoint, top_n=args.rerank_top_n)
+                # Map back to original index positions
+                top_idx = top_idx[reranked_local_idx]
+                print(f"[rerank] Reranked to top {len(reranked_local_idx)} documents")
+            except Exception as e:
+                print(f"[warn] Reranking failed, using original search results: {e}")
 
         # Build chat messages with context
         context_text = "\n\n".join([index["texts"][i] for i in top_idx.tolist()])
