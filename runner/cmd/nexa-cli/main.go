@@ -21,6 +21,7 @@ import (
 var (
 	skipUpdate  bool
 	skipMigrate bool
+	testMode    bool
 )
 
 // RootCmd creates the main Nexa CLI command with all subcommands.
@@ -70,6 +71,7 @@ func RootCmd() *cobra.Command {
 	}
 	rootCmd.PersistentFlags().BoolVarP(&skipUpdate, "skip-update", "", false, "Skip checking for updates")
 	rootCmd.PersistentFlags().BoolVarP(&skipMigrate, "skip-migrate", "", false, "Skip checking for model migrations")
+	rootCmd.PersistentFlags().BoolVarP(&testMode, "test-mode", "", false, "Enable test mode")
 
 	rootCmd.AddGroup(
 		&cobra.Group{ID: "model", Title: "Model Commands"},

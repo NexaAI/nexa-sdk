@@ -207,26 +207,30 @@ func infer() *cobra.Command {
 
 		switch manifest.ModelType {
 		case types.ModelTypeLLM:
-			inferLLM(manifest, quant)
+			err = inferLLM(manifest, quant)
 		case types.ModelTypeVLM:
 			checkDependency()
-			inferVLM(manifest, quant)
+			err = inferVLM(manifest, quant)
 		case types.ModelTypeEmbedder:
-			inferEmbedder(manifest, quant)
+			err = inferEmbedder(manifest, quant)
 		case types.ModelTypeReranker:
-			inferReranker(manifest, quant)
+			err = inferReranker(manifest, quant)
 		case types.ModelTypeTTS:
-			inferTTS(manifest, quant)
+			err = inferTTS(manifest, quant)
 		case types.ModelTypeASR:
 			checkDependency()
-			inferASR(manifest, quant)
+			err = inferASR(manifest, quant)
 		case types.ModelTypeCV:
-			inferCV(manifest, quant)
+			err = inferCV(manifest, quant)
 		case types.ModelTypeImageGen:
 			// ImageGen model is a directory, not a file
-			inferImageGen(manifest, quant)
+			err = inferImageGen(manifest, quant)
 		default:
 			panic("not support model type")
+		}
+
+		if err != nil {
+			os.Exit(1)
 		}
 	}
 	return inferCmd
@@ -284,7 +288,7 @@ func getPromptOrInput() (string, error) {
 	return "", io.EOF
 }
 
-func inferLLM(manifest *types.ModelManifest, quant string) {
+func inferLLM(manifest *types.ModelManifest, quant string) error {
 	var samplerConfig *nexa_sdk.SamplerConfig
 	if temperature > 0 || topK > 0 || topP > 0 || minP > 0 ||
 		repetitionPenalty != 1.0 || presencePenalty != 0.0 || frequencyPenalty != 0.0 ||
@@ -326,7 +330,7 @@ func inferLLM(manifest *types.ModelManifest, quant string) {
 	if err != nil {
 		slog.Error("failed to create LLM", "error", err)
 		fmt.Println(modelLoadFailMsg)
-		return
+		return err
 	}
 	defer p.Destroy()
 
@@ -336,8 +340,8 @@ func inferLLM(manifest *types.ModelManifest, quant string) {
 	}
 
 	processor := &common.Processor{
-		ParseFile: false,
 		HideThink: hideThink,
+		TestMode:  testMode,
 		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			history = append(history, nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
 
@@ -396,10 +400,10 @@ func inferLLM(manifest *types.ModelManifest, quant string) {
 		processor.GetPrompt = repl.GetPrompt
 	}
 
-	processor.Process()
+	return processor.Process()
 }
 
-func inferVLM(manifest *types.ModelManifest, quant string) {
+func inferVLM(manifest *types.ModelManifest, quant string) error {
 	var samplerConfig *nexa_sdk.SamplerConfig
 	if temperature > 0 || topK > 0 || topP > 0 || minP > 0 ||
 		repetitionPenalty != 1.0 || presencePenalty != 0.0 || frequencyPenalty != 0.0 ||
@@ -450,7 +454,7 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 	if err != nil {
 		slog.Error("failed to create VLM", "error", err)
 		fmt.Println(modelLoadFailMsg)
-		return
+		return err
 	}
 	defer p.Destroy()
 
@@ -462,6 +466,7 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 	processor := &common.Processor{
 		ParseFile: true,
 		HideThink: hideThink,
+		TestMode:  testMode,
 		Run: func(prompt string, images, audios []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			msg := nexa_sdk.VlmChatMessage{Role: nexa_sdk.VlmRoleUser}
 			msg.Contents = append(msg.Contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeText, Text: prompt})
@@ -541,10 +546,10 @@ func inferVLM(manifest *types.ModelManifest, quant string) {
 		processor.GetPrompt = repl.GetPrompt
 	}
 
-	processor.Process()
+	return processor.Process()
 }
 
-func inferEmbedder(manifest *types.ModelManifest, quant string) {
+func inferEmbedder(manifest *types.ModelManifest, quant string) error {
 	s := store.Get()
 	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
 	spin := render.NewSpinner("loading embedding model...")
@@ -563,19 +568,20 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) {
 	if err != nil {
 		slog.Error("failed to create embedder", "error", err)
 		fmt.Println(modelLoadFailMsg)
-		return
+		return err
 	}
 	defer p.Destroy()
 
 	dimOutput, err := p.EmbeddingDimension()
 	if err != nil {
 		fmt.Println(render.GetTheme().Error.Sprintf("failed to get embedding dimension: %s", err))
-		return
+		return err
 	}
 
 	fmt.Println(render.GetTheme().Success.Sprintf("Embedding dimension: %d", dimOutput.Dimension))
 
 	processor := &common.Processor{
+		TestMode: testMode,
 		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			embedInput := nexa_sdk.EmbedderEmbedInput{
 				TaskType: taskType,
@@ -619,10 +625,10 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) {
 		processor.GetPrompt = repl.GetPrompt
 	}
 
-	processor.Process()
+	return processor.Process()
 }
 
-func inferReranker(manifest *types.ModelManifest, quant string) {
+func inferReranker(manifest *types.ModelManifest, quant string) error {
 	s := store.Get()
 	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
 	spin := render.NewSpinner("loading reranker model...")
@@ -641,12 +647,13 @@ func inferReranker(manifest *types.ModelManifest, quant string) {
 	if err != nil {
 		slog.Error("failed to create reranker", "error", err)
 		fmt.Println(modelLoadFailMsg)
-		return
+		return err
 	}
 	defer p.Destroy()
 
 	const SEP = "\\n"
 	processor := &common.Processor{
+		TestMode: testMode,
 		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			parsedPrompt := strings.Split(prompt, SEP)
 			if len(parsedPrompt) < 2 {
@@ -689,7 +696,7 @@ func inferReranker(manifest *types.ModelManifest, quant string) {
 	if query != "" || len(document) > 0 {
 		if query == "" && len(document) == 0 {
 			fmt.Println(render.GetTheme().Error.Sprintf("query and document are required for reranking"))
-			return
+			return errors.New("query and document are required for reranking")
 		}
 		processor.GetPrompt = func() (string, error) {
 			if query == "" || len(document) == 0 {
@@ -705,10 +712,10 @@ func inferReranker(manifest *types.ModelManifest, quant string) {
 		processor.GetPrompt = repl.GetPrompt
 	}
 
-	processor.Process()
+	return processor.Process()
 }
 
-func inferTTS(manifest *types.ModelManifest, quant string) {
+func inferTTS(manifest *types.ModelManifest, quant string) error {
 	s := store.Get()
 	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
 	spin := render.NewSpinner("loading TTS model...")
@@ -727,7 +734,7 @@ func inferTTS(manifest *types.ModelManifest, quant string) {
 	if err != nil {
 		slog.Error("failed to create TTS", "error", err)
 		fmt.Println(modelLoadFailMsg)
-		return
+		return err
 	}
 	defer p.Destroy()
 
@@ -735,13 +742,14 @@ func inferTTS(manifest *types.ModelManifest, quant string) {
 		voices, err := p.ListAvailableVoices()
 		if err != nil {
 			fmt.Println(render.GetTheme().Error.Sprintf("Failed to list available voices: %s", err))
-			return
+			return err
 		}
 		fmt.Println(render.GetTheme().Success.Sprintf("Available voices: %v", voices.VoiceIDs))
-		return
+		return nil
 	}
 
 	processor := &common.Processor{
+		TestMode: testMode,
 		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			textToSynthesize := strings.TrimSpace(prompt)
 			if textToSynthesize == "" {
@@ -794,10 +802,10 @@ func inferTTS(manifest *types.ModelManifest, quant string) {
 		processor.GetPrompt = repl.GetPrompt
 	}
 
-	processor.Process()
+	return processor.Process()
 }
 
-func inferASR(manifest *types.ModelManifest, quant string) {
+func inferASR(manifest *types.ModelManifest, quant string) error {
 	s := store.Get()
 	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
 	spin := render.NewSpinner("loading ASR model...")
@@ -816,7 +824,7 @@ func inferASR(manifest *types.ModelManifest, quant string) {
 	if err != nil {
 		slog.Error("failed to create ASR", "error", err)
 		fmt.Println(modelLoadFailMsg)
-		return
+		return err
 	}
 	defer p.Destroy()
 
@@ -824,14 +832,15 @@ func inferASR(manifest *types.ModelManifest, quant string) {
 		lans, err := p.ListSupportedLanguages()
 		if err != nil {
 			fmt.Println(render.GetTheme().Error.Sprintf("Failed to list available languages: %s", err))
-			return
+			return err
 		}
 		fmt.Println(render.GetTheme().Success.Sprintf("Available languages: %v", lans.LanguageCodes))
-		return
+		return nil
 	}
 
 	processor := &common.Processor{
 		ParseFile: true,
+		TestMode:  testMode,
 		Run: func(_ string, _, audios []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			if len(audios) == 0 {
 				return "", nexa_sdk.ProfileData{}, common.ErrNoAudio
@@ -982,10 +991,10 @@ func inferASR(manifest *types.ModelManifest, quant string) {
 		processor.GetPrompt = repl.GetPrompt
 	}
 
-	processor.Process()
+	return processor.Process()
 }
 
-func inferCV(manifest *types.ModelManifest, quant string) {
+func inferCV(manifest *types.ModelManifest, quant string) error {
 	s := store.Get()
 	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
 	spin := render.NewSpinner("loading CV model...")
@@ -1008,12 +1017,13 @@ func inferCV(manifest *types.ModelManifest, quant string) {
 	if err != nil {
 		slog.Error("failed to create CV", "error", err)
 		fmt.Println(modelLoadFailMsg)
-		return
+		return err
 	}
 	defer p.Destroy()
 
 	processor := &common.Processor{
 		ParseFile: true,
+		TestMode:  testMode,
 		Run: func(_ string, images, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			if len(images) == 0 {
 				return "", nexa_sdk.ProfileData{}, fmt.Errorf("no image file provided")
@@ -1059,10 +1069,10 @@ func inferCV(manifest *types.ModelManifest, quant string) {
 		processor.GetPrompt = repl.GetPrompt
 	}
 
-	processor.Process()
+	return processor.Process()
 }
 
-func inferImageGen(manifest *types.ModelManifest, _ string) {
+func inferImageGen(manifest *types.ModelManifest, _ string) error {
 	s := store.Get()
 	modeldir := s.ModelfilePath(manifest.Name, "")
 
@@ -1079,11 +1089,12 @@ func inferImageGen(manifest *types.ModelManifest, _ string) {
 	if err != nil {
 		slog.Error("failed to create ImageGen", "error", err)
 		fmt.Println(modelLoadFailMsg)
-		return
+		return err
 	}
 	defer p.Destroy()
 
 	processor := &common.Processor{
+		TestMode: testMode,
 		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			textPrompt := strings.TrimSpace(prompt)
 			if textPrompt == "" {
@@ -1147,5 +1158,5 @@ func inferImageGen(manifest *types.ModelManifest, _ string) {
 		processor.GetPrompt = repl.GetPrompt
 	}
 
-	processor.Process()
+	return processor.Process()
 }

@@ -11,6 +11,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/bytedance/sonic"
+
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 )
@@ -21,6 +23,8 @@ type Processor struct {
 	ParseFile bool
 	HideThink bool
 
+	TestMode bool
+
 	GetPrompt func() (string, error)
 	Run       func(prompt string, images, audios []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error)
 
@@ -28,7 +32,7 @@ type Processor struct {
 	fsmState int
 }
 
-func (p *Processor) Process() {
+func (p *Processor) Process() error {
 	var stopGen bool
 	go func() {
 		cSignal := make(chan os.Signal, 1)
@@ -45,10 +49,10 @@ func (p *Processor) Process() {
 
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				return
+				return nil
 			}
 			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s\n", err))
-			return
+			return err
 		}
 
 		var prompt string
@@ -66,7 +70,7 @@ func (p *Processor) Process() {
 
 		p.fsmInit()
 		stopGen = false
-		_, profileData, err := p.Run(prompt, images, audios, func(token string) bool {
+		output, profileData, err := p.Run(prompt, images, audios, func(token string) bool {
 			if firstToken {
 				spin.Stop()
 				firstToken = false
@@ -75,7 +79,17 @@ func (p *Processor) Process() {
 			p.fsmEvent(token)
 			return !stopGen
 		})
+
 		slog.Debug("profileData", "profileData", profileData)
+		if p.TestMode {
+			pd, _ := sonic.MarshalString(map[string]any{
+				"Input":   line,
+				"Output":  output,
+				"Profile": profileData,
+				"Error":   err,
+			})
+			fmt.Fprintln(os.Stderr, pd)
+		}
 
 		// reset spin when no token received
 		if firstToken {
@@ -93,14 +107,14 @@ func (p *Processor) Process() {
 		case errors.Is(err, nexa_sdk.ErrLlmTokenizationContextLength):
 			fmt.Println(render.GetTheme().Info.Sprintf("Context length exceeded, please start a new conversation"))
 			fmt.Println()
-			return
+			return err
 		case errors.Is(err, ErrNoAudio):
 			fmt.Println(render.GetTheme().Error.Sprintf("No audio file provided, please provide an audio file or use /mic command"))
 			fmt.Println()
 		default:
 			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s\n", err))
 			fmt.Println()
-			return
+			return err
 		}
 	}
 }
