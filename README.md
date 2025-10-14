@@ -50,6 +50,10 @@ Nexa SDK is an on-device inference framework that runs any model on any device, 
 
 ## Recent updates
 
+#### 📣  **2025.10.14: Day-0 Support : Qwen3-VL-4B-Instruct, Qwen3-VL-4B-Thinking, Qwen3-VL-8B-Instruct, Qwen3-VL-8B-Thinking**
+- We support [Qwen3-VL-4B series models](https://huggingface.co/collections/NexaAI/qwen3vl-68d46de18fdc753a7295190a) with Nexa SDK on Day-0!
+- We support Qualcomm NPU/GPU/CPU, Apple GPU/CPU, Intel/AMD/MediaTek/Nvidia GPU/CPUs and more
+
 #### 📣  **2025.10.04: Day-0 Support : Qwen3-VL-30B-A3B-Instruct**
 - We support [Qwen3-VL-30B-A3B-Instruct](https://huggingface.co/NexaAI/qwen3vl-30B-A3B-mlx) with Nexa SDK on Day-0!
 - Try it on Apple GPU with `nexa infer NexaAI/qwen3vl-30B-A3B-mlx` on MLX backend.
