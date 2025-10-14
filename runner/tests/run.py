@@ -35,11 +35,11 @@ def check_models():
 
     missing_models = [tc[1] for tc in testcases]
     for line in res.stdout.splitlines():
-        fileds = line.split('│')
-        if len(fileds) < 5:
+        fields = line.split('│')
+        if len(fields) < 5:
             continue
-        name = fileds[1].strip()
-        quant = fileds[3].strip()
+        name = fields[1].strip()
+        quant = fields[3].strip()
         if name in missing_models:
             # TODO: remove quant check
             if ',' in quant:
