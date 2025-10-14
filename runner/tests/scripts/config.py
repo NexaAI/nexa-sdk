@@ -8,7 +8,7 @@ PLUGIN_MAP = {
         'x86_64': ['cpu_gpu'],
         'arm64': ['cpu_gpu', 'npu']
     },
-    'macOS': {
+    'Darwin': {
         'x86_64': ['cpu_gpu'],
         'arm64': ['cpu_gpu', 'metal']
     }
