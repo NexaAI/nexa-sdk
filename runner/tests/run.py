@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import io
 import os
 import traceback
 
@@ -17,18 +16,17 @@ def init_benchmark():
     plugins = config.get_plugins()
     log.print(f'Plugins: {plugins}')
     if len(plugins) == 0:
-        log.print("No supported plugins found, exit")
-        return
+        raise Exception("No supported plugins found")
 
     testcases = config.get_testcases(plugins)
     # count total Testcases
     log.print(f'Found {len(testcases)} models with {sum(len(tc[2]) for tc in testcases)} testcases')
     if len(testcases) == 0:
-        log.print("Testcases is empty, exit")
-        return
+        raise Exception("No testcases found")
 
 
 def check_models():
+    global testcases
     log.print("========== Check Models ==========")
 
     res = utils.execute_nexa(['list'])
@@ -65,8 +63,8 @@ def run_benchmark():
             tcp = f'{i+1}/{len(tcs)}'
             try:
                 tc_log = log.log_dir / plugin / f'{model.replace("/", "-")}_{tc}'
-                of = open(f'{tc_log}.log', 'w')
-                ef = open(f'{tc_log}.json', 'w')
+                of = open(f'{tc_log}.log', 'w', encoding='utf-8')
+                ef = open(f'{tc_log}.json', 'w', encoding='utf-8')
                 res = utils.execute_nexa([
                     'infer',
                     model,

@@ -5,7 +5,8 @@ PLUGIN_MAP = {
         'x86_64': ['cpu_gpu']
     },
     'Windows': {
-        'x86_64': ['cpu_gpu']
+        'x86_64': ['cpu_gpu'],
+        'arm64': ['cpu_gpu', 'npu']
     },
     'macOS': {
         'x86_64': ['cpu_gpu'],
@@ -22,7 +23,7 @@ TESTCASE_MAP: list[tuple[str, str, list[str]]] = [
 def get_plugins() -> list[str]:
     system = platform.system()
     machine = platform.machine()
-    return PLUGIN_MAP.get(system, {}).get(machine, [])
+    return PLUGIN_MAP.get(system, {}).get(machine.lower(), [])
 
 
 def get_testcases(plugins: list[str]) -> list[tuple[str, str, list[str]]]:

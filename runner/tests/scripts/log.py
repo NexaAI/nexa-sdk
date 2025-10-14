@@ -17,7 +17,7 @@ def init():
 
     os.makedirs(log_dir, exist_ok=True)
 
-    log_file = open(os.path.join(log_dir, 'environment'), 'w')
+    log_file = open(os.path.join(log_dir, 'environment'), 'w', encoding='utf-8')
     print(f"========== Environment ===========")
     print(f"OS: {platform.system()}")
     print(f"Arch: {platform.machine()}")
@@ -26,7 +26,7 @@ def init():
     utils.execute_nexa(['version'])
     log_file.close()
 
-    log_file = open(log_dir / 'bench.log', 'w')
+    log_file = open(log_dir / 'bench.log', 'w', encoding='utf-8')
 
 
 def print(msg: str):

@@ -1,5 +1,6 @@
 import json
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -17,7 +18,8 @@ def _search_nexa() -> str:
         './runner/build',
     ]
     for d in search_dirs:
-        path = Path(d) / 'nexa'
+        exe = 'nexa' if platform.system() != 'Windows' else 'nexa.exe'
+        path = Path(d) / exe
         if path.exists() and os.access(path, os.X_OK):
             return str(path.resolve())
 
@@ -32,7 +34,7 @@ def load_param(case: str) -> list[str]:
     path = Path(__file__).parent.parent / 'cases' / case / 'param.txt'
     if not path.exists():
         raise FileNotFoundError(f"{path} not found")
-    with open(path, 'r') as f:
+    with open(path, 'r', encoding='utf-8') as f:
         return [l.rstrip() for l in f.readlines()]
 
 
@@ -48,7 +50,8 @@ def execute_nexa(
     stdout: TextIOWrapper = kwargs.pop('stdout', sys.stdout)  # pyright: ignore[reportAny]
     stderr: TextIOWrapper = kwargs.pop('stderr', sys.stderr)  # pyright: ignore[reportAny]
 
-    res = subprocess.run([nexa_path] + args, capture_output=True, text=True, **kwargs)  # pyright: ignore[reportAny]
+    res = subprocess.run([nexa_path] + args, capture_output=True, text=True, encoding='utf-8',
+                         **kwargs)  # pyright: ignore[reportAny]
     stdout.write(res.stdout)
     compat_out = False
     for line in res.stderr.splitlines():
