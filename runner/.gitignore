@@ -1,2 +1,7 @@
 *.png
 *.jpg
+
+# for tests, please keep ordered
+!tests/**
+__pycache__/
+bench-*/
