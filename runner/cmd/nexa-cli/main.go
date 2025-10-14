@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/NexaAI/nexa-sdk/runner/cmd/nexa-cli/common"
 	"github.com/NexaAI/nexa-sdk/runner/internal/config"
 	"github.com/NexaAI/nexa-sdk/runner/internal/model_hub"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
@@ -20,6 +21,7 @@ import (
 var (
 	skipUpdate  bool
 	skipMigrate bool
+	testMode    bool
 )
 
 // RootCmd creates the main Nexa CLI command with all subcommands.
@@ -32,7 +34,7 @@ func RootCmd() *cobra.Command {
 		Use: "nexa",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// log
-			applyLogLevel()
+			common.ApplyLogLevel()
 
 			subCmd := cmd.CalledAs()
 
@@ -69,6 +71,7 @@ func RootCmd() *cobra.Command {
 	}
 	rootCmd.PersistentFlags().BoolVarP(&skipUpdate, "skip-update", "", false, "Skip checking for updates")
 	rootCmd.PersistentFlags().BoolVarP(&skipMigrate, "skip-migrate", "", false, "Skip checking for model migrations")
+	rootCmd.PersistentFlags().BoolVarP(&testMode, "test-mode", "", false, "Enable test mode")
 
 	rootCmd.AddGroup(
 		&cobra.Group{ID: "model", Title: "Model Commands"},

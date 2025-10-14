@@ -44,7 +44,10 @@ func pull() *cobra.Command {
 	pullCmd.Flags().StringVarP(&localPath, "local-path", "", "", "[localfs] path to local directory")
 
 	pullCmd.Run = func(cmd *cobra.Command, args []string) {
-		pullModel(args[0])
+		err := pullModel(args[0])
+		if err != nil {
+			os.Exit(1)
+		}
 	}
 
 	return pullCmd
@@ -70,6 +73,7 @@ func remove() *cobra.Command {
 		e := s.Remove(name)
 		if e != nil {
 			fmt.Println(render.GetTheme().Error.Sprintf("✘  Failed to remove model: %s", name))
+			os.Exit(1)
 		} else {
 			fmt.Printf("✔  Removed %s\n", name)
 		}
@@ -115,7 +119,7 @@ func list() *cobra.Command {
 		models, e := s.List()
 		if e != nil {
 			fmt.Println(e)
-			return
+			os.Exit(1)
 		}
 
 		// Create formatted table output
@@ -308,6 +312,7 @@ func getQuant(name string) string {
 }
 
 func choosePluginId(name string) string {
+	name = strings.ToLower(name)
 	switch {
 	case strings.Contains(name, "mlx"):
 		return "metal"

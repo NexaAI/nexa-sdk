@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log/slog"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -36,13 +37,13 @@ func functionCall() *cobra.Command {
 		manifest, err := ensureModelAvailable(s, args[0])
 		if err != nil {
 			fmt.Println(render.GetTheme().Error.Sprintf("check model error: %s", err))
-			return
+			os.Exit(1)
 		}
 
 		quant, err := selectQuant(manifest)
 		if err != nil {
 			fmt.Println(render.GetTheme().Error.Sprintf("quant error: %s", err))
-			return
+			os.Exit(1)
 		}
 		fmt.Println(render.GetTheme().Quant.Sprintf("🔹 Quant=%s", quant))
 
@@ -53,7 +54,7 @@ func functionCall() *cobra.Command {
 
 		switch manifest.ModelType {
 		case types.ModelTypeLLM:
-			fcLLM(manifest.PluginId, modelfile)
+			err = fcLLM(manifest.PluginId, modelfile)
 		case types.ModelTypeVLM:
 			var mmprojfile string
 			if manifest.MMProjFile.Name != "" {
@@ -63,9 +64,13 @@ func functionCall() *cobra.Command {
 			if manifest.TokenizerFile.Name != "" {
 				tokenizerfile = s.ModelfilePath(manifest.Name, manifest.TokenizerFile.Name)
 			}
-			fcVLM(manifest.PluginId, modelfile, mmprojfile, tokenizerfile)
+			err = fcVLM(manifest.PluginId, modelfile, mmprojfile, tokenizerfile)
 		default:
 			panic("not support model type")
+		}
+
+		if err != nil {
+			os.Exit(1)
 		}
 	}
 	return fcCmd
@@ -78,11 +83,11 @@ func checkParseTools(tools []string) (string, error) {
 	return "[" + strings.Join(tools, ",") + "]", nil
 }
 
-func fcLLM(plugin, modelfile string) {
+func fcLLM(plugin, modelfile string) error {
 	tools, err := checkParseTools(tool)
 	if err != nil {
 		fmt.Println(render.GetTheme().Error.Sprint(err))
-		return
+		return err
 	}
 
 	spin := render.NewSpinner("loading model...")
@@ -100,7 +105,7 @@ func fcLLM(plugin, modelfile string) {
 	if err != nil {
 		slog.Error("failed to create LLM", "error", err)
 		fmt.Println(modelLoadFailMsg)
-		return
+		return err
 	}
 	defer p.Destroy()
 
@@ -115,7 +120,7 @@ func fcLLM(plugin, modelfile string) {
 	})
 	if err != nil {
 		fmt.Println(render.GetTheme().Error.Sprintf("apply chat template error: %s", err))
-		return
+		return err
 	}
 	res, err := p.Generate(nexa_sdk.LlmGenerateInput{
 		PromptUTF8: templateOutput.FormattedText,
@@ -126,20 +131,21 @@ func fcLLM(plugin, modelfile string) {
 	)
 	if err != nil {
 		fmt.Println(render.GetTheme().Error.Sprintf("generate error: %s", err))
-		return
+		return err
 	}
 
 	fmt.Println()
 	fmt.Println(render.GetTheme().Success.Sprintf("%s", res.FullText))
 	fmt.Println()
-	printProfile(res.ProfileData)
+
+	return nil
 }
 
-func fcVLM(plugin, modelfile, mmprojfile, tokenizerfile string) {
+func fcVLM(plugin, modelfile, mmprojfile, tokenizerfile string) error {
 	tools, err := checkParseTools(tool)
 	if err != nil {
 		fmt.Println(render.GetTheme().Error.Sprint(err))
-		return
+		return err
 	}
 	spin := render.NewSpinner("loading model...")
 	spin.Start()
@@ -158,7 +164,7 @@ func fcVLM(plugin, modelfile, mmprojfile, tokenizerfile string) {
 	if err != nil {
 		slog.Error("failed to create VLM", "error", err)
 		fmt.Println(modelLoadFailMsg)
-		return
+		return err
 	}
 	defer p.Destroy()
 
@@ -173,7 +179,7 @@ func fcVLM(plugin, modelfile, mmprojfile, tokenizerfile string) {
 	})
 	if err != nil {
 		fmt.Println(render.GetTheme().Error.Sprintf("apply chat template error: %s", err))
-		return
+		return err
 	}
 	res, err := p.Generate(nexa_sdk.VlmGenerateInput{
 		PromptUTF8: templateOutput.FormattedText,
@@ -183,11 +189,12 @@ func fcVLM(plugin, modelfile, mmprojfile, tokenizerfile string) {
 	})
 	if err != nil {
 		fmt.Println(render.GetTheme().Error.Sprintf("generate error: %s", err))
-		return
+		return err
 	}
 
 	fmt.Println()
 	fmt.Println(render.GetTheme().Success.Sprintf("%s", res.FullText))
 	fmt.Println()
-	printProfile(res.ProfileData)
+
+	return nil
 }

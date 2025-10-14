@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 	"unicode"
@@ -16,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	"github.com/NexaAI/nexa-sdk/runner/cmd/nexa-cli/common"
 	"github.com/NexaAI/nexa-sdk/runner/internal/config"
 	"github.com/NexaAI/nexa-sdk/runner/internal/model_hub"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
@@ -87,7 +89,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		if _, ok := err.(net.Error); ok {
 			fmt.Println(render.GetTheme().Error.Sprintf("Is server running? Please check your network. \n\t%s", err))
-			return
+			os.Exit(1)
 		}
 		if e, ok := err.(*openai.Error); ok && e.StatusCode == http.StatusNotFound {
 			// pull model
@@ -100,12 +102,12 @@ func runFunc(cmd *cobra.Command, args []string) {
 			spin.Stop()
 			if err != nil {
 				fmt.Println(render.GetTheme().Error.Sprintf("Get manifest from huggingface error: %s", err))
-				return
+				os.Exit(1)
 			}
 
 			if hmf != nil && !isValidVersion(hmf.MinSDKVersion) {
 				fmt.Println(render.GetTheme().Error.Sprintf("Model requires NexaSDK CLI version %s or higher. Please upgrade your NexaSDK CLI.", hmf.MinSDKVersion))
-				return
+				os.Exit(1)
 			}
 
 			var manifest types.ModelManifest
@@ -130,7 +132,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			if manifest.ModelType == "" {
 				if ctype, err := chooseModelType(); err != nil {
 					fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
-					return
+					os.Exit(1)
 				} else {
 					manifest.ModelType = ctype
 				}
@@ -139,7 +141,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			err = chooseFiles(model, files, &manifest)
 			if err != nil {
 				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
-				return
+				os.Exit(1)
 			}
 
 			var raw *http.Response
@@ -166,18 +168,18 @@ func runFunc(cmd *cobra.Command, args []string) {
 			if stream.Err() != nil {
 				bar.Clear()
 				fmt.Println(render.GetTheme().Error.Sprintf("pull model error: %s", stream.Err().Error()))
-				return
+				os.Exit(1)
 			}
 
 			// check again
 			modelInfo, err = client.Models.Get(context.TODO(), model)
 			if err != nil {
 				fmt.Println(render.GetTheme().Error.Sprintf("get model error: %s", "download is incorrect"))
-				return
+				os.Exit(1)
 			}
 		} else {
 			fmt.Println(render.GetTheme().Error.Sprintf("get model error: %s", err.Error()))
-			return
+			os.Exit(1)
 		}
 	}
 
@@ -199,7 +201,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 
 	if err != nil {
 		fmt.Printf("%s\n", err)
-		return
+		os.Exit(1)
 	}
 
 	// repl
@@ -207,18 +209,10 @@ func runFunc(cmd *cobra.Command, args []string) {
 	if systemPrompt != "" {
 		history = append(history, openai.SystemMessage(systemPrompt))
 	}
-	repl(ReplConfig{
+
+	processor := &common.Processor{
 		ParseFile: manifest.ModelType == types.ModelTypeVLM,
-
-		Reset: func() error {
-			history = nil
-			_, err := client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
-				Messages: nil,
-				Model:    model,
-			})
-			return err
-		},
-
+		TestMode:  testMode,
 		Run: func(prompt string, images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			if len(images) > 0 || len(audios) > 0 {
 				contents := make([]openai.ChatCompletionContentPartUnionParam, 0)
@@ -309,5 +303,18 @@ func runFunc(cmd *cobra.Command, args []string) {
 
 			return "", profileData, nil
 		},
-	})
+	}
+	repl := common.Repl{
+		Reset: func() error {
+			history = nil
+			_, err := client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
+				Messages: nil,
+				Model:    model,
+			})
+			return err
+		},
+	}
+	defer repl.Close()
+	processor.GetPrompt = repl.GetPrompt
+	processor.Process()
 }

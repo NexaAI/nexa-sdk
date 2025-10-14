@@ -11,11 +11,6 @@ import (
 	"github.com/NexaAI/nexa-sdk/runner/server/service"
 )
 
-// @Router			/embeddings [post]
-// @Summary		Creates an embedding for the given input.
-// @Description	Creates an embedding for the given input.
-// @Accept			json
-// @Param			request	body	openai.EmbeddingNewParams	true	"Embedding request"
 func Embeddings(c *gin.Context) {
 	param := openai.EmbeddingNewParams{}
 	if err := c.ShouldBindJSON(&param); err != nil {
@@ -29,7 +24,7 @@ func Embeddings(c *gin.Context) {
 		false,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
 		return
 	}
 
@@ -59,13 +54,13 @@ func Embeddings(c *gin.Context) {
 
 	res, err := p.Embed(embedInput)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
 		return
 	}
 
 	dimOutput, err := p.EmbeddingDimension()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
 		return
 	}
 	embeddingDim := int(dimOutput.Dimension)

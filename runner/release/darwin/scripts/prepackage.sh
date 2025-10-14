@@ -41,8 +41,10 @@ echo "Setting permissions..."
 chmod +x "${APP_PATH}/Contents/MacOS/launcher"
 chmod +x "${APP_PATH}/Contents/Resources/nexa"
 chmod +x "${APP_PATH}/Contents/Resources/nexa-cli"
-if [ -d "${APP_PATH}/Contents/Resources/nexa_mlx/python_runtime/bin" ]; then
-  chmod -R +x "${APP_PATH}/Contents/Resources/nexa_mlx/python_runtime/bin"
+
+# IMPORTANT: this path needs to be updated if plugin name has been updated
+if [ -d "${APP_PATH}/Contents/Resources/metal/python_runtime/bin" ]; then
+  chmod -R +x "${APP_PATH}/Contents/Resources/metal/python_runtime/bin"
 fi
 
 echo "Preparing PKG scripts..."
