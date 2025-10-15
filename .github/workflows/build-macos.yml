@@ -29,7 +29,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
 
-      - name: Detect Commit Hash
+      - name: Detect Commit Hash 
         if: github.event_name == 'workflow_dispatch'
         run: echo "VERSION=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_ENV
 
@@ -40,6 +40,15 @@ jobs:
           cache-dependency-path: runner/go.sum
 
       - name: Build Nexa SDK
+        env:
+          APP_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APP_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          INSTALLER_CERTIFICATE_BASE64: ${{ secrets.APPLE_INSTALLER_CERTIFICATE_BASE64 }}
+          INSTALLER_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          SIGNING_IDENTITY: ${{ secrets.APPLE_ID_APPLICATION }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           cd runner
           make download build
@@ -50,11 +59,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nexa-cli_macos_${{ matrix.arch }}
-          path: runner/build
+          path: |
+            runner/build
+            runner/artifacts
           include-hidden-files: true
 
-  package-and-release:
-    name: Package for macos_${{ matrix.arch }}
+  release:
+    name: Release macos_${{ matrix.arch }}
     needs: build-cli
     runs-on: ${{ matrix.runner }}
     if: github.ref_type == 'tag'
@@ -70,28 +81,11 @@ jobs:
       VERSION: ${{ github.ref_name }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           name: nexa-cli_macos_${{ matrix.arch }}
           path: artifacts
-
-      - name: Create Signed and Notarized Package
-        env:
-          APP_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
-          APP_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          INSTALLER_CERTIFICATE_BASE64: ${{ secrets.APPLE_INSTALLER_CERTIFICATE_BASE64 }}
-          INSTALLER_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          SIGNING_IDENTITY: ${{ secrets.APPLE_ID_APPLICATION }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          cd runner
-          make package
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

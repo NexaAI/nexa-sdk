@@ -23,7 +23,7 @@ else
 	MKLINK  := ln -s ../../nexasdk-bridge/build/out build
 endif
 
-.PHONY: build link download clean package
+.PHONY: build link download package clean
 
 build:
 	go build -ldflags "-s -w" -o build/nexa$(EXE) ./cmd/nexa-launcher
@@ -40,11 +40,11 @@ download: clean
 	$(MKDIR) build
 	curl -L -o build/nexasdk-bridge.zip \
 		https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexasdk/$(BRIDGE_VERSION)/$(OS)_$(ARCH)/nexasdk-bridge.zip
-	cd build && tar -xf nexasdk-bridge.zip && $(RM) nexasdk-bridge.zip
+	cd build && tar -xf nexasdk-bridge.zip && $(RM) nexasdk-bridge.zip && $(RM) nexa_bridge.lib
 
 package:
-	-$(RM) artifacts
 	@echo "====> Creating installer package for $(OS)_$(ARCH)"
+	-$(RM) artifacts
 	@if [ "$(OS)" = "macos" ]; then \
 		release/package_darwin.sh $(VERSION) $(ARCH); \
 	else \

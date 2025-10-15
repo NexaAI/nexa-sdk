@@ -6,25 +6,21 @@
 
 set -euo pipefail
 
-# Configuration
 readonly TARGET_DIR="artifacts"
 readonly APP_PATH="${TARGET_DIR}/Applications/NexaCLI.app"
 readonly RESOURCES_PATH="${APP_PATH}/Contents/Resources"
 readonly ENTITLEMENTS="release/darwin/entitlements.plist"
 readonly KEYCHAIN="build.keychain"
 
-# Colors for output
 readonly RED='\033[0;31m'
 readonly GREEN='\033[0;32m'
 readonly YELLOW='\033[1;33m'
 readonly NC='\033[0m' # No Color
 
-# Logging functions
 log_info() { echo -e "${GREEN}[INFO]${NC} $*" >&2; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $*" >&2; }
 log_error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 
-# Utility functions
 check_file() {
     local file="$1"
     if [[ ! -f "$file" ]]; then
@@ -43,14 +39,12 @@ check_dir() {
     return 0
 }
 
-# Setup functions
 setup_app_bundle() {
     log_info "Setting up application bundle..."
     mkdir -p "$TARGET_DIR" "$RESOURCES_PATH"
     cp -r release/darwin/Applications "$TARGET_DIR"
     cp -r build/* "$RESOURCES_PATH"
     
-    # Update version in Info.plist
     sed -i '' "s/\${VERSION}/$VERSION/g" "$APP_PATH/Contents/Info.plist"
 }
 
@@ -77,7 +71,6 @@ set_permissions() {
     fi
 }
 
-# Certificate management
 import_certificate() {
     local cert_b64="$1" cert_pass="$2" cert_type="$3"
     
@@ -88,10 +81,14 @@ import_certificate() {
         security create-keychain -p "" "$KEYCHAIN"
         security default-keychain -s "$KEYCHAIN"
         security unlock-keychain -p "" "$KEYCHAIN"
-        security set-key-partition-list -S apple-tool:,apple: -s -k "" "$KEYCHAIN"
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" "$KEYCHAIN"
     fi
     
-    security import "${cert_type}_certificate.p12" -k "$KEYCHAIN" -P "$cert_pass" -T "/usr/bin/$cert_type"
+    if [[ "$cert_type" == "app" ]]; then
+        security import "${cert_type}_certificate.p12" -k "$KEYCHAIN" -P "$cert_pass" -T "/usr/bin/codesign"
+    else
+        security import "${cert_type}_certificate.p12" -k "$KEYCHAIN" -P "$cert_pass" -T "/usr/bin/productsign"
+    fi
     rm "${cert_type}_certificate.p12"
 }
 
@@ -103,7 +100,6 @@ cleanup_keychain() {
     return 0
 }
 
-# Signing functions
 sign_files() {
     local pattern="$1" entitlements="${2:-}"
     local sign_args=(-s "$SIGNING_IDENTITY" --force --options runtime --timestamp --verify)
@@ -115,30 +111,24 @@ sign_files() {
 sign_application() {
     log_info "Signing application..."
     
-    # Sign libraries
     sign_files "*.dylib"
     sign_files "*.so"
     
-    # Sign Python runtime
-    if check_dir "$RESOURCES_PATH/nexa_mlx/python_runtime/bin"; then
-        sign_files "python*" "$ENTITLEMENTS"
+    if check_dir "$RESOURCES_PATH/metal/python_runtime/bin"; then
+        find "$RESOURCES_PATH/metal/python_runtime/bin" -type f -name "python*" -exec codesign -s "$SIGNING_IDENTITY" --force --options runtime --timestamp --verify --entitlements "$ENTITLEMENTS" {} \;
     fi
     
-    # Sign main executables
     sign_files "nexa*" "$ENTITLEMENTS"
     codesign -s "$SIGNING_IDENTITY" --force --options runtime --timestamp --verify \
              --entitlements "$ENTITLEMENTS" "$APP_PATH/Contents/MacOS/launcher"
     
-    # Sign app bundle
     codesign -s "$SIGNING_IDENTITY" --force --options runtime --timestamp --verify \
              --entitlements "$ENTITLEMENTS" "$APP_PATH"
     
-    # Verify signatures
     codesign --verify --deep --strict --verbose=4 "$APP_PATH"
     log_info "Code signing completed successfully"
 }
 
-# PKG functions
 build_pkg() {
     log_info "Building PKG installer..."
     local unsigned_pkg="$TARGET_DIR/nexa-cli_macos_${ARCH}-unsigned.pkg"
@@ -163,7 +153,6 @@ sign_pkg() {
     echo "$signed_pkg"
 }
 
-# Notarization functions
 notarize_pkg() {
     local pkg_file="$1"
     
@@ -207,7 +196,6 @@ notarize_pkg() {
     log_info "Notarization completed successfully"
 }
 
-# Main execution
 main() {
     local VERSION="${1:-}"
     local ARCH="${2:-}"
@@ -219,12 +207,10 @@ main() {
     
     log_info "Creating macOS installer package for version $VERSION, arch $ARCH"
     
-    # Setup
     setup_app_bundle
     fix_dylib_linkages
     set_permissions
     
-    # Certificate and signing
     if [[ -n "${APP_CERTIFICATE_BASE64:-}" && -n "${APP_CERTIFICATE_PASSWORD:-}" ]]; then
         import_certificate "$APP_CERTIFICATE_BASE64" "$APP_CERTIFICATE_PASSWORD" "app"
     else
@@ -236,12 +222,10 @@ main() {
     else
         log_warn "SIGNING_IDENTITY not provided, skipping code signing"
     fi
-    
-    # PKG creation
+
     local pkg_file
     pkg_file=$(build_pkg)
     
-    # PKG signing
     if [[ -n "${INSTALLER_CERTIFICATE_BASE64:-}" && -n "${INSTALLER_CERTIFICATE_PASSWORD:-}" && -n "${SIGNING_IDENTITY:-}" ]]; then
         import_certificate "$INSTALLER_CERTIFICATE_BASE64" "$INSTALLER_CERTIFICATE_PASSWORD" "productsign"
         pkg_file=$(sign_pkg "$pkg_file")
@@ -251,20 +235,15 @@ main() {
         pkg_file="$TARGET_DIR/nexa-cli_macos_${ARCH}.pkg"
     fi
     
-    # Notarization
     if [[ -n "${APPLE_ID:-}" && -n "${APPLE_PASSWORD:-}" && -n "${TEAM_ID:-}" ]]; then
         notarize_pkg "$pkg_file"
     else
         log_warn "Apple ID credentials not provided, skipping notarization"
     fi
-    
-    # Cleanup
     cleanup_keychain
-    
     log_info "Package created successfully: $pkg_file"
 }
 
-# Trap for cleanup
 trap 'cleanup_keychain || true' EXIT
 
 main "$@"
