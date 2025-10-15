@@ -50,7 +50,11 @@ def execute_nexa(
     stdout: TextIOWrapper = kwargs.pop('stdout', sys.stdout)  # pyright: ignore[reportAny]
     stderr: TextIOWrapper = kwargs.pop('stderr', sys.stderr)  # pyright: ignore[reportAny]
 
-    res = subprocess.run([nexa_path] + args, capture_output=True, text=True, encoding='utf-8',
+    res = subprocess.run([nexa_path] + args,
+                         capture_output=True,
+                         text=True,
+                         encoding='utf-8',
+                         cwd=Path(__file__).parent.parent,
                          **kwargs)  # pyright: ignore[reportAny]
     stdout.write(res.stdout)
     compat_out = False

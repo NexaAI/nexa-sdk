@@ -16,7 +16,9 @@ PLUGIN_MAP = {
 
 TESTCASE_MAP: list[tuple[str, str, list[str]]] = [
     ('cpu_gpu', 'Qwen/Qwen3-1.7B-GGUF', ['multi_round']),  # TODO: add quant support like Qwen3-1.7B-GGUF:Q4_0
-    ('cpu_gpu', 'NexaAI/Qwen3-0.6B-GGUF', ['multi_round']),
+    ('cpu_gpu', 'ggml-org/gemma-3-4b-it-GGUF', ['multi_round', 'image_multi_round']),
+    ('cpu_gpu', 'ggml-org/Qwen2.5-Omni-3B-GGUF', ['multi_round', 'audio_multi_round']),
+    ('cpu_gpu', 'djuna/jina-embeddings-v2-small-en-Q5_K_M-GGUF', ['multi_round']),
 ]
 
 
