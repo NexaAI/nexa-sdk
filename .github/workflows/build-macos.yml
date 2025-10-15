@@ -83,61 +83,19 @@ jobs:
           name: nexa-cli_macos_${{ matrix.arch }}
           path: artifacts
 
-      - name: Prepare file structure for packaging
-        id: prep_files
-        run: |
-          chmod +x  runner/release/darwin/scripts/prepackage.sh
-          bash  runner/release/darwin/scripts/prepackage.sh "${{ env.VERSION }}"
-
-      - name: Fix dylib Linkages (RPATH)
-        run: |
-          RESOURCES_PATH="${{ env.APP_PATH }}/Contents/Resources"
-          install_name_tool -add_rpath "@loader_path" "${RESOURCES_PATH}/nexa-cli"
-
-      - name: Import Code Signing Certificates
+      - name: Create Signed and Notarized Package
         env:
           APP_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
           APP_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           INSTALLER_CERTIFICATE_BASE64: ${{ secrets.APPLE_INSTALLER_CERTIFICATE_BASE64 }}
           INSTALLER_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          SIGNING_IDENTITY: ${{ secrets.APPLE_ID_APPLICATION }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          echo $APP_CERTIFICATE_BASE64 | base64 --decode > app_certificate.p12
-          echo $INSTALLER_CERTIFICATE_BASE64 | base64 --decode > installer_certificate.p12
-          security create-keychain -p "" build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p "" build.keychain
-          security import app_certificate.p12 -k build.keychain -P $APP_CERTIFICATE_PASSWORD -T /usr/bin/codesign
-          security import installer_certificate.p12 -k build.keychain -P $INSTALLER_CERTIFICATE_PASSWORD -T /usr/bin/productsign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
-
-      - name: Sign binaries and libraries
-        run: |
-          chmod +x  runner/release/darwin/scripts/sign.sh
-          bash  runner/release/darwin/scripts/sign.sh "${{ env.APP_PATH }}" "${{ secrets.APPLE_ID_APPLICATION }}"
-
-      - name: Build PKG
-        run: |
-          pkgbuild --root "${{ steps.prep_files.outputs.STAGING_DIR }}" \
-                   --scripts "${{ steps.prep_files.outputs.SCRIPTS_DIR }}" \
-                   --identifier "com.nexaai.nexa-sdk" \
-                   --version "${{ env.VERSION }}" \
-                   --install-location / \
-                   "artifacts/nexa-cli_macos_${{ matrix.arch }}-unsigned.pkg"
-
-      - name: Productsign PKG
-        run: |
-          productsign --sign "${{ secrets.APPLE_ID_INSTALLER }}" --timestamp "artifacts/nexa-cli_macos_${{ matrix.arch }}-unsigned.pkg" "artifacts/nexa-cli_macos_${{ matrix.arch }}.pkg"
-          pkgutil --check-signature "artifacts/nexa-cli_macos_${{ matrix.arch }}.pkg"
-          rm "artifacts/nexa-cli_macos_${{ matrix.arch }}-unsigned.pkg"
-
-      - name: Notarize & Staple PKG
-        run: |
-          chmod +x  runner/release/darwin/scripts/notarize.sh
-          bash  runner/release/darwin/scripts/notarize.sh \
-            "artifacts/nexa-cli_macos_${{ matrix.arch }}.pkg" \
-            "${{ secrets.APPLE_ID }}" \
-            "${{ secrets.APPLE_ID_PASSWORD }}" \
-            "${{ secrets.APPLE_TEAM_ID }}"
+          cd runner
+          make package
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

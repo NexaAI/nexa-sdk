@@ -45,12 +45,11 @@ download: clean
 package: build
 	-$(RM) artifacts
 	@echo "====> Creating installer package for $(OS)_$(ARCH)"
-	@if [ "$(OS)" = "windows" ]; then \
-		bash release/package_windows.sh $(VERSION); \
-	elif [ "$(OS)" = "macos" ]; then \
+	@if [ "$(OS)" = "macos" ]; then \
 		release/package_darwin.sh $(VERSION) $(ARCH); \
-	elif [ "$(OS)" = "linux" ]; then \
-		bash release/package_linux.sh $(VERSION); \
+	else \
+		echo "Error: Package support only available for macOS currently"; \
+		exit 1; \
 	fi
 
 clean:
