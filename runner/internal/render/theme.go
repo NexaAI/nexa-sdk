@@ -54,8 +54,8 @@ func (t *Theme) Reset() {
 	color.ResetTerminal()
 }
 
-func defaultColorTheme() *Theme {
-	theme := Theme{
+func noColorTheme() *Theme {
+	return &Theme{
 		Normal:      NoColor{},
 		Info:        NoColor{},
 		Success:     NoColor{},
@@ -68,7 +68,11 @@ func defaultColorTheme() *Theme {
 		ModelOutput: NoColor{},
 		Profile:     NoColor{},
 	}
-	if color.TermColorLevel() >= color.Level16 {
+}
+
+func defaultColorTheme() *Theme {
+	theme := noColorTheme()
+	if color.SupportColor() {
 		slog.Debug("apply 16 color")
 		theme.Normal = NoColor{}
 		theme.Info = color.Style{color.FgBlue}
@@ -83,18 +87,18 @@ func defaultColorTheme() *Theme {
 		theme.ModelOutput = NoColor{}
 		theme.Profile = color.Style{color.FgLightCyan}
 	}
-	if color.TermColorLevel() >= color.Level256 {
+	if color.Support256Color() {
 		slog.Debug("apply 256 color")
 		theme.Quant = color.S256(31)
 		//theme.AddFiles = color.S256(7)
 		//theme.ModelOutput = color.S256(15)
 		theme.Profile = color.S256(44)
 	}
-	if color.TermColorLevel() >= color.LevelRgb {
+	if color.SupportTrueColor() {
 		slog.Debug("apply true color")
 		theme.Quant = color.NewRGBStyle(color.RGB(0, 135, 175))
 		//theme.AddFiles = color.NewRGBStyle(color.RGB(192, 192, 192))
 		theme.Profile = color.NewRGBStyle(color.RGB(0, 215, 215))
 	}
-	return &theme
+	return theme
 }

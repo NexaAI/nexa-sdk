@@ -104,3 +104,11 @@ Import model from local filesystem
 # hf download <model> --local-dir /path/to/modeldir
 nexa pull <model> --model-hub localfs --local-path /path/to/modeldir
 ```
+
+---
+
+### Test Project
+
+```
+python tests/run.py
+```

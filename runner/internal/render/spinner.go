@@ -1,6 +1,8 @@
 package render
 
 import (
+	"fmt"
+	"os"
 	"sync"
 
 	"github.com/charmbracelet/huh/spinner"
@@ -27,7 +29,13 @@ func (s *Spinner) Start() {
 	s.stop.Add(1)
 
 	go func() {
-		s.Spinner.Run()
+		// if NO_COLOR is set, do not show spinner
+		if os.Getenv("NO_COLOR") == "1" {
+			fmt.Println(s.View())
+			s.start.Wait()
+		} else {
+			s.Spinner.Run()
+		}
 		s.stop.Done()
 	}()
 }

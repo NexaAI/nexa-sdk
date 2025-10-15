@@ -1,0 +1,6 @@
+-p
+hello, how are you?
+-p
+tell me a joke
+-p
+tell me a story
