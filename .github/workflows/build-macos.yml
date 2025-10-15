@@ -44,6 +44,7 @@ jobs:
           cd runner
           make download build
           rm build/ml.h
+          make package
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
