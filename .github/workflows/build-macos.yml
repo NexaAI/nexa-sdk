@@ -39,15 +39,10 @@ jobs:
           go-version: 1.24.3
           cache-dependency-path: runner/go.sum
 
-      - name: Download runtime
+      - name: Build Nexa SDK
         run: |
           cd runner
-          make download
-
-      - name: Build Nexa Cli
-        run: |
-          cd runner
-          make build
+          make download build
           rm build/ml.h
 
       - name: Upload Artifact
