@@ -23,6 +23,10 @@ const (
 func ApplyLogLevel() {
 	options := tint.Options{AddSource: true}
 
+	if os.Getenv("NO_COLOR") == "1" {
+		options.NoColor = true
+	}
+
 	switch config.Get().Log {
 	case LogLevelNone:
 		slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))

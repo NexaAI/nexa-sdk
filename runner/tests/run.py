@@ -69,10 +69,8 @@ def run_benchmark():
                 res = utils.execute_nexa([
                     'infer',
                     model,
-                    '--test-mode',
-                    '--skip-migrate',
-                    '--skip-update',
                 ] + utils.load_param(tc),
+                                         debug_log=True,
                                          stdout=of,
                                          stderr=ef,
                                          timeout=300)
