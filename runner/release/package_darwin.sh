@@ -72,8 +72,8 @@ set_permissions() {
         check_file "$file" && chmod +x "$file"
     done
     
-    if check_dir "$RESOURCES_PATH/nexa_mlx/python_runtime/bin"; then
-        chmod -R +x "$RESOURCES_PATH/nexa_mlx/python_runtime/bin"
+    if check_dir "$RESOURCES_PATH/metal/python_runtime/bin"; then
+        chmod -R +x "$RESOURCES_PATH/metal/python_runtime/bin"
     fi
 }
 
@@ -100,6 +100,7 @@ cleanup_keychain() {
         log_info "Cleaning up keychain..."
         security delete-keychain "$KEYCHAIN" 2>/dev/null || true
     }
+    return 0
 }
 
 # Signing functions
@@ -264,6 +265,6 @@ main() {
 }
 
 # Trap for cleanup
-trap cleanup_keychain EXIT
+trap 'cleanup_keychain || true' EXIT
 
 main "$@"

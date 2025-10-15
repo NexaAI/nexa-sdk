@@ -42,7 +42,7 @@ download: clean
 		https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexasdk/$(BRIDGE_VERSION)/$(OS)_$(ARCH)/nexasdk-bridge.zip
 	cd build && tar -xf nexasdk-bridge.zip && $(RM_FILE) nexasdk-bridge.zip
 
-package: build
+package:
 	-$(RM) artifacts
 	@echo "====> Creating installer package for $(OS)_$(ARCH)"
 	@if [ "$(OS)" = "macos" ]; then \
