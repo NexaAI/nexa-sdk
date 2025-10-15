@@ -19,7 +19,7 @@ else
 	EXE     :=
 	RM      := rm -rf
 	MKDIR   := mkdir -p
-	MKLINK  := cd nexa-sdk && ln -sf ../../../nexasdk-bridge/modelfiles .
+	MKLINK  := ln -s ../../nexasdk-bridge/build/out build
 endif
 
 .PHONY: build link download clean
@@ -29,7 +29,6 @@ build:
 	go build -tags="sonic avx" -ldflags "-X 'main.Version=$(VERSION)' -s -w" -o build/nexa-cli$(EXE) ./cmd/nexa-cli
 
 link: clean
-	$(MKDIR) build
 	$(MKLINK)
 
 download: clean
