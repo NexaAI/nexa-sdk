@@ -69,30 +69,6 @@ type ImageSamplerConfig struct {
 	Seed          int32
 }
 
-func (isc ImageSamplerConfig) toCPtr() *C.ml_ImageSamplerConfig {
-	cPtr := (*C.ml_ImageSamplerConfig)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_ImageSamplerConfig{}))))
-	*cPtr = C.ml_ImageSamplerConfig{}
-
-	if isc.Method != "" {
-		cPtr.method = C.CString(isc.Method)
-	}
-	cPtr.steps = C.int32_t(isc.Steps)
-	cPtr.guidance_scale = C.float(isc.GuidanceScale)
-	cPtr.eta = C.float(isc.Eta)
-	cPtr.seed = C.int32_t(isc.Seed)
-
-	return cPtr
-}
-
-func freeImageSamplerConfig(cPtr *C.ml_ImageSamplerConfig) {
-	if cPtr != nil {
-		if cPtr.method != nil {
-			C.free(unsafe.Pointer(cPtr.method))
-		}
-		C.free(unsafe.Pointer(cPtr))
-	}
-}
-
 // SchedulerConfig represents scheduler configuration
 type SchedulerConfig struct {
 	Type              string
@@ -106,66 +82,6 @@ type SchedulerConfig struct {
 	TimestepSpacing   string
 	InterpolationType string
 	ConfigPath        string
-}
-
-func (sc SchedulerConfig) toCPtr() *C.ml_SchedulerConfig {
-	cPtr := (*C.ml_SchedulerConfig)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_SchedulerConfig{}))))
-	*cPtr = C.ml_SchedulerConfig{}
-
-	if sc.Type != "" {
-		cPtr._type = C.CString(sc.Type)
-	}
-	cPtr.num_train_timesteps = C.int32_t(sc.NumTrainTimesteps)
-	cPtr.steps_offset = C.int32_t(sc.StepsOffset)
-	cPtr.beta_start = C.float(sc.BetaStart)
-	cPtr.beta_end = C.float(sc.BetaEnd)
-	if sc.BetaSchedule != "" {
-		cPtr.beta_schedule = C.CString(sc.BetaSchedule)
-	}
-	if sc.PredictionType != "" {
-		cPtr.prediction_type = C.CString(sc.PredictionType)
-	}
-	if sc.TimestepType != "" {
-		cPtr.timestep_type = C.CString(sc.TimestepType)
-	}
-	if sc.TimestepSpacing != "" {
-		cPtr.timestep_spacing = C.CString(sc.TimestepSpacing)
-	}
-	if sc.InterpolationType != "" {
-		cPtr.interpolation_type = C.CString(sc.InterpolationType)
-	}
-	if sc.ConfigPath != "" {
-		cPtr.config_path = C.CString(sc.ConfigPath)
-	}
-
-	return cPtr
-}
-
-func freeSchedulerConfig(cPtr *C.ml_SchedulerConfig) {
-	if cPtr != nil {
-		if cPtr._type != nil {
-			C.free(unsafe.Pointer(cPtr._type))
-		}
-		if cPtr.beta_schedule != nil {
-			C.free(unsafe.Pointer(cPtr.beta_schedule))
-		}
-		if cPtr.prediction_type != nil {
-			C.free(unsafe.Pointer(cPtr.prediction_type))
-		}
-		if cPtr.timestep_type != nil {
-			C.free(unsafe.Pointer(cPtr.timestep_type))
-		}
-		if cPtr.timestep_spacing != nil {
-			C.free(unsafe.Pointer(cPtr.timestep_spacing))
-		}
-		if cPtr.interpolation_type != nil {
-			C.free(unsafe.Pointer(cPtr.interpolation_type))
-		}
-		if cPtr.config_path != nil {
-			C.free(unsafe.Pointer(cPtr.config_path))
-		}
-		C.free(unsafe.Pointer(cPtr))
-	}
 }
 
 // ImageGenerationConfig represents image generation configuration

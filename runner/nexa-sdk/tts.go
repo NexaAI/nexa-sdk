@@ -219,7 +219,7 @@ func freeTtsSynthesizeOutput(ptr *C.ml_TtsSynthesizeOutput) {
 
 // TtsListAvailableVoicesInput represents input for listing available voices
 type TtsListAvailableVoicesInput struct {
-	Reserved interface{}
+	Reserved any
 }
 
 func (tlavi TtsListAvailableVoicesInput) toCPtr() *C.ml_TtsListAvailableVoicesInput {

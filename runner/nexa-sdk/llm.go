@@ -357,7 +357,7 @@ func freeLlmSaveKVCacheInput(cPtr *C.ml_KvCacheSaveInput) {
 
 // LlmSaveKVCacheOutput represents output from saving LLM KV cache
 type LlmSaveKVCacheOutput struct {
-	Reserved interface{}
+	Reserved any
 }
 
 func newLlmSaveKVCacheOutputFromCPtr(c *C.ml_KvCacheSaveOutput) LlmSaveKVCacheOutput {
