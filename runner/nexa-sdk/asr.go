@@ -201,27 +201,6 @@ func (mc ASRModelConfig) toCPtr() *C.ml_ModelConfig {
 	return cPtr
 }
 
-func freeModelConfig(cPtr *C.ml_ModelConfig) {
-	if cPtr != nil {
-		if cPtr.chat_template_path != nil {
-			C.free(unsafe.Pointer(cPtr.chat_template_path))
-		}
-		if cPtr.chat_template_content != nil {
-			C.free(unsafe.Pointer(cPtr.chat_template_content))
-		}
-		if cPtr.grammar_str != nil {
-			C.free(unsafe.Pointer(cPtr.grammar_str))
-		}
-		if cPtr.qnn_model_folder_path != nil {
-			C.free(unsafe.Pointer(cPtr.qnn_model_folder_path))
-		}
-		if cPtr.qnn_lib_folder_path != nil {
-			C.free(unsafe.Pointer(cPtr.qnn_lib_folder_path))
-		}
-		C.free(unsafe.Pointer(cPtr))
-	}
-}
-
 func (aci AsrCreateInput) toCPtr() *C.ml_AsrCreateInput {
 	cPtr := (*C.ml_AsrCreateInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_AsrCreateInput{}))))
 	*cPtr = C.ml_AsrCreateInput{}

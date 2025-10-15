@@ -149,21 +149,6 @@ func (cmc CVModelConfig) toCPtr() *C.ml_CVModelConfig {
 	return cPtr
 }
 
-func freeCVModelConfig(cPtr *C.ml_CVModelConfig) {
-	if cPtr != nil {
-		if cPtr.det_model_path != nil {
-			C.free(unsafe.Pointer(cPtr.det_model_path))
-		}
-		if cPtr.rec_model_path != nil {
-			C.free(unsafe.Pointer(cPtr.rec_model_path))
-		}
-		if cPtr.char_dict_path != nil {
-			C.free(unsafe.Pointer(cPtr.char_dict_path))
-		}
-		C.free(unsafe.Pointer(cPtr))
-	}
-}
-
 // CVCreateInput represents input parameters for CV model creation
 type CVCreateInput struct {
 	ModelName string
