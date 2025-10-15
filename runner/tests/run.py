@@ -52,6 +52,7 @@ def check_models():
 def run_benchmark():
     log.print("========== Run Benchmark =========")
 
+    failed_cases: list[tuple[str, str, str]] = []
     for i, (plugin, model, tcs) in enumerate(testcases):
         os.makedirs(log.log_dir / plugin, exist_ok=True)
         mp = f'{i+1}/{len(testcases)}'
@@ -79,8 +80,9 @@ def run_benchmark():
                     raise RuntimeError(f'Non-zero exit code: {res.returncode}')
 
                 log.print(f'  --> [{mp}][{tcp}] Testcase: {tc} success')
-            except Exception as e:
+            except Exception as _:
                 log.print(f'  --> [{mp}][{tcp}] Testcase {tc} failed')
+                failed_cases.append((plugin, model, tc))
                 if of is not None:
                     of.write('\n====== Exception Logs ======\n')
                     of.write(traceback.format_exc())
@@ -89,6 +91,14 @@ def run_benchmark():
                     of.close()
                 if ef is not None:
                     ef.close()
+
+    log.print("======== Benchmark Result ========")
+    if len(failed_cases) == 0:
+        log.print('All testcases passed')
+    else:
+        for plugin, model, tc in failed_cases:
+            log_file = log.log_dir / plugin / f'{model.replace("/", "-")}_{tc}.log'
+            log.print(f'Failed: Plugin: {plugin}, Model: {model}, TestCase: {tc}, see {log_file}')
 
 
 def main():
