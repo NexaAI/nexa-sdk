@@ -19,7 +19,7 @@ func initPath() {
 	}
 	realExe, err := filepath.EvalSymlinks(exe)
 	if err != nil {
-		panic(err)
+		realExe = exe
 	}
 	baseDir = filepath.Dir(realExe)
 	binPath = filepath.Join(baseDir, "nexa-cli")
