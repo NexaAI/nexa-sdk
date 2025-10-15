@@ -40,7 +40,7 @@ download: clean
 	$(MKDIR) build
 	curl -L -o build/nexasdk-bridge.zip \
 		https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexasdk/$(BRIDGE_VERSION)/$(OS)_$(ARCH)/nexasdk-bridge.zip
-	cd build && tar -xf nexasdk-bridge.zip && $(RM_FILE) nexasdk-bridge.zip
+	cd build && tar -xf nexasdk-bridge.zip && $(RM) nexasdk-bridge.zip
 
 package:
 	-$(RM) artifacts
