@@ -12,6 +12,7 @@ import (
 	"github.com/bytedance/sonic"
 	"github.com/gin-gonic/gin"
 	"github.com/openai/openai-go"
+	"github.com/openai/openai-go/packages/param"
 	"github.com/openai/openai-go/shared/constant"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
@@ -31,6 +32,7 @@ type ChatCompletionRequest struct {
 	Stream bool `json:"stream"`
 
 	EnableThink       bool    `json:"enable_think"`
+	NCtx              int32   `json:"nctx"`
 	TopK              int32   `json:"top_k"`
 	MinP              float32 `json:"min_p"`
 	RepetitionPenalty float32 `json:"repetition_penalty"`
@@ -46,12 +48,16 @@ func defaultChatCompletionRequest() ChatCompletionRequest {
 		Stream:      false,
 		EnableThink: true,
 
+		NCtx:              4096,
 		TopK:              0,
 		MinP:              0.0,
 		RepetitionPenalty: 1.0,
 		GrammarPath:       "",
 		GrammarString:     "",
 		EnableJson:        false,
+		ChatCompletionNewParams: ChatCompletionNewParams{
+			MaxCompletionTokens: param.NewOpt[int64](2048),
+		},
 	}
 }
 
@@ -63,7 +69,7 @@ func ChatCompletions(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
 	}
-
+	slog.Debug("ChatCompletions", "param", param)
 	s := store.Get()
 	manifest, err := s.GetManifest(param.Model)
 	if err != nil {
@@ -119,7 +125,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 	// Get LLM instance
 	p, err := service.KeepAliveGet[nexa_sdk.LLM](
 		string(param.Model),
-		types.ModelParam{NCtx: 4096, NGpuLayers: 999, SystemPrompt: systemPrompt},
+		types.ModelParam{NCtx: param.NCtx, NGpuLayers: 999, SystemPrompt: systemPrompt},
 		c.GetHeader("Nexa-KeepCache") != "true",
 	)
 	if errors.Is(err, os.ErrNotExist) {
@@ -170,7 +176,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 					return true
 				},
 				Config: &nexa_sdk.GenerationConfig{
-					MaxTokens:     2048,
+					MaxTokens:     int32(param.MaxCompletionTokens.Value),
 					SamplerConfig: samplerConfig,
 				},
 			})
@@ -217,7 +223,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 		genOut, err := p.Generate(nexa_sdk.LlmGenerateInput{
 			PromptUTF8: formatted.FormattedText,
 			Config: &nexa_sdk.GenerationConfig{
-				MaxTokens:     2048,
+				MaxTokens:     int32(param.MaxCompletionTokens.Value),
 				SamplerConfig: samplerConfig,
 			},
 		},
@@ -347,7 +353,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 	// Get VLM instance
 	p, err := service.KeepAliveGet[nexa_sdk.VLM](
 		string(param.Model),
-		types.ModelParam{NCtx: 4096, NGpuLayers: 999, SystemPrompt: systemPrompt},
+		types.ModelParam{NCtx: param.NCtx, NGpuLayers: 999, SystemPrompt: systemPrompt},
 		c.GetHeader("Nexa-KeepCache") != "true",
 	)
 	if errors.Is(err, os.ErrNotExist) {
@@ -409,7 +415,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 					return true
 				},
 				Config: &nexa_sdk.GenerationConfig{
-					MaxTokens:     2048,
+					MaxTokens:     int32(param.MaxCompletionTokens.Value),
 					SamplerConfig: samplerConfig,
 					ImagePaths:    images,
 					AudioPaths:    audios,
@@ -458,7 +464,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 		genOut, err := p.Generate(nexa_sdk.VlmGenerateInput{
 			PromptUTF8: formatted.FormattedText,
 			Config: &nexa_sdk.GenerationConfig{
-				MaxTokens:     2048,
+				MaxTokens:     int32(param.MaxCompletionTokens.Value),
 				SamplerConfig: samplerConfig,
 				ImagePaths:    images,
 				AudioPaths:    audios,
