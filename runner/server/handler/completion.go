@@ -12,6 +12,7 @@ import (
 	"github.com/bytedance/sonic"
 	"github.com/gin-gonic/gin"
 	"github.com/openai/openai-go"
+	"github.com/openai/openai-go/packages/param"
 	"github.com/openai/openai-go/shared/constant"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
@@ -54,6 +55,9 @@ func defaultChatCompletionRequest() ChatCompletionRequest {
 		GrammarPath:       "",
 		GrammarString:     "",
 		EnableJson:        false,
+		ChatCompletionNewParams: ChatCompletionNewParams{
+			MaxCompletionTokens: param.NewOpt[int64](2048),
+		},
 	}
 }
 
@@ -65,7 +69,7 @@ func ChatCompletions(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
 	}
-
+	slog.Debug("ChatCompletions", "param", param)
 	s := store.Get()
 	manifest, err := s.GetManifest(param.Model)
 	if err != nil {
@@ -172,7 +176,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 					return true
 				},
 				Config: &nexa_sdk.GenerationConfig{
-					MaxTokens:     int32(param.MaxTokens.Value),
+					MaxTokens:     int32(param.MaxCompletionTokens.Value),
 					SamplerConfig: samplerConfig,
 				},
 			})
