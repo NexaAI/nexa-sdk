@@ -40,28 +40,38 @@ jobs:
           cache-dependency-path: runner/go.sum
 
       - name: Build Nexa SDK
+        run: |
+          cd runner
+          make download build
+          rm build/ml.h
+
+      - name: Upload build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexa-cli_macos_${{ matrix.arch }}
+          path: runner/build
+          include-hidden-files: true
+
+      - name: Sign Nexa SDK
         env:
           APP_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
           APP_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APP_SIGNING_IDENTITY: ${{ secrets.APPLE_ID_APPLICATION }}
           INSTALLER_CERTIFICATE_BASE64: ${{ secrets.APPLE_INSTALLER_CERTIFICATE_BASE64 }}
           INSTALLER_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          SIGNING_IDENTITY: ${{ secrets.APPLE_ID_APPLICATION }}
+          INSTALLER_SIGNING_IDENTITY: ${{ secrets.APPLE_ID_INSTALLER }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
           TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           cd runner
-          make download build
-          rm build/ml.h
           make package
-
-      - name: Upload Artifact
+      
+      - name: Upload pkg Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nexa-cli_macos_${{ matrix.arch }}
-          path: |
-            runner/build
-            runner/artifacts
+          name: nexa-cli_macos_${{ matrix.arch }}.pkg
+          path: runner/artifacts/nexa-cli_macos_${{ matrix.arch }}.pkg
           include-hidden-files: true
 
   release:
@@ -84,8 +94,8 @@ jobs:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: nexa-cli_macos_${{ matrix.arch }}
-          path: artifacts
+          name: nexa-cli_macos_${{ matrix.arch }}.pkg
+          path: runner/artifacts/nexa-cli_macos_${{ matrix.arch }}.pkg
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

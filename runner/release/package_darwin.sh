@@ -1,249 +1,173 @@
 #!/bin/bash
-#
-# macOS Package Builder
-# Creates signed and notarized PKG installer for NexaCLI
-#
 
 set -euo pipefail
 
-readonly TARGET_DIR="artifacts"
-readonly APP_PATH="${TARGET_DIR}/Applications/NexaCLI.app"
-readonly RESOURCES_PATH="${APP_PATH}/Contents/Resources"
-readonly ENTITLEMENTS="release/darwin/entitlements.plist"
+readonly VERSION="$1" ARCH="$2"
+readonly APP_PATH="artifacts/Applications/NexaCLI.app"
+readonly RESOURCES_PATH="$APP_PATH/Contents/Resources"
 readonly KEYCHAIN="build.keychain"
 
-readonly RED='\033[0;31m'
-readonly GREEN='\033[0;32m'
-readonly YELLOW='\033[1;33m'
-readonly NC='\033[0m' # No Color
+readonly RED='\033[0;31m' GREEN='\033[0;32m' YELLOW='\033[1;33m' NC='\033[0m'
+log() { echo -e "${GREEN}[INFO]${NC} $*" >&2; }
+warn() { echo -e "${YELLOW}[WARN]${NC} $*" >&2; }
+die() { echo -e "${RED}[ERROR]${NC} $*" >&2; exit 1; }
 
-log_info() { echo -e "${GREEN}[INFO]${NC} $*" >&2; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $*" >&2; }
-log_error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
-
-check_file() {
-    local file="$1"
-    if [[ ! -f "$file" ]]; then
-        log_warn "$file not found"
-        return 1
-    fi
-    return 0
-}
-
-check_dir() {
-    local dir="$1"
-    if [[ ! -d "$dir" ]]; then
-        log_warn "$dir not found"
-        return 1
-    fi
-    return 0
-}
-
-setup_app_bundle() {
-    log_info "Setting up application bundle..."
-    mkdir -p "$TARGET_DIR" "$RESOURCES_PATH"
-    cp -r release/darwin/Applications "$TARGET_DIR"
+setup_bundle() {
+    log "Setting up application bundle..."
+    mkdir -p "$RESOURCES_PATH"
+    cp -r release/darwin/Applications artifacts/
     cp -r build/* "$RESOURCES_PATH"
-    
     sed -i '' "s/\${VERSION}/$VERSION/g" "$APP_PATH/Contents/Info.plist"
 }
 
-fix_dylib_linkages() {
-    log_info "Fixing dylib linkages..."
-    check_file "$RESOURCES_PATH/nexa-cli" && \
-        install_name_tool -add_rpath "@loader_path" "$RESOURCES_PATH/nexa-cli"
+fix_libs() {
+    log "Fixing library paths..."
+    [[ -f "$RESOURCES_PATH/nexa-cli" ]] && install_name_tool -add_rpath "@loader_path" "$RESOURCES_PATH/nexa-cli"
 }
 
-set_permissions() {
-    log_info "Setting permissions..."
-    local files=(
-        "$APP_PATH/Contents/MacOS/launcher"
-        "$RESOURCES_PATH/nexa"
-        "$RESOURCES_PATH/nexa-cli"
-    )
+set_perms() {
+    log "Setting permissions..."
+    chmod +x "$APP_PATH/Contents/MacOS/launcher" "$RESOURCES_PATH/nexa" "$RESOURCES_PATH/nexa-cli" 2>/dev/null || true
+    [[ -d "$RESOURCES_PATH/metal/python_runtime/bin" ]] && chmod -R +x "$RESOURCES_PATH/metal/python_runtime/bin"
+    log "Permissions set successfully"
+}
+
+setup_signing() {
+    log "Setting up signing environment..."
+    security delete-keychain "$KEYCHAIN" 2>/dev/null || true
+    security create-keychain -p "" "$KEYCHAIN"
+    security default-keychain -s "$KEYCHAIN"
+    security unlock-keychain -p "" "$KEYCHAIN"
+}
+
+import_cert() {
+    local cert_b64="$1" pass="$2" tool="$3"
+    echo "$cert_b64" | base64 --decode > "${tool}_cert.p12"
+    security import "${tool}_cert.p12" -k "$KEYCHAIN" -P "$pass" -T "/usr/bin/$tool"
+    rm "${tool}_cert.p12"
+    security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" "$KEYCHAIN"
+    security list-keychains -s build.keychain
+}
+
+sign_app() {
+    log "Signing application..."
+    local entitlements="release/darwin/entitlements.plist"
+
+    local lib_files=() macho_files=()
+    while IFS= read -r f; do
+        case "$f" in
+            *.dylib|*.so) lib_files+=("$f") ;;
+            *)
+                if file "$f" | grep -q "Mach-O"; then
+                    macho_files+=("$f")
+                fi
+                ;;
+        esac
+    done < <(find "$RESOURCES_PATH" -type f)
     
-    for file in "${files[@]}"; do
-        check_file "$file" && chmod +x "$file"
+    for f in "${lib_files[@]}"; do
+        (log "Signing dependency: $f"; codesign -s "$APP_SIGNING_IDENTITY" --force --options runtime --timestamp "$f") &
     done
     
-    if check_dir "$RESOURCES_PATH/metal/python_runtime/bin"; then
-        chmod -R +x "$RESOURCES_PATH/metal/python_runtime/bin"
-    fi
-}
+    for f in "${macho_files[@]}"; do
+        (log "Signing executable: $f"; codesign -s "$APP_SIGNING_IDENTITY" --force --options runtime --timestamp --entitlements "$entitlements" "$f") &
+    done
+    
+    wait
 
-import_certificate() {
-    local cert_b64="$1" cert_pass="$2" cert_type="$3"
-    
-    log_info "Importing $cert_type certificate..."
-    echo "$cert_b64" | base64 --decode > "${cert_type}_certificate.p12"
-    
-    if [[ "$cert_type" == "app" ]]; then
-        security create-keychain -p "" "$KEYCHAIN"
-        security default-keychain -s "$KEYCHAIN"
-        security unlock-keychain -p "" "$KEYCHAIN"
-        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" "$KEYCHAIN"
-    fi
-    
-    if [[ "$cert_type" == "app" ]]; then
-        security import "${cert_type}_certificate.p12" -k "$KEYCHAIN" -P "$cert_pass" -T "/usr/bin/codesign"
-    else
-        security import "${cert_type}_certificate.p12" -k "$KEYCHAIN" -P "$cert_pass" -T "/usr/bin/productsign"
-    fi
-    rm "${cert_type}_certificate.p12"
-}
-
-cleanup_keychain() {
-    [[ -n "${APP_CERTIFICATE_BASE64:-}" ]] && {
-        log_info "Cleaning up keychain..."
-        security delete-keychain "$KEYCHAIN" 2>/dev/null || true
-    }
-    return 0
-}
-
-sign_files() {
-    local pattern="$1" entitlements="${2:-}"
-    local sign_args=(-s "$SIGNING_IDENTITY" --force --options runtime --timestamp --verify)
-    [[ -n "$entitlements" ]] && sign_args+=(--entitlements "$entitlements")
-    
-    find "$RESOURCES_PATH" -type f -name "$pattern" -exec codesign "${sign_args[@]}" {} \;
-}
-
-sign_application() {
-    log_info "Signing application..."
-    
-    sign_files "*.dylib"
-    sign_files "*.so"
-    
-    if check_dir "$RESOURCES_PATH/metal/python_runtime/bin"; then
-        find "$RESOURCES_PATH/metal/python_runtime/bin" -type f -name "python*" -exec codesign -s "$SIGNING_IDENTITY" --force --options runtime --timestamp --verify --entitlements "$ENTITLEMENTS" {} \;
-    fi
-    
-    sign_files "nexa*" "$ENTITLEMENTS"
-    codesign -s "$SIGNING_IDENTITY" --force --options runtime --timestamp --verify \
-             --entitlements "$ENTITLEMENTS" "$APP_PATH/Contents/MacOS/launcher"
-    
-    codesign -s "$SIGNING_IDENTITY" --force --options runtime --timestamp --verify \
-             --entitlements "$ENTITLEMENTS" "$APP_PATH"
-    
+    codesign -s "$APP_SIGNING_IDENTITY" --force --options runtime --timestamp --entitlements "$entitlements" "$APP_PATH/Contents/MacOS/launcher"
+    codesign -s "$APP_SIGNING_IDENTITY" --force --options runtime --timestamp --entitlements "$entitlements" "$APP_PATH"
     codesign --verify --deep --strict --verbose=4 "$APP_PATH"
-    log_info "Code signing completed successfully"
+    log "App signing complete."
 }
 
 build_pkg() {
-    log_info "Building PKG installer..."
-    local unsigned_pkg="$TARGET_DIR/nexa-cli_macos_${ARCH}-unsigned.pkg"
-    
-    pkgbuild --root "$TARGET_DIR" \
-             --scripts "release/darwin/scripts" \
-             --identifier "com.nexaai.nexa-sdk" \
-             --version "$VERSION" \
-             --install-location / \
-             "$unsigned_pkg" >/dev/null
-    
-    echo "$unsigned_pkg"
+    log "Building PKG installer..."
+    local pkg="artifacts/nexa-cli_macos_${ARCH}-unsigned.pkg"
+    pkgbuild --root artifacts --scripts "release/darwin/scripts" \
+             --identifier "com.nexaai.nexa-sdk" --version "$VERSION" \
+             --install-location / "$pkg" >/dev/null
+    echo "$pkg"
 }
 
 sign_pkg() {
-    local unsigned_pkg="$1"
-    local signed_pkg="$TARGET_DIR/nexa-cli_macos_${ARCH}.pkg"
-    
-    log_info "Signing PKG installer..."
-    productsign --sign "$SIGNING_IDENTITY" "$unsigned_pkg" "$signed_pkg"
-    rm "$unsigned_pkg"
-    echo "$signed_pkg"
+    local unsigned="$1" signed="artifacts/nexa-cli_macos_${ARCH}.pkg"
+    log "Signing PKG installer..."
+    productsign --sign "$INSTALLER_SIGNING_IDENTITY" "$unsigned" "$signed" >/dev/null || die "PKG signing failed"
+    pkgutil --check-signature "$signed" >/dev/null || die "PKG signature verification failed"
+    rm "$unsigned"
+    echo "$signed"
 }
 
-notarize_pkg() {
-    local pkg_file="$1"
+
+notarize() {
+    local pkg="$1"
+    log "Submitting PKG for notarization..."
     
-    log_info "Submitting PKG for notarization..."
     local output
-    output=$(xcrun notarytool submit "$pkg_file" \
-        --apple-id "$APPLE_ID" \
-        --password "$APPLE_PASSWORD" \
-        --team-id "$TEAM_ID" \
-        --wait)
-    
-    echo "$output"
+    output=$(xcrun notarytool submit "$pkg" --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$TEAM_ID" --wait)
     
     local submission_id
     submission_id=$(echo "$output" | grep -oE 'id: [0-9a-f-]+' | head -n 1 | awk '{print $2}')
+    [[ -z "$submission_id" ]] && die "Failed to extract submission ID"
     
-    [[ -z "$submission_id" ]] && {
-        log_error "Failed to extract submission ID"
-        exit 1
-    }
-    
+    local submission_info
+    submission_info=$(xcrun notarytool info "$submission_id" --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$TEAM_ID")
+
     local status
-    status=$(xcrun notarytool info "$submission_id" \
-        --apple-id "$APPLE_ID" \
-        --password "$APPLE_PASSWORD" \
-        --team-id "$TEAM_ID" | grep "status:" | awk '{print $2}')
-    
-    log_info "Notarization status: $status"
-    
+    status=$(echo "$submission_info" | grep "status:" | awk '{print $2}')
+    log "Notarization status: $status"
     [[ "$status" != "Accepted" ]] && {
-        log_error "Notarization failed. Fetching log..."
-        xcrun notarytool log "$submission_id" \
-            --apple-id "$APPLE_ID" \
-            --password "$APPLE_PASSWORD" \
-            --team-id "$TEAM_ID"
-        exit 1
+        xcrun notarytool log "$submission_id" --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$TEAM_ID"
+        die "Notarization failed"
     }
-    
-    log_info "Stapling notarization ticket..."
-    xcrun stapler staple "$pkg_file"
-    log_info "Notarization completed successfully"
+
+    log "Stapling PKG..."
+    xcrun stapler staple "$pkg"
+    log "Notarization completed successfully"
+}
+
+cleanup() {
+    [[ -n "${APP_CERTIFICATE_BASE64:-}" ]] && {
+        log "Cleaning up keychain..."
+        security delete-keychain "$KEYCHAIN" 2>/dev/null || true
+    }
 }
 
 main() {
-    local VERSION="${1:-}"
-    local ARCH="${2:-}"
+    [[ -z "$VERSION" ]] && die "Usage: $0 <version> <arch>"
+    log "Creating macOS installer package for version $VERSION, arch $ARCH"
+        
+    setup_bundle
+    fix_libs
+    set_perms
+
+    log "Checking environment variables..."
+    [[ -z "${APP_CERTIFICATE_BASE64:-}" ]] && die "APP_CERTIFICATE_BASE64 not set"
+    [[ -z "${APP_CERTIFICATE_PASSWORD:-}" ]] && die "APP_CERTIFICATE_PASSWORD not set"
+    [[ -z "${APP_SIGNING_IDENTITY:-}" ]] && die "APP_SIGNING_IDENTITY not set"
     
-    [[ -z "$VERSION" ]] && {
-        log_error "Usage: $0 <version> <arch>"
-        exit 1
-    }
-    
-    log_info "Creating macOS installer package for version $VERSION, arch $ARCH"
-    
-    setup_app_bundle
-    fix_dylib_linkages
-    set_permissions
-    
-    if [[ -n "${APP_CERTIFICATE_BASE64:-}" && -n "${APP_CERTIFICATE_PASSWORD:-}" ]]; then
-        import_certificate "$APP_CERTIFICATE_BASE64" "$APP_CERTIFICATE_PASSWORD" "app"
-    else
-        log_warn "App certificate not provided, skipping certificate import"
-    fi
-    
-    if [[ -n "${SIGNING_IDENTITY:-}" ]]; then
-        sign_application
-    else
-        log_warn "SIGNING_IDENTITY not provided, skipping code signing"
-    fi
+    setup_signing
+    import_cert "$APP_CERTIFICATE_BASE64" "$APP_CERTIFICATE_PASSWORD" "codesign"
+    sign_app
 
     local pkg_file
     pkg_file=$(build_pkg)
     
-    if [[ -n "${INSTALLER_CERTIFICATE_BASE64:-}" && -n "${INSTALLER_CERTIFICATE_PASSWORD:-}" && -n "${SIGNING_IDENTITY:-}" ]]; then
-        import_certificate "$INSTALLER_CERTIFICATE_BASE64" "$INSTALLER_CERTIFICATE_PASSWORD" "productsign"
-        pkg_file=$(sign_pkg "$pkg_file")
-    else
-        log_warn "Installer certificate not provided, keeping unsigned PKG"
-        mv "$pkg_file" "$TARGET_DIR/nexa-cli_macos_${ARCH}.pkg"
-        pkg_file="$TARGET_DIR/nexa-cli_macos_${ARCH}.pkg"
-    fi
+    [[ -z "${INSTALLER_CERTIFICATE_BASE64:-}" ]] && die "INSTALLER_CERTIFICATE_BASE64 not set"
+    [[ -z "${INSTALLER_CERTIFICATE_PASSWORD:-}" ]] && die "INSTALLER_CERTIFICATE_PASSWORD not set"
     
-    if [[ -n "${APPLE_ID:-}" && -n "${APPLE_PASSWORD:-}" && -n "${TEAM_ID:-}" ]]; then
-        notarize_pkg "$pkg_file"
-    else
-        log_warn "Apple ID credentials not provided, skipping notarization"
-    fi
-    cleanup_keychain
-    log_info "Package created successfully: $pkg_file"
+    import_cert "$INSTALLER_CERTIFICATE_BASE64" "$INSTALLER_CERTIFICATE_PASSWORD" "productsign"
+    pkg_file=$(sign_pkg "$pkg_file")
+    
+    [[ -z "${APPLE_ID:-}" ]] && die "APPLE_ID not set"
+    [[ -z "${APPLE_PASSWORD:-}" ]] && die "APPLE_PASSWORD not set"
+    [[ -z "${TEAM_ID:-}" ]] && die "TEAM_ID not set"
+    
+    notarize "$pkg_file"
+    
+    log "Package created successfully: $pkg_file"
 }
 
-trap 'cleanup_keychain || true' EXIT
-
+trap 'cleanup || true' EXIT
 main "$@"
