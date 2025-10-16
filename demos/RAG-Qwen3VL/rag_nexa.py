@@ -409,7 +409,7 @@ def main():
 
             # Streaming generation
             context_text = "\n\n".join([d.page_content for d in ctx_docs])
-            IMG_TOPK = 3
+            IMG_TOPK = 1
             topk_imgs = retrieve_topk_images(q, IMG_TOPK, img_index, img_paths_kept, clip_model)
 
             # For logging
