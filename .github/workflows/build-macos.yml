@@ -25,14 +25,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Detect Tag Version
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
-
-      - name: Detect Commit Hash 
-        if: github.event_name == 'workflow_dispatch'
-        run: echo "VERSION=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_ENV
-
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -40,6 +32,8 @@ jobs:
           cache-dependency-path: runner/go.sum
 
       - name: Build Nexa SDK
+        env:
+          VERSION: ${{ github.ref_name }}
         run: |
           cd runner
           make download build
@@ -63,23 +57,23 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
           TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          VERSION: ${{ github.ref_name }}
         run: |
           cd runner
           make package
-      
+
       - name: Upload pkg Artifact
         uses: actions/upload-artifact@v4
         with:
           name: nexa-cli_macos_${{ matrix.arch }}.pkg
           path: runner/artifacts/nexa-cli_macos_${{ matrix.arch }}.pkg
           include-hidden-files: true
-          
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
-        if: github.ref_type == 'tag'
         with:
           repository: NexaAI/nexa-sdk
-          tag_name: ${{ env.VERSION }}
+          tag_name: ${{ github.ref_name }}
           files: |
             artifacts/nexa-cli_macos_${{ matrix.arch }}.pkg
           draft: ${{ contains(github.ref, '-rc') }}
@@ -89,7 +83,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.ZACK_ACCESS_TOKEN }}
 
       - name: Configure AWS credentials
-        if:  github.ref_type == 'tag' && ${{ !contains(github.ref, '-rc') }}
+        if: ${{ !contains(github.ref, '-rc') }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -97,7 +91,7 @@ jobs:
           aws-region: us-west-1
 
       - name: Sync to S3
-        if:  github.ref_type == 'tag' && ${{ !contains(github.ref, '-rc') }}
+        if: ${{ !contains(github.ref, '-rc') }}
         shell: bash
         run: |
           aws s3 cp "artifacts/nexa-cli_macos_${{ matrix.arch }}.pkg" "s3://nexa-model-hub-bucket/public/nexa_sdk/downloads/nexa-cli_macos_${{ matrix.arch }}.pkg"

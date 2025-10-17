@@ -8,6 +8,7 @@ ifeq ($(OS), Windows_NT)
 	RM      := powershell -NoProfile -NonInteractive "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path"
 	MKDIR   := powershell -NoProfile -NonInteractive "New-Item -ItemType Directory -Force -Path"
 	MKLINK  := powershell -NoProfile -NonInteractive "New-Item -ItemType Junction -Path 'build' -Target '..\..\nexasdk-bridge\build\out'"
+	MKPACKAGE := echo "Package not supported yet on Windows" && exit 1
 else
 	OS      := $(shell echo $(shell uname -s) | tr '[:upper:]' '[:lower:]')
 	ifeq ($(OS), darwin)
@@ -21,6 +22,7 @@ else
 	RM      := rm -rf
 	MKDIR   := mkdir -p
 	MKLINK  := ln -s ../../nexasdk-bridge/build/out build
+	MKPACKAGE := ./release/$(OS)/package.sh $(VERSION) $(ARCH)
 endif
 
 .PHONY: build link download package clean
@@ -45,12 +47,7 @@ download: clean
 package:
 	@echo "====> Creating installer package for $(OS)_$(ARCH)"
 	-$(RM) artifacts
-	@if [ "$(OS)" = "macos" ]; then \
-		release/package_darwin.sh $(VERSION) $(ARCH); \
-	else \
-		echo "Error: Package support only available for macOS currently"; \
-		exit 1; \
-	fi
+	$(MKPACKAGE)
 
 clean:
 	-$(RM) build
