@@ -72,6 +72,7 @@ func ChatCompletions(c *gin.Context) {
 
 	// Automatically adjust NCtx if MaxCompletionTokens is larger
 	if param.NCtx < int32(param.MaxCompletionTokens.Value) {
+		slog.Debug("Adjust NCtx to MaxCompletionTokens", "from", param.NCtx, "to", param.MaxCompletionTokens.Value)
 		param.NCtx = int32(param.MaxCompletionTokens.Value)
 	}
 
@@ -101,6 +102,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 	for _, msg := range param.Messages {
 		switch content := msg.GetContent().AsAny().(type) {
 		case *string:
+			// NOTE: patch for npu
 			if *msg.GetRole() == "system" {
 				systemPrompt += *content
 			}
@@ -113,6 +115,10 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 			for _, ct := range *content {
 				switch *ct.GetType() {
 				case "text":
+					// NOTE: patch for npu
+					if *msg.GetRole() == "system" {
+						systemPrompt += *ct.GetText()
+					}
 					messages = append(messages, nexa_sdk.LlmChatMessage{
 						Role:    nexa_sdk.LLMRole(*msg.GetRole()),
 						Content: *ct.GetText(),
@@ -310,6 +316,10 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 			for _, ct := range *content {
 				switch *ct.GetType() {
 				case "text":
+					// NOTE: patch for npu
+					if *msg.GetRole() == "system" {
+						systemPrompt += *ct.GetText()
+					}
 					contents = append(contents, nexa_sdk.VlmContent{
 						Type: nexa_sdk.VlmContentTypeText,
 						Text: *ct.GetText(),
