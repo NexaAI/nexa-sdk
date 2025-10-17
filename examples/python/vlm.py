@@ -47,14 +47,11 @@ def parse_media_from_input(user_input: str) -> tuple[str, Optional[List[str]], O
 
 
 def main():
-    # Your model path
-    model = os.path.expanduser("~/.cache/nexa.ai/nexa_sdk/models/NexaAI/gemma-3n-E4B-it-4bit-MLX/model-00001-of-00002.safetensors")
-
     # Model configuration
     m_cfg = ModelConfig()
 
     # Load model
-    instance: VLM = VLM.from_(name_or_path=model, mmproj_path="", m_cfg=m_cfg, plugin_id="mlx", device_id="")
+    instance: VLM = VLM.from_(name_or_path='NexaAI/gemma-3n-E4B-it-4bit-MLX', m_cfg=m_cfg, plugin_id="mlx", device_id="")
 
     conversation: List[MultiModalMessage] = [MultiModalMessage(role="system", content=[MultiModalMessageContent(type="text", text="You are a helpful assistant.")])]
     strbuff = io.StringIO()
