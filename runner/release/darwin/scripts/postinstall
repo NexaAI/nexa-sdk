@@ -3,6 +3,14 @@
 echo "Creating symbolic links for Nexa CLI..."
 
 APP_PATH="/Applications/NexaCLI.app"
-ln -sf "${APP_PATH}/Contents/Resources/nexa" "/usr/local/bin/nexa"
+BIN_DIR="/usr/local/bin"
+
+if [ ! -d "$BIN_DIR" ]; then
+    sudo mkdir -p "$BIN_DIR"
+    sudo chown root:wheel "$BIN_DIR"
+    sudo chmod 755 "$BIN_DIR"
+fi
+
+ln -sf "${APP_PATH}/Contents/Resources/nexa" "${BIN_DIR}/nexa"
 
 exit 0
