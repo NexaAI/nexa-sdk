@@ -1,0 +1,5 @@
+#!/usr/bin/osascript
+tell application "Terminal"
+    activate
+    do script "nexa"
+end tell

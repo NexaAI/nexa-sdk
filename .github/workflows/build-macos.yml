@@ -29,7 +29,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
 
-      - name: Detect Commit Hash
+      - name: Detect Commit Hash 
         if: github.event_name == 'workflow_dispatch'
         run: echo "VERSION=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_ENV
 
@@ -39,108 +39,44 @@ jobs:
           go-version: 1.24.3
           cache-dependency-path: runner/go.sum
 
-      - name: Download runtime
+      - name: Build Nexa SDK
         run: |
           cd runner
-          make download
-
-      - name: Build Nexa Cli
-        run: |
-          cd runner
-          make build
+          make download build
           rm build/ml.h
 
-      - name: Upload Artifact
+      - name: Upload build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: nexa-cli_macos_${{ matrix.arch }}
           path: runner/build
           include-hidden-files: true
 
-  package-and-release:
-    name: Package for macos_${{ matrix.arch }}
-    needs: build-cli
-    runs-on: ${{ matrix.runner }}
-    if: github.ref_type == 'tag'
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-13
-            arch: x86_64
-          - runner: macos-14
-            arch: arm64
-    env:
-      VERSION: ${{ github.ref_name }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: nexa-cli_macos_${{ matrix.arch }}
-          path: artifacts
-
-      - name: Prepare file structure for packaging
-        id: prep_files
-        run: |
-          chmod +x  runner/release/darwin/scripts/prepackage.sh
-          bash  runner/release/darwin/scripts/prepackage.sh "${{ env.VERSION }}"
-
-      - name: Fix dylib Linkages (RPATH)
-        run: |
-          RESOURCES_PATH="${{ env.APP_PATH }}/Contents/Resources"
-          install_name_tool -add_rpath "@loader_path" "${RESOURCES_PATH}/nexa-cli"
-
-      - name: Import Code Signing Certificates
+      - name: Sign Nexa SDK
         env:
           APP_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
           APP_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APP_SIGNING_IDENTITY: ${{ secrets.APPLE_ID_APPLICATION }}
           INSTALLER_CERTIFICATE_BASE64: ${{ secrets.APPLE_INSTALLER_CERTIFICATE_BASE64 }}
           INSTALLER_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          INSTALLER_SIGNING_IDENTITY: ${{ secrets.APPLE_ID_INSTALLER }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          echo $APP_CERTIFICATE_BASE64 | base64 --decode > app_certificate.p12
-          echo $INSTALLER_CERTIFICATE_BASE64 | base64 --decode > installer_certificate.p12
-          security create-keychain -p "" build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p "" build.keychain
-          security import app_certificate.p12 -k build.keychain -P $APP_CERTIFICATE_PASSWORD -T /usr/bin/codesign
-          security import installer_certificate.p12 -k build.keychain -P $INSTALLER_CERTIFICATE_PASSWORD -T /usr/bin/productsign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
-
-      - name: Sign binaries and libraries
-        run: |
-          chmod +x  runner/release/darwin/scripts/sign.sh
-          bash  runner/release/darwin/scripts/sign.sh "${{ env.APP_PATH }}" "${{ secrets.APPLE_ID_APPLICATION }}"
-
-      - name: Build PKG
-        run: |
-          pkgbuild --root "${{ steps.prep_files.outputs.STAGING_DIR }}" \
-                   --scripts "${{ steps.prep_files.outputs.SCRIPTS_DIR }}" \
-                   --identifier "com.nexaai.nexa-sdk" \
-                   --version "${{ env.VERSION }}" \
-                   --install-location / \
-                   "artifacts/nexa-cli_macos_${{ matrix.arch }}-unsigned.pkg"
-
-      - name: Productsign PKG
-        run: |
-          productsign --sign "${{ secrets.APPLE_ID_INSTALLER }}" --timestamp "artifacts/nexa-cli_macos_${{ matrix.arch }}-unsigned.pkg" "artifacts/nexa-cli_macos_${{ matrix.arch }}.pkg"
-          pkgutil --check-signature "artifacts/nexa-cli_macos_${{ matrix.arch }}.pkg"
-          rm "artifacts/nexa-cli_macos_${{ matrix.arch }}-unsigned.pkg"
-
-      - name: Notarize & Staple PKG
-        run: |
-          chmod +x  runner/release/darwin/scripts/notarize.sh
-          bash  runner/release/darwin/scripts/notarize.sh \
-            "artifacts/nexa-cli_macos_${{ matrix.arch }}.pkg" \
-            "${{ secrets.APPLE_ID }}" \
-            "${{ secrets.APPLE_ID_PASSWORD }}" \
-            "${{ secrets.APPLE_TEAM_ID }}"
-
+          cd runner
+          make package
+      
+      - name: Upload pkg Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexa-cli_macos_${{ matrix.arch }}.pkg
+          path: runner/artifacts/nexa-cli_macos_${{ matrix.arch }}.pkg
+          include-hidden-files: true
+          
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
         with:
           repository: NexaAI/nexa-sdk
           tag_name: ${{ env.VERSION }}
@@ -153,7 +89,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.ZACK_ACCESS_TOKEN }}
 
       - name: Configure AWS credentials
-        if: ${{ !contains(github.ref, '-rc') }}
+        if:  github.ref_type == 'tag' && ${{ !contains(github.ref, '-rc') }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -161,7 +97,7 @@ jobs:
           aws-region: us-west-1
 
       - name: Sync to S3
-        if: ${{ !contains(github.ref, '-rc') }}
+        if:  github.ref_type == 'tag' && ${{ !contains(github.ref, '-rc') }}
         shell: bash
         run: |
           aws s3 cp "artifacts/nexa-cli_macos_${{ matrix.arch }}.pkg" "s3://nexa-model-hub-bucket/public/nexa_sdk/downloads/nexa-cli_macos_${{ matrix.arch }}.pkg"
