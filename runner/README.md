@@ -57,16 +57,8 @@ make download
 
 2. From local files
 
-- **Unix/macOS:** Link the bridge library to the `build` folder:
-
 ```bash
 make link
-```
-
-- **Windows:** Copy the bridge library from local:
-
-```bash
-make xcopy
 ```
 
 ---
