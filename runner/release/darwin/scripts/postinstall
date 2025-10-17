@@ -6,9 +6,9 @@ APP_PATH="/Applications/NexaCLI.app"
 BIN_DIR="/usr/local/bin"
 
 if [ ! -d "$BIN_DIR" ]; then
-    sudo mkdir -p "$BIN_DIR"
-    sudo chown root:wheel "$BIN_DIR"
-    sudo chmod 755 "$BIN_DIR"
+    mkdir -p "$BIN_DIR"
+    chown root:wheel "$BIN_DIR"
+    chmod 755 "$BIN_DIR"
 fi
 
 ln -sf "${APP_PATH}/Contents/Resources/nexa" "${BIN_DIR}/nexa"
