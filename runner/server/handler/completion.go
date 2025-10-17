@@ -69,6 +69,12 @@ func ChatCompletions(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
 	}
+
+	// Automatically adjust NCtx if MaxCompletionTokens is larger
+	if param.NCtx < int32(param.MaxCompletionTokens.Value) {
+		param.NCtx = int32(param.MaxCompletionTokens.Value)
+	}
+
 	slog.Debug("ChatCompletions", "param", param)
 	s := store.Get()
 	manifest, err := s.GetManifest(param.Model)
@@ -93,24 +99,34 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 	var systemPrompt string
 	messages := make([]nexa_sdk.LlmChatMessage, 0, len(param.Messages))
 	for _, msg := range param.Messages {
-		if msg.GetRole() == nil {
-			c.JSON(http.StatusBadRequest, map[string]any{"error": "role is nil"})
-			return
-		}
-		switch msg.GetContent().AsAny().(type) {
-		case *string: // ok
+		switch content := msg.GetContent().AsAny().(type) {
+		case *string:
+			if *msg.GetRole() == "system" {
+				systemPrompt += *content
+			}
+			messages = append(messages, nexa_sdk.LlmChatMessage{
+				Role:    nexa_sdk.LLMRole(*msg.GetRole()),
+				Content: *content,
+			})
+
+		case *[]openai.ChatCompletionContentPartUnionParam:
+			for _, ct := range *content {
+				switch *ct.GetType() {
+				case "text":
+					messages = append(messages, nexa_sdk.LlmChatMessage{
+						Role:    nexa_sdk.LLMRole(*msg.GetRole()),
+						Content: *ct.GetText(),
+					})
+				default:
+					c.JSON(http.StatusBadRequest, map[string]any{"error": "not support content part type"})
+					return
+				}
+			}
+
 		default:
-			c.JSON(http.StatusBadRequest, map[string]any{"error": "content type not support"})
+			c.JSON(http.StatusBadRequest, map[string]any{"error": "unknown content type"})
 			return
 		}
-		// patch for npu
-		if *msg.GetRole() == "system" {
-			systemPrompt += *msg.GetContent().AsAny().(*string)
-		}
-		messages = append(messages, nexa_sdk.LlmChatMessage{
-			Role:    nexa_sdk.LLMRole(*msg.GetRole()),
-			Content: *msg.GetContent().AsAny().(*string),
-		})
 	}
 
 	// Prepare tools if provided
@@ -276,11 +292,6 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 	var systemPrompt string
 	messages := make([]nexa_sdk.VlmChatMessage, 0, len(param.Messages))
 	for _, msg := range param.Messages {
-		if msg.GetRole() == nil {
-			c.JSON(http.StatusBadRequest, map[string]any{"error": "role is nil"})
-			return
-		}
-
 		switch content := msg.GetContent().AsAny().(type) {
 		case *string:
 			if *msg.GetRole() == "system" {
@@ -327,6 +338,9 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 						Type: nexa_sdk.VlmContentTypeAudio,
 						Text: file,
 					})
+				default:
+					c.JSON(http.StatusBadRequest, map[string]any{"error": "not support content part type"})
+					return
 				}
 			}
 

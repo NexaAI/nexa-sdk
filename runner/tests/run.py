@@ -20,9 +20,9 @@ def init_benchmark():
 
     testcases = config.get_testcases(plugins)
     # count total Testcases
-    log.print(f'Found {len(testcases)} models with {sum(len(tc[2]) for tc in testcases)} testcases')
+    log.print(f'Found {len(testcases)} Models with {sum(len(tc[2]) for tc in testcases)} TestCases')
     if len(testcases) == 0:
-        raise Exception("No testcases found")
+        raise Exception("No TestCases found")
 
 
 def check_models():
@@ -77,12 +77,12 @@ def run_benchmark():
                 if res.returncode != 0:
                     raise RuntimeError(f'Non-zero exit code: {res.returncode}')
 
-                log.print(f'  --> [{mp}][{tcp}] Testcase: {tc} success')
+                log.print(f'  --> [{mp}][{tcp}] TestCase: {tc} success')
             except Exception as _:
-                log.print(f'  --> [{mp}][{tcp}] Testcase {tc} failed')
+                log.print(f'  --> [{mp}][{tcp}] TestCase {tc} failed')
                 failed_cases.append((plugin, model, tc))
                 if of is not None:
-                    of.write('\n====== Exception Logs ======\n')
+                    of.write('\n====== Exception Log =======\n')
                     of.write(traceback.format_exc())
             finally:
                 if of is not None:
@@ -92,11 +92,12 @@ def run_benchmark():
 
     log.print("======== Benchmark Result ========")
     if len(failed_cases) == 0:
-        log.print('All testcases passed')
+        log.print('All TestCases passed')
     else:
         for plugin, model, tc in failed_cases:
             log_file = log.log_dir / plugin / f'{model.replace("/", "-")}_{tc}.log'
             log.print(f'Failed: Plugin: {plugin}, Model: {model}, TestCase: {tc}, see {log_file}')
+    log.print(f'Logs saved to {log.log_dir}')
 
 
 def main():
