@@ -213,8 +213,8 @@ See [CLI Reference](https://nexaai.mintlify.app/nexa-sdk-go/NexaCLI) for full co
 
 | Component | License | Commercial Use |
 |-----------|---------|----------------|
-| **NPU Models** (all -npu/-NPU models, NexaML Turbo, OmniNeural-4B) | CC-BY-NC 4.0 | ❌ Requires commercial license |
-| **GPU/CPU Models** (GGUF, MLX) | Apache 2.0 | ✅ Free to use |
+| **NPU Models** (all -npu/-NPU models) | CC-BY-NC 4.0 | ❌ Requires commercial license |
+| **GPU/CPU Models** (all GGUF, MLX models) | Apache 2.0 | ✅ Free to use |
 
 **For NPU commercial licensing**, contact: dev@nexa.ai
 
