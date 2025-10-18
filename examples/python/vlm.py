@@ -5,6 +5,13 @@ NexaAI VLM Example - Llama Model Testing
 
 This example demonstrates how to use the NexaAI SDK to work with Llama models.
 It includes basic model initialization, text generation, streaming, and chat template functionality.
+
+LICENSE NOTICE - DUAL LICENSING:
+- NPU models and inference: CC-BY-NC 4.0 (NON-COMMERCIAL USE ONLY)
+- GPU/CPU models and inference: Apache 2.0 (FREE FOR ALL USE)
+For NPU commercial use, contact: dev@nexa.ai | See LICENSE-NPU
+
+Copyright (c) 2025 Nexa AI
 """
 
 import io
@@ -16,21 +23,23 @@ from nexaai.vlm import VLM, GenerationConfig
 from nexaai.common import ModelConfig, MultiModalMessage, MultiModalMessageContent
 
 
-def parse_media_from_input(user_input: str) -> tuple[str, Optional[List[str]], Optional[List[str]]]:
+def parse_media_from_input(
+    user_input: str,
+) -> tuple[str, Optional[List[str]], Optional[List[str]]]:
     quoted_pattern = r'["\']([^"\']*)["\']'
     quoted_matches = re.findall(quoted_pattern, user_input)
 
-    prompt = re.sub(quoted_pattern, '', user_input).strip()
+    prompt = re.sub(quoted_pattern, "", user_input).strip()
 
-    image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'}
-    audio_extensions = {'.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a'}
+    image_extensions = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp"}
+    audio_extensions = {".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a"}
 
     image_paths = []
     audio_paths = []
 
     for quoted_file in quoted_matches:
         if quoted_file:
-            if quoted_file.startswith('~'):
+            if quoted_file.startswith("~"):
                 quoted_file = os.path.expanduser(quoted_file)
 
             if not os.path.exists(quoted_file):
@@ -43,20 +52,37 @@ def parse_media_from_input(user_input: str) -> tuple[str, Optional[List[str]], O
             elif file_ext in audio_extensions:
                 audio_paths.append(quoted_file)
 
-    return prompt, image_paths if image_paths else None, audio_paths if audio_paths else None
+    return (
+        prompt,
+        image_paths if image_paths else None,
+        audio_paths if audio_paths else None,
+    )
 
 
 def main():
     # Your model path
-    model = os.path.expanduser("~/.cache/nexa.ai/nexa_sdk/models/NexaAI/gemma-3n-E4B-it-4bit-MLX/model-00001-of-00002.safetensors")
+    model = os.path.expanduser(
+        "~/.cache/nexa.ai/nexa_sdk/models/NexaAI/gemma-3n-E4B-it-4bit-MLX/model-00001-of-00002.safetensors"
+    )
 
     # Model configuration
     m_cfg = ModelConfig()
 
     # Load model
-    instance: VLM = VLM.from_(name_or_path=model, mmproj_path="", m_cfg=m_cfg, plugin_id="mlx", device_id="")
+    instance: VLM = VLM.from_(
+        name_or_path=model, mmproj_path="", m_cfg=m_cfg, plugin_id="mlx", device_id=""
+    )
 
-    conversation: List[MultiModalMessage] = [MultiModalMessage(role="system", content=[MultiModalMessageContent(type="text", text="You are a helpful assistant.")])]
+    conversation: List[MultiModalMessage] = [
+        MultiModalMessage(
+            role="system",
+            content=[
+                MultiModalMessageContent(
+                    type="text", text="You are a helpful assistant."
+                )
+            ],
+        )
+    ]
     strbuff = io.StringIO()
 
     print("Multi-round conversation started. Type '/quit' or '/exit' to end.")
@@ -107,7 +133,12 @@ def main():
 
         print("Assistant: ", end="", flush=True)
         # Generate the model response
-        for token in instance.generate_stream(prompt, g_cfg=GenerationConfig(max_tokens=100, image_paths=images, audio_paths=audios)):
+        for token in instance.generate_stream(
+            prompt,
+            g_cfg=GenerationConfig(
+                max_tokens=100, image_paths=images, audio_paths=audios
+            ),
+        ):
             print(token, end="", flush=True)
             strbuff.write(token)
 
@@ -116,7 +147,14 @@ def main():
         if profiling_data is not None:
             print(profiling_data)
 
-        conversation.append(MultiModalMessage(role="assistant", content=[MultiModalMessageContent(type="text", text=strbuff.getvalue())]))
+        conversation.append(
+            MultiModalMessage(
+                role="assistant",
+                content=[
+                    MultiModalMessageContent(type="text", text=strbuff.getvalue())
+                ],
+            )
+        )
 
 
 if __name__ == "__main__":

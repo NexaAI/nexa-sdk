@@ -2,6 +2,13 @@
 NexaAI LLM Example
 
 This example demonstrates how to use the NexaAI SDK to work with LLM models.
+
+LICENSE NOTICE - DUAL LICENSING:
+- NPU models and inference: CC-BY-NC 4.0 (NON-COMMERCIAL USE ONLY)
+- GPU/CPU models and inference: Apache 2.0 (FREE FOR ALL USE)
+For NPU commercial use, contact: dev@nexa.ai | See LICENSE-NPU
+
+Copyright (c) 2025 Nexa AI
 """
 
 import io
@@ -15,17 +22,20 @@ from nexaai.common import ModelConfig, ChatMessage
 def main():
     # Your model path
     model = os.path.expanduser(
-        "~/.cache/nexa.ai/nexa_sdk/models/Qwen/Qwen3-0.6B-GGUF/Qwen3-0.6B-Q8_0.gguf")
+        "~/.cache/nexa.ai/nexa_sdk/models/Qwen/Qwen3-0.6B-GGUF/Qwen3-0.6B-Q8_0.gguf"
+    )
 
     # Model configuration
     m_cfg = ModelConfig()
 
     # Load model
     instance: LLM = LLM.from_(
-        model, plugin_id="llama_cpp", device_id="cpu", m_cfg=m_cfg)
+        model, plugin_id="llama_cpp", device_id="cpu", m_cfg=m_cfg
+    )
 
-    conversation: List[ChatMessage] = [ChatMessage(
-        role="system", content="You are a helpful assistant.")]
+    conversation: List[ChatMessage] = [
+        ChatMessage(role="system", content="You are a helpful assistant.")
+    ]
     strbuff = io.StringIO()
 
     print("Multi-round conversation started. Type '/quit' or '/exit' to end.")
@@ -69,7 +79,9 @@ def main():
 
         print("Assistant: ", end="", flush=True)
         # Generate the model response
-        for token in instance.generate_stream(prompt, g_cfg=GenerationConfig(max_tokens=100)):
+        for token in instance.generate_stream(
+            prompt, g_cfg=GenerationConfig(max_tokens=100)
+        ):
             print(token, end="", flush=True)
             strbuff.write(token)
 
@@ -78,8 +90,7 @@ def main():
         if profiling_data is not None:
             print(profiling_data)
 
-        conversation.append(ChatMessage(
-            role="assistant", content=strbuff.getvalue()))
+        conversation.append(ChatMessage(role="assistant", content=strbuff.getvalue()))
 
 
 if __name__ == "__main__":

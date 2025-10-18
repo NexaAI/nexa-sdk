@@ -1,3 +1,11 @@
+// Copyright (c) 2025 Nexa AI
+//
+// LICENSE NOTICE:
+// This file contains NPU (Neural Processing Unit) related components.
+// NPU components are licensed under CC-BY-NC 4.0 for NON-COMMERCIAL USE ONLY.
+// For commercial use, contact: dev@nexa.ai
+// See LICENSE-NPU file for full terms.
+
 package nexa_sdk
 
 /*

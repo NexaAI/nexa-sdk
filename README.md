@@ -116,6 +116,11 @@ curl -fsSL https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_
 You can run any compatible GGUF, MLX, or nexa model from 🤗 Hugging Face by using the `<full repo name>`.
 
 ### Qualcomm NPU models
+
+> [!IMPORTANT]
+> **NPU Models License**: All NPU models are licensed under CC-BY-NC 4.0 for **NON-COMMERCIAL USE ONLY**.  
+> For commercial use, contact: dev@nexa.ai | See [LICENSE-NPU](LICENSE-NPU) for full terms.
+
 > [!TIP]
 > You need to download the [arm64 with Qualcomm NPU support](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_windows_arm64.exe) and make sure you have Snapdragon® X Elite chip on your laptop.
 
@@ -140,6 +145,9 @@ nexa infer NexaAI/qwen3-1.7B-npu
 
 ### GGUF models
 
+> [!NOTE]
+> **GGUF Models License**: Licensed under Apache 2.0 - **FREE FOR COMMERCIAL & NON-COMMERCIAL USE**
+
 > [!TIP]
 > GGUF runs on macOS, Linux, and Windows.
 
@@ -156,6 +164,10 @@ nexa infer NexaAI/Qwen2.5-Omni-3B-GGUF
 ```
 
 ### MLX models
+
+> [!NOTE]
+> **MLX Models License**: Licensed under Apache 2.0 - **FREE FOR COMMERCIAL & NON-COMMERCIAL USE**
+
 > [!TIP]
 > MLX is macOS-only (Apple Silicon). Many MLX models in the Hugging Face mlx-community organization have quality issues and may not run reliably.
 > We recommend starting with models from our curated [NexaAI Collection](https://huggingface.co/NexaAI/collections) for best results. For example
@@ -187,6 +199,24 @@ nexa infer NexaAI/gemma-3n-E4B-it-4bit-MLX
 👉 To interact with multimodal models, you can drag photos or audio clips directly into the CLI — you can even drop multiple images at once!
 
 See [CLI Reference](https://nexaai.mintlify.app/nexa-sdk-go/NexaCLI) for full commands.
+
+## 📜 Licensing
+
+**Nexa SDK uses dual licensing:**
+- **NPU Models & Components**: Licensed under [CC-BY-NC 4.0](LICENSE-NPU) for **NON-COMMERCIAL USE ONLY**
+  - Includes: All NPU models, NexaML Turbo engine, NPU inference optimizations
+  - Commercial use requires separate licensing, contact: dev@nexa.ai
+  
+- **GPU/CPU Models & Components**: Licensed under [Apache 2.0](LICENSE) - **FREE FOR ALL USE**
+  - Includes: All GGUF models, MLX models, GPU/CPU inference engines
+
+
+| Component | License | Commercial Use |
+|-----------|---------|----------------|
+| **NPU Models** (all -npu/-NPU models, NexaML Turbo, OmniNeural-4B) | CC-BY-NC 4.0 | ❌ Requires commercial license |
+| **GPU/CPU Models** (GGUF, MLX) | Apache 2.0 | ✅ Free to use |
+
+**For NPU commercial licensing**, contact: dev@nexa.ai
 
 ## Acknowledgements
 
