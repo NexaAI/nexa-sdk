@@ -1,4 +1,4 @@
-BRIDGE_VERSION ?= v1.0.21-rc4
+BRIDGE_VERSION ?= v1.0.19-rc19
 
 ifeq ($(OS), Windows_NT)
 	OS      := windows
@@ -7,7 +7,6 @@ ifeq ($(OS), Windows_NT)
 	RM      := powershell -NoProfile -NonInteractive "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path"
 	MKDIR   := powershell -NoProfile -NonInteractive "New-Item -ItemType Directory -Force -Path"
 	MKLINK  := powershell -NoProfile -NonInteractive "New-Item -ItemType Junction -Path 'build' -Target '..\..\nexasdk-bridge\build\out'"
-	UNZIP   := powershell -Command "Expand-Archive -Path build/nexasdk-bridge.zip -DestinationPath build -Force"
 else
 	OS      := $(shell echo $(shell uname -s) | tr '[:upper:]' '[:lower:]')
 	ifeq ($(OS), darwin)
@@ -21,7 +20,6 @@ else
 	RM      := rm -rf
 	MKDIR   := mkdir -p
 	MKLINK  := ln -s ../../nexasdk-bridge/build/out build
-	UNZIP   := unzip -o build/nexasdk-bridge.zip -d build
 endif
 
 .PHONY: build link download clean
@@ -41,9 +39,7 @@ download: clean
 	$(MKDIR) build
 	curl -L -o build/nexasdk-bridge.zip \
 		https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexasdk/$(BRIDGE_VERSION)/$(OS)_$(ARCH)/nexasdk-bridge.zip
-	$(UNZIP)
-	$(RM) build/nexasdk-bridge.zip
-	$(RM) build/nexa_bridge.lib
+	cd build && tar -xf nexasdk-bridge.zip && $(RM) nexasdk-bridge.zip && $(RM) nexa_bridge.lib
 
 clean:
 	-$(RM) build
