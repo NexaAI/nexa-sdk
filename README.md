@@ -37,10 +37,10 @@ NexaSDK is an easy-to-use developer toolkit for running any AI model locally —
 | Features | **NexaSDK** | **Ollama** | **llama.cpp** | **LM Studio** |
 |----------|--------------|-------------|----------------|----------------|
 | NPU, GPU, CPU support | ✅ NPU-first | ⚠️ | ⚠️ | ⚠️ |
-| Support any model in GGUF, MLX, NEXA format | ✅ Low-level control | ❌ | ⚠️ | ❌ |
+| Support any model in GGUF, MLX, NEXA format | ✅ Low-level Control | ❌ | ⚠️ | ❌ |
 | Full multimodality support | ✅ Image, Audio, Text | ⚠️ | ⚠️ | ⚠️ |
 | Cross-platform support | ✅ Desktop, Mobile, Automotive, IoT | ⚠️ | ⚠️ | ⚠️ |
-| Easy install & one line of code to run | ✅ | ✅ | ⚠️ Takes longer| ✅ |
+| One line of code to run | ✅ | ✅ | ⚠️ | ✅ |
 | OpenAI-compatible API + Function calling | ✅ | ✅ | ✅ | ✅ |
 
 <p align="center" style="margin-top:14px">
@@ -54,54 +54,17 @@ NexaSDK is an easy-to-use developer toolkit for running any AI model locally —
 </div>
 
 
-## Recent updates
+## Recent Wins
 
-#### 📣  **2025.10.14: Day-0 Support : Qwen3-VL-4B-Instruct, Qwen3-VL-4B-Thinking, Qwen3-VL-8B-Instruct, Qwen3-VL-8B-Thinking**
-- We support [Qwen3-VL-4B series models](https://huggingface.co/collections/NexaAI/qwen3vl-68d46de18fdc753a7295190a) with Nexa SDK on Day-0!
-- We support Qualcomm NPU/GPU/CPU, Apple GPU/CPU, Intel/AMD/MediaTek/Nvidia GPU/CPUs and more
-
-#### 📣  **2025.10.04: Day-0 Support : Qwen3-VL-30B-A3B-Instruct**
-- We support [Qwen3-VL-30B-A3B-Instruct](https://huggingface.co/NexaAI/qwen3vl-30B-A3B-mlx) with Nexa SDK on Day-0!
-- Try it on Apple GPU with `nexa infer NexaAI/qwen3vl-30B-A3B-mlx` on MLX backend.
-
-#### 📣  **2025.10.02: Day-0 Support on NPU/GPU/CPU : IBM Granite 4.0**
-- We support [IBM Granite 4.0](https://sdk.nexa.ai/model/Granite-4-Micro) with Nexa SDK on Day-0!
-- Try it on AMD / Intel / Qualcomm / Apple GPU with `nexa infer NexaAI/granite-4.0-micro-GGUF` and on Qualcomm NPU with `nexa infer NexaAI/Granite-4-Micro-NPU`
-
-#### 📣  **2025.10.01: AMD NPU Support**
-- Image Generation with [SDXL](https://huggingface.co/NexaAI/sdxl-turbo-amd-npu) on AMD NPU
-
-#### 📣  **2025.09.23: Intel NPU Support**
-- LLM inference with [DeepSeek-r1-distill-Qwen-1.5B](https://sdk.nexa.ai/model/DeepSeek-R1-Distill-Qwen-1.5B-Intel-NPU) and [Llama3.2-3B](https://sdk.nexa.ai/model/Llama3.2-3B-Intel-NPU) on Intel NPU
-
-#### 📣  **2025.09.22: Apple Neural Engine (ANE) Support**
-- Real-time speech recognition with [Parakeet v3 model](https://sdk.nexa.ai/model/parakeet-v3-ane)
-
-#### 📣  **2025.09.15: New Models Support**
-- First-ever [Gemma-3n](https://sdk.nexa.ai/model/Gemma3n-E4B) **multimodal** inference for GPU & CPU, in GGUF format.
-- [SDXL image generation](https://sdk.nexa.ai/model/Prefect-illustrious-XL-v2.0p) from Civitai for GPU
-- [EmbeddingGemma](https://sdk.nexa.ai/model/embeddinggemma-300m-npu) for Qualcomm NPU
-- [Phi4-mini turbo](https://sdk.nexa.ai/model/phi4-mini-npu-turbo) and [Phi3.5-mini](https://sdk.nexa.ai/model/phi3.5-mini-npu) for Qualcomm NPU
-- [Parakeet V3 model](https://sdk.nexa.ai/model/parakeet-v3-npu) for Qualcomm NPU
-
-#### 📣  **2025.09.05: Turbo Engine & Unified Interface**
-- [Nexa ML Turbo engine](https://nexa.ai/blogs/nexaml-turbo) for optimized NPU performance
-    - Try [Phi4-mini turbo](https://sdk.nexa.ai/model/phi4-mini-npu-turbo) and [Llama3.2-3B-NPU-Turbo](https://sdk.nexa.ai/model/Llama3.2-3B-NPU-Turbo)
-    - 80% faster at shorter contexts (<=2048), 33% faster at longer contexts (>2048) than current NPU solutions
-- [Unified interface](https://nexa.ai/blogs/sdk-unifiedarchitecture) supporting NPU/GPU/CPU backends:
-    - Single installer architecture eliminating dependency conflicts
-    - Lazy loading and plugin isolation for improved performance
-
-#### 📣  **2025.08.20: Qualcomm NPU Support with NexaML Turbo Engine**
-- OmniNeural-4B: the **first multimodal AI model built natively for NPUs** — handling text, images, and audio in one model
-- Check the model and demos at [Hugging Face repo](https://huggingface.co/NexaAI/OmniNeural-4B)
-- Check our [OmniNeural-4B technical blog](https://nexa.ai/blogs/omnineural-4b)
-
-#### 📣  **2025.08.12: ASR & TTS Support in MLX format**
-- Parakeet and Kokoro models support in MLX format.
-- new `/mic` mode to transcribe live speech directly in your terminal.
+- Day-0 Support for Qwen3-VL-4B and 8B in GGUF, MLX, .nexa format for NPU/GPU/CPU. We are the only framework that supports the GGUF format. [Featured in Qwen's post about our partnership](https://x.com/Alibaba_Qwen/status/1978154384098754943).
+- Day-0 Support for IBM Granite 4.0 on NPU/GPU/CPU. [NexaML engine were featured right next to vLLM, llama.cpp, and MLX in IBM's blog](https://x.com/IBM/status/1978154384098754943).
+- Day-0 Support for Google EmbeddingGemma on NPU. We are [featured in Google's social post](https://x.com/googleaidevs/status/1969188152049889511).
+- Supported vision capability for Gemma3n: First-ever [Gemma-3n](https://sdk.nexa.ai/model/Gemma3n-E4B) **multimodal** inference for GPU & CPU, in GGUF format.
+- AMD NPU Support for [SDXL](https://huggingface.co/NexaAI/sdxl-turbo-amd-npu) image generation
+- Intel NPU Support [DeepSeek-r1-distill-Qwen-1.5B](https://sdk.nexa.ai/model/DeepSeek-R1-Distill-Qwen-1.5B-Intel-NPU) and [Llama3.2-3B](https://sdk.nexa.ai/model/Llama3.2-3B-Intel-NPU)
+- Apple Neural Engine Support for real-time speech recognition with [Parakeet v3 model](https://sdk.nexa.ai/model/parakeet-v3-ane)
   
-## Installation
+## Quick Start
 
 ### macOS
 * [arm64 with Apple Neural Engine support](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_macos_arm64.pkg)
