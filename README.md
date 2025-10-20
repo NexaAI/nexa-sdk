@@ -3,10 +3,10 @@
       <img width="100%" src="assets/banner1.png" alt="Nexa AI Banner">
       <div align="center">
   <p style="font-size: 1.3em; font-weight: 600; margin-bottom: 10px;">🤝 Trusted by Partners</p>
-  <img src="assets/nvidia.svg" alt="NVIDIA" height="40" style="margin: 0 20px;">
-  <img src="assets/amd.svg" alt="AMD" height="42" style="margin: 0 20px;">
   <img src="assets/qualcomm.png" alt="Qualcomm" height="40" style="margin: 0 20px;">
-  <img src="assets/intel.svg" alt="Intel" height="45" style="margin: 0 10px;">
+  <img src="assets/nvidia.png" alt="NVIDIA" height="40" style="margin: 0 20px;">
+  <img src="assets/amd.png" alt="AMD" height="42" style="margin: 0 20px;">
+  <img src="assets/intel_logo.png" alt="Intel" height="45" style="margin: 0 10px;">
 </div>
   </p>
 
