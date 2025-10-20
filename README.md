@@ -5,8 +5,8 @@
   <p style="font-size: 1.3em; font-weight: 600; margin-bottom: 10px;">🤝 Trusted by Partners</p>
   <img src="assets/qualcomm.png" alt="Qualcomm" height="40" style="margin: 0 20px;">
   <img src="assets/nvidia.png" alt="NVIDIA" height="40" style="margin: 0 20px;">
-  <img src="assets/amd.png" alt="AMD" height="42" style="margin: 0 20px;">
-  <img src="assets/intel_logo.png" alt="Intel" height="45" style="margin: 0 10px;">
+  <img src="assets/AMD.png" alt="AMD" height="42" style="margin: 0 20px;">
+  <img src="assets/Intel_logo.png" alt="Intel" height="45" style="margin: 0 10px;">
 </div>
   </p>
 
