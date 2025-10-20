@@ -89,7 +89,7 @@ You can run any compatible GGUF, MLX, or nexa model from 🤗 Hugging Face by us
 ### GGUF models
 
 > [!TIP]
-> GGUF runs on macOS, Linux, and Windows on CPU/GPU
+> GGUF runs on macOS, Linux, and Windows on CPU/GPU. Note certain GGUF models are only supported by NexaSDK (e.g. Qwen3-VL-4B and 8B).
 
 📝 Run and chat with LLMs, e.g. Qwen3:
 
