@@ -1,6 +1,13 @@
 <div align="center">
   <p>
-      <img width="100%" src="assets/banner.png" alt="Nexa AI Banner">
+      <img width="100%" src="assets/banner1.png" alt="Nexa AI Banner">
+      <div align="center">
+  <p style="font-size: 1.3em; font-weight: 600; margin-bottom: 10px;">🤝 Trusted by Partners</p>
+  <img src="assets/nvidia.svg" alt="NVIDIA" height="40" style="margin: 0 20px;">
+  <img src="assets/amd.svg" alt="AMD" height="42" style="margin: 0 20px;">
+  <img src="assets/qualcomm.png" alt="Qualcomm" height="40" style="margin: 0 20px;">
+  <img src="assets/intel.svg" alt="Intel" height="45" style="margin: 0 10px;">
+</div>
   </p>
 
   <p align="center">
@@ -15,37 +22,37 @@
         <img src="https://img.shields.io/badge/slack-join%20chat-4A154B?logo=slack&logoColor=white" alt="Join us on Slack">
     </a>
 </p>
-  
-  ![OS](https://img.shields.io/badge/os-linux%20|%20macOS%20|%20windows-purple)
-  ![Hardware](https://img.shields.io/badge/hardware-CPU%20|%20GPU%20|%20NPU-yellow)
+
 
 </div>
 
-# Nexa SDK
+# NexaSDK - Run any AI model on any backend
 
-Nexa SDK is an on-device inference framework that runs any model on any device, across any backend. It runs on CPUs, GPUs, NPUs with backend support for CUDA, Metal, Vulkan, and Qualcomm / Intel / AMD NPU. It handles multiple input modalities including text 📝, image 🖼️, and audio 🎧. The SDK includes an OpenAI-compatible API server with support for JSON schema-based function calling and streaming. It supports model formats such as GGUF, MLX, Nexa AI's own `.nexa` format, enabling efficient quantized inference across diverse platforms.
+NexaSDK is an easy-to-use developer toolkit for running any AI model locally — across NPUs, GPUs, and CPUs — powered by our NexaML engine, built entirely from scratch for peak performance on every hardware stack. Unlike wrappers that depend on existing runtimes, NexaML is a unified inference engine built at the kernel level. It’s what lets NexaSDK achieve Day-0 support for new model architectures (LLMs, multimodal, audio, vision). NexaML supports 3 model formats: GGUF, MLX, and Nexa AI's own `.nexa` format.
 
-## Qualcomm NPU PC Demos
+### ⚙️ Differentiation
 
-<table>
-<tr>
-<td width="50%">
-<img width="100%" src="assets/PC_demo_2_image.gif" alt="Multi-Image Reasoning Demo">
-<p align="center"><b>🖼️ Multi-Image Reasoning</b><br>Spot the difference across two images in multi-round dialogue.</p>
-</td>
+<div align="center">
 
-<td width="50%">
-<img width="100%" src="assets/PC_Demo_Agent.gif" alt="Image + Audio Function Call Demo">
-<p align="center"><b>🎤 Image + Text → Function Call</b><br>Snap a poster, add a voice note, and AI agent creates a calendar event.</p>
-</td>
-</tr>
-<tr>
-<td colspan="2" align="center">
-<img width="50%" src="assets/PC_Demo_Audio.gif" alt="Multi-Audio Comparison Demo">
-<p align="center"><b>🎶 Multi-Audio Comparison</b><br>Tell the difference between two music clips locally.</p>
-</td>
-</tr>
-</table>
+| Features | **NexaSDK** | **Ollama** | **llama.cpp** | **LM Studio** |
+|----------|--------------|-------------|----------------|----------------|
+| Unified backend (NPU / GPU / CPU) | ✅ NPU, GPU, CPU | ⚠️ CPU, GPU | ⚠️ CPU, GPU | ⚠️ CPU, GPU |
+| Support any model in GGUF / MLX / .nexa format | ✅ Low-level control | ❌ | ⚠️ Limited | ❌ |
+| Multi-modality (Text / Image / Audio) | ✅ Full Multimodal Support | ⚠️ Limited | ⚠️ Limited | ⚠️ Limited |
+| Model format flexibility | ✅ GGUF, MLX, .nexa format | ⚠️ GGUF | ⚠️ GGUF | ⚠️ GGUF & MLX |
+| Cross-platform | ✅ Desktop, Mobile, Automotive, IoT | ⚠️ Desktop | ⚠️ Desktop | ⚠️ Desktop |
+| Easy install & One line of code to run | ✅ | ✅ | ⚠️ Takes more time| ✅ |
+| OpenAI-compatible API + Function calling | ✅ | ✅ | ✅ | ✅ |
+
+<p align="center" style="margin-top:14px">
+  <i>
+      <b>Legend:</b>
+      <span title="Full support">✅ Supported</span> &nbsp; | &nbsp;
+      <span title="Partial or limited support">⚠️ Partial</span> &nbsp; | &nbsp;
+      <span title="Not Supported">❌ No</span>
+  </i>
+</p>
+</div>
 
 
 ## Recent updates
