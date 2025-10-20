@@ -56,15 +56,17 @@ NexaSDK is an easy-to-use developer toolkit for running any AI model locally —
 
 ## Recent Wins
 
-- Day-0 Support for Qwen3-VL-4B and 8B in GGUF, MLX, .nexa format for NPU/GPU/CPU. We are the only framework that supports the GGUF format. [Featured in Qwen's post about our partnership](https://x.com/Alibaba_Qwen/status/1978154384098754943).
-- Day-0 Support for IBM Granite 4.0 on NPU/GPU/CPU. [NexaML engine were featured right next to vLLM, llama.cpp, and MLX in IBM's blog](https://x.com/IBM/status/1978154384098754943).
-- Day-0 Support for Google EmbeddingGemma on NPU. We are [featured in Google's social post](https://x.com/googleaidevs/status/1969188152049889511).
-- Supported vision capability for Gemma3n: First-ever [Gemma-3n](https://sdk.nexa.ai/model/Gemma3n-E4B) **multimodal** inference for GPU & CPU, in GGUF format.
-- AMD NPU Support for [SDXL](https://huggingface.co/NexaAI/sdxl-turbo-amd-npu) image generation
-- Intel NPU Support [DeepSeek-r1-distill-Qwen-1.5B](https://sdk.nexa.ai/model/DeepSeek-R1-Distill-Qwen-1.5B-Intel-NPU) and [Llama3.2-3B](https://sdk.nexa.ai/model/Llama3.2-3B-Intel-NPU)
-- Apple Neural Engine Support for real-time speech recognition with [Parakeet v3 model](https://sdk.nexa.ai/model/parakeet-v3-ane)
+- 📣 Day-0 Support for Qwen3-VL-4B and 8B in GGUF, MLX, .nexa format for NPU/GPU/CPU. We are the only framework that supports the GGUF format. [Featured in Qwen's post about our partnership](https://x.com/Alibaba_Qwen/status/1978154384098754943).
+- 📣 Day-0 Support for IBM Granite 4.0 on NPU/GPU/CPU. [NexaML engine were featured right next to vLLM, llama.cpp, and MLX in IBM's blog](https://x.com/IBM/status/1978154384098754943).
+- 📣 Day-0 Support for Google EmbeddingGemma on NPU. We are [featured in Google's social post](https://x.com/googleaidevs/status/1969188152049889511).
+- 📣 Supported vision capability for Gemma3n: First-ever [Gemma-3n](https://sdk.nexa.ai/model/Gemma3n-E4B) **multimodal** inference for GPU & CPU, in GGUF format.
+- 📣 AMD NPU Support for [SDXL](https://huggingface.co/NexaAI/sdxl-turbo-amd-npu) image generation
+- 📣 Intel NPU Support [DeepSeek-r1-distill-Qwen-1.5B](https://sdk.nexa.ai/model/DeepSeek-R1-Distill-Qwen-1.5B-Intel-NPU) and [Llama3.2-3B](https://sdk.nexa.ai/model/Llama3.2-3B-Intel-NPU)
+- 📣 Apple Neural Engine Support for real-time speech recognition with [Parakeet v3 model](https://sdk.nexa.ai/model/parakeet-v3-ane)
   
-## Quick Start
+# Quick Start
+
+## Step 1: Download Nexa CLI with one click
 
 ### macOS
 * [arm64 with Apple Neural Engine support](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_macos_arm64.pkg)
@@ -80,9 +82,43 @@ NexaSDK is an easy-to-use developer toolkit for running any AI model locally —
 curl -fsSL https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_linux_x86_64.sh -o install.sh && chmod +x install.sh && ./install.sh && rm install.sh
 ```
 
-## Supported Models
+## Step 2: Run models with one line of code
 
-You can run any compatible GGUF, MLX, or nexa model from 🤗 Hugging Face by using the `<full repo name>`.
+You can run any compatible GGUF, MLX, or nexa model from 🤗 Hugging Face by using the `nexa infer <full repo name>`.
+
+### GGUF models
+
+> [!TIP]
+> GGUF runs on macOS, Linux, and Windows on CPU/GPU
+
+📝 Run and chat with LLMs, e.g. Qwen3:
+
+```bash
+nexa infer ggml-org/Qwen3-1.7B-GGUF
+```
+
+🖼️ Run and chat with Multimodal models, e.g. Qwen2.5-Omni:
+
+```bash
+nexa infer NexaAI/Qwen3-VL-4B-Instruct-GGUF
+```
+
+### MLX models
+> [!TIP]
+> MLX is macOS-only (Apple Silicon). Many MLX models in the Hugging Face mlx-community organization have quality issues and may not run reliably.
+> We recommend starting with models from our curated [NexaAI Collection](https://huggingface.co/NexaAI/collections) for best results. For example
+
+📝 Run and chat with LLMs, e.g. Qwen3:
+
+```bash
+nexa infer NexaAI/Qwen3-4B-4bit-MLX
+```
+
+🖼️ Run and chat with Multimodal models, e.g. Gemma3n:
+
+```bash
+nexa infer NexaAI/gemma-3n-E4B-it-4bit-MLX
+```
 
 ### Qualcomm NPU models
 > [!TIP]
@@ -101,44 +137,9 @@ You can run any compatible GGUF, MLX, or nexa model from 🤗 Hugging Face by us
 2. Run and chat with our multimodal model, OmniNeural-4B, or other models on NPU
 
 ```bash
-nexa infer omni-neural
 nexa infer NexaAI/OmniNeural-4B
-nexa infer NexaAI/qwen3-1.7B-npu
-```
-
-
-### GGUF models
-
-> [!TIP]
-> GGUF runs on macOS, Linux, and Windows.
-
-📝 Run and chat with LLMs, e.g. Qwen3:
-
-```bash
-nexa infer ggml-org/Qwen3-1.7B-GGUF
-```
-
-🖼️ Run and chat with Multimodal models, e.g. Qwen2.5-Omni:
-
-```bash
-nexa infer NexaAI/Qwen2.5-Omni-3B-GGUF
-```
-
-### MLX models
-> [!TIP]
-> MLX is macOS-only (Apple Silicon). Many MLX models in the Hugging Face mlx-community organization have quality issues and may not run reliably.
-> We recommend starting with models from our curated [NexaAI Collection](https://huggingface.co/NexaAI/collections) for best results. For example
-
-📝 Run and chat with LLMs, e.g. Qwen3:
-
-```bash
-nexa infer NexaAI/Qwen3-4B-4bit-MLX
-```
-
-🖼️ Run and chat with Multimodal models, e.g. Gemma3n:
-
-```bash
-nexa infer NexaAI/gemma-3n-E4B-it-4bit-MLX
+nexa infer NexaAI/Granite-4-Micro-NPU
+nexa infer NexaAI/Qwen3-VL-4B-Instruct-NPU
 ```
 
 ## CLI Reference
