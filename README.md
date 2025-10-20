@@ -36,19 +36,18 @@ NexaSDK is an easy-to-use developer toolkit for running any AI model locally —
 
 | Features | **NexaSDK** | **Ollama** | **llama.cpp** | **LM Studio** |
 |----------|--------------|-------------|----------------|----------------|
-| Unified backend (NPU / GPU / CPU) | ✅ NPU, GPU, CPU | ⚠️ CPU, GPU | ⚠️ CPU, GPU | ⚠️ CPU, GPU |
-| Support any model in GGUF / MLX / .nexa format | ✅ Low-level control | ❌ | ⚠️ Limited | ❌ |
-| Multi-modality (Text / Image / Audio) | ✅ Full Multimodal Support | ⚠️ Limited | ⚠️ Limited | ⚠️ Limited |
-| Model format flexibility | ✅ GGUF, MLX, .nexa format | ⚠️ GGUF | ⚠️ GGUF | ⚠️ GGUF & MLX |
-| Cross-platform | ✅ Desktop, Mobile, Automotive, IoT | ⚠️ Desktop | ⚠️ Desktop | ⚠️ Desktop |
-| Easy install & One line of code to run | ✅ | ✅ | ⚠️ Takes more time| ✅ |
+| NPU, GPU, CPU support | ✅ NPU-first | ⚠️ | ⚠️ | ⚠️ |
+| Support any model in GGUF, MLX, NEXA format | ✅ Low-level control | ❌ | ⚠️ | ❌ |
+| Full multimodality support | ✅ Image, Audio, Text | ⚠️ | ⚠️ | ⚠️ |
+| Cross-platform support | ✅ Desktop, Mobile, Automotive, IoT | ⚠️ | ⚠️ | ⚠️ |
+| Easy install & one line of code to run | ✅ | ✅ | ⚠️ Takes longer| ✅ |
 | OpenAI-compatible API + Function calling | ✅ | ✅ | ✅ | ✅ |
 
 <p align="center" style="margin-top:14px">
   <i>
       <b>Legend:</b>
       <span title="Full support">✅ Supported</span> &nbsp; | &nbsp;
-      <span title="Partial or limited support">⚠️ Partial</span> &nbsp; | &nbsp;
+      <span title="Partial or limited support">⚠️ Partial or limited support </span> &nbsp; | &nbsp;
       <span title="Not Supported">❌ No</span>
   </i>
 </p>
