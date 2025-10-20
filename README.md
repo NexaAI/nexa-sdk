@@ -36,7 +36,7 @@ NexaSDK is an easy-to-use developer toolkit for running any AI model locally —
 
 | Features | **NexaSDK** | **Ollama** | **llama.cpp** | **LM Studio** |
 |----------|--------------|-------------|----------------|----------------|
-| NPU, GPU, CPU support | ✅ NPU-first | ⚠️ | ⚠️ | ⚠️ |
+| NPU support | ✅ NPU-first | ❌ | ❌ | ❌ |
 | Support any model in GGUF, MLX, NEXA format | ✅ Low-level Control | ❌ | ⚠️ | ❌ |
 | Full multimodality support | ✅ Image, Audio, Text | ⚠️ | ⚠️ | ⚠️ |
 | Cross-platform support | ✅ Desktop, Mobile, Automotive, IoT | ⚠️ | ⚠️ | ⚠️ |
@@ -97,7 +97,7 @@ You can run any compatible GGUF, MLX, or nexa model from 🤗 Hugging Face by us
 nexa infer ggml-org/Qwen3-1.7B-GGUF
 ```
 
-🖼️ Run and chat with Multimodal models, e.g. Qwen2.5-Omni:
+🖼️ Run and chat with Multimodal models, e.g. Qwen3-VL-4B:
 
 ```bash
 nexa infer NexaAI/Qwen3-VL-4B-Instruct-GGUF
@@ -161,7 +161,7 @@ See [CLI Reference](https://nexaai.mintlify.app/nexa-sdk-go/NexaCLI) for full co
 ## Acknowledgements
 
 We would like to thank the following projects:
-- [llama.cpp](https://github.com/ggml-org/llama.cpp)
+- [ggml](https://github.com/ggml-org/ggml)
 - [mlx-lm](https://github.com/ml-explore/mlx-lm)
 - [mlx-vlm](https://github.com/Blaizzy/mlx-vlm)
 - [mlx-audio](https://github.com/Blaizzy/mlx-audio)
