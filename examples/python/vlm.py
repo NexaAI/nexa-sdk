@@ -52,7 +52,6 @@ def main():
     parser.add_argument("--model", 
                        default="~/.cache/nexa.ai/nexa_sdk/models/NexaAI/gemma-3n-E4B-it-4bit-MLX/model-00001-of-00002.safetensors",
                        help="Path to the VLM model")
-    parser.add_argument("--mmproj", default="", help="Path to multimodal projection model")
     parser.add_argument("--device", default="", help="Device to run on")
     parser.add_argument("--max-tokens", type=int, default=100, help="Maximum tokens to generate")
     parser.add_argument("--system", default="You are a helpful assistant.", 
@@ -63,20 +62,7 @@ def main():
     model_path = os.path.expanduser(args.model)
     m_cfg = ModelConfig()
 
-    print(f"Loading model from {model_path} with plugin {args.plugin_id} and device {args.device}")
-    print(f"MMProj path: {args.mmproj}")
-    print(f"System message: {args.system}")
-    print(f"Max tokens: {args.max_tokens}")
-    print(f"Plugin ID: {args.plugin_id}")
-    print(f"Device: {args.device}")
-    print(f"Model path: {model_path}")
-    print(f"MMProj path: {args.mmproj}")
-    print(f"System message: {args.system}")
-    print(f"Max tokens: {args.max_tokens}")
-    print(f"Plugin ID: {args.plugin_id}")
-    print(f"Device: {args.device}")
-    instance = VLM.from_(name_or_path=model_path, mmproj_path=args.mmproj, 
-                        m_cfg=m_cfg, plugin_id=args.plugin_id, device_id=args.device)
+    instance = VLM.from_(name_or_path=model_path, m_cfg=m_cfg, plugin_id=args.plugin_id, device_id=args.device)
 
     conversation: List[MultiModalMessage] = [MultiModalMessage(role="system", 
                                                               content=[MultiModalMessageContent(type="text", text=args.system)])]
