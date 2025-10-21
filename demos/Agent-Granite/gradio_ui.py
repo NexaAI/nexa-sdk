@@ -6,21 +6,28 @@ from typing import List, Tuple
 import gradio as gr
 
 from agent_nexa import (
-    nexa_start_search
+    nexa_start_search_stream
 )
 
-# Chat
-def chat_search(query: str, history: list):
-    # Ensure history is a list
+# Chat streaming with Nexa
+def chat_stream_search(query: str, history: list):
     if history is None:
         history = []
+    # Append user message with empty assistant placeholder
+    history.append([query, ""])
 
-    # Call the agent/search function
-    result = nexa_start_search(query)
-    history.append([query, result])
-
-    # Return both updated history (for the Chatbot) and an empty string to clear the input
-    return history, ""
+    # Yield initial state (history) and clear input
+    yield history, None
+    
+    try:
+        for piece in nexa_start_search_stream(query):
+            # Append streamed piece to assistant reply in-place
+            history[-1][1] += piece
+            # Yield updated history and clear input
+            yield history, ""
+    except Exception as e:
+        history[-1][1] += f"\n(Streaming failed: {e})"
+        yield history, ""
 
 # UI
 CUSTOM_CSS = """
@@ -37,7 +44,7 @@ with gr.Blocks(title="Web search with NexaSDK", css=CUSTOM_CSS) as demo:
 
     with gr.Column(scale=2, elem_classes=["rounded-card", "pad"]):
         chat = gr.Chatbot(height=600, show_copy_button=True)
-        chat_input = gr.Textbox(placeholder="Ask something about your documents...", label="Your question")
+        chat_input = gr.Textbox(placeholder="Input your query...", label="Your question")
         with gr.Row():
             btn_send = gr.Button("Send", variant="primary", elem_id="btn-send")
             btn_clear = gr.Button("Clear chat")
@@ -51,12 +58,12 @@ with gr.Blocks(title="Web search with NexaSDK", css=CUSTOM_CSS) as demo:
 
     # Chat send (streaming)
     btn_send.click(
-        fn=chat_search,
+        fn=chat_stream_search,
         inputs=[chat_input, chat],
         outputs=[chat, chat_input],
     )
     chat_input.submit(
-        fn=chat_search,
+        fn=chat_stream_search,
         inputs=[chat_input, chat],
         outputs=[chat, chat_input],
     )

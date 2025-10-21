@@ -17,6 +17,9 @@ from langchain_core.language_models.llms import LLM
 # Nexa config
 DEFAULT_MODEL = "NexaAI/granite-4.0-micro-GGUF"
 DEFAULT_ENDPOINT = "http://127.0.0.1:18181"
+# You can get a free API key from https://serpapi.com/
+SEARCH_API_KEY = "7467f292f9d4ce3324da285ca111ea11477ba7fc84ee7e9fa5f867a9d1b35856"
+
 SYSTEM_PROMPT = """
 You are Granite Agent, a lightweight on-device AI assistant that can take actions via function calling.
 
@@ -88,13 +91,11 @@ def search_web(query: str):
     params = {
         "engine": "google",
         "q": query,
-        "hl": "en",
-        "gl": "us",
         "google_domain": "google.com",
         "num": "3",
         "start": "10",
         "safe": "active",
-        "api_key": "7467f292f9d4ce3324da285ca111ea11477ba7fc84ee7e9fa5f867a9d1b35856"
+        "api_key": SEARCH_API_KEY
     }
     search = GoogleSearch(params)
     results = search.get_dict()
@@ -105,7 +106,7 @@ FUNCTION_REGISTRY = {
     "search_web": search_web
 }
 
-def handle_function_call(func_name: str, func_args: dict, model: str, endpoint: str) -> None:
+def handle_function_call(func_name: str, func_args: dict, model: str, endpoint: str):
     """
     Execute the registered function, print the tool result, then call Nexa to produce
     a natural language summary based on the tool output.
@@ -132,19 +133,12 @@ def handle_function_call(func_name: str, func_args: dict, model: str, endpoint: 
     Do NOT call any function again.
     """
 
-    for piece in stream_nexa_chat(model, user_followup_prompt, endpoint):
-        print(piece, end="", flush=True)
-
     try:
-        result = call_nexa(
-            prompt=user_followup_prompt,
-            model=model,
-            endpoint_base=endpoint,
-        )
+        for piece in stream_call_nexa_chat(model, user_followup_prompt, endpoint):
+            yield piece
     except Exception as e:
         print(f"[error] failed to call nexa for followup: {e}")
         return
-    return result
 
 
 # Nexa low-level call
@@ -176,7 +170,7 @@ def call_nexa(prompt: str, model: str, endpoint_base: str) -> str:
     """
     return call_nexa_chat(model, prompt, endpoint_base)
 
-def stream_nexa_chat(model: str, prompt: str, base: str):
+def stream_call_nexa_chat(model: str, prompt: str, base: str):
     """
     Stream /v1/chat/completions.
     Yields incremental text pieces as they arrive.
@@ -216,9 +210,7 @@ def stream_nexa_chat(model: str, prompt: str, base: str):
 def nexa_chat_messages(model: str, messages: list, base: str):
     """
     Use /v1/chat/completions.
-    If the server supports streaming, callers can pass `stream=True` (by
-    calling `stream_nexa_chat` directly or updating this function to accept a
-    stream flag). By default this function returns the full response string.
+    By default this function returns the full response string.
     """
     url = base.rstrip("/") + "/v1/chat/completions"
     data = _post_json(url, {
@@ -233,10 +225,12 @@ def nexa_chat_messages(model: str, messages: list, base: str):
         # tolerate slight variants
         return data.get("text", "") or data.get("response", "")
 
-def nexa_start_search(query: str, 
-                      model: str = DEFAULT_MODEL, 
-                      endpoint: str = DEFAULT_ENDPOINT
-                    ) -> str:
+def nexa_start_search_stream(
+        query: str, 
+        model: str = DEFAULT_MODEL, 
+        endpoint: str = DEFAULT_ENDPOINT
+    ):
+    
     messages = [ 
         { "role": "system", "content": SYSTEM_PROMPT },
         { "role": "user", "content": query },
@@ -247,19 +241,26 @@ def nexa_start_search(query: str,
         print("[assistant]\n")
         try:
             parsed = json.loads(result)
-            func_name = parsed.get("name")
-            func_args = parsed.get("arguments", {})
-            if func_name in FUNCTION_REGISTRY:
-                result = handle_function_call(func_name, func_args, model, endpoint)
-                print(result)
-            
+            if isinstance(parsed, dict):
+                func_name = parsed.get("name")
+                func_args = parsed.get("arguments", {})
+                if func_name:
+                    if func_name in FUNCTION_REGISTRY:
+                        for piece in handle_function_call(func_name, func_args, model, endpoint):
+                            yield piece
+                    else:
+                        yield result
+                else:
+                    yield result
+            else:
+                yield result
         except json.JSONDecodeError:
-            print(result)
+            # Not JSON: yield the raw result
+            yield result
 
     except requests.HTTPError as e:
         print(f"\n request failed, Reason: {e}")
-        
-    return result  
+        yield result
 
 
 # LangChain LLM adapter
@@ -291,9 +292,9 @@ def main():
             if not q:
                 break
 
-            result = nexa_start_search(q, args.model, args.endpoint)
-            print(result)
-
+            for piece in nexa_start_search_stream(q, args.model, args.endpoint):
+                print(piece, end="", flush=True)
+            print()
         except KeyboardInterrupt:
             print("\n[info] Bye.")
             break
