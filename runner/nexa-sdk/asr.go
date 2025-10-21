@@ -165,42 +165,6 @@ type AsrCreateInput struct {
 	LicenseKey    string
 }
 
-func (mc ASRModelConfig) toCPtr() *C.ml_ModelConfig {
-	cPtr := (*C.ml_ModelConfig)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_ModelConfig{}))))
-	*cPtr = C.ml_ModelConfig{}
-
-	cPtr.n_ctx = C.int32_t(mc.NCtx)
-	cPtr.n_threads = C.int32_t(mc.NThreads)
-	cPtr.n_threads_batch = C.int32_t(mc.NThreadsBatch)
-	cPtr.n_batch = C.int32_t(mc.NBatch)
-	cPtr.n_ubatch = C.int32_t(mc.NUbatch)
-	cPtr.n_seq_max = C.int32_t(mc.NSeqMax)
-	cPtr.n_gpu_layers = C.int32_t(mc.NGpuLayers)
-
-	if mc.ChatTemplatePath != "" {
-		cPtr.chat_template_path = C.CString(mc.ChatTemplatePath)
-	}
-	if mc.ChatTemplateContent != "" {
-		cPtr.chat_template_content = C.CString(mc.ChatTemplateContent)
-	}
-	cPtr.enable_sampling = C.bool(mc.EnableSampling)
-	if mc.GrammarStr != "" {
-		cPtr.grammar_str = C.CString(mc.GrammarStr)
-	}
-	cPtr.max_tokens = C.int32_t(mc.MaxTokens)
-	cPtr.enable_thinking = C.bool(mc.EnableThinking)
-	cPtr.verbose = C.bool(mc.Verbose)
-
-	if mc.QnnModelFolderPath != "" {
-		cPtr.qnn_model_folder_path = C.CString(mc.QnnModelFolderPath)
-	}
-	if mc.QnnLibFolderPath != "" {
-		cPtr.qnn_lib_folder_path = C.CString(mc.QnnLibFolderPath)
-	}
-
-	return cPtr
-}
-
 func (aci AsrCreateInput) toCPtr() *C.ml_AsrCreateInput {
 	cPtr := (*C.ml_AsrCreateInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_AsrCreateInput{}))))
 	*cPtr = C.ml_AsrCreateInput{}
@@ -214,7 +178,35 @@ func (aci AsrCreateInput) toCPtr() *C.ml_AsrCreateInput {
 	if aci.TokenizerPath != "" {
 		cPtr.tokenizer_path = C.CString(aci.TokenizerPath)
 	}
-	cPtr.config = *aci.Config.toCPtr()
+	// Directly assign the ModelConfig to the C structure to avoid malloc
+	cPtr.config = C.ml_ModelConfig{
+		n_ctx:           C.int32_t(aci.Config.NCtx),
+		n_threads:       C.int32_t(aci.Config.NThreads),
+		n_threads_batch: C.int32_t(aci.Config.NThreadsBatch),
+		n_batch:         C.int32_t(aci.Config.NBatch),
+		n_ubatch:        C.int32_t(aci.Config.NUbatch),
+		n_seq_max:       C.int32_t(aci.Config.NSeqMax),
+		n_gpu_layers:    C.int32_t(aci.Config.NGpuLayers),
+		enable_sampling: C.bool(aci.Config.EnableSampling),
+		max_tokens:      C.int32_t(aci.Config.MaxTokens),
+		enable_thinking: C.bool(aci.Config.EnableThinking),
+		verbose:         C.bool(aci.Config.Verbose),
+	}
+	if aci.Config.ChatTemplatePath != "" {
+		cPtr.config.chat_template_path = C.CString(aci.Config.ChatTemplatePath)
+	}
+	if aci.Config.ChatTemplateContent != "" {
+		cPtr.config.chat_template_content = C.CString(aci.Config.ChatTemplateContent)
+	}
+	if aci.Config.GrammarStr != "" {
+		cPtr.config.grammar_str = C.CString(aci.Config.GrammarStr)
+	}
+	if aci.Config.QnnModelFolderPath != "" {
+		cPtr.config.qnn_model_folder_path = C.CString(aci.Config.QnnModelFolderPath)
+	}
+	if aci.Config.QnnLibFolderPath != "" {
+		cPtr.config.qnn_lib_folder_path = C.CString(aci.Config.QnnLibFolderPath)
+	}
 	if aci.Language != "" {
 		cPtr.language = C.CString(aci.Language)
 	}
@@ -245,7 +237,7 @@ func freeAsrCreateInput(cPtr *C.ml_AsrCreateInput) {
 		if cPtr.tokenizer_path != nil {
 			C.free(unsafe.Pointer(cPtr.tokenizer_path))
 		}
-		// config is a struct, not a pointer, so no need to free it
+		// config strings are owned by the C library after creation, don't free them here
 		if cPtr.language != nil {
 			C.free(unsafe.Pointer(cPtr.language))
 		}
