@@ -1,0 +1,302 @@
+from __future__ import annotations
+
+import os
+import re
+import json
+import argparse
+import requests
+import faiss
+import numpy as np
+from typing import List, Dict, Any, Iterable, Tuple
+from serpapi import GoogleSearch
+
+from langchain_core.language_models.llms import LLM
+
+
+
+# Nexa config
+DEFAULT_MODEL = "NexaAI/granite-4.0-micro-GGUF"
+DEFAULT_ENDPOINT = "http://127.0.0.1:18181"
+SYSTEM_PROMPT = """
+You are Granite Agent, a lightweight on-device AI assistant that can take actions via function calling.
+
+Your goal:
+- Understand the user’s request.
+- Decide whether a function call is needed.
+- If yes, output a structured JSON function call (no explanations).
+- If no, directly respond to the user in natural language.
+
+Available Functions:
+1. search_web(query: string)
+   - Use this to fetch recent or real-time information from the web.
+
+When to use:
+- Use search_web ONLY if the user asks about recent or real-time information.
+- Otherwise, reply directly in natural language.
+
+Rules:
+- JSON format when calling a function:
+  {
+    "name": "function_name",
+    "arguments": { "query": "..." }
+  }
+
+- When you receive the function result, summarize it in 2-3 sentences.
+- Keep responses concise, factual, and readable.
+- Never hallucinate function names.
+- The user interface is real-time and visual, so keep your tone direct and agentic.
+- You are a fast and capable assistant running on-device (300M LLM).
+
+Examples:
+User: What's the latest news on AI?
+Assistant:
+{
+  "name": "search_web",
+  "arguments": { "query": "latest news on AI" } 
+}
+User: Hello
+Assistant: Hi! How can I assist you today?
+"""
+
+FUNCTION_TOOLS = [
+    {
+        "name": "search_web",
+        "description": "Searches the web for a given query and returns the latest information.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "User search query"}
+            },
+            "required": ["query"]
+        }
+    },
+    {
+        "name": "write_file",
+        "description": "Writes text content into a file on the local filesystem.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string"},
+                "content": {"type": "string"}
+            },
+            "required": ["path", "content"]
+        }
+    }
+]
+
+def search_web(query: str):
+    params = {
+        "engine": "google",
+        "q": query,
+        "hl": "en",
+        "gl": "us",
+        "google_domain": "google.com",
+        "num": "3",
+        "start": "10",
+        "safe": "active",
+        "api_key": "7467f292f9d4ce3324da285ca111ea11477ba7fc84ee7e9fa5f867a9d1b35856"
+    }
+    search = GoogleSearch(params)
+    results = search.get_dict()
+    organic_results = results["organic_results"]
+    return organic_results
+
+FUNCTION_REGISTRY = {
+    "search_web": search_web
+}
+
+def handle_function_call(func_name: str, func_args: dict, model: str, endpoint: str) -> None:
+    """
+    Execute the registered function, print the tool result, then call Nexa to produce
+    a natural language summary based on the tool output.
+    """
+    if func_name not in FUNCTION_REGISTRY:
+        print(f"[error] unknown function: {func_name}")
+        return
+
+    try:
+        tool_result = FUNCTION_REGISTRY[func_name](**func_args)
+    except Exception as e:
+        print(f"[function '{func_name}' error]: {e}")
+        return
+
+    print(f"\n[function '{func_name}' result]:\n{tool_result}\n")
+
+    user_followup_prompt = f"""
+    You previously decided to call the function `{func_name}` with arguments {func_args}.
+    Here is the result returned by that function:
+
+    {tool_result}
+
+    Now, based on this result, please summarize and respond naturally to the user.
+    Do NOT call any function again.
+    """
+
+    for piece in stream_nexa_chat(model, user_followup_prompt, endpoint):
+        print(piece, end="", flush=True)
+
+    try:
+        result = call_nexa(
+            prompt=user_followup_prompt,
+            model=model,
+            endpoint_base=endpoint,
+        )
+    except Exception as e:
+        print(f"[error] failed to call nexa for followup: {e}")
+        return
+    return result
+
+
+# Nexa low-level call
+def _post_json(url: str, payload: dict, timeout: int = 300) -> dict:
+    headers = {"Content-Type": "application/json"}
+    resp = requests.post(url, headers=headers, data=json.dumps(payload), timeout=timeout)
+    if resp.status_code >= 400:
+        raise requests.HTTPError(f"{resp.status_code} {url}\n{resp.text}", response=resp)
+    return resp.json()
+
+def call_nexa_chat(model: str, prompt: str, base: str) -> str:
+    url = base.rstrip("/") + "/v1/chat/completions"
+    data = _post_json(url, {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "stream": False,
+        "max_tokens": 512
+    })
+    
+    try:
+        return data["choices"][0]["message"]["content"]
+    except Exception:
+        # tolerate slight variants
+        return data.get("text", "") or data.get("response", "")
+
+def call_nexa(prompt: str, model: str, endpoint_base: str) -> str:
+    """
+    Use /v1/chat/completions endpoint.
+    """
+    return call_nexa_chat(model, prompt, endpoint_base)
+
+def stream_nexa_chat(model: str, prompt: str, base: str):
+    """
+    Stream /v1/chat/completions.
+    Yields incremental text pieces as they arrive.
+    """
+    url = base.rstrip("/") + "/v1/chat/completions"
+    headers = {"Content-Type": "application/json"}
+    payload = {
+        "model": model, 
+        "messages": [{"role": "user", "content": prompt}],
+        "stream": True,
+        "max_tokens": 512
+    }
+
+    with requests.post(url, headers=headers, data=json.dumps(payload), stream=True, timeout=300) as resp:
+        resp.raise_for_status()
+        for raw in resp.iter_lines(decode_unicode=True):
+            if not raw:
+                continue
+            # typical line: "data: {json}" or "data: [DONE]"
+            if raw.startswith("data:"):
+                data = raw[len("data:"):].strip()
+                if data == "[DONE]":
+                    break
+                try:
+                    obj = json.loads(data)
+                except Exception:
+                    continue
+                # chat stream usually in choices[0].delta.content
+                choices = obj.get("choices", [])
+                if choices:
+                    delta = choices[0].get("delta") or {}
+                    piece = delta.get("content", "")
+                    if piece:
+                        yield piece
+
+
+def nexa_chat_messages(model: str, messages: list, base: str):
+    """
+    Use /v1/chat/completions.
+    If the server supports streaming, callers can pass `stream=True` (by
+    calling `stream_nexa_chat` directly or updating this function to accept a
+    stream flag). By default this function returns the full response string.
+    """
+    url = base.rstrip("/") + "/v1/chat/completions"
+    data = _post_json(url, {
+        "model": model,
+        "messages": messages,
+        "stream": False,
+        "max_tokens": 512
+    })
+    try:
+        return data["choices"][0]["message"]["content"]
+    except Exception:
+        # tolerate slight variants
+        return data.get("text", "") or data.get("response", "")
+
+def nexa_start_search(query: str, 
+                      model: str = DEFAULT_MODEL, 
+                      endpoint: str = DEFAULT_ENDPOINT
+                    ) -> str:
+    messages = [ 
+        { "role": "system", "content": SYSTEM_PROMPT },
+        { "role": "user", "content": query },
+    ]
+
+    try:
+        result = nexa_chat_messages(model, messages, endpoint)
+        print("[assistant]\n")
+        try:
+            parsed = json.loads(result)
+            func_name = parsed.get("name")
+            func_args = parsed.get("arguments", {})
+            if func_name in FUNCTION_REGISTRY:
+                result = handle_function_call(func_name, func_args, model, endpoint)
+                print(result)
+            
+        except json.JSONDecodeError:
+            print(result)
+
+    except requests.HTTPError as e:
+        print(f"\n request failed, Reason: {e}")
+        
+    return result  
+
+
+# LangChain LLM adapter
+class NexaLLM(LLM):
+    """A minimal LangChain LLM adapter that calls Nexa's OpenAI-style endpoints."""
+    model: str = DEFAULT_MODEL
+    endpoint: str = DEFAULT_ENDPOINT
+
+    def _call(self, prompt: str, **kwargs: Any) -> str:
+        return call_nexa(prompt, self.model, self.endpoint)
+
+    @property
+    def _llm_type(self) -> str:
+        return f"nexa:{self.model}"
+
+# CLI
+def main():
+    ap = argparse.ArgumentParser(description="Function Tool with Nexa SDK server")
+    ap.add_argument("--model", default=DEFAULT_MODEL, help="Nexa model name or alias.")
+    ap.add_argument("--endpoint", default=DEFAULT_ENDPOINT, help="Nexa base endpoint, e.g. http://127.0.0.1:18181")
+    args = ap.parse_args()
+
+    print(f"[info] Ready. Using model={args.model} endpoint={args.endpoint}")
+    print("Type your question (or just press Enter to quit):")
+
+    while True:
+        try:
+            q = input("[user] ").strip()
+            if not q:
+                break
+
+            result = nexa_start_search(q, args.model, args.endpoint)
+            print(result)
+
+        except KeyboardInterrupt:
+            print("\n[info] Bye.")
+            break
+
+if __name__ == "__main__":
+    main()
