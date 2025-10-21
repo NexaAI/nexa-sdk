@@ -103,7 +103,14 @@ python embedder.py --model NexaAI/embeddinggemma-300m-npu --plugin-id npu --text
 ```bash
 nexa pull NexaAI/paddleocr-npu
 
-python cv_ocr.py --det-model NexaAI/paddleocr-npu --rec-model NexaAI/paddleocr-npu --image c:/Users/mengshengwu/workspace/nexa-sdk/temp/image.png
+python cv_ocr.py --det-model NexaAI/paddleocr-npu --rec-model NexaAI/paddleocr-npu --image path/to/image.png
+```
+
+### ASR
+```bash
+nexa pull NexaAI/parakeet-npu
+
+python asr.py --model NexaAI/parakeet-npu --audio path/to/audio.wav
 ```
 
 ## Common Arguments
