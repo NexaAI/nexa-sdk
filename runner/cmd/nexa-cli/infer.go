@@ -217,12 +217,14 @@ func infer() *cobra.Command {
 			err = inferReranker(manifest, quant)
 		case types.ModelTypeTTS:
 			err = inferTTS(manifest, quant)
-		case types.ModelTypeASR:
-			checkDependency()
-			err = inferASR(manifest, quant)
-		case types.ModelTypeCV:
-			err = inferCV(manifest, quant)
-		case types.ModelTypeImageGen:
+	case types.ModelTypeASR:
+		checkDependency()
+		err = inferASR(manifest, quant)
+	case types.ModelTypeDiarize:
+		err = inferDiarize(manifest, quant)
+	case types.ModelTypeCV:
+		err = inferCV(manifest, quant)
+	case types.ModelTypeImageGen:
 			// ImageGen model is a directory, not a file
 			err = inferImageGen(manifest, quant)
 		default:
@@ -1001,6 +1003,87 @@ func inferASR(manifest *types.ModelManifest, quant string) error {
 				return nil, nil
 			},
 		}
+		defer repl.Close()
+		processor.GetPrompt = repl.GetPrompt
+	}
+
+	return processor.Process()
+}
+
+func inferDiarize(manifest *types.ModelManifest, quant string) error {
+	s := store.Get()
+	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
+	spin := render.NewSpinner("loading diarization model...")
+	spin.Start()
+
+	diarizeInput := nexa_sdk.DiarizeCreateInput{
+		ModelName: manifest.ModelName,
+		ModelPath: modelfile,
+		PluginID:  manifest.PluginId,
+		DeviceID:  manifest.DeviceId,
+	}
+	p, err := nexa_sdk.NewDiarize(diarizeInput)
+	spin.Stop()
+
+	if err != nil {
+		slog.Error("failed to create diarization model", "error", err)
+		fmt.Println(modelLoadFailMsg)
+		return err
+	}
+	defer p.Destroy()
+
+	processor := &common.Processor{
+		ParseFile: true,
+		TestMode:  testMode,
+		Run: func(_ string, _, audios []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			if len(audios) == 0 {
+				return "", nexa_sdk.ProfileData{}, common.ErrNoAudio
+			}
+			if len(audios) > 1 {
+				return "", nexa_sdk.ProfileData{}, fmt.Errorf("diarization only supports a single audio file, got %d files", len(audios))
+			}
+
+			diarizeConfig := &nexa_sdk.DiarizeConfig{
+				MinSpeakers: 0, // auto-detect
+				MaxSpeakers: 0, // no limit
+			}
+
+			inferInput := nexa_sdk.DiarizeInferInput{
+				AudioPath: audios[0],
+				Config:    diarizeConfig,
+			}
+
+			fmt.Println(render.GetTheme().Info.Sprintf("Analyzing audio file: %s", audios[0]))
+
+			result, err := p.Infer(inferInput)
+			if err != nil {
+				return "", nexa_sdk.ProfileData{}, err
+			}
+
+			// Format the diarization output
+			output := fmt.Sprintf("Detected %d speaker(s) in %.2f seconds of audio:\n\n", result.NumSpeakers, result.Duration)
+			for i, segment := range result.Segments {
+				output += fmt.Sprintf("[%d] %.2fs - %.2fs: %s\n", i+1, segment.StartTime, segment.EndTime, segment.SpeakerLabel)
+			}
+			onToken(output)
+
+			return output, result.ProfileData, nil
+		},
+	}
+
+	if input != "" {
+		processor.GetPrompt = func() (string, error) {
+			if input == "" {
+				return "", io.EOF
+			}
+			audioPath := input
+			input = ""
+			fmt.Print(render.GetTheme().Prompt.Sprintf("> "))
+			fmt.Println(render.GetTheme().Normal.Sprint(audioPath))
+			return audioPath, nil
+		}
+	} else {
+		repl := common.Repl{}
 		defer repl.Close()
 		processor.GetPrompt = repl.GetPrompt
 	}

@@ -328,7 +328,7 @@ func chooseModelType() (types.ModelType, error) {
 		Title("Choose Model Type").
 		Options(huh.NewOptions(
 			types.ModelTypeLLM, types.ModelTypeVLM, types.ModelTypeEmbedder, types.ModelTypeReranker,
-			types.ModelTypeASR, types.ModelTypeTTS, types.ModelTypeCV, types.ModelTypeImageGen)...).
+			types.ModelTypeASR, types.ModelTypeTTS, types.ModelTypeCV, types.ModelTypeDiarize, types.ModelTypeImageGen)...).
 		Value(&modelType).
 		Run(); err != nil {
 		return "", err
@@ -550,7 +550,8 @@ func chooseFiles(name string, files []model_hub.ModelFileInfo, res *types.ModelM
 			lower := strings.ToLower(filename)
 			return strings.HasSuffix(lower, "safetensors") ||
 				strings.HasSuffix(lower, "npz") ||
-				strings.HasSuffix(lower, "nexa")
+				strings.HasSuffix(lower, "nexa") ||
+				strings.HasSuffix(lower, "bin")
 		}
 
 		// First pass: prefer non-nested supported files (not in subdirectories)

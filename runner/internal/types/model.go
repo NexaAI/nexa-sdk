@@ -11,6 +11,7 @@ const (
 	ModelTypeTTS      ModelType = "tts"
 	ModelTypeASR      ModelType = "asr"
 	ModelTypeCV       ModelType = "cv"
+	ModelTypeDiarize  ModelType = "diarize"
 )
 
 type ModelFileInfo struct {
