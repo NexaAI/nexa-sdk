@@ -273,10 +273,21 @@ func selectQuant(manifest *types.ModelManifest) (string, error) {
 func getPromptOrInput() (string, error) {
 	if input != "" {
 		content, err := os.ReadFile(input)
-		fmt.Print(render.GetTheme().Prompt.Sprintf("> "))
-		fmt.Println(render.GetTheme().Normal.Sprint(input))
+		// print prompt
+		prompt := strings.TrimSpace(string(content))
+		firstLine := true
+		for line := range strings.SplitSeq(prompt, "\n") {
+			if firstLine {
+				fmt.Print(render.GetTheme().Prompt.Sprintf("> "))
+				fmt.Println(render.GetTheme().Normal.Sprint(line))
+				firstLine = false
+			} else {
+				fmt.Println(render.GetTheme().Normal.Sprintf(". %s", line))
+			}
+
+		}
 		input = ""
-		return string(content), err
+		return prompt, err
 	}
 	if len(prompt) > 0 {
 		p := prompt[0]
@@ -679,8 +690,7 @@ func inferReranker(manifest *types.ModelManifest, quant string) error {
 				return "", result.ProfileData, err
 			}
 
-			fmt.Println(render.GetTheme().Success.Sprintf("✓ Reranking completed successfully"))
-			fmt.Println(render.GetTheme().Success.Sprintf("  Generated %d scores", len(result.Scores)))
+			fmt.Println(render.GetTheme().Success.Sprintf("✓ Reranking completed successfully. Generated %d scores", len(result.Scores)))
 
 			// Display results
 			for i, doc := range document {
@@ -694,7 +704,7 @@ func inferReranker(manifest *types.ModelManifest, quant string) error {
 	}
 
 	if query != "" || len(document) > 0 {
-		if query == "" && len(document) == 0 {
+		if query == "" || len(document) == 0 {
 			fmt.Println(render.GetTheme().Error.Sprintf("query and document are required for reranking"))
 			return errors.New("query and document are required for reranking")
 		}
@@ -704,6 +714,8 @@ func inferReranker(manifest *types.ModelManifest, quant string) error {
 			}
 			prompt := strings.Join(append([]string{query}, document...), SEP)
 			query, document = "", nil
+			fmt.Print(render.GetTheme().Prompt.Sprintf("> "))
+			fmt.Println(render.GetTheme().Normal.Sprint(prompt))
 			return prompt, nil
 		}
 	} else {
@@ -877,6 +889,8 @@ func inferASR(manifest *types.ModelManifest, quant string) error {
 			}
 			audioPath := input
 			input = ""
+			fmt.Print(render.GetTheme().Prompt.Sprintf("> "))
+			fmt.Println(render.GetTheme().Normal.Sprint(audioPath))
 			return audioPath, nil
 		}
 	} else {
@@ -1061,6 +1075,8 @@ func inferCV(manifest *types.ModelManifest, quant string) error {
 			}
 			imagePath := input
 			input = ""
+			fmt.Print(render.GetTheme().Prompt.Sprintf("> "))
+			fmt.Println(render.GetTheme().Normal.Sprint(imagePath))
 			return imagePath, nil
 		}
 	} else {
