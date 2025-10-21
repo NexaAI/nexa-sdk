@@ -16,6 +16,7 @@ This demo showcases a lightweight on-device AI assistant powered by Nexa SDK's G
 ```bash
 # Create conda environment
 conda create -n granite-arm64 python==3.13 -y
+
 conda activate granite-arm64
 
 # Install dependencies

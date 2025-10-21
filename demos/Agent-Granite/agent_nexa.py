@@ -44,6 +44,7 @@ Assistant: {"name": "write_to_file", "arguments": {"file_path": "notes.txt"}}
 """
 
 
+
 def search_web(query: str):
     """Search the web using SerpAPI"""
     params = {
