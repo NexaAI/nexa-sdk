@@ -57,8 +57,7 @@ Assistant:
 {
   "name": "write_to_file",
   "arguments": { 
-    "file_path": "AI_news.txt", 
-    "content": "<the previous answer or user-provided text>" 
+    "file_path": "AI_news.txt"
   }
 }
 
@@ -91,14 +90,14 @@ Assistant:
 {
   "name": "write_to_file",
   "arguments": { 
-    "file_path": "AI_chip_notes.txt",
-    "content": "<the answer or note to save>"
+    "file_path": "AI_chip_notes.txt"
   }
 }
 
 Example 3 — No Function Needed
 User: Hello!
 Assistant: Hi! How can I assist you today?
+
 """
 
 FUNCTION_TOOLS = [
@@ -119,10 +118,9 @@ FUNCTION_TOOLS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "path": {"type": "string"},
-                "content": {"type": "string"}
+                "path": {"type": "string"}
             },
-            "required": ["path", "content"]
+            "required": ["path"]
         }
     }
 ]
@@ -156,16 +154,14 @@ def handle_function_call(func_name: str, func_args: dict, model: str, endpoint: 
     Execute the registered function, print the tool result, then call Nexa to produce
     a natural language summary based on the tool output.
     """
-    if func_name not in FUNCTION_REGISTRY:
-        print(f"[error] unknown function: {func_name}")
-        return
-
-    try:
-        tool_result = FUNCTION_REGISTRY[func_name](**func_args)
-    except Exception as e:
-        print(f"[function '{func_name}' error]: {e}")
-        return
-
+    if isinstance(func_args, str):
+        try:
+            func_args = json.loads(func_args)
+        except json.JSONDecodeError:
+            func_args = {}
+                
+    tool_result = FUNCTION_REGISTRY[func_name](**func_args)
+    
     user_followup_prompt = f"""
     You previously decided to call the function `{func_name}` with arguments {func_args}.
     Here is the result returned by that function:
@@ -281,36 +277,45 @@ def nexa_start_search_stream(
     ]
 
     try:
+        yield json.dumps({"status": "proccess", "message": "Starting analysis..."})
         result = nexa_chat_messages(model, messages, endpoint)
-        print("[assistant]\n")
         try:
             parsed = json.loads(result)
             if isinstance(parsed, dict):
                 func_name = parsed.get("name")
                 func_args = parsed.get("arguments", {})
-                if func_name:
-                    if func_name in FUNCTION_REGISTRY:
-                        print(f"[info] calling function: {func_name} with args: {func_args}\n")
-                        if func_name == "write_to_file":
-                            file_path = func_args.get("file_path") or func_args.get("path")
-                            write_to_file(file_path, last_message)
-                            yield f"✅ Successfully saved the previous answer to **{file_path}**. You can check it anytime!"
-                        else:
-                            for piece in handle_function_call(func_name, func_args, model, endpoint):
-                                yield piece
+                if func_name and func_name in FUNCTION_REGISTRY:
+                    yield json.dumps({"status": "function", "message": result})
+                    if func_name == "write_to_file":
+                        file_path = func_args.get("file_path") or func_args.get("path")
+                        write_to_file(file_path, last_message)
+                        message = f"Successfully saved the previous answer to **{file_path}**. You can check it anytime!"
+                        yield json.dumps({"status": "stream", "message": message})
                     else:
-                        yield result
+                        try:
+                            yield json.dumps({"status": "proccess", "message": "Function calling..."})
+                            flag = False
+                            for piece in handle_function_call(func_name, func_args, model, endpoint):
+                                if not flag:
+                                    yield json.dumps({"status": "proccess", "message": "Function call finished."})
+                                    flag = True
+                                else:
+                                    yield json.dumps({"status": "stream", "message": piece})
+                        except Exception as e:
+                            yield json.dumps({"status": "function_call_error", "message": f"{e}"})
+                            # try again
+                            for piece in handle_function_call(func_name, func_args, model, endpoint):
+                                yield json.dumps({"status": "stream", "message": piece})
                 else:
-                    yield result
+                    yield json.dumps({"status": "stream", "message": result})
             else:
-                yield result
+                yield json.dumps({"status": "stream", "message": result})
         except json.JSONDecodeError:
             # Not JSON: yield the raw result
-            yield result
+            yield json.dumps({"status": "stream", "message": result})
 
     except requests.HTTPError as e:
-        print(f"\n request failed, Reason: {e}")
-        yield result
+        yield json.dumps({"status": "stream", "message": f"{e}"})
 
 
 # LangChain LLM adapter
