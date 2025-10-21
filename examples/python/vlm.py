@@ -7,6 +7,7 @@ This example demonstrates how to use the NexaAI SDK to work with Llama models.
 It includes basic model initialization, text generation, streaming, and chat template functionality.
 """
 
+import argparse
 import io
 import os
 import re
@@ -47,16 +48,24 @@ def parse_media_from_input(user_input: str) -> tuple[str, Optional[List[str]], O
 
 
 def main():
-    # Your model path
-    model = os.path.expanduser("~/.cache/nexa.ai/nexa_sdk/models/NexaAI/gemma-3n-E4B-it-4bit-MLX/model-00001-of-00002.safetensors")
+    parser = argparse.ArgumentParser(description="NexaAI VLM Example")
+    parser.add_argument("--model", 
+                       default="~/.cache/nexa.ai/nexa_sdk/models/NexaAI/gemma-3n-E4B-it-4bit-MLX/model-00001-of-00002.safetensors",
+                       help="Path to the VLM model")
+    parser.add_argument("--device", default="", help="Device to run on")
+    parser.add_argument("--max-tokens", type=int, default=100, help="Maximum tokens to generate")
+    parser.add_argument("--system", default="You are a helpful assistant.", 
+                       help="System message")
+    parser.add_argument("--plugin-id", default="cpu_gpu", help="Plugin ID to use")
+    args = parser.parse_args()
 
-    # Model configuration
+    model_path = os.path.expanduser(args.model)
     m_cfg = ModelConfig()
 
-    # Load model
-    instance: VLM = VLM.from_(name_or_path=model, mmproj_path="", m_cfg=m_cfg, plugin_id="mlx", device_id="")
+    instance = VLM.from_(name_or_path=model_path, m_cfg=m_cfg, plugin_id=args.plugin_id, device_id=args.device)
 
-    conversation: List[MultiModalMessage] = [MultiModalMessage(role="system", content=[MultiModalMessageContent(type="text", text="You are a helpful assistant.")])]
+    conversation: List[MultiModalMessage] = [MultiModalMessage(role="system", 
+                                                              content=[MultiModalMessageContent(type="text", text=args.system)])]
     strbuff = io.StringIO()
 
     print("Multi-round conversation started. Type '/quit' or '/exit' to end.")
@@ -106,8 +115,7 @@ def main():
         strbuff.seek(0)
 
         print("Assistant: ", end="", flush=True)
-        # Generate the model response
-        for token in instance.generate_stream(prompt, g_cfg=GenerationConfig(max_tokens=100, image_paths=images, audio_paths=audios)):
+        for token in instance.generate_stream(prompt, g_cfg=GenerationConfig(max_tokens=args.max_tokens, image_paths=images, audio_paths=audios)):
             print(token, end="", flush=True)
             strbuff.write(token)
 
