@@ -23,7 +23,7 @@ SEARCH_API_KEY = "7467f292f9d4ce3324da285ca111ea11477ba7fc84ee7e9fa5f867a9d1b358
 SYSTEM_PROMPT = """
 You are Granite Agent, a lightweight on-device AI assistant that can take actions via function calling.
 
-Your goal:
+Your goals:
 - Understand the user’s request.
 - Decide whether a function call is needed.
 - If yes, output a structured JSON function call (no explanations).
@@ -31,17 +31,42 @@ Your goal:
 
 Available Functions:
 1. search_web(query: string)
-   - Use this to fetch recent or real-time information from the web.
 
-When to use:
-- Use search_web ONLY if the user asks about recent or real-time information.
-- Otherwise, reply directly in natural language.
+Purpose: Fetch recent or real-time information from the web.
+Use when: The user asks about latest, recent, current, trending, or time-sensitive topics.
+Examples:
+User: What’s the latest AI news this week?
+Assistant:
+{
+  "name": "search_web",
+  "arguments": { "query": "latest AI news this week" }
+}
+
+2. write_to_file(file_path: string, content: string)
+
+Purpose: Save or append text to a local file.
+Use when: The user asks to “save,” “record,” “note down,” or “write” something.
+
+Special rule:
+If the user says “save that,” “save this,” or “save the previous answer,”
+Use the previous assistant message as the content.
+
+Example:
+User: Save that answer to my ‘AI news’ notes.
+Assistant:
+{
+  "name": "write_to_file",
+  "arguments": { 
+    "file_path": "AI_news.txt", 
+    "content": "<the previous answer or user-provided text>" 
+  }
+}
 
 Rules:
 - JSON format when calling a function:
   {
     "name": "function_name",
-    "arguments": { "query": "..." }
+    "arguments": { "..." }
   }
 
 - When you receive the function result, summarize it in 2-3 sentences.
@@ -50,14 +75,29 @@ Rules:
 - The user interface is real-time and visual, so keep your tone direct and agentic.
 - You are a fast and capable assistant running on-device (300M LLM).
 
-Examples:
+Behavior Examples:
+
+Example 1 — Web Search
 User: What's the latest news on AI?
 Assistant:
 {
   "name": "search_web",
   "arguments": { "query": "latest news on AI" } 
 }
-User: Hello
+
+Example 2 — File Write
+User: Save that to my AI chip notes.
+Assistant:
+{
+  "name": "write_to_file",
+  "arguments": { 
+    "file_path": "AI_chip_notes.txt",
+    "content": "<the answer or note to save>"
+  }
+}
+
+Example 3 — No Function Needed
+User: Hello!
 Assistant: Hi! How can I assist you today?
 """
 
@@ -102,8 +142,13 @@ def search_web(query: str):
     organic_results = results["organic_results"]
     return organic_results
 
+def write_to_file(file_path: str, content: str):
+    with open(file_path, "a", encoding="utf-8") as f:
+        f.write(content + "\n")
+
 FUNCTION_REGISTRY = {
-    "search_web": search_web
+    "search_web": search_web,
+    "write_to_file": write_to_file
 }
 
 def handle_function_call(func_name: str, func_args: dict, model: str, endpoint: str):
@@ -120,8 +165,6 @@ def handle_function_call(func_name: str, func_args: dict, model: str, endpoint: 
     except Exception as e:
         print(f"[function '{func_name}' error]: {e}")
         return
-
-    print(f"\n[function '{func_name}' result]:\n{tool_result}\n")
 
     user_followup_prompt = f"""
     You previously decided to call the function `{func_name}` with arguments {func_args}.
@@ -227,6 +270,7 @@ def nexa_chat_messages(model: str, messages: list, base: str):
 
 def nexa_start_search_stream(
         query: str, 
+        last_message: str = "",
         model: str = DEFAULT_MODEL, 
         endpoint: str = DEFAULT_ENDPOINT
     ):
@@ -246,8 +290,14 @@ def nexa_start_search_stream(
                 func_args = parsed.get("arguments", {})
                 if func_name:
                     if func_name in FUNCTION_REGISTRY:
-                        for piece in handle_function_call(func_name, func_args, model, endpoint):
-                            yield piece
+                        print(f"[info] calling function: {func_name} with args: {func_args}\n")
+                        if func_name == "write_to_file":
+                            file_path = func_args.get("file_path") or func_args.get("path")
+                            write_to_file(file_path, last_message)
+                            yield f"✅ Successfully saved the previous answer to **{file_path}**. You can check it anytime!"
+                        else:
+                            for piece in handle_function_call(func_name, func_args, model, endpoint):
+                                yield piece
                     else:
                         yield result
                 else:
@@ -286,14 +336,17 @@ def main():
     print(f"[info] Ready. Using model={args.model} endpoint={args.endpoint}")
     print("Type your question (or just press Enter to quit):")
 
+    last_message = ""
     while True:
         try:
             q = input("[user] ").strip()
             if not q:
                 break
-
-            for piece in nexa_start_search_stream(q, args.model, args.endpoint):
+            response = ""
+            for piece in nexa_start_search_stream(q, last_message, args.model, args.endpoint):
                 print(piece, end="", flush=True)
+                response += piece
+            last_message = response
             print()
         except KeyboardInterrupt:
             print("\n[info] Bye.")

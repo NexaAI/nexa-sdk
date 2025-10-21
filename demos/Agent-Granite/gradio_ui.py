@@ -18,9 +18,10 @@ def chat_stream_search(query: str, history: list):
 
     # Yield initial state (history) and clear input
     yield history, None
+    last_message=history[-2][1] if len(history) > 1 else ""
     
     try:
-        for piece in nexa_start_search_stream(query):
+        for piece in nexa_start_search_stream(query, last_message):
             # Append streamed piece to assistant reply in-place
             history[-1][1] += piece
             # Yield updated history and clear input
