@@ -124,23 +124,31 @@ func checkDependency() {
 	}
 }
 
-func normalizeModelName(name string) string {
+func normalizeModelName(name string) (string, string) {
+	// split quant
+	parts := strings.SplitN(name, ":", 2)
+	name = parts[0]
+	quant := ""
+	if len(parts) == 2 {
+		quant = strings.ToUpper(parts[1])
+	}
+
 	// support shortcuts
 	if actualName, exists := config.GetModelMapping(name); exists {
-		return actualName
+		return actualName, quant
 	}
 
 	// support qwen3 -> NexaAI/qwen3
 	if !strings.Contains(name, "/") {
-		return "NexaAI/" + name
+		return "NexaAI/" + name, quant
 	}
 
 	// support https://huggingface.co/Qwen/Qwen3-0.6B-GGUF -> Qwen/Qwen3-0.6B-GGUF
 	if strings.HasPrefix(name, model_hub.HF_ENDPOINT) {
-		return strings.TrimPrefix(name, model_hub.HF_ENDPOINT+"/")
+		return strings.TrimPrefix(name, model_hub.HF_ENDPOINT+"/"), quant
 	}
 
-	return name
+	return name, quant
 }
 
 // main is the entry point that executes the root command.

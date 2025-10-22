@@ -201,18 +201,21 @@ func infer() *cobra.Command {
 	inferCmd.Run = func(cmd *cobra.Command, args []string) {
 		s := store.Get()
 
-		manifest, err := ensureModelAvailable(s, args[0])
+		name, quant := normalizeModelName(args[0])
+		manifest, err := ensureModelAvailable(s, name, quant)
 		if err != nil {
 			fmt.Println(render.GetTheme().Error.Sprintf("check model error: %s", err))
 			return
 		}
 
-		quant, err := selectQuant(manifest)
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("quant error: %s", err))
-			return
+		if quant == "" {
+			sq, err := selectQuant(manifest)
+			if err != nil {
+				fmt.Println(render.GetTheme().Error.Sprintf("quant error: %s", err))
+				return
+			}
+			quant = sq
 		}
-		// fmt.Println(render.GetTheme().Quant.Sprintf("🔹 Quant=%s", quant))
 
 		nexa_sdk.Init()
 		defer nexa_sdk.DeInit()
@@ -250,12 +253,11 @@ func infer() *cobra.Command {
 	return inferCmd
 }
 
-func ensureModelAvailable(s *store.Store, name string) (*types.ModelManifest, error) {
-	name = normalizeModelName(name)
+func ensureModelAvailable(s *store.Store, name string, quant string) (*types.ModelManifest, error) {
 	manifest, err := s.GetManifest(name)
 	if errors.Is(err, os.ErrNotExist) {
 		fmt.Println(render.GetTheme().Info.Sprintf("model not found, start download"))
-		err = pullModel(name)
+		err = pullModel(name, quant)
 		if err != nil {
 			return nil, fmt.Errorf("download model failed")
 		}

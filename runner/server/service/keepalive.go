@@ -2,7 +2,9 @@ package service
 
 import (
 	"fmt"
+	"log/slog"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -87,14 +89,6 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 	keepAlive.Lock()
 	defer keepAlive.Unlock()
 
-	// if actualPath, exists := config.GetModelMapping(name); exists {
-	// 	// support shortcuts like qwen3 -> Qwen/Qwen3-4B-GGUF
-	// 	name = actualPath
-	// } else if !strings.Contains(name, "/") {
-	// 	// fallback to NexaAI prefix for unknown shortcuts
-	// 	name = "NexaAI/" + name
-	// }
-
 	// Check if model already exists in cache
 	model, ok := keepAlive.models[name]
 	if ok && reflect.DeepEqual(model.param, param) {
@@ -114,15 +108,22 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 	}
 
 	s := store.Get()
+
+	quant := ""
+	if strings.Contains(name, ":") {
+		parts := strings.SplitN(name, ":", 2)
+		name = parts[0]
+		quant = parts[1]
+	}
+	slog.Debug("KeepAliveGet", "name", name, "quant", quant, "param", param)
 	manifest, err := s.GetManifest(name)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: select one of quant
 	var modelfile string
-	for _, v := range manifest.ModelFile {
-		if v.Downloaded {
+	for q, v := range manifest.ModelFile {
+		if v.Downloaded && (quant == "" || quant == q) {
 			modelfile = s.ModelfilePath(manifest.Name, v.Name)
 			break
 		}

@@ -124,66 +124,61 @@ func startMigrate() error {
 
 		fmt.Println(render.GetTheme().Info.Sprintf("Start pull model %s", model.Name))
 
-		// TODO: support multi quant
-		if false {
-			// newManifest, err := chooseQuantFiles(*mf)
-			// if err != nil {
-			// 	return
-			// }
-			// pgCh, errCh := s.PullExtraQuant(context.TODO(), *mf, *newManifest)
-			// bar := render.NewProgressBar(newManifest.GetSize()-mf.GetSize(), "downloading")
-			//
-			// for pg := range pgCh {
-			// 	bar.Set(pg.TotalDownloaded)
-			// }
-			// bar.Exit()
-			//
-			// for err := range errCh {
-			// 	bar.Clear()
-			// 	fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
-			// }
-		} else {
-			var manifest types.ModelManifest
+		var manifest types.ModelManifest
 
-			manifest.ModelName = hmf.ModelName
-			manifest.PluginId = hmf.PluginId
-			manifest.DeviceId = hmf.DeviceId
-			manifest.ModelType = hmf.ModelType
-			manifest.MinSDKVersion = hmf.MinSDKVersion
+		manifest.ModelName = hmf.ModelName
+		manifest.PluginId = hmf.PluginId
+		manifest.DeviceId = hmf.DeviceId
+		manifest.ModelType = hmf.ModelType
+		manifest.MinSDKVersion = hmf.MinSDKVersion
 
-			if manifest.ModelName == "" {
-				manifest.ModelName = model.ModelName
-			}
-			if manifest.PluginId == "" {
-				manifest.PluginId = model.PluginId
-			}
-			if manifest.DeviceId == "" {
-				manifest.DeviceId = model.DeviceId
-			}
-			if manifest.ModelType == "" {
-				manifest.ModelType = model.ModelType
-			}
+		if manifest.ModelName == "" {
+			manifest.ModelName = model.ModelName
+		}
+		if manifest.PluginId == "" {
+			manifest.PluginId = model.PluginId
+		}
+		if manifest.DeviceId == "" {
+			manifest.DeviceId = model.DeviceId
+		}
+		if manifest.ModelType == "" {
+			manifest.ModelType = model.ModelType
+		}
 
-			err := chooseFiles(model.Name, files, &manifest)
-			if err != nil {
-				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
-				return err
+		extraQuant := false
+		for quant, fileinfo := range model.ModelFile {
+			if fileinfo.Downloaded {
+				if !extraQuant {
+					err := chooseFiles(model.Name, quant, files, &manifest)
+					if err != nil {
+						fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
+						return err
+					}
+					extraQuant = true
+				} else {
+					nmf, err := chooseQuantFiles(manifest, quant)
+					if err != nil {
+						fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
+						return err
+					}
+					manifest = *nmf
+				}
 			}
+		}
 
-			pgCh, errCh := s.Pull(context.TODO(), manifest)
-			bar := render.NewProgressBar(manifest.GetSize(), "downloading")
+		pgCh, errCh := s.Pull(context.TODO(), manifest)
+		bar := render.NewProgressBar(manifest.GetSize(), "downloading")
 
-			for pg := range pgCh {
-				bar.Set(pg.TotalDownloaded)
-			}
-			bar.Exit()
-			result[i] = MigrateResult{ModelName: model.Name, Status: StatusSuccess}
+		for pg := range pgCh {
+			bar.Set(pg.TotalDownloaded)
+		}
+		bar.Exit()
+		result[i] = MigrateResult{ModelName: model.Name, Status: StatusSuccess}
 
-			for err := range errCh {
-				bar.Clear()
-				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
-				result[i] = MigrateResult{ModelName: model.Name, Status: StatusFailed}
-			}
+		for err := range errCh {
+			bar.Clear()
+			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
+			result[i] = MigrateResult{ModelName: model.Name, Status: StatusFailed}
 		}
 	}
 

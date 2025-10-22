@@ -77,7 +77,7 @@ func run() *cobra.Command {
 }
 
 func runFunc(cmd *cobra.Command, args []string) {
-	model := normalizeModelName(args[0])
+	model, quant := normalizeModelName(args[0])
 
 	client := openai.NewClient(
 		option.WithBaseURL(fmt.Sprintf("http://%s/v1", config.Get().Host)),
@@ -138,7 +138,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 				}
 			}
 
-			err = chooseFiles(model, files, &manifest)
+			err = chooseFiles(model, quant, files, &manifest)
 			if err != nil {
 				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 				os.Exit(1)
