@@ -82,7 +82,7 @@ NexaSDK is an easy-to-use developer toolkit for running any AI model locally —
 curl -fsSL https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_linux_x86_64.sh -o install.sh && chmod +x install.sh && ./install.sh && rm install.sh
 ```
 
-### For arm64:
+#### For arm64:
 ```bash
 curl -fsSL https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_linux_arm64.sh -o install.sh && chmod +x install.sh && ./install.sh && rm install.sh
 ```
