@@ -83,6 +83,12 @@ $env:NEXA_LOG="debug" # powershell
 export NEXA_LOG="debug" # bash
 ```
 
+Pull model without interactive
+
+```bash
+nexa pull <model>[:<quant>] --model-type <model-type>
+```
+
 Pull model from model hub
 
 ```bash
