@@ -242,7 +242,6 @@ func pullModel(name string) error {
 			bar.Clear()
 			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 		}
-		fmt.Println(render.GetTheme().Success.Sprintf("Download success！"))
 	} else {
 		var manifest types.ModelManifest
 
@@ -288,8 +287,9 @@ func pullModel(name string) error {
 			bar.Clear()
 			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 		}
-		fmt.Println(render.GetTheme().Success.Sprintf("Download success！"))
 	}
+
+	fmt.Println(render.GetTheme().Success.Sprintf("✔  Download success!"))
 
 	return nil
 }
