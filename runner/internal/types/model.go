@@ -7,11 +7,11 @@ const (
 	ModelTypeVLM      ModelType = "vlm"
 	ModelTypeEmbedder ModelType = "embedder"
 	ModelTypeReranker ModelType = "reranker"
-	ModelTypeImageGen ModelType = "image_gen"
 	ModelTypeTTS      ModelType = "tts"
 	ModelTypeASR      ModelType = "asr"
-	ModelTypeCV       ModelType = "cv"
 	ModelTypeDiarize  ModelType = "diarize"
+	ModelTypeCV       ModelType = "cv"
+	ModelTypeImageGen ModelType = "image_gen"
 )
 
 type ModelFileInfo struct {

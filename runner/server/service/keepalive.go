@@ -179,6 +179,8 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 			PluginID:  manifest.PluginId,
 			DeviceID:  manifest.DeviceId,
 		})
+	//case reflect.TypeFor[nexa_sdk.TTS]():
+	//	t, e = nexa_sdk.NewTTS(modelfile, nil, param.Device)
 	case reflect.TypeFor[nexa_sdk.ImageGen]():
 		// For image generation models, use the model directory path instead of specific file
 		modelDir := s.ModelfilePath(manifest.Name, "")
@@ -188,10 +190,6 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 			PluginID:  manifest.PluginId,
 			DeviceID:  manifest.DeviceId,
 		})
-	//case reflect.TypeFor[nexa_sdk.Reranker]():
-	//	t, e = nexa_sdk.NewReranker(modelfile, nil, param.Device)
-	//case reflect.TypeFor[nexa_sdk.TTS]():
-	//	t, e = nexa_sdk.NewTTS(modelfile, nil, param.Device)
 	default:
 		panic(fmt.Sprintf("not support type: %+#v", t))
 	}
