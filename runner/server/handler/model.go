@@ -13,6 +13,7 @@ import (
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
+	"github.com/NexaAI/nexa-sdk/runner/server/utils"
 )
 
 func ListModels(c *gin.Context) {
@@ -26,10 +27,19 @@ func ListModels(c *gin.Context) {
 
 	res := make([]openai.Model, 0, len(models))
 	for _, m := range models {
-		res = append(res, openai.Model{
-			ID:      m.Name,
-			OwnedBy: strings.Split(m.Name, "/")[0],
-		})
+		for q, f := range m.ModelFile {
+			if !f.Downloaded {
+				continue
+			}
+			id := m.Name
+			if q != "N/A" {
+				id += ":" + q
+			}
+			res = append(res, openai.Model{
+				ID:      id,
+				OwnedBy: strings.Split(m.Name, "/")[0],
+			})
+		}
 	}
 
 	c.JSON(http.StatusOK, map[string]any{
@@ -39,11 +49,12 @@ func ListModels(c *gin.Context) {
 }
 
 func RetrieveModel(c *gin.Context) {
-	model := strings.TrimPrefix(c.Param("model"), "/")
+	name := strings.TrimPrefix(c.Param("model"), "/")
+	name, _ = utils.NormalizeModelName(name)
 
 	s := store.Get()
 
-	if manifest, err := s.GetManifest(model); err != nil {
+	if manifest, err := s.GetManifest(name); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			c.JSON(http.StatusNotFound, nil)
 		} else {

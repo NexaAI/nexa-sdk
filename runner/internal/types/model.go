@@ -14,6 +14,18 @@ const (
 	ModelTypeImageGen ModelType = "image_gen"
 )
 
+var AllModelTypes = []ModelType{
+	ModelTypeLLM,
+	ModelTypeVLM,
+	ModelTypeEmbedder,
+	ModelTypeReranker,
+	ModelTypeTTS,
+	ModelTypeASR,
+	ModelTypeDiarize,
+	ModelTypeCV,
+	ModelTypeImageGen,
+}
+
 type ModelFileInfo struct {
 	Name       string
 	Downloaded bool

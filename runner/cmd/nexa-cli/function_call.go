@@ -34,18 +34,30 @@ func functionCall() *cobra.Command {
 	fcCmd.Run = func(cmd *cobra.Command, args []string) {
 		s := store.Get()
 
-		manifest, err := ensureModelAvailable(s, args[0])
+		name, quant := normalizeModelName(args[0])
+
+		manifest, err := ensureModelAvailable(s, name, quant)
 		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("check model error: %s", err))
+			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 			os.Exit(1)
 		}
 
-		quant, err := selectQuant(manifest)
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("quant error: %s", err))
-			os.Exit(1)
+		if quant != "" {
+			if fileinfo, exist := manifest.ModelFile[quant]; !exist {
+				fmt.Println(render.GetTheme().Error.Sprintf("Error: quant %s not found", quant))
+				os.Exit(1)
+			} else if !fileinfo.Downloaded {
+				fmt.Println(render.GetTheme().Error.Sprintf("Error: quant %s not downloaded", quant))
+				os.Exit(1)
+			}
+		} else {
+			sq, err := selectQuant(manifest)
+			if err != nil {
+				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
+				os.Exit(1)
+			}
+			quant = sq
 		}
-		fmt.Println(render.GetTheme().Quant.Sprintf("🔹 Quant=%s", quant))
 
 		nexa_sdk.Init()
 		defer nexa_sdk.DeInit()

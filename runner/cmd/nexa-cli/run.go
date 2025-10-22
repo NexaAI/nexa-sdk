@@ -77,7 +77,10 @@ func run() *cobra.Command {
 }
 
 func runFunc(cmd *cobra.Command, args []string) {
-	model := normalizeModelName(args[0])
+	name, quant := normalizeModelName(args[0])
+	if quant != "" {
+		name = name + ":" + quant
+	}
 
 	client := openai.NewClient(
 		option.WithBaseURL(fmt.Sprintf("http://%s/v1", config.Get().Host)),
@@ -85,7 +88,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 	)
 
 	// check
-	modelInfo, err := client.Models.Get(context.TODO(), model)
+	modelInfo, err := client.Models.Get(context.TODO(), name)
 	if err != nil {
 		if _, ok := err.(net.Error); ok {
 			fmt.Println(render.GetTheme().Error.Sprintf("Is server running? Please check your network. \n\t%s", err))
@@ -96,9 +99,9 @@ func runFunc(cmd *cobra.Command, args []string) {
 			fmt.Println(render.GetTheme().Info.Sprintf("model not found, start download"))
 
 			// download manifest
-			spin := render.NewSpinner("download manifest from: " + model)
+			spin := render.NewSpinner("download manifest from: " + name)
 			spin.Start()
-			files, hmf, err := model_hub.ModelInfo(context.TODO(), model)
+			files, hmf, err := model_hub.ModelInfo(context.TODO(), name)
 			spin.Stop()
 			if err != nil {
 				fmt.Println(render.GetTheme().Error.Sprintf("Get manifest from huggingface error: %s", err))
@@ -121,10 +124,10 @@ func runFunc(cmd *cobra.Command, args []string) {
 			}
 
 			if manifest.ModelName == "" {
-				manifest.ModelName = model
+				manifest.ModelName = name
 			}
 			if manifest.PluginId == "" {
-				manifest.PluginId = choosePluginId(model)
+				manifest.PluginId = choosePluginId(name)
 			}
 			if manifest.DeviceId == "" {
 				manifest.DeviceId = hmf.DeviceId
@@ -138,7 +141,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 				}
 			}
 
-			err = chooseFiles(model, files, &manifest)
+			err = chooseFiles(name, quant, files, &manifest)
 			if err != nil {
 				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 				os.Exit(1)
@@ -146,7 +149,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 
 			var raw *http.Response
 			err = client.Post(context.TODO(), "/models", nil, &raw,
-				option.WithJSONSet("Name", manifest.Name),
+				option.WithJSONSet("Name", name),
 				option.WithJSONSet("ModelName", manifest.ModelName),
 				option.WithJSONSet("PluginId", manifest.PluginId),
 				option.WithJSONSet("DeviceID", manifest.DeviceId),
@@ -172,7 +175,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			}
 
 			// check again
-			modelInfo, err = client.Models.Get(context.TODO(), model)
+			modelInfo, err = client.Models.Get(context.TODO(), name)
 			if err != nil {
 				fmt.Println(render.GetTheme().Error.Sprintf("get model error: %s", "download is incorrect"))
 				os.Exit(1)
@@ -191,7 +194,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 	spin.Start()
 	warmUpRequest := openai.ChatCompletionNewParams{
 		Messages: nil,
-		Model:    model,
+		Model:    name,
 	}
 	if systemPrompt != "" {
 		warmUpRequest.Messages = append(warmUpRequest.Messages, openai.SystemMessage(systemPrompt))
@@ -248,7 +251,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			acc := openai.ChatCompletionAccumulator{}
 			stream := client.Chat.Completions.NewStreaming(context.Background(), openai.ChatCompletionNewParams{
 				Messages:         history,
-				Model:            model,
+				Model:            name,
 				StreamOptions:    openai.ChatCompletionStreamOptionsParam{IncludeUsage: openai.Opt(true)},
 				Temperature:      openai.Float(float64(temperature)),
 				TopP:             openai.Float(float64(topP)),
@@ -309,7 +312,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			history = nil
 			_, err := client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
 				Messages: nil,
-				Model:    model,
+				Model:    name,
 			})
 			return err
 		},

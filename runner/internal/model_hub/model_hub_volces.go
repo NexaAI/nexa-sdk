@@ -24,8 +24,14 @@ type Volces struct {
 	s3Client *s3.Client
 }
 
-func NewVolces() *Volces {
+func NewVolces(skipCNCheck bool) *Volces {
 	v := &Volces{}
+	if skipCNCheck {
+		v.chinaMainlandCheck.Do(func() {
+			v.isChinaMainland = true
+			slog.Info("Skip China mainland check for Volces model hub")
+		})
+	}
 	v.initS3Client()
 	return v
 }

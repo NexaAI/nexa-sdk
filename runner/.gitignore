@@ -1,6 +1,8 @@
 *.png
 *.jpg
 
+build
+
 # for tests, please keep ordered
 !tests/**
 __pycache__/

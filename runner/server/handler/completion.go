@@ -78,7 +78,8 @@ func ChatCompletions(c *gin.Context) {
 
 	slog.Debug("ChatCompletions", "param", param)
 	s := store.Get()
-	manifest, err := s.GetManifest(param.Model)
+	name, _ := utils.NormalizeModelName(param.Model)
+	manifest, err := s.GetManifest(name)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return

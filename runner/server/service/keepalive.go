@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"log/slog"
 	"reflect"
 	"sync"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
+	"github.com/NexaAI/nexa-sdk/runner/server/utils"
 )
 
 // KeepAliveGet retrieves a model from the keepalive cache or creates it if not found
@@ -87,14 +89,6 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 	keepAlive.Lock()
 	defer keepAlive.Unlock()
 
-	// if actualPath, exists := config.GetModelMapping(name); exists {
-	// 	// support shortcuts like qwen3 -> Qwen/Qwen3-4B-GGUF
-	// 	name = actualPath
-	// } else if !strings.Contains(name, "/") {
-	// 	// fallback to NexaAI prefix for unknown shortcuts
-	// 	name = "NexaAI/" + name
-	// }
-
 	// Check if model already exists in cache
 	model, ok := keepAlive.models[name]
 	if ok && reflect.DeepEqual(model.param, param) {
@@ -114,17 +108,29 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 	}
 
 	s := store.Get()
+
+	name, quant := utils.NormalizeModelName(name)
+	slog.Debug("KeepAliveGet", "name", name, "quant", quant, "param", param)
 	manifest, err := s.GetManifest(name)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: select one of quant
 	var modelfile string
-	for _, v := range manifest.ModelFile {
-		if v.Downloaded {
-			modelfile = s.ModelfilePath(manifest.Name, v.Name)
-			break
+	if quant != "" {
+		if fileinfo, exists := manifest.ModelFile[quant]; !exists {
+			return nil, fmt.Errorf("quantization %s not found for model %s", quant, name)
+		} else if !fileinfo.Downloaded {
+			return nil, fmt.Errorf("quantization %s not downloaded for model %s", quant, name)
+		} else {
+			modelfile = s.ModelfilePath(manifest.Name, fileinfo.Name)
+		}
+	} else {
+		for _, v := range manifest.ModelFile {
+			if v.Downloaded {
+				modelfile = s.ModelfilePath(manifest.Name, v.Name)
+				break
+			}
 		}
 	}
 
