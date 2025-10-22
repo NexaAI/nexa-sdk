@@ -37,7 +37,7 @@ var (
 	nctx           int32
 	maxTokens      int32
 	imageMaxLength int32
-	think          bool
+	enableThink    bool
 	hideThink      bool
 	prompt         []string
 	taskType       string
@@ -90,7 +90,7 @@ var (
 		llmFlags.Int32VarP(&ngl, "ngl", "n", 999, "num of layers pass to gpu")
 		llmFlags.Int32VarP(&nctx, "nctx", "", 4096, "context window size")
 		llmFlags.Int32VarP(&maxTokens, "max-tokens", "", 2048, "max tokens")
-		llmFlags.BoolVarP(&think, "think", "", true, "enable thinking mode")
+		llmFlags.BoolVarP(&enableThink, "enable-think", "", true, "enable thinking mode")
 		llmFlags.BoolVarP(&hideThink, "hide-think", "", false, "hide thinking output")
 		llmFlags.StringVarP(&systemPrompt, "system-prompt", "s", "", "system prompt to set model behavior")
 		llmFlags.StringVarP(&input, "input", "i", "", "prompt txt file")
@@ -372,7 +372,7 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 
 			templateOutput, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
 				Messages:    history,
-				EnableThink: think,
+				EnableThink: enableThink,
 			})
 			if err != nil {
 				return "", nexa_sdk.ProfileData{}, err
@@ -506,7 +506,7 @@ func inferVLM(manifest *types.ModelManifest, quant string) error {
 
 			tmplOut, err := p.ApplyChatTemplate(nexa_sdk.VlmApplyChatTemplateInput{
 				Messages:    history,
-				EnableThink: think,
+				EnableThink: enableThink,
 			})
 			if err != nil {
 				return "", nexa_sdk.ProfileData{}, err
