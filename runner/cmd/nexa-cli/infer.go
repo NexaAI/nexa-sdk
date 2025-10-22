@@ -37,7 +37,7 @@ var (
 	nctx           int32
 	maxTokens      int32
 	imageMaxLength int32
-	enableThink    bool
+	think          bool
 	hideThink      bool
 	prompt         []string
 	taskType       string
@@ -66,6 +66,7 @@ var (
 	enableJson        bool
 )
 
+// NOTE: flagset use same flag name will be ignored, but usage is different, so we keep them in different flagset
 var (
 	samplerFlags = func() *pflag.FlagSet {
 		samplerFlags := pflag.NewFlagSet("LLM/VLM Sampler", pflag.ExitOnError)
@@ -89,7 +90,7 @@ var (
 		llmFlags.Int32VarP(&ngl, "ngl", "n", 999, "num of layers pass to gpu")
 		llmFlags.Int32VarP(&nctx, "nctx", "", 4096, "context window size")
 		llmFlags.Int32VarP(&maxTokens, "max-tokens", "", 2048, "max tokens")
-		llmFlags.BoolVarP(&enableThink, "think", "", true, "enable thinking mode")
+		llmFlags.BoolVarP(&think, "think", "", true, "enable thinking mode")
 		llmFlags.BoolVarP(&hideThink, "hide-think", "", false, "hide thinking output")
 		llmFlags.StringVarP(&systemPrompt, "system-prompt", "s", "", "system prompt to set model behavior")
 		llmFlags.StringVarP(&input, "input", "i", "", "prompt txt file")
@@ -103,6 +104,61 @@ var (
 		vlmFlags.Int32VarP(&imageMaxLength, "image-max-length", "", 512, "max image length")
 		return vlmFlags
 	}()
+	embedderFlags = func() *pflag.FlagSet {
+		embedderFlags := pflag.NewFlagSet("Embedder", pflag.ExitOnError)
+		embedderFlags.SortFlags = false
+		embedderFlags.StringVarP(&input, "input", "i", "", "prompt txt file")
+		embedderFlags.StringArrayVarP(&prompt, "prompt", "p", nil, "pass prompt")
+		embedderFlags.StringVarP(&taskType, "task-type", "", "default", "default|search_query|search_document")
+		return embedderFlags
+	}()
+	rerankerFlags = func() *pflag.FlagSet {
+		rerankerFlags := pflag.NewFlagSet("Reranker", pflag.ExitOnError)
+		rerankerFlags.SortFlags = false
+		rerankerFlags.StringVarP(&query, "query", "q", "", "query")
+		rerankerFlags.StringArrayVarP(&document, "document", "d", nil, "documents")
+		return rerankerFlags
+	}()
+	ttsFlags = func() *pflag.FlagSet {
+		ttsFlags := pflag.NewFlagSet("TTS", pflag.ExitOnError)
+		ttsFlags.SortFlags = false
+		ttsFlags.StringVarP(&input, "input", "i", "", "prompt txt file")
+		ttsFlags.StringArrayVarP(&prompt, "prompt", "p", nil, "pass prompt")
+		ttsFlags.StringVarP(&voice, "voice", "", "", "voice identifier")
+		ttsFlags.BoolVarP(&listVoice, "list-voice", "", false, "list available voices")
+		ttsFlags.Float64VarP(&speechSpeed, "speech-speed", "", 1.0, "speech speed (1.0 = normal)")
+		ttsFlags.StringVarP(&output, "output", "o", "", "output audio file")
+		return ttsFlags
+	}()
+	asrFlags = func() *pflag.FlagSet {
+		asrFlags := pflag.NewFlagSet("ASR", pflag.ExitOnError)
+		asrFlags.SortFlags = false
+		asrFlags.StringVarP(&input, "input", "i", "", "input audio file")
+		return asrFlags
+	}()
+	diarizeFlags = func() *pflag.FlagSet {
+		diarizeFlags := pflag.NewFlagSet("Diarize", pflag.ExitOnError)
+		diarizeFlags.SortFlags = false
+		diarizeFlags.StringVarP(&input, "input", "i", "", "input audio file")
+		return diarizeFlags
+	}()
+	cvFlags = func() *pflag.FlagSet {
+		cvFlags := pflag.NewFlagSet("CV", pflag.ExitOnError)
+		cvFlags.SortFlags = false
+		cvFlags.StringVarP(&input, "input", "i", "", "input image file")
+		return cvFlags
+	}()
+	imageGenFlags = func() *pflag.FlagSet {
+		imageGenFlags := pflag.NewFlagSet("ImageGen", pflag.ExitOnError)
+		imageGenFlags.SortFlags = false
+		imageGenFlags.StringVarP(&input, "input", "i", "", "prompt txt file")
+		imageGenFlags.StringArrayVarP(&prompt, "prompt", "p", nil, "pass prompt")
+		imageGenFlags.StringVarP(&output, "output", "o", "", "output image file")
+		return imageGenFlags
+	}()
+	flagGroups = []*pflag.FlagSet{
+		samplerFlags, llmFlags, vlmFlags, embedderFlags, rerankerFlags, ttsFlags, asrFlags, diarizeFlags, cvFlags, imageGenFlags,
+	}
 )
 
 func infer() *cobra.Command {
@@ -114,55 +170,11 @@ func infer() *cobra.Command {
 	}
 
 	inferCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
-
-	// NOTE: flagset use same flag name will be ignored, but usage is different, so we keep them in different flagset
-
-	inferCmd.Flags().AddFlagSet(samplerFlags)
-	inferCmd.Flags().AddFlagSet(llmFlags)
-	inferCmd.Flags().AddFlagSet(vlmFlags)
-
-	embedderFlags := pflag.NewFlagSet("Embedder", pflag.ExitOnError)
-	embedderFlags.SortFlags = false
-	embedderFlags.StringVarP(&input, "input", "i", "", "prompt txt file")
-	embedderFlags.StringArrayVarP(&prompt, "prompt", "p", nil, "pass prompt")
-	embedderFlags.StringVarP(&taskType, "task-type", "", "default", "default|search_query|search_document")
-	inferCmd.Flags().AddFlagSet(embedderFlags)
-
-	rerankerFlags := pflag.NewFlagSet("Reranker", pflag.ExitOnError)
-	rerankerFlags.SortFlags = false
-	rerankerFlags.StringVarP(&query, "query", "q", "", "query")
-	rerankerFlags.StringArrayVarP(&document, "document", "d", nil, "documents")
-	inferCmd.Flags().AddFlagSet(rerankerFlags)
-
-	cvFlags := pflag.NewFlagSet("CV", pflag.ExitOnError)
-	cvFlags.SortFlags = false
-	cvFlags.StringVarP(&input, "input", "i", "", "input image file")
-	inferCmd.Flags().AddFlagSet(cvFlags)
-
-	ttsFlags := pflag.NewFlagSet("TTS", pflag.ExitOnError)
-	ttsFlags.SortFlags = false
-	ttsFlags.StringVarP(&input, "input", "i", "", "prompt txt file")
-	ttsFlags.StringArrayVarP(&prompt, "prompt", "p", nil, "pass prompt")
-	ttsFlags.StringVarP(&voice, "voice", "", "", "voice identifier")
-	ttsFlags.BoolVarP(&listVoice, "list-voice", "", false, "list available voices")
-	ttsFlags.Float64VarP(&speechSpeed, "speech-speed", "", 1.0, "speech speed (1.0 = normal)")
-	ttsFlags.StringVarP(&output, "output", "o", "", "output audio file")
-	inferCmd.Flags().AddFlagSet(ttsFlags)
-
-	imageGenFlags := pflag.NewFlagSet("ImageGen", pflag.ExitOnError)
-	imageGenFlags.SortFlags = false
-	imageGenFlags.StringVarP(&input, "input", "i", "", "prompt txt file")
-	imageGenFlags.StringArrayVarP(&prompt, "prompt", "p", nil, "pass prompt")
-	imageGenFlags.StringVarP(&output, "output", "o", "", "output image file")
-	inferCmd.Flags().AddFlagSet(imageGenFlags)
-
-	// inferCmd.Flags().StringVarP(&language, "language", "", "", "[asr] language code (e.g., en, zh, ja)")           // TODO: Language support not implemented yet
-	// inferCmd.Flags().BoolVarP(&listLanguage, "list-language", "", false, "[asr] list available languages")        // TODO: Language support not implemented yet
+	for _, flags := range flagGroups {
+		inferCmd.Flags().AddFlagSet(flags)
+	}
 
 	inferCmd.SetUsageFunc(func(c *cobra.Command) error {
-		flagGroups := []*pflag.FlagSet{
-			samplerFlags, llmFlags, vlmFlags, embedderFlags, rerankerFlags, cvFlags, ttsFlags, imageGenFlags,
-		}
 		w := c.OutOrStdout()
 		fmt.Fprint(w, "Usage:")
 		if c.Runnable() {
@@ -360,7 +372,7 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 
 			templateOutput, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
 				Messages:    history,
-				EnableThink: enableThink,
+				EnableThink: think,
 			})
 			if err != nil {
 				return "", nexa_sdk.ProfileData{}, err
@@ -494,7 +506,7 @@ func inferVLM(manifest *types.ModelManifest, quant string) error {
 
 			tmplOut, err := p.ApplyChatTemplate(nexa_sdk.VlmApplyChatTemplateInput{
 				Messages:    history,
-				EnableThink: enableThink,
+				EnableThink: think,
 			})
 			if err != nil {
 				return "", nexa_sdk.ProfileData{}, err

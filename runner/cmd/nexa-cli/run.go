@@ -39,7 +39,7 @@ func run() *cobra.Command {
 
 	llmFlags := pflag.NewFlagSet("LLM/VLM Model", pflag.ExitOnError)
 	llmFlags.SortFlags = false
-	llmFlags.BoolVarP(&enableThink, "think", "", true, "enable thinking mode")
+	llmFlags.BoolVarP(&think, "think", "", true, "enable thinking mode")
 	llmFlags.StringVarP(&systemPrompt, "system-prompt", "s", "", "system prompt to set model behavior")
 	runCmd.Flags().AddFlagSet(llmFlags)
 
@@ -257,7 +257,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 				Seed:             openai.Int(int64(seed)),
 			},
 
-				option.WithJSONSet("enable_think", enableThink),
+				option.WithJSONSet("enable_think", think),
 				option.WithJSONSet("top_k", topK),
 				option.WithJSONSet("min_p", minP),
 				option.WithJSONSet("repetition_penalty", repetitionPenalty),

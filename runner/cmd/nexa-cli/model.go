@@ -332,8 +332,8 @@ func chooseModelType() (types.ModelType, error) {
 	if err := huh.NewSelect[types.ModelType]().
 		Title("Choose Model Type").
 		Options(huh.NewOptions(
-			types.ModelTypeLLM, types.ModelTypeVLM, types.ModelTypeEmbedder, types.ModelTypeReranker,
-			types.ModelTypeASR, types.ModelTypeTTS, types.ModelTypeCV, types.ModelTypeDiarize, types.ModelTypeImageGen)...).
+			types.ModelTypeLLM, types.ModelTypeVLM, types.ModelTypeEmbedder, types.ModelTypeReranker, types.ModelTypeTTS,
+			types.ModelTypeASR, types.ModelTypeDiarize, types.ModelTypeCV, types.ModelTypeImageGen)...).
 		Value(&modelType).
 		Run(); err != nil {
 		return "", err
