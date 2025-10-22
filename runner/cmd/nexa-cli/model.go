@@ -75,7 +75,7 @@ func remove() *cobra.Command {
 			fmt.Println(render.GetTheme().Error.Sprintf("✘  Failed to remove model: %s", name))
 			os.Exit(1)
 		} else {
-			fmt.Printf("✔  Removed %s\n", name)
+			fmt.Println(render.GetTheme().Success.Sprintf("✔  Removed %s!", name))
 		}
 	}
 
@@ -95,7 +95,7 @@ func clean() *cobra.Command {
 	cleanCmd.Run = func(cmd *cobra.Command, args []string) {
 		s := store.Get()
 		c := s.Clean()
-		fmt.Printf("✔  Removed %d models\n", c)
+		fmt.Println(render.GetTheme().Success.Sprintf("✔  Removed %d models!", c))
 	}
 
 	return cleanCmd
@@ -151,6 +151,9 @@ func list() *cobra.Command {
 			for _, model := range models {
 				tw.AppendRow(table.Row{model.Name, humanize.IBytes(uint64(model.GetSize())), strings.Join(func() []string {
 					quants := make([]string, 0)
+					if !slices.Contains([]string{"cpu_gpu", "metal"}, model.PluginId) {
+						return quants
+					}
 					for q := range model.ModelFile {
 						if model.ModelFile[q].Downloaded && q != "N/A" {
 							quants = append(quants, q)
