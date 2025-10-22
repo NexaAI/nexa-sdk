@@ -1,16 +1,11 @@
 from __future__ import annotations
 
-import os
 import re
 import json
 import argparse
 import requests
-import faiss
-import numpy as np
-from typing import List, Dict, Any, Iterable, Tuple, Optional
+from typing import Any, Tuple, Optional
 from serpapi import GoogleSearch
-
-from langchain_core.language_models.llms import LLM
 
 
 # Nexa config
@@ -385,21 +380,6 @@ def nexa_start_search_stream(
         yield json.dumps({"status": "error", "message": f"HTTP error: {e}"})
     except Exception as e:
         yield json.dumps({"status": "error", "message": f"Unexpected error: {e}"})
-
-
-# LangChain LLM adapter
-class NexaLLM(LLM):
-    """A minimal LangChain LLM adapter that calls Nexa's OpenAI-style endpoints."""
-
-    model: str = DEFAULT_MODEL
-    endpoint: str = DEFAULT_ENDPOINT
-
-    def _call(self, prompt: str, **kwargs: Any) -> str:
-        return call_nexa(prompt, self.model, self.endpoint)
-
-    @property
-    def _llm_type(self) -> str:
-        return f"nexa:{self.model}"
 
 
 # CLI
