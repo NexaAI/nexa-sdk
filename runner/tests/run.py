@@ -40,11 +40,14 @@ def check_models():
             continue
         name = fields[1].strip()
         quant = fields[3].strip()
-        if name in missing_models:
-            # TODO: remove quant check
-            if ',' in quant:
-                raise RuntimeError(f'Model {name} has multiple quantizations: {quant}')
-            missing_models.remove(name)
+        if quant == '':
+            if name in missing_models:
+                missing_models.remove(name)
+        else:
+            for quant in quant.split(','):
+                model = f'{name}:{quant.strip()}'
+                if model in missing_models:
+                    missing_models.remove(model)
     if len(missing_models) > 0:
         raise RuntimeError(f'Missing models: {missing_models}')
 
