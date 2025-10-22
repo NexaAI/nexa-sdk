@@ -289,6 +289,8 @@ func pullModel(name string) error {
 		}
 	}
 
+	fmt.Println(render.GetTheme().Success.Sprintf("✔  Download success!"))
+
 	return nil
 }
 
