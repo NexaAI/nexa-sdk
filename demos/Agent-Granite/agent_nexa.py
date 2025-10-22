@@ -19,108 +19,30 @@ DEFAULT_ENDPOINT = "http://127.0.0.1:18181"
 # You can get a free API key from https://serpapi.com/
 SEARCH_API_KEY = "7467f292f9d4ce3324da285ca111ea11477ba7fc84ee7e9fa5f867a9d1b35856"
 
-SYSTEM_PROMPT = """
-You are Granite Agent, a lightweight on-device AI assistant that can take actions via function calling.
+# ... existing code ...
 
-Your goals:
-- Understand the user's request.
-- Decide whether a function call is needed.
-- If yes, output a structured JSON function call (no explanations).
-- If no, directly respond to the user in natural language.
+SYSTEM_PROMPT = """You are Granite Agent with function calling.
 
-Available Functions:
-1. search_web(query: string)
+Functions:
+1. search_web(query: string) - Web search
+2. write_to_file(file_path: string, content: string) - Save text to file
 
-Purpose: Fetch recent or real-time information from the web.
-Use when: The user asks about latest, recent, current, trending, or time-sensitive topics.
-Examples:
-User: What's the latest AI news this week?
-Assistant:
-{
-  "name": "search_web",
-  "arguments": { "query": "latest AI news this week" }
-}
-
-2. write_to_file(file_path: string, content: string)
-
-Purpose: Save or append text to a local file.
-Use when: The user asks to "save," "record," "note down," or "write" something.
-
-Special rule:
-If the user says "save that," "save this," or "save the previous answer,"
-Use the previous assistant message as the content.
-
-Example:
-User: Save that answer to my 'AI news' notes.
-Assistant:
-{
-  "name": "write_to_file",
-  "arguments": { 
-    "file_path": "AI_news.txt"
-  }
-}
+Output JSON for function calls:
+{"name": "function_name", "arguments": {"key": "value"}}
 
 Rules:
-- JSON format when calling a function:
-  {
-    "name": "function_name",
-    "arguments": { "..." }
-  }
+- JSON only for functions (no explanations)
+- Summarize results in 2-3 sentences
+- Never invent function names
 
-- When you receive the function result, summarize it in 2-3 sentences.
-- Keep responses concise, factual, and readable.
-- Never hallucinate function names.
-- The user interface is real-time and visual, so keep your tone direct and agentic.
-- You are a fast and capable assistant running on-device (300M LLM).
+Examples:
+User: Latest AI news?
+Assistant: {"name": "search_web", "arguments": {"query": "latest AI news"}}
 
-Behavior Examples:
-
-Example 1 — Web Search
-User: What's the latest news on AI?
-Assistant:
-{
-  "name": "search_web",
-  "arguments": { "query": "latest news on AI" } 
-}
-
-Example 2 — File Write
-User: Save that to my AI chip notes.
-Assistant:
-{
-  "name": "write_to_file",
-  "arguments": { 
-    "file_path": "AI_chip_notes.txt"
-  }
-}
-
-Example 3 — No Function Needed
-User: Hello!
-Assistant: Hi! How can I assist you today?
-
+User: Save that.
+Assistant: {"name": "write_to_file", "arguments": {"file_path": "notes.txt"}}
 """
 
-FUNCTION_TOOLS = [
-    {
-        "name": "search_web",
-        "description": "Searches the web for a given query and returns the latest information.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "query": {"type": "string", "description": "User search query"}
-            },
-            "required": ["query"],
-        },
-    },
-    {
-        "name": "write_file",
-        "description": "Writes text content into a file on the local filesystem.",
-        "parameters": {
-            "type": "object",
-            "properties": {"path": {"type": "string"}},
-            "required": ["path"],
-        },
-    },
-]
 
 
 def search_web(query: str):
@@ -129,14 +51,23 @@ def search_web(query: str):
         "engine": "google",
         "q": query,
         "google_domain": "google.com",
-        "num": "3",
-        "start": "10",
+        "num": "2",
+        "start": "1",
         "safe": "active",
         "api_key": SEARCH_API_KEY,
     }
     search = GoogleSearch(params)
     results = search.get_dict()
     organic_results = results.get("organic_results", [])
+
+    # Print search results for debugging
+    print(f"\n[Web Search Results for '{query}']:")
+    for idx, result in enumerate(organic_results, 1):
+        print(f"{idx}. {result.get('title', 'N/A')}")
+        print(f"   URL: {result.get('link', 'N/A')}")
+        print(f"   Snippet: {result.get('snippet', 'N/A')[:200]}...")
+        print()
+
     return organic_results
 
 
@@ -162,15 +93,32 @@ def handle_function_call(func_name: str, func_args: dict, model: str, endpoint: 
 
     tool_result = FUNCTION_REGISTRY[func_name](**func_args)
 
-    user_followup_prompt = f"""
-    You previously decided to call the function `{func_name}` with arguments {func_args}.
-    Here is the result returned by that function:
+    # Customize prompt based on function type
+    if func_name == "search_web":
+        user_followup_prompt = f"""
+        You called search_web with query: {func_args.get('query')}
+        
+        Here are the search results:
+        {tool_result}
+        
+        Please provide a short summary of these web search results in 2-3 bullet points. For each result:
+        - Include the title
+        - Mention the source/website
+        - Summarize the key information from the snippet
+        - Make it informative and comprehensive
+        
+        Be verbose and helpful. Do NOT call any function again.
+        """
+    else:
+        user_followup_prompt = f"""
+        You previously decided to call the function `{func_name}` with arguments {func_args}.
+        Here is the result returned by that function:
 
-    {tool_result}
+        {tool_result}
 
-    Now, based on this result, please summarize and respond naturally to the user.
-    Do NOT call any function again.
-    """
+        Now, based on this result, please summarize and respond naturally to the user.
+        Do NOT call any function again.
+        """
 
     try:
         for piece in stream_call_nexa_chat(model, user_followup_prompt, endpoint):
