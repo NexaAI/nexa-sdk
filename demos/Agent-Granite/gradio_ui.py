@@ -1,7 +1,3 @@
-import os
-import platform
-import subprocess
-from typing import List, Tuple
 
 import gradio as gr
 from gradio import ChatMessage
