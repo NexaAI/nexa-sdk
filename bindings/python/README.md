@@ -28,32 +28,24 @@ This directory contains examples for using the NexaAI Python SDK.
 ### LLM
 
 ```bash
-nexa pull Qwen/Qwen3-0.6B-GGUF
-
 python llm.py
 ```
 
 ### Multi-Modal
 
 ```bash
-nexa pull NexaAI/gemma-3n-E4B-it-4bit-MLX
-
 python vlm.py
 ```
 
 ### Reranker
 
 ```bash
-nexa pull NexaAI/jina-v2-rerank-mlx
-
 python rerank.py
 ```
 
 ### Embedder
 
 ```bash
-nexa pull NexaAI/jina-v2-fp16-mlx
-
 python embedder.py
 ```
 
@@ -62,38 +54,28 @@ python embedder.py
 #### OCR
 
 ```bash
-nexa pull NexaAI/paddle-ocr-mlx
-
 python cv_ocr.py
 ```
 ## Running Examples (Windows ARM64, Snapdragon X Elite)
 
 ### LLM
 ```bash
-nexa pull NexaAI/Llama3.2-3B-NPU-Turbo
-
 python llm.py --model NexaAI/Llama3.2-3B-NPU-Turbo --plugin-id npu --device npu --max-tokens 100 --system "You are a helpful assistant."
 ```
 
 ### Multi-Modal
 
 ```bash
-nexa pull NexaAI/OmniNeural-4B
-
 python vlm.py --model NexaAI/OmniNeural-4B --plugin-id npu --device npu --max-tokens 100 --system "You are a helpful assistant."
 ```
 
 ### Reranker
 ```bash
-nexa pull NexaAI/jina-v2-rerank-npu
-
 python rerank.py --model NexaAI/jina-v2-rerank-npu --plugin-id npu --query "Where is on-device AI?" --documents "On-device AI is a type of AI that is processed on the device itself, rather than in the cloud." "edge computing" "A ragdoll is a breed of cat that is known for its long, flowing hair and gentle personality." "The capital of France is Paris."
 ```
 
 ### Embedder
 ```bash
-nexa pull NexaAI/embeddinggemma-300m-npu
-
 python embedder.py --model NexaAI/embeddinggemma-300m-npu --plugin-id npu --texts "On-device AI is a type of AI that is processed on the device itself, rather than in the cloud." "edge computing" "A ragdoll is a breed of cat that is known for its long, flowing hair and gentle personality." "The capital of France is Paris." --query "what is on device AI" --batch-size 2
 ```
 
@@ -101,15 +83,11 @@ python embedder.py --model NexaAI/embeddinggemma-300m-npu --plugin-id npu --text
 
 #### OCR
 ```bash
-nexa pull NexaAI/paddleocr-npu
-
 python cv_ocr.py --det-model NexaAI/paddleocr-npu --rec-model NexaAI/paddleocr-npu --image path/to/image.png
 ```
 
 ### ASR
 ```bash
-nexa pull NexaAI/parakeet-npu
-
 python asr.py --model NexaAI/parakeet-npu --audio path/to/audio.wav
 ```
 
