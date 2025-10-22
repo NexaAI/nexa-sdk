@@ -1105,7 +1105,27 @@ func inferDiarize(manifest *types.ModelManifest, quant string) error {
 			return audioPath, nil
 		}
 	} else {
-		repl := common.Repl{}
+		repl := common.Repl{
+			Record: func() (*string, error) {
+				// Diarization doesn't support streaming, use file-based recording
+				t := strconv.Itoa(int(time.Now().Unix()))
+				outputFile := filepath.Join(os.TempDir(), "nexa-cli", t+".wav")
+				rec, err := record.NewRecorder(outputFile)
+				if err != nil {
+					return nil, err
+				}
+
+				fmt.Println(render.GetTheme().Info.Sprint("Recording is going on, press Ctrl-C to stop"))
+
+				err = rec.Run()
+				if err != nil {
+					return nil, err
+				}
+				outfile := rec.GetOutputFile()
+
+				return &outfile, nil
+			},
+		}
 		defer repl.Close()
 		processor.GetPrompt = repl.GetPrompt
 	}
