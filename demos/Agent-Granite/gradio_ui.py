@@ -66,6 +66,15 @@ def chat_stream_search(query: str, history: list):
                     yield history, ""
                     continue
                     
+                if st == "error":
+                    history.append(ChatMessage(
+                        role="assistant",
+                        content=f"(Error: {msg})",
+                        metadata={"title": f"❌ **Error occurred**"},
+                    ))
+                    yield history, ""
+                    continue
+                
                 if st == "proccess":
                     history.append(ChatMessage(
                         role="assistant",
@@ -130,7 +139,7 @@ def chat_stream_search(query: str, history: list):
             history[-1].content += f"\n(Streaming failed: {e})"
         else:
             history.append(ChatMessage(role="assistant", content=f"(Streaming failed: {e})"))
-        yield history, f"Error: {e}"
+        yield history, ""
 
 # UI
 CUSTOM_CSS = """

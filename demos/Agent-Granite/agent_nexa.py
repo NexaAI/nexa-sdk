@@ -373,8 +373,18 @@ def nexa_start_search_stream(
                 )
 
                 if func_name == "write_to_file":
+                    yield json.dumps({"status": "proccess", "message": "Function calling..."})
+                    
                     file_path = func_args.get("file_path") or func_args.get("path")
                     write_to_file(file_path, last_message)
+                    
+                    yield json.dumps(
+                        {
+                            "status": "proccess",
+                            "message": "Function call finished.",
+                        }
+                    )
+                    
                     message = f"Successfully saved the previous answer to **{file_path}**. You can check it anytime!"
                     yield json.dumps({"status": "stream", "message": message})
                 else:
@@ -395,8 +405,8 @@ def nexa_start_search_stream(
                                     }
                                 )
                                 flag = True
-                            else:
-                                yield json.dumps({"status": "stream", "message": piece})
+                            
+                            yield json.dumps({"status": "stream", "message": piece})
                     except Exception as e:
                         yield json.dumps(
                             {"status": "function_call_error", "message": f"{e}"}
