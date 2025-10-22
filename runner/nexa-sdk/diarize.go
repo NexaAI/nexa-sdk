@@ -85,6 +85,42 @@ type DiarizeModelConfig struct {
 	QnnLibFolderPath   string
 }
 
+func (mc DiarizeModelConfig) toCPtr() *C.ml_ModelConfig {
+	cPtr := (*C.ml_ModelConfig)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_ModelConfig{}))))
+	*cPtr = C.ml_ModelConfig{}
+
+	cPtr.n_ctx = C.int32_t(mc.NCtx)
+	cPtr.n_threads = C.int32_t(mc.NThreads)
+	cPtr.n_threads_batch = C.int32_t(mc.NThreadsBatch)
+	cPtr.n_batch = C.int32_t(mc.NBatch)
+	cPtr.n_ubatch = C.int32_t(mc.NUbatch)
+	cPtr.n_seq_max = C.int32_t(mc.NSeqMax)
+	cPtr.n_gpu_layers = C.int32_t(mc.NGpuLayers)
+
+	if mc.ChatTemplatePath != "" {
+		cPtr.chat_template_path = C.CString(mc.ChatTemplatePath)
+	}
+	if mc.ChatTemplateContent != "" {
+		cPtr.chat_template_content = C.CString(mc.ChatTemplateContent)
+	}
+	cPtr.enable_sampling = C.bool(mc.EnableSampling)
+	if mc.GrammarStr != "" {
+		cPtr.grammar_str = C.CString(mc.GrammarStr)
+	}
+	cPtr.max_tokens = C.int32_t(mc.MaxTokens)
+	cPtr.enable_thinking = C.bool(mc.EnableThinking)
+	cPtr.verbose = C.bool(mc.Verbose)
+
+	if mc.QnnModelFolderPath != "" {
+		cPtr.qnn_model_folder_path = C.CString(mc.QnnModelFolderPath)
+	}
+	if mc.QnnLibFolderPath != "" {
+		cPtr.qnn_lib_folder_path = C.CString(mc.QnnLibFolderPath)
+	}
+
+	return cPtr
+}
+
 // DiarizeCreateInput represents input parameters for diarization creation
 type DiarizeCreateInput struct {
 	ModelName  string
@@ -106,35 +142,7 @@ func (dci DiarizeCreateInput) toCPtr() *C.ml_DiarizeCreateInput {
 	if dci.ModelPath != "" {
 		cPtr.model_path = C.CString(dci.ModelPath)
 	}
-	// Directly assign the ModelConfig to the C structure to avoid malloc
-	cPtr.config = C.ml_ModelConfig{
-		n_ctx:           C.int32_t(dci.Config.NCtx),
-		n_threads:       C.int32_t(dci.Config.NThreads),
-		n_threads_batch: C.int32_t(dci.Config.NThreadsBatch),
-		n_batch:         C.int32_t(dci.Config.NBatch),
-		n_ubatch:        C.int32_t(dci.Config.NUbatch),
-		n_seq_max:       C.int32_t(dci.Config.NSeqMax),
-		n_gpu_layers:    C.int32_t(dci.Config.NGpuLayers),
-		enable_sampling: C.bool(dci.Config.EnableSampling),
-		max_tokens:      C.int32_t(dci.Config.MaxTokens),
-		enable_thinking: C.bool(dci.Config.EnableThinking),
-		verbose:         C.bool(dci.Config.Verbose),
-	}
-	if dci.Config.ChatTemplatePath != "" {
-		cPtr.config.chat_template_path = C.CString(dci.Config.ChatTemplatePath)
-	}
-	if dci.Config.ChatTemplateContent != "" {
-		cPtr.config.chat_template_content = C.CString(dci.Config.ChatTemplateContent)
-	}
-	if dci.Config.GrammarStr != "" {
-		cPtr.config.grammar_str = C.CString(dci.Config.GrammarStr)
-	}
-	if dci.Config.QnnModelFolderPath != "" {
-		cPtr.config.qnn_model_folder_path = C.CString(dci.Config.QnnModelFolderPath)
-	}
-	if dci.Config.QnnLibFolderPath != "" {
-		cPtr.config.qnn_lib_folder_path = C.CString(dci.Config.QnnLibFolderPath)
-	}
+	cPtr.config = *dci.Config.toCPtr()
 	if dci.PluginID != "" {
 		cPtr.plugin_id = C.CString(dci.PluginID)
 	}
@@ -159,7 +167,7 @@ func freeDiarizeCreateInput(cPtr *C.ml_DiarizeCreateInput) {
 		if cPtr.model_path != nil {
 			C.free(unsafe.Pointer(cPtr.model_path))
 		}
-		// config strings are owned by the C library after creation, don't free them here
+		// config is a struct, not a pointer, so no need to free it
 		if cPtr.plugin_id != nil {
 			C.free(unsafe.Pointer(cPtr.plugin_id))
 		}
