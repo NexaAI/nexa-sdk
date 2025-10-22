@@ -217,14 +217,14 @@ func infer() *cobra.Command {
 			err = inferReranker(manifest, quant)
 		case types.ModelTypeTTS:
 			err = inferTTS(manifest, quant)
-	case types.ModelTypeASR:
-		checkDependency()
-		err = inferASR(manifest, quant)
-	case types.ModelTypeDiarize:
-		err = inferDiarize(manifest, quant)
-	case types.ModelTypeCV:
-		err = inferCV(manifest, quant)
-	case types.ModelTypeImageGen:
+		case types.ModelTypeASR:
+			checkDependency()
+			err = inferASR(manifest, quant)
+		case types.ModelTypeDiarize:
+			err = inferDiarize(manifest, quant)
+		case types.ModelTypeCV:
+			err = inferCV(manifest, quant)
+		case types.ModelTypeImageGen:
 			// ImageGen model is a directory, not a file
 			err = inferImageGen(manifest, quant)
 		default:
