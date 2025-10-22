@@ -62,28 +62,30 @@ func pull() *cobra.Command {
 func remove() *cobra.Command {
 	removeCmd := &cobra.Command{
 		GroupID: "model",
-		Use:     "remove <model-name>",
+		Use:     "remove <model-name> [<model-name> ...]",
 		Aliases: []string{"rm"},
 		Short:   "Remove cached model",
 		Long:    "Delete a cached model by name. This will remove the model files from the local cache.",
 	}
 
-	removeCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
+	removeCmd.Args = cobra.MatchAll(cobra.MinimumNArgs(1), cobra.OnlyValidArgs)
 
 	removeCmd.Run = func(cmd *cobra.Command, args []string) {
-		name, quant := normalizeModelName(args[0])
-		if quant != "" {
-			fmt.Println(render.GetTheme().Error.Sprintf("Currently not support remove a single quant, please remove the whole model: %s", name))
-			os.Exit(1)
-		}
+		for _, arg := range args {
+			name, quant := normalizeModelName(arg)
+			if quant != "" {
+				fmt.Println(render.GetTheme().Error.Sprintf("Currently not support remove a single quant, please remove the whole model: %s", name))
+				os.Exit(1)
+			}
 
-		s := store.Get()
-		e := s.Remove(name)
-		if e != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("✘  Failed to remove model: %s", name))
-			os.Exit(1)
-		} else {
-			fmt.Println(render.GetTheme().Success.Sprintf("✔  Removed %s!", name))
+			s := store.Get()
+			e := s.Remove(name)
+			if e != nil {
+				fmt.Println(render.GetTheme().Error.Sprintf("✘  Failed to remove model: %s", name))
+				os.Exit(1)
+			} else {
+				fmt.Println(render.GetTheme().Success.Sprintf("✔  Removed %s!", name))
+			}
 		}
 	}
 
@@ -159,7 +161,7 @@ func list() *cobra.Command {
 			for _, model := range models {
 				tw.AppendRow(table.Row{model.Name, humanize.IBytes(uint64(model.GetSize())), strings.Join(func() []string {
 					quants := make([]string, 0)
-					if !slices.Contains([]string{"cpu_gpu", "metal"}, model.PluginId) {
+					if !slices.Contains([]string{"cpu_gpu", "metal", "nexaml"}, model.PluginId) {
 						return quants
 					}
 					for q := range model.ModelFile {
@@ -207,7 +209,7 @@ func pullModel(name string, quant string) error {
 	if modelHub != "" {
 		switch strings.ToLower(modelHub) {
 		case "volces":
-			model_hub.SetHub(model_hub.NewVolces())
+			model_hub.SetHub(model_hub.NewVolces(true))
 		case "s3":
 			model_hub.SetHub(model_hub.NewS3())
 		case "hf", "huggingface":
@@ -237,12 +239,17 @@ func pullModel(name string, quant string) error {
 	}
 
 	if mf != nil {
-		newManifest, err := chooseQuantFiles(*mf, quant)
+		// deepcopy manifest
+		var omf types.ModelManifest
+		mfs, _ := sonic.Marshal(mf)
+		sonic.Unmarshal(mfs, &omf)
+
+		err := chooseQuantFiles(quant, mf)
 		if err != nil {
 			return err
 		}
-		pgCh, errCh := s.PullExtraQuant(context.TODO(), *mf, *newManifest)
-		bar := render.NewProgressBar(newManifest.GetSize()-mf.GetSize(), "downloading")
+		pgCh, errCh := s.PullExtraQuant(context.TODO(), omf, *mf)
+		bar := render.NewProgressBar(mf.GetSize()-omf.GetSize(), "downloading")
 
 		for pg := range pgCh {
 			bar.Set(pg.TotalDownloaded)
@@ -285,7 +292,6 @@ func pullModel(name string, quant string) error {
 			return err
 		}
 
-		// TODO: replace with go-pretty
 		pgCh, errCh := s.Pull(context.TODO(), manifest)
 		bar := render.NewProgressBar(manifest.GetSize(), "downloading")
 
@@ -338,7 +344,7 @@ func choosePluginId(name string) string {
 func chooseModelType() (types.ModelType, error) {
 	if modelType != "" {
 		mt := types.ModelType(modelType)
-		if !slices.Contains(types.AllModelTyps, mt) {
+		if !slices.Contains(types.AllModelTypes, mt) {
 			return "", fmt.Errorf("unknown model type: %s", modelType)
 		}
 		return mt, nil
@@ -347,7 +353,7 @@ func chooseModelType() (types.ModelType, error) {
 	var modelType types.ModelType
 	if err := huh.NewSelect[types.ModelType]().
 		Title("Choose Model Type").
-		Options(huh.NewOptions(types.AllModelTyps...)...).
+		Options(huh.NewOptions(types.AllModelTypes...)...).
 		Value(&modelType).
 		Run(); err != nil {
 		return "", err
@@ -416,7 +422,7 @@ func chooseFiles(name, specifiedQuant string, files []model_hub.ModelFileInfo, r
 				}
 			}
 			if specifiedQuant != "" && res.ModelFile[specifiedQuant].Name == "" {
-				return fmt.Errorf("Sprintfied quant %s not found", specifiedQuant)
+				return fmt.Errorf("Specified quant %s not found", specifiedQuant)
 			}
 
 		} else {
@@ -568,7 +574,7 @@ func chooseFiles(name, specifiedQuant string, files []model_hub.ModelFileInfo, r
 	} else {
 		// mlx
 		if specifiedQuant != "" {
-			fmt.Println(render.GetTheme().Warning.Sprintf("Specified quant %s only support in gguf model, ignore", specifiedQuant))
+			return fmt.Errorf("Specified quant %s only support in gguf model", specifiedQuant)
 		}
 
 		// quant
@@ -639,31 +645,27 @@ func chooseFiles(name, specifiedQuant string, files []model_hub.ModelFileInfo, r
 	return
 }
 
-func chooseQuantFiles(old types.ModelManifest, specifiedQuant string) (*types.ModelManifest, error) {
-	var mf types.ModelManifest
-	d, _ := sonic.Marshal(old)
-	sonic.Unmarshal(d, &mf)
-
+func chooseQuantFiles(specifiedQuant string, res *types.ModelManifest) error {
 	// sort key by quant
-	ggufQuants := make([]string, 0, len(mf.ModelFile))
-	for k := range mf.ModelFile {
+	ggufQuants := make([]string, 0, len(res.ModelFile))
+	for k := range res.ModelFile {
 		ggufQuants = append(ggufQuants, k)
 	}
 	sort.Slice(ggufQuants, func(i, j int) bool {
-		return mf.ModelFile[ggufQuants[i]].Size > mf.ModelFile[ggufQuants[j]].Size
+		return res.ModelFile[ggufQuants[i]].Size > res.ModelFile[ggufQuants[j]].Size
 	})
 
 	// choose quant
 	var quant string
 	if specifiedQuant != "" {
-		if _, ok := mf.ModelFile[specifiedQuant]; !ok {
-			return nil, fmt.Errorf("specified quant %s not found", specifiedQuant)
+		if _, ok := res.ModelFile[specifiedQuant]; !ok {
+			return fmt.Errorf("specified quant %s not found", specifiedQuant)
 		}
 		quant = specifiedQuant
 	} else {
-		options := make([]huh.Option[string], 0, len(mf.ModelFile))
+		options := make([]huh.Option[string], 0, len(res.ModelFile))
 		for _, q := range ggufQuants {
-			m := mf.ModelFile[q]
+			m := res.ModelFile[q]
 			if m.Downloaded {
 				continue
 			}
@@ -677,22 +679,22 @@ func chooseQuantFiles(old types.ModelManifest, specifiedQuant string) (*types.Mo
 			Options(options...).
 			Value(&quant).
 			Run(); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	mf.ModelFile[quant] = types.ModelFileInfo{
-		Name:       mf.ModelFile[quant].Name,
+	res.ModelFile[quant] = types.ModelFileInfo{
+		Name:       res.ModelFile[quant].Name,
 		Downloaded: true,
-		Size:       mf.ModelFile[quant].Size,
+		Size:       res.ModelFile[quant].Size,
 	}
 
 	// other fragments
-	file := mf.ModelFile[quant].Name
+	file := res.ModelFile[quant].Name
 	ggufName := partRegex.ReplaceAllString(file, "")
-	for i, f := range mf.ExtraFiles {
+	for i, f := range res.ExtraFiles {
 		if ggufName == partRegex.ReplaceAllString(f.Name, "") {
-			mf.ExtraFiles[i] = types.ModelFileInfo{
+			res.ExtraFiles[i] = types.ModelFileInfo{
 				Name:       f.Name,
 				Downloaded: true,
 			}
@@ -700,7 +702,7 @@ func chooseQuantFiles(old types.ModelManifest, specifiedQuant string) (*types.Mo
 
 	}
 
-	return &mf, nil
+	return nil
 }
 
 func sumSize(files []model_hub.ModelFileInfo) int64 {

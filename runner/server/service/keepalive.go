@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log/slog"
 	"reflect"
-	"strings"
 	"sync"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
+	"github.com/NexaAI/nexa-sdk/runner/server/utils"
 )
 
 // KeepAliveGet retrieves a model from the keepalive cache or creates it if not found
@@ -109,12 +109,7 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 
 	s := store.Get()
 
-	quant := ""
-	if strings.Contains(name, ":") {
-		parts := strings.SplitN(name, ":", 2)
-		name = parts[0]
-		quant = parts[1]
-	}
+	name, quant := utils.NormalizeModelName(name)
 	slog.Debug("KeepAliveGet", "name", name, "quant", quant, "param", param)
 	manifest, err := s.GetManifest(name)
 	if err != nil {
@@ -122,10 +117,20 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 	}
 
 	var modelfile string
-	for q, v := range manifest.ModelFile {
-		if v.Downloaded && (quant == "" || quant == q) {
-			modelfile = s.ModelfilePath(manifest.Name, v.Name)
-			break
+	if quant != "" {
+		if fileinfo, exists := manifest.ModelFile[quant]; !exists {
+			return nil, fmt.Errorf("quantization %s not found for model %s", quant, name)
+		} else if !fileinfo.Downloaded {
+			return nil, fmt.Errorf("quantization %s not downloaded for model %s", quant, name)
+		} else {
+			modelfile = s.ModelfilePath(manifest.Name, fileinfo.Name)
+		}
+	} else {
+		for _, v := range manifest.ModelFile {
+			if v.Downloaded {
+				modelfile = s.ModelfilePath(manifest.Name, v.Name)
+				break
+			}
 		}
 	}
 

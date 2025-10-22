@@ -38,14 +38,22 @@ func functionCall() *cobra.Command {
 
 		manifest, err := ensureModelAvailable(s, name, quant)
 		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("check model error: %s", err))
+			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 			os.Exit(1)
 		}
 
-		if quant == "" {
+		if quant != "" {
+			if fileinfo, exist := manifest.ModelFile[quant]; !exist {
+				fmt.Println(render.GetTheme().Error.Sprintf("Error: quant %s not found", quant))
+				os.Exit(1)
+			} else if !fileinfo.Downloaded {
+				fmt.Println(render.GetTheme().Error.Sprintf("Error: quant %s not downloaded", quant))
+				os.Exit(1)
+			}
+		} else {
 			sq, err := selectQuant(manifest)
 			if err != nil {
-				fmt.Println(render.GetTheme().Error.Sprintf("quant error: %s", err))
+				fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 				os.Exit(1)
 			}
 			quant = sq

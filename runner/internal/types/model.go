@@ -14,7 +14,7 @@ const (
 	ModelTypeImageGen ModelType = "image_gen"
 )
 
-var AllModelTyps = []ModelType{
+var AllModelTypes = []ModelType{
 	ModelTypeLLM,
 	ModelTypeVLM,
 	ModelTypeEmbedder,

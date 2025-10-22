@@ -83,7 +83,6 @@ const (
 )
 
 func startMigrate() error {
-
 	s := store.Get()
 
 	models, err := s.List()
@@ -156,12 +155,11 @@ func startMigrate() error {
 					}
 					extraQuant = true
 				} else {
-					nmf, err := chooseQuantFiles(manifest, quant)
+					err := chooseQuantFiles(quant, &manifest)
 					if err != nil {
 						fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 						return err
 					}
-					manifest = *nmf
 				}
 			}
 		}

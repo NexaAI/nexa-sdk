@@ -29,7 +29,7 @@ type ModelHub interface {
 }
 
 var hubs = []ModelHub{
-	NewVolces(),
+	NewVolces(false),
 	NewS3(),
 	NewHuggingFace(),
 }
