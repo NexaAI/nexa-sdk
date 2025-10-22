@@ -23,37 +23,46 @@ This directory contains examples for using the NexaAI Python SDK.
     pip install 'nexaai[mlx]'
     ```
 
+### Authentication Setup
+
+Before running any examples, you need to set up your NexaAI authentication token.
+
+### Set Token in Code
+
+Replace `"YOUR_NEXA_TOKEN_HERE"` with your actual NexaAI token from [https://sdk.nexa.ai/](https://sdk.nexa.ai/):
+
+- Linux/macOS:
+  ```bash
+  export NEXA_TOKEN="YOUR_NEXA_TOKEN_HERE"
+  ```
+- Windows:
+  ```powershell
+  $env:NEXA_TOKEN="YOUR_NEXA_TOKEN_HERE"
+  ```
+
 ## Running Examples
 
 ### LLM
 
 ```bash
-nexa pull Qwen/Qwen3-0.6B-GGUF
-
 python llm.py
 ```
 
 ### Multi-Modal
 
 ```bash
-nexa pull NexaAI/gemma-3n-E4B-it-4bit-MLX
-
 python vlm.py
 ```
 
 ### Reranker
 
 ```bash
-nexa pull NexaAI/jina-v2-rerank-mlx
-
 python rerank.py
 ```
 
 ### Embedder
 
 ```bash
-nexa pull NexaAI/jina-v2-fp16-mlx
-
 python embedder.py
 ```
 
@@ -62,54 +71,46 @@ python embedder.py
 #### OCR
 
 ```bash
-nexa pull NexaAI/paddle-ocr-mlx
-
 python cv_ocr.py
 ```
+
 ## Running Examples (Windows ARM64, Snapdragon X Elite)
 
 ### LLM
-```bash
-nexa pull NexaAI/Llama3.2-3B-NPU-Turbo
 
+```bash
 python llm.py --model NexaAI/Llama3.2-3B-NPU-Turbo --plugin-id npu --device npu --max-tokens 100 --system "You are a helpful assistant."
 ```
 
 ### Multi-Modal
 
 ```bash
-nexa pull NexaAI/OmniNeural-4B
-
 python vlm.py --model NexaAI/OmniNeural-4B --plugin-id npu --device npu --max-tokens 100 --system "You are a helpful assistant."
 ```
 
 ### Reranker
-```bash
-nexa pull NexaAI/jina-v2-rerank-npu
 
+```bash
 python rerank.py --model NexaAI/jina-v2-rerank-npu --plugin-id npu --query "Where is on-device AI?" --documents "On-device AI is a type of AI that is processed on the device itself, rather than in the cloud." "edge computing" "A ragdoll is a breed of cat that is known for its long, flowing hair and gentle personality." "The capital of France is Paris."
 ```
 
 ### Embedder
-```bash
-nexa pull NexaAI/embeddinggemma-300m-npu
 
+```bash
 python embedder.py --model NexaAI/embeddinggemma-300m-npu --plugin-id npu --texts "On-device AI is a type of AI that is processed on the device itself, rather than in the cloud." "edge computing" "A ragdoll is a breed of cat that is known for its long, flowing hair and gentle personality." "The capital of France is Paris." --query "what is on device AI" --batch-size 2
 ```
 
 ### CV
 
 #### OCR
-```bash
-nexa pull NexaAI/paddleocr-npu
 
+```bash
 python cv_ocr.py --det-model NexaAI/paddleocr-npu --rec-model NexaAI/paddleocr-npu --image path/to/image.png
 ```
 
 ### ASR
-```bash
-nexa pull NexaAI/parakeet-npu
 
+```bash
 python asr.py --model NexaAI/parakeet-npu --audio path/to/audio.wav
 ```
 
@@ -125,6 +126,7 @@ python asr.py --model NexaAI/parakeet-npu --audio path/to/audio.wav
 ## Plugin ID Options
 
 The `--plugin-id` parameter supports different backends:
+
 - `cpu_gpu`: Default, supports both CPU and GPU
 - `mlx`: Apple Silicon optimized (for supported models)
 - `llama_cpp`: For GGUF format models
