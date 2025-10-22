@@ -1,24 +1,31 @@
 import platform
 
 PLUGIN_MAP = {
-    'Linux': {
-        'x86_64': ['cpu_gpu']
-    },
-    'Windows': {
-        'x86_64': ['cpu_gpu'],
-        'arm64': ['cpu_gpu', 'npu']
-    },
-    'Darwin': {
-        'x86_64': ['cpu_gpu'],
-        'arm64': ['cpu_gpu', 'metal']
-    }
+    "Linux": {"x86_64": ["cpu_gpu"]},
+    "Windows": {"x86_64": ["cpu_gpu"], "arm64": ["cpu_gpu", "npu", "nexaml"]},
+    "Darwin": {"x86_64": ["cpu_gpu"], "arm64": ["cpu_gpu", "metal"]},
 }
 
 TESTCASE_MAP: list[tuple[str, str, list[str]]] = [
-    ('cpu_gpu', 'Qwen/Qwen3-1.7B-GGUF', ['multi_round']),  # TODO: add quant support like Qwen3-1.7B-GGUF:Q4_0
-    ('cpu_gpu', 'ggml-org/gemma-3-4b-it-GGUF', ['multi_round', 'image_multi_round']),
-    ('cpu_gpu', 'ggml-org/Qwen2.5-Omni-3B-GGUF', ['multi_round', 'audio_multi_round']),
-    ('cpu_gpu', 'djuna/jina-embeddings-v2-small-en-Q5_K_M-GGUF', ['multi_round']),
+    (
+        "cpu_gpu",
+        "Qwen/Qwen3-1.7B-GGUF",
+        ["multi_round"],
+    ),  # TODO: add quant support like Qwen3-1.7B-GGUF:Q4_0
+    # ("cpu_gpu", "ggml-org/gemma-3-4b-it-GGUF", ["multi_round", "image_multi_round"]),
+    ("cpu_gpu", "ggml-org/Qwen2.5-Omni-3B-GGUF", ["multi_round", "audio_multi_round"]),
+    ("cpu_gpu", "djuna/jina-embeddings-v2-small-en-Q5_K_M-GGUF", ["multi_round"]),
+    ("npu", "NexaAI/Qwen3-VL-4B-Instruct-NPU", ["multi_round", "image_multi_round"]),
+    (
+        "nexaml",
+        "NexaAI/Qwen3-VL-4B-Instruct-GGUF",
+        ["multi_round", "image_multi_round"],
+    ),
+    (
+        "nexaml",
+        "NexaAI/Qwen3-VL-4B-Thinking-GGUF",
+        ["multi_round", "image_multi_round"],
+    ),
 ]
 
 
