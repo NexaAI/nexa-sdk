@@ -7,3 +7,4 @@ pillow
 gradio
 pdfplumber
 google-search-results
+nexaai[mlx]
