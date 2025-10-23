@@ -59,7 +59,12 @@ pip install -r requirements.txt
 
 ### CLI Mode
 ```bash
-python rag_nexa.py --rebuild
+# Serve Example
+python Serve-Example/rag_nexa.py --rebuild
+
+# Python binding Example
+python Python-Binding-Example/rag_nexa.py --rebuild
+
 ```
 
 **How it works:**
@@ -70,7 +75,11 @@ python rag_nexa.py --rebuild
 
 ### Gradio UI Mode
 ```bash
-python gradio_ui.py
+# Serve Example
+python Serve-Example/gradio_ui.py
+
+# Python binding Example
+python Python-Binding-Example/gradio_ui.py
 ```
 
 Open [http://127.0.0.1:7860](http://127.0.0.1:7860) in your browser.

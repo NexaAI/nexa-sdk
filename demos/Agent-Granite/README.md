@@ -41,20 +41,20 @@ $env:NEXA_TOKEN="your_token_here"
 # Start Nexa server
 nexa serve
 
-# In a new terminal, start agent backend
+# CLI
 python Serve-Example/agent_nexa.py
 
-# In another terminal, start Gradio UI
+# Gradio UI
 python Serve-Example/gradio_ui.py
 ```
 
 #### Option 2: Python Bindings (Python-Binding-Example)
 
 ```bash
-# Start agent backend
+# CLI
 python Python-Binding-Example/agent_nexa.py
 
-# In another terminal, start Gradio UI
+# Gradio UI
 python Python-Binding-Example/gradio_ui.py
 ```
 
