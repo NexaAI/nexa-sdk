@@ -66,7 +66,7 @@ def run_benchmark():
         for i, tc in enumerate(tcs):
             tcp = f'{i+1}/{len(tcs)}'
             try:
-                tc_log = log.log_dir / plugin / f'{model.replace("/", "-")}_{tc}'
+                tc_log = log.log_dir / plugin / f'{model.replace("/", "-").replace(":", "-")}-{tc}'
                 of = open(f'{tc_log}.log', 'w', encoding='utf-8')
                 ef = open(f'{tc_log}.json', 'w', encoding='utf-8')
                 res = utils.execute_nexa([
@@ -98,7 +98,7 @@ def run_benchmark():
         log.print('All TestCases passed')
     else:
         for plugin, model, tc in failed_cases:
-            log_file = log.log_dir / plugin / f'{model.replace("/", "-")}_{tc}.log'
+            log_file = log.log_dir / plugin / f'{model.replace("/", "-").replace(":", "-")}-{tc}.log'
             log.print(f'Failed: Plugin: {plugin}, Model: {model}, TestCase: {tc}, see {log_file}')
     log.print(f'Logs saved to {log.log_dir}')
 
