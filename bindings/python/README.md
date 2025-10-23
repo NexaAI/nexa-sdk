@@ -5,7 +5,7 @@ This directory contains examples for using the NexaAI Python SDK.
 ## Prerequisites
 
 - **Python version requirements:**
-  - **Windows ARM:** Python 3.11–3.13
+  - **Windows ARM:** Python 3.11–3.13 (arm64 architecture required)
   - **Other platforms:** Python 3.10 recommended
 
     *To quickly set up a new environment with conda:*
