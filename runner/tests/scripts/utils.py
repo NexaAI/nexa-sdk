@@ -30,26 +30,14 @@ def _search_nexa() -> str:
     raise FileNotFoundError("nexa command not found")
 
 
-def load_param(case: str) -> list[str]:
-    path = Path(__file__).parent.parent / 'cases' / case / 'param.txt'
-    if not path.exists():
-        raise FileNotFoundError(f"{path} not found")
-    with open(path, 'r', encoding='utf-8') as f:
-        return [l.rstrip() for l in f.readlines()]
-
-
-def execute_nexa(
-        args: list[str],
-        debug_log: bool = False,
-        **kwargs: Any  # pyright: ignore[reportAny, reportExplicitAny]
-) -> subprocess.CompletedProcess[str]:
+def execute_nexa(args: list[str], debug_log: bool = False, **kwargs: Any) -> subprocess.CompletedProcess[str]:
     global nexa_path
 
     if nexa_path is None:
         nexa_path = _search_nexa()
 
-    stdout: TextIOWrapper = kwargs.pop('stdout', sys.stdout)  # pyright: ignore[reportAny]
-    stderr: TextIOWrapper = kwargs.pop('stderr', sys.stderr)  # pyright: ignore[reportAny]
+    stdout: TextIOWrapper = kwargs.pop('stdout', sys.stdout)
+    stderr: TextIOWrapper = kwargs.pop('stderr', sys.stderr)
 
     env = os.environ.copy()
     env['NEXA_LOG'] = 'trace' if debug_log else ''
@@ -61,7 +49,7 @@ def execute_nexa(
                          encoding='utf-8',
                          cwd=Path(__file__).parent.parent,
                          env=env,
-                         **kwargs)  # pyright: ignore[reportAny]
+                         **kwargs)
 
     stdout.write('========== Output Log ==========\n')
     stdout.write(res.stdout)

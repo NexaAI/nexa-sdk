@@ -1,4 +1,0 @@
--p
-describe the image ./assets/text.png
--p
-compare the two images ./assets/text.png and ./assets/cat.jpg
