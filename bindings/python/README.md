@@ -4,8 +4,11 @@ This directory contains examples for using the NexaAI Python SDK.
 
 ## Prerequisites
 
-- Python 3.10
-  - if you are using conda, you can create a new environment via
+- **Python version requirements:**
+  - **Windows ARM:** Python 3.11–3.13 (arm64 architecture required)
+  - **Other platforms:** Python 3.10 recommended
+
+    *To quickly set up a new environment with conda:*
     ```sh
     conda create -n nexaai python=3.10
     conda activate nexaai
