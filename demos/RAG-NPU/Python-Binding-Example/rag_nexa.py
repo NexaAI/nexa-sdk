@@ -26,17 +26,12 @@ from nexaai.rerank import Reranker, RerankConfig
 # ============================================================================
 # Configuration Constants
 # ============================================================================
-# TODO: Update default models and endpoints as needed
-# DEFAULT_MODEL = "NexaAI/Granite-4-Micro-NPU"
-# DEFAULT_EMBED_MODEL = "NexaAI/embeddinggemma-300m-npu"
-# DEFAULT_INDEX_JSON = "./vecdb.json"
-# DEFAULT_RERANK_MODEL = "NexaAI/jina-v2-rerank-npu"
 
-DEFAULT_MODEL_FOLDER = "~/.cache/nexa.ai/nexa_sdk/models"
-DEFAULT_MODEL = "NexaAI/granite-4.0-micro-GGUF/granite-4.0-micro-Q4_0.gguf"
-DEFAULT_EMBED_MODEL = "NexaAI/jina-v2-fp16-mlx/model.safetensors"
+DEFAULT_MODEL = "NexaAI/Granite-4-Micro-NPU"
+DEFAULT_EMBED_MODEL = "NexaAI/embeddinggemma-300m-npu"
 DEFAULT_INDEX_JSON = "./vecdb.json"
-DEFAULT_RERANK_MODEL = "NexaAI/jina-v2-rerank-mlx/jina-reranker-v2-base-multilingual-f16.safetensors"
+DEFAULT_RERANK_MODEL = "NexaAI/jina-v2-rerank-npu"
+DEFAULT_MODEL_FOLDER = "~/.cache/nexa.ai/nexa_sdk/models"
 
 # ============================================================================
 # File System Utilities
@@ -70,11 +65,9 @@ def call_nexa_chat(model: str, messages: List[Dict[str, Any]], model_folder: str
         str (if stream=False): Complete response text
         Generator[str] (if stream=True): Yields text pieces incrementally
     """
-    full_path = f"{model_folder}/{model}"
-    model_path = os.path.expanduser(full_path)
     
     m_cfg = ModelConfig()
-    llm = LLM.from_(model_path, m_cfg=m_cfg)
+    llm = LLM.from_(model, plugin_id="npu", device_id="npu", m_cfg=m_cfg)
     
     prompt = llm.apply_chat_template(messages)
     g_cfg=GenerationConfig(max_tokens=512)
@@ -102,10 +95,7 @@ def call_nexa_embeddings(embed_model: str, inputs: List[str], model_folder: str)
     
     out: List[List[float]] = []
      
-    full_path = f"{model_folder}/{embed_model}"
-    model_path = os.path.expanduser(full_path)
-    # TODO: Use plugin_id as needed mlx: Mac
-    embedder = Embedder.from_(name_or_path=model_path, plugin_id='mlx')
+    embedder = Embedder.from_(name_or_path=embed_model, plugin_id='npu')
 
     # Process in batches to avoid large payloads
     BATCH_SIZE = 64
@@ -138,12 +128,8 @@ def call_nexa_rerank(rerank_model: str, query: str, documents: List[str], model_
     """
     if not documents:
         return []
-
-    full_path = f"{model_folder}/{rerank_model}"
-    model_path = os.path.expanduser(full_path)
     
-    # TODO: mlx: Mac
-    reranker = Reranker.from_(name_or_path=model_path, plugin_id="mlx")
+    reranker = Reranker.from_(name_or_path=rerank_model, plugin_id="npu")
     
     batch_size = len(documents)
     scores = reranker.rerank(query=query, documents=documents, 
