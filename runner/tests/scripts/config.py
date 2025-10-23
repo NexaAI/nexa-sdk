@@ -40,6 +40,20 @@ TESTCASE_MAP: dict[str, dict[str, dict[str, list[type[BaseCase]]]]] = {
     'npu': {
         'vlm': {
             'NexaAI/Qwen3-VL-4B-Instruct-NPU': [MultiRound, ImageMultiRound],
+            'NexaAI/LFM2-1.2B-npu': [MultiRound],
+            'NexaAI/convnext-tiny-npu': [ImageMultiRound],
+            'jinaai/jina-reranker-v2-base-multilingual': [MultiRound],
+            'NexaAI/granite-4.0-micro-GGUF': [MultiRound],
+            'NexaAI/Llama3.2-3B-NPU-Turbo': [MultiRound],
+            'NexaAI/embeddinggemma-300m-npu': [MultiRound],
+            'NexaAI/phi4-mini-npu-turbo': [MultiRound],
+            'NexaAI/phi3.5-mini-npu': [MultiRound],
+            'NexaAI/Qwen3-4B-Instruct-2507-npu': [MultiRound],
+            'NexaAI/paddleocr-npu': [ImageMultiRound],
+            'NexaAI/Qwen3-4B-Thinking-2507-npu': [MultiRound],
+            'NexaAI/jan-v1-4b-npu': [MultiRound],
+            'NexaAI/yolov12-npu': [MultiRound],
+            'NexaAI/qwen3-4B-npu': [MultiRound],
         }
     },
     'nexaml': {
