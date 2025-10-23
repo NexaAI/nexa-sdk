@@ -6,7 +6,7 @@ import traceback
 from scripts import config, log, utils
 
 # plugin, model, testcases
-testcases: list[tuple[str, str, list[str]]]
+testcases: list[config.case]
 
 
 def init_benchmark():
@@ -33,7 +33,7 @@ def check_models():
     if res.returncode != 0:
         raise RuntimeError(f'Non-zero exit code: {res.returncode}')
 
-    missing_models = [tc[1] for tc in testcases]
+    exist_models: set[str] = set()
     for line in res.stdout.splitlines():
         fields = line.split('│')
         if len(fields) < 5:
@@ -41,22 +41,31 @@ def check_models():
         name = fields[1].strip()
         quant = fields[3].strip()
         if quant == '':
-            if name in missing_models:
-                missing_models.remove(name)
+            exist_models.add(name)
         else:
             for quant in quant.split(','):
-                model = f'{name}:{quant.strip()}'
-                if model in missing_models:
-                    missing_models.remove(model)
-    if len(missing_models) > 0:
-        raise RuntimeError(f'Missing models: {missing_models}')
+                exist_models.add(f'{name}:{quant.strip()}')
+
+    for i, model, type, j in testcases:
+        log.print(f'==> Checking model: {i} {model} {type} {j}')
+        if model in exist_models:
+            continue
+        log.print(f'  --> Downloading {model}')
+        res = utils.execute_nexa([
+            'pull',
+            model,
+            '--model-type',
+            type,
+        ], timeout=3600)
+        if res.returncode != 0:
+            raise RuntimeError(f'Failed to download model {model}, exit code: {res.returncode}')
 
 
 def run_benchmark():
     log.print("========== Run Benchmark =========")
 
     failed_cases: list[tuple[str, str, str]] = []
-    for i, (plugin, model, tcs) in enumerate(testcases):
+    for i, (plugin, model, _, tcs) in enumerate(testcases):
         os.makedirs(log.log_dir / plugin, exist_ok=True)
         mp = f'{i+1}/{len(testcases)}'
         log.print(f'==> [{mp}] Plugin: {plugin}, Model: {model}')
