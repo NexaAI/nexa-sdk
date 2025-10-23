@@ -37,3 +37,4 @@ def print(msg: str):
     builtins.print(data)
     log_file.write(data)
     log_file.write('\n')
+    log_file.flush()

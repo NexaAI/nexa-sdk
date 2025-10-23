@@ -1,5 +1,7 @@
 import platform
 
+from cases import *
+
 PLUGIN_MAP = {
     "Linux": {
         "x86_64": ["cpu_gpu", "nexaml"],
@@ -16,24 +18,33 @@ PLUGIN_MAP = {
 }
 
 # (plugin, model_id, cases)
-TESTCASE_MAP: dict[str, dict[str, dict[str, list[str]]]] = {
+TESTCASE_MAP: dict[str, dict[str, dict[str, list[type[BaseCase]]]]] = {
     'cpu_gpu': {
         'llm': {
-            'Qwen/Qwen3-1.7B-GGUF:Q8_0': ['multi_round'],
-            # 'ggml-org/gemma-3-4b-it-GGUF': ['multi_round', 'image_multi_round'],
-            'ggml-org/Qwen2.5-Omni-3B-GGUF:Q4_K_M': ['multi_round', 'audio_multi_round'],
-            'djuna/jina-embeddings-v2-small-en-Q5_K_M-GGUF:Q5_K_M': ['multi_round'],
-        }
+            'Qwen/Qwen3-1.7B-GGUF:Q8_0': [MultiRound],
+            # 'ggml-org/gemma-3-4b-it-GGUF:F16': [MultiRound, ImageMultiRound],
+            'ggml-org/Qwen2.5-Omni-3B-GGUF:Q4_K_M': [MultiRound, AudioMultiRound],
+        },
+        "vlm": {},
+        'embedder': {
+            'djuna/jina-embeddings-v2-small-en-Q5_K_M-GGUF:Q5_K_M': [SingleRound],
+        },
+        "reranker": {},
+        "tts": {},
+        "asr": {},
+        "diarize": {},
+        "cv": {},
+        "image_gen": {},
     },
     'npu': {
         'vlm': {
-            'NexaAI/Qwen3-VL-4B-Instruct-NPU': ['multi_round', 'image_multi_round'],
+            'NexaAI/Qwen3-VL-4B-Instruct-NPU': [MultiRound, ImageMultiRound],
         }
     },
     'nexaml': {
         'vlm': {
-            'NexaAI/Qwen3-VL-4B-Instruct-GGUF:Q4_0': ['multi_round', 'image_multi_round'],
-            # 'NexaAI/Qwen3-VL-4B-Thinking-GGUF:Q4_0': ['multi_round', 'image_multi_round'],
+            'NexaAI/Qwen3-VL-4B-Instruct-GGUF:Q4_0': [MultiRound, ImageMultiRound],
+            'NexaAI/Qwen3-VL-4B-Thinking-GGUF:Q4_0': [MultiRound, ImageMultiRound],
         }
     }
 }
@@ -45,10 +56,8 @@ def get_plugins() -> list[str]:
     return PLUGIN_MAP.get(system, {}).get(machine.lower(), [])
 
 
-type case = tuple[str, str, str, list[str]]  # plugin, model_id, modal, cases
-
-def get_testcases(plugins: list[str]) -> list[case]:
-    res: list[case] = []
+def get_testcases(plugins: list[str]) -> list[tuple[str, str, str, list[type[BaseCase]]]]:
+    res: list[tuple[str, str, str, list[type[BaseCase]]]] = []
     for plugin in TESTCASE_MAP:
         if plugin not in plugins:
             continue

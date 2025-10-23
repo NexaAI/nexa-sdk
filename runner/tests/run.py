@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import io
+import json
 import os
 import traceback
 
@@ -46,11 +48,11 @@ def check_models():
             for quant in quant.split(','):
                 exist_models.add(f'{name}:{quant.strip()}')
 
-    for i, model, type, j in testcases:
-        log.print(f'==> Checking model: {i} {model} {type} {j}')
+    for i, (_, model, type, _) in enumerate(testcases):
         if model in exist_models:
+            log.print(f'  --> [{i+1}/{len(testcases)}] {model} already exists, skip download')
             continue
-        log.print(f'  --> Downloading {model}')
+        log.print(f'  --> [{i+1}/{len(testcases)}] {model} not found, downloading...')
         res = utils.execute_nexa([
             'pull',
             model,
@@ -64,7 +66,7 @@ def check_models():
 def run_benchmark():
     log.print("========== Run Benchmark =========")
 
-    failed_cases: list[tuple[str, str, str]] = []
+    failed_cases: list[tuple[str, str, str, str]] = []
     for i, (plugin, model, _, tcs) in enumerate(testcases):
         os.makedirs(log.log_dir / plugin, exist_ok=True)
         mp = f'{i+1}/{len(testcases)}'
@@ -73,15 +75,13 @@ def run_benchmark():
         ef = None
 
         for i, tc in enumerate(tcs):
+            tc = tc()
             tcp = f'{i+1}/{len(tcs)}'
             try:
-                tc_log = log.log_dir / plugin / f'{model.replace("/", "-").replace(":", "-")}-{tc}'
+                tc_log = log.log_dir / plugin / f'{model.replace("/", "-").replace(":", "-")}-{tc.name()}'
                 of = open(f'{tc_log}.log', 'w', encoding='utf-8')
-                ef = open(f'{tc_log}.json', 'w', encoding='utf-8')
-                res = utils.execute_nexa([
-                    'infer',
-                    model,
-                ] + utils.load_param(tc),
+                ef = io.StringIO()
+                res = utils.execute_nexa(['infer', model] + tc.param(),
                                          debug_log=True,
                                          stdout=of,
                                          stderr=ef,
@@ -89,10 +89,26 @@ def run_benchmark():
                 if res.returncode != 0:
                     raise RuntimeError(f'Non-zero exit code: {res.returncode}')
 
-                log.print(f'  --> [{mp}][{tcp}] TestCase: {tc} success')
+                # check output
+                of.write('\n====== Json Log =======\n')
+                failed = False
+                for line in ef.getvalue().splitlines():
+                    of.write(f'{line}\n')
+                    if tc.check(json.loads(line)):
+                        of.write(f'Passed\n')
+                        continue
+                    else:
+                        of.write(f'Failed\n')
+                        failed = True
+                if failed:
+                    log.print(f'  --> [{mp}][{tcp}] TestCase {tc.name()} Failed')
+                    failed_cases.append((plugin, model, tc.name(), 'Check Failed'))
+                else:
+                    log.print(f'  --> [{mp}][{tcp}] TestCase: {tc.name()} Success')
+
             except Exception as _:
-                log.print(f'  --> [{mp}][{tcp}] TestCase {tc} failed')
-                failed_cases.append((plugin, model, tc))
+                log.print(f'  --> [{mp}][{tcp}] TestCase {tc.name()} Error')
+                failed_cases.append((plugin, model, tc.name(), 'Error'))
                 if of is not None:
                     of.write('\n====== Exception Log =======\n')
                     of.write(traceback.format_exc())
@@ -106,9 +122,9 @@ def run_benchmark():
     if len(failed_cases) == 0:
         log.print('All TestCases passed')
     else:
-        for plugin, model, tc in failed_cases:
+        for plugin, model, tc, reason in failed_cases:
             log_file = log.log_dir / plugin / f'{model.replace("/", "-").replace(":", "-")}-{tc}.log'
-            log.print(f'Failed: Plugin: {plugin}, Model: {model}, TestCase: {tc}, see {log_file}')
+            log.print(f'{reason}: Plugin: {plugin}, Model: {model}, TestCase: {tc}, see {log_file}')
     log.print(f'Logs saved to {log.log_dir}')
 
 

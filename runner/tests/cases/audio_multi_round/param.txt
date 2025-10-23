@@ -1,4 +1,0 @@
--p
-transcribe the audio ./assets/osr_us.wav
--p
-transcribe the audio ./assets/osr_us.wav
