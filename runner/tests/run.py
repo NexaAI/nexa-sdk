@@ -108,7 +108,7 @@ def run_benchmark():
 
             except Exception as _:
                 log.print(f'  --> [{mp}][{tcp}] TestCase {tc.name()} Error')
-                failed_cases.append((plugin, model, tc.name(), 'Error'))
+                failed_cases.append((plugin, model, tc.name(), 'Infer Failed'))
                 if of is not None:
                     of.write('\n====== Exception Log =======\n')
                     of.write(traceback.format_exc())
@@ -124,7 +124,7 @@ def run_benchmark():
     else:
         for plugin, model, tc, reason in failed_cases:
             log_file = log.log_dir / plugin / f'{model.replace("/", "-").replace(":", "-")}-{tc}.log'
-            log.print(f'{reason}: Plugin: {plugin}, Model: {model}, TestCase: {tc}, see {log_file}')
+            log.print(f'==> {reason}: [{plugin}] [{model}] [{tc}] {log_file}')
     log.print(f'Logs saved to {log.log_dir}')
 
 
