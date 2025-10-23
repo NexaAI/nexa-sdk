@@ -246,6 +246,7 @@ func pullModel(name string, quant string) error {
 
 		err := chooseQuantFiles(quant, mf)
 		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 			return err
 		}
 		pgCh, errCh := s.PullExtraQuant(context.TODO(), omf, *mf)
@@ -658,8 +659,10 @@ func chooseQuantFiles(specifiedQuant string, res *types.ModelManifest) error {
 	// choose quant
 	var quant string
 	if specifiedQuant != "" {
-		if _, ok := res.ModelFile[specifiedQuant]; !ok {
+		if fileinfo, ok := res.ModelFile[specifiedQuant]; !ok {
 			return fmt.Errorf("specified quant %s not found", specifiedQuant)
+		} else if fileinfo.Downloaded {
+			return fmt.Errorf("specified quant %s already downloaded", specifiedQuant)
 		}
 		quant = specifiedQuant
 	} else {
