@@ -1,4 +1,5 @@
 import platform
+from typing import TypeAlias
 
 from cases import *
 
@@ -56,8 +57,11 @@ def get_plugins() -> list[str]:
     return PLUGIN_MAP.get(system, {}).get(machine.lower(), [])
 
 
-def get_testcases(plugins: list[str]) -> list[tuple[str, str, str, list[type[BaseCase]]]]:
-    res: list[tuple[str, str, str, list[type[BaseCase]]]] = []
+case: TypeAlias = tuple[str, str, str, list[type[BaseCase]]]
+
+
+def get_testcases(plugins: list[str]) -> list[case]:
+    res: list[case] = []
     for plugin in TESTCASE_MAP:
         if plugin not in plugins:
             continue
