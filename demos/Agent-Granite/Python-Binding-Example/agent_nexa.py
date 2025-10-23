@@ -11,9 +11,9 @@ from nexaai.llm import LLM, GenerationConfig
 from nexaai.common import ModelConfig, ChatMessage
 
 # Nexa config
+DEFAULT_MODEL = "NexaAI/Granite-4-Micro-NPU"
 # DEFAULT_MODEL = "NexaAI/granite-4-Nano-NPU"
-DEFAULT_MODEL = "~/.cache/nexa.ai/nexa_sdk/models/NexaAI/granite-4.0-micro-GGUF/granite-4.0-micro-Q4_0.gguf"
-DEFAULT_ENDPOINT = "http://127.0.0.1:18181"
+
 # You can get a free API key from https://serpapi.com/
 SEARCH_API_KEY = "7467f292f9d4ce3324da285ca111ea11477ba7fc84ee7e9fa5f867a9d1b35856"
 
@@ -125,10 +125,8 @@ def nexa_chat_stream(model: str, prompt: str):
     """
     Generate streaming conversation with local LLM 
     """
-    model_path = os.path.expanduser(model)
-    
     m_cfg = ModelConfig()
-    llm = LLM.from_(model_path, m_cfg=m_cfg)
+    llm = LLM.from_(model, plugin_id="npu", device_id="npu", m_cfg=m_cfg)
     
     messages: List[ChatMessage] = [ChatMessage(role="user", content=prompt)]
     prompt = llm.apply_chat_template(messages)
@@ -142,10 +140,8 @@ def nexa_chat_completion(model: str, messages: list):
     """
     Non-streaming conversation with local LLM
     """
-    model_path = os.path.expanduser(model)
-    
     m_cfg = ModelConfig()
-    llm = LLM.from_(model_path, m_cfg=m_cfg)
+    llm = LLM.from_(model, plugin_id="npu", device_id="npu", m_cfg=m_cfg)
     prompt = llm.apply_chat_template(messages)
     
     return llm.generate(prompt, g_cfg=GenerationConfig(max_tokens=512))

@@ -1,10 +1,8 @@
 requests>=2.31
 pydantic>=2.0
-pymupdf>=1.24
-python-docx>=1.1
 psutil
 pillow
 gradio
 pdfplumber
 google-search-results
-nexaai[mlx]
+nexaai
