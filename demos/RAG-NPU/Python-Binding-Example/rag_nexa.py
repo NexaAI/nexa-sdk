@@ -18,15 +18,25 @@ import sys
 from io import StringIO
 from contextlib import contextmanager
 
+from nexaai.llm import LLM, GenerationConfig
+from nexaai.common import ModelConfig
+from nexaai.embedder import Embedder, EmbeddingConfig
+from nexaai.rerank import Reranker, RerankConfig
+
 # ============================================================================
 # Configuration Constants
 # ============================================================================
-DEFAULT_MODEL = "NexaAI/Granite-4-Micro-NPU"
-DEFAULT_ENDPOINT = "http://127.0.0.1:18181"
-DEFAULT_EMBED_MODEL = "NexaAI/embeddinggemma-300m-npu"
-DEFAULT_INDEX_JSON = "./vecdb.json"
-DEFAULT_RERANK_MODEL = "NexaAI/jina-v2-rerank-npu"
+# TODO: Update default models and endpoints as needed
+# DEFAULT_MODEL = "NexaAI/Granite-4-Micro-NPU"
+# DEFAULT_EMBED_MODEL = "NexaAI/embeddinggemma-300m-npu"
+# DEFAULT_INDEX_JSON = "./vecdb.json"
+# DEFAULT_RERANK_MODEL = "NexaAI/jina-v2-rerank-npu"
 
+DEFAULT_MODEL_FOLDER = "~/.cache/nexa.ai/nexa_sdk/models"
+DEFAULT_MODEL = "NexaAI/granite-4.0-micro-GGUF/granite-4.0-micro-Q4_0.gguf"
+DEFAULT_EMBED_MODEL = "NexaAI/jina-v2-fp16-mlx/model.safetensors"
+DEFAULT_INDEX_JSON = "./vecdb.json"
+DEFAULT_RERANK_MODEL = "NexaAI/jina-v2-rerank-mlx/jina-reranker-v2-base-multilingual-f16.safetensors"
 
 # ============================================================================
 # File System Utilities
@@ -45,145 +55,73 @@ def get_default_data_folder() -> str:
 
 
 # ============================================================================
-# HTTP and API Communication
+# Nexa SDK Python binding API Calls
 # ============================================================================
-def _post_json(url: str, payload: dict, timeout: int = 300) -> dict:
+def call_nexa_chat(model: str, messages: List[Dict[str, Any]], model_folder: str, stream: bool = False):
     """
-    Send POST request with JSON payload.
-    
-    Args:
-        url: Target endpoint URL
-        payload: JSON payload dictionary
-        timeout: Request timeout in seconds
-        
-    Returns:
-        dict: Parsed JSON response
-        
-    Raises:
-        requests.HTTPError: If request fails with 4xx or 5xx status
-    """
-    headers = {"Content-Type": "application/json"}
-    try:
-        resp = requests.post(url, headers=headers, data=json.dumps(payload), timeout=timeout)
-        if resp.status_code >= 400:
-            raise requests.HTTPError(f"{resp.status_code} {url}\n{resp.text}", response=resp)
-        return resp.json()
-    except requests.Timeout:
-        raise requests.HTTPError(f"Request timeout after {timeout}s: {url}")
-    except requests.RequestException as e:
-        raise requests.HTTPError(f"Request failed: {url}\n{str(e)}")
-
-
-def call_nexa_chat(model: str, messages: List[Dict[str, Any]], base: str, stream: bool = False):
-    """
-    Call Nexa-compatible /v1/chat/completions endpoint.
+    Call python binding(llm).
     
     Args:
         model: Model name/identifier
         messages: List of chat messages with 'role' and 'content'
-        base: Base URL for the API endpoint
-        stream: If True, yields text pieces; if False, returns full text
-        
+        model_folder: model folder path
+        stream: If True, yields text pieces; if False, returns full text 
     Returns:
         str (if stream=False): Complete response text
         Generator[str] (if stream=True): Yields text pieces incrementally
-        
-    Raises:
-        requests.HTTPError: If API request fails
     """
-    url = base.rstrip("/") + "/v1/chat/completions"
-    headers = {"Content-Type": "application/json"}
-    payload = {"model": model, "messages": messages, "stream": stream, "max_tokens": 512}
-
+    full_path = f"{model_folder}/{model}"
+    model_path = os.path.expanduser(full_path)
+    
+    m_cfg = ModelConfig()
+    llm = LLM.from_(model_path, m_cfg=m_cfg)
+    
+    prompt = llm.apply_chat_template(messages)
+    g_cfg=GenerationConfig(max_tokens=512)
     if not stream:
         # Non-streaming: return complete text
-        data = _post_json(url, payload)
-        try:
-            return data["choices"][0]["message"]["content"]
-        except (KeyError, IndexError):
-            # Fallback for non-standard response formats
-            return data.get("text", "") or data.get("response", "")
+        return llm.generate(prompt, g_cfg=g_cfg)
+    
+    for token in llm.generate_stream(prompt, g_cfg=g_cfg):
+        yield token
 
-    # Streaming mode: yield text pieces via SSE
-    try:
-        with requests.post(url, headers=headers, data=json.dumps(payload), stream=True, timeout=300) as resp:
-            resp.raise_for_status()
-            for raw in resp.iter_lines(decode_unicode=True):
-                if not raw:
-                    continue
-                if raw.startswith("data:"):
-                    chunk = raw[len("data:"):].strip()
-                    if chunk == "[DONE]":
-                        break
-                    try:
-                        obj = json.loads(chunk)
-                        choices = obj.get("choices", [])
-                        if choices:
-                            delta = choices[0].get("delta") or {}
-                            piece = delta.get("content", "")
-                            if piece:
-                                yield piece
-                    except json.JSONDecodeError:
-                        continue  # Skip malformed JSON chunks
-    except requests.RequestException as e:
-        raise requests.HTTPError(f"Streaming request failed: {str(e)}")
-
-
-def call_nexa_embeddings(embed_model: str, inputs: List[str], base: str) -> List[List[float]]:
+def call_nexa_embeddings(embed_model: str, inputs: List[str], model_folder: str) -> List[List[float]]:
     """
     Call Nexa-compatible /v1/embeddings endpoint to embed a batch of strings.
     
     Args:
         embed_model: Embedding model name
         inputs: List of text strings to embed
-        base: Base URL for the API endpoint
+        model_folder: model folder path
         
     Returns:
         List[List[float]]: List of embedding vectors aligned to input order
-        
-    Raises:
-        requests.HTTPError: If API request fails
-        ValueError: If response format is invalid
     """
     if not inputs:
         return []
     
-    url = base.rstrip("/") + "/v1/embeddings"
     out: List[List[float]] = []
-    
+     
+    full_path = f"{model_folder}/{embed_model}"
+    model_path = os.path.expanduser(full_path)
+    # TODO: Use plugin_id as needed mlx: Mac
+    embedder = Embedder.from_(name_or_path=model_path, plugin_id='mlx')
+
     # Process in batches to avoid large payloads
     BATCH_SIZE = 64
     for i in range(0, len(inputs), BATCH_SIZE):
         batch = inputs[i:i+BATCH_SIZE]
-        payload = {
-            "model": embed_model,
-            "input": batch,
-            "encoding_format": "float"
-        }
-        data = _post_json(url, payload)
+        batch_size = len(batch)
+        embeddings = embedder.generate(
+        texts=batch, config=EmbeddingConfig(batch_size=batch_size))
         
-        # Parse response and sort by index
-        vecs = [None] * len(batch)
-        for item in data.get("data", []):
-            idx = item.get("index", 0)
-            vec = item.get("embedding", [])
-            if 0 <= idx < len(batch):
-                vecs[idx] = vec
-        
-        # Fallback: assume response order matches input order
-        if any(v is None for v in vecs):
-            vecs = [item.get("embedding", []) for item in data.get("data", [])]
-        
-        # Validate we got embeddings for all inputs
-        if len(vecs) != len(batch):
-            raise ValueError(f"Expected {len(batch)} embeddings, got {len(vecs)}")
-            
-        out.extend(vecs)
-    
+        for embedding in embeddings:
+            out.append(embedding.tolist())
+           
     return out
 
 
-def call_nexa_rerank(rerank_model: str, query: str, documents: List[str], base: str, top_n: int = 3) -> List[int]:
+def call_nexa_rerank(rerank_model: str, query: str, documents: List[str], model_folder: str, top_n: int = 3) -> List[int]:
     """
     Call Nexa-compatible /v1/reranking endpoint to rerank documents.
     
@@ -191,32 +129,28 @@ def call_nexa_rerank(rerank_model: str, query: str, documents: List[str], base: 
         rerank_model: Reranking model name
         query: Search query string
         documents: List of document texts to rerank
-        base: Base URL for the API endpoint
+        model_folder: model folder path
         top_n: Number of top documents to return
         
     Returns:
         List[int]: List of document indices in reranked order (best first)
-        
-    Raises:
-        requests.HTTPError: If API request fails
+
     """
     if not documents:
         return []
+
+    full_path = f"{model_folder}/{rerank_model}"
+    model_path = os.path.expanduser(full_path)
     
-    url = base.rstrip("/") + "/v1/reranking"
-    payload = {
-        "model": rerank_model,
-        "query": query,
-        "documents": documents,
-        "batch_size": len(documents),
-        "normalize": True,
-        "normalize_method": "softmax"
-    }
-    data = _post_json(url, payload)
+    # TODO: mlx: Mac
+    reranker = Reranker.from_(name_or_path=model_path, plugin_id="mlx")
     
+    batch_size = len(documents)
+    scores = reranker.rerank(query=query, documents=documents, 
+                           config=RerankConfig(batch_size=batch_size))
+
     # Sort by relevance score (descending) and return top_n indices
-    results = data.get("results", [])
-    sorted_results = sorted(results, key=lambda x: x.get("relevance_score", 0), reverse=True)
+    sorted_results = sorted(scores,reverse=True)
     return [r["index"] for r in sorted_results[:top_n]]
 
 
@@ -407,8 +341,8 @@ def build_json_index(
     index_path: str, 
     embed_model: str, 
     chunk_size: int, 
-    overlap: int, 
-    endpoint_base: str
+    overlap: int,
+    model_folder: str = DEFAULT_MODEL_FOLDER
 ) -> Tuple[int, int]:
     """
     Build JSON-based vector index from documents in a folder.
@@ -416,7 +350,7 @@ def build_json_index(
     Process:
     1. Read all supported documents from folder
     2. Chunk each document with overlap
-    3. Embed chunks using API
+    3. Embed chunks using Python binding API
     4. Save to JSON file with metadata
     
     Args:
@@ -425,7 +359,7 @@ def build_json_index(
         embed_model: Embedding model name
         chunk_size: Size of text chunks in characters
         overlap: Overlap between chunks in characters
-        endpoint_base: Base URL for API endpoint
+        model_folder: model folder path
         
     Returns:
         Tuple[int, int]: (number of documents processed, number of chunks created)
@@ -467,7 +401,7 @@ def build_json_index(
             
         # Embed chunks via API
         try:
-            vectors = call_nexa_embeddings(embed_model, chunks, endpoint_base)
+            vectors = call_nexa_embeddings(embed_model, chunks, model_folder)
         except Exception as e:
             print(f"[warn] Failed to embed chunks from {path}: {e}")
             continue
@@ -558,19 +492,19 @@ def load_json_index(index_path: str) -> Dict[str, Any]:
 # ============================================================================
 # Vector Search
 # ============================================================================
-def embed_query_server(query: str, embed_model: str, endpoint_base: str) -> np.ndarray:
+def embed_query_server(query: str, embed_model: str, model_folder: str) -> np.ndarray:
     """
     Embed a single query string via API.
     
     Args:
         query: Query text to embed
         embed_model: Embedding model name
-        endpoint_base: Base URL for API endpoint
+        model_folder: model folder path
         
     Returns:
         np.ndarray: Query embedding vector
     """
-    vecs = call_nexa_embeddings(embed_model, [query], endpoint_base)
+    vecs = call_nexa_embeddings(embed_model, [query], model_folder)
     return np.array(vecs[0], dtype=np.float32)
 
 
@@ -578,7 +512,7 @@ def search_numpy(
     query: str, 
     index: dict, 
     embed_model: str, 
-    endpoint_base: str, 
+    model_folder: str,
     top_k: int = 5
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -588,7 +522,7 @@ def search_numpy(
         query: Search query text
         index: Loaded index dictionary from load_json_index()
         embed_model: Embedding model name
-        endpoint_base: Base URL for API endpoint
+        model_folder: model folder path
         top_k: Number of top results to return
         
     Returns:
@@ -597,7 +531,7 @@ def search_numpy(
             - Array of corresponding similarity scores
     """
     # Embed query
-    q_vec = embed_query_server(query, embed_model, endpoint_base)  # (D,)
+    q_vec = embed_query_server(query, embed_model, model_folder)  # (D,)
     db = index["matrix"]  # (N, D)
 
     # Normalize vectors to compute cosine similarity
@@ -678,11 +612,13 @@ def main():
         default=DEFAULT_MODEL, 
         help="LLM model for generation"
     )
+    
     ap.add_argument(
-        "--endpoint", 
-        default=DEFAULT_ENDPOINT, 
-        help="Nexa endpoint base URL"
+        "--model_folder", 
+        default=DEFAULT_MODEL_FOLDER, 
+        help="Model folder path"
     )
+    
     ap.add_argument(
         "--rebuild", 
         action="store_true", 
@@ -705,8 +641,8 @@ def main():
                 args.index_json, 
                 args.embed_model, 
                 args.chunk_size, 
-                args.chunk_overlap, 
-                args.endpoint
+                args.chunk_overlap,
+                args.model_folder,
             )
             print(f"[build] Done. docs={n_docs}, chunks={n_chunks}")
         except Exception as e:
@@ -723,7 +659,7 @@ def main():
         print(f"[error] Failed to load index: {e}")
         return
 
-    print(f"[info] Ready. model={args.model} endpoint={args.endpoint}")
+    print(f"[info] Ready. model={args.model}")
     print("Type your question (Enter to quit). Commands: :reload (rebuild index)")
 
     # Interactive chat loop
@@ -745,8 +681,8 @@ def main():
                     args.index_json, 
                     args.embed_model, 
                     args.chunk_size, 
-                    args.chunk_overlap, 
-                    args.endpoint
+                    args.chunk_overlap,
+                    args.model_folder,
                 )
                 index = load_json_index(args.index_json)
                 print(f"[build] Done. docs={n_docs}, chunks={n_chunks}")
@@ -760,7 +696,7 @@ def main():
                 q, 
                 index, 
                 args.embed_model, 
-                args.endpoint, 
+                args.model_folder,
                 top_k=args.k
             )
         except Exception as e:
@@ -777,8 +713,8 @@ def main():
                 reranked_local_idx = call_nexa_rerank(
                     args.rerank_model, 
                     q, 
-                    candidate_docs, 
-                    args.endpoint, 
+                    candidate_docs,
+                    args.model_folder,
                     top_n=args.rerank_top_n
                 )
                 
@@ -805,14 +741,14 @@ def main():
         print("\n[assistant]", end="", flush=True)
         try:
             # Try streaming first
-            for piece in call_nexa_chat(args.model, messages, args.endpoint, stream=True):
+            for piece in call_nexa_chat(args.model, messages, model_folder=args.model_folder, stream=True):
                 print(piece, end="", flush=True)
             print()
         except requests.HTTPError as e:
             # Fallback to non-streaming
             print(f"\n[warn] Streaming failed, fallback to non-stream. Reason: {e}")
             try:
-                full = call_nexa_chat(args.model, messages, args.endpoint, stream=False)
+                full = call_nexa_chat(args.model, messages, model_folder=args.model_folder, stream=False)
                 print(full)
             except Exception as e2:
                 print(f"[error] Non-stream request also failed: {e2}")
