@@ -11,6 +11,7 @@ from nexaai.llm import LLM, GenerationConfig
 from nexaai.common import ModelConfig, ChatMessage
 
 # Nexa config
+# DEFAULT_MODEL = "NexaAI/granite-4-Nano-NPU"
 DEFAULT_MODEL = "~/.cache/nexa.ai/nexa_sdk/models/NexaAI/granite-4.0-micro-GGUF/granite-4.0-micro-Q4_0.gguf"
 DEFAULT_ENDPOINT = "http://127.0.0.1:18181"
 # You can get a free API key from https://serpapi.com/
@@ -304,15 +305,10 @@ def nexa_start_search_stream(
 def main():
     """Main CLI entry point"""
     ap = argparse.ArgumentParser(description="Function Tool with Nexa SDK server")
-    ap.add_argument("--model", default=DEFAULT_MODEL, help="Nexa model name or alias.")
-    ap.add_argument(
-        "--endpoint",
-        default=DEFAULT_ENDPOINT,
-        help="Nexa base endpoint, e.g. http://127.0.0.1:18181",
-    )
+    ap.add_argument("--model", default=DEFAULT_MODEL, help="Nexa model path.")
     args = ap.parse_args()
 
-    print(f"[info] Ready. Using model={args.model} endpoint={args.endpoint}")
+    print(f"[info] Ready. Using model={args.model}")
     print("Type your question (or just press Enter to quit):")
 
     last_message = ""
@@ -327,7 +323,7 @@ def main():
 
             # Parse JSON responses and display nicely
             for piece in nexa_start_search_stream(
-                q, last_message, args.model, args.endpoint
+                q, last_message, args.model
             ):
                 try:
                     parsed = json.loads(piece)
