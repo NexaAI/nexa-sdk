@@ -38,8 +38,34 @@ TESTCASE_MAP: dict[str, dict[str, dict[str, list[type[BaseCase]]]]] = {
         "image_gen": {},
     },
     'npu': {
+        'llm': {
+            'NexaAI/Granite-4-Micro-NPU': [MultiRound],
+            'NexaAI/phi4-mini-npu-turbo': [MultiRound],
+            'NexaAI/Qwen3-4B-Instruct-2507-npu': [MultiRound],
+            'NexaAI/Qwen3-4B-Thinking-2507-npu': [MultiRound],
+            'NexaAI/Llama3.2-3B-NPU-Turbo': [MultiRound],
+            'NexaAI/jan-v1-4B-npu': [MultiRound],
+            'NexaAI/qwen3-4B-npu': [MultiRound],
+            'NexaAI/phi3.5-mini-npu': [MultiRound],
+        },
         'vlm': {
             'NexaAI/Qwen3-VL-4B-Instruct-NPU': [MultiRound, ImageMultiRound],
+            'NexaAI/OmniNeural-4B': [MultiRound, ImageMultiRound, AudioMultiRound],
+            'NexaAI/LFM2-1.2B-npu': [MultiRound],
+        },
+        'embedder': {
+            'NexaAI/embeddinggemma-300m-npu': [SingleRound],
+        },
+        'asr': {
+            'NexaAI/parakeet-tdt-0.6b-v3-npu': [AudioMultiRound],
+        },
+        'cv': {
+            'NexaAI/convnext-tiny-npu': [ImageMultiRound],
+            'NexaAI/paddleocr-npu': [ImageMultiRound],
+            'NexaAI/yolov12-npu': [ImageMultiRound],
+        },
+        'reranker': {
+            'NexaAI/jina-v2-rerank-npu': [SingleRound],
         }
     },
     'nexaml': {
