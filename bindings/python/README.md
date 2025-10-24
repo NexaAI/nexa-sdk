@@ -108,7 +108,7 @@ python embedder.py --model NexaAI/embeddinggemma-300m-npu --plugin-id npu --text
 #### OCR
 
 ```bash
-python cv_ocr.py --det-model NexaAI/paddleocr-npu --rec-model NexaAI/paddleocr-npu --image path/to/image.png
+python cv_ocr.py --model NexaAI/paddleocr-npu --image path/to/image.png
 ```
 
 ### ASR
