@@ -14,7 +14,7 @@ Before running this project, make sure you have the **Nexa SDK** installed. Plea
 Once installed, you need to download the **Qwen3VL model** with the following command:
 
 ```bash
-nexa pull NexaAI/qwen3vl-GGUF
+nexa pull NexaAI/Qwen3-VL-4B-Instruct-GGUF
 nexa pull djuna/jina-embeddings-v2-small-en-Q5_K_M-GGUF
 ```
 
