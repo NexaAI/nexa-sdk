@@ -50,7 +50,7 @@ TESTCASE_MAP: dict[str, dict[str, dict[str, list[type[BaseCase]]]]] = {
         },
         'vlm': {
             'NexaAI/Qwen3-VL-4B-Instruct-NPU': [MultiRound, ImageMultiRound],
-            'NexaAI/OmniNeural-4B': [MultiRound, ImageMultiRound],
+            'NexaAI/OmniNeural-4B': [MultiRound, ImageMultiRound, AudioMultiRound],
             'NexaAI/LFM2-1.2B-npu': [MultiRound],
             'NexaAI/convnext-tiny-npu': [ImageMultiRound],
         },
@@ -65,7 +65,7 @@ TESTCASE_MAP: dict[str, dict[str, dict[str, list[type[BaseCase]]]]] = {
             'NexaAI/yolov12-npu': [ImageMultiRound],
         },
         'reranker': {
-            'NexaAI/jina-v2-rerank-npu': [MultiRound],
+            'NexaAI/jina-v2-rerank-npu': [SingleRound],
         }
     },
     'nexaml': {
