@@ -27,7 +27,6 @@ DEFAULT_EMBED_MODEL = "NexaAI/embeddinggemma-300m-npu"
 DEFAULT_INDEX_JSON = "./vecdb.json"
 DEFAULT_RERANK_MODEL = "NexaAI/jina-v2-rerank-npu"
 
-
 # ============================================================================
 # File System Utilities
 # ============================================================================
