@@ -324,24 +324,18 @@ func getPromptOrInput() (string, error) {
 }
 
 func inferLLM(manifest *types.ModelManifest, quant string) error {
-	var samplerConfig *nexa_sdk.SamplerConfig
-	if temperature > 0 || topK > 0 || topP > 0 || minP > 0 ||
-		repetitionPenalty != 1.0 || presencePenalty != 0.0 || frequencyPenalty != 0.0 ||
-		seed != 0 || grammarPath != "" || grammarString != "" ||
-		enableJson {
-		samplerConfig = &nexa_sdk.SamplerConfig{
-			Temperature:       temperature,
-			TopP:              topP,
-			TopK:              topK,
-			MinP:              minP,
-			RepetitionPenalty: repetitionPenalty,
-			PresencePenalty:   presencePenalty,
-			FrequencyPenalty:  frequencyPenalty,
-			Seed:              seed,
-			GrammarPath:       grammarPath,
-			GrammarString:     grammarString,
-			EnableJson:        enableJson,
-		}
+	samplerConfig := &nexa_sdk.SamplerConfig{
+		Temperature:       temperature,
+		TopP:              topP,
+		TopK:              topK,
+		MinP:              minP,
+		RepetitionPenalty: repetitionPenalty,
+		PresencePenalty:   presencePenalty,
+		FrequencyPenalty:  frequencyPenalty,
+		Seed:              seed,
+		GrammarPath:       grammarPath,
+		GrammarString:     grammarString,
+		EnableJson:        enableJson,
 	}
 
 	s := store.Get()
@@ -439,24 +433,18 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 }
 
 func inferVLM(manifest *types.ModelManifest, quant string) error {
-	var samplerConfig *nexa_sdk.SamplerConfig
-	if temperature > 0 || topK > 0 || topP > 0 || minP > 0 ||
-		repetitionPenalty != 1.0 || presencePenalty != 0.0 || frequencyPenalty != 0.0 ||
-		seed != 0 || grammarPath != "" || grammarString != "" ||
-		enableJson {
-		samplerConfig = &nexa_sdk.SamplerConfig{
-			Temperature:       temperature,
-			TopP:              topP,
-			TopK:              topK,
-			MinP:              minP,
-			RepetitionPenalty: repetitionPenalty,
-			PresencePenalty:   presencePenalty,
-			FrequencyPenalty:  frequencyPenalty,
-			Seed:              seed,
-			GrammarPath:       grammarPath,
-			GrammarString:     grammarString,
-			EnableJson:        enableJson,
-		}
+	samplerConfig := &nexa_sdk.SamplerConfig{
+		Temperature:       temperature,
+		TopP:              topP,
+		TopK:              topK,
+		MinP:              minP,
+		RepetitionPenalty: repetitionPenalty,
+		PresencePenalty:   presencePenalty,
+		FrequencyPenalty:  frequencyPenalty,
+		Seed:              seed,
+		GrammarPath:       grammarPath,
+		GrammarString:     grammarString,
+		EnableJson:        enableJson,
 	}
 
 	s := store.Get()

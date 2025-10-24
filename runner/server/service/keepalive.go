@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"reflect"
+	"slices"
 	"sync"
 	"time"
 
@@ -126,12 +127,16 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 			modelfile = s.ModelfilePath(manifest.Name, fileinfo.Name)
 		}
 	} else {
-		for _, v := range manifest.ModelFile {
+		// fallback to first downloaded model file
+		quants := make([]string, 0, len(manifest.ModelFile))
+		for quant, v := range manifest.ModelFile {
 			if v.Downloaded {
-				modelfile = s.ModelfilePath(manifest.Name, v.Name)
+				quants = append(quants, quant)
 				break
 			}
 		}
+		slices.Sort(quants)
+		modelfile = s.ModelfilePath(manifest.Name, manifest.ModelFile[quants[0]].Name) // at lease one is downloaded
 	}
 
 	var t keepable

@@ -1,18 +1,17 @@
 package handler
 
 import (
-	"context"
 	"errors"
-	"io"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 
+	"github.com/bytedance/sonic"
 	"github.com/gin-gonic/gin"
 	"github.com/openai/openai-go"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
-	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 	"github.com/NexaAI/nexa-sdk/runner/server/utils"
 )
 
@@ -50,56 +49,51 @@ func ListModels(c *gin.Context) {
 
 func RetrieveModel(c *gin.Context) {
 	name := strings.TrimPrefix(c.Param("model"), "/")
-	name, _ = utils.NormalizeModelName(name)
+	name, quant := utils.NormalizeModelName(name)
 
+	// check model exist
 	s := store.Get()
-
-	if manifest, err := s.GetManifest(name); err != nil {
+	manifest, err := s.GetManifest(name)
+	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			c.JSON(http.StatusNotFound, nil)
 		} else {
 			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
 		}
-	} else {
-		c.JSON(http.StatusOK, manifest)
-	}
-}
-
-func PullModel(c *gin.Context) {
-	manifest := types.ModelManifest{}
-	if err := c.ShouldBindJSON(&manifest); err != nil {
-		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
-		return
-	}
-	if manifest.Name == "" || len(manifest.ModelFile) == 0 {
-		c.JSON(http.StatusBadRequest, map[string]any{"error": "name or modelfile is empty"})
 		return
 	}
 
-	s := store.Get()
-	ctx, cancel := context.WithCancel(context.Background())
-
-	infoCh, errCh := s.Pull(ctx, manifest)
-
-	c.Stream(func(w io.Writer) bool {
-		info, ok := <-infoCh
-		if ok {
-			c.SSEvent("", info)
-			return true
-		} else {
-			err, ok := <-errCh
-			if ok {
-				c.SSEvent("", map[string]any{"error": err.Error()})
-				return true
+	// fill quant if not specified
+	if quant == "" {
+		quants := make([]string, 0, len(manifest.ModelFile))
+		for quant, v := range manifest.ModelFile {
+			if v.Downloaded {
+				quants = append(quants, quant)
+				break
 			}
 		}
-
-		return false
-	})
-
-	cancel()
-	for range infoCh {
+		slices.Sort(quants)
+		quant = quants[0]
 	}
-	for range errCh {
+
+	// check quant exist
+	if _, ok := manifest.ModelFile[quant]; !ok {
+		c.JSON(http.StatusNotFound, nil)
+		return
 	}
+
+	// compact with openai format
+	var res map[string]any
+	ms, _ := sonic.Marshal(manifest)
+	_ = sonic.Unmarshal(ms, &res)
+	model := openai.Model{}
+	model.ID = name
+	if quant != "N/A" {
+		model.ID += ":" + quant
+	}
+	model.OwnedBy = strings.Split(manifest.Name, "/")[0]
+	ms, _ = sonic.Marshal(model)
+	_ = sonic.Unmarshal(ms, &res)
+
+	c.JSON(http.StatusOK, res)
 }

@@ -484,7 +484,7 @@ func (l *LLM) LoadKVCache(input LlmLoadKVCacheInput) (*LlmLoadKVCacheOutput, err
 }
 
 func (l *LLM) Generate(input LlmGenerateInput) (LlmGenerateOutput, error) {
-	slog.Debug("Generate called", "input", input)
+	slog.Debug("Generate called", "input", input, "config", input.Config, "sampler", input.Config.SamplerConfig)
 
 	cInput := input.toCPtr()
 	defer freeLlmGenerateInput(cInput)

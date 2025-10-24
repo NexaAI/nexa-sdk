@@ -29,6 +29,7 @@ func Completions(c *gin.Context) {
 type ChatCompletionNewParams openai.ChatCompletionNewParams
 
 type ChatCompletionRequest struct {
+	ChatCompletionNewParams
 	Stream bool `json:"stream"`
 
 	EnableThink       bool    `json:"enable_think"`
@@ -39,15 +40,16 @@ type ChatCompletionRequest struct {
 	GrammarPath       string  `json:"grammar_path"`
 	GrammarString     string  `json:"grammar_string"`
 	EnableJson        bool    `json:"enable_json"`
-
-	ChatCompletionNewParams
 }
 
 func defaultChatCompletionRequest() ChatCompletionRequest {
 	return ChatCompletionRequest{
-		Stream:      false,
-		EnableThink: true,
+		ChatCompletionNewParams: ChatCompletionNewParams{
+			MaxCompletionTokens: param.NewOpt[int64](2048),
+		},
+		Stream: false,
 
+		EnableThink:       true,
 		NCtx:              4096,
 		TopK:              0,
 		MinP:              0.0,
@@ -55,9 +57,6 @@ func defaultChatCompletionRequest() ChatCompletionRequest {
 		GrammarPath:       "",
 		GrammarString:     "",
 		EnableJson:        false,
-		ChatCompletionNewParams: ChatCompletionNewParams{
-			MaxCompletionTokens: param.NewOpt[int64](2048),
-		},
 	}
 }
 
