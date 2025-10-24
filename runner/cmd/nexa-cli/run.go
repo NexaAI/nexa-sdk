@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -303,24 +305,6 @@ func runEmbeddings(manifest types.ModelManifest, quant string) error {
 				},
 			}, option.WithJSONSet("task_type", taskType), option.WithJSONSet("test", taskType))
 
-			if err == nil {
-				emb := res.Data[0].Embedding
-				n := len(emb)
-				info := render.GetTheme().Info.Sprintf("Embedding")
-				var out string
-				if len(emb) > 6 {
-					emb := res.Data[0].Embedding
-					out = render.GetTheme().Success.Sprintf(
-						"[%.6f, %.6f, %.6f, ..., %.6f, %.6f, %.6f] (length: %d)",
-						emb[0], emb[1], emb[2],
-						emb[n-3], emb[n-2], emb[n-1], n,
-					)
-				} else {
-					out = render.GetTheme().Success.Sprintf("%v (length: %d)", emb, n)
-				}
-				onToken(fmt.Sprintf("%s: %s", info, out))
-			}
-
 			duration := time.Since(start).Microseconds()
 			profileData := nexa_sdk.ProfileData{
 				TTFT:            duration,
@@ -332,7 +316,30 @@ func runEmbeddings(manifest types.ModelManifest, quant string) error {
 				PrefillSpeed:    0,
 				DecodingSpeed:   float64(res.Usage.TotalTokens-res.Usage.PromptTokens) / (float64(duration) / 1e6),
 			}
-			return "", profileData, err
+
+			if err != nil {
+				return "", profileData, err
+			}
+
+			emb := res.Data[0].Embedding
+			n := len(emb)
+			info := render.GetTheme().Info.Sprintf("Embedding")
+			var out string
+			if len(emb) > 6 {
+				emb := res.Data[0].Embedding
+				out = render.GetTheme().Success.Sprintf(
+					"[%.6f, %.6f, %.6f, ..., %.6f, %.6f, %.6f] (length: %d)",
+					emb[0], emb[1], emb[2],
+					emb[n-3], emb[n-2], emb[n-1], n,
+				)
+			} else {
+				out = render.GetTheme().Success.Sprintf("%v (length: %d)", emb, n)
+			}
+
+			data := fmt.Sprintf("%s: %s", info, out)
+			onToken(data)
+			return data, profileData, err
+
 		},
 	}
 	if len(prompt) > 0 || input != "" {
@@ -409,17 +416,36 @@ func runReranking(manifest types.ModelManifest, quant string) error {
 			fmt.Println(render.GetTheme().Success.Sprintf("✓ Reranking completed successfully. Generated %d scores", len(res.Result)))
 
 			// Display results
+			data := ""
 			for i, doc := range document {
 				if i < len(res.Result) {
-					fmt.Printf("\n%s [%d]: %s\n", render.GetTheme().Info.Sprintf("Document"), i+1, doc)
-					fmt.Printf("%s: %.6f\n", render.GetTheme().Info.Sprintf("Score"), res.Result[i])
+					line := fmt.Sprintf("\n%s [%d]: %s\n", render.GetTheme().Info.Sprintf("Document"), i+1, doc)
+					onToken(line)
+					data += line
+					line = fmt.Sprintf("%s: %.6f\n", render.GetTheme().Info.Sprintf("Score"), res.Result[i])
+					onToken(line)
+					data += line
 				}
 			}
-			return "", profileData, err
+			return data, profileData, err
 		},
 	}
-	if len(prompt) > 0 || input != "" {
-		processor.GetPrompt = getPromptOrInput
+
+	if query != "" || len(document) > 0 {
+		if query == "" || len(document) == 0 {
+			fmt.Println(render.GetTheme().Error.Sprintf("query and document are required for reranking"))
+			return errors.New("query and document are required for reranking")
+		}
+		processor.GetPrompt = func() (string, error) {
+			if query == "" || len(document) == 0 {
+				return "", io.EOF
+			}
+			prompt := strings.Join(append([]string{query}, document...), SEP)
+			query, document = "", nil
+			fmt.Print(render.GetTheme().Prompt.Sprintf("> "))
+			fmt.Println(render.GetTheme().Normal.Sprint(prompt))
+			return prompt, nil
+		}
 	} else {
 		repl := common.Repl{}
 		defer repl.Close()

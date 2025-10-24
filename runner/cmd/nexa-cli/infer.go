@@ -634,9 +634,9 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) error {
 				out = render.GetTheme().Success.Sprintf("%v (length: %d)", emb, n)
 			}
 
-			onToken(fmt.Sprintf("%s: %s", info, out))
-
-			return "", result.ProfileData, nil
+			data := fmt.Sprintf("%s: %s", info, out)
+			onToken(data)
+			return data, result.ProfileData, nil
 		},
 	}
 
@@ -705,13 +705,18 @@ func inferReranker(manifest *types.ModelManifest, quant string) error {
 			fmt.Println(render.GetTheme().Success.Sprintf("✓ Reranking completed successfully. Generated %d scores", len(result.Scores)))
 
 			// Display results
+			data := ""
 			for i, doc := range document {
 				if i < len(result.Scores) {
-					fmt.Printf("\n%s [%d]: %s\n", render.GetTheme().Info.Sprintf("Document"), i+1, doc)
-					fmt.Printf("%s: %.6f\n", render.GetTheme().Info.Sprintf("Score"), result.Scores[i])
+					line := fmt.Sprintf("\n%s [%d]: %s\n", render.GetTheme().Info.Sprintf("Document"), i+1, doc)
+					onToken(line)
+					data += line
+					line = fmt.Sprintf("%s: %.6f\n", render.GetTheme().Info.Sprintf("Score"), result.Scores[i])
+					onToken(line)
+					data += line
 				}
 			}
-			return "", result.ProfileData, nil
+			return data, result.ProfileData, nil
 		},
 	}
 
@@ -812,9 +817,9 @@ func inferTTS(manifest *types.ModelManifest, quant string) error {
 				return "", nexa_sdk.ProfileData{}, err
 			}
 
-			onToken(render.GetTheme().Success.Sprintf("✓ Audio saved: %s", result.Result.AudioPath))
-
-			return "", result.ProfileData, nil
+			data := render.GetTheme().Success.Sprintf("✓ Audio saved: %s", result.Result.AudioPath)
+			onToken(data)
+			return data, result.ProfileData, nil
 		},
 	}
 
@@ -889,7 +894,6 @@ func inferASR(manifest *types.ModelManifest, quant string) error {
 				return "", nexa_sdk.ProfileData{}, err
 			}
 			onToken(result.Result.Transcript)
-
 			return result.Result.Transcript, result.ProfileData, nil
 		},
 	}
@@ -1076,7 +1080,6 @@ func inferDiarize(manifest *types.ModelManifest, quant string) error {
 				output += fmt.Sprintf("[%d] %.2fs - %.2fs: %s\n", i+1, segment.StartTime, segment.EndTime, segment.SpeakerLabel)
 			}
 			onToken(output)
-
 			return output, result.ProfileData, nil
 		},
 	}
@@ -1171,13 +1174,16 @@ func inferCV(manifest *types.ModelManifest, quant string) error {
 			onToken("\n")
 			onToken(render.GetTheme().Info.Sprintf("  Found %d results\n", len(result.Results)))
 
+			data := ""
 			for _, cvResult := range result.Results {
-				onToken(fmt.Sprintf("[%s] %s\n",
+				result := fmt.Sprintf("[%s] %s\n",
 					render.GetTheme().Info.Sprintf("%.3f", cvResult.Confidence),
-					render.GetTheme().Success.Sprintf("\"%s\"", cvResult.Text)))
+					render.GetTheme().Success.Sprintf("\"%s\"", cvResult.Text))
+				onToken(result)
+				data += result
 			}
 
-			return "", nexa_sdk.ProfileData{}, nil
+			return data, nexa_sdk.ProfileData{}, nil
 		},
 	}
 
@@ -1273,9 +1279,9 @@ func inferImageGen(manifest *types.ModelManifest, _ string) error {
 				return "", nexa_sdk.ProfileData{}, err
 			}
 
-			onToken(render.GetTheme().Success.Sprintf("✓ Image saved to: %s", result.OutputImagePath))
-
-			return "", nexa_sdk.ProfileData{}, nil
+			data := render.GetTheme().Success.Sprintf("✓ Image saved to: %s", result.OutputImagePath)
+			onToken(data)
+			return data, nexa_sdk.ProfileData{}, nil
 		},
 	}
 
