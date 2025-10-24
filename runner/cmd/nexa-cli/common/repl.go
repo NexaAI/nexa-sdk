@@ -147,19 +147,23 @@ func (r *Repl) GetPrompt() (string, error) {
 		line = sb.String()
 		sb.Reset()
 
-		// check if it's a command
-		var fileds []string
-		if !strings.HasPrefix(line, "/") {
-			line += strings.Join(recordAudios, " ")
-			recordAudios = nil // clear stashed audios after use
-			return line, nil
+	// check if it's a command
+	var fileds []string
+	if !strings.HasPrefix(line, "/") {
+		if len(recordAudios) > 0 {
+			line += " " + strings.Join(recordAudios, " ")
 		}
-		fileds = strings.Fields(strings.TrimSpace(line))
-		if strings.Contains(fileds[0][1:], "/") || strings.Contains(fileds[0], ".") {
-			line += strings.Join(recordAudios, " ")
-			recordAudios = nil // clear stashed audios after use
-			return line, nil
+		recordAudios = nil // clear stashed audios after use
+		return line, nil
+	}
+	fileds = strings.Fields(strings.TrimSpace(line))
+	if strings.Contains(fileds[0][1:], "/") || strings.Contains(fileds[0], ".") {
+		if len(recordAudios) > 0 {
+			line += " " + strings.Join(recordAudios, " ")
 		}
+		recordAudios = nil // clear stashed audios after use
+		return line, nil
+	}
 
 		switch fileds[0] {
 		case "/?", "/h", "/help":
