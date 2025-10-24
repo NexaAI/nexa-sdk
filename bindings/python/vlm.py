@@ -7,65 +7,63 @@ This example demonstrates how to use the NexaAI SDK to work with Llama models.
 It includes basic model initialization, text generation, streaming, and chat template functionality.
 """
 
+import os
 import argparse
 import io
-import os
-import re
-from typing import List, Optional
+import shlex
+from pathlib import Path
+from typing import Optional, List, Tuple
 
 from nexaai.vlm import VLM, GenerationConfig
 from nexaai.common import ModelConfig, MultiModalMessage, MultiModalMessageContent
 
 
-def parse_media_from_input(user_input: str) -> tuple[str, Optional[List[str]], Optional[List[str]]]:
-    quoted_pattern = r'["\']([^"\']*)["\']'
-    quoted_matches = re.findall(quoted_pattern, user_input)
+def parse_media_from_input(user_input: str) -> Tuple[str, Optional[List[str]], Optional[List[str]]]:
+    tokens = shlex.split(user_input, posix=False)
+    image_exts = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'}
+    audio_exts = {'.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a'}
 
-    prompt = re.sub(quoted_pattern, '', user_input).strip()
+    image_paths, audio_paths, prompt_parts = [], [], []
 
-    image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'}
-    audio_extensions = {'.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a'}
+    for token in tokens:
+        path = Path(os.path.expanduser(token))
+        if path.exists():
+            ext = path.suffix.lower()
+            if ext in image_exts:
+                image_paths.append(str(path))
+            elif ext in audio_exts:
+                audio_paths.append(str(path))
+            else:
+                prompt_parts.append(token)
+        else:
+            prompt_parts.append(token)
 
-    image_paths = []
-    audio_paths = []
-
-    for quoted_file in quoted_matches:
-        if quoted_file:
-            if quoted_file.startswith('~'):
-                quoted_file = os.path.expanduser(quoted_file)
-
-            if not os.path.exists(quoted_file):
-                print(f"Warning: File '{quoted_file}' not found")
-                continue
-
-            file_ext = os.path.splitext(quoted_file.lower())[1]
-            if file_ext in image_extensions:
-                image_paths.append(quoted_file)
-            elif file_ext in audio_extensions:
-                audio_paths.append(quoted_file)
-
-    return prompt, image_paths if image_paths else None, audio_paths if audio_paths else None
+    prompt = ' '.join(prompt_parts).strip()
+    return prompt, image_paths or None, audio_paths or None
 
 
 def main():
     parser = argparse.ArgumentParser(description="NexaAI VLM Example")
-    parser.add_argument("--model", 
-                       default="~/.cache/nexa.ai/nexa_sdk/models/NexaAI/gemma-3n-E4B-it-4bit-MLX/model-00001-of-00002.safetensors",
-                       help="Path to the VLM model")
+    parser.add_argument("--model",
+                        default="~/.cache/nexa.ai/nexa_sdk/models/NexaAI/gemma-3n-E4B-it-4bit-MLX/model-00001-of-00002.safetensors",
+                        help="Path to the VLM model")
     parser.add_argument("--device", default="", help="Device to run on")
-    parser.add_argument("--max-tokens", type=int, default=100, help="Maximum tokens to generate")
-    parser.add_argument("--system", default="You are a helpful assistant.", 
-                       help="System message")
-    parser.add_argument("--plugin-id", default="cpu_gpu", help="Plugin ID to use")
+    parser.add_argument("--max-tokens", type=int, default=100,
+                        help="Maximum tokens to generate")
+    parser.add_argument("--system", default="You are a helpful assistant.",
+                        help="System message")
+    parser.add_argument("--plugin-id", default="cpu_gpu",
+                        help="Plugin ID to use")
     args = parser.parse_args()
 
     model_path = os.path.expanduser(args.model)
     m_cfg = ModelConfig()
 
-    instance = VLM.from_(name_or_path=model_path, m_cfg=m_cfg, plugin_id=args.plugin_id, device_id=args.device)
+    instance = VLM.from_(name_or_path=model_path, m_cfg=m_cfg,
+                         plugin_id=args.plugin_id, device_id=args.device)
 
-    conversation: List[MultiModalMessage] = [MultiModalMessage(role="system", 
-                                                              content=[MultiModalMessageContent(type="text", text=args.system)])]
+    conversation: List[MultiModalMessage] = [MultiModalMessage(role="system",
+                                                               content=[MultiModalMessageContent(type="text", text=args.system)])]
     strbuff = io.StringIO()
 
     print("Multi-round conversation started. Type '/quit' or '/exit' to end.")
@@ -102,15 +100,16 @@ def main():
             contents.append(MultiModalMessageContent(type="text", text=prompt))
         if images:
             for image in images:
-                contents.append(MultiModalMessageContent(type="image", text=image))
+                contents.append(MultiModalMessageContent(
+                    type="image", path=image))
         if audios:
             for audio in audios:
-                contents.append(MultiModalMessageContent(type="audio", text=audio))
+                contents.append(MultiModalMessageContent(
+                    type="audio", path=audio))
         conversation.append(MultiModalMessage(role="user", content=contents))
 
         # Apply the chat template
         prompt = instance.apply_chat_template(conversation)
-
         strbuff.truncate(0)
         strbuff.seek(0)
 
@@ -124,7 +123,8 @@ def main():
         if profiling_data is not None:
             print(profiling_data)
 
-        conversation.append(MultiModalMessage(role="assistant", content=[MultiModalMessageContent(type="text", text=strbuff.getvalue())]))
+        conversation.append(MultiModalMessage(role="assistant", content=[
+                            MultiModalMessageContent(type="text", text=strbuff.getvalue())]))
 
 
 if __name__ == "__main__":
