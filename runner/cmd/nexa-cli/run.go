@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/bytedance/sonic"
@@ -14,10 +15,14 @@ import (
 	"github.com/openai/openai-go/option"
 	"github.com/spf13/cobra"
 
+	"github.com/NexaAI/nexa-sdk/runner/cmd/nexa-cli/common"
 	"github.com/NexaAI/nexa-sdk/runner/internal/config"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
+	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 )
+
+var client openai.Client
 
 func run() *cobra.Command {
 	runCmd := &cobra.Command{
@@ -62,7 +67,7 @@ func run() *cobra.Command {
 			name = name + ":" + quant
 		}
 
-		client := openai.NewClient(
+		client = openai.NewClient(
 			option.WithBaseURL(fmt.Sprintf("http://%s/v1", config.Get().Host)),
 			// option.WithRequestTimeout(time.Second*15),
 		)
@@ -89,13 +94,10 @@ func run() *cobra.Command {
 		switch manifest.ModelType {
 		case types.ModelTypeLLM, types.ModelTypeVLM:
 			err = runCompletion(manifest, quant)
-		// case types.ModelTypeVLM:
-		// 	checkDependency()
-		// 	err = inferVLM(manifest, quant)
-		// case types.ModelTypeEmbedder:
-		// 	err = inferEmbedder(manifest, quant)
-		// case types.ModelTypeReranker:
-		// 	err = inferReranker(manifest, quant)
+		case types.ModelTypeEmbedder:
+			err = runEmbeddings(manifest, quant)
+		case types.ModelTypeReranker:
+			err = runReranking(manifest, quant)
 		// case types.ModelTypeTTS:
 		// 	err = inferTTS(manifest, quant)
 		// case types.ModelTypeASR:
@@ -113,6 +115,7 @@ func run() *cobra.Command {
 		}
 
 		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err.Error()))
 			os.Exit(1)
 		}
 	}
@@ -120,141 +123,307 @@ func run() *cobra.Command {
 }
 
 func runCompletion(manifest types.ModelManifest, quant string) error {
-	// // warm up
-	// spin := render.NewSpinner("loading model...")
-	// spin.Start()
-	// warmUpRequest := openai.ChatCompletionNewParams{
-	// 	Messages: nil,
-	// 	Model:    name,
-	// }
-	// if systemPrompt != "" {
-	// 	warmUpRequest.Messages = append(warmUpRequest.Messages, openai.SystemMessage(systemPrompt))
-	// }
-	// _, err = client.Chat.Completions.New(context.TODO(), warmUpRequest)
-	// spin.Stop()
-	//
-	// if err != nil {
-	// 	fmt.Printf("%s\n", err)
-	// 	os.Exit(1)
-	// }
-	//
-	// // repl
-	// var history []openai.ChatCompletionMessageParamUnion
-	// if systemPrompt != "" {
-	// 	history = append(history, openai.SystemMessage(systemPrompt))
-	// }
-	//
-	// processor := &common.Processor{
-	// 	ParseFile: manifest.ModelType == types.ModelTypeVLM,
-	// 	TestMode:  testMode,
-	// 	Run: func(prompt string, images, audios []string, on_token func(string) bool) (string, nexa_sdk.ProfileData, error) {
-	// 		if len(images) > 0 || len(audios) > 0 {
-	// 			contents := make([]openai.ChatCompletionContentPartUnionParam, 0)
-	// 			contents = append(contents, openai.ChatCompletionContentPartUnionParam{
-	// 				OfText: &openai.ChatCompletionContentPartTextParam{
-	// 					Text: prompt,
-	// 				},
-	// 			})
-	// 			for _, image := range images {
-	// 				contents = append(contents, openai.ChatCompletionContentPartUnionParam{
-	// 					OfImageURL: &openai.ChatCompletionContentPartImageParam{
-	// 						ImageURL: openai.ChatCompletionContentPartImageImageURLParam{
-	// 							URL: image,
-	// 						},
-	// 					},
-	// 				})
-	// 			}
-	// 			for _, audio := range audios {
-	// 				contents = append(contents, openai.ChatCompletionContentPartUnionParam{
-	// 					OfInputAudio: &openai.ChatCompletionContentPartInputAudioParam{
-	// 						InputAudio: openai.ChatCompletionContentPartInputAudioInputAudioParam{
-	// 							Data: audio,
-	// 						},
-	// 					},
-	// 				})
-	// 			}
-	// 			history = append(history, openai.UserMessage(contents))
-	// 		} else {
-	// 			history = append(history, openai.UserMessage(prompt))
-	// 		}
-	//
-	// 		start := time.Now()
-	// 		acc := openai.ChatCompletionAccumulator{}
-	// 		stream := client.Chat.Completions.NewStreaming(context.Background(), openai.ChatCompletionNewParams{
-	// 			Messages:         history,
-	// 			Model:            name,
-	// 			StreamOptions:    openai.ChatCompletionStreamOptionsParam{IncludeUsage: openai.Opt(true)},
-	// 			Temperature:      openai.Float(float64(temperature)),
-	// 			TopP:             openai.Float(float64(topP)),
-	// 			PresencePenalty:  openai.Float(float64(presencePenalty)),
-	// 			FrequencyPenalty: openai.Float(float64(frequencyPenalty)),
-	// 			Seed:             openai.Int(int64(seed)),
-	// 		},
-	//
-	// 			option.WithJSONSet("enable_think", enableThink),
-	// 			option.WithJSONSet("top_k", topK),
-	// 			option.WithJSONSet("min_p", minP),
-	// 			option.WithJSONSet("repetition_penalty", repetitionPenalty),
-	// 			option.WithJSONSet("grammar_path", grammarPath),
-	// 			option.WithJSONSet("grammar_string", grammarString),
-	// 			option.WithJSONSet("enable_json", enableJson),
-	// 			option.WithHeaderAdd("Nexa-KeepCache", "true"))
-	//
-	// 		var firstToken time.Time
-	// 		var profileData nexa_sdk.ProfileData
-	// 		for stream.Next() {
-	// 			if firstToken.IsZero() {
-	// 				firstToken = time.Now()
-	// 			}
-	//
-	// 			chunk := stream.Current()
-	// 			acc.AddChunk(chunk)
-	// 			if len(chunk.Choices) > 0 {
-	// 				if !on_token(chunk.Choices[0].Delta.Content) {
-	// 					stream.Close()
-	// 					break
-	// 				}
-	// 			}
-	// 			if chunk.Usage.PromptTokens > 0 {
-	// 				profileData.PromptTokens = chunk.Usage.PromptTokens
-	// 				profileData.GeneratedTokens = chunk.Usage.CompletionTokens
-	// 			}
-	// 		}
-	// 		if stream.Err() != nil {
-	// 			return "", profileData, stream.Err()
-	// 		}
-	//
-	// 		// zero token generated
-	// 		if firstToken.IsZero() {
-	// 			firstToken = time.Now()
-	// 		}
-	//
-	// 		end := time.Now()
-	// 		profileData.TTFT = firstToken.Sub(start).Microseconds()
-	// 		profileData.PromptTime = profileData.TTFT
-	// 		profileData.DecodeTime = end.Sub(firstToken).Microseconds()
-	// 		profileData.DecodingSpeed = float64(profileData.GeneratedTokens) / float64(end.Sub(firstToken).Seconds())
-	//
-	// 		if len(acc.Choices) > 0 {
-	// 			history = append(history, openai.AssistantMessage(acc.Choices[0].Message.Content))
-	// 			return acc.Choices[0].Message.Content, profileData, nil
-	// 		}
-	//
-	// 		return "", profileData, nil
-	// 	},
-	// }
-	// repl := common.Repl{
-	// 	Reset: func() error {
-	// 		history = nil
-	// 		_, err := client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
-	// 			Messages: nil,
-	// 			Model:    name,
-	// 		})
-	// 		return err
-	// 	},
-	// }
-	// defer repl.Close()
-	// processor.GetPrompt = repl.GetPrompt
-	// processor.Process()
-	return nil
+	name := manifest.Name
+	if quant != "" {
+		name = name + ":" + quant
+	}
+
+	// warm up
+	spin := render.NewSpinner("loading model...")
+	spin.Start()
+	warmUpRequest := openai.ChatCompletionNewParams{
+		Messages: nil,
+		Model:    name,
+	}
+	if systemPrompt != "" {
+		warmUpRequest.Messages = append(warmUpRequest.Messages, openai.SystemMessage(systemPrompt))
+	}
+	_, err := client.Chat.Completions.New(context.TODO(), warmUpRequest)
+	spin.Stop()
+
+	if err != nil {
+		return err
+	}
+
+	// repl
+	var history []openai.ChatCompletionMessageParamUnion
+	if systemPrompt != "" {
+		history = append(history, openai.SystemMessage(systemPrompt))
+	}
+
+	processor := &common.Processor{
+		ParseFile: manifest.ModelType == types.ModelTypeVLM,
+		TestMode:  testMode,
+		Run: func(prompt string, images, audios []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			if len(images) > 0 || len(audios) > 0 {
+				contents := make([]openai.ChatCompletionContentPartUnionParam, 0)
+				contents = append(contents, openai.ChatCompletionContentPartUnionParam{
+					OfText: &openai.ChatCompletionContentPartTextParam{
+						Text: prompt,
+					},
+				})
+				for _, image := range images {
+					contents = append(contents, openai.ChatCompletionContentPartUnionParam{
+						OfImageURL: &openai.ChatCompletionContentPartImageParam{
+							ImageURL: openai.ChatCompletionContentPartImageImageURLParam{
+								URL: image,
+							},
+						},
+					})
+				}
+				for _, audio := range audios {
+					contents = append(contents, openai.ChatCompletionContentPartUnionParam{
+						OfInputAudio: &openai.ChatCompletionContentPartInputAudioParam{
+							InputAudio: openai.ChatCompletionContentPartInputAudioInputAudioParam{
+								Data: audio,
+							},
+						},
+					})
+				}
+				history = append(history, openai.UserMessage(contents))
+			} else {
+				history = append(history, openai.UserMessage(prompt))
+			}
+
+			start := time.Now()
+			acc := openai.ChatCompletionAccumulator{}
+			stream := client.Chat.Completions.NewStreaming(context.Background(), openai.ChatCompletionNewParams{
+				Messages:         history,
+				Model:            name,
+				StreamOptions:    openai.ChatCompletionStreamOptionsParam{IncludeUsage: openai.Opt(true)},
+				Temperature:      openai.Float(float64(temperature)),
+				TopP:             openai.Float(float64(topP)),
+				PresencePenalty:  openai.Float(float64(presencePenalty)),
+				FrequencyPenalty: openai.Float(float64(frequencyPenalty)),
+				Seed:             openai.Int(int64(seed)),
+			},
+
+				option.WithJSONSet("enable_think", enableThink),
+				option.WithJSONSet("top_k", topK),
+				option.WithJSONSet("min_p", minP),
+				option.WithJSONSet("repetition_penalty", repetitionPenalty),
+				option.WithJSONSet("grammar_path", grammarPath),
+				option.WithJSONSet("grammar_string", grammarString),
+				option.WithJSONSet("enable_json", enableJson),
+				option.WithHeaderAdd("Nexa-KeepCache", "true"))
+
+			var firstToken time.Time
+			var profileData nexa_sdk.ProfileData
+			for stream.Next() {
+				if firstToken.IsZero() {
+					firstToken = time.Now()
+				}
+
+				chunk := stream.Current()
+				acc.AddChunk(chunk)
+				if len(chunk.Choices) > 0 {
+					if !onToken(chunk.Choices[0].Delta.Content) {
+						stream.Close()
+						break
+					}
+				}
+				if chunk.Usage.PromptTokens > 0 {
+					profileData.PromptTokens = chunk.Usage.PromptTokens
+					profileData.GeneratedTokens = chunk.Usage.CompletionTokens
+				}
+			}
+
+			// zero token generated
+			if firstToken.IsZero() {
+				firstToken = time.Now()
+			}
+
+			end := time.Now()
+			profileData.TTFT = firstToken.Sub(start).Microseconds()
+			profileData.PromptTime = profileData.TTFT
+			profileData.DecodeTime = end.Sub(firstToken).Microseconds()
+			profileData.DecodingSpeed = float64(profileData.GeneratedTokens) / float64(end.Sub(firstToken).Seconds())
+
+			if stream.Err() != nil {
+				return "", profileData, stream.Err()
+			}
+
+			if len(acc.Choices) > 0 {
+				history = append(history, openai.AssistantMessage(acc.Choices[0].Message.Content))
+				return acc.Choices[0].Message.Content, profileData, nil
+			}
+
+			return "", profileData, nil
+		},
+	}
+	if len(prompt) > 0 || input != "" {
+		processor.GetPrompt = getPromptOrInput
+	} else {
+		repl := common.Repl{
+			Reset: func() error {
+				history = nil
+				_, err := client.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
+					Messages: nil,
+					Model:    name,
+				})
+				return err
+			},
+		}
+		defer repl.Close()
+		processor.GetPrompt = repl.GetPrompt
+	}
+	return processor.Process()
+}
+
+func runEmbeddings(manifest types.ModelManifest, quant string) error {
+	name := manifest.Name
+	if quant != "" {
+		name = name + ":" + quant
+	}
+
+	// warm up
+	spin := render.NewSpinner("loading model...")
+	spin.Start()
+	warmUpRequest := openai.EmbeddingNewParams{
+		Model: name,
+		Input: openai.EmbeddingNewParamsInputUnion{OfArrayOfStrings: []string{}},
+	}
+	_, err := client.Embeddings.New(context.TODO(), warmUpRequest)
+	spin.Stop()
+
+	if err != nil {
+		return err
+	}
+
+	processor := &common.Processor{
+		ParseFile: manifest.ModelType == types.ModelTypeVLM,
+		TestMode:  testMode,
+		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			start := time.Now()
+
+			res, err := client.Embeddings.New(context.TODO(), openai.EmbeddingNewParams{
+				Model: name,
+				Input: openai.EmbeddingNewParamsInputUnion{
+					OfString: openai.String(prompt),
+				},
+			}, option.WithJSONSet("task_type", taskType), option.WithJSONSet("test", taskType))
+
+			if err == nil {
+				emb := res.Data[0].Embedding
+				n := len(emb)
+				info := render.GetTheme().Info.Sprintf("Embedding")
+				var out string
+				if len(emb) > 6 {
+					emb := res.Data[0].Embedding
+					out = render.GetTheme().Success.Sprintf(
+						"[%.6f, %.6f, %.6f, ..., %.6f, %.6f, %.6f] (length: %d)",
+						emb[0], emb[1], emb[2],
+						emb[n-3], emb[n-2], emb[n-1], n,
+					)
+				} else {
+					out = render.GetTheme().Success.Sprintf("%v (length: %d)", emb, n)
+				}
+				onToken(fmt.Sprintf("%s: %s", info, out))
+			}
+
+			duration := time.Since(start).Microseconds()
+			profileData := nexa_sdk.ProfileData{
+				TTFT:            duration,
+				PromptTime:      0,
+				DecodeTime:      duration,
+				PromptTokens:    res.Usage.PromptTokens,
+				GeneratedTokens: res.Usage.TotalTokens - res.Usage.PromptTokens,
+				AudioDuration:   0,
+				PrefillSpeed:    0,
+				DecodingSpeed:   float64(res.Usage.TotalTokens-res.Usage.PromptTokens) / (float64(duration) / 1e6),
+			}
+			return "", profileData, err
+		},
+	}
+	if len(prompt) > 0 || input != "" {
+		processor.GetPrompt = getPromptOrInput
+	} else {
+		repl := common.Repl{}
+		defer repl.Close()
+		processor.GetPrompt = repl.GetPrompt
+	}
+	return processor.Process()
+}
+
+func runReranking(manifest types.ModelManifest, quant string) error {
+	name := manifest.Name
+	if quant != "" {
+		name = name + ":" + quant
+	}
+
+	// warm up
+	spin := render.NewSpinner("loading model...")
+	spin.Start()
+	warmUpRequest := map[string]any{
+		"model": name,
+	}
+	err := client.Post(context.TODO(), "reranking", warmUpRequest, nil)
+	spin.Stop()
+
+	if err != nil {
+		return err
+	}
+
+	const SEP = "\\n"
+	processor := &common.Processor{
+		ParseFile: manifest.ModelType == types.ModelTypeVLM,
+		TestMode:  testMode,
+		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			parsedPrompt := strings.Split(prompt, SEP)
+			if len(parsedPrompt) < 2 {
+				return "", nexa_sdk.ProfileData{}, fmt.Errorf("parsed prompt failed, query and document are required for reranking")
+			}
+
+			query := parsedPrompt[0]
+			document := parsedPrompt[1:]
+			fmt.Println(render.GetTheme().Info.Sprintf("Query: %s", query))
+			fmt.Println(render.GetTheme().Info.Sprintf("Processing %d documents", len(document)))
+
+			start := time.Now()
+
+			res := struct {
+				Result []float32 `json:"result"`
+			}{}
+			err := client.Post(context.TODO(), "reranking", map[string]any{
+				"model":     name,
+				"query":     query,
+				"documents": document,
+			}, &res)
+
+			duration := time.Since(start).Microseconds()
+			profileData := nexa_sdk.ProfileData{
+				TTFT:       duration,
+				PromptTime: 0,
+				DecodeTime: duration,
+				// PromptTokens:    res.Usage.PromptTokens,
+				// GeneratedTokens: res.Usage.TotalTokens - res.Usage.PromptTokens,
+				AudioDuration: 0,
+				PrefillSpeed:  0,
+				// DecodingSpeed:   float64(res.Usage.TotalTokens-res.Usage.PromptTokens) / (float64(duration) / 1e6),
+			}
+
+			if err != nil {
+				return "", profileData, err
+			}
+
+			fmt.Println(render.GetTheme().Success.Sprintf("✓ Reranking completed successfully. Generated %d scores", len(res.Result)))
+
+			// Display results
+			for i, doc := range document {
+				if i < len(res.Result) {
+					fmt.Printf("\n%s [%d]: %s\n", render.GetTheme().Info.Sprintf("Document"), i+1, doc)
+					fmt.Printf("%s: %.6f\n", render.GetTheme().Info.Sprintf("Score"), res.Result[i])
+				}
+			}
+			return "", profileData, err
+		},
+	}
+	if len(prompt) > 0 || input != "" {
+		processor.GetPrompt = getPromptOrInput
+	} else {
+		repl := common.Repl{}
+		defer repl.Close()
+		processor.GetPrompt = repl.GetPrompt
+	}
+	return processor.Process()
 }
