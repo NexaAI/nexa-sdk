@@ -12,11 +12,11 @@ import (
 
 type RerankingRequest struct {
 	Model           string   `json:"model" binding:"required"`
-	Query           string   `json:"query" binding:"required"`
-	Documents       []string `json:"documents" binding:"required"`
-	BatchSize       int32    `json:"batch_size" binding:"required"`
-	NormalizeMethod string   `json:"normalize_method" binding:"required"`
-	Normalize       bool     `json:"normalize" binding:"required"`
+	Query           string   `json:"query"`
+	Documents       []string `json:"documents"`
+	BatchSize       int32    `json:"batch_size"`
+	NormalizeMethod string   `json:"normalize_method"`
+	Normalize       bool     `json:"normalize"`
 }
 
 type RerankResponse struct {
@@ -37,6 +37,15 @@ func Reranking(c *gin.Context) {
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
+		return
+	}
+
+	if param.Query == "" || len(param.Documents) == 0 {
+		if param.Query != "" || len(param.Documents) != 0 {
+			c.JSON(http.StatusBadRequest, map[string]any{"error": "both query and documents must be provided"})
+			return
+		}
+		c.JSON(http.StatusOK, nil)
 		return
 	}
 

@@ -575,7 +575,7 @@ func chooseFiles(name, specifiedQuant string, files []model_hub.ModelFileInfo, r
 	} else {
 		// mlx
 		if specifiedQuant != "" {
-			return fmt.Errorf("Specified quant %s only support in gguf model", specifiedQuant)
+			return fmt.Errorf("specified quant %s only support in gguf model", specifiedQuant)
 		}
 
 		// quant

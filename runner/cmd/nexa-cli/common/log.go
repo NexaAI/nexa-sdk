@@ -27,7 +27,7 @@ func ApplyLogLevel() {
 		options.NoColor = true
 	}
 
-	switch config.Get().Log {
+	switch config.GetLog() {
 	case LogLevelNone:
 		slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
 		return
