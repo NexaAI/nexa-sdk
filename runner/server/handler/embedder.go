@@ -6,22 +6,32 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/openai/openai-go"
 
+	"github.com/NexaAI/nexa-sdk/runner/internal/config"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 	"github.com/NexaAI/nexa-sdk/runner/server/service"
 )
 
 func Embeddings(c *gin.Context) {
-	param := openai.EmbeddingNewParams{}
+	param := struct {
+		openai.EmbeddingNewParams
+		KeepAlive *int64 `json:"keep_alive"`
+	}{}
+
 	if err := c.ShouldBindJSON(&param); err != nil {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
 	}
 
+	keepAlive := config.Get().KeepAlive
+	if param.KeepAlive != nil {
+		keepAlive = *param.KeepAlive
+	}
 	p, err := service.KeepAliveGet[nexa_sdk.Embedder](
 		string(param.Model),
 		types.ModelParam{},
 		false,
+		keepAlive,
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
