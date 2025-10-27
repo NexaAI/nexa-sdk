@@ -4,27 +4,40 @@ This directory contains examples for using the NexaAI Python SDK.
 
 ## Prerequisites
 
-- **Python version requirements:**
-  - **Windows ARM:** Python 3.11–3.13 (arm64 architecture required)
-  - **Other platforms:** Python 3.10 recommended
+Before installing **NexaAI SDK**, please ensure you have the correct **Python version** and **architecture**.
 
-    *To quickly set up a new environment with conda:*
-    ```sh
-    conda create -n nexaai python=3.10
-    conda activate nexaai
-    ```
-- Install the latest NexaAI Python SDK from [PyPI](https://pypi.org/project/nexaai/#history).
+### 1. Check your Python environment
 
-  Install command by OS:
+```sh
+python -c "import sys,platform;print(f'Python version: {sys.version} | Architecture: {platform.machine()}')"
+```
 
-  - Windows and Linux:
-    ```bash
-    pip install nexaai
-    ```
-  - macOS:
-    ```bash
-    pip install 'nexaai[mlx]'
-    ```
+### 2. Python version requirements
+
+| Platform                                | Required Python         | Notes                                                                                                                    |
+| --------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **Windows (ARM64, Snapdragon X Elite)** | **3.11 – 3.13 (arm64)** | Please install **official ARM64 Python** from [python-3.11.1-arm64.exe](https://www.python.org/ftp/python/3.11.1/python-3.11.1-arm64.exe). |
+| **Linux / macOS / Windows (x64)**       | **3.10 (x64)**          | You can use **conda** to install and manage this version.                                                                |
+
+**Create a Python 3.10 environment (recommended for x64):**
+
+```sh
+conda create -n nexaai python=3.10
+conda activate nexaai
+```
+
+### 3. Install NexaAI SDK
+
+* **Windows / Linux**
+
+  ```bash
+  pip install nexaai
+  ```
+* **macOS (Apple Silicon)**
+
+  ```bash
+  pip install 'nexaai[mlx]'
+  ```
 
 ### Authentication Setup
 
@@ -131,6 +144,6 @@ python asr.py --model NexaAI/parakeet-npu --audio path/to/audio.wav
 The `--plugin-id` parameter supports different backends:
 
 - `cpu_gpu`: Default, supports both CPU and GPU
-- `mlx`: Apple Silicon optimized (for supported models)
-- `llama_cpp`: For GGUF format models
-- `onnx`: ONNX runtime backend
+- `metal`: Apple Silicon optimized (for supported models)
+- `npu`: Qualcomm NPU optimized (for supported models)
+- `nexaml`: NexaML optimized (for supported models)
