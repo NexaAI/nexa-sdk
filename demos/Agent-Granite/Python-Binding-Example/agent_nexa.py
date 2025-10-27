@@ -21,6 +21,12 @@ SEARCH_API_KEY = "7467f292f9d4ce3324da285ca111ea11477ba7fc84ee7e9fa5f867a9d1b358
 
 SYSTEM_PROMPT = """You are Granite Agent with function calling.
 
+Your goals:
+- Understand the user's request.
+- Decide whether a function call is needed.
+- If yes, output a structured JSON function call (no explanations).
+- If no, directly respond to the user in natural language.
+
 Functions:
 1. search_web(query: string) - Web search
 2. write_to_file(file_path: string, content: string) - Save text to file
@@ -39,7 +45,33 @@ Assistant: {"name": "search_web", "arguments": {"query": "latest AI news"}}
 
 User: Save that.
 Assistant: {"name": "write_to_file", "arguments": {"file_path": "notes.txt"}}
+
+User: Hello
+Assistant: How can I assist you today?
 """
+
+FUNCTION_TOOLS = [
+    {
+        "name": "search_web",
+        "description": "Searches the web for a given query and returns the latest information.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "User search query"}
+            },
+            "required": ["query"],
+        },
+    },
+    {
+        "name": "write_file",
+        "description": "Writes text content into a file on the local filesystem.",
+        "parameters": {
+            "type": "object",
+            "properties": {"path": {"type": "string"}},
+            "required": ["path"],
+        },
+    },
+]
 
 def search_web(query: str):
     """Search the web using SerpAPI"""
@@ -142,7 +174,7 @@ def nexa_chat_completion(model: str, messages: list):
     """
     m_cfg = ModelConfig()
     llm = LLM.from_(model, plugin_id="npu", device_id="npu", m_cfg=m_cfg)
-    prompt = llm.apply_chat_template(messages)
+    prompt = llm.apply_chat_template(messages, tools=FUNCTION_TOOLS)
     
     return llm.generate(prompt, g_cfg=GenerationConfig(max_tokens=512))
 
