@@ -870,6 +870,9 @@ func inferASR(manifest *types.ModelManifest, quant string) error {
 			if len(audios) == 0 {
 				return "", nexa_sdk.ProfileData{}, common.ErrNoAudio
 			}
+			if len(audios) > 1 {
+				return "", nexa_sdk.ProfileData{}, fmt.Errorf("only one audio file is supported")
+			}
 
 			asrConfig := &nexa_sdk.ASRConfig{
 				Timestamps: "segment",
@@ -1150,14 +1153,15 @@ func inferCV(manifest *types.ModelManifest, quant string) error {
 		TestMode:  testMode,
 		Run: func(_ string, images, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			if len(images) == 0 {
-				return "", nexa_sdk.ProfileData{}, fmt.Errorf("no image file provided")
+				return "", nexa_sdk.ProfileData{}, common.ErrNoImage
+			}
+			if len(images) > 1 {
+				return "", nexa_sdk.ProfileData{}, fmt.Errorf("only one image file is supported")
 			}
 
 			inferInput := nexa_sdk.CVInferInput{
 				InputImagePath: images[0],
 			}
-
-			fmt.Println(render.GetTheme().Info.Sprintf("Performing CV inference on image: %s", images[0]))
 
 			result, err := p.Infer(inferInput)
 			if err != nil {

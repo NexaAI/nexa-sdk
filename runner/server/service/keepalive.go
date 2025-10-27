@@ -198,14 +198,14 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 		})
 	case reflect.TypeFor[nexa_sdk.TTS]():
 		t, e = nexa_sdk.NewTTS(nexa_sdk.TtsCreateInput{
-			ModelName: name,
+			ModelName: manifest.ModelName,
 			ModelPath: modelfile,
 			PluginID:  manifest.PluginId,
 			DeviceID:  manifest.DeviceId,
 		})
 	case reflect.TypeFor[nexa_sdk.ASR]():
 		t, e = nexa_sdk.NewASR(nexa_sdk.AsrCreateInput{
-			ModelName: name,
+			ModelName: manifest.ModelName,
 			ModelPath: modelfile,
 			Config: nexa_sdk.ASRModelConfig{
 				NCtx:       param.NCtx,
@@ -216,7 +216,7 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 		})
 	case reflect.TypeFor[nexa_sdk.Diarize]():
 		t, e = nexa_sdk.NewDiarize(nexa_sdk.DiarizeCreateInput{
-			ModelName: name,
+			ModelName: manifest.ModelName,
 			ModelPath: modelfile,
 			Config: nexa_sdk.DiarizeModelConfig{
 				NCtx:       param.NCtx,
@@ -227,10 +227,13 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 		})
 	case reflect.TypeFor[nexa_sdk.CV]():
 		t, e = nexa_sdk.NewCV(nexa_sdk.CVCreateInput{
-			ModelName: name,
-			Config:    nexa_sdk.CVModelConfig{},
-			PluginID:  manifest.PluginId,
-			DeviceID:  manifest.DeviceId,
+			ModelName: manifest.ModelName,
+			Config: nexa_sdk.CVModelConfig{
+				DetModelPath: modelfile,
+				RecModelPath: modelfile,
+			},
+			PluginID: manifest.PluginId,
+			DeviceID: manifest.DeviceId,
 		})
 	case reflect.TypeFor[nexa_sdk.ImageGen]():
 		// For image generation models, use the model directory path instead of specific file

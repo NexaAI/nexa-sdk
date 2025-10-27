@@ -39,6 +39,7 @@ func RegisterAPIv1(r *gin.Engine) {
 	g.POST("/images/generations", handler.ImageGenerations)
 	// ==== nexa specific ====
 	g.POST("/reranking", handler.Reranking)
+	g.POST("/cv", handler.CV)
 
 	// ==== model management ====
 	g.GET("/models/*model", handler.RetrieveModel)

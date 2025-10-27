@@ -548,6 +548,249 @@ func runAudioSpeech(manifest types.ModelManifest, quant string) error {
 	return processor.Process()
 }
 
+func runAudioTranscription(manifest types.ModelManifest, quant string) error {
+	name := manifest.Name
+	if quant != "" {
+		name = name + ":" + quant
+	}
+
+	// warm up
+	spin := render.NewSpinner("loading model...")
+	spin.Start()
+	warmUpRequest := openai.AudioTranscriptionNewParams{
+		Model: name,
+	}
+	_, err := client.Audio.Transcriptions.New(context.TODO(), warmUpRequest)
+	spin.Stop()
+
+	if err != nil {
+		return err
+	}
+
+	processor := &common.Processor{
+		TestMode: testMode,
+		// Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
+		// 	start := time.Now()
+		//
+		// 	textToSynthesize := strings.TrimSpace(prompt)
+		// 	if textToSynthesize == "" {
+		// 		return "", nexa_sdk.ProfileData{}, fmt.Errorf("prompt cannot be empty")
+		// 	}
+		//
+		// 	// Generate output filename if not specified
+		// 	outputFile := output
+		// 	if outputFile == "" {
+		// 		outputFile = fmt.Sprintf("tts_output_%d.wav", time.Now().Unix())
+		// 	}
+		//
+		// 	res, err := client.Audio.Transcriptions.New(context.TODO(), openai.AudioTranscriptionNewParams{
+		// 		Model: name,
+		// 	})
+		//
+		// 	duration := time.Since(start).Microseconds()
+		// 	profileData := nexa_sdk.ProfileData{
+		// 		TTFT:       duration,
+		// 		DecodeTime: duration,
+		// 	}
+		//
+		// 	if err != nil {
+		// 		return "", profileData, err
+		// 	}
+		//
+		// 	// Save audio to filename
+		// 	audioData, err := io.ReadAll(res.Body)
+		// 	if err != nil {
+		// 		return "", profileData, err
+		// 	}
+		// 	err = os.WriteFile(outputFile, audioData, 0644)
+		// 	if err != nil {
+		// 		return "", profileData, err
+		// 	}
+		//
+		// 	data := render.GetTheme().Success.Sprintf("✓ Audio saved: %s", outputFile)
+		// 	onToken(data)
+		// 	return data, profileData, err
+		//
+		// },
+	}
+	if input != "" {
+		processor.GetPrompt = getPromptOrInput
+	} else {
+		repl := common.Repl{}
+		defer repl.Close()
+		processor.GetPrompt = repl.GetPrompt
+	}
+	return processor.Process()
+}
+
+func runAudioDiarize(manifest types.ModelManifest, quant string) error {
+	name := manifest.Name
+	if quant != "" {
+		name = name + ":" + quant
+	}
+
+	// warm up
+	spin := render.NewSpinner("loading model...")
+	spin.Start()
+	warmUpRequest := openai.AudioTranscriptionNewParams{
+		Model: name,
+	}
+	_, err := client.Audio.Transcriptions.New(context.TODO(), warmUpRequest)
+	spin.Stop()
+
+	if err != nil {
+		return err
+	}
+
+	processor := &common.Processor{
+		TestMode: testMode,
+		// Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
+		// 	start := time.Now()
+		//
+		// 	textToSynthesize := strings.TrimSpace(prompt)
+		// 	if textToSynthesize == "" {
+		// 		return "", nexa_sdk.ProfileData{}, fmt.Errorf("prompt cannot be empty")
+		// 	}
+		//
+		// 	// Generate output filename if not specified
+		// 	outputFile := output
+		// 	if outputFile == "" {
+		// 		outputFile = fmt.Sprintf("tts_output_%d.wav", time.Now().Unix())
+		// 	}
+		//
+		// 	res, err := client.Audio.Transcriptions.New(context.TODO(), openai.AudioTranscriptionNewParams{
+		// 		Model: name,
+		// 	})
+		//
+		// 	duration := time.Since(start).Microseconds()
+		// 	profileData := nexa_sdk.ProfileData{
+		// 		TTFT:       duration,
+		// 		DecodeTime: duration,
+		// 	}
+		//
+		// 	if err != nil {
+		// 		return "", profileData, err
+		// 	}
+		//
+		// 	// Save audio to filename
+		// 	audioData, err := io.ReadAll(res.Body)
+		// 	if err != nil {
+		// 		return "", profileData, err
+		// 	}
+		// 	err = os.WriteFile(outputFile, audioData, 0644)
+		// 	if err != nil {
+		// 		return "", profileData, err
+		// 	}
+		//
+		// 	data := render.GetTheme().Success.Sprintf("✓ Audio saved: %s", outputFile)
+		// 	onToken(data)
+		// 	return data, profileData, err
+		//
+		// },
+	}
+	if input != "" {
+		processor.GetPrompt = getPromptOrInput
+	} else {
+		repl := common.Repl{}
+		defer repl.Close()
+		processor.GetPrompt = repl.GetPrompt
+	}
+	return processor.Process()
+}
+
+func runCV(manifest types.ModelManifest, quant string) error {
+	name := manifest.Name
+	if quant != "" {
+		name = name + ":" + quant
+	}
+
+	// warm up
+	spin := render.NewSpinner("loading model...")
+	spin.Start()
+	warmUpRequest := map[string]any{
+		"model": name,
+	}
+	err := client.Post(context.TODO(), "cv", warmUpRequest, nil)
+	spin.Stop()
+
+	if err != nil {
+		return err
+	}
+
+	processor := &common.Processor{
+		TestMode:  testMode,
+		ParseFile: true,
+		Run: func(_ string, images, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			start := time.Now()
+
+			if len(images) == 0 {
+				return "", nexa_sdk.ProfileData{}, common.ErrNoImage
+			}
+			if len(images) > 1 {
+				return "", nexa_sdk.ProfileData{}, fmt.Errorf("only one image is supported")
+			}
+
+			// base64 encode image
+			imageData, err := os.ReadFile(images[0])
+			if err != nil {
+				return "", nexa_sdk.ProfileData{}, fmt.Errorf("read image file error: %s", err.Error())
+			}
+			mimeType := http.DetectContentType(imageData)
+			b64Image := base64.StdEncoding.EncodeToString(imageData)
+			imageStr := fmt.Sprintf("data:%s;base64,%s", mimeType, b64Image)
+
+			// send request
+			res := struct {
+				Results []nexa_sdk.CVResult `json:"results"`
+			}{}
+			err = client.Post(context.TODO(), "cv", map[string]any{
+				"model": name,
+				"image": imageStr,
+			}, &res)
+
+			duration := time.Since(start).Microseconds()
+			profileData := nexa_sdk.ProfileData{
+				TTFT:       duration,
+				DecodeTime: duration,
+			}
+			if err != nil {
+				return "", profileData, err
+			}
+
+			onToken(render.GetTheme().Success.Sprintf("✓ CV inference completed successfully"))
+			onToken("\n")
+			onToken(render.GetTheme().Info.Sprintf("  Found %d results\n", len(res.Results)))
+
+			data := ""
+			for _, cvResult := range res.Results {
+				result := fmt.Sprintf("[%s] %s\n",
+					render.GetTheme().Info.Sprintf("%.3f", cvResult.Confidence),
+					render.GetTheme().Success.Sprintf("\"%s\"", cvResult.Text))
+				onToken(result)
+				data += result
+			}
+			return data, profileData, err
+		},
+	}
+	if input != "" {
+		processor.GetPrompt = func() (string, error) {
+			if input == "" {
+				return "", io.EOF
+			}
+			imagePath := input
+			input = ""
+			fmt.Print(render.GetTheme().Prompt.Sprintf("> "))
+			fmt.Println(render.GetTheme().Normal.Sprint(imagePath))
+			return imagePath, nil
+		}
+	} else {
+		repl := common.Repl{}
+		defer repl.Close()
+		processor.GetPrompt = repl.GetPrompt
+	}
+	return processor.Process()
+}
+
 func runImagesGenerations(manifest types.ModelManifest, quant string) error {
 	name := manifest.Name
 	if quant != "" {
