@@ -112,7 +112,35 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 				Content: *content,
 			})
 
+		case *[]openai.ChatCompletionContentPartTextParam:
+			for _, ct := range *content {
+				// NOTE: patch for npu
+				if *msg.GetRole() == "system" {
+					systemPrompt += ct.Text
+				}
+				messages = append(messages, nexa_sdk.LlmChatMessage{
+					Role:    nexa_sdk.LLMRole(*msg.GetRole()),
+					Content: ct.Text,
+				})
+			}
 		case *[]openai.ChatCompletionContentPartUnionParam:
+			for _, ct := range *content {
+				switch *ct.GetType() {
+				case "text":
+					// NOTE: patch for npu
+					if *msg.GetRole() == "system" {
+						systemPrompt += *ct.GetText()
+					}
+					messages = append(messages, nexa_sdk.LlmChatMessage{
+						Role:    nexa_sdk.LLMRole(*msg.GetRole()),
+						Content: *ct.GetText(),
+					})
+				default:
+					c.JSON(http.StatusBadRequest, map[string]any{"error": "not support content part type"})
+					return
+				}
+			}
+		case *[]openai.ChatCompletionAssistantMessageParamContentArrayOfContentPartUnion:
 			for _, ct := range *content {
 				switch *ct.GetType() {
 				case "text":
@@ -311,6 +339,24 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 				},
 			})
 
+		case *[]openai.ChatCompletionContentPartTextParam:
+			contents := make([]nexa_sdk.VlmContent, 0, len(*content))
+
+			for _, ct := range *content {
+				if *msg.GetRole() == "system" {
+					systemPrompt += ct.Text
+				}
+				contents = append(contents, nexa_sdk.VlmContent{
+					Type: nexa_sdk.VlmContentTypeText,
+					Text: ct.Text,
+				})
+			}
+
+			messages = append(messages, nexa_sdk.VlmChatMessage{
+				Role:     nexa_sdk.VlmRole(*msg.GetRole()),
+				Contents: contents,
+			})
+
 		case *[]openai.ChatCompletionContentPartUnionParam:
 			contents := make([]nexa_sdk.VlmContent, 0, len(*content))
 
@@ -360,41 +406,30 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 				Contents: contents,
 			})
 
-		case *[]openai.ChatCompletionContentPartTextParam:
+		case *[]openai.ChatCompletionAssistantMessageParamContentArrayOfContentPartUnion:
 			contents := make([]nexa_sdk.VlmContent, 0, len(*content))
 
 			for _, ct := range *content {
-				if *msg.GetRole() == "system" {
-					systemPrompt += ct.Text
+				switch *ct.GetType() {
+				case "text":
+					// NOTE: patch for npu
+					if *msg.GetRole() == "system" {
+						systemPrompt += *ct.GetText()
+					}
+					contents = append(contents, nexa_sdk.VlmContent{
+						Type: nexa_sdk.VlmContentTypeText,
+						Text: *ct.GetText(),
+					})
+				default:
+					c.JSON(http.StatusBadRequest, map[string]any{"error": "not support content part type"})
+					return
 				}
-				contents = append(contents, nexa_sdk.VlmContent{
-					Type: nexa_sdk.VlmContentTypeText,
-					Text: ct.Text,
-				})
 			}
 
 			messages = append(messages, nexa_sdk.VlmChatMessage{
 				Role:     nexa_sdk.VlmRole(*msg.GetRole()),
 				Contents: contents,
 			})
-
-		case *[]openai.ChatCompletionAssistantMessageParamContentArrayOfContentPartUnion:
-			contents := make([]nexa_sdk.VlmContent, 0, len(*content))
-
-			for _, ct := range *content {
-
-				switch *ct.GetType() {
-				case "text":
-					contents = append(contents, nexa_sdk.VlmContent{
-						Type: nexa_sdk.VlmContentTypeText,
-						Text: *ct.GetText(),
-					})
-				}
-				messages = append(messages, nexa_sdk.VlmChatMessage{
-					Role:     nexa_sdk.VlmRole(*msg.GetRole()),
-					Contents: contents,
-				})
-			}
 
 		default:
 			c.JSON(http.StatusBadRequest, map[string]any{"error": "unknown content type"})
