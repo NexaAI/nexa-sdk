@@ -428,7 +428,7 @@ func (v *VLM) ApplyChatTemplate(input VlmApplyChatTemplateInput) (*VlmApplyChatT
 
 // Generate generates text with streaming token callback
 func (v *VLM) Generate(input VlmGenerateInput) (*VlmGenerateOutput, error) {
-	slog.Debug("GenerateStream called", "input", input, "config", input.Config)
+	slog.Debug("Generate called", "input", input, "config", input.Config, "sampler", input.Config.SamplerConfig)
 
 	cInput := input.toCPtr()
 	defer freeVlmGenerateInput(cInput)

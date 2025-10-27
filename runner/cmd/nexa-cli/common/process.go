@@ -17,7 +17,10 @@ import (
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 )
 
-var ErrNoAudio = errors.New("no audio file provided")
+var (
+	ErrNoAudio = errors.New("no audio file provided")
+	ErrNoImage = errors.New("no image file provided")
+)
 
 type Processor struct {
 	ParseFile bool
@@ -104,16 +107,13 @@ func (p *Processor) Process() error {
 
 		switch {
 		case err == nil:
-		case errors.Is(err, nexa_sdk.ErrLlmTokenizationContextLength):
-			fmt.Println(render.GetTheme().Info.Sprintf("Context length exceeded, please start a new conversation"))
-			fmt.Println()
-			return err
 		case errors.Is(err, ErrNoAudio):
 			fmt.Println(render.GetTheme().Error.Sprintf("No audio file provided, please provide an audio file or use /mic command"))
 			fmt.Println()
-		default:
-			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s\n", err))
+		case errors.Is(err, ErrNoImage):
+			fmt.Println(render.GetTheme().Error.Sprintf("No image file provided, please provide an image file"))
 			fmt.Println()
+		default:
 			return err
 		}
 	}

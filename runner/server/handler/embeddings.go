@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -11,12 +12,28 @@ import (
 	"github.com/NexaAI/nexa-sdk/runner/server/service"
 )
 
+type EmbeddingNewParams openai.EmbeddingNewParams
+
+type EmbeddingRequest struct {
+	EmbeddingNewParams
+
+	TaskType string `json:"task_type"`
+}
+
+func defaultEmbeddingRequest() EmbeddingRequest {
+	return EmbeddingRequest{
+		TaskType: "default",
+	}
+}
+
 func Embeddings(c *gin.Context) {
-	param := openai.EmbeddingNewParams{}
+	param := defaultEmbeddingRequest()
 	if err := c.ShouldBindJSON(&param); err != nil {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
 	}
+
+	slog.Info("Embeddings request received", "param", param)
 
 	p, err := service.KeepAliveGet[nexa_sdk.Embedder](
 		string(param.Model),
@@ -30,15 +47,19 @@ func Embeddings(c *gin.Context) {
 
 	// Convert input to the format expected by the embedder
 	var texts []string
-	if param.Input.OfArrayOfStrings != nil {
-		texts = param.Input.OfArrayOfStrings
-	} else {
+	switch {
+	case param.Input.OfString.Value != "":
 		texts = []string{param.Input.OfString.String()}
+	case param.Input.OfArrayOfStrings != nil:
+		texts = param.Input.OfArrayOfStrings
+	default:
+		c.JSON(http.StatusBadRequest, map[string]any{"error": "input must be a string or an array of strings"})
+		return
 	}
 
-	numTexts := len(texts)
-	if numTexts == 0 {
-		c.JSON(http.StatusBadRequest, map[string]any{"error": "no text content found in input"})
+	slog.Debug("Embeddings called", "model", param.Model, "num_texts", len(texts))
+	if len(texts) == 0 {
+		c.JSON(http.StatusOK, nil)
 		return
 	}
 
@@ -46,10 +67,11 @@ func Embeddings(c *gin.Context) {
 	embedInput := nexa_sdk.EmbedderEmbedInput{
 		Texts: texts,
 		Config: &nexa_sdk.EmbeddingConfig{
-			BatchSize:       int32(numTexts),
+			BatchSize:       int32(len(texts)),
 			Normalize:       true,
 			NormalizeMethod: "l2",
 		},
+		TaskType: param.TaskType,
 	}
 
 	res, err := p.Embed(embedInput)
@@ -64,12 +86,12 @@ func Embeddings(c *gin.Context) {
 		return
 	}
 	embeddingDim := int(dimOutput.Dimension)
-	embeddings := make([]openai.Embedding, numTexts)
+	embeddings := make([]openai.Embedding, len(texts))
 
 	// Convert embeddings to the format expected by OpenAI API
 	// res.Embeddings is a flat array of float32 values
 	// We need to group them by the number of texts
-	for i := range numTexts {
+	for i := range len(texts) {
 		start := i * embeddingDim
 		end := start + embeddingDim
 		embeddingSlice := res.Embeddings[start:end]

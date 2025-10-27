@@ -30,9 +30,10 @@ func Get() *Config {
 	return config
 }
 
-func Refresh() {
-	once = sync.Once{}
-	once.Do(get)
+// NOTE: Avoid calling Get before subcommand initialization to prevent premature config initialization
+func GetLog() string {
+	get()
+	return config.Log
 }
 
 // init sets up default configuration values using Viper.

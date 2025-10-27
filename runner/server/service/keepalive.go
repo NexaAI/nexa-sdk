@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"reflect"
+	"slices"
 	"sync"
 	"time"
 
@@ -45,6 +46,10 @@ type modelKeepInfo struct {
 // Objects must support cleanup and reset operations
 type keepable interface {
 	Destroy() error
+}
+
+type keepResetable interface {
+	keepable
 	Reset() error
 }
 
@@ -93,7 +98,9 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 	model, ok := keepAlive.models[name]
 	if ok && reflect.DeepEqual(model.param, param) {
 		if reset {
-			model.model.Reset()
+			if r, ok := model.model.(keepResetable); ok {
+				r.Reset()
+			}
 		}
 		model.lastTime = time.Now()
 		return model.model, nil
@@ -126,12 +133,16 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 			modelfile = s.ModelfilePath(manifest.Name, fileinfo.Name)
 		}
 	} else {
-		for _, v := range manifest.ModelFile {
+		// fallback to first downloaded model file
+		quants := make([]string, 0, len(manifest.ModelFile))
+		for quant, v := range manifest.ModelFile {
 			if v.Downloaded {
-				modelfile = s.ModelfilePath(manifest.Name, v.Name)
+				quants = append(quants, quant)
 				break
 			}
 		}
+		slices.Sort(quants)
+		modelfile = s.ModelfilePath(manifest.Name, manifest.ModelFile[quants[0]].Name) // at lease one is downloaded
 	}
 
 	var t keepable
@@ -185,8 +196,45 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 			PluginID:  manifest.PluginId,
 			DeviceID:  manifest.DeviceId,
 		})
-	//case reflect.TypeFor[nexa_sdk.TTS]():
-	//	t, e = nexa_sdk.NewTTS(modelfile, nil, param.Device)
+	case reflect.TypeFor[nexa_sdk.TTS]():
+		t, e = nexa_sdk.NewTTS(nexa_sdk.TtsCreateInput{
+			ModelName: manifest.ModelName,
+			ModelPath: modelfile,
+			PluginID:  manifest.PluginId,
+			DeviceID:  manifest.DeviceId,
+		})
+	case reflect.TypeFor[nexa_sdk.ASR]():
+		t, e = nexa_sdk.NewASR(nexa_sdk.AsrCreateInput{
+			ModelName: manifest.ModelName,
+			ModelPath: modelfile,
+			Config: nexa_sdk.ASRModelConfig{
+				NCtx:       param.NCtx,
+				NGpuLayers: param.NGpuLayers,
+			},
+			PluginID: manifest.PluginId,
+			DeviceID: manifest.DeviceId,
+		})
+	case reflect.TypeFor[nexa_sdk.Diarize]():
+		t, e = nexa_sdk.NewDiarize(nexa_sdk.DiarizeCreateInput{
+			ModelName: manifest.ModelName,
+			ModelPath: modelfile,
+			Config: nexa_sdk.DiarizeModelConfig{
+				NCtx:       param.NCtx,
+				NGpuLayers: param.NGpuLayers,
+			},
+			PluginID: manifest.PluginId,
+			DeviceID: manifest.DeviceId,
+		})
+	case reflect.TypeFor[nexa_sdk.CV]():
+		t, e = nexa_sdk.NewCV(nexa_sdk.CVCreateInput{
+			ModelName: manifest.ModelName,
+			Config: nexa_sdk.CVModelConfig{
+				DetModelPath: modelfile,
+				RecModelPath: modelfile,
+			},
+			PluginID: manifest.PluginId,
+			DeviceID: manifest.DeviceId,
+		})
 	case reflect.TypeFor[nexa_sdk.ImageGen]():
 		// For image generation models, use the model directory path instead of specific file
 		modelDir := s.ModelfilePath(manifest.Name, "")

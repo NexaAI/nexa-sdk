@@ -134,6 +134,8 @@ var (
 		asrFlags := pflag.NewFlagSet("ASR", pflag.ExitOnError)
 		asrFlags.SortFlags = false
 		asrFlags.StringVarP(&input, "input", "i", "", "input audio file")
+		// asrFlags.StringVarP(&language, "language", "", "", "language code (e.g., en, zh, ja)")   // TODO: Language support not implemented yet
+		// asrFlags.BoolVarP(&listLanguage, "list-language", "", false, "list available languages") // TODO: Language support not implemented yet
 		return asrFlags
 	}()
 	diarizeFlags = func() *pflag.FlagSet {
@@ -254,9 +256,17 @@ func infer() *cobra.Command {
 			panic("not support model type")
 		}
 
-		if err != nil {
-			os.Exit(1)
+		switch err {
+		case nil:
+			os.Exit(0)
+		case nexa_sdk.ErrCommonModelLoad:
+			fmt.Println(modelLoadFailMsg)
+		case nexa_sdk.ErrLlmTokenizationContextLength:
+			fmt.Println(render.GetTheme().Info.Sprintf("Context length exceeded, please start a new conversation"))
+		default:
+			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 		}
+		os.Exit(1)
 	}
 	return inferCmd
 }
@@ -324,24 +334,18 @@ func getPromptOrInput() (string, error) {
 }
 
 func inferLLM(manifest *types.ModelManifest, quant string) error {
-	var samplerConfig *nexa_sdk.SamplerConfig
-	if temperature > 0 || topK > 0 || topP > 0 || minP > 0 ||
-		repetitionPenalty != 1.0 || presencePenalty != 0.0 || frequencyPenalty != 0.0 ||
-		seed != 0 || grammarPath != "" || grammarString != "" ||
-		enableJson {
-		samplerConfig = &nexa_sdk.SamplerConfig{
-			Temperature:       temperature,
-			TopP:              topP,
-			TopK:              topK,
-			MinP:              minP,
-			RepetitionPenalty: repetitionPenalty,
-			PresencePenalty:   presencePenalty,
-			FrequencyPenalty:  frequencyPenalty,
-			Seed:              seed,
-			GrammarPath:       grammarPath,
-			GrammarString:     grammarString,
-			EnableJson:        enableJson,
-		}
+	samplerConfig := &nexa_sdk.SamplerConfig{
+		Temperature:       temperature,
+		TopP:              topP,
+		TopK:              topK,
+		MinP:              minP,
+		RepetitionPenalty: repetitionPenalty,
+		PresencePenalty:   presencePenalty,
+		FrequencyPenalty:  frequencyPenalty,
+		Seed:              seed,
+		GrammarPath:       grammarPath,
+		GrammarString:     grammarString,
+		EnableJson:        enableJson,
 	}
 
 	s := store.Get()
@@ -364,8 +368,7 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 
 	if err != nil {
 		slog.Error("failed to create LLM", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return err
+		return nexa_sdk.ErrCommonModelLoad
 	}
 	defer p.Destroy()
 
@@ -439,24 +442,18 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 }
 
 func inferVLM(manifest *types.ModelManifest, quant string) error {
-	var samplerConfig *nexa_sdk.SamplerConfig
-	if temperature > 0 || topK > 0 || topP > 0 || minP > 0 ||
-		repetitionPenalty != 1.0 || presencePenalty != 0.0 || frequencyPenalty != 0.0 ||
-		seed != 0 || grammarPath != "" || grammarString != "" ||
-		enableJson {
-		samplerConfig = &nexa_sdk.SamplerConfig{
-			Temperature:       temperature,
-			TopP:              topP,
-			TopK:              topK,
-			MinP:              minP,
-			RepetitionPenalty: repetitionPenalty,
-			PresencePenalty:   presencePenalty,
-			FrequencyPenalty:  frequencyPenalty,
-			Seed:              seed,
-			GrammarPath:       grammarPath,
-			GrammarString:     grammarString,
-			EnableJson:        enableJson,
-		}
+	samplerConfig := &nexa_sdk.SamplerConfig{
+		Temperature:       temperature,
+		TopP:              topP,
+		TopK:              topK,
+		MinP:              minP,
+		RepetitionPenalty: repetitionPenalty,
+		PresencePenalty:   presencePenalty,
+		FrequencyPenalty:  frequencyPenalty,
+		Seed:              seed,
+		GrammarPath:       grammarPath,
+		GrammarString:     grammarString,
+		EnableJson:        enableJson,
 	}
 
 	s := store.Get()
@@ -488,8 +485,7 @@ func inferVLM(manifest *types.ModelManifest, quant string) error {
 
 	if err != nil {
 		slog.Error("failed to create VLM", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return err
+		return nexa_sdk.ErrCommonModelLoad
 	}
 	defer p.Destroy()
 
@@ -602,15 +598,13 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) error {
 
 	if err != nil {
 		slog.Error("failed to create embedder", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return err
+		return nexa_sdk.ErrCommonModelLoad
 	}
 	defer p.Destroy()
 
 	dimOutput, err := p.EmbeddingDimension()
 	if err != nil {
-		fmt.Println(render.GetTheme().Error.Sprintf("failed to get embedding dimension: %s", err))
-		return err
+		return fmt.Errorf("Failed to get embedding dimension: %s", err)
 	}
 
 	fmt.Println(render.GetTheme().Success.Sprintf("Embedding dimension: %d", dimOutput.Dimension))
@@ -646,9 +640,9 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) error {
 				out = render.GetTheme().Success.Sprintf("%v (length: %d)", emb, n)
 			}
 
-			onToken(fmt.Sprintf("%s: %s", info, out))
-
-			return "", result.ProfileData, nil
+			data := fmt.Sprintf("%s: %s", info, out)
+			onToken(data)
+			return data, result.ProfileData, nil
 		},
 	}
 
@@ -681,8 +675,7 @@ func inferReranker(manifest *types.ModelManifest, quant string) error {
 
 	if err != nil {
 		slog.Error("failed to create reranker", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return err
+		return nexa_sdk.ErrCommonModelLoad
 	}
 	defer p.Destroy()
 
@@ -717,19 +710,23 @@ func inferReranker(manifest *types.ModelManifest, quant string) error {
 			fmt.Println(render.GetTheme().Success.Sprintf("✓ Reranking completed successfully. Generated %d scores", len(result.Scores)))
 
 			// Display results
+			data := ""
 			for i, doc := range document {
 				if i < len(result.Scores) {
-					fmt.Printf("\n%s [%d]: %s\n", render.GetTheme().Info.Sprintf("Document"), i+1, doc)
-					fmt.Printf("%s: %.6f\n", render.GetTheme().Info.Sprintf("Score"), result.Scores[i])
+					line := fmt.Sprintf("\n%s [%d]: %s\n", render.GetTheme().Info.Sprintf("Document"), i+1, doc)
+					onToken(line)
+					data += line
+					line = fmt.Sprintf("%s: %.6f\n", render.GetTheme().Info.Sprintf("Score"), result.Scores[i])
+					onToken(line)
+					data += line
 				}
 			}
-			return "", result.ProfileData, nil
+			return data, result.ProfileData, nil
 		},
 	}
 
 	if query != "" || len(document) > 0 {
 		if query == "" || len(document) == 0 {
-			fmt.Println(render.GetTheme().Error.Sprintf("query and document are required for reranking"))
 			return errors.New("query and document are required for reranking")
 		}
 		processor.GetPrompt = func() (string, error) {
@@ -769,16 +766,14 @@ func inferTTS(manifest *types.ModelManifest, quant string) error {
 
 	if err != nil {
 		slog.Error("failed to create TTS", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return err
+		return nexa_sdk.ErrCommonModelLoad
 	}
 	defer p.Destroy()
 
 	if listVoice {
 		voices, err := p.ListAvailableVoices()
 		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("Failed to list available voices: %s", err))
-			return err
+			return fmt.Errorf("Failed to list voices: %s", err)
 		}
 		fmt.Println(render.GetTheme().Success.Sprintf("Available voices: %v", voices.VoiceIDs))
 		return nil
@@ -817,16 +812,14 @@ func inferTTS(manifest *types.ModelManifest, quant string) error {
 				OutputPath: outputFile,
 			}
 
-			fmt.Println(render.GetTheme().Info.Sprintf("Synthesizing speech: \"%s\"", textToSynthesize))
-
 			result, err := p.Synthesize(synthesizeInput)
 			if err != nil {
 				return "", nexa_sdk.ProfileData{}, err
 			}
 
-			onToken(render.GetTheme().Success.Sprintf("✓ Audio saved: %s", result.Result.AudioPath))
-
-			return "", result.ProfileData, nil
+			data := render.GetTheme().Success.Sprintf("✓ Audio saved: %s", result.Result.AudioPath)
+			onToken(data)
+			return data, result.ProfileData, nil
 		},
 	}
 
@@ -859,16 +852,14 @@ func inferASR(manifest *types.ModelManifest, quant string) error {
 
 	if err != nil {
 		slog.Error("failed to create ASR", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return err
+		return nexa_sdk.ErrCommonModelLoad
 	}
 	defer p.Destroy()
 
 	if listLanguage {
 		lans, err := p.ListSupportedLanguages()
 		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("Failed to list available languages: %s", err))
-			return err
+			return fmt.Errorf("Failed to list available languages: %s", err)
 		}
 		fmt.Println(render.GetTheme().Success.Sprintf("Available languages: %v", lans.LanguageCodes))
 		return nil
@@ -880,6 +871,9 @@ func inferASR(manifest *types.ModelManifest, quant string) error {
 		Run: func(_ string, _, audios []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			if len(audios) == 0 {
 				return "", nexa_sdk.ProfileData{}, common.ErrNoAudio
+			}
+			if len(audios) > 1 {
+				return "", nexa_sdk.ProfileData{}, fmt.Errorf("only one audio file is supported")
 			}
 
 			asrConfig := &nexa_sdk.ASRConfig{
@@ -901,7 +895,6 @@ func inferASR(manifest *types.ModelManifest, quant string) error {
 				return "", nexa_sdk.ProfileData{}, err
 			}
 			onToken(result.Result.Transcript)
-
 			return result.Result.Transcript, result.ProfileData, nil
 		},
 	}
@@ -1049,8 +1042,7 @@ func inferDiarize(manifest *types.ModelManifest, quant string) error {
 
 	if err != nil {
 		slog.Error("failed to create diarization model", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return err
+		return nexa_sdk.ErrCommonModelLoad
 	}
 	defer p.Destroy()
 
@@ -1083,12 +1075,13 @@ func inferDiarize(manifest *types.ModelManifest, quant string) error {
 			}
 
 			// Format the diarization output
-			output := fmt.Sprintf("Detected %d speaker(s) in %.2f seconds of audio:\n\n", result.NumSpeakers, result.Duration)
+			output := fmt.Sprint(render.GetTheme().Success.Sprintf("Detected %d speaker(s) in %.2f seconds of audio:\n\n", result.NumSpeakers, result.Duration))
 			for i, segment := range result.Segments {
-				output += fmt.Sprintf("[%d] %.2fs - %.2fs: %s\n", i+1, segment.StartTime, segment.EndTime, segment.SpeakerLabel)
+				output += fmt.Sprintf("%s %s\n",
+					render.GetTheme().Info.Sprintf("[%d]", i+1),
+					render.GetTheme().Success.Sprintf("%.2fs - %.2fs: %s", segment.StartTime, segment.EndTime, segment.SpeakerLabel))
 			}
 			onToken(output)
-
 			return output, result.ProfileData, nil
 		},
 	}
@@ -1155,8 +1148,7 @@ func inferCV(manifest *types.ModelManifest, quant string) error {
 
 	if err != nil {
 		slog.Error("failed to create CV", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return err
+		return nexa_sdk.ErrCommonModelLoad
 	}
 	defer p.Destroy()
 
@@ -1165,14 +1157,15 @@ func inferCV(manifest *types.ModelManifest, quant string) error {
 		TestMode:  testMode,
 		Run: func(_ string, images, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			if len(images) == 0 {
-				return "", nexa_sdk.ProfileData{}, fmt.Errorf("no image file provided")
+				return "", nexa_sdk.ProfileData{}, common.ErrNoImage
+			}
+			if len(images) > 1 {
+				return "", nexa_sdk.ProfileData{}, fmt.Errorf("only one image file is supported")
 			}
 
 			inferInput := nexa_sdk.CVInferInput{
 				InputImagePath: images[0],
 			}
-
-			fmt.Println(render.GetTheme().Info.Sprintf("Performing CV inference on image: %s", images[0]))
 
 			result, err := p.Infer(inferInput)
 			if err != nil {
@@ -1183,13 +1176,16 @@ func inferCV(manifest *types.ModelManifest, quant string) error {
 			onToken("\n")
 			onToken(render.GetTheme().Info.Sprintf("  Found %d results\n", len(result.Results)))
 
+			data := ""
 			for _, cvResult := range result.Results {
-				onToken(fmt.Sprintf("[%s] %s\n",
+				result := fmt.Sprintf("[%s] %s\n",
 					render.GetTheme().Info.Sprintf("%.3f", cvResult.Confidence),
-					render.GetTheme().Success.Sprintf("\"%s\"", cvResult.Text)))
+					render.GetTheme().Success.Sprintf("\"%s\"", cvResult.Text))
+				onToken(result)
+				data += result
 			}
 
-			return "", nexa_sdk.ProfileData{}, nil
+			return data, nexa_sdk.ProfileData{}, nil
 		},
 	}
 
@@ -1229,8 +1225,7 @@ func inferImageGen(manifest *types.ModelManifest, _ string) error {
 
 	if err != nil {
 		slog.Error("failed to create ImageGen", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return err
+		return nexa_sdk.ErrCommonModelLoad
 	}
 	defer p.Destroy()
 
@@ -1247,8 +1242,6 @@ func inferImageGen(manifest *types.ModelManifest, _ string) error {
 			if outputFile == "" {
 				outputFile = fmt.Sprintf("imagegen_output_%d.png", time.Now().Unix())
 			}
-
-			fmt.Println(render.GetTheme().Info.Sprintf("Generating image: \"%s\"", textPrompt))
 
 			result, err := p.Txt2Img(nexa_sdk.ImageGenTxt2ImgInput{
 				PromptUTF8: textPrompt,
@@ -1285,9 +1278,9 @@ func inferImageGen(manifest *types.ModelManifest, _ string) error {
 				return "", nexa_sdk.ProfileData{}, err
 			}
 
-			onToken(render.GetTheme().Success.Sprintf("✓ Image saved to: %s", result.OutputImagePath))
-
-			return "", nexa_sdk.ProfileData{}, nil
+			data := render.GetTheme().Success.Sprintf("✓ Image saved to: %s", result.OutputImagePath)
+			onToken(data)
+			return data, nexa_sdk.ProfileData{}, nil
 		},
 	}
 

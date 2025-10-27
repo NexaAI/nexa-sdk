@@ -295,13 +295,6 @@ func (ig *ImageGen) Destroy() error {
 	return nil
 }
 
-// Reset resets the ImageGen internal state (no-op for image generation)
-func (ig *ImageGen) Reset() error {
-	slog.Debug("Reset called", "ptr", ig.ptr)
-	// Image generation doesn't maintain state between generations, so this is a no-op
-	return nil
-}
-
 // Txt2Img generates an image from text prompt
 func (ig *ImageGen) Txt2Img(input ImageGenTxt2ImgInput) (ImageGenOutput, error) {
 	slog.Debug("Txt2Img called", "input", input)
