@@ -103,12 +103,12 @@ func run() *cobra.Command {
 			err = runReranking(manifest, quant)
 		case types.ModelTypeTTS:
 			err = runAudioSpeech(manifest, quant)
-		// case types.ModelTypeASR:
-		// 	err = runAudioTranscription(manifest, quant)
-		// case types.ModelTypeDiarize:
-		// 	err = inferDiarize(manifest, quant)
-		// case types.ModelTypeCV:
-		// 	err = inferCV(manifest, quant)
+		case types.ModelTypeASR:
+			err = runAudioTranscription(manifest, quant)
+		case types.ModelTypeDiarize:
+			err = runAudioDiarize(manifest, quant)
+		case types.ModelTypeCV:
+			err = runCV(manifest, quant)
 		case types.ModelTypeImageGen:
 			// ImageGen model is a directory, not a file
 			err = runImagesGenerations(manifest, quant)
@@ -116,10 +116,17 @@ func run() *cobra.Command {
 			panic("not support model type")
 		}
 
-		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err.Error()))
-			os.Exit(1)
+		switch err {
+		case nil:
+			os.Exit(0)
+		case nexa_sdk.ErrCommonModelLoad:
+			fmt.Println(modelLoadFailMsg)
+		case nexa_sdk.ErrLlmTokenizationContextLength:
+			fmt.Println(render.GetTheme().Info.Sprintf("Context length exceeded, please start a new conversation"))
+		default:
+			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 		}
+		os.Exit(1)
 	}
 	return runCmd
 }

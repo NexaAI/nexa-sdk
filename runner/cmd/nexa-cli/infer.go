@@ -254,9 +254,17 @@ func infer() *cobra.Command {
 			panic("not support model type")
 		}
 
-		if err != nil {
-			os.Exit(1)
+		switch err {
+		case nil:
+			os.Exit(0)
+		case nexa_sdk.ErrCommonModelLoad:
+			fmt.Println(modelLoadFailMsg)
+		case nexa_sdk.ErrLlmTokenizationContextLength:
+			fmt.Println(render.GetTheme().Info.Sprintf("Context length exceeded, please start a new conversation"))
+		default:
+			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
 		}
+		os.Exit(1)
 	}
 	return inferCmd
 }
@@ -358,8 +366,7 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 
 	if err != nil {
 		slog.Error("failed to create LLM", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return err
+		return nexa_sdk.ErrCommonModelLoad
 	}
 	defer p.Destroy()
 
@@ -476,8 +483,7 @@ func inferVLM(manifest *types.ModelManifest, quant string) error {
 
 	if err != nil {
 		slog.Error("failed to create VLM", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return err
+		return nexa_sdk.ErrCommonModelLoad
 	}
 	defer p.Destroy()
 
@@ -590,15 +596,13 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) error {
 
 	if err != nil {
 		slog.Error("failed to create embedder", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return err
+		return nexa_sdk.ErrCommonModelLoad
 	}
 	defer p.Destroy()
 
 	dimOutput, err := p.EmbeddingDimension()
 	if err != nil {
-		fmt.Println(render.GetTheme().Error.Sprintf("failed to get embedding dimension: %s", err))
-		return err
+		return fmt.Errorf("Failed to get embedding dimension: %s", err)
 	}
 
 	fmt.Println(render.GetTheme().Success.Sprintf("Embedding dimension: %d", dimOutput.Dimension))
@@ -669,8 +673,7 @@ func inferReranker(manifest *types.ModelManifest, quant string) error {
 
 	if err != nil {
 		slog.Error("failed to create reranker", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return err
+		return nexa_sdk.ErrCommonModelLoad
 	}
 	defer p.Destroy()
 
@@ -722,7 +725,6 @@ func inferReranker(manifest *types.ModelManifest, quant string) error {
 
 	if query != "" || len(document) > 0 {
 		if query == "" || len(document) == 0 {
-			fmt.Println(render.GetTheme().Error.Sprintf("query and document are required for reranking"))
 			return errors.New("query and document are required for reranking")
 		}
 		processor.GetPrompt = func() (string, error) {
@@ -762,16 +764,14 @@ func inferTTS(manifest *types.ModelManifest, quant string) error {
 
 	if err != nil {
 		slog.Error("failed to create TTS", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return err
+		return nexa_sdk.ErrCommonModelLoad
 	}
 	defer p.Destroy()
 
 	if listVoice {
 		voices, err := p.ListAvailableVoices()
 		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("Failed to list available voices: %s", err))
-			return err
+			return fmt.Errorf("Failed to list voices: %s", err)
 		}
 		fmt.Println(render.GetTheme().Success.Sprintf("Available voices: %v", voices.VoiceIDs))
 		return nil
@@ -850,16 +850,14 @@ func inferASR(manifest *types.ModelManifest, quant string) error {
 
 	if err != nil {
 		slog.Error("failed to create ASR", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return err
+		return nexa_sdk.ErrCommonModelLoad
 	}
 	defer p.Destroy()
 
 	if listLanguage {
 		lans, err := p.ListSupportedLanguages()
 		if err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("Failed to list available languages: %s", err))
-			return err
+			return fmt.Errorf("Failed to list available languages: %s", err)
 		}
 		fmt.Println(render.GetTheme().Success.Sprintf("Available languages: %v", lans.LanguageCodes))
 		return nil
@@ -1039,8 +1037,7 @@ func inferDiarize(manifest *types.ModelManifest, quant string) error {
 
 	if err != nil {
 		slog.Error("failed to create diarization model", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return err
+		return nexa_sdk.ErrCommonModelLoad
 	}
 	defer p.Destroy()
 
@@ -1144,8 +1141,7 @@ func inferCV(manifest *types.ModelManifest, quant string) error {
 
 	if err != nil {
 		slog.Error("failed to create CV", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return err
+		return nexa_sdk.ErrCommonModelLoad
 	}
 	defer p.Destroy()
 
@@ -1221,8 +1217,7 @@ func inferImageGen(manifest *types.ModelManifest, _ string) error {
 
 	if err != nil {
 		slog.Error("failed to create ImageGen", "error", err)
-		fmt.Println(modelLoadFailMsg)
-		return err
+		return nexa_sdk.ErrCommonModelLoad
 	}
 	defer p.Destroy()
 

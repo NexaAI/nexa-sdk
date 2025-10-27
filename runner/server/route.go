@@ -1,6 +1,8 @@
 package server
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/NexaAI/nexa-sdk/runner/server/docs"
@@ -25,14 +27,20 @@ func RegisterAPIv1(r *gin.Engine) {
 	g := r.Group("/v1")
 	g.Use(middleware.GIL)
 
-	g.POST("/completions", handler.Completions)
+	// ==== legacy ====
+	g.POST("/completions", func(c *gin.Context) {
+		c.JSON(http.StatusGone, map[string]any{"error": "this endpoint is deprecated, please use /chat/completions instead"})
+	})
+
+	// ==== openai compatible ====
 	g.POST("/chat/completions", handler.ChatCompletions)
 	g.POST("/embeddings", handler.Embeddings)
 	g.POST("/audio/speech", handler.Speech)
 	g.POST("/images/generations", handler.ImageGenerations)
-	// extend
+	// ==== nexa specific ====
 	g.POST("/reranking", handler.Reranking)
 
+	// ==== model management ====
 	g.GET("/models/*model", handler.RetrieveModel)
 	g.GET("/models", handler.ListModels)
 }

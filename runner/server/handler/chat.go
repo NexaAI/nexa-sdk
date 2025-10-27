@@ -22,10 +22,6 @@ import (
 	"github.com/NexaAI/nexa-sdk/runner/server/utils"
 )
 
-func Completions(c *gin.Context) {
-	c.JSON(http.StatusGone, map[string]any{"error": "this endpoint is deprecated, please use /chat/completions instead"})
-}
-
 type ChatCompletionNewParams openai.ChatCompletionNewParams
 
 type ChatCompletionRequest struct {
