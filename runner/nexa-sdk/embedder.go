@@ -209,7 +209,7 @@ func freeEmbedderEmbedInput(cPtr *C.ml_EmbedderEmbedInput) {
 
 // EmbedderEmbedOutput represents output from embedding generation
 type EmbedderEmbedOutput struct {
-	Embeddings  []float32
+	Embeddings  [][]float32
 	ProfileData ProfileData
 }
 
@@ -221,16 +221,20 @@ func newEmbedderEmbedOutputFromCPtr(c *C.ml_EmbedderEmbedOutput, embeddingDim in
 	}
 
 	output.ProfileData = newProfileDataFromCPtr(c.profile_data)
-
-	// Convert embeddings array
-	// c.embedding_count = number of embeddings (texts)
-	// c.embeddings = flat array of embedding_count * embedding_dimension floats
 	if c.embeddings != nil && c.embedding_count > 0 {
+		embeddingCount := int(c.embedding_count)
+		output.Embeddings = make([][]float32, embeddingCount)
+
 		totalFloats := int(c.embedding_count * C.int32_t(embeddingDim))
 		embeddings := unsafe.Slice((*C.float)(unsafe.Pointer(c.embeddings)), totalFloats)
-		output.Embeddings = make([]float32, totalFloats)
-		for i := range output.Embeddings {
-			output.Embeddings[i] = float32(embeddings[i])
+
+		for i := range embeddingCount {
+			start := i * int(embeddingDim)
+			end := start + int(embeddingDim)
+			output.Embeddings[i] = make([]float32, embeddingDim)
+			for j, val := range embeddings[start:end] {
+				output.Embeddings[i][j] = float32(val)
+			}
 		}
 	}
 

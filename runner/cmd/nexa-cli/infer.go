@@ -627,7 +627,8 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) error {
 				return "", result.ProfileData, err
 			}
 
-			n, emb := len(result.Embeddings), result.Embeddings
+			emb := result.Embeddings[0]
+			n := len(emb)
 			info := render.GetTheme().Info.Sprintf("Embedding")
 			var out string
 			if n > 6 {

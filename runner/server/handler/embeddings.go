@@ -80,21 +80,11 @@ func Embeddings(c *gin.Context) {
 		return
 	}
 
-	dimOutput, err := p.EmbeddingDimension()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
-		return
-	}
-	embeddingDim := int(dimOutput.Dimension)
 	embeddings := make([]openai.Embedding, len(texts))
 
 	// Convert embeddings to the format expected by OpenAI API
-	// res.Embeddings is a flat array of float32 values
-	// We need to group them by the number of texts
 	for i := range len(texts) {
-		start := i * embeddingDim
-		end := start + embeddingDim
-		embeddingSlice := res.Embeddings[start:end]
+		embeddingSlice := res.Embeddings[i]
 
 		// Convert float32 to float64 for OpenAI API compatibility
 		embeddingFloat64 := make([]float64, len(embeddingSlice))
