@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -27,6 +28,11 @@ func CV(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
 	}
+
+	slog.Info("CV request received",
+		"model", param.Model,
+		"image", param.Image,
+	)
 
 	p, err := service.KeepAliveGet[nexa_sdk.CV](
 		string(param.Model),

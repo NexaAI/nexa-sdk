@@ -33,7 +33,7 @@ func Embeddings(c *gin.Context) {
 		return
 	}
 
-	slog.Debug("Embeddings request received", "param", param)
+	slog.Info("Embeddings request received", "param", param)
 
 	p, err := service.KeepAliveGet[nexa_sdk.Embedder](
 		string(param.Model),

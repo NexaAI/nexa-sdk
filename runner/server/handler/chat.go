@@ -77,7 +77,7 @@ func ChatCompletions(c *gin.Context) {
 		param.NCtx = int32(param.MaxCompletionTokens.Value)
 	}
 
-	slog.Debug("ChatCompletions", "param", param)
+	slog.Info("ChatCompletions", "param", param)
 	s := store.Get()
 	name, _ := utils.NormalizeModelName(param.Model)
 	manifest, err := s.GetManifest(name)

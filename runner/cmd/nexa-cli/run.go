@@ -9,6 +9,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -20,6 +22,7 @@ import (
 
 	"github.com/NexaAI/nexa-sdk/runner/cmd/nexa-cli/common"
 	"github.com/NexaAI/nexa-sdk/runner/internal/config"
+	"github.com/NexaAI/nexa-sdk/runner/internal/record"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
@@ -492,9 +495,15 @@ func runAudioSpeech(manifest types.ModelManifest, quant string) error {
 		return err
 	}
 
+	// TODO: support list voice over server
+	if listVoice {
+		return fmt.Errorf("not implemented")
+	}
+
 	processor := &common.Processor{
 		TestMode: testMode,
 		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
+
 			start := time.Now()
 
 			textToSynthesize := strings.TrimSpace(prompt)
@@ -510,6 +519,8 @@ func runAudioSpeech(manifest types.ModelManifest, quant string) error {
 
 			res, err := client.Audio.Speech.New(context.TODO(), openai.AudioSpeechNewParams{
 				Model: name,
+				Voice: openai.AudioSpeechNewParamsVoice(voice),
+				Speed: openai.Float(float64(speechSpeed)),
 			})
 
 			duration := time.Since(start).Microseconds()
@@ -568,55 +579,75 @@ func runAudioTranscription(manifest types.ModelManifest, quant string) error {
 	}
 
 	processor := &common.Processor{
-		TestMode: testMode,
-		// Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
-		// 	start := time.Now()
-		//
-		// 	textToSynthesize := strings.TrimSpace(prompt)
-		// 	if textToSynthesize == "" {
-		// 		return "", nexa_sdk.ProfileData{}, fmt.Errorf("prompt cannot be empty")
-		// 	}
-		//
-		// 	// Generate output filename if not specified
-		// 	outputFile := output
-		// 	if outputFile == "" {
-		// 		outputFile = fmt.Sprintf("tts_output_%d.wav", time.Now().Unix())
-		// 	}
-		//
-		// 	res, err := client.Audio.Transcriptions.New(context.TODO(), openai.AudioTranscriptionNewParams{
-		// 		Model: name,
-		// 	})
-		//
-		// 	duration := time.Since(start).Microseconds()
-		// 	profileData := nexa_sdk.ProfileData{
-		// 		TTFT:       duration,
-		// 		DecodeTime: duration,
-		// 	}
-		//
-		// 	if err != nil {
-		// 		return "", profileData, err
-		// 	}
-		//
-		// 	// Save audio to filename
-		// 	audioData, err := io.ReadAll(res.Body)
-		// 	if err != nil {
-		// 		return "", profileData, err
-		// 	}
-		// 	err = os.WriteFile(outputFile, audioData, 0644)
-		// 	if err != nil {
-		// 		return "", profileData, err
-		// 	}
-		//
-		// 	data := render.GetTheme().Success.Sprintf("✓ Audio saved: %s", outputFile)
-		// 	onToken(data)
-		// 	return data, profileData, err
-		//
-		// },
+		TestMode:  testMode,
+		ParseFile: true,
+		Run: func(prompt string, _, audios []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			if len(audios) == 0 {
+				return "", nexa_sdk.ProfileData{}, common.ErrNoAudio
+			}
+			if len(audios) > 1 {
+				return "", nexa_sdk.ProfileData{}, fmt.Errorf("only one audio file is supported")
+			}
+
+			// send request
+			file, err := os.Open(audios[0])
+			if err != nil {
+				return "", nexa_sdk.ProfileData{}, fmt.Errorf("open audio file error: %s", err.Error())
+			}
+			defer file.Close()
+
+			start := time.Now()
+			res, err := client.Audio.Transcriptions.New(context.TODO(), openai.AudioTranscriptionNewParams{
+				Model: name,
+				File:  file,
+			})
+			duration := time.Since(start).Microseconds()
+
+			profileData := nexa_sdk.ProfileData{
+				TTFT:       duration,
+				PromptTime: 0,
+				DecodeTime: duration,
+			}
+
+			if err != nil {
+				return "", profileData, err
+			}
+			onToken(res.Text)
+			return res.Text, profileData, err
+		},
 	}
 	if input != "" {
-		processor.GetPrompt = getPromptOrInput
+		processor.GetPrompt = func() (string, error) {
+			if input == "" {
+				return "", io.EOF
+			}
+			audioPath := input
+			input = ""
+			fmt.Print(render.GetTheme().Prompt.Sprintf("> "))
+			fmt.Println(render.GetTheme().Normal.Sprint(audioPath))
+			return audioPath, nil
+		}
 	} else {
-		repl := common.Repl{}
+		repl := common.Repl{
+			Record: func() (*string, error) {
+				t := strconv.Itoa(int(time.Now().Unix()))
+				outputFile := filepath.Join(os.TempDir(), "nexa-cli", t+".wav")
+				rec, err := record.NewRecorder(outputFile)
+				if err != nil {
+					return nil, err
+				}
+
+				fmt.Println(render.GetTheme().Info.Sprint("Recording is going on, press Ctrl-C to stop"))
+
+				err = rec.Run()
+				if err != nil {
+					return nil, err
+				}
+				outfile := rec.GetOutputFile()
+
+				return &outfile, nil
+			},
+		}
 		defer repl.Close()
 		processor.GetPrompt = repl.GetPrompt
 	}
@@ -632,10 +663,10 @@ func runAudioDiarize(manifest types.ModelManifest, quant string) error {
 	// warm up
 	spin := render.NewSpinner("loading model...")
 	spin.Start()
-	warmUpRequest := openai.AudioTranscriptionNewParams{
-		Model: name,
+	warmUpRequest := map[string]any{
+		"model": name,
 	}
-	_, err := client.Audio.Transcriptions.New(context.TODO(), warmUpRequest)
+	err := client.Post(context.TODO(), "audio/diarize", warmUpRequest, nil)
 	spin.Stop()
 
 	if err != nil {
@@ -643,59 +674,85 @@ func runAudioDiarize(manifest types.ModelManifest, quant string) error {
 	}
 
 	processor := &common.Processor{
-		TestMode: testMode,
-		// Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
-		// 	start := time.Now()
-		//
-		// 	textToSynthesize := strings.TrimSpace(prompt)
-		// 	if textToSynthesize == "" {
-		// 		return "", nexa_sdk.ProfileData{}, fmt.Errorf("prompt cannot be empty")
-		// 	}
-		//
-		// 	// Generate output filename if not specified
-		// 	outputFile := output
-		// 	if outputFile == "" {
-		// 		outputFile = fmt.Sprintf("tts_output_%d.wav", time.Now().Unix())
-		// 	}
-		//
-		// 	res, err := client.Audio.Transcriptions.New(context.TODO(), openai.AudioTranscriptionNewParams{
-		// 		Model: name,
-		// 	})
-		//
-		// 	duration := time.Since(start).Microseconds()
-		// 	profileData := nexa_sdk.ProfileData{
-		// 		TTFT:       duration,
-		// 		DecodeTime: duration,
-		// 	}
-		//
-		// 	if err != nil {
-		// 		return "", profileData, err
-		// 	}
-		//
-		// 	// Save audio to filename
-		// 	audioData, err := io.ReadAll(res.Body)
-		// 	if err != nil {
-		// 		return "", profileData, err
-		// 	}
-		// 	err = os.WriteFile(outputFile, audioData, 0644)
-		// 	if err != nil {
-		// 		return "", profileData, err
-		// 	}
-		//
-		// 	data := render.GetTheme().Success.Sprintf("✓ Audio saved: %s", outputFile)
-		// 	onToken(data)
-		// 	return data, profileData, err
-		//
-		// },
+		TestMode:  testMode,
+		ParseFile: true,
+		Run: func(_ string, _, audios []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			if len(audios) == 0 {
+				return "", nexa_sdk.ProfileData{}, common.ErrNoAudio
+			}
+			if len(audios) > 1 {
+				return "", nexa_sdk.ProfileData{}, fmt.Errorf("only one audio file is supported")
+			}
+
+			// base64 encode audio
+			audioData, err := os.ReadFile(audios[0])
+			if err != nil {
+				return "", nexa_sdk.ProfileData{}, fmt.Errorf("read audio file error: %s", err.Error())
+			}
+			mimeType := http.DetectContentType(audioData)
+			b64Audio := base64.StdEncoding.EncodeToString(audioData)
+			audioStr := fmt.Sprintf("data:%s;base64,%s", mimeType, b64Audio)
+
+			// send request
+			res := nexa_sdk.DiarizeInferOutput{}
+			err = client.Post(context.TODO(), "audio/diarize", map[string]any{
+				"model": name,
+				"audio": audioStr,
+			}, &res)
+
+			profileData := res.ProfileData
+			if err != nil {
+				return "", profileData, err
+			}
+
+			// Format the diarization output
+			output := fmt.Sprint(render.GetTheme().Success.Sprintf("Detected %d speaker(s) in %.2f seconds of audio:\n\n", res.NumSpeakers, res.Duration))
+			for i, segment := range res.Segments {
+				output += fmt.Sprintf("%s %s\n",
+					render.GetTheme().Info.Sprintf("[%d]", i+1),
+					render.GetTheme().Success.Sprintf("%.2fs - %.2fs: %s", segment.StartTime, segment.EndTime, segment.SpeakerLabel))
+			}
+			onToken(output)
+			return output, profileData, err
+		},
 	}
 	if input != "" {
-		processor.GetPrompt = getPromptOrInput
+		processor.GetPrompt = func() (string, error) {
+			if input == "" {
+				return "", io.EOF
+			}
+			audioPath := input
+			input = ""
+			fmt.Print(render.GetTheme().Prompt.Sprintf("> "))
+			fmt.Println(render.GetTheme().Normal.Sprint(audioPath))
+			return audioPath, nil
+		}
 	} else {
-		repl := common.Repl{}
+		repl := common.Repl{
+			Record: func() (*string, error) {
+				t := strconv.Itoa(int(time.Now().Unix()))
+				outputFile := filepath.Join(os.TempDir(), "nexa-cli", t+".wav")
+				rec, err := record.NewRecorder(outputFile)
+				if err != nil {
+					return nil, err
+				}
+
+				fmt.Println(render.GetTheme().Info.Sprint("Recording is going on, press Ctrl-C to stop"))
+
+				err = rec.Run()
+				if err != nil {
+					return nil, err
+				}
+				outfile := rec.GetOutputFile()
+
+				return &outfile, nil
+			},
+		}
 		defer repl.Close()
 		processor.GetPrompt = repl.GetPrompt
 	}
 	return processor.Process()
+
 }
 
 func runCV(manifest types.ModelManifest, quant string) error {

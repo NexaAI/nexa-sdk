@@ -36,8 +36,10 @@ func RegisterAPIv1(r *gin.Engine) {
 	g.POST("/chat/completions", handler.ChatCompletions)
 	g.POST("/embeddings", handler.Embeddings)
 	g.POST("/audio/speech", handler.Speech)
+	g.POST("/audio/transcriptions", handler.Transcriptions)
 	g.POST("/images/generations", handler.ImageGenerations)
 	// ==== nexa specific ====
+	g.POST("/audio/diarize", handler.Diarize)
 	g.POST("/reranking", handler.Reranking)
 	g.POST("/cv", handler.CV)
 

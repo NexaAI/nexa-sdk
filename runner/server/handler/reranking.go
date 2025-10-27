@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -29,6 +30,12 @@ func Reranking(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
 	}
+
+	slog.Info("Reranking request received",
+		"model", param.Model,
+		"query", param.Query,
+		"documents", param.Documents,
+	)
 
 	p, err := service.KeepAliveGet[nexa_sdk.Reranker](
 		string(param.Model),

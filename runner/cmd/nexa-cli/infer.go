@@ -134,6 +134,8 @@ var (
 		asrFlags := pflag.NewFlagSet("ASR", pflag.ExitOnError)
 		asrFlags.SortFlags = false
 		asrFlags.StringVarP(&input, "input", "i", "", "input audio file")
+		// asrFlags.StringVarP(&language, "language", "", "", "language code (e.g., en, zh, ja)")   // TODO: Language support not implemented yet
+		// asrFlags.BoolVarP(&listLanguage, "list-language", "", false, "list available languages") // TODO: Language support not implemented yet
 		return asrFlags
 	}()
 	diarizeFlags = func() *pflag.FlagSet {
@@ -1073,9 +1075,11 @@ func inferDiarize(manifest *types.ModelManifest, quant string) error {
 			}
 
 			// Format the diarization output
-			output := fmt.Sprintf("Detected %d speaker(s) in %.2f seconds of audio:\n\n", result.NumSpeakers, result.Duration)
+			output := fmt.Sprint(render.GetTheme().Success.Sprintf("Detected %d speaker(s) in %.2f seconds of audio:\n\n", result.NumSpeakers, result.Duration))
 			for i, segment := range result.Segments {
-				output += fmt.Sprintf("[%d] %.2fs - %.2fs: %s\n", i+1, segment.StartTime, segment.EndTime, segment.SpeakerLabel)
+				output += fmt.Sprintf("%s %s\n",
+					render.GetTheme().Info.Sprintf("[%d]", i+1),
+					render.GetTheme().Success.Sprintf("%.2fs - %.2fs: %s", segment.StartTime, segment.EndTime, segment.SpeakerLabel))
 			}
 			onToken(output)
 			return output, result.ProfileData, nil
