@@ -175,7 +175,7 @@ func Diarize(c *gin.Context) {
 
 	file, err := utils.SaveURIToTempFile(param.Audio)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, map[string]any{"error": "failed to save image: " + err.Error()})
+		c.JSON(http.StatusBadRequest, map[string]any{"error": "failed to save audio: " + err.Error()})
 		return
 	}
 	defer os.Remove(file)
