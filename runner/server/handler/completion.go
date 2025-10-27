@@ -360,6 +360,42 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 				Contents: contents,
 			})
 
+		case *[]openai.ChatCompletionContentPartTextParam:
+			contents := make([]nexa_sdk.VlmContent, 0, len(*content))
+
+			for _, ct := range *content {
+				if *msg.GetRole() == "system" {
+					systemPrompt += ct.Text
+				}
+				contents = append(contents, nexa_sdk.VlmContent{
+					Type: nexa_sdk.VlmContentTypeText,
+					Text: ct.Text,
+				})
+			}
+
+			messages = append(messages, nexa_sdk.VlmChatMessage{
+				Role:     nexa_sdk.VlmRole(*msg.GetRole()),
+				Contents: contents,
+			})
+
+		case *[]openai.ChatCompletionAssistantMessageParamContentArrayOfContentPartUnion:
+			contents := make([]nexa_sdk.VlmContent, 0, len(*content))
+
+			for _, ct := range *content {
+
+				switch *ct.GetType() {
+				case "text":
+					contents = append(contents, nexa_sdk.VlmContent{
+						Type: nexa_sdk.VlmContentTypeText,
+						Text: *ct.GetText(),
+					})
+				}
+				messages = append(messages, nexa_sdk.VlmChatMessage{
+					Role:     nexa_sdk.VlmRole(*msg.GetRole()),
+					Contents: contents,
+				})
+			}
+
 		default:
 			c.JSON(http.StatusBadRequest, map[string]any{"error": "unknown content type"})
 			return
