@@ -39,8 +39,9 @@ func ImageGenerations(c *gin.Context) {
 	if param.Size == "" {
 		param.Size = openai.ImageGenerateParamsSize256x256
 	}
-	if param.ResponseFormat == "" {
-		param.ResponseFormat = openai.ImageGenerateParamsResponseFormatURL
+	if param.ResponseFormat != "" && param.ResponseFormat != openai.ImageGenerateParamsResponseFormatB64JSON {
+		c.JSON(http.StatusBadRequest, map[string]any{"error": "only 'b64_json' response format is supported"})
+		return
 	}
 
 	imageGen, err := service.KeepAliveGet[nexa_sdk.ImageGen](
@@ -53,6 +54,12 @@ func ImageGenerations(c *gin.Context) {
 		return
 	}
 
+	// warm up
+	if param.Prompt == "" {
+		c.JSON(http.StatusOK, nil)
+		return
+	}
+
 	width, height, err := parseImageSize(string(param.Size))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
@@ -60,10 +67,10 @@ func ImageGenerations(c *gin.Context) {
 	}
 
 	var imageData []openai.Image
-	n := int(param.N.Value)
-	slog.Info("Starting image generation", "count", n, "size", string(param.Size))
-	for i := range n {
+	slog.Info("Starting image generation", "count", param.N.Value, "size", string(param.Size))
+	for i := range param.N.Value {
 		outputPath := fmt.Sprintf("imagegen_output_%d.png", time.Now().UnixNano())
+		defer os.Remove(outputPath)
 		slog.Debug("Generating image", "index", i, "output_path", outputPath)
 
 		config := &nexa_sdk.ImageGenerationConfig{
@@ -108,17 +115,12 @@ func ImageGenerations(c *gin.Context) {
 			RevisedPrompt: param.Prompt,
 		}
 
-		if param.ResponseFormat == openai.ImageGenerateParamsResponseFormatB64JSON {
-			b64Data, err := encodeImageToBase64(result.OutputImagePath)
-			os.Remove(result.OutputImagePath)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, map[string]any{"error": fmt.Sprintf("failed to encode image: %v", err)})
-				return
-			}
-			data.B64JSON = b64Data
-		} else {
-			data.URL = result.OutputImagePath
+		b64Data, err := encodeImageToBase64(result.OutputImagePath)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, map[string]any{"error": fmt.Sprintf("failed to encode image: %v", err)})
+			return
 		}
+		data.B64JSON = b64Data
 
 		imageData = append(imageData, data)
 		slog.Info("Image generated successfully", "index", i, "output_path", result.OutputImagePath)

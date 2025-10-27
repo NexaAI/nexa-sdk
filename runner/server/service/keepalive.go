@@ -46,6 +46,10 @@ type modelKeepInfo struct {
 // Objects must support cleanup and reset operations
 type keepable interface {
 	Destroy() error
+}
+
+type keepResetable interface {
+	keepable
 	Reset() error
 }
 
@@ -94,7 +98,9 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 	model, ok := keepAlive.models[name]
 	if ok && reflect.DeepEqual(model.param, param) {
 		if reset {
-			model.model.Reset()
+			if r, ok := model.model.(keepResetable); ok {
+				r.Reset()
+			}
 		}
 		model.lastTime = time.Now()
 		return model.model, nil
@@ -190,8 +196,42 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 			PluginID:  manifest.PluginId,
 			DeviceID:  manifest.DeviceId,
 		})
-	//case reflect.TypeFor[nexa_sdk.TTS]():
-	//	t, e = nexa_sdk.NewTTS(modelfile, nil, param.Device)
+	case reflect.TypeFor[nexa_sdk.TTS]():
+		t, e = nexa_sdk.NewTTS(nexa_sdk.TtsCreateInput{
+			ModelName: name,
+			ModelPath: modelfile,
+			PluginID:  manifest.PluginId,
+			DeviceID:  manifest.DeviceId,
+		})
+	case reflect.TypeFor[nexa_sdk.ASR]():
+		t, e = nexa_sdk.NewASR(nexa_sdk.AsrCreateInput{
+			ModelName: name,
+			ModelPath: modelfile,
+			Config: nexa_sdk.ASRModelConfig{
+				NCtx:       param.NCtx,
+				NGpuLayers: param.NGpuLayers,
+			},
+			PluginID: manifest.PluginId,
+			DeviceID: manifest.DeviceId,
+		})
+	case reflect.TypeFor[nexa_sdk.Diarize]():
+		t, e = nexa_sdk.NewDiarize(nexa_sdk.DiarizeCreateInput{
+			ModelName: name,
+			ModelPath: modelfile,
+			Config: nexa_sdk.DiarizeModelConfig{
+				NCtx:       param.NCtx,
+				NGpuLayers: param.NGpuLayers,
+			},
+			PluginID: manifest.PluginId,
+			DeviceID: manifest.DeviceId,
+		})
+	case reflect.TypeFor[nexa_sdk.CV]():
+		t, e = nexa_sdk.NewCV(nexa_sdk.CVCreateInput{
+			ModelName: name,
+			Config:    nexa_sdk.CVModelConfig{},
+			PluginID:  manifest.PluginId,
+			DeviceID:  manifest.DeviceId,
+		})
 	case reflect.TypeFor[nexa_sdk.ImageGen]():
 		// For image generation models, use the model directory path instead of specific file
 		modelDir := s.ModelfilePath(manifest.Name, "")

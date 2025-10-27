@@ -810,8 +810,6 @@ func inferTTS(manifest *types.ModelManifest, quant string) error {
 				OutputPath: outputFile,
 			}
 
-			fmt.Println(render.GetTheme().Info.Sprintf("Synthesizing speech: \"%s\"", textToSynthesize))
-
 			result, err := p.Synthesize(synthesizeInput)
 			if err != nil {
 				return "", nexa_sdk.ProfileData{}, err
@@ -1241,8 +1239,6 @@ func inferImageGen(manifest *types.ModelManifest, _ string) error {
 			if outputFile == "" {
 				outputFile = fmt.Sprintf("imagegen_output_%d.png", time.Now().Unix())
 			}
-
-			fmt.Println(render.GetTheme().Info.Sprintf("Generating image: \"%s\"", textPrompt))
 
 			result, err := p.Txt2Img(nexa_sdk.ImageGenTxt2ImgInput{
 				PromptUTF8: textPrompt,

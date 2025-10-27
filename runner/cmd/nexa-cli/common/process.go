@@ -105,15 +105,11 @@ func (p *Processor) Process() error {
 		switch {
 		case err == nil:
 		case errors.Is(err, nexa_sdk.ErrLlmTokenizationContextLength):
-			fmt.Println(render.GetTheme().Info.Sprintf("Context length exceeded, please start a new conversation"))
-			fmt.Println()
-			return err
+			return fmt.Errorf("Context length exceeded, please start a new conversation")
 		case errors.Is(err, ErrNoAudio):
 			fmt.Println(render.GetTheme().Error.Sprintf("No audio file provided, please provide an audio file or use /mic command"))
 			fmt.Println()
 		default:
-			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s\n", err))
-			fmt.Println()
 			return err
 		}
 	}

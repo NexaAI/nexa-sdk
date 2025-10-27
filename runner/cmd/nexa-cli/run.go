@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -95,23 +96,22 @@ func run() *cobra.Command {
 
 		switch manifest.ModelType {
 		case types.ModelTypeLLM, types.ModelTypeVLM:
-			err = runCompletion(manifest, quant)
+			err = runCompletions(manifest, quant)
 		case types.ModelTypeEmbedder:
 			err = runEmbeddings(manifest, quant)
 		case types.ModelTypeReranker:
 			err = runReranking(manifest, quant)
-		// case types.ModelTypeTTS:
-		// 	err = inferTTS(manifest, quant)
+		case types.ModelTypeTTS:
+			err = runAudioSpeech(manifest, quant)
 		// case types.ModelTypeASR:
-		// 	checkDependency()
-		// 	err = inferASR(manifest, quant)
+		// 	err = runAudioTranscription(manifest, quant)
 		// case types.ModelTypeDiarize:
 		// 	err = inferDiarize(manifest, quant)
 		// case types.ModelTypeCV:
 		// 	err = inferCV(manifest, quant)
-		// case types.ModelTypeImageGen:
-		// 	// ImageGen model is a directory, not a file
-		// 	err = inferImageGen(manifest, quant)
+		case types.ModelTypeImageGen:
+			// ImageGen model is a directory, not a file
+			err = runImagesGenerations(manifest, quant)
 		default:
 			panic("not support model type")
 		}
@@ -124,7 +124,7 @@ func run() *cobra.Command {
 	return runCmd
 }
 
-func runCompletion(manifest types.ModelManifest, quant string) error {
+func runCompletions(manifest types.ModelManifest, quant string) error {
 	name := manifest.Name
 	if quant != "" {
 		name = name + ":" + quant
@@ -312,7 +312,9 @@ func runEmbeddings(manifest types.ModelManifest, quant string) error {
 				Input: openai.EmbeddingNewParamsInputUnion{
 					OfString: openai.String(prompt),
 				},
-			}, option.WithJSONSet("task_type", taskType), option.WithJSONSet("test", taskType))
+			},
+				option.WithJSONSet("task_type", taskType),
+			)
 
 			duration := time.Since(start).Microseconds()
 			profileData := nexa_sdk.ProfileData{
@@ -455,6 +457,165 @@ func runReranking(manifest types.ModelManifest, quant string) error {
 			fmt.Println(render.GetTheme().Normal.Sprint(prompt))
 			return prompt, nil
 		}
+	} else {
+		repl := common.Repl{}
+		defer repl.Close()
+		processor.GetPrompt = repl.GetPrompt
+	}
+	return processor.Process()
+}
+
+func runAudioSpeech(manifest types.ModelManifest, quant string) error {
+	name := manifest.Name
+	if quant != "" {
+		name = name + ":" + quant
+	}
+
+	// warm up
+	spin := render.NewSpinner("loading model...")
+	spin.Start()
+	warmUpRequest := openai.AudioSpeechNewParams{
+		Model: name,
+		Input: "",
+	}
+	_, err := client.Audio.Speech.New(context.TODO(), warmUpRequest)
+	spin.Stop()
+
+	if err != nil {
+		return err
+	}
+
+	processor := &common.Processor{
+		TestMode: testMode,
+		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			start := time.Now()
+
+			textToSynthesize := strings.TrimSpace(prompt)
+			if textToSynthesize == "" {
+				return "", nexa_sdk.ProfileData{}, fmt.Errorf("prompt cannot be empty")
+			}
+
+			// Generate output filename if not specified
+			outputFile := output
+			if outputFile == "" {
+				outputFile = fmt.Sprintf("tts_output_%d.wav", time.Now().Unix())
+			}
+
+			res, err := client.Audio.Speech.New(context.TODO(), openai.AudioSpeechNewParams{
+				Model: name,
+			})
+
+			duration := time.Since(start).Microseconds()
+			profileData := nexa_sdk.ProfileData{
+				TTFT:       duration,
+				DecodeTime: duration,
+			}
+
+			if err != nil {
+				return "", profileData, err
+			}
+
+			// Save audio to filename
+			audioData, err := io.ReadAll(res.Body)
+			if err != nil {
+				return "", profileData, err
+			}
+			err = os.WriteFile(outputFile, audioData, 0644)
+			if err != nil {
+				return "", profileData, err
+			}
+
+			data := render.GetTheme().Success.Sprintf("✓ Audio saved: %s", outputFile)
+			onToken(data)
+			return data, profileData, err
+
+		},
+	}
+	if len(prompt) > 0 || input != "" {
+		processor.GetPrompt = getPromptOrInput
+	} else {
+		repl := common.Repl{}
+		defer repl.Close()
+		processor.GetPrompt = repl.GetPrompt
+	}
+	return processor.Process()
+}
+
+func runImagesGenerations(manifest types.ModelManifest, quant string) error {
+	name := manifest.Name
+	if quant != "" {
+		name = name + ":" + quant
+	}
+
+	// warm up
+	spin := render.NewSpinner("loading model...")
+	spin.Start()
+	warmUpRequest := openai.ImageGenerateParams{
+		Model: name,
+	}
+	_, err := client.Images.Generate(context.TODO(), warmUpRequest)
+	spin.Stop()
+
+	if err != nil {
+		return err
+	}
+
+	processor := &common.Processor{
+		TestMode: testMode,
+		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
+			start := time.Now()
+
+			textPrompt := strings.TrimSpace(prompt)
+			if textPrompt == "" {
+				return "", nexa_sdk.ProfileData{}, fmt.Errorf("prompt cannot be empty")
+			}
+
+			// Generate output filename if not specified
+			outputFile := output
+			if outputFile == "" {
+				outputFile = fmt.Sprintf("image_gen_output_%d.png", time.Now().Unix())
+			}
+			if !strings.HasSuffix(strings.ToLower(outputFile), ".png") {
+				return "", nexa_sdk.ProfileData{}, fmt.Errorf("output file must have .png extension")
+			}
+
+			res, err := client.Images.Generate(context.TODO(), openai.ImageGenerateParams{
+				Model:  name,
+				Prompt: prompt,
+				N:      openai.Int(1),
+			},
+				option.WithJSONSet("task_type", taskType),
+			)
+
+			duration := time.Since(start).Microseconds()
+			profileData := nexa_sdk.ProfileData{
+				DecodeTime: duration,
+			}
+			if err != nil {
+				return "", profileData, err
+			}
+
+			bstr := strings.SplitN(res.Data[0].B64JSON, ",", 2)
+			if len(bstr) != 2 {
+				return "", profileData, fmt.Errorf("invalid base64 image data")
+			}
+			bdata, err := base64.StdEncoding.DecodeString(bstr[1])
+			if err != nil {
+				return "", profileData, err
+			}
+			err = os.WriteFile(outputFile, bdata, 0644)
+			if err != nil {
+				return "", profileData, err
+			}
+
+			data := render.GetTheme().Success.Sprintf("✓ Image saved to: %s", outputFile)
+			onToken(data)
+			return data, profileData, err
+
+		},
+	}
+	if len(prompt) > 0 || input != "" {
+		processor.GetPrompt = getPromptOrInput
 	} else {
 		repl := common.Repl{}
 		defer repl.Close()

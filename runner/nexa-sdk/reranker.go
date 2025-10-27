@@ -219,12 +219,6 @@ func (r *Reranker) Destroy() error {
 	return nil
 }
 
-// Reset resets the Reranker internal state (no-op for reranker)
-func (r *Reranker) Reset() error {
-	slog.Debug("Reset called", "ptr", r.ptr)
-	return nil
-}
-
 // Rerank performs reranking operation on documents against a query
 func (r *Reranker) Rerank(input RerankerRerankInput) (RerankerRerankOutput, error) {
 	slog.Debug("Rerank called", "input", input)

@@ -28,6 +28,7 @@ func RegisterAPIv1(r *gin.Engine) {
 	g.POST("/completions", handler.Completions)
 	g.POST("/chat/completions", handler.ChatCompletions)
 	g.POST("/embeddings", handler.Embeddings)
+	g.POST("/audio/speech", handler.Speech)
 	g.POST("/images/generations", handler.ImageGenerations)
 	// extend
 	g.POST("/reranking", handler.Reranking)
