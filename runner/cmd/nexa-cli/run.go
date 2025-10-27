@@ -82,7 +82,7 @@ func run() *cobra.Command {
 				os.Exit(1)
 			}
 			if e, ok := err.(*openai.Error); ok && e.StatusCode == http.StatusNotFound {
-				fmt.Println(render.GetTheme().Error.Sprintf("Model not found: %s, Please download first", name))
+				fmt.Println(render.GetTheme().Error.Sprintf("Model or quant not found: %s, Please download first", name))
 				os.Exit(1)
 			} else {
 				fmt.Println(render.GetTheme().Error.Sprintf("get model error: %s", err.Error()))
@@ -154,6 +154,7 @@ func runCompletion(manifest types.ModelManifest, quant string) error {
 	}
 
 	processor := &common.Processor{
+		HideThink: hideThink,
 		ParseFile: manifest.ModelType == types.ModelTypeVLM,
 		TestMode:  testMode,
 		Run: func(prompt string, images, audios []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
@@ -190,14 +191,15 @@ func runCompletion(manifest types.ModelManifest, quant string) error {
 			start := time.Now()
 			acc := openai.ChatCompletionAccumulator{}
 			stream := client.Chat.Completions.NewStreaming(context.Background(), openai.ChatCompletionNewParams{
-				Messages:         history,
-				Model:            name,
-				StreamOptions:    openai.ChatCompletionStreamOptionsParam{IncludeUsage: openai.Opt(true)},
-				Temperature:      openai.Float(float64(temperature)),
-				TopP:             openai.Float(float64(topP)),
-				PresencePenalty:  openai.Float(float64(presencePenalty)),
-				FrequencyPenalty: openai.Float(float64(frequencyPenalty)),
-				Seed:             openai.Int(int64(seed)),
+				Messages:            history,
+				Model:               name,
+				StreamOptions:       openai.ChatCompletionStreamOptionsParam{IncludeUsage: openai.Opt(true)},
+				Temperature:         openai.Float(float64(temperature)),
+				TopP:                openai.Float(float64(topP)),
+				PresencePenalty:     openai.Float(float64(presencePenalty)),
+				FrequencyPenalty:    openai.Float(float64(frequencyPenalty)),
+				Seed:                openai.Int(int64(seed)),
+				MaxCompletionTokens: openai.Int(int64(maxTokens)),
 			},
 
 				option.WithJSONSet("enable_think", enableThink),
@@ -207,6 +209,13 @@ func runCompletion(manifest types.ModelManifest, quant string) error {
 				option.WithJSONSet("grammar_path", grammarPath),
 				option.WithJSONSet("grammar_string", grammarString),
 				option.WithJSONSet("enable_json", enableJson),
+
+				option.WithJSONSet("ngl", ngl),
+				option.WithJSONSet("nctx", nctx),
+				option.WithJSONSet("enable_think", enableThink),
+
+				option.WithJSONSet("image_max_length", imageMaxLength),
+
 				option.WithHeaderAdd("Nexa-KeepCache", "true"))
 
 			var firstToken time.Time
