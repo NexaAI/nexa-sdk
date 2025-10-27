@@ -94,30 +94,11 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 	keepAlive.Lock()
 	defer keepAlive.Unlock()
 
-	// Check if model already exists in cache
-	model, ok := keepAlive.models[name]
-	if ok && reflect.DeepEqual(model.param, param) {
-		if reset {
-			if r, ok := model.model.(keepResetable); ok {
-				r.Reset()
-			}
-		}
-		model.lastTime = time.Now()
-		return model.model, nil
-	}
-
-	// Clear existing models to ensure only one is in memory
-	// This prevents memory overflow but limits to single model usage
-	// TODO: unload model due to free ram/vram
-	for name, model := range keepAlive.models {
-		model.model.Destroy()
-		delete(keepAlive.models, name)
-	}
+	name, quant := utils.NormalizeModelName(name)
+	slog.Debug("KeepAliveGet", "name", name, "quant", quant, "param", param)
 
 	s := store.Get()
 
-	name, quant := utils.NormalizeModelName(name)
-	slog.Debug("KeepAliveGet", "name", name, "quant", quant, "param", param)
 	manifest, err := s.GetManifest(name)
 	if err != nil {
 		return nil, err
@@ -141,8 +122,29 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 				break
 			}
 		}
-		slices.Sort(quants)
-		modelfile = s.ModelfilePath(manifest.Name, manifest.ModelFile[quants[0]].Name) // at lease one is downloaded
+		quant = slices.Min(quants)
+		slog.Debug("KeepAliveGet quant fallback", "quant", quant)
+		modelfile = s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name) // at least one is downloaded
+	}
+
+	// Check if model already exists in cache
+	model, ok := keepAlive.models[name+":"+quant]
+	if ok && reflect.DeepEqual(model.param, param) {
+		if reset {
+			if r, ok := model.model.(keepResetable); ok {
+				r.Reset()
+			}
+		}
+		model.lastTime = time.Now()
+		return model.model, nil
+	}
+
+	// Clear existing models to ensure only one is in memory
+	// This prevents memory overflow but limits to single model usage
+	// TODO: unload model due to free ram/vram
+	for name, model := range keepAlive.models {
+		model.model.Destroy()
+		delete(keepAlive.models, name)
 	}
 
 	var t keepable
@@ -255,7 +257,7 @@ func keepAliveGet[T any](name string, param types.ModelParam, reset bool) (any, 
 		param:    param,
 		lastTime: time.Now(),
 	}
-	keepAlive.models[name] = model
+	keepAlive.models[name+":"+quant] = model
 
 	return model.model, nil
 }
