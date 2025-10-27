@@ -1,133 +1,61 @@
-# NexaAI Python Examples
+# NexaAI Python SDK
 
-This directory contains examples for using the NexaAI Python SDK.
+This directory contains the NexaAI Python SDK and comprehensive examples for various AI inference tasks.
+
+## Quick Start
+
+The easiest way to get started with NexaAI is through our interactive Jupyter notebooks. Choose the appropriate notebook for your platform:
+
+### 📓 Interactive Notebooks
+
+| Platform | Notebook | Description |
+|----------|----------|-------------|
+| **macOS** | [`notebook/macos.ipynb`](notebook/macos.ipynb) | Complete examples for macOS with Apple Silicon optimization |
+| **Windows (x64)** | [`notebook/windows(x64).ipynb`](notebook/windows(x64).ipynb) | Examples for Windows x64 systems |
+| **Windows (ARM64)** | [`notebook/winodws(arm64).ipynb`](notebook/winodws(arm64).ipynb) | NPU-optimized examples for Snapdragon X Elite |
+
+Each notebook includes:
+- **LLM (Large Language Model)**: Text generation and conversation
+- **VLM (Vision Language Model)**: Multimodal understanding and generation  
+- **Embedder**: Text vectorization and similarity computation
+- **Reranker**: Document reranking
+- **ASR (Automatic Speech Recognition)**: Speech-to-text transcription
+- **CV (Computer Vision)**: OCR/text recognition
 
 ## Prerequisites
 
-Before installing **NexaAI SDK**, please ensure you have the correct **Python version** and **architecture**.
+| Platform | Required Python | 
+|----------|----------------|
+| **Windows (ARM64, Snapdragon X Elite)** | **3.11 – 3.13 (arm64)** |
+| **macOS / Windows (x64)** | **3.10 (x64)** |
 
-### 1. Check your Python environment
+## Command Line Examples
 
-```sh
-python -c "import sys,platform;print(f'Python version: {sys.version} | Architecture: {platform.machine()}')"
-```
-
-### 2. Python version requirements
-
-| Platform                                | Required Python         | Notes                                                                                                                    |
-| --------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| **Windows (ARM64, Snapdragon X Elite)** | **3.11 – 3.13 (arm64)** | Please install **official ARM64 Python** from [python-3.11.1-arm64.exe](https://www.python.org/ftp/python/3.11.1/python-3.11.1-arm64.exe). |
-| **Linux / macOS / Windows (x64)**       | **3.10 (x64)**          | You can use **conda** to install and manage this version.                                                                |
-
-**Create a Python 3.10 environment (recommended for x64):**
-
-```sh
-conda create -n nexaai python=3.10
-conda activate nexaai
-```
-
-### 3. Install NexaAI SDK
-
-* **Windows / Linux**
-
-  ```bash
-  pip install nexaai
-  ```
-* **macOS (Apple Silicon)**
-
-  ```bash
-  pip install 'nexaai[mlx]'
-  ```
-
-### Authentication Setup
-
-Before running any examples, you need to set up your NexaAI authentication token.
-
-### Set Token in Code
-
-Replace `"YOUR_NEXA_TOKEN_HERE"` with your actual NexaAI token from [https://sdk.nexa.ai/](https://sdk.nexa.ai/):
-
-- Linux/macOS:
-  ```bash
-  export NEXA_TOKEN="YOUR_NEXA_TOKEN_HERE"
-  ```
-- Windows:
-  ```powershell
-  $env:NEXA_TOKEN="YOUR_NEXA_TOKEN_HERE"
-  ```
-
-## Running Examples
+If you prefer command-line usage, here are the basic examples:
 
 ### LLM
-
 ```bash
 python llm.py
 ```
 
 ### Multi-Modal
-
 ```bash
 python vlm.py
 ```
 
 ### Reranker
-
 ```bash
 python rerank.py
 ```
 
 ### Embedder
-
 ```bash
 python embedder.py
 ```
 
-### CV
-
-#### OCR
-
+### Computer Vision
 ```bash
 python cv_ocr.py
-```
-
-## Running Examples (Windows ARM64, Snapdragon X Elite)
-
-### LLM
-
-```bash
-python llm.py --model NexaAI/Llama3.2-3B-NPU-Turbo --plugin-id npu --device npu --max-tokens 100 --system "You are a helpful assistant."
-```
-
-### Multi-Modal
-
-```bash
-python vlm.py --model NexaAI/OmniNeural-4B --plugin-id npu --device npu --max-tokens 100 --system "You are a helpful assistant."
-```
-
-### Reranker
-
-```bash
-python rerank.py --model NexaAI/jina-v2-rerank-npu --plugin-id npu --query "Where is on-device AI?" --documents "On-device AI is a type of AI that is processed on the device itself, rather than in the cloud." "edge computing" "A ragdoll is a breed of cat that is known for its long, flowing hair and gentle personality." "The capital of France is Paris."
-```
-
-### Embedder
-
-```bash
-python embedder.py --model NexaAI/embeddinggemma-300m-npu --plugin-id npu --texts "On-device AI is a type of AI that is processed on the device itself, rather than in the cloud." "edge computing" "A ragdoll is a breed of cat that is known for its long, flowing hair and gentle personality." "The capital of France is Paris." --query "what is on device AI" --batch-size 2
-```
-
-### CV
-
-#### OCR
-
-```bash
-python cv_ocr.py --model NexaAI/paddleocr-npu --image path/to/image.png
-```
-
-### ASR
-
-```bash
-python asr.py --model NexaAI/parakeet-npu --audio path/to/audio.wav
 ```
 
 ## Common Arguments
@@ -147,3 +75,12 @@ The `--plugin-id` parameter supports different backends:
 - `metal`: Apple Silicon optimized (for supported models)
 - `npu`: Qualcomm NPU optimized (for supported models)
 - `nexaml`: NexaML optimized (for supported models)
+
+## Getting Started
+
+1. **Choose your platform** and open the corresponding notebook from the [`notebook/`](notebook/) directory
+2. **Follow the setup instructions** in the notebook for your specific platform
+3. **Run the examples** step by step to explore different AI capabilities
+4. **Customize the examples** for your specific use cases
+
+For detailed setup instructions and platform-specific requirements, please refer to the individual notebooks.
