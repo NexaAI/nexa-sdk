@@ -139,17 +139,18 @@ def _start_server(tc_log: pathlib.Path):
         if of is not None:
             of.write('\n====== Exception Log =======\n')
             of.write(traceback.format_exc())
-        return 'Serve Failed'
-
-    finally:
-        if of is not None:
             of.close()
+        return 'Serve Failed'
 
 
 def _stop_server():
     for proc in psutil.process_iter():  # pyright: ignore[reportUnknownMemberType]
         if proc.name() == 'nexa-cli' and 'serve' in proc.cmdline():
-            proc.terminate()
+            try:
+                proc.terminate()
+                proc.wait(timeout=10)
+            except Exception:
+                proc.kill()
 
 
 def run_benchmark():
@@ -190,8 +191,6 @@ def run_benchmark():
                 else:
                     log.print(f'  --> [{mp}][{tcp}] {tc.name()} Run: {res}')
                     failed_cases.append((plugin, model, tc.name(), res, str(tc_log) + '.run.log'))
-            except Exception as e:
-                raise e
             finally:
                 _stop_server()
 
