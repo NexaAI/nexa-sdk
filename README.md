@@ -177,4 +177,4 @@ Earn up to 1,500 USD for building with NexaSDK.
 
 ![Developer Bounty](assets/developer_bounty.png)
 
-Learn more in our [Participant Details](https://docs.nexa.ai/nexa-sdk-go/overview).
+Learn more in our [Participant Details](https://docs.nexa.ai/community/builder-bounty).
