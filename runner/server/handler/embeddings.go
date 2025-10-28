@@ -65,12 +65,8 @@ func Embeddings(c *gin.Context) {
 
 	// Create embedder input
 	embedInput := nexa_sdk.EmbedderEmbedInput{
-		Texts: texts,
-		Config: &nexa_sdk.EmbeddingConfig{
-			BatchSize:       int32(len(texts)),
-			Normalize:       true,
-			NormalizeMethod: "l2",
-		},
+		Texts:    texts,
+		Config:   &nexa_sdk.EmbeddingConfig{},
 		TaskType: param.TaskType,
 	}
 
@@ -80,21 +76,15 @@ func Embeddings(c *gin.Context) {
 		return
 	}
 
-	dimOutput, err := p.EmbeddingDimension()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
+	embeddings := make([]openai.Embedding, len(texts))
+	if len(res.Embeddings) != len(texts) {
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": "embedding count mismatch"})
 		return
 	}
-	embeddingDim := int(dimOutput.Dimension)
-	embeddings := make([]openai.Embedding, len(texts))
 
 	// Convert embeddings to the format expected by OpenAI API
-	// res.Embeddings is a flat array of float32 values
-	// We need to group them by the number of texts
 	for i := range len(texts) {
-		start := i * embeddingDim
-		end := start + embeddingDim
-		embeddingSlice := res.Embeddings[start:end]
+		embeddingSlice := res.Embeddings[i]
 
 		// Convert float32 to float64 for OpenAI API compatibility
 		embeddingFloat64 := make([]float64, len(embeddingSlice))

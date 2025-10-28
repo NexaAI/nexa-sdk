@@ -602,24 +602,13 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) error {
 	}
 	defer p.Destroy()
 
-	dimOutput, err := p.EmbeddingDimension()
-	if err != nil {
-		return fmt.Errorf("Failed to get embedding dimension: %s", err)
-	}
-
-	fmt.Println(render.GetTheme().Success.Sprintf("Embedding dimension: %d", dimOutput.Dimension))
-
 	processor := &common.Processor{
 		TestMode: testMode,
 		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			embedInput := nexa_sdk.EmbedderEmbedInput{
 				TaskType: taskType,
 				Texts:    []string{strings.TrimSpace(prompt)},
-				Config: &nexa_sdk.EmbeddingConfig{
-					BatchSize:       1,
-					Normalize:       true,
-					NormalizeMethod: "l2",
-				},
+				Config:   &nexa_sdk.EmbeddingConfig{},
 			}
 
 			result, err := p.Embed(embedInput)
@@ -627,7 +616,8 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) error {
 				return "", result.ProfileData, err
 			}
 
-			n, emb := len(result.Embeddings), result.Embeddings
+			emb := result.Embeddings[0]
+			n := len(emb)
 			info := render.GetTheme().Info.Sprintf("Embedding")
 			var out string
 			if n > 6 {
