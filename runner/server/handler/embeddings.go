@@ -77,6 +77,10 @@ func Embeddings(c *gin.Context) {
 	}
 
 	embeddings := make([]openai.Embedding, len(texts))
+	if len(res.Embeddings) != len(texts) {
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": "embedding count mismatch"})
+		return
+	}
 
 	// Convert embeddings to the format expected by OpenAI API
 	for i := range len(texts) {
