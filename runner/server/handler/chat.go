@@ -562,10 +562,11 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 		genOut, err := p.Generate(nexa_sdk.VlmGenerateInput{
 			PromptUTF8: formatted.FormattedText,
 			Config: &nexa_sdk.GenerationConfig{
-				MaxTokens:     int32(param.MaxCompletionTokens.Value),
-				SamplerConfig: samplerConfig,
-				ImagePaths:    images,
-				AudioPaths:    audios,
+				MaxTokens:      int32(param.MaxCompletionTokens.Value),
+				SamplerConfig:  samplerConfig,
+				ImagePaths:     images,
+				AudioPaths:     audios,
+				ImageMaxLength: param.ImageMaxLength,
 			},
 		},
 		)
