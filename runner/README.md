@@ -108,5 +108,7 @@ nexa pull <model> --model-hub localfs --local-path /path/to/modeldir
 ### Test Project
 
 ```
+pip install psutil
+
 python tests/run.py
 ```
