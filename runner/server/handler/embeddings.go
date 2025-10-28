@@ -65,12 +65,8 @@ func Embeddings(c *gin.Context) {
 
 	// Create embedder input
 	embedInput := nexa_sdk.EmbedderEmbedInput{
-		Texts: texts,
-		Config: &nexa_sdk.EmbeddingConfig{
-			BatchSize:       int32(len(texts)),
-			Normalize:       true,
-			NormalizeMethod: "l2",
-		},
+		Texts:    texts,
+		Config:   &nexa_sdk.EmbeddingConfig{},
 		TaskType: param.TaskType,
 	}
 
