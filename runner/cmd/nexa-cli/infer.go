@@ -912,6 +912,7 @@ func inferASR(manifest *types.ModelManifest, quant string) error {
 		}
 	} else {
 		repl := common.Repl{
+			RecordImmediate: true,
 			Record: func() (*string, error) {
 				streamConfig := nexa_sdk.ASRStreamConfig{
 					ChunkDuration:   4.0,
@@ -958,28 +959,7 @@ func inferASR(manifest *types.ModelManifest, quant string) error {
 					if err != nil {
 						return nil, err
 					}
-					outfile := rec.GetOutputFile()
-
-					asrConfig := &nexa_sdk.ASRConfig{
-						Timestamps: "segment",
-						BeamSize:   5,
-						Stream:     false,
-					}
-
-					transcribeInput := nexa_sdk.AsrTranscribeInput{
-						AudioPath: outfile,
-						Language:  language,
-						Config:    asrConfig,
-					}
-
-					result, err := p.Transcribe(transcribeInput)
-					if err != nil {
-						return nil, err
-					}
-
-					fmt.Println(render.GetTheme().ModelOutput.Sprint(result.Result.Transcript))
-					render.GetTheme().Reset()
-					fmt.Println()
+					return &outputFile, nil
 
 				} else {
 					rec, err := record.NewStreamRecorder()
@@ -1099,6 +1079,7 @@ func inferDiarize(manifest *types.ModelManifest, quant string) error {
 		}
 	} else {
 		repl := common.Repl{
+			RecordImmediate: true,
 			Record: func() (*string, error) {
 				// Diarization doesn't support streaming, use file-based recording
 				t := strconv.Itoa(int(time.Now().Unix()))
@@ -1114,9 +1095,8 @@ func inferDiarize(manifest *types.ModelManifest, quant string) error {
 				if err != nil {
 					return nil, err
 				}
-				outfile := rec.GetOutputFile()
 
-				return &outfile, nil
+				return &outputFile, nil
 			},
 		}
 		defer repl.Close()

@@ -629,6 +629,7 @@ func runAudioTranscription(manifest types.ModelManifest, quant string) error {
 		}
 	} else {
 		repl := common.Repl{
+			RecordImmediate: true,
 			Record: func() (*string, error) {
 				t := strconv.Itoa(int(time.Now().Unix()))
 				outputFile := filepath.Join(os.TempDir(), "nexa-cli", t+".wav")
@@ -643,9 +644,8 @@ func runAudioTranscription(manifest types.ModelManifest, quant string) error {
 				if err != nil {
 					return nil, err
 				}
-				outfile := rec.GetOutputFile()
 
-				return &outfile, nil
+				return &outputFile, nil
 			},
 		}
 		defer repl.Close()
@@ -729,6 +729,7 @@ func runAudioDiarize(manifest types.ModelManifest, quant string) error {
 		}
 	} else {
 		repl := common.Repl{
+			RecordImmediate: true,
 			Record: func() (*string, error) {
 				t := strconv.Itoa(int(time.Now().Unix()))
 				outputFile := filepath.Join(os.TempDir(), "nexa-cli", t+".wav")
@@ -743,9 +744,7 @@ func runAudioDiarize(manifest types.ModelManifest, quant string) error {
 				if err != nil {
 					return nil, err
 				}
-				outfile := rec.GetOutputFile()
-
-				return &outfile, nil
+				return &outputFile, nil
 			},
 		}
 		defer repl.Close()
