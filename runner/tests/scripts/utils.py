@@ -1,10 +1,7 @@
-import json
 import os
 import platform
 import shutil
 import subprocess
-import sys
-from io import TextIOWrapper
 from pathlib import Path
 from typing import Any
 
@@ -30,38 +27,34 @@ def _search_nexa() -> str:
     raise FileNotFoundError("nexa command not found")
 
 
-def execute_nexa(args: list[str], debug_log: bool = False, **kwargs: Any) -> subprocess.CompletedProcess[str]:
+def start_nexa(args: list[str],
+               debug_log: bool = False,
+               stdout: Any = subprocess.PIPE,
+               stderr: Any = subprocess.PIPE,
+               **kwargs: Any) -> subprocess.Popen[str]:
     global nexa_path
 
     if nexa_path is None:
         nexa_path = _search_nexa()
 
-    stdout: TextIOWrapper = kwargs.pop('stdout', sys.stdout)
-    stderr: TextIOWrapper = kwargs.pop('stderr', sys.stderr)
-
     env = os.environ.copy()
     env['NEXA_LOG'] = 'trace' if debug_log else ''
     env['NO_COLOR'] = '1'
 
-    res = subprocess.run([nexa_path, '--test-mode', '--skip-migrate', '--skip-update'] + args,
-                         capture_output=True,
-                         text=True,
-                         encoding='utf-8',
-                         cwd=Path(__file__).parent.parent,
-                         env=env,
-                         **kwargs)
+    return subprocess.Popen([nexa_path, '--test-mode', '--skip-migrate', '--skip-update'] + args,
+                            text=True,
+                            encoding='utf-8',
+                            cwd=Path(__file__).parent.parent,
+                            env=env,
+                            stdout=stdout,
+                            stderr=stderr,
+                            **kwargs)
 
-    stdout.write('========== Output Log ==========\n')
-    stdout.write(res.stdout)
-    compat_out = False
-    for line in res.stderr.splitlines():
-        try:
-            json.loads(line)
-            stderr.write(line + '\n')
-        except Exception:
-            if not compat_out:
-                stdout.write('\n========== Debug Log ===========\n')
-                compat_out = True
-            stdout.write(line + '\n')
 
-    return res
+def execute_nexa(args: list[str],
+                 debug_log: bool = False,
+                 timeout: int | None = None,
+                 **kwargs: Any) -> subprocess.CompletedProcess[str]:
+    proc = start_nexa(args, debug_log=debug_log, **kwargs)
+    stdout, stderr = proc.communicate(timeout=timeout)
+    return subprocess.CompletedProcess(proc.args, proc.returncode, stdout, stderr)

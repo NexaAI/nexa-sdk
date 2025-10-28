@@ -22,8 +22,11 @@ def init():
     print(f"OS: {platform.system()}")
     print(f"Arch: {platform.machine()}")
     print(f"Python version: {sys.version}")
-    utils.execute_nexa(['version'], stdout=log_file, stderr=log_file)
-    utils.execute_nexa(['version'])
+    res = utils.execute_nexa(['version'])
+    if res.returncode != 0:
+        raise RuntimeError("Failed to get nexa version")
+    for line in res.stdout.strip().splitlines():
+        print(line)
     log_file.close()
 
     log_file = open(log_dir / 'bench.log', 'w', encoding='utf-8')

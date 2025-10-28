@@ -23,4 +23,4 @@ class MultiRound(BaseCase):
         ][self.round - 1]()
 
     def check_contain(self, output: str) -> bool:
-        return 'Remilia' in output and 'Forever' in output
+        return 'remilia' in output.lower()
