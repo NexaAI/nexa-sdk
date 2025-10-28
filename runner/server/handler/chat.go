@@ -311,7 +311,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 			}
 
 			choice := openai.ChatCompletionChoice{}
-			choice.Message.Role = constant.Assistant("")
+			choice.Message.Role = constant.Assistant(openai.MessageRoleAssistant)
 			choice.Message.ToolCalls = []openai.ChatCompletionMessageToolCall{toolCall}
 			res := openai.ChatCompletion{
 				Choices: []openai.ChatCompletionChoice{choice},
@@ -530,6 +530,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 				chunk.Choices = append(chunk.Choices, openai.ChatCompletionChunkChoice{
 					Delta: openai.ChatCompletionChunkChoiceDelta{
 						Content: r,
+						Role:    string(openai.MessageRoleAssistant),
 					},
 				})
 
@@ -600,7 +601,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 			}
 
 			choice := openai.ChatCompletionChoice{}
-			choice.Message.Role = constant.Assistant("")
+			choice.Message.Role = constant.Assistant(openai.MessageRoleAssistant)
 			choice.Message.ToolCalls = []openai.ChatCompletionMessageToolCall{toolCall}
 			res := openai.ChatCompletion{
 				Choices: []openai.ChatCompletionChoice{choice},
