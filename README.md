@@ -170,3 +170,11 @@ We would like to thank the following projects:
 - [mlx-lm](https://github.com/ml-explore/mlx-lm)
 - [mlx-vlm](https://github.com/Blaizzy/mlx-vlm)
 - [mlx-audio](https://github.com/Blaizzy/mlx-audio)
+
+## Join Builder Bounty Program
+
+Earn up to 1,500 USD for building with NexaSDK.
+
+![Developer Bounty](assets/developer_bounty.png)
+
+Learn more in our [Participant Details](https://docs.nexa.ai/community/builder-bounty).
