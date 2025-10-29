@@ -20,5 +20,5 @@ This is the **world's first fully NPU-supported RAG pipeline** running entirely 
 Bring your own files (PDFs, Word docs, text) and ask questions—the system retrieves relevant context and generates answers entirely on your device.
 
 ## Examples
-- [Python-Binding-Example](./Python-Binding-Example/README.md)
-- [Serve-Example](./Serve-Example/README.md)
+- [Python-Binding-Example](./Python-Binding-Example)
+- [Serve-Example](./Serve-Example)
