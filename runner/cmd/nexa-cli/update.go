@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
@@ -11,11 +12,13 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/NexaAI/nexa-sdk/runner/internal/downloader"
-	"github.com/NexaAI/nexa-sdk/runner/internal/render"
 	"github.com/bytedance/sonic"
 	goversion "github.com/hashicorp/go-version"
 	"github.com/spf13/cobra"
+
+	"github.com/NexaAI/nexa-sdk/runner/internal/downloader"
+	"github.com/NexaAI/nexa-sdk/runner/internal/render"
+	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 )
 
 const (
@@ -25,6 +28,133 @@ const (
 	updateCheckInterval  = 24 * time.Hour
 	notificationInterval = 8 * time.Hour
 )
+
+func update() *cobra.Command {
+	updateCmd := &cobra.Command{
+		GroupID: "management",
+		Use:     "update",
+		Short:   "update nexa",
+		Long:    "Update nexa to the latest version",
+	}
+
+	updateCmd.Run = func(cmd *cobra.Command, args []string) {
+		err := func() error {
+			// check platform
+			assetMap := map[string]map[string]string{
+				"darwin": {
+					"amd64": "nexa-cli_macos_x86_64.pkg",
+					"arm64": "nexa-cli_macos_arm64.pkg",
+				},
+				"windows": {
+					"amd64": "nexa-cli_windows_x86_64.exe",
+					"arm64": "nexa-cli_windows_arm64.exe",
+				},
+			}
+			assetName, ok := assetMap[runtime.GOOS][runtime.GOARCH]
+			if !ok {
+				return fmt.Errorf("current platform is not supported, please manually download")
+			}
+
+			rls, err := getLastRelease()
+			if err != nil {
+				return err
+			}
+
+			updateAvailable, err := hasUpdate(Version, rls.TagName)
+			if err != nil {
+				return err
+			}
+
+			if !updateAvailable {
+				fmt.Println("Already up-to-date.")
+				return nil
+			}
+
+			// find asset
+			var ast asset
+			for _, asset := range rls.Assets {
+				if asset.Name == assetName {
+					ast = asset
+					break
+				}
+			}
+			if ast.Name == "" {
+				return fmt.Errorf("asset %s not found in release", assetName)
+			}
+
+			fmt.Println(
+				render.GetTheme().Warning.Sprint("New version found, file: "),
+				render.GetTheme().Success.Sprint(ast.Name),
+				render.GetTheme().Warning.Sprint(", version: "),
+				render.GetTheme().Success.Sprint(rls.TagName))
+
+			// download
+			dst := filepath.Join(os.TempDir(), ast.Name)
+			progress := make(chan int64)
+			bar := render.NewProgressBar(int64(ast.Size), "downloading")
+			go func() {
+				defer bar.Exit()
+				for pg := range progress {
+					bar.Add(pg)
+				}
+			}()
+			if err = downloadPkg(ast.BrowserDownloadURL, dst, progress); err != nil {
+				return err
+			}
+
+			if err = installPkg(dst); err != nil {
+				return err
+			}
+			fmt.Println("update package is ready to install")
+
+			return nil
+		}()
+		if err != nil {
+			fmt.Println(render.GetTheme().Error.Sprintf("Update failed: %s", err.Error()))
+			os.Exit(1)
+		}
+	}
+
+	return updateCmd
+}
+
+// util functions
+
+func getLastRelease() (release, error) {
+	var rls release
+
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	req, err := http.NewRequest("GET", githubAPIURL, nil)
+	if err != nil {
+		return rls, err
+	}
+	req.Header.Set("User-Agent", userAgent)
+	resp, err := client.Do(req)
+	if err != nil {
+		return rls, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return rls, fmt.Errorf("get latest release failed: %d", resp.StatusCode)
+	}
+
+	err = sonic.ConfigDefault.NewDecoder(resp.Body).Decode(&rls)
+	return rls, err
+}
+
+func hasUpdate(cur, latest string) (bool, error) {
+	curVer, err := goversion.NewVersion(cur)
+	if err != nil {
+		return false, fmt.Errorf("invalid SemVer %s: %w", cur, err)
+	}
+	latestVer, err := goversion.NewVersion(latest)
+	if err != nil {
+		return false, fmt.Errorf("invalid SemVer %s: %w", latest, err)
+	}
+	return curVer.Compare(latestVer) < 0, nil
+}
 
 type release struct {
 	TagName string  `json:"tag_name"`
@@ -38,167 +168,9 @@ type asset struct {
 	Digest             string `json:"digest"`
 }
 
-func update() *cobra.Command {
-	updateCmd := &cobra.Command{
-		GroupID: "management",
-		Use:     "update",
-		Short:   "update nexa",
-		Long:    "Update nexa to the latest version",
-	}
-
-	updateCmd.Run = func(cmd *cobra.Command, args []string) {
-		if err := updateImpl(); err != nil {
-			fmt.Println(render.GetTheme().Error.Sprintf("update failed: %s", err.Error()))
-			os.Exit(1)
-		}
-	}
-
-	return updateCmd
-}
-
-func updateImpl() error {
-	ck, rls, err := checkForUpdate(true)
-	if err != nil {
-		return err
-	}
-
-	if !ck.UpdateAvailable {
-		fmt.Println("Already up-to-date.")
-		return nil
-	}
-
-	ast, err := findMatchingAsset(rls)
-	if err != nil {
-		return err
-	}
-	fmt.Println(
-		render.GetTheme().Warning.Sprint("New version found, file: "),
-		render.GetTheme().Success.Sprint(ast.Name),
-		render.GetTheme().Warning.Sprint(", version: "),
-		render.GetTheme().Success.Sprint(rls.TagName))
-
-	dst := filepath.Join(os.TempDir(), "nexa", rls.TagName, ast.Name)
-	progress := make(chan int64)
-	bar := render.NewProgressBar(int64(ast.Size), "downloading")
-	go func() {
-		defer bar.Exit()
-		for pg := range progress {
-			bar.Add(pg)
-		}
-	}()
-
-	if err = download(ast.BrowserDownloadURL, dst, progress); err != nil {
-		return err
-	}
-
-	if err = installUpdate(dst); err != nil {
-		return err
-	}
-	fmt.Println("update package is ready to install")
-	return nil
-}
-
-func needUpdate(cur, latest string) (bool, error) {
-	curVer, err := goversion.NewVersion(cur)
-	if err != nil {
-		return false, fmt.Errorf("invalid SemVer %s: %w", cur, err)
-	}
-	latestVer, err := goversion.NewVersion(latest)
-	if err != nil {
-		return false, fmt.Errorf("invalid SemVer %s: %w", latest, err)
-	}
-	return curVer.Compare(latestVer) < 0, nil
-}
-
-func getLatestRelease() (release, error) {
-	var rls release
-
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	req, err := http.NewRequest("GET", githubAPIURL, nil)
-	if err != nil {
-		return rls, err
-	}
-
-	req.Header.Set("User-Agent", userAgent)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return rls, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return rls, fmt.Errorf("get latest release failed: %d", resp.StatusCode)
-	}
-
-	err = sonic.ConfigDefault.NewDecoder(resp.Body).Decode(&rls)
-	if err != nil {
-		return rls, err
-	}
-
-	return rls, nil
-}
-
-func findMatchingAsset(rls release) (*asset, error) {
-	var assetName string
-	switch runtime.GOOS {
-	case "darwin":
-		switch runtime.GOARCH {
-		case "amd64":
-			assetName = "nexa-cli_macos_x86_64.pkg"
-		case "arm64":
-			assetName = "nexa-cli_macos_arm64.pkg"
-		}
-
-	case "windows":
-		switch runtime.GOARCH {
-		case "amd64":
-			assetName = "nexa-cli_windows_x86_64.exe"
-		case "arm64":
-			assetName = "nexa-cli_windows_arm64.exe"
-		}
-
-		// 	curl -fsSL https://raw.githubusercontent.com/NexaAI/nexa-sdk/main/release/linux/install.sh -o install.sh && chmod +x install.sh && ./install.sh
-		// case "linux":
-	}
-
-	for _, asset := range rls.Assets {
-		if asset.Name == assetName {
-			return &asset, nil
-		}
-	}
-
-	return nil, fmt.Errorf("no matching asset found: %s/%s", rls.TagName, assetName)
-}
-
-// download a file from url to dst with progress
-func download(url, dst string, progress chan int64) error {
-	if progress != nil {
-		defer close(progress)
-	}
-
-	// Ensure destination directory exists before accessing manifest or file
-	dir := filepath.Dir(dst)
-	if err := os.MkdirAll(dir, 0700); err != nil {
-		return err
-	}
-	manifestPath := filepath.Join(dir, "manifest.json")
-	manifest, err := os.Open(manifestPath)
-	if err == nil {
-		defer manifest.Close()
-		var ast asset
-		if err = sonic.ConfigDefault.NewDecoder(manifest).Decode(&ast); err != nil {
-			return err
-		}
-
-		if progress != nil {
-			progress <- int64(ast.Size)
-		}
-		return nil
-	}
+// downloadPkg a file from url to dst with progress
+func downloadPkg(url, dst string, progress chan int64) error {
+	defer close(progress)
 
 	file, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
@@ -211,6 +183,7 @@ func download(url, dst string, progress chan int64) error {
 	if err != nil {
 		return err
 	}
+
 	for offset := int64(0); offset < size; offset += 1024 * 1024 {
 		limit := int64(1024 * 1024)
 		if offset+limit > size {
@@ -222,37 +195,18 @@ func download(url, dst string, progress chan int64) error {
 		progress <- int64(limit)
 	}
 
-	info, err := os.Stat(dst)
-	if err != nil {
-		return err
-	}
-
-	ast := asset{
-		Name:               filepath.Base(dst),
-		BrowserDownloadURL: url,
-		Size:               int(info.Size()),
-	}
-
-	manifest, err = os.Create(manifestPath)
-	if err != nil {
-		return err
-	}
-	defer manifest.Close()
-
-	return sonic.ConfigFastest.NewEncoder(manifest).Encode(ast)
+	return nil
 }
 
-func installUpdate(pkgPath string) error {
+func installPkg(pkgPath string) error {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
 		cmd = exec.Command("open", pkgPath)
-
 	case "windows":
 		cmd = exec.Command(pkgPath)
-
-	case "linux":
-		return errors.New("linux upgrade is not supported")
+	default:
+		return errors.New("update is not supported on this platform")
 	}
 
 	cmd.Stdout = os.Stdout
@@ -260,88 +214,75 @@ func installUpdate(pkgPath string) error {
 	return cmd.Start()
 }
 
+// Update check store
+
 type updateCheck struct {
-	CheckTime       time.Time `json:"check_time"`
-	LastNotify      time.Time `json:"last_notify"`
-	LatestVersion   string    `json:"latest_version"`
-	UpdateAvailable bool      `json:"update_available"`
+	LastCheck     time.Time `json:"last_check"`
+	LastNotify    time.Time `json:"last_notify"`
+	LatestVersion string    `json:"latest_version"`
 }
 
-func getLastCheck() (updateCheck, error) {
-	var ck updateCheck
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		return ck, err
-	}
-	checkFile := filepath.Join(configDir, "nexa-cli", ".updatecheck")
+func getUpdateCheck() (updateCheck, error) {
+	ck := updateCheck{}
 
-	data, err := os.ReadFile(checkFile)
-	if errors.Is(err, os.ErrNotExist) {
-		err = setLastCheck(&ck)
-	}
+	data, err := os.ReadFile(filepath.Join(store.Get().DataPath(), "update_check"))
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			err = setUpdateCheck(ck)
+		}
 		return ck, err
 	}
 
-	if err = sonic.Unmarshal(data, &ck); err != nil {
-		return ck, err
-	}
-	return ck, nil
+	err = sonic.Unmarshal(data, &ck)
+	return ck, err
 }
 
-func setLastCheck(ck *updateCheck) error {
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		return err
-	}
+func setUpdateCheck(ck updateCheck) error {
+	slog.Info("setting last update check", "update_check", ck)
 
-	nexaConfigDir := filepath.Join(configDir, "nexa-cli")
-	if err := os.MkdirAll(nexaConfigDir, 0755); err != nil {
-		return err
-	}
-
-	data, err := sonic.Marshal(ck)
-	if err != nil {
-		return err
-	}
-	checkFile := filepath.Join(nexaConfigDir, ".updatecheck")
-	return os.WriteFile(checkFile, data, 0644)
+	data, _ := sonic.Marshal(ck)
+	return os.WriteFile(filepath.Join(store.Get().DataPath(), "update_check"), data, 0644)
 }
 
-func checkForUpdate(manual bool) (updateCheck, release, error) {
-	ck, err := getLastCheck()
+// check and notify
+
+func checkUpdate() {
+	slog.Info("checking for updates")
+
+	ck, err := getUpdateCheck()
+	slog.Info("last update check", "update_check", ck, "error", err)
 	if err != nil {
-		return ck, release{}, err
+		return
 	}
 
-	if !manual && time.Since(ck.CheckTime) < updateCheckInterval {
-		return ck, release{}, nil
+	if time.Since(ck.LastCheck) < updateCheckInterval {
+		slog.Info("skip update check, interval not reached", "last_check_time", ck.LastCheck)
+		return
 	}
 
-	rls, err := getLatestRelease()
+	rls, err := getLastRelease()
+	slog.Debug("latest release", "release", rls, "error", err)
 	if err != nil {
-		return ck, rls, err
+		return
 	}
 
-	upAvail, err := needUpdate(Version, rls.TagName)
-	if err != nil {
-		return ck, rls, err
-	}
-
-	ck.CheckTime = time.Now()
+	ck.LastCheck = time.Now()
 	ck.LatestVersion = rls.TagName
-	ck.UpdateAvailable = upAvail
-	return ck, rls, setLastCheck(&ck)
+	setUpdateCheck(ck)
 }
 
 func notifyUpdate() {
-	ck, _ := getLastCheck()
-	if !ck.UpdateAvailable || time.Since(ck.LastNotify) < notificationInterval {
+	ck, _ := getUpdateCheck()
+	slog.Info("notifying update", "update_check", ck)
+
+	upAvail, _ := hasUpdate(Version, ck.LatestVersion)
+	if !upAvail || time.Since(ck.LastNotify) < notificationInterval {
+		slog.Info("skip update notification", "update_available", upAvail, "time_since_last_notify", time.Since(ck.LastNotify))
 		return
 	}
 
 	ck.LastNotify = time.Now()
-	setLastCheck(&ck)
+	setUpdateCheck(ck)
 
 	fmt.Fprintf(os.Stderr, "\n\n%s %s → %s\n",
 		render.GetTheme().Warning.Sprintf("A new version of nexa-cli is available:"),
