@@ -52,25 +52,31 @@ Assistant: How can I assist you today?
 
 FUNCTION_TOOLS = [
     {
-        "name": "search_web",
-        "description": "Searches the web for a given query and returns the latest information.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "query": {"type": "string", "description": "User search query"}
-            },
-            "required": ["query"],
+        "type":"function",
+        "function": {
+            "name": "search_web",
+            "description": "Searches the web for a given query and returns the latest information.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "User search query"}
+                },
+                "required": ["query"],
+             }
         },
     },
     {
-        "name": "write_to_file",
-        "description": "Writes text content into a file on the local filesystem.",
-        "parameters": {
-            "type": "object",
-            "properties": {"path": {"type": "string"}},
-            "required": ["path"],
+        "type":"function",
+        "function": {
+            "name": "write_to_file",
+            "description": "Writes text content into a file on the local filesystem.",
+            "parameters": {
+                "type": "object",
+                "properties": {"path": {"type": "string"}},
+                "required": ["path"],
+            }
         },
-    },
+    }
 ]
 
 def search_web(query: str):
