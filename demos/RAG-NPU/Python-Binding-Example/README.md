@@ -9,7 +9,7 @@ This is the **world's first fully NPU-supported RAG pipeline** running entirely 
 - 🌟 **State-of-the-art Models** — Best-in-class embedding, reranking, and generation
 - 🔌 **Always-On** — Efficient enough to run as a background service
 
-![The Stack](./architecture.png)
+![The Stack](../architecture.png)
 
 **The Stack:**
 - **Embedding:** Gemma-300M (Google DeepMind) — Top multilingual embedding model
