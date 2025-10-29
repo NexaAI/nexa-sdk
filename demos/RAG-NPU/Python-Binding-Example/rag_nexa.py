@@ -27,7 +27,7 @@ from nexaai.rerank import Reranker, RerankConfig
 # Configuration Constants
 # ============================================================================
 
-DEFAULT_MODEL = "NexaAI/Granite-4-Micro-NPU"
+DEFAULT_MODEL = "NexaAI/Llama3.2-3B-NPU-Turbo"
 DEFAULT_EMBED_MODEL = "NexaAI/embeddinggemma-300m-npu"
 DEFAULT_INDEX_JSON = "./vecdb.json"
 DEFAULT_RERANK_MODEL = "NexaAI/jina-v2-rerank-npu"
