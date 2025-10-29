@@ -6,8 +6,9 @@ This demo showcases a RAG implementation using Nexa Sdk.
 
 ### Prerequisites
 - Windows ARM64 device with Snapdragon NPU
-- Python 3.11 – 3.13 (ARM64 build)
-- Nexa SDK installed ([Installation Guide](https://github.com/NexaAI/nexa-sdk))
+- Python 3.11 – 3.13 (ARM64 build) - We provide detailed installation guides in Jupyter Notebook format
+[Windows ARM64 Installation Guide](https://github.com/NexaAI/nexa-sdk/blob/main/bindings/python/notebook/winodws(arm64).ipynb)
+- Nexa SDK installed ([Installation Guide](https://github.com/NexaAI/nexa-sdk?tab=readme-ov-file#step-1-download-nexa-cli-with-one-click))
 
 
 ### Download Models

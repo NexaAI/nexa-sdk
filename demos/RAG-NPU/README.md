@@ -20,12 +20,5 @@ This is the **world's first fully NPU-supported RAG pipeline** running entirely 
 Bring your own files (PDFs, Word docs, text) and ask questions—the system retrieves relevant context and generates answers entirely on your device.
 
 ## Examples
-- [Python-Binding-Example](./Python-Binding-Example/README.md)
-- [Serve-Example](./Serve-Example/README.md)
-
-## Additional Resources
-
-- [Nexa SDK Repository](https://github.com/NexaAI/nexa-sdk)
-- [Notebook](https://github.com/NexaAI/nexa-sdk/tree/main/bindings/python/notebook)
-- [python-3.11.1-arm64.exe](https://www.python.org/ftp/python/3.11.1/python-3.11.1-arm64.exe)
-- [python-3.13.8-arm64.exe](https://www.python.org/ftp/python/3.13.8/python-3.13.8-arm64.exe)
+- [Python-Binding-Example](./Python-Binding-Example)
+- [Serve-Example](./Serve-Example)

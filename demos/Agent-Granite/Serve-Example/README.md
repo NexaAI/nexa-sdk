@@ -1,25 +1,27 @@
-# Agent with Granite-4-Nano-NPU
+## About
 
-## Overview
+This demo showcases a function tool implementation using Nexa Sdk. 
 
-This demo showcases a lightweight on-device AI assistant powered by Nexa SDK's Granite-4-Nano-NPU model. The agent executes tasks through function calling, including web searches. Built with a Gradio interface for local NPU-accelerated agentic workflows.
+## Setup
 
-## Prerequisites
-- Python 3.11 – 3.13 (ARM64 build)
-- Nexa SDK installed ([Installation Guide](https://github.com/NexaAI/nexa-sdk))
-- Nexa access token
+### Prerequisites
+- Windows ARM64 device with Snapdragon NPU
+- Python 3.11 – 3.13 (ARM64 build) - We provide detailed installation guides in Jupyter Notebook format
+[Windows ARM64 Installation Guide](https://github.com/NexaAI/nexa-sdk/blob/main/bindings/python/notebook/winodws(arm64).ipynb)
+- Nexa SDK installed ([Installation Guide](https://github.com/NexaAI/nexa-sdk?tab=readme-ov-file#step-1-download-nexa-cli-with-one-click))
 
-## Quick Start
-
-### 1. Environment Setup
+### Download Models
+Download the three NPU-optimized models:
 
 ```bash
-# Set access token (Windows PowerShell)
-$env:NEXA_TOKEN="your_token_here"
 
 # Download model
 nexa pull NexaAI/granite-4-Nano-NPU
+```
 
+### Install Dependencies
+
+```bash
 # Navigate to the example directory
 cd Serve-Example
 
@@ -35,32 +37,23 @@ pip install -r requirements.txt
 
 Note: Make sure you're using Python 3.11-3.13 (ARM64) as specified in the prerequisites.
 
-### 2. Running the Example
+### Running the Example
 
+First, open a new terminal window and start the Nexa server:
 ```bash
-
 # Start Nexa server
 nexa serve
+```
 
-# Run the CLI version which provides an interactive terminal interface
+In a new terminal window, you can run either the CLI or Gradio UI version:
+
+```bash
+# Option 1: Run the CLI version which provides an interactive terminal interface
 # This version allows direct interaction with the agent through command line
 python agent_nexa.py
 
-# Run the Gradio UI version
+# Option 2: Run the Gradio UI version
 # This starts a local web server with a chat interface at http://localhost:7860
 python gradio_ui.py
 
 ```
-
-## Usage Examples
-
-- **Web Search**: "What's the latest AI news?"
-- **File Operations**: "Save this conversation to notes.txt"
-
-## Additional Resources
-
-- [Nexa SDK Repository](https://github.com/NexaAI/nexa-sdk)
-- [Granite Models](https://huggingface.co/ibm-granite)
-- [SerpAPI Documentation](https://serpapi.com/)
-- [python-3.11.1-arm64.exe](https://www.python.org/ftp/python/3.11.1/python-3.11.1-arm64.exe)
-- [python-3.13.8-arm64.exe](https://www.python.org/ftp/python/3.13.8/python-3.13.8-arm64.exe)

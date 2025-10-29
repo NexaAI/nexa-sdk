@@ -1,16 +1,15 @@
-# Agent with Granite-4-Micro-NPU
+## About
 
-## Overview
+This demo showcases a function tool implementation using NexaAI Python bindings. 
 
-This demo showcases a lightweight on-device AI assistant powered by Nexa SDK's Granite-4-Micro-NPU model. The agent executes tasks through function calling, including web searches. Built with a Gradio interface for local NPU-accelerated agentic workflows, this example demonstrates direct integration with Nexa SDK using Python bindings for efficient model inference and function execution.
+## Setup
 
-## Prerequisites
-- Python 3.11 – 3.13 (ARM64 build)
-- Nexa SDK installed ([Installation Guide](https://github.com/NexaAI/nexa-sdk))
+### Prerequisites
+- Windows ARM64 device with Snapdragon NPU
+- Python 3.11 – 3.13 (ARM64 build) - We provide detailed installation guides in Jupyter Notebook format
+[Windows ARM64 Installation Guide](https://github.com/NexaAI/nexa-sdk/blob/main/bindings/python/notebook/winodws(arm64).ipynb)
 
-## Quick Start
-
-### 1. Environment Setup
+### Install Dependencies
 
 ```bash
 # Navigate to the example directory
@@ -26,9 +25,9 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-Note: Make sure you're using Python 3.11-3.13 (ARM64) as specified in the prerequisites.
+Note: Make sure you're using Python 3.11-3.13 (ARM64) as specified in the prerequisites. 
 
-### 2. Running the Example
+## Running the Example
 
 ```bash
 # Run the CLI version which provides an interactive terminal interface
@@ -45,12 +44,3 @@ python gradio_ui.py
 
 - **Web Search**: "What's the latest AI news?"
 - **File Operations**: "Save this conversation to notes.txt"
-
-
-## Additional Resources
-
-- [Nexa SDK Repository](https://github.com/NexaAI/nexa-sdk)
-- [Granite Models](https://huggingface.co/ibm-granite)
-- [SerpAPI Documentation](https://serpapi.com/)
-- [python-3.11.1-arm64.exe](https://www.python.org/ftp/python/3.11.1/python-3.11.1-arm64.exe)
-- [python-3.13.8-arm64.exe](https://www.python.org/ftp/python/3.13.8/python-3.13.8-arm64.exe)
