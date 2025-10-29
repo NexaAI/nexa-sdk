@@ -50,28 +50,6 @@ User: Hello
 Assistant: How can I assist you today?
 """
 
-FUNCTION_TOOLS = [
-    {
-        "name": "search_web",
-        "description": "Searches the web for a given query and returns the latest information.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "query": {"type": "string", "description": "User search query"}
-            },
-            "required": ["query"],
-        },
-    },
-    {
-        "name": "write_to_file",
-        "description": "Writes text content into a file on the local filesystem.",
-        "parameters": {
-            "type": "object",
-            "properties": {"path": {"type": "string"}},
-            "required": ["path"],
-        },
-    },
-]
 
 def search_web(query: str):
     """Search the web using SerpAPI"""
@@ -98,14 +76,19 @@ def search_web(query: str):
 
     return organic_results
 
+
 def write_to_file(file_path: str, content: str):
     """Write content to a file"""
     with open(file_path, "a", encoding="utf-8") as f:
         f.write(content + "\n")
 
+
 FUNCTION_REGISTRY = {"search_web": search_web, "write_to_file": write_to_file}
 
-def handle_function_call(func_name: str, func_args: dict, model: str):
+
+def handle_function_call(
+    func_name: str, func_args: dict, model: str, system_prompt: str = ""
+):
     """
     Execute the registered function, print the tool result, then call Nexa to produce
     a natural language summary based on the tool output.
@@ -146,37 +129,54 @@ def handle_function_call(func_name: str, func_args: dict, model: str):
         """
 
     try:
-        for piece in nexa_chat_stream(model, user_followup_prompt):
+        # Pass system prompt for NPU compatibility
+        for piece in nexa_chat_stream(model, user_followup_prompt, system_prompt):
             yield piece
     except Exception as e:
         print(f"[error] failed to call nexa for followup: {e}")
         yield f"\n[Error: {e}]"
         return
 
-def nexa_chat_stream(model: str, prompt: str):
+
+def nexa_chat_stream(model: str, prompt: str, system_prompt: str = ""):
     """
-    Generate streaming conversation with local LLM 
+    Generate streaming conversation with local LLM
+    NPU requires system prompt to be passed during model creation via ModelConfig
     """
-    m_cfg = ModelConfig()
+    m_cfg = ModelConfig(
+        system_prompt=system_prompt  # Pass system prompt for NPU plugin
+    )
     llm = LLM.from_(model, plugin_id="npu", device_id="npu", m_cfg=m_cfg)
-    
+
     messages: List[ChatMessage] = [ChatMessage(role="user", content=prompt)]
     prompt = llm.apply_chat_template(messages)
-    
-    for token in llm.generate_stream(
-        prompt, g_cfg=GenerationConfig(max_tokens=512)
-    ):
+
+    for token in llm.generate_stream(prompt, g_cfg=GenerationConfig(max_tokens=512)):
         yield token
 
-def nexa_chat_completion(model: str, messages: list):
+
+def nexa_chat_completion(model: str, messages: list, system_prompt: str = ""):
     """
     Non-streaming conversation with local LLM
+    NPU requires system prompt to be passed during model creation via ModelConfig
     """
-    m_cfg = ModelConfig()
+    m_cfg = ModelConfig(
+        system_prompt=system_prompt  # Pass system prompt for NPU plugin
+    )
     llm = LLM.from_(model, plugin_id="npu", device_id="npu", m_cfg=m_cfg)
-    prompt = llm.apply_chat_template(messages, tools=FUNCTION_TOOLS)
-    
+
+    # Convert messages to ChatMessage format, excluding system messages
+    # (system prompt is already in model config for NPU)
+    chat_messages = [
+        ChatMessage(role=msg["role"], content=msg["content"])
+        for msg in messages
+        if msg["role"] != "system"  # Skip system messages - already in ModelConfig
+    ]
+
+    prompt = llm.apply_chat_template(chat_messages)
+
     return llm.generate(prompt, g_cfg=GenerationConfig(max_tokens=512))
+
 
 def extract_function_call(text: str) -> Optional[Tuple[str, dict]]:
     """
@@ -236,14 +236,15 @@ def nexa_start_search_stream(
     Main agent function that handles user query and function calling.
     Yields JSON-formatted status messages.
     """
+    # For NPU, don't include system prompt in messages - pass it via ModelConfig
     messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": query},
     ]
 
     try:
         yield json.dumps({"status": "proccess", "message": "Starting analysis..."})
-        result = nexa_chat_completion(model, messages)
+        # Pass system prompt via ModelConfig for NPU compatibility
+        result = nexa_chat_completion(model, messages, system_prompt=SYSTEM_PROMPT)
 
         # Try to extract function call using helper function
         function_call = extract_function_call(result)
@@ -263,18 +264,20 @@ def nexa_start_search_stream(
                 )
 
                 if func_name == "write_to_file":
-                    yield json.dumps({"status": "proccess", "message": "Function calling..."})
-                    
+                    yield json.dumps(
+                        {"status": "proccess", "message": "Function calling..."}
+                    )
+
                     file_path = func_args.get("file_path") or func_args.get("path")
                     write_to_file(file_path, last_message)
-                    
+
                     yield json.dumps(
                         {
                             "status": "proccess",
                             "message": "Function call finished.",
                         }
                     )
-                    
+
                     message = f"Successfully saved the previous answer to **{file_path}**. You can check it anytime!"
                     yield json.dumps({"status": "stream", "message": message})
                 else:
@@ -285,7 +288,7 @@ def nexa_start_search_stream(
                         )
                         flag = False
                         for piece in handle_function_call(
-                            func_name, func_args, model
+                            func_name, func_args, model, SYSTEM_PROMPT
                         ):
                             if not flag:
                                 yield json.dumps(
@@ -295,7 +298,7 @@ def nexa_start_search_stream(
                                     }
                                 )
                                 flag = True
-                            
+
                             yield json.dumps({"status": "stream", "message": piece})
                     except Exception as e:
                         yield json.dumps(
@@ -304,7 +307,7 @@ def nexa_start_search_stream(
                         # try again
                         try:
                             for piece in handle_function_call(
-                                func_name, func_args, model
+                                func_name, func_args, model, SYSTEM_PROMPT
                             ):
                                 yield json.dumps({"status": "stream", "message": piece})
                         except Exception as retry_error:
@@ -350,9 +353,7 @@ def main():
             response_content = ""
 
             # Parse JSON responses and display nicely
-            for piece in nexa_start_search_stream(
-                q, last_message, args.model
-            ):
+            for piece in nexa_start_search_stream(q, last_message, args.model):
                 try:
                     parsed = json.loads(piece)
                     status = parsed.get("status")

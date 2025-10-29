@@ -47,29 +47,6 @@ User: Hello
 Assistant: How can I assist you today?
 """
 
-FUNCTION_TOOLS = [
-    {
-        "name": "search_web",
-        "description": "Searches the web for a given query and returns the latest information.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "query": {"type": "string", "description": "User search query"}
-            },
-            "required": ["query"],
-        },
-    },
-    {
-        "name": "write_to_file",
-        "description": "Writes text content into a file on the local filesystem.",
-        "parameters": {
-            "type": "object",
-            "properties": {"path": {"type": "string"}},
-            "required": ["path"],
-        },
-    }
-]
-
 
 def search_web(query: str):
     """Search the web using SerpAPI"""
@@ -186,7 +163,6 @@ def call_nexa_chat(model: str, prompt: str, base: str) -> str:
             "messages": [{"role": "user", "content": prompt}],
             "stream": False,
             "max_tokens": 512,
-            "tools": FUNCTION_TOOLS,
         },
     )
 
@@ -348,18 +324,20 @@ def nexa_start_search_stream(
                 )
 
                 if func_name == "write_to_file":
-                    yield json.dumps({"status": "proccess", "message": "Function calling..."})
-                    
+                    yield json.dumps(
+                        {"status": "proccess", "message": "Function calling..."}
+                    )
+
                     file_path = func_args.get("file_path") or func_args.get("path")
                     write_to_file(file_path, last_message)
-                    
+
                     yield json.dumps(
                         {
                             "status": "proccess",
                             "message": "Function call finished.",
                         }
                     )
-                    
+
                     message = f"Successfully saved the previous answer to **{file_path}**. You can check it anytime!"
                     yield json.dumps({"status": "stream", "message": message})
                 else:
@@ -380,7 +358,7 @@ def nexa_start_search_stream(
                                     }
                                 )
                                 flag = True
-                            
+
                             yield json.dumps({"status": "stream", "message": piece})
                     except Exception as e:
                         yield json.dumps(
