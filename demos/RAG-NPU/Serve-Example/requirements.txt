@@ -6,4 +6,3 @@ psutil
 pillow
 gradio
 pdfplumber
-numpy<2  # ARM64 Windows compatibility: matplotlib not yet compatible with NumPy 2.x
