@@ -6,7 +6,8 @@ This demo showcases a RAG implementation using NexaAI Python bindings.
 
 ### Prerequisites
 - Windows ARM64 device with Snapdragon NPU
-- Python 3.11 – 3.13 (ARM64 build)
+- Python 3.11 – 3.13 (ARM64 build) - We provide detailed installation guides in Jupyter Notebook format
+[Windows ARM64 Installation Guide](https://github.com/NexaAI/nexa-sdk/blob/main/bindings/python/notebook/winodws(arm64).ipynb)
 
 ### Install Dependencies
 
