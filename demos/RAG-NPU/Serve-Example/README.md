@@ -25,45 +25,54 @@ Bring your own files (PDFs, Word docs, text) and ask questions—the system retr
 
 ### Prerequisites
 - Windows ARM64 device with Snapdragon NPU
-- Nexa SDK installed
+- Python 3.11 – 3.13 (ARM64 build)
+- Nexa SDK installed ([Installation Guide](https://github.com/NexaAI/nexa-sdk))
+
 
 ### Install Models
 Download the three NPU-optimized models:
 
 ```bash
 nexa pull NexaAI/embeddinggemma-300m-npu
+
 nexa pull NexaAI/jina-v2-rerank-npu
+
 nexa pull NexaAI/Granite-4-Micro-NPU
 ```
 
-### Start Nexa Server
-Launch the server in a separate terminal:
-
-```bash
-nexa serve
-```
-
 ### Install Dependencies
-```bash
-# Optional: Create conda environment
-conda create -n rag-nexa python=3.10 -y
-conda activate rag-nexa
 
-# Install dependencies
+```bash
+
+# Navigate to the example directory
+cd Serve-Example
+
+# Create a Python virtual environment
+python -m venv .venv
+
+# Activate the virtual environment
+.\.venv\Scripts\activate
+
+# Install all required dependencies
 pip install -r requirements.txt
 ```
 
----
+Note: Make sure you're using Python 3.11-3.13 (ARM64) as specified in the prerequisites.
 
-## 3. Quick Start
+### Running the Example
 
-### CLI Mode
 ```bash
-# Serve Example
-python Serve-Example/rag_nexa.py --rebuild
 
-# Python binding Example
-python Python-Binding-Example/rag_nexa.py --rebuild
+# Start Nexa server
+nexa serve
+
+# Run the CLI version which provides an interactive terminal interface
+# This version allows direct interaction with the agent through command line
+python rag_nexa.py --data ..\docs
+
+# Run the Gradio UI version
+# This starts a local web server with a chat interface at http://localhost:7860
+python gradio_ui.py
 
 ```
 
@@ -73,18 +82,15 @@ python Python-Binding-Example/rag_nexa.py --rebuild
 - Run with `--rebuild` flag or type `:reload` after adding new files
 - Ask questions and get answers based on your documents
 
-### Gradio UI Mode
-```bash
-# Serve Example
-python Serve-Example/gradio_ui.py
-
-# Python binding Example
-python Python-Binding-Example/gradio_ui.py
-```
-
-Open [http://127.0.0.1:7860](http://127.0.0.1:7860) in your browser.
-
 **Features:**
 - **Left panel:** Upload files and rebuild index
 - **Right panel:** Chat interface with streaming responses
 - Fully interactive local RAG experience
+
+
+## Additional Resources
+
+- [Nexa SDK Repository](https://github.com/NexaAI/nexa-sdk)
+- [Granite Models](https://huggingface.co/ibm-granite)
+- [python-3.11.1-arm64.exe](https://www.python.org/ftp/python/3.11.1/python-3.11.1-arm64.exe)
+- [python-3.13.8-arm64.exe](https://www.python.org/ftp/python/3.13.8/python-3.13.8-arm64.exe)
