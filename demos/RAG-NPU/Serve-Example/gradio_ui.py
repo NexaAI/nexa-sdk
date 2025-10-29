@@ -204,14 +204,11 @@ def chat_stream(message: str, history: list, index: Optional[Dict[str, Any]],
     # Build messages for LLM with system prompt containing context
     messages = [
         {
-            "role": "system",
-            "content": (
+            "role": "user", "content": (
                 "You are a careful assistant. Use ONLY the provided context to answer. "
-                "If the context doesn't contain the answer, say so.\n\n"
-                f"<context>\n{context_text}\n</context>"
-            ),
-        },
-        {"role": "user", "content": message},
+                f"Context:\n{context_text}\n"
+                f"Question:\n {message}\n"
+        )},
     ]
     
     response = ""
