@@ -9,7 +9,7 @@ This is the **world's first fully NPU-supported RAG pipeline** running entirely 
 - 🌟 **State-of-the-art Models** — Best-in-class embedding, reranking, and generation
 - 🔌 **Always-On** — Efficient enough to run as a background service
 
-![The Stack](../architecture.png)
+![The Stack](./architecture.png)
 
 **The Stack:**
 - **Embedding:** Gemma-300M (Google DeepMind) — Top multilingual embedding model
@@ -60,10 +60,8 @@ Note: Make sure you're using Python 3.11-3.13 (ARM64) as specified in the prereq
 
 ### Running the Example
 
-```bash
-# Run the CLI version which provides an interactive terminal interface
-# This version allows direct interaction with the agent through command line
-python rag_nexa.py --data ..\docs
+# Start Nexa server
+nexa serve
 
 # Run the Gradio UI version
 # This starts a local web server with a chat interface at http://localhost:7860

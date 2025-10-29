@@ -43,9 +43,14 @@ nexa pull NexaAI/Granite-4-Micro-NPU
 ### Install Dependencies
 
 ```bash
+<<<<<<<< HEAD:demos/RAG-NPU/Serve-Example/README.md
 
 # Navigate to the example directory
 cd Serve-Example
+========
+# Navigate to the example directory
+cd Python-Binding-Example
+>>>>>>>> 03ad1c6 (refactor: update RAG-NPU README):demos/RAG-NPU/Python-Binding-Example/README.md
 
 # Create a Python virtual environment
 python -m venv .venv
@@ -62,6 +67,7 @@ Note: Make sure you're using Python 3.11-3.13 (ARM64) as specified in the prereq
 ### Running the Example
 
 ```bash
+<<<<<<<< HEAD:demos/RAG-NPU/Serve-Example/README.md
 
 # Start Nexa server
 nexa serve
@@ -70,6 +76,12 @@ nexa serve
 # This version allows direct interaction with the agent through command line
 python rag_nexa.py --data ..\docs
 
+========
+# Run the CLI version which provides an interactive terminal interface
+# This version allows direct interaction with the agent through command line
+python rag_nexa.py --data ..\docs
+
+>>>>>>>> 03ad1c6 (refactor: update RAG-NPU README):demos/RAG-NPU/Python-Binding-Example/README.md
 # Run the Gradio UI version
 # This starts a local web server with a chat interface at http://localhost:7860
 python gradio_ui.py
