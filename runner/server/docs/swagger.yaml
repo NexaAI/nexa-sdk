@@ -848,19 +848,18 @@ components:
         model:
           type: string
           description: ID of the model to use
+          default: "nexaml/Kokoro-82M-bf16-MLX"
         input:
           type: string
           description: The text to generate audio for
         voice:
           type: string
-          enum: [alloy, echo, fable, onyx, nova, shimmer]
           description: The voice to use when generating the audio
-          default: "alloy"
         response_format:
           type: string
-          enum: [mp3, opus, aac, flac]
+          enum: [wav]
           description: The format to return the audio in
-          default: "mp3"
+          default: "wav"
         speed:
           type: number
           format: float
@@ -876,6 +875,7 @@ components:
         model:
           type: string
           description: ID of the model to use
+          default: "NexaAI/parakeet-tdt-0.6b-v3-npu"
         file:
           type: string
           format: binary
@@ -886,11 +886,12 @@ components:
         prompt:
           type: string
           description: An optional text to guide the model's style or continue a previous audio segment
+          default: "I am fine, thank you, and you?"
         response_format:
           type: string
           enum: [json, text, srt, verbose_json, vtt]
           description: The format of the transcript output
-          default: "json"
+          default: "text"
         temperature:
           type: number
           format: float
@@ -913,6 +914,7 @@ components:
         model:
           type: string
           description: ID of the model to use
+          default: "nexaml/pyannote-npu"
         audio:
           type: string
           description: The audio data to diarize (base64 encoded or URL)
@@ -951,6 +953,7 @@ components:
         model:
           type: string
           description: ID of the model to use
+          default: "NexaAI/paddleocr-npu"
         image:
           type: string
           description: The image data to analyze (base64 encoded or URL)
