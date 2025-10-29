@@ -20,9 +20,6 @@ $env:NEXA_TOKEN="your_token_here"
 # Download model
 nexa pull NexaAI/granite-4-Nano-NPU
 
-# Start Nexa server
-nexa serve
-
 # Navigate to the example directory
 cd Serve-Example
 
@@ -41,6 +38,10 @@ Note: Make sure you're using Python 3.11-3.13 (ARM64) as specified in the prereq
 ### 2. Running the Example
 
 ```bash
+
+# Start Nexa server
+nexa serve
+
 # Run the CLI version which provides an interactive terminal interface
 # This version allows direct interaction with the agent through command line
 python agent_nexa.py
