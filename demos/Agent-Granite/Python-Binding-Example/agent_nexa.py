@@ -29,7 +29,7 @@ Your goals:
 
 Functions:
 1. search_web(query: string) - Web search
-2. write_to_file(file_path: string, content: string) - Save text to file
+2. write_to_file(file_path: string) - Save text to file
 
 Output JSON for function calls:
 {"name": "function_name", "arguments": {"key": "value"}}
@@ -63,7 +63,7 @@ FUNCTION_TOOLS = [
         },
     },
     {
-        "name": "write_file",
+        "name": "write_to_file",
         "description": "Writes text content into a file on the local filesystem.",
         "parameters": {
             "type": "object",

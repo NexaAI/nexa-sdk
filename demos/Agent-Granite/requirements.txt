@@ -1,8 +1,0 @@
-requests>=2.31
-pydantic>=2.0
-psutil
-pillow
-gradio
-pdfplumber
-google-search-results
-nexaai
