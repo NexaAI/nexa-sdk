@@ -792,7 +792,7 @@ components:
         batch_size:
           type: integer
           description: The batch size to use for reranking
-          default: 0
+          default: 4
           example: 4
         normalize:
           type: boolean
