@@ -19,7 +19,7 @@ from rag_nexa import (
     build_json_index, load_json_index, search_numpy, call_nexa_chat
 )
 
-DOCS_DIR_DEFAULT = "./docs"
+DOCS_DIR_DEFAULT = "../docs"
 
 
 # ============================================================================
