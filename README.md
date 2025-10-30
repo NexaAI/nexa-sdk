@@ -14,6 +14,9 @@
     <a href="https://docs.nexa.ai">
         <img src="https://img.shields.io/badge/docs-website-brightgreen?logo=readthedocs" alt="Documentation">
     </a>
+    <a href="https://sdk.nexa.ai/wishlist">
+        <img src="https://img.shields.io/badge/🎯_Vote_for-Next_Models-ff69b4?style=flat-square" alt="Vote for Next Models">
+    </a>
    <a href="https://x.com/nexa_ai"><img alt="X account" src="https://img.shields.io/twitter/url/https/twitter.com/diffuserslib.svg?style=social&label=Follow%20%40Nexa_AI"></a>
     <a href="https://discord.com/invite/nexa-ai">
         <img src="https://img.shields.io/discord/1192186167391682711?color=5865F2&logo=discord&logoColor=white&style=flat-square" alt="Join us on Discord">
@@ -162,6 +165,21 @@ nexa infer NexaAI/Qwen3-VL-4B-Instruct-NPU
 👉 To interact with multimodal models, you can drag photos or audio clips directly into the CLI — you can even drop multiple images at once!
 
 See [CLI Reference](https://nexaai.mintlify.app/nexa-sdk-go/NexaCLI) for full commands.
+
+### Import model from local filesystem
+
+```bash
+# hf download <model> --local-dir /path/to/modeldir
+nexa pull <model> --model-hub localfs --local-path /path/to/modeldir
+```
+
+## 🎯 You Decide What Model We Support Next
+
+**[Nexa Wishlist](https://sdk.nexa.ai/wishlist)** — Request and vote for the models you want to run on-device.
+
+Drop a Hugging Face repo ID, pick your preferred backend (GGUF, MLX, or Nexa format for Qualcomm + Apple NPUs), and watch the community's top requests go live in NexaSDK.
+
+👉 **[Vote now at sdk.nexa.ai/wishlist](https://sdk.nexa.ai/wishlist)**
 
 ## Acknowledgements
 
