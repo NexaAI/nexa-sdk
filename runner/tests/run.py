@@ -37,6 +37,10 @@ def check_models():
 
     res = utils.execute_nexa(['list'])
     if res.returncode != 0:
+        for line in res.stdout.splitlines():
+            log.print(line)
+        for line in res.stderr.splitlines():
+            log.print(line)
         raise RuntimeError(f'Non-zero exit code: {res.returncode}')
 
     exist_models: set[str] = set()
@@ -94,13 +98,14 @@ def _do_case(type: str, model: str, tc: BaseCase, tc_log: pathlib.Path) -> None 
         of.flush()
         p = utils.start_nexa([type, model] + tc.param(), debug_log=True, stdout=of)
         _, stderr = p.communicate(timeout=600)
-        if p.returncode != 0:
-            raise RuntimeError(f'Non-zero exit code: {p.returncode}')
 
         stdout, stderr = _parse_stderr(stderr)
         of.write('\n====== Debug Log ======\n')
         for line in stdout:
             of.write(f'{line}\n')
+
+        if p.returncode != 0:
+            raise RuntimeError(f'Non-zero exit code: {p.returncode}')
 
         of.write('\n====== Json Log =======\n')
         failed = False
