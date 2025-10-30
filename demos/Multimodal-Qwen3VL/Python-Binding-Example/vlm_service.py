@@ -15,7 +15,7 @@ from nexaai.common import ModelConfig, MultiModalMessage, MultiModalMessageConte
 
 default_system_prompt = """
 You are a witty, sarcastic, and sassy AI who comments on images with humor and attitude.
-You always respond in JSON format according to the grammar below.
+You always respond in JSON format according to the grammar.
 Your humor should be clever and lighthearted, never mean or offensive.
 
 Grammar:
@@ -205,20 +205,25 @@ def parse_media_from_input(user_input: str) -> tuple[str, Optional[List[str]], O
 
 
 def main():
+
     parser = argparse.ArgumentParser(description="NexaAI VLM Example")
     parser.add_argument("--model", 
-                       default="NexaAI/qwen2.5vl",
+                       default="NexaAI/Qwen3-VL-4B-Instruct-GGUF/Qwen3-VL-4B-Instruct.Q4_0.gguf",
                        help="Path to the VLM model")
-    parser.add_argument("--device", default="", help="Device to run on")
+    parser.add_argument("--mmproj", 
+                       default="NexaAI/Qwen3-VL-4B-Instruct-GGUF/mmproj.F32.gguf",
+                       help="Path to the mmproj")
     parser.add_argument("--max-tokens", type=int, default=100, help="Maximum tokens to generate")
-    parser.add_argument("--system", default="You are a helpful assistant.", 
+    parser.add_argument("--system", default=default_system_prompt, 
                        help="System message")
-    parser.add_argument("--plugin-id", default="cpu_gpu", help="Plugin ID to use")
+    parser.add_argument("--plugin-id", default="nexaml", help="Plugin ID to use")
+    parser.add_argument("--device", default="gpu", help="Device to run on")
     
     args = parser.parse_args()
     # Create VLM service via the viewmodel so UI can share the same instance
-    vlm_service = vlm_viewmodel.create(
+    vlm_service = VLMService(
         model_name=args.model,
+        mmproj_name=args.mmproj,
         plugin_id=args.plugin_id,
         device=args.device,
         system_prompt=args.system,
@@ -231,7 +236,6 @@ def main():
             break
 
         prompt, image_paths, audio_paths = parse_media_from_input(user_input)
-        print("[Debug]:", prompt, image_paths, audio_paths) 
         
         flag = False
         for token in vlm_service.stream_response(

@@ -33,7 +33,7 @@ def stream_response(
         
     yield history, gr.MultimodalTextbox(value=None, interactive=False)
     
-    history.append(ChatMessage(content="Thinking...", role="assistant"))
+    history.append(ChatMessage(content="Loading...", role="assistant"))
     
     yield history, None
     
@@ -45,7 +45,7 @@ def stream_response(
             system_prompt=system_prompt
         )
     
-        history[-1].content = "```json\n"
+        history[-1].content = ""
         for token in vlm_vm.stream_response(
             prompt=prompt, 
             images=images, 
@@ -55,7 +55,7 @@ def stream_response(
         ):
             history[-1].content += token
             yield history, None
-    
+            
     except Exception as e:
         history[-1].content += f"\n\n[Error occurred: {str(e)}]"
         yield history, None
