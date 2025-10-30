@@ -260,6 +260,7 @@ func pullModel(name string, quant string) error {
 		for err := range errCh {
 			bar.Clear()
 			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
+			return err
 		}
 	} else {
 		var manifest types.ModelManifest
@@ -304,6 +305,7 @@ func pullModel(name string, quant string) error {
 		for err := range errCh {
 			bar.Clear()
 			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
+			return err
 		}
 	}
 
