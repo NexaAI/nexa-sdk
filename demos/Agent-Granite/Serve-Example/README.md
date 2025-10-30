@@ -13,10 +13,17 @@ This demo showcases a function tool implementation using Nexa Sdk.
 ### Download Models
 Download the three NPU-optimized models:
 
+First Activate your device with your access token for free at ([sdk.nexa.ai](https://sdk.nexa.ai/))
+
+```bash
+# Set access token
+nexa config set license '<access_token>'
+```
+
 ```bash
 
 # Download model
-nexa pull NexaAI/granite-4-Nano-NPU
+nexa pull NexaAI/Granite-4.0-h-350M-NPU
 ```
 
 ### Install Dependencies
