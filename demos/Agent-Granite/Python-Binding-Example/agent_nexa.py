@@ -12,7 +12,7 @@ from nexaai.common import ModelConfig, ChatMessage
 
 # Nexa config
 DEFAULT_MODEL = "NexaAI/Granite-4-Micro-NPU"
-# DEFAULT_MODEL = "NexaAI/granite-4-Nano-NPU"
+# DEFAULT_MODEL = "NexaAI/Granite-4.0-h-350M-NPU"
 
 # You can get a free API key from https://serpapi.com/
 SEARCH_API_KEY = "7467f292f9d4ce3324da285ca111ea11477ba7fc84ee7e9fa5f867a9d1b35856"
