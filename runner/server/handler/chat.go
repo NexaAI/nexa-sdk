@@ -253,7 +253,8 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 			resWg.Wait()
 			if param.StreamOptions.IncludeUsage.Value {
 				c.SSEvent("", openai.ChatCompletionChunk{
-					Usage: profile2Usage(res.ProfileData),
+					Choices: []openai.ChatCompletionChunkChoice{},
+					Usage:   profile2Usage(res.ProfileData),
 				})
 			}
 
@@ -541,7 +542,8 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 			resWg.Wait()
 			if param.StreamOptions.IncludeUsage.Value {
 				c.SSEvent("", openai.ChatCompletionChunk{
-					Usage: profile2Usage(res.ProfileData),
+					Choices: []openai.ChatCompletionChunkChoice{},
+					Usage:   profile2Usage(res.ProfileData),
 				})
 			}
 
