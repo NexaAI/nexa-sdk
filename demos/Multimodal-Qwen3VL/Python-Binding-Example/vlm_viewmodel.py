@@ -79,7 +79,7 @@ class VLMViewModel:
         return [
             ModelInfo(
                 repo_id="NexaAI/Qwen3-VL-4B-Instruct-GGUF",
-                plugin_ids=["nexaml", "cpu_gpu"],
+                plugin_ids=["nexaml"],
                 model_path="NexaAI/Qwen3-VL-4B-Instruct-GGUF/Qwen3-VL-4B-Instruct.Q4_0.gguf",
                 mmproj_path="NexaAI/Qwen3-VL-4B-Instruct-GGUF/mmproj.F32.gguf",
                 devices=["gpu", "cpu"]

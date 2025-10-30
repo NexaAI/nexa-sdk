@@ -37,14 +37,14 @@ def stream_response(
     
     yield history, None
     
-    vlm_vm.create(
-        repo_id=repo_id,
-        plugin_id=plugin_id,
-        device=device_id,
-        system_prompt=system_prompt
-    )
-    
     try:
+        vlm_vm.create(
+            repo_id=repo_id,
+            plugin_id=plugin_id,
+            device=device_id,
+            system_prompt=system_prompt
+        )
+    
         history[-1].content = "```json\n"
         for token in vlm_vm.stream_response(
             prompt=prompt, 
@@ -119,12 +119,12 @@ with gr.Blocks(title="VLM Example with Nexa Python Binding", fill_height=True) a
             
             return [
                 gr.update(
-                    choices=["cpu_gpu"],
-                    value="cpu_gpu"
+                    choices=["nexaml"],
+                    value="nexaml"
                 ), 
                 gr.update(
-                    choices=["cpu"],
-                    value="cpu"
+                    choices=["gpu"],
+                    value="gpu"
                 ),
                 []
             ]

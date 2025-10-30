@@ -39,8 +39,8 @@ class VLMService:
         self, 
         model_name: str, 
         mmproj_name: str,
-        plugin_id: str = "gpu", 
-        device: str = "",
+        plugin_id: str = "nexaml", 
+        device: str = "gpu",
         system_prompt: str = ""
     ):
         self.model_name = model_name
@@ -60,7 +60,7 @@ class VLMService:
         """Initialize the VLM model and conversation context."""
         m_cfg = ModelConfig()
         
-        print("[debug: ]", self.model_name, self.plugin_id, self.device)
+        print("[debug: ]", self.model_name, self.plugin_id, self.device, self.mmproj_name)
         self._model = VLM.from_(
             name_or_path=self.model_name,
             m_cfg=m_cfg,
@@ -115,7 +115,7 @@ class VLMService:
         self._conversation.append(user_msg)
 
         prompt = self._model.apply_chat_template(self._conversation)
-        
+     
         sampler_config = SamplerConfig()
         sampler_config.temperature = temperature
         sampler_config.top_p = top_p
@@ -130,8 +130,11 @@ class VLMService:
     
         gen_cfg = GenerationConfig(
             max_tokens=max_tokens, 
-            sampler_config=sampler_config
+            sampler_config=sampler_config,
+            image_paths=images,
+            audio_paths=audios
         )
+        
         
         strbuff = io.StringIO()
         strbuff.truncate(0)
