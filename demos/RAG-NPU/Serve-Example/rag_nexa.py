@@ -21,7 +21,7 @@ from contextlib import contextmanager
 # ============================================================================
 # Configuration Constants
 # ============================================================================
-DEFAULT_MODEL = "NexaAI/Granite-4-Micro-NPU"
+DEFAULT_MODEL = "NexaAI/Llama3.2-3B-NPU-Turbo"
 DEFAULT_ENDPOINT = "http://127.0.0.1:18181"
 DEFAULT_EMBED_MODEL = "NexaAI/embeddinggemma-300m-npu"
 DEFAULT_INDEX_JSON = "./vecdb.json"

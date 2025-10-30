@@ -48,10 +48,15 @@ func RootCmd() *cobra.Command {
 
 			// skip update check
 			if !skipUpdate {
-				if !slices.Contains([]string{"version", "update", "migrate"}, subCmd) {
-					go checkForUpdate(false)
-				}
 				notifyUpdate()
+				// skip some quick commands
+				if !slices.Contains([]string{
+					"remove", "rm", "clean", "list", "ls",
+					"config",
+					"version", "update",
+				}, subCmd) {
+					go checkUpdate()
+				}
 			}
 
 			// license

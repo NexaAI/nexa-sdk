@@ -37,6 +37,10 @@ def check_models():
 
     res = utils.execute_nexa(['list'])
     if res.returncode != 0:
+        for line in res.stdout.splitlines():
+            log.print(line)
+        for line in res.stderr.splitlines():
+            log.print(line)
         raise RuntimeError(f'Non-zero exit code: {res.returncode}')
 
     exist_models: set[str] = set()
@@ -54,10 +58,12 @@ def check_models():
                 exist_models.add(f'{name}:{quant.strip()}')
 
     for i, (_, model, type, _) in enumerate(testcases):
+        mp = f'{i+1:0{len(str(len(testcases)))}}/{len(testcases)}'
+
         if model in exist_models:
-            log.print(f'  --> [{i+1}/{len(testcases)}] {model} already exists, skip download')
+            log.print(f'  --> [{mp}] {model} already exists, skip download')
             continue
-        log.print(f'  --> [{i+1}/{len(testcases)}] {model} not found, downloading...')
+        log.print(f'  --> [{mp}] {model} not found, downloading...')
         res = utils.execute_nexa([
             'pull',
             model,
@@ -92,13 +98,14 @@ def _do_case(type: str, model: str, tc: BaseCase, tc_log: pathlib.Path) -> None 
         of.flush()
         p = utils.start_nexa([type, model] + tc.param(), debug_log=True, stdout=of)
         _, stderr = p.communicate(timeout=600)
-        if p.returncode != 0:
-            raise RuntimeError(f'Non-zero exit code: {p.returncode}')
 
         stdout, stderr = _parse_stderr(stderr)
         of.write('\n====== Debug Log ======\n')
         for line in stdout:
             of.write(f'{line}\n')
+
+        if p.returncode != 0:
+            raise RuntimeError(f'Non-zero exit code: {p.returncode}')
 
         of.write('\n====== Json Log =======\n')
         failed = False
@@ -145,12 +152,13 @@ def _start_server(tc_log: pathlib.Path):
 
 def _stop_server():
     for proc in psutil.process_iter():  # pyright: ignore[reportUnknownMemberType]
-        if proc.name() == 'nexa-cli' and 'serve' in proc.cmdline():
+        if 'nexa-cli' in proc.name() and 'serve' in proc.cmdline():
             try:
                 proc.terminate()
                 proc.wait(timeout=10)
             except Exception:
                 proc.kill()
+                proc.wait()
 
 
 def run_benchmark():
@@ -161,13 +169,13 @@ def run_benchmark():
 
     for i, (plugin, model, _, tcs) in enumerate(testcases):
         os.makedirs(log.log_dir / plugin, exist_ok=True)
-        mp = f'{i+1}/{len(testcases)}'
+        mp = f'{i+1:0{len(str(len(testcases)))}}/{len(testcases)}'
         log.print(f'==> [{mp}] Plugin: {plugin}, Model: {model}')
 
-        for i, tcc in enumerate(tcs):
+        for j, tcc in enumerate(tcs):
             tc = tcc()
-            tcp = f'{i+1}/{len(tcs)}'
-            tc_log = log.log_dir / plugin / f'{model.replace("/", "-").replace(":", "-")}-{tc.name()}'
+            tcp = f'{j+1:0{len(str(len(tcs)))}}/{len(tcs)}'
+            tc_log = log.log_dir / plugin / f'{mp.split("/")[0]}-{tcp.split("/")[0]}-{model.replace("/", "-").replace(":", "-")}-{tc.name()}'
 
             res = _do_case('infer', model, tc, tc_log)
             if res is None:

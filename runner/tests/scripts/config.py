@@ -57,15 +57,15 @@ TESTCASE_MAP: dict[str, dict[str, dict[str, list[type[BaseCase]]]]] = {
             'NexaAI/embeddinggemma-300m-npu': [SingleRound],
         },
         'asr': {
-            'NexaAI/parakeet-tdt-0.6b-v3-npu': [AudioMultiRound],
+            'NexaAI/parakeet-tdt-0.6b-v3-npu': [ASR],
         },
         'cv': {
-            'NexaAI/convnext-tiny-npu': [ImageMultiRound],
-            'NexaAI/paddleocr-npu': [ImageMultiRound],
-            'NexaAI/yolov12-npu': [ImageMultiRound],
+            'NexaAI/convnext-tiny-npu': [ImageRecognition],
+            'NexaAI/paddleocr-npu': [OCR],
+            'NexaAI/yolov12-npu': [ImageRecognition],
         },
         'reranker': {
-            'NexaAI/jina-v2-rerank-npu': [SingleRound],
+            'NexaAI/jina-v2-rerank-npu': [QueryDocument],
         }
     },
     'nexaml': {

@@ -251,17 +251,19 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 			}
 
 			resWg.Wait()
-			if param.StreamOptions.IncludeUsage.Value {
-				c.SSEvent("", openai.ChatCompletionChunk{
-					Usage: profile2Usage(res.ProfileData),
-				})
-			}
 
 			if err != nil {
 				c.SSEvent("", map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
-			} else {
-				c.SSEvent("", "[DONE]")
+				return false
 			}
+
+			if param.StreamOptions.IncludeUsage.Value {
+				c.SSEvent("", openai.ChatCompletionChunk{
+					Choices: []openai.ChatCompletionChunkChoice{},
+					Usage:   profile2Usage(res.ProfileData),
+				})
+			}
+			c.SSEvent("", "[DONE]")
 
 			return false
 		})
@@ -539,17 +541,19 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 			}
 
 			resWg.Wait()
-			if param.StreamOptions.IncludeUsage.Value {
-				c.SSEvent("", openai.ChatCompletionChunk{
-					Usage: profile2Usage(res.ProfileData),
-				})
-			}
 
 			if err != nil {
 				c.SSEvent("", map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
-			} else {
-				c.SSEvent("", "[DONE]")
+				return false
 			}
+
+			if param.StreamOptions.IncludeUsage.Value {
+				c.SSEvent("", openai.ChatCompletionChunk{
+					Choices: []openai.ChatCompletionChunkChoice{},
+					Usage:   profile2Usage(res.ProfileData),
+				})
+			}
+			c.SSEvent("", "[DONE]")
 
 			return false
 		})
