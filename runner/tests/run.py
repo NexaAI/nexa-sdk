@@ -54,10 +54,12 @@ def check_models():
                 exist_models.add(f'{name}:{quant.strip()}')
 
     for i, (_, model, type, _) in enumerate(testcases):
+        mp = f'{i+1:0{len(str(len(testcases)))}}/{len(testcases)}'
+
         if model in exist_models:
-            log.print(f'  --> [{i+1}/{len(testcases)}] {model} already exists, skip download')
+            log.print(f'  --> [{mp}] {model} already exists, skip download')
             continue
-        log.print(f'  --> [{i+1}/{len(testcases)}] {model} not found, downloading...')
+        log.print(f'  --> [{mp}] {model} not found, downloading...')
         res = utils.execute_nexa([
             'pull',
             model,
@@ -145,12 +147,13 @@ def _start_server(tc_log: pathlib.Path):
 
 def _stop_server():
     for proc in psutil.process_iter():  # pyright: ignore[reportUnknownMemberType]
-        if proc.name() == 'nexa-cli' and 'serve' in proc.cmdline():
+        if 'nexa-cli' in proc.name() and 'serve' in proc.cmdline():
             try:
                 proc.terminate()
                 proc.wait(timeout=10)
             except Exception:
                 proc.kill()
+                proc.wait()
 
 
 def run_benchmark():
@@ -161,13 +164,13 @@ def run_benchmark():
 
     for i, (plugin, model, _, tcs) in enumerate(testcases):
         os.makedirs(log.log_dir / plugin, exist_ok=True)
-        mp = f'{i+1}/{len(testcases)}'
+        mp = f'{i+1:0{len(str(len(testcases)))}}/{len(testcases)}'
         log.print(f'==> [{mp}] Plugin: {plugin}, Model: {model}')
 
-        for i, tcc in enumerate(tcs):
+        for j, tcc in enumerate(tcs):
             tc = tcc()
-            tcp = f'{i+1}/{len(tcs)}'
-            tc_log = log.log_dir / plugin / f'{model.replace("/", "-").replace(":", "-")}-{tc.name()}'
+            tcp = f'{j+1:0{len(str(len(tcs)))}}/{len(tcs)}'
+            tc_log = log.log_dir / plugin / f'{mp.split("/")[0]}-{tcp.split("/")[0]}-{model.replace("/", "-").replace(":", "-")}-{tc.name()}'
 
             res = _do_case('infer', model, tc, tc_log)
             if res is None:
