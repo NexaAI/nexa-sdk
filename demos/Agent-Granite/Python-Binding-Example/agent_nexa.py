@@ -1,5 +1,6 @@
 from __future__ import annotations
-import os
+import sys
+import platform
 import re
 import json
 import argparse
@@ -10,9 +11,56 @@ from serpapi import GoogleSearch
 from nexaai.llm import LLM, GenerationConfig
 from nexaai.common import ModelConfig, ChatMessage
 
-# Nexa config
-DEFAULT_MODEL = "NexaAI/Granite-4-Micro-NPU"
-# DEFAULT_MODEL = "NexaAI/Granite-4.0-h-350M-NPU"
+from dataclasses import dataclass
+import sys
+import platform
+import os
+
+@dataclass
+class ModelInfo:
+    """Model info for different platforms."""
+    model: str
+    plugin_id: str
+    device_id: str
+
+def get_model_info() -> ModelInfo:
+    """Return the default model info based on current OS and architecture."""
+    if sys.platform == "darwin":
+        # macOS
+        model_path = "~/.cache/nexa.ai/nexa_sdk/models/NexaAI/granite-4.0-micro-GGUF/granite-4.0-micro-Q4_0.gguf"
+        model = os.path.expanduser(model_path)
+        return ModelInfo(
+            model=model,
+            plugin_id="cpu_gpu",
+            device_id="cpu",
+        )
+
+    elif sys.platform.startswith("win"):
+        machine = platform.machine().lower()
+        if "arm" in machine:
+            # Windows ARM64
+            return ModelInfo(
+                model="NexaAI/Granite-4-Micro-NPU",
+                plugin_id="npu",
+                device_id="npu",
+            )
+        else:
+            # Windows x64
+            return ModelInfo(
+                model="NexaAI/granite-4.0-micro-GGUF/granite-4.0-micro-Q4_0.gguf",
+                plugin_id="cpu_gpu",
+                device_id="gpu",
+            )
+
+    # other
+    return ModelInfo(
+        model="NexaAI/granite-4.0-micro-GGUF/granite-4.0-micro-Q4_0.gguf",
+        plugin_id="cpu_gpu",
+        device_id="gpu",
+    )
+
+# Default model info
+DEFAULT_MODEL = get_model_info()
 
 # You can get a free API key from https://serpapi.com/
 SEARCH_API_KEY = "7467f292f9d4ce3324da285ca111ea11477ba7fc84ee7e9fa5f867a9d1b35856"
@@ -49,6 +97,35 @@ Assistant: {"name": "write_to_file", "arguments": {"file_path": "notes.txt"}}
 User: Hello
 Assistant: How can I assist you today?
 """
+
+FUNCTION_TOOLS = [
+    {
+        "type": "function", 
+        "function": {
+            "name": "search_web",
+            "description": "Searches the web for a given query and returns the latest information.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "User search query"}
+                },
+                "required": ["query"],
+            }
+        },
+    },
+    {
+        "type": "function", 
+        "function": {
+            "name": "write_to_file",
+            "description": "Writes text content into a file on the local filesystem.",
+            "parameters": {
+                "type": "object",
+                "properties": {"path": {"type": "string"}},
+                "required": ["path"],
+            }
+        },
+    }
+]
 
 
 def search_web(query: str):
@@ -87,7 +164,7 @@ FUNCTION_REGISTRY = {"search_web": search_web, "write_to_file": write_to_file}
 
 
 def handle_function_call(
-    func_name: str, func_args: dict, model: str, system_prompt: str = ""
+    func_name: str, func_args: dict, model: ModelInfo, system_prompt: str = ""
 ):
     """
     Execute the registered function, print the tool result, then call Nexa to produce
@@ -138,7 +215,7 @@ def handle_function_call(
         return
 
 
-def nexa_chat_stream(model: str, prompt: str, system_prompt: str = ""):
+def nexa_chat_stream(model: ModelInfo, prompt: str, system_prompt: str = ""):
     """
     Generate streaming conversation with local LLM
     NPU requires system prompt to be passed during model creation via ModelConfig
@@ -146,7 +223,7 @@ def nexa_chat_stream(model: str, prompt: str, system_prompt: str = ""):
     m_cfg = ModelConfig(
         system_prompt=system_prompt  # Pass system prompt for NPU plugin
     )
-    llm = LLM.from_(model, plugin_id="npu", device_id="npu", m_cfg=m_cfg)
+    llm = LLM.from_(model.model, plugin_id=model.plugin_id, device_id=model.device_id, m_cfg=m_cfg)
 
     messages: List[ChatMessage] = [ChatMessage(role="user", content=prompt)]
     prompt = llm.apply_chat_template(messages)
@@ -155,7 +232,7 @@ def nexa_chat_stream(model: str, prompt: str, system_prompt: str = ""):
         yield token
 
 
-def nexa_chat_completion(model: str, messages: list, system_prompt: str = ""):
+def nexa_chat_completion(model: ModelInfo, messages: list, system_prompt: str = ""):
     """
     Non-streaming conversation with local LLM
     NPU requires system prompt to be passed during model creation via ModelConfig
@@ -163,17 +240,21 @@ def nexa_chat_completion(model: str, messages: list, system_prompt: str = ""):
     m_cfg = ModelConfig(
         system_prompt=system_prompt  # Pass system prompt for NPU plugin
     )
-    llm = LLM.from_(model, plugin_id="npu", device_id="npu", m_cfg=m_cfg)
+    
+    llm = LLM.from_(model.model, plugin_id=model.plugin_id, device_id=model.device_id, m_cfg=m_cfg)
 
-    # Convert messages to ChatMessage format, excluding system messages
-    # (system prompt is already in model config for NPU)
-    chat_messages = [
-        ChatMessage(role=msg["role"], content=msg["content"])
-        for msg in messages
-        if msg["role"] != "system"  # Skip system messages - already in ModelConfig
-    ]
+    if model.plugin_id == 'npu':
+        # Convert messages to ChatMessage format, excluding system messages
+        # (system prompt is already in model config for NPU)
+        chat_messages = [
+            ChatMessage(role=msg["role"], content=msg["content"])
+            for msg in messages
+            if msg["role"] != "system"  # Skip system messages - already in ModelConfig
+        ]
+    else:
+        chat_messages = messages
 
-    prompt = llm.apply_chat_template(chat_messages)
+    prompt = llm.apply_chat_template(chat_messages, tools=FUNCTION_TOOLS)
 
     return llm.generate(prompt, g_cfg=GenerationConfig(max_tokens=512))
 
@@ -230,7 +311,7 @@ def extract_function_call(text: str) -> Optional[Tuple[str, dict]]:
 def nexa_start_search_stream(
     query: str,
     last_message: str = "",
-    model: str = DEFAULT_MODEL,
+    model: ModelInfo = DEFAULT_MODEL,
 ):
     """
     Main agent function that handles user query and function calling.
@@ -335,13 +416,17 @@ def nexa_start_search_stream(
 # CLI
 def main():
     """Main CLI entry point"""
+    
     ap = argparse.ArgumentParser(description="Function Tool with Nexa SDK server")
-    ap.add_argument("--model", default=DEFAULT_MODEL, help="Nexa model path.")
+    ap.add_argument("--model", default=DEFAULT_MODEL.model, help="Nexa model path.")
+    ap.add_argument("--plugin_id", default=DEFAULT_MODEL.plugin_id, help="Plugin id.")
+    ap.add_argument("--device_id", default=DEFAULT_MODEL.device_id, help="Device id")
     args = ap.parse_args()
 
-    print(f"[info] Ready. Using model={args.model}")
+    print(f"[info] Ready. Using model={args.model}, plugin_id={args.plugin_id}, device_id={args.device_id}")
     print("Type your question (or just press Enter to quit):")
-
+    
+    model = ModelInfo(model=args.model, plugin_id=args.plugin_id, device_id=args.device_id)
     last_message = ""
     while True:
         try:
@@ -353,7 +438,7 @@ def main():
             response_content = ""
 
             # Parse JSON responses and display nicely
-            for piece in nexa_start_search_stream(q, last_message, args.model):
+            for piece in nexa_start_search_stream(q, last_message, model):
                 try:
                     parsed = json.loads(piece)
                     status = parsed.get("status")
