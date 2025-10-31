@@ -1,6 +1,6 @@
 ## About
 
-This demo showcases a function tool implementation using NexaAI Python bindings. 
+This demo showcases a function tool implementation using NexaAI Python binding. 
 
 ## Setup
 

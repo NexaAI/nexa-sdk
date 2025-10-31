@@ -34,7 +34,7 @@ source .venv/bin/activate # macOS
 pip install -r requirements.txt
 ```
 
-## 2. Running the Example
+## Running the Example
 
 ```bash
 # Run the CLI version which provides an interactive terminal interface
