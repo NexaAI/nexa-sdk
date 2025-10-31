@@ -19,8 +19,11 @@ cd Python-Binding-Example
 # Create a Python virtual environment
 python -m venv .venv
 
-# Activate the virtual environment
+# Activate the virtual environment (windows)
 .\.venv\Scripts\activate
+
+# Activate the virtual environment (macOS)
+source .venv/bin/activate
 
 # Install all required dependencies
 pip install nexaai
