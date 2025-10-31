@@ -15,6 +15,7 @@ import docx
 
 import warnings
 import sys
+import platform
 from io import StringIO
 from contextlib import contextmanager
 from dataclasses import dataclass

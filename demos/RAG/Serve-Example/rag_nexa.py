@@ -14,6 +14,7 @@ import pdfplumber
 import docx
 
 import warnings
+import platform
 import sys
 from io import StringIO
 from contextlib import contextmanager
