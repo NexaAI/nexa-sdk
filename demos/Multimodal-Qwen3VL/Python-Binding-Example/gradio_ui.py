@@ -57,7 +57,7 @@ def stream_response(
             yield history, None
             
     except Exception as e:
-        history[-1].content += f"\n\n[Error occurred: {str(e)}]"
+        history[-1].content = f"\n\n[Error occurred: {str(e)}]"
         yield history, None
 
 # Build Gradio UI
