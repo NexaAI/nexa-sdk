@@ -36,10 +36,8 @@ class ModelInfo:
 
 def get_model_info() -> ModelInfo:
     """Return the default model info based on current OS and architecture."""
-    model_path = "~/.cache/nexa.ai/nexa_sdk/models/NexaAI/Qwen3-4B-GGUF/Qwen3-4B-Q4_0.gguf"
-    model = os.path.expanduser(model_path)
     gguf_model = ModelInfo(
-        model=model,
+        model="NexaAI/Qwen3-4B-GGUF/Qwen3-4B-Q4_0.gguf",
         plugin_id="cpu_gpu",
         device_id="cpu",
     )
@@ -64,10 +62,8 @@ def get_model_info() -> ModelInfo:
 
 def get_embedding_model_info() -> ModelInfo:
     """Return the default model info based on current OS and architecture."""
-    model_path = "~/.cache/nexa.ai/nexa_sdk/models/jinaai/jina-embeddings-v4-text-retrieval-GGUF/jina-embeddings-v4-text-retrieval-Q4_K_M.gguf"
-    model = os.path.expanduser(model_path)
     gguf_model = ModelInfo(
-        model=model,
+        model="jinaai/jina-embeddings-v4-text-retrieval-GGUF/jina-embeddings-v4-text-retrieval-Q4_K_M.gguf",
         plugin_id="cpu_gpu",
         device_id="cpu",
     )
@@ -92,10 +88,8 @@ def get_embedding_model_info() -> ModelInfo:
 
 def get_rerank_model_info() -> ModelInfo:
     """Return the default model info based on current OS and architecture."""
-    model_path = "~/.cache/nexa.ai/nexa_sdk/models/jinaai/jina-reranker-v3-GGUF/jina-reranker-v3-Q4_K_M.gguf"
-    model = os.path.expanduser(model_path)
     gguf_model = ModelInfo(
-        model=model,
+        model="jinaai/jina-reranker-v3-GGUF/jina-reranker-v3-Q4_K_M.gguf",
         plugin_id="cpu_gpu",
         device_id="cpu",
     )

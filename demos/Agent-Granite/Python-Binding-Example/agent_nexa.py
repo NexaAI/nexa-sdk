@@ -25,15 +25,14 @@ class ModelInfo:
 
 def get_model_info() -> ModelInfo:
     """Return the default model info based on current OS and architecture."""
+    default_model = ModelInfo(
+        model="NexaAI/granite-4.0-micro-GGUF/granite-4.0-micro-Q4_0.gguf",
+        plugin_id="cpu_gpu",
+        device_id="gpu",
+    )
     if sys.platform == "darwin":
         # macOS
-        model_path = "~/.cache/nexa.ai/nexa_sdk/models/NexaAI/granite-4.0-micro-GGUF/granite-4.0-micro-Q4_0.gguf"
-        model = os.path.expanduser(model_path)
-        return ModelInfo(
-            model=model,
-            plugin_id="cpu_gpu",
-            device_id="cpu",
-        )
+        return default_model
 
     elif sys.platform.startswith("win"):
         machine = platform.machine().lower()
@@ -46,18 +45,10 @@ def get_model_info() -> ModelInfo:
             )
         else:
             # Windows x64
-            return ModelInfo(
-                model="NexaAI/granite-4.0-micro-GGUF/granite-4.0-micro-Q4_0.gguf",
-                plugin_id="cpu_gpu",
-                device_id="gpu",
-            )
+            return default_model
 
     # other
-    return ModelInfo(
-        model="NexaAI/granite-4.0-micro-GGUF/granite-4.0-micro-Q4_0.gguf",
-        plugin_id="cpu_gpu",
-        device_id="gpu",
-    )
+    return default_model
 
 # Default model info
 DEFAULT_MODEL = get_model_info()
