@@ -2,6 +2,7 @@
 # Fix for ARM64 Windows matplotlib compatibility issue
 import os
 import sys
+from gradio import ChatMessage
 
 # Disable Gradio's matplotlib backend manager on ARM64 Windows
 if sys.platform == "win32" and os.environ.get("PROCESSOR_ARCHITECTURE") == "ARM64":
@@ -174,15 +175,24 @@ def chat_stream(message: str, history: list, index: Optional[Dict[str, Any]],
     Yields:
         Updated chat history with streaming response
     """
-    # Validate index exists
-    if index is None:
-        yield history + [[message, "⚠️ Index is empty. Please upload documents and click 'Build/Rebuild' first."]]
-        return
-    
+    if history is None:
+        history = []
+        
     # Validate message
     if not message or not message.strip():
-        yield history + [[message, "⚠️ Please enter a question."]]
+        history.append(ChatMessage(role="assistant", content="⚠️ Please enter a question."))
+        yield history, ""
         return
+    
+    history.append(ChatMessage(role="user", content=message))
+    yield history, ""
+    
+    # Validate index exists
+    if index is None:
+        history.append(ChatMessage(role="assistant", content="⚠️ Index is empty. Please upload documents and click 'Build/Rebuild' first."))
+        yield history, ""
+        return
+    
     
     # Retrieve relevant document chunks using NumPy cosine similarity search
     try:
@@ -190,12 +200,14 @@ def chat_stream(message: str, history: list, index: Optional[Dict[str, Any]],
             message, index, DEFAULT_EMBED_MODEL, endpoint, top_k=int(k)
         )
     except Exception as e:
-        yield history + [[message, f"⚠️ Search failed: {e}"]]
+        history.append(ChatMessage(role="assistant", content="⚠️ Search failed: {e}"))
+        yield history, ""
         return
     
     # No results found
     if len(top_idx) == 0:
-        yield history + [[message, "⚠️ No relevant documents found."]]
+        history.append(ChatMessage(role="assistant", content="⚠️ No relevant documents found."))
+        yield history, ""
         return
     
     # Compose context from retrieved chunks
@@ -211,24 +223,26 @@ def chat_stream(message: str, history: list, index: Optional[Dict[str, Any]],
         )},
     ]
     
-    response = ""
     
     # Initialize assistant turn in chat history
-    yield history + [[message, response]]
+    history.append(ChatMessage(role="assistant", content=""))
+    yield history, ""
     
     # Stream response from LLM
     try:
         for piece in call_nexa_chat(model, messages, endpoint, stream=True):
-            response += piece or ""
-            yield history + [[message, response]]
+            history[-1].content += piece or ""
+            yield history, ""
             
     except Exception as e:
         # Fallback to non-streaming mode if streaming fails
         try:
             response = call_nexa_chat(model, messages, endpoint, stream=False) or ""
-            yield history + [[message, response]]
+            history[-1].content = response
+            yield history, ""
         except Exception as e2:
-            yield history + [[message, f"⚠️ Generation failed: {e2}"]]
+            history[-1].content = f"⚠️ Generation failed: {e2}"
+            yield history, ""
 
 
 # ============================================================================
@@ -273,7 +287,7 @@ with gr.Blocks(title="RAG System") as demo:
         
         # Right column: Chat interface
         with gr.Column(scale=2):
-            chat = gr.Chatbot(height=480, show_copy_button=True)
+            chat = gr.Chatbot(type="messages", height=480, show_copy_button=True)
             chat_input = gr.Textbox(
                 placeholder="Ask something about your documents...", 
                 label="Your question"
@@ -326,12 +340,12 @@ with gr.Blocks(title="RAG System") as demo:
     btn_send.click(
         fn=chat_stream,
         inputs=[chat_input, chat, index_state, model, endpoint, k],
-        outputs=chat,
+        outputs=[chat, chat_input],
     )
     chat_input.submit(
         fn=chat_stream,
         inputs=[chat_input, chat, index_state, model, endpoint, k],
-        outputs=chat,
+        outputs=[chat, chat_input]
     )
 
 

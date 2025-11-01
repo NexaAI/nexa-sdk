@@ -5,15 +5,13 @@ This demo showcases a function tool implementation using Nexa Sdk.
 ## Setup
 
 ### Prerequisites
-- Windows ARM64 device with Snapdragon NPU
-- Python 3.11 – 3.13 (ARM64 build) - We provide detailed installation guides in Jupyter Notebook format
-[Windows ARM64 Installation Guide](https://github.com/NexaAI/nexa-sdk/blob/main/bindings/python/notebook/winodws(arm64).ipynb)
-- Nexa SDK installed ([Installation Guide](https://github.com/NexaAI/nexa-sdk?tab=readme-ov-file#step-1-download-nexa-cli-with-one-click))
+
+- Nexa SDK Installed ([Installation Guide](https://github.com/NexaAI/nexa-sdk?tab=readme-ov-file#step-1-download-nexa-cli-with-one-click))
+- Python 3.11 – 3.13
 
 ### Download Models
-Download the three NPU-optimized models:
 
-First Activate your device with your access token for free at ([sdk.nexa.ai](https://sdk.nexa.ai/))
+If you use the `NexaAI/Granite-4.0-h-350M-NPU` model, you will need an access token, which can be obtained from ([sdk.nexa.ai](https://sdk.nexa.ai/)), and then set the token using the `nexa config` command below. 
 
 ```bash
 # Set access token
@@ -21,9 +19,12 @@ nexa config set license '<access_token>'
 ```
 
 ```bash
-
-# Download model
+# Download model — only required on Windows platform
 nexa pull NexaAI/Granite-4.0-h-350M-NPU
+
+# Download model (compatible with both Windows and macOS)
+nexa pull NexaAI/granite-4.0-micro-GGUF
+
 ```
 
 ### Install Dependencies
@@ -36,13 +37,13 @@ cd Serve-Example
 python -m venv .venv
 
 # Activate the virtual environment
-.\.venv\Scripts\activate
+.\.venv\Scripts\activate # windows
+
+source .venv/bin/activate # macOS
 
 # Install all required dependencies
 pip install -r requirements.txt
 ```
-
-Note: Make sure you're using Python 3.11-3.13 (ARM64) as specified in the prerequisites.
 
 ### Running the Example
 

@@ -7,9 +7,24 @@ import requests
 from typing import Any, Tuple, Optional
 from serpapi import GoogleSearch
 
+from dataclasses import dataclass
+import sys
+import platform
 
 # Nexa config
-DEFAULT_MODEL = "NexaAI/Granite-4.0-h-350M-NPU"
+if sys.platform == "darwin":
+    DEFAULT_MODEL = "NexaAI/granite-4.0-micro-GGUF"
+elif sys.platform.startswith("win"):
+    machine = platform.machine().lower()
+    if "arm" in machine:
+        # Windows ARM
+        DEFAULT_MODEL = "NexaAI/Granite-4.0-h-350M-NPU"
+    else:
+        # Windows x64
+        DEFAULT_MODEL = "NexaAI/granite-4.0-micro-GGUF"
+else:
+    DEFAULT_MODEL = "NexaAI/granite-4.0-micro-GGUF"
+
 DEFAULT_ENDPOINT = "http://127.0.0.1:18181"
 # You can get a free API key from https://serpapi.com/
 SEARCH_API_KEY = "7467f292f9d4ce3324da285ca111ea11477ba7fc84ee7e9fa5f867a9d1b35856"

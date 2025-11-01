@@ -1,6 +1,6 @@
 ## About
 
-This demo showcases a function tool implementation using NexaAI Python binding. 
+This demo showcases a RAG implementation using NexaAI Python binding. 
 
 ## Setup
 
@@ -30,7 +30,6 @@ python -m venv .venv
 
 source .venv/bin/activate # macOS
 
-
 # Install all required dependencies
 pip install -r requirements.txt
 ```
@@ -40,15 +39,10 @@ pip install -r requirements.txt
 ```bash
 # Run the CLI version which provides an interactive terminal interface
 # This version allows direct interaction with the agent through command line
-python agent_nexa.py
+python rag_nexa.py --data ../docs
 
 # Run the Gradio UI version
 # This starts a local web server with a chat interface at http://localhost:7860
 python gradio_ui.py
 
 ```
-
-## Usage Examples
-
-- **Web Search**: "What's the latest AI news?"
-- **File Operations**: "Save this conversation to notes.txt"

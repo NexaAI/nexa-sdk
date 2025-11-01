@@ -2,6 +2,7 @@
 # Fix for ARM64 Windows matplotlib compatibility issue
 import os
 import sys
+from gradio import ChatMessage
 
 # Disable Gradio's matplotlib backend manager on ARM64 Windows
 if sys.platform == "win32" and os.environ.get("PROCESSOR_ARCHITECTURE") == "ARM64":
@@ -16,7 +17,7 @@ import gradio as gr
 
 from rag_nexa import (
     DEFAULT_MODEL, DEFAULT_INDEX_JSON, DEFAULT_EMBED_MODEL, DEFAULT_MODEL_FOLDER,
-    build_json_index, load_json_index, search_numpy, call_nexa_chat
+    build_json_index, load_json_index, search_numpy, call_nexa_chat, call_nexa_chat_completion
 )
 
 DOCS_DIR_DEFAULT = "../docs"
@@ -111,8 +112,7 @@ def open_folder(path: str) -> Tuple[bool, Optional[str]]:
 # Core RAG Functions
 # ============================================================================
 
-def do_rebuild(docs_dir: str, k: int, chunk_size: int, chunk_overlap: int,
-               _model: str, endpoint: str) -> Tuple[Optional[Dict[str, Any]], str]:
+def do_rebuild(docs_dir: str, k: int, chunk_size: int, chunk_overlap: int) -> Tuple[Optional[Dict[str, Any]], str]:
     """
     Build or rebuild the document index from files in docs_dir.
     
@@ -121,8 +121,6 @@ def do_rebuild(docs_dir: str, k: int, chunk_size: int, chunk_overlap: int,
         k: Number of top results (unused in this function)
         chunk_size: Size of text chunks for splitting
         chunk_overlap: Overlap between consecutive chunks
-        _model: Model name (unused, using DEFAULT_EMBED_MODEL)
-        endpoint: API endpoint for embedding service
         
     Returns:
         Tuple of (index_dict or None, status_message)
@@ -141,7 +139,7 @@ def do_rebuild(docs_dir: str, k: int, chunk_size: int, chunk_overlap: int,
         # Build JSON index then load into memory
         n_docs, n_chunks = build_json_index(
             docs_dir, index_json_path, DEFAULT_EMBED_MODEL, 
-            chunk_size, chunk_overlap, DEFAULT_MODEL_FOLDER
+            chunk_size, chunk_overlap
         )
         
         # Load the built index into memory
@@ -158,8 +156,7 @@ def do_rebuild(docs_dir: str, k: int, chunk_size: int, chunk_overlap: int,
         return None, f"Error: Failed to build index - {e}"
 
 
-def chat_stream(message: str, history: list, index: Optional[Dict[str, Any]],
-                model: str, model_file_folder: str, k: int):
+def chat_stream(message: str, history: list, index: Optional[Dict[str, Any]], k: int):
     """
     Stream chat responses using RAG (Retrieval-Augmented Generation).
     
@@ -167,40 +164,48 @@ def chat_stream(message: str, history: list, index: Optional[Dict[str, Any]],
         message: User's question
         history: Chat history as list of [user_msg, assistant_msg] pairs
         index: In-memory index with document chunks and embeddings
-        model: LLM model name
-        endpoint: API endpoint for chat service
         k: Number of top-k chunks to retrieve
         
     Yields:
         Updated chat history with streaming response
     """
     # Validate index exists
+    if history is None:
+        history = []
+        
     if index is None:
-        yield history + [[message, "⚠️ Index is empty. Please upload documents and click 'Build/Rebuild' first."]]
+        history.append(ChatMessage(role="assistant", content="⚠️ Index is empty. Please upload documents and click 'Build/Rebuild' first."))
+        yield history, ""
         return
     
     # Validate message
     if not message or not message.strip():
-        yield history + [[message, "⚠️ Please enter a question."]]
+        history.append(ChatMessage(role="assistant", content="⚠️ Please enter a question."))
+        yield history, ""
         return
     
     # Retrieve relevant document chunks using NumPy cosine similarity search
     try:
         top_idx, top_sims = search_numpy(
-            message, index, DEFAULT_EMBED_MODEL, model_file_folder, top_k=int(k)
+            message, index, DEFAULT_EMBED_MODEL, top_k=int(k)
         )
     except Exception as e:
-        yield history + [[message, f"⚠️ Search failed: {e}"]]
+        history.append(ChatMessage(role="assistant", content=f"⚠️ Search failed: {e}"))
+        yield history, ""
         return
     
     # No results found
     if len(top_idx) == 0:
-        yield history + [[message, "⚠️ No relevant documents found."]]
+        history.append(ChatMessage(role="assistant", content=f"⚠️ No relevant documents found."))
+        yield history, ""
         return
     
     # Compose context from retrieved chunks
     context_text = "\n\n".join(index["texts"][i] for i in top_idx.tolist())
     
+    history.append(ChatMessage(role="user", content=message))
+    yield history, ""
+        
     # Build messages for LLM with system prompt containing context
     messages = [
         {
@@ -210,26 +215,26 @@ def chat_stream(message: str, history: list, index: Optional[Dict[str, Any]],
                 f"Question:\n {message}\n"
         )},
     ]
-    
-    response = ""
-    
+   
+    history.append(ChatMessage(role="assistant", content=""))
     # Initialize assistant turn in chat history
-    yield history + [[message, response]]
+    yield history, ""
     
     # Stream response from LLM
     try:
-        for piece in call_nexa_chat(model, messages, model_file_folder, stream=True):
-            response += piece or ""
-            yield history + [[message, response]]
+        for piece in call_nexa_chat(DEFAULT_MODEL, messages):
+            history[-1].content += piece
+            yield history, ""
             
     except Exception as e:
         # Fallback to non-streaming mode if streaming fails
         try:
-            response = call_nexa_chat(model, messages, model_file_folder, stream=False) or ""
-            yield history + [[message, response]]
+            response = call_nexa_chat_completion(DEFAULT_MODEL, messages) or ""
+            history[-1].content = response
+            yield history, ""
         except Exception as e2:
-            yield history + [[message, f"⚠️ Generation failed: {e2}"]]
-
+            history[-1].content = "⚠️ Generation failed: {e2}}"
+            yield history, ""
 
 # ============================================================================
 # Gradio UI
@@ -254,10 +259,6 @@ with gr.Blocks(title="RAG System") as demo:
                 file_count="multiple",
             )
             
-            # Model configuration
-            model = gr.Textbox(label="Model", value=DEFAULT_MODEL)
-            model_folder = gr.Textbox(label="Model Folder", value=DEFAULT_MODEL_FOLDER)
-            
             # Retrieval and chunking parameters
             k = gr.Slider(1, 20, value=5, step=1, label="Top-k (number of chunks to retrieve)")
             chunk_size = gr.Slider(300, 2000, value=1000, step=50, label="Chunk size (characters)")
@@ -273,7 +274,7 @@ with gr.Blocks(title="RAG System") as demo:
         
         # Right column: Chat interface
         with gr.Column(scale=2):
-            chat = gr.Chatbot(height=480, show_copy_button=True)
+            chat = gr.Chatbot(type="messages", height=480, show_copy_button=True)
             chat_input = gr.Textbox(
                 placeholder="Ask something about your documents...", 
                 label="Your question"
@@ -298,14 +299,14 @@ with gr.Blocks(title="RAG System") as demo:
     
     uploader.upload(fn=on_upload, inputs=[uploader, docs_dir], outputs=status)
     
-    def on_rebuild(d, k_, cs, co, m, e):
+    def on_rebuild(d, k_, cs, co):
         """Handle index rebuild event."""
-        idx, msg = do_rebuild(d, k_, cs, co, m, e)
+        idx, msg = do_rebuild(d, k_, cs, co)
         return idx, msg
     
     btn_rebuild.click(
         fn=on_rebuild,
-        inputs=[docs_dir, k, chunk_size, chunk_overlap, model, model_folder],
+        inputs=[docs_dir, k, chunk_size, chunk_overlap],
         outputs=[index_state, status],
     )
     
@@ -325,13 +326,13 @@ with gr.Blocks(title="RAG System") as demo:
     # Stream chat responses (both button click and enter key)
     btn_send.click(
         fn=chat_stream,
-        inputs=[chat_input, chat, index_state, model, model_folder, k],
-        outputs=chat,
+        inputs=[chat_input, chat, index_state, k],
+        outputs=[chat, chat_input],
     )
     chat_input.submit(
         fn=chat_stream,
-        inputs=[chat_input, chat, index_state, model, model_folder, k],
-        outputs=chat,
+        inputs=[chat_input, chat, index_state, k],
+        outputs=[chat, chat_input],
     )
 
 

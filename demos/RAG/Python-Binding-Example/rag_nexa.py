@@ -15,17 +15,109 @@ import docx
 
 import warnings
 import sys
+import platform
 from io import StringIO
 from contextlib import contextmanager
+from dataclasses import dataclass
+
+from nexaai.llm import LLM, GenerationConfig
+from nexaai.common import ModelConfig
+from nexaai.embedder import Embedder, EmbeddingConfig
+from nexaai.rerank import Reranker, RerankConfig
 
 # ============================================================================
 # Configuration Constants
 # ============================================================================
-DEFAULT_MODEL = "NexaAI/Llama3.2-3B-NPU-Turbo"
-DEFAULT_ENDPOINT = "http://127.0.0.1:18181"
-DEFAULT_EMBED_MODEL = "NexaAI/embeddinggemma-300m-npu"
+@dataclass
+class ModelInfo:
+    """Model info for different platforms."""
+    model: str
+    plugin_id: str
+    device_id: str
+
+def get_model_info() -> ModelInfo:
+    """Return the default model info based on current OS and architecture."""
+    gguf_model = ModelInfo(
+        model="NexaAI/Qwen3-4B-GGUF/Qwen3-4B-Q4_0.gguf",
+        plugin_id="cpu_gpu",
+        device_id="cpu",
+    )
+    if sys.platform == "darwin":
+        # macOS
+        return gguf_model
+
+    if sys.platform.startswith("win"):
+        machine = platform.machine().lower()
+        if "arm" in machine:
+            # Windows ARM64
+            return ModelInfo(
+                model="NexaAI/Llama3.2-3B-NPU-Turbo",
+                plugin_id="npu",
+                device_id="npu",
+            )
+        else:
+            # Windows x64
+            return gguf_model
+    # other
+    return gguf_model
+
+def get_embedding_model_info() -> ModelInfo:
+    """Return the default model info based on current OS and architecture."""
+    gguf_model = ModelInfo(
+        model="jinaai/jina-embeddings-v4-text-retrieval-GGUF/jina-embeddings-v4-text-retrieval-Q4_K_M.gguf",
+        plugin_id="cpu_gpu",
+        device_id="cpu",
+    )
+    if sys.platform == "darwin":
+        # macOS
+        return gguf_model
+
+    if sys.platform.startswith("win"):
+        machine = platform.machine().lower()
+        if "arm" in machine:
+            # Windows ARM64
+            return ModelInfo(
+                model="NexaAI/embeddinggemma-300m-npu",
+                plugin_id="npu",
+                device_id="npu",
+            )
+        else:
+            # Windows x64
+            return gguf_model
+    # other
+    return gguf_model
+
+def get_rerank_model_info() -> ModelInfo:
+    """Return the default model info based on current OS and architecture."""
+    gguf_model = ModelInfo(
+        model="jinaai/jina-reranker-v3-GGUF/jina-reranker-v3-Q4_K_M.gguf",
+        plugin_id="cpu_gpu",
+        device_id="cpu",
+    )
+    if sys.platform == "darwin":
+        # macOS
+        return gguf_model
+
+    if sys.platform.startswith("win"):
+        machine = platform.machine().lower()
+        if "arm" in machine:
+            # Windows ARM64
+            return ModelInfo(
+                model="NexaAI/jina-v2-rerank-npu",
+                plugin_id="npu",
+                device_id="npu",
+            )
+        else:
+            # Windows x64
+            return gguf_model
+    # other
+    return gguf_model
+
+DEFAULT_MODEL = get_model_info()
+DEFAULT_EMBED_MODEL = get_embedding_model_info()
+DEFAULT_RERANK_MODEL = get_rerank_model_info()
 DEFAULT_INDEX_JSON = "./vecdb.json"
-DEFAULT_RERANK_MODEL = "NexaAI/jina-v2-rerank-npu"
+DEFAULT_MODEL_FOLDER = "~/.cache/nexa.ai/nexa_sdk/models"
 
 # ============================================================================
 # File System Utilities
@@ -44,145 +136,83 @@ def get_default_data_folder() -> str:
 
 
 # ============================================================================
-# HTTP and API Communication
+# Nexa SDK Python binding API Calls
 # ============================================================================
-def _post_json(url: str, payload: dict, timeout: int = 300) -> dict:
+def call_nexa_chat(model: ModelInfo, messages: List[Dict[str, Any]]):
     """
-    Send POST request with JSON payload.
+    Call python binding(llm).
     
     Args:
-        url: Target endpoint URL
-        payload: JSON payload dictionary
-        timeout: Request timeout in seconds
-        
-    Returns:
-        dict: Parsed JSON response
-        
-    Raises:
-        requests.HTTPError: If request fails with 4xx or 5xx status
-    """
-    headers = {"Content-Type": "application/json"}
-    try:
-        resp = requests.post(url, headers=headers, data=json.dumps(payload), timeout=timeout)
-        if resp.status_code >= 400:
-            raise requests.HTTPError(f"{resp.status_code} {url}\n{resp.text}", response=resp)
-        return resp.json()
-    except requests.Timeout:
-        raise requests.HTTPError(f"Request timeout after {timeout}s: {url}")
-    except requests.RequestException as e:
-        raise requests.HTTPError(f"Request failed: {url}\n{str(e)}")
-
-
-def call_nexa_chat(model: str, messages: List[Dict[str, Any]], base: str, stream: bool = False):
-    """
-    Call Nexa-compatible /v1/chat/completions endpoint.
-    
-    Args:
-        model: Model name/identifier
+        model: ModelInfo
         messages: List of chat messages with 'role' and 'content'
-        base: Base URL for the API endpoint
-        stream: If True, yields text pieces; if False, returns full text
-        
+        stream: If True, yields text pieces; if False, returns full text 
     Returns:
         str (if stream=False): Complete response text
         Generator[str] (if stream=True): Yields text pieces incrementally
-        
-    Raises:
-        requests.HTTPError: If API request fails
     """
-    url = base.rstrip("/") + "/v1/chat/completions"
-    headers = {"Content-Type": "application/json"}
-    payload = {"model": model, "messages": messages, "stream": stream, "max_tokens": 512}
+    
+    m_cfg = ModelConfig()
+    llm = LLM.from_(model.model, plugin_id=model.plugin_id, device_id=model.device_id, m_cfg=m_cfg)
+    
+    prompt = llm.apply_chat_template(messages, enable_thinking=False)
+    g_cfg=GenerationConfig(max_tokens=512)
+    for token in llm.generate_stream(prompt, g_cfg=g_cfg):
+        yield token
 
-    if not stream:
-        # Non-streaming: return complete text
-        data = _post_json(url, payload)
-        try:
-            return data["choices"][0]["message"]["content"]
-        except (KeyError, IndexError):
-            # Fallback for non-standard response formats
-            return data.get("text", "") or data.get("response", "")
-
-    # Streaming mode: yield text pieces via SSE
-    try:
-        with requests.post(url, headers=headers, data=json.dumps(payload), stream=True, timeout=300) as resp:
-            resp.raise_for_status()
-            for raw in resp.iter_lines(decode_unicode=True):
-                if not raw:
-                    continue
-                if raw.startswith("data:"):
-                    chunk = raw[len("data:"):].strip()
-                    if chunk == "[DONE]":
-                        break
-                    try:
-                        obj = json.loads(chunk)
-                        choices = obj.get("choices", [])
-                        if choices:
-                            delta = choices[0].get("delta") or {}
-                            piece = delta.get("content", "")
-                            if piece:
-                                yield piece
-                    except json.JSONDecodeError:
-                        continue  # Skip malformed JSON chunks
-    except requests.RequestException as e:
-        raise requests.HTTPError(f"Streaming request failed: {str(e)}")
-
-
-def call_nexa_embeddings(embed_model: str, inputs: List[str], base: str) -> List[List[float]]:
+def call_nexa_chat_completion(model: ModelInfo, messages: List[Dict[str, Any]]):
+    """
+    Call python binding(llm).
+    
+    Args:
+        model: ModelInfo
+        messages: List of chat messages with 'role' and 'content'
+        stream: If True, yields text pieces; if False, returns full text 
+    Returns:
+        str (if stream=False): Complete response text
+        Generator[str] (if stream=True): Yields text pieces incrementally
+    """
+    
+    m_cfg = ModelConfig()
+    llm = LLM.from_(model.model, plugin_id=model.plugin_id, device_id=model.device_id, m_cfg=m_cfg)
+    
+    prompt = llm.apply_chat_template(messages, enable_thinking=False)
+    g_cfg=GenerationConfig(max_tokens=512)
+    return llm.generate(prompt, g_cfg=g_cfg)
+        
+def call_nexa_embeddings(embed_model: ModelInfo, inputs: List[str], model_folder: str) -> List[List[float]]:
     """
     Call Nexa-compatible /v1/embeddings endpoint to embed a batch of strings.
     
     Args:
-        embed_model: Embedding model name
+        embed_model: Embedding model
         inputs: List of text strings to embed
-        base: Base URL for the API endpoint
+        model_folder: model folder path
         
     Returns:
         List[List[float]]: List of embedding vectors aligned to input order
-        
-    Raises:
-        requests.HTTPError: If API request fails
-        ValueError: If response format is invalid
     """
     if not inputs:
         return []
     
-    url = base.rstrip("/") + "/v1/embeddings"
     out: List[List[float]] = []
-    
+     
+    embedder = Embedder.from_(name_or_path=embed_model.model, plugin_id=embed_model.plugin_id)
+
     # Process in batches to avoid large payloads
     BATCH_SIZE = 64
     for i in range(0, len(inputs), BATCH_SIZE):
         batch = inputs[i:i+BATCH_SIZE]
-        payload = {
-            "model": embed_model,
-            "input": batch,
-            "encoding_format": "float"
-        }
-        data = _post_json(url, payload)
+        batch_size = len(batch)
+        embeddings = embedder.generate(
+        texts=batch, config=EmbeddingConfig(batch_size=batch_size))
         
-        # Parse response and sort by index
-        vecs = [None] * len(batch)
-        for item in data.get("data", []):
-            idx = item.get("index", 0)
-            vec = item.get("embedding", [])
-            if 0 <= idx < len(batch):
-                vecs[idx] = vec
-        
-        # Fallback: assume response order matches input order
-        if any(v is None for v in vecs):
-            vecs = [item.get("embedding", []) for item in data.get("data", [])]
-        
-        # Validate we got embeddings for all inputs
-        if len(vecs) != len(batch):
-            raise ValueError(f"Expected {len(batch)} embeddings, got {len(vecs)}")
-            
-        out.extend(vecs)
-    
+        for embedding in embeddings:
+            out.append(embedding.tolist())
+           
     return out
 
 
-def call_nexa_rerank(rerank_model: str, query: str, documents: List[str], base: str, top_n: int = 3) -> List[int]:
+def call_nexa_rerank(rerank_model: ModelInfo, query: str, documents: List[str], model_folder: str, top_n: int = 3) -> List[int]:
     """
     Call Nexa-compatible /v1/reranking endpoint to rerank documents.
     
@@ -190,32 +220,24 @@ def call_nexa_rerank(rerank_model: str, query: str, documents: List[str], base: 
         rerank_model: Reranking model name
         query: Search query string
         documents: List of document texts to rerank
-        base: Base URL for the API endpoint
+        model_folder: model folder path
         top_n: Number of top documents to return
         
     Returns:
         List[int]: List of document indices in reranked order (best first)
-        
-    Raises:
-        requests.HTTPError: If API request fails
+
     """
     if not documents:
         return []
     
-    url = base.rstrip("/") + "/v1/reranking"
-    payload = {
-        "model": rerank_model,
-        "query": query,
-        "documents": documents,
-        "batch_size": len(documents),
-        "normalize": True,
-        "normalize_method": "softmax"
-    }
-    data = _post_json(url, payload)
+    reranker = Reranker.from_(name_or_path=rerank_model.model, plugin_id=rerank_model.plugin_id)
     
+    batch_size = len(documents)
+    scores = reranker.rerank(query=query, documents=documents, 
+                           config=RerankConfig(batch_size=batch_size))
+
     # Sort by relevance score (descending) and return top_n indices
-    results = data.get("results", [])
-    sorted_results = sorted(results, key=lambda x: x.get("relevance_score", 0), reverse=True)
+    sorted_results = sorted(scores,reverse=True)
     return [r["index"] for r in sorted_results[:top_n]]
 
 
@@ -404,10 +426,10 @@ def simple_chunk(text: str, chunk_size: int = 1000, overlap: int = 150) -> List[
 def build_json_index(
     data_folder: str, 
     index_path: str, 
-    embed_model: str, 
+    embed_model: ModelInfo, 
     chunk_size: int, 
-    overlap: int, 
-    endpoint_base: str
+    overlap: int,
+    model_folder: str = DEFAULT_MODEL_FOLDER
 ) -> Tuple[int, int]:
     """
     Build JSON-based vector index from documents in a folder.
@@ -415,7 +437,7 @@ def build_json_index(
     Process:
     1. Read all supported documents from folder
     2. Chunk each document with overlap
-    3. Embed chunks using API
+    3. Embed chunks using Python binding API
     4. Save to JSON file with metadata
     
     Args:
@@ -424,7 +446,7 @@ def build_json_index(
         embed_model: Embedding model name
         chunk_size: Size of text chunks in characters
         overlap: Overlap between chunks in characters
-        endpoint_base: Base URL for API endpoint
+        model_folder: model folder path
         
     Returns:
         Tuple[int, int]: (number of documents processed, number of chunks created)
@@ -466,7 +488,7 @@ def build_json_index(
             
         # Embed chunks via API
         try:
-            vectors = call_nexa_embeddings(embed_model, chunks, endpoint_base)
+            vectors = call_nexa_embeddings(embed_model, chunks, model_folder)
         except Exception as e:
             print(f"[warn] Failed to embed chunks from {path}: {e}")
             continue
@@ -487,7 +509,7 @@ def build_json_index(
     # Build and save index
     dim = len(items[0]["vector"])
     payload = {
-        "embed_model": embed_model,
+        "embed_model": embed_model.model,
         "dim": dim,
         "items": items,
     }
@@ -557,27 +579,27 @@ def load_json_index(index_path: str) -> Dict[str, Any]:
 # ============================================================================
 # Vector Search
 # ============================================================================
-def embed_query_server(query: str, embed_model: str, endpoint_base: str) -> np.ndarray:
+def embed_query_server(query: str, embed_model: ModelInfo, model_folder: str) -> np.ndarray:
     """
     Embed a single query string via API.
     
     Args:
         query: Query text to embed
         embed_model: Embedding model name
-        endpoint_base: Base URL for API endpoint
+        model_folder: model folder path
         
     Returns:
         np.ndarray: Query embedding vector
     """
-    vecs = call_nexa_embeddings(embed_model, [query], endpoint_base)
+    vecs = call_nexa_embeddings(embed_model, [query], model_folder)
     return np.array(vecs[0], dtype=np.float32)
 
 
 def search_numpy(
     query: str, 
     index: dict, 
-    embed_model: str, 
-    endpoint_base: str, 
+    embed_model: ModelInfo, 
+    model_folder: str = DEFAULT_MODEL_FOLDER,
     top_k: int = 5
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -587,7 +609,7 @@ def search_numpy(
         query: Search query text
         index: Loaded index dictionary from load_json_index()
         embed_model: Embedding model name
-        endpoint_base: Base URL for API endpoint
+        model_folder: model folder path
         top_k: Number of top results to return
         
     Returns:
@@ -596,7 +618,7 @@ def search_numpy(
             - Array of corresponding similarity scores
     """
     # Embed query
-    q_vec = embed_query_server(query, embed_model, endpoint_base)  # (D,)
+    q_vec = embed_query_server(query, embed_model, model_folder)  # (D,)
     db = index["matrix"]  # (N, D)
 
     # Normalize vectors to compute cosine similarity
@@ -635,7 +657,7 @@ def main():
     )
     ap.add_argument(
         "--embed_model", 
-        default=DEFAULT_EMBED_MODEL, 
+        default=DEFAULT_EMBED_MODEL.model, 
         help="Embedding model name"
     )
     ap.add_argument(
@@ -664,7 +686,7 @@ def main():
     )
     ap.add_argument(
         "--rerank_model", 
-        default=DEFAULT_RERANK_MODEL, 
+        default=DEFAULT_RERANK_MODEL.model, 
         help="Rerank model name"
     )
     ap.add_argument(
@@ -674,14 +696,16 @@ def main():
     )
     ap.add_argument(
         "--model", 
-        default=DEFAULT_MODEL, 
+        default=DEFAULT_MODEL.model, 
         help="LLM model for generation"
     )
+    
     ap.add_argument(
-        "--endpoint", 
-        default=DEFAULT_ENDPOINT, 
-        help="Nexa endpoint base URL"
+        "--model_folder", 
+        default=DEFAULT_MODEL_FOLDER, 
+        help="Model folder path"
     )
+    
     ap.add_argument(
         "--rebuild", 
         action="store_true", 
@@ -689,6 +713,15 @@ def main():
     )
     args = ap.parse_args()
 
+    model = DEFAULT_MODEL
+    model.model = args.model
+    
+    embed_model = DEFAULT_EMBED_MODEL
+    embed_model.model = args.embed_model
+    
+    rerank_model = DEFAULT_RERANK_MODEL
+    rerank_model.model = args.rerank_model
+    
     # Setup directories
     os.makedirs(args.data, exist_ok=True)
     print(f"[info] Using data folder: {args.data}")
@@ -697,15 +730,15 @@ def main():
 
     # Build or load index
     if args.rebuild or (not os.path.exists(args.index_json)):
-        print(f"[build] Building JSON index via server embeddings → {args.index_json}")
+        print(f"[build] Building JSON index via embeddings → {args.index_json}")
         try:
             n_docs, n_chunks = build_json_index(
                 args.data, 
                 args.index_json, 
-                args.embed_model, 
+                embed_model, 
                 args.chunk_size, 
-                args.chunk_overlap, 
-                args.endpoint
+                args.chunk_overlap,
+                args.model_folder,
             )
             print(f"[build] Done. docs={n_docs}, chunks={n_chunks}")
         except Exception as e:
@@ -722,7 +755,7 @@ def main():
         print(f"[error] Failed to load index: {e}")
         return
 
-    print(f"[info] Ready. model={args.model} endpoint={args.endpoint}")
+    print(f"[info] Ready. model={args.model}")
     print("Type your question (Enter to quit). Commands: :reload (rebuild index)")
 
     # Interactive chat loop
@@ -742,10 +775,10 @@ def main():
                 n_docs, n_chunks = build_json_index(
                     args.data, 
                     args.index_json, 
-                    args.embed_model, 
+                    embed_model, 
                     args.chunk_size, 
-                    args.chunk_overlap, 
-                    args.endpoint
+                    args.chunk_overlap,
+                    args.model_folder,
                 )
                 index = load_json_index(args.index_json)
                 print(f"[build] Done. docs={n_docs}, chunks={n_chunks}")
@@ -758,8 +791,8 @@ def main():
             top_idx, top_sims = search_numpy(
                 q, 
                 index, 
-                args.embed_model, 
-                args.endpoint, 
+                embed_model, 
+                args.model_folder,
                 top_k=args.k
             )
         except Exception as e:
@@ -774,10 +807,10 @@ def main():
                 
                 # Rerank and get top_n indices (relative to candidate_docs)
                 reranked_local_idx = call_nexa_rerank(
-                    args.rerank_model, 
+                    rerank_model, 
                     q, 
-                    candidate_docs, 
-                    args.endpoint, 
+                    candidate_docs,
+                    args.model_folder,
                     top_n=args.rerank_top_n
                 )
                 
@@ -804,14 +837,14 @@ def main():
         print("\n[assistant]", end="", flush=True)
         try:
             # Try streaming first
-            for piece in call_nexa_chat(args.model, messages, args.endpoint, stream=True):
+            for piece in call_nexa_chat(model, messages):
                 print(piece, end="", flush=True)
             print()
         except requests.HTTPError as e:
             # Fallback to non-streaming
             print(f"\n[warn] Streaming failed, fallback to non-stream. Reason: {e}")
             try:
-                full = call_nexa_chat(args.model, messages, args.endpoint, stream=False)
+                full = call_nexa_chat_completion(model, messages)
                 print(full)
             except Exception as e2:
                 print(f"[error] Non-stream request also failed: {e2}")
