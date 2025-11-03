@@ -5,7 +5,8 @@
 #
 # Usage:
 #   chmod +x ./install.sh
-#   sudo ./install.sh
+#   sudo ./install.sh              # Full installation
+#   ./install.sh --extract-only     # Extract only (no installation)
 
 set -eu
 
@@ -29,6 +30,7 @@ trap cleanup EXIT
 SUDO=""
 NEXA_INSTALL_DIR="/opt/nexa_sdk"
 BINDIR="/usr/local/bin"
+EXTRACT_ONLY=false
 
 # --- Prerequisite and Environment Checks ---
 
@@ -71,6 +73,46 @@ validate_requirements() {
 }
 
 # --- Core Installation Logic ---
+
+# Extract-only function
+extract_only() {
+    local target_dir="./nexa_sdk"
+    
+    status "Starting Nexa SDK extraction..."
+    
+    # --- 1. Locate and extract the embedded payload ---
+    local payload_line
+    payload_line=$(awk '/^__PAYLOAD_BELOW__/ {print NR + 1}' "$0")
+    if [ -z "$payload_line" ]; then
+        error "Could not find payload in the script. The installer appears to be corrupted."
+    fi
+    
+    status "Creating extraction directory: $target_dir"
+    mkdir -p "$target_dir"
+    
+    status "Extracting embedded payload to $target_dir..."
+    tail -n "+$payload_line" "$0" | tar -xzf - -C "$target_dir"
+    if [ $? -ne 0 ]; then
+        error "Failed to extract payload. The installer might be corrupted or incomplete."
+    fi
+    
+    # Make binaries executable
+    chmod +x "$target_dir/nexa" "$target_dir/nexa-cli" 2>/dev/null || true
+    
+    # Get absolute path for display
+    local abs_dir
+    abs_dir=$(cd "$target_dir" && pwd)
+    
+    status "${plain}Extraction complete! Files extracted to: $abs_dir"
+    echo ""
+    status "To use the extracted binaries, add the following to your PATH:"
+    echo "  export PATH=\"$abs_dir:\$PATH\""
+    echo ""
+    status "Or add it permanently to your shell profile (~/.bashrc, ~/.zshrc, etc.):"
+    echo "  echo 'export PATH=\"$abs_dir:\$PATH\"' >> ~/.bashrc"
+    echo ""
+    status "Then you can use 'nexa' commands directly."
+}
 
 # Main installation function
 install_nexa_sdk() {
@@ -118,22 +160,56 @@ install_nexa_sdk() {
 }
 
 
+# Parse command line arguments
+parse_args() {
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --extract-only)
+                EXTRACT_ONLY=true
+                shift
+                ;;
+            -h|--help)
+                echo "Usage: $0 [OPTIONS]"
+                echo ""
+                echo "Options:"
+                echo "  --extract-only    Extract files only, do not install (extracts to ./nexa_sdk)"
+                echo "  -h, --help        Show this help message"
+                echo ""
+                echo "Examples:"
+                echo "  sudo $0              # Full installation to /opt/nexa_sdk"
+                echo "  $0 --extract-only     # Extract to ./nexa_sdk"
+                exit 0
+                ;;
+            *)
+                error "Unknown option: $1. Use -h or --help for usage information."
+                ;;
+        esac
+    done
+}
+
 # Main function to orchestrate the installation
 main() {
     if [ "$(uname -s)" != "Linux" ]; then
         error "This script is intended to run on Linux only."
     fi
 
-    status "Starting Nexa SDK installer..."
+    parse_args "$@"
 
-    setup_sudo
-    validate_requirements
+    if [ "$EXTRACT_ONLY" = true ]; then
+        validate_requirements
+        extract_only
+    else
+        status "Starting Nexa SDK installer..."
 
-    install_nexa_sdk
+        setup_sudo
+        validate_requirements
 
-    status "${plain}Install complete! The Nexa SDK is now installed."
-    status "You can use the 'nexa' commands from your terminal."
-    status "You may need to start a new terminal session for the 'nexa' group membership to take effect."
+        install_nexa_sdk
+
+        status "${plain}Install complete! The Nexa SDK is now installed."
+        status "You can use the 'nexa' commands from your terminal."
+        status "You may need to start a new terminal session for the 'nexa' group membership to take effect."
+    fi
 }
 
 # Run the main function with all arguments passed to the script
