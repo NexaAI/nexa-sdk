@@ -22,6 +22,7 @@ func serve() *cobra.Command {
 
 	serveCmd.Flags().SortFlags = false
 	serveCmd.Flags().String("host", "127.0.0.1:18181", "Default server address (env: NEXA_HOST)")
+	serveCmd.Flags().String("origins", "*", "Default CORS origins (env: NEXA_ORIGINS)")
 	serveCmd.Flags().Int("keepalive", 300, "Keepalive seconds (env: NEXA_KEEPALIVE)")
 	// HTTPS / TLS flags
 	serveCmd.Flags().Bool("https", false, "Enable HTTPS/TLS (env: NEXA_ENABLEHTTPS)")
@@ -30,6 +31,7 @@ func serve() *cobra.Command {
 	serveCmd.Flags().Bool("ngrok", false, "Use ngrok for public HTTPS tunnel (env: NEXA_NGROK)")
 
 	viper.BindPFlag("host", serveCmd.Flags().Lookup("host"))
+	viper.BindPFlag("origins", serveCmd.Flags().Lookup("origins"))
 	viper.BindPFlag("keepalive", serveCmd.Flags().Lookup("keepalive"))
 	viper.BindPFlag("enablehttps", serveCmd.Flags().Lookup("https"))
 	viper.BindPFlag("certfile", serveCmd.Flags().Lookup("certfile"))
