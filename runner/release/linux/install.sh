@@ -7,7 +7,6 @@
 #   chmod +x ./install.sh
 #   sudo ./install.sh              # Full installation
 #   ./install.sh --extract-only     # Extract only (no installation)
-#   ./install.sh -x -d /path/to/dir # Extract to specific directory
 
 set -eu
 
@@ -32,7 +31,6 @@ SUDO=""
 NEXA_INSTALL_DIR="/opt/nexa_sdk"
 BINDIR="/usr/local/bin"
 EXTRACT_ONLY=false
-EXTRACT_DIR=""
 
 # --- Prerequisite and Environment Checks ---
 
@@ -78,7 +76,7 @@ validate_requirements() {
 
 # Extract-only function
 extract_only() {
-    local target_dir="${EXTRACT_DIR:-./nexa_sdk}"
+    local target_dir="./nexa_sdk"
     
     status "Starting Nexa SDK extraction..."
     
@@ -166,30 +164,20 @@ install_nexa_sdk() {
 parse_args() {
     while [ $# -gt 0 ]; do
         case "$1" in
-            --extract-only|-x)
+            --extract-only)
                 EXTRACT_ONLY=true
                 shift
-                ;;
-            --extract-dir|-d)
-                if [ -z "$2" ]; then
-                    error "Option $1 requires a directory path."
-                fi
-                EXTRACT_DIR="$2"
-                EXTRACT_ONLY=true
-                shift 2
                 ;;
             -h|--help)
                 echo "Usage: $0 [OPTIONS]"
                 echo ""
                 echo "Options:"
-                echo "  -x, --extract-only    Extract files only, do not install"
-                echo "  -d, --extract-dir DIR Extract to specified directory (implies --extract-only)"
-                echo "  -h, --help           Show this help message"
+                echo "  --extract-only    Extract files only, do not install (extracts to ./nexa_sdk)"
+                echo "  -h, --help        Show this help message"
                 echo ""
                 echo "Examples:"
-                echo "  sudo $0                    # Full installation to /opt/nexa_sdk"
-                echo "  $0 --extract-only           # Extract to ./nexa_sdk"
-                echo "  $0 -x -d /path/to/dir       # Extract to /path/to/dir"
+                echo "  sudo $0              # Full installation to /opt/nexa_sdk"
+                echo "  $0 --extract-only     # Extract to ./nexa_sdk"
                 exit 0
                 ;;
             *)
