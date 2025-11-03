@@ -76,6 +76,15 @@ The `--plugin-id` parameter supports different backends:
 - `npu`: Qualcomm NPU optimized (for supported models)
 - `nexaml`: NexaML optimized (for supported models)
 
+### Supported Models by Backend
+
+| Backend | Supported Models |
+|---------|------------------|
+| `cpu_gpu` | GGUF models (default backend) |
+| `metal` | Models with MLX format (e.g., Qwen3-VL-4B-MLX-4bit, gpt-oss-20b-MLX-4bit) |
+| `npu` | **LLM:** Granite-4-Micro-NPU, phi4-mini-npu-turbo, Qwen3-4B-Instruct-2507-npu, Qwen3-4B-Thinking-2507-npu, Llama3.2-3B-NPU-Turbo, jan-v1-4B-npu, qwen3-4B-npu, phi3.5-mini-npu<br>**VLM:** Qwen3-VL-4B-Instruct-NPU, OmniNeural-4B, LFM2-1.2B-npu<br>**Embedder:** embeddinggemma-300m-npu<br>**ASR:** parakeet-tdt-0.6b-v3-npu<br>**CV:** convnext-tiny-npu, paddleocr-npu, yolov12-npu<br>**Reranker:** jina-v2-rerank-npu |
+| `nexaml` | **VLM:** Qwen3-VL-4B-Instruct-GGUF:Q4_0, Qwen3-VL-4B-Thinking-GGUF:Q4_0 |
+
 ## Getting Started
 
 1. **Choose your platform** and open the corresponding notebook from the [`notebook/`](notebook/) directory
