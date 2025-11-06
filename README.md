@@ -59,15 +59,14 @@ NexaSDK is an easy-to-use developer toolkit for running any AI model locally —
 ## Recent Wins
 
 - 📣 Support **Android SDK** for NPU/GPU/CPU. See [Android SDK Doc](https://docs.nexa.ai/nexa-sdk-android/overview) and [Android SDK Demo App](demos/Android-SDK-Demo-App/README.md).
-- 📣 Support SDXL-turbo image generation on **AMD NPU**. See [AMD blog : Advancing AI with Nexa AI](https://www.amd.com/en/developer/resources/technical-articles/2025/advancing-ai-with-nexa-ai--image-generation-on-amd-npu-with-sdxl.html).
+- 📣 Support **SDXL-turbo** image generation on AMD NPU. See [AMD blog : Advancing AI with Nexa AI](https://www.amd.com/en/developer/resources/technical-articles/2025/advancing-ai-with-nexa-ai--image-generation-on-amd-npu-with-sdxl.html).
 - Support Android **Python SDK** for NPU/GPU/CPU. See [Android Python SDK Doc](https://docs.nexa.ai/nexa-sdk-android/python) and [Android Python SDK Demo App](bindings/android/README.md).
 - 📣 Day-0 Support for **Qwen3-VL-4B and 8B** in GGUF, MLX, .nexa format for NPU/GPU/CPU. We are the only framework that supports the GGUF format. [Featured in Qwen's post about our partnership](https://x.com/Alibaba_Qwen/status/1978154384098754943).
 - 📣 Day-0 Support for **IBM Granite 4.0** on NPU/GPU/CPU. [NexaML engine were featured right next to vLLM, llama.cpp, and MLX in IBM's blog](https://x.com/IBM/status/1978154384098754943).
 - 📣 Day-0 Support for **Google EmbeddingGemma** on NPU. We are [featured in Google's social post](https://x.com/googleaidevs/status/1969188152049889511).
 - 📣 Supported **vision capability for Gemma3n**: First-ever [Gemma-3n](https://sdk.nexa.ai/model/Gemma3n-E4B) **multimodal** inference for GPU & CPU, in GGUF format.
-- 📣 AMD NPU Support for [SDXL](https://huggingface.co/NexaAI/sdxl-turbo-amd-npu) image generation
-- 📣 Intel NPU Support [DeepSeek-r1-distill-Qwen-1.5B](https://sdk.nexa.ai/model/DeepSeek-R1-Distill-Qwen-1.5B-Intel-NPU) and [Llama3.2-3B](https://sdk.nexa.ai/model/Llama3.2-3B-Intel-NPU)
-- 📣 Apple Neural Engine Support for real-time speech recognition with [Parakeet v3 model](https://sdk.nexa.ai/model/parakeet-v3-ane)
+- 📣 **Intel NPU** Support [DeepSeek-r1-distill-Qwen-1.5B](https://sdk.nexa.ai/model/DeepSeek-R1-Distill-Qwen-1.5B-Intel-NPU) and [Llama3.2-3B](https://sdk.nexa.ai/model/Llama3.2-3B-Intel-NPU)
+- 📣 **Apple Neural Engine** Support for real-time speech recognition with [Parakeet v3 model](https://sdk.nexa.ai/model/parakeet-v3-ane)
 
 # Quick Start
 
