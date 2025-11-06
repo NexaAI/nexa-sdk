@@ -58,7 +58,7 @@ NexaSDK is an easy-to-use developer toolkit for running any AI model locally —
 
 ## Recent Wins
 
-- 📣 Support **Android SDK** for NPU/GPU/CPU. See [Android SDK Doc](https://docs.nexa.ai/nexa-sdk-android/overview) and [Android SDK Demo App](demos/Android-SDK-Demo-App/README.md).
+- 📣 Support **Android SDK** for NPU/GPU/CPU. See [Android SDK Doc](https://docs.nexa.ai/nexa-sdk-android/overview) and [Android SDK Demo App](bindings/android/README.md).
 - 📣 Support **SDXL-turbo** image generation on AMD NPU. See [AMD blog : Advancing AI with Nexa AI](https://www.amd.com/en/developer/resources/technical-articles/2025/advancing-ai-with-nexa-ai--image-generation-on-amd-npu-with-sdxl.html).
 - Support Android **Python SDK** for NPU/GPU/CPU. See [Android Python SDK Doc](https://docs.nexa.ai/nexa-sdk-android/python) and [Android Python SDK Demo App](bindings/android/README.md).
 - 📣 Day-0 Support for **Qwen3-VL-4B and 8B** in GGUF, MLX, .nexa format for NPU/GPU/CPU. We are the only framework that supports the GGUF format. [Featured in Qwen's post about our partnership](https://x.com/Alibaba_Qwen/status/1978154384098754943).
