@@ -1,4 +1,4 @@
-BRIDGE_VERSION ?= v1.0.28-rc1
+BRIDGE_VERSION ?= v1.0.28-rc5
 
 ifeq ($(OS), Windows_NT)
 	OS      := windows
@@ -7,7 +7,7 @@ ifeq ($(OS), Windows_NT)
 	RM      := powershell -NoProfile -NonInteractive "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path"
 	MKDIR   := powershell -NoProfile -NonInteractive "New-Item -ItemType Directory -Force -Path"
 	MKLINK  := powershell -NoProfile -NonInteractive "New-Item -ItemType Junction -Path 'build' -Target '..\..\nexasdk-bridge\build\out'"
-	UNZIP   := powershell -Command "Expand-Archive -Path build/nexasdk-bridge.zip -DestinationPath build -Force"
+	UNZIP   := powershell -NoProfile -NonInteractive -Command "Expand-Archive -Path build/nexasdk-bridge.zip -DestinationPath build -Force"
 else
 	OS      := $(shell echo $(shell uname -s) | tr '[:upper:]' '[:lower:]')
 	ifeq ($(OS), darwin)
