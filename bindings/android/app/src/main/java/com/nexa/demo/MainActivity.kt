@@ -1071,8 +1071,9 @@ space ::= | " " | "\n" | "\r" | "\t"
                         .onSuccess { result ->
                             val baseConfig =
                                 GenerationConfigSample().toGenerationConfig(grammarString)
+                            // only pass current round for media path injection
                             val configWithMedia = vlmWrapper.injectMediaPathsToConfig(
-                                vlmChatList.toTypedArray(),
+                                arrayOf(sendMsg),
                                 baseConfig
                             )
 
