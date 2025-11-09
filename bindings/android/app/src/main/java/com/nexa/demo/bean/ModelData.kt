@@ -30,11 +30,7 @@ data class ModelData(
      * 1: Files are stored under the files/models/modelId/ directory.
      */
     val versionCode: Int? = 0,
-    /**
-     * Whether downloading resources from an S3 server is supported.
-     */
-    val supportS3: Boolean? = false,
-    // Qnn-Vision-name
+    // NPU-Vision-name
     val patchEmbedName: String = "",
     val vitModelName: String = "",
     val vitConfigFileName: String = "",
@@ -42,7 +38,7 @@ data class ModelData(
     val audioEncoderHelper1Name: String = "",
     val audioEncoderModelName: String = "",
     val audioEncoderConfigFileName: String = "",
-    // Qnn-Vision-url
+    // NPU-Vision-url
     val tokenUrl: String? = null,
     val patchEmbedPathUrl: String? = null,
     val vitModelPathUrl: String? = null,

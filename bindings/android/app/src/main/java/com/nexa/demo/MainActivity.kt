@@ -48,13 +48,11 @@ import com.liulishuo.okdownload.kotlin.listener.createDownloadContextListener
 import com.liulishuo.okdownload.kotlin.listener.createListener1
 import com.nexa.demo.bean.DownloadableFile
 import com.nexa.demo.bean.ModelData
-import com.nexa.demo.bean.S3FileBean
 import com.nexa.demo.bean.downloadableFiles
 import com.nexa.demo.bean.mmprojTokenFile
 import com.nexa.demo.bean.modelDir
 import com.nexa.demo.bean.modelFile
 import com.nexa.demo.bean.tokenFile
-import com.nexa.demo.utils.AmazonS3Util
 import com.nexa.demo.utils.ExecShell
 import com.nexa.demo.utils.ImgUtil
 import com.nexa.demo.utils.SharePreferenceKeys
@@ -105,7 +103,6 @@ import javax.net.ssl.X509TrustManager
 
 class MainActivity : Activity() {
 
-    private lateinit var s3Sp: SharedPreferences
     private lateinit var spDownloaded: SharedPreferences
     private lateinit var llDownloading: LinearLayout
     private lateinit var tvDownloadProgress: TextView
@@ -167,11 +164,6 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        AmazonS3Util.init(this)
-        s3Sp = getSharedPreferences(
-            SharePreferenceKeys.FileName.ModelS3Url.fileName,
-            Context.MODE_PRIVATE
-        )
         requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1002)
         okdownload()
         initData()
@@ -257,7 +249,7 @@ class MainActivity : Activity() {
                 ExecShell().executeCommand(
                     arrayOf(
                         //                        exeFile.absolutePath,
-//                        "--test-suite=\"qnn\"", "--success "
+//                        "--test-suite=\"npu\"", "--success "
                         "cat",
                         "/sys/devices/soc0/sku"
 //                        "/data/local/tmp/test_cat.txt"
@@ -371,15 +363,8 @@ Note: You must use the campaign_investigation function whenever a customer asks 
         vlmChatList.add(vlmSystemPrompty)
     }
 
-    private fun isS3Url(url: String): Boolean {
-        return url.startsWith("https://nfl-s3")
-    }
-
     private fun getHfToken(model: ModelData, url: String): String? {
-        if (isS3Url(url)) {
-            return null
-        }
-        // replace your own hf token
+        // Replace with your own HuggingFace token if needed for private models
         return null
     }
 
@@ -465,46 +450,10 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                 modelScope.launch {
                     val selectModelData = modelList.first { it.id == selectModelId }
 
-                    var filesToDownload =
+                    val filesToDownload =
                         selectModelData.downloadableFiles(selectModelData.modelDir(this@MainActivity))
                     Log.d(TAG, "filesToDownload: $filesToDownload")
                     if (filesToDownload.isEmpty()) throw IllegalArgumentException("No download URL")
-
-                    if (selectModelData.supportS3 == true) {
-                        val s3Client = AmazonS3Util.initializeS3Client()
-                        filesToDownload = filesToDownload.map { downloadableFile ->
-                            // FIXME: Force specify here for now
-                            val urlKey =
-                                "https://${AmazonS3Util.BUCKET_NFL_S3}.s3.${AmazonS3Util.BUCKET_NFL_S3_REGION.name}.amazonaws.com/${downloadableFile.file.name}"
-                            var s3Url: String? = s3Sp.getString(urlKey, null)?.let { oldS3Url ->
-                                if (S3FileBean.isValid(S3FileBean.getStartDateFromUrl(oldS3Url))) {
-                                    oldS3Url
-                                } else {
-                                    if (downloadableFile.file.exists()) {
-                                        downloadableFile.file.delete()
-                                    }
-                                    null
-                                }
-                            }
-                            if (s3Url == null) {
-                                s3Client?.let {
-                                    s3Url = AmazonS3Util.createPresignedGetUrl(
-                                        s3Client,
-                                        keyName = downloadableFile.file.name
-                                    )
-                                    s3Sp.edit(true) {
-                                        putString(urlKey, s3Url)
-                                    }
-                                }
-                            }
-                            if (s3Url == null) {
-                                downloadableFile
-                            } else {
-                                Log.d(TAG, "s3 url:$s3Url")
-                                DownloadableFile(downloadableFile.file, s3Url)
-                            }
-                        }
-                    }
 
                     fun getUrlFileSize(client: OkHttpClient, url: String): Long {
                         // Extract hostname for logging
@@ -516,12 +465,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
 
                         Log.d(TAG, "Requesting: $hostname")
 
-                        val builder = Request.Builder().url(url)
-                        if (isS3Url(url)) {
-                            builder.get()
-                        } else {
-                            builder.head()
-                        }
+                        val builder = Request.Builder().url(url).head()
                         getHfToken(selectModelData, url)?.let {
                             builder.addHeader("Authorization", "Bearer $it")
                         }
@@ -694,8 +638,8 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                             nUBatch = 512,
                             nSeqMax = 1,
                             enable_thinking = enableThinking,
-                            qnn_lib_folder_path = applicationInfo.nativeLibraryDir,
-                            qnn_model_folder_path = selectModelData.modelDir(this@MainActivity).absolutePath
+                            npu_lib_folder_path = applicationInfo.nativeLibraryDir,
+                            npu_model_folder_path = selectModelData.modelDir(this@MainActivity).absolutePath
                         )
                         // Build and initialize LlmWrapper for chat model
                         LlmWrapper.builder().llmCreateInput(
@@ -717,15 +661,15 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                     }
 
                     "embedder" -> {
-                        // Handle embedder model loading with QNN paths using EmbedderCreateInput
+                        // Handle embedder model loading with NPU paths using EmbedderCreateInput
                         // embed-gemma
                         val embedderCreateInput = EmbedderCreateInput(
-                            model_name = "embed-gemma",  // Model name for QNN plugin
+                            model_name = "embed-gemma",  // Model name for NPU plugin
                             model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
                             tokenizer_path = selectModelData.tokenFile(this@MainActivity)?.absolutePath,
                             config = ModelConfig(
-                                qnn_lib_folder_path = applicationInfo.nativeLibraryDir,
-                                qnn_model_folder_path = selectModelData.modelDir(this@MainActivity).absolutePath
+                                npu_lib_folder_path = applicationInfo.nativeLibraryDir,
+                                npu_model_folder_path = selectModelData.modelDir(this@MainActivity).absolutePath
                             ),
                             plugin_id = "npu",
                             device_id = null
@@ -744,15 +688,15 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                     }
 
                     "reranker" -> {
-                        // Handle reranker model loading with QNN paths using RerankerCreateInput
+                        // Handle reranker model loading with NPU paths using RerankerCreateInput
                         // jina-v2-rerank-npu
                         val rerankerCreateInput = RerankerCreateInput(
-                            model_name = "jina-rerank",  // Model name for QNN plugin
+                            model_name = "jina-rerank",  // Model name for NPU plugin
                             model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
                             tokenizer_path = selectModelData.tokenFile(this@MainActivity)?.absolutePath,
                             config = ModelConfig(
-                                qnn_lib_folder_path = applicationInfo.nativeLibraryDir,
-                                qnn_model_folder_path = selectModelData.modelDir(this@MainActivity).absolutePath
+                                npu_lib_folder_path = applicationInfo.nativeLibraryDir,
+                                npu_model_folder_path = selectModelData.modelDir(this@MainActivity).absolutePath
                             ),
                             plugin_id = "npu",
                             device_id = null
@@ -779,8 +723,8 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                                 det_model_path = selectModelData.modelDir(this@MainActivity).absolutePath,
                                 rec_model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
                                 char_dict_path = selectModelData.modelDir(this@MainActivity).absolutePath,
-                                qnn_model_folder_path = selectModelData.modelDir(this@MainActivity).absolutePath,
-                                qnn_lib_folder_path = applicationInfo.nativeLibraryDir
+                                npu_model_folder_path = selectModelData.modelDir(this@MainActivity).absolutePath,
+                                npu_lib_folder_path = applicationInfo.nativeLibraryDir
                             ),
                             plugin_id = "npu"
                         )
@@ -802,8 +746,8 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                             model_name = "parakeet",
                             model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
                             config = ModelConfig(
-                                qnn_lib_folder_path = applicationInfo.nativeLibraryDir,
-                                qnn_model_folder_path = selectModelData.modelDir(this@MainActivity).absolutePath
+                                npu_lib_folder_path = applicationInfo.nativeLibraryDir,
+                                npu_model_folder_path = selectModelData.modelDir(this@MainActivity).absolutePath
                             ),
                             plugin_id = "npu"
                         )
@@ -832,8 +776,8 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                                 nUBatch = 512,
                                 nSeqMax = 1,
                                 enable_thinking = enableThinking,
-                                qnn_lib_folder_path = applicationInfo.nativeLibraryDir,
-                                qnn_model_folder_path = selectModelData.modelDir(this@MainActivity).absolutePath
+                                npu_lib_folder_path = applicationInfo.nativeLibraryDir,
+                                npu_model_folder_path = selectModelData.modelDir(this@MainActivity).absolutePath
                             )
                         } else {
                             ModelConfig(
@@ -1071,9 +1015,8 @@ space ::= | " " | "\n" | "\r" | "\t"
                         .onSuccess { result ->
                             val baseConfig =
                                 GenerationConfigSample().toGenerationConfig(grammarString)
-                            // only pass current round for media path injection
                             val configWithMedia = vlmWrapper.injectMediaPathsToConfig(
-                                arrayOf(sendMsg),
+                                vlmChatList.toTypedArray(),
                                 baseConfig
                             )
 

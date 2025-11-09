@@ -73,7 +73,7 @@ val bridgePathExist = gradle.extra["bridgePathExist"] as Boolean
 print("bridgePathExist: $bridgePathExist\n")
 
 dependencies {
-    implementation("ai.nexa:core:0.0.9")
+    implementation("ai.nexa:core:0.0.10")
     implementation(libs.aws.android.sdk.s3)
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("androidx.recyclerview:recyclerview:1.3.1")

@@ -9,11 +9,9 @@ class SharePreferenceKeys {
          */
         const val KEY_PREPARE_LOAD_MODEL_ID = "prepare_load_model_id"
         const val KEY_SHOW_OPERATION_POPUP = "show_operation_popup"
-        const val KEY_S3_URL = "key_s3_url"
     }
     enum class FileName(val fileName: String) {
         ModelDownloadState("mode_download_state"),
-        CommonConfig("common_config"),
-        ModelS3Url("model_s3_url")
+        CommonConfig("common_config")
     }
 }
