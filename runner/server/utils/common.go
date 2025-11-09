@@ -1,14 +1,19 @@
 package utils
 
 import (
+	"bytes"
 	"encoding/base64"
 	"errors"
+	"image"
+	"image/png"
 	"io"
 	"mime"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+
+	_ "golang.org/x/image/webp"
 )
 
 func SaveURIToTempFile(uri string) (string, error) {
@@ -67,10 +72,30 @@ func SaveURIToTempFile(uri string) (string, error) {
 		return "", errors.New("unsupported scheme: " + u.Scheme)
 	}
 
+	// Detect content type
+	contentType := http.DetectContentType(data)
+	
+	// Convert WebP to PNG for compatibility with native SDK
+	if strings.HasPrefix(contentType, "image/webp") || strings.HasSuffix(strings.ToLower(u.Path), ".webp") {
+		img, _, err := image.Decode(bytes.NewReader(data))
+		if err != nil {
+			return "", errors.New("failed to decode WebP image: " + err.Error())
+		}
+
+		var buf bytes.Buffer
+		if err := png.Encode(&buf, img); err != nil {
+			return "", errors.New("failed to encode image as PNG: " + err.Error())
+		}
+
+		data = buf.Bytes()
+		contentType = "image/png"
+	}
+
 	fileExt := ""
-	if exts, err := mime.ExtensionsByType(http.DetectContentType(data)); err == nil && len(exts) > 0 {
+	if exts, err := mime.ExtensionsByType(contentType); err == nil && len(exts) > 0 {
 		fileExt = exts[0]
 	}
+	
 	tmpFile, err := os.CreateTemp("", "uri-*"+fileExt)
 	if err != nil {
 		return "", err

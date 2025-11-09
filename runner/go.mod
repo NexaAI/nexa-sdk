@@ -23,6 +23,7 @@ require (
 	github.com/spf13/pflag v1.0.6
 	github.com/spf13/viper v1.20.1
 	github.com/valyala/fasthttp v1.63.0
+	golang.org/x/image v0.24.0
 	golang.org/x/sys v0.33.0
 	resty.dev/v3 v3.0.0-beta.3
 )
