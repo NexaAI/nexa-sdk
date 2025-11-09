@@ -934,14 +934,24 @@ space ::= | " " | "\n" | "\r" | "\t"
                     embedderWrapper.embed(texts, EmbeddingConfig()).onSuccess { embeddings ->
                         runOnUiThread {
                             val result = StringBuilder()
-                            result.append("Embedding dimension: ${embeddings.size / texts.size}\n")
+                            val embeddingDim = embeddings.size / texts.size
+                            
                             texts.forEachIndexed { idx, text ->
-                                val start = idx * (embeddings.size / texts.size)
-                                val end = start + 5 // Show first 5 dimensions
-                                result.append("Embedding (first 5 dims): [")
+                                val start = idx * embeddingDim
+                                val end = start + embeddingDim
+                                val embedding = embeddings.slice(start until end)
+                                
+                                // Calculate mean and variance
+                                val mean = embedding.average()
+                                val variance = embedding.map { (it - mean) * (it - mean) }.average()
+                                
+                                result.append("Text ${idx + 1}: \"$text\"\n")
+                                result.append("Embedding dimension: $embeddingDim\n")
+                                result.append("Mean: ${"%.4f".format(mean)}\n")
+                                result.append("Variance: ${"%.4f".format(variance)}\n")
+                                result.append("First 5 values: [")
                                 result.append(
-                                    embeddings.slice(start until end)
-                                        .joinToString(", ") { "%.4f".format(it) })
+                                    embedding.take(5).joinToString(", ") { "%.4f".format(it) })
                                 result.append("...]\n\n")
                             }
 
