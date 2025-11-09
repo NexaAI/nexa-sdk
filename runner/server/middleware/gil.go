@@ -10,15 +10,10 @@ import (
 var lock sync.Mutex
 
 func GIL(c *gin.Context) {
-	locked := lock.TryLock()
-
-	if !locked {
-		c.JSON(http.StatusTooManyRequests, "locked by other request")
-		c.Abort()
-		return
-	}
-
+	// Block and wait for lock instead of immediately failing
+	// This prevents 429 errors when requests queue up briefly
+	lock.Lock()
 	defer lock.Unlock()
+	
 	c.Next()
-
 }
