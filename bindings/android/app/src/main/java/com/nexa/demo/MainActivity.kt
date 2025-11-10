@@ -629,18 +629,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                     "chat" -> {
                         // LFM2-1.2B-npu
                         val isNPU = selectModelData.id == "LFM2-1.2B-npu"
-                        val conf = ModelConfig(
-                            nCtx = 1024,
-                            max_tokens = 2048,
-                            nThreads = 8,
-                            nThreadsBatch = 4,
-                            nBatch = 2048,
-                            nUBatch = 512,
-                            nSeqMax = 1,
-                            enable_thinking = enableThinking,
-                            npu_lib_folder_path = applicationInfo.nativeLibraryDir,
-                            npu_model_folder_path = selectModelData.modelDir(this@MainActivity).absolutePath
-                        )
+                        val conf = ModelConfig(max_tokens = 4096)
                         // Build and initialize LlmWrapper for chat model
                         LlmWrapper.builder().llmCreateInput(
                             LlmCreateInput(
@@ -667,10 +656,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                             model_name = "embed-gemma",  // Model name for NPU plugin
                             model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
                             tokenizer_path = selectModelData.tokenFile(this@MainActivity)?.absolutePath,
-                            config = ModelConfig(
-                                npu_lib_folder_path = applicationInfo.nativeLibraryDir,
-                                npu_model_folder_path = selectModelData.modelDir(this@MainActivity).absolutePath
-                            ),
+                            config = ModelConfig(),
                             plugin_id = "npu",
                             device_id = null
                         )
@@ -694,10 +680,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                             model_name = "jina-rerank",  // Model name for NPU plugin
                             model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
                             tokenizer_path = selectModelData.tokenFile(this@MainActivity)?.absolutePath,
-                            config = ModelConfig(
-                                npu_lib_folder_path = applicationInfo.nativeLibraryDir,
-                                npu_model_folder_path = selectModelData.modelDir(this@MainActivity).absolutePath
-                            ),
+                            config = ModelConfig(),
                             plugin_id = "npu",
                             device_id = null
                         )
@@ -722,9 +705,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                                 capabilities = CVCapability.OCR,
                                 det_model_path = selectModelData.modelDir(this@MainActivity).absolutePath,
                                 rec_model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
-                                char_dict_path = selectModelData.modelDir(this@MainActivity).absolutePath,
-                                npu_model_folder_path = selectModelData.modelDir(this@MainActivity).absolutePath,
-                                npu_lib_folder_path = applicationInfo.nativeLibraryDir
+                                char_dict_path = selectModelData.modelDir(this@MainActivity).absolutePath
                             ),
                             plugin_id = "npu"
                         )
@@ -745,10 +726,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                         val asrCreateInput = AsrCreateInput(
                             model_name = "parakeet",
                             model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
-                            config = ModelConfig(
-                                npu_lib_folder_path = applicationInfo.nativeLibraryDir,
-                                npu_model_folder_path = selectModelData.modelDir(this@MainActivity).absolutePath
-                            ),
+                            config = ModelConfig(),
                             plugin_id = "npu"
                         )
 
@@ -766,31 +744,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                     "multimodal" -> {
                         // VLM model
                         val isNpuVlm = selectModelData.id == "OmniNeural-4B"
-                        val config = if (isNpuVlm) {
-                            ModelConfig(
-                                nCtx = 2048,
-                                max_tokens = 2048,
-                                nThreads = 8,
-                                nThreadsBatch = 4,
-                                nBatch = 2048,
-                                nUBatch = 512,
-                                nSeqMax = 1,
-                                enable_thinking = enableThinking,
-                                npu_lib_folder_path = applicationInfo.nativeLibraryDir,
-                                npu_model_folder_path = selectModelData.modelDir(this@MainActivity).absolutePath
-                            )
-                        } else {
-                            ModelConfig(
-                                nCtx = 1024,
-                                max_tokens = 2048,
-                                nThreads = 4,
-                                nThreadsBatch = 4,
-                                nBatch = 1,
-                                nUBatch = 1,
-                                nSeqMax = 1,
-                                enable_thinking = enableThinking
-                            )
-                        }
+                        val config = ModelConfig()
 
                         val vlmCreateInput = VlmCreateInput(
                             model_name = if (isNpuVlm) "omni-neural" else "",
