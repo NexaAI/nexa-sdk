@@ -629,7 +629,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                     "chat" -> {
                         // LFM2-1.2B-npu
                         val isNPU = selectModelData.id == "LFM2-1.2B-npu"
-                        val conf = ModelConfig(max_tokens = 4096)
+                        val conf = ModelConfig(nCtx = 4096)
                         // Build and initialize LlmWrapper for chat model
                         LlmWrapper.builder().llmCreateInput(
                             LlmCreateInput(
