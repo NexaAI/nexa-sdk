@@ -1163,7 +1163,7 @@ space ::= | " " | "\n" | "\r" | "\t"
         }
     }
 
-    fun handleResult(sb: StringBuilder, streamResult: LlmStreamResult) {
+    private fun handleResult(sb: StringBuilder, streamResult: LlmStreamResult) {
         when (streamResult) {
             is LlmStreamResult.Token -> {
                 runOnUiThread {
@@ -1211,8 +1211,7 @@ space ::= | " " | "\n" | "\r" | "\t"
 
             is LlmStreamResult.Error -> {
                 runOnUiThread {
-                    val content =
-                        streamResult.throwable.message + streamResult.throwable.cause?.message
+                    val content = "your conversation is out of model’s context length, please start a new conversation or click clear button"
                     messages.add(Message(content, MessageType.PROFILE))
                     reloadRecycleView()
                 }
@@ -1392,7 +1391,19 @@ space ::= | " " | "\n" | "\r" | "\t"
         wavRecorder?.startRecording(audioFile!!)
     }
 
-    private  fun clearHistory() {
+    private fun clearHistory() {
+        if (isLoadLlmModel) {
+            chatList.clear()
+            modelScope.launch {
+                llmWrapper.reset()
+            }
+        }
+        if (isLoadVlmModel) {
+            vlmChatList.clear()
+            modelScope.launch {
+                vlmWrapper.reset()
+            }
+        }
         messages.clear()
         audioFile = null
         clearImages()
