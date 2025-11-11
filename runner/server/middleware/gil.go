@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"net/http"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -14,6 +13,6 @@ func GIL(c *gin.Context) {
 	// This prevents 429 errors when requests queue up briefly
 	lock.Lock()
 	defer lock.Unlock()
-	
+
 	c.Next()
 }
