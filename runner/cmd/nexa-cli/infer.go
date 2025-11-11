@@ -604,10 +604,10 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) error {
 
 	processor := &common.Processor{
 		TestMode: testMode,
-		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
+		Run: func(prompt string, images, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			embedInput := nexa_sdk.EmbedderEmbedInput{
 				TaskType: taskType,
-				Texts:    []string{strings.TrimSpace(prompt)},
+				Texts:    append([]string{strings.TrimSpace(prompt)}, images...),
 				Config:   &nexa_sdk.EmbeddingConfig{},
 			}
 
