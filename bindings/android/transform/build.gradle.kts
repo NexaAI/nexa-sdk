@@ -33,7 +33,7 @@ android {
 }
 
 dependencies {
-    compileOnly("ai.nexa:core:0.0.9")
+    compileOnly("ai.nexa:core:0.0.11")
     compileOnly(libs.androidx.core.ktx)
 //    implementation(libs.androidx.appcompat)
 //    implementation(libs.material)
