@@ -31,13 +31,17 @@ func Get() *Store {
 // init sets up the store's directory structure
 func (s *Store) init() {
 	// Get user's cache directory (OS-specific)
-	homeDir, e := os.UserHomeDir()
+	// On Windows: C:\Users\<username>\AppData\Local
+	// On macOS: ~/Library/Caches
+	// On Linux: ~/.cache
+	// This properly handles Unicode characters in usernames across all platforms
+	cacheDir, e := os.UserCacheDir()
 	if e != nil {
 		panic(e)
 	}
 
 	// Set nexa cache directory
-	s.home = filepath.Join(homeDir, ".cache", "nexa.ai", "nexa_sdk")
+	s.home = filepath.Join(cacheDir, "nexa.ai", "nexa_sdk")
 
 	// Create models directory structure
 	for _, d := range []string{"models"} {
