@@ -6,14 +6,17 @@ import android.os.Bundle
 import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.View
+import androidx.activity.ComponentActivity
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.shape.CornerFamily
 import com.nexa.demo.R
 import com.nexa.demo.activity.FolderActivity
 import com.nexa.demo.activity.FolderActivity.Companion.KEY_SELECT_DIRS
 import com.nexa.demo.adapter.IndexViewPagerAdapter
 import com.nexa.demo.databinding.FragmentIndexBinding
+import com.nexa.demo.utils.PermissionUtil
 import com.nexa.demo.utils.bindView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -111,7 +114,11 @@ class IndexFragment : Fragment(R.layout.fragment_index) {
         }
 
         binding.btnImport.setOnClickListener {
-            selectFolderResult.launch(Intent(context, FolderActivity::class.java))
+            if (PermissionUtil.checkManageStoragePermission(activity!!)){
+                selectFolderResult.launch(Intent(context, FolderActivity::class.java))
+            } else {
+                PermissionUtil.showRequestManageStoragePermissionDialog(activity as ComponentActivity)
+            }
         }
 
         binding.btnCancelIndex.setOnClickListener {
