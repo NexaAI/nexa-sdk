@@ -15,8 +15,14 @@ material = "1.10.0"
 kotlinxCoroutinesAndroid = "1.7.3"
 constraintlayout = "2.1.4"
 aws-android-s3 = '2.81.0'
+autoSize = "v1.2.1"
+immBar = "3.2.2"
+activity = "1.11.0"
 
 [libraries]
+imm-bar-ktx = {group = "com.geyifeng.immersionbar", name = "immersionbar-ktx", version.ref = "immBar"}
+imm-bar = {group = "com.geyifeng.immersionbar", name = "immersionbar", version.ref = "immBar"}
+auto-size = {group = "com.github.JessYanCoding", name = "AndroidAutoSize", version.ref = "autoSize"}
 aws-android-sdk-s3 = {group = "com.amazonaws", name = "aws-android-sdk-s3", version.ref = "aws-android-s3"}
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }

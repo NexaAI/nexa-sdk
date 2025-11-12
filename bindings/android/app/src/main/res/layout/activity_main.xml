@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -16,18 +17,20 @@
         <!-- Spinner for model selection -->
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_marginBottom="5dp"
-            android:layout_height="50dp">
+            android:layout_height="50dp"
+            android:layout_marginBottom="5dp">
+
             <Spinner
                 android:id="@+id/sp_model_list"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:paddingLeft="10dp" />
+
             <View
                 android:id="@+id/v_tip"
-                android:visibility="gone"
                 android:layout_width="match_parent"
-                android:layout_height="50dp"/>
+                android:layout_height="50dp"
+                android:visibility="gone" />
         </FrameLayout>
 
 
@@ -94,130 +97,152 @@
             android:text="test"
             android:visibility="gone" />
 
-        <!-- chat display area -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rv_chat"
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:clipToPadding="false"
-            android:padding="8dp"
-            android:scrollbars="vertical" />
-
-        <!-- Input section at bottom -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_input_box_background"
-            android:paddingTop="6dp"
-            android:paddingLeft="8dp"
-            android:paddingRight="8dp"
-            android:orientation="vertical">
-
-            <HorizontalScrollView
-                android:id="@+id/scroll_images"
-                android:layout_width="match_parent"
-                android:layout_height="100dp"
-                android:layout_margin="6dp"
-                android:overScrollMode="never"
-                android:visibility="gone">
-
-                <LinearLayout
-                    android:id="@+id/ll_images_container"
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:layout_marginLeft="6dp"
-                    android:layout_marginEnd="6dp"
-                    android:orientation="horizontal" />
-            </HorizontalScrollView>
-
-            <EditText
-                android:id="@+id/et_input"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:layout_marginBottom="6dp"
-                android:background="@null"
-                android:hint="Type prompt..."
-                android:textColorHint="#ADADAD"
-                android:padding="6dp"
-                android:text="hi" />
+            android:layout_height="match_parent">
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingTop="8dp"
-                android:paddingBottom="8dp"
-                android:orientation="horizontal">
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
+                <!-- chat display area -->
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rv_chat"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
                     android:layout_weight="1"
-                    android:orientation="horizontal"
-                    android:layout_marginRight="4dp"
-                    android:gravity="start">
-                <Button
-                    android:id="@+id/btn_add_image"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="32dp"
-                    android:layout_marginLeft="4dp"
-                    android:layout_marginRight="4dp"
-                    android:ellipsize="end"
-                    android:singleLine="true"
-                    android:background="@drawable/btn_rounded_border"
-                    android:text="Add Image"
-                    android:textAllCaps="false"
-                    android:textColor="#1F1F1F"
-                    android:visibility="invisible"/>
+                    android:clipToPadding="false"
+                    android:padding="8dp"
+                    android:scrollbars="vertical"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
-                <Button
-                    android:id="@+id/btn_voice"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="32dp"
-                    android:ellipsize="end"
-                    android:singleLine="true"
-                    android:background="@drawable/btn_rounded_border"
-                    android:text="Record"
-                    android:textAllCaps="false"
-                    android:textColor="#1F1F1F"
-                    android:visibility="invisible" />
-                </LinearLayout>
+                <!-- Input section at bottom -->
                 <LinearLayout
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="horizontal"
-                    android:gravity="end">
-                <Button
-                    android:id="@+id/btn_clear_history"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:ellipsize="end"
-                    android:singleLine="true"
-                    android:layout_height="32dp"
-                    android:layout_marginRight="4dp"
-                    android:background="@drawable/btn_rounded_border"
-                    android:text="Clear"
-                    android:textAllCaps="false"
-                    android:textColor="#1F1F1F" />
+                    android:background="@drawable/bg_input_box_background"
+                    android:orientation="vertical"
+                    android:paddingLeft="8dp"
+                    android:paddingTop="6dp"
+                    android:paddingRight="8dp">
 
-                <Button
-                    android:id="@+id/btn_send"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:ellipsize="end"
-                    android:singleLine="true"
-                    android:layout_height="32dp"
-                    android:layout_marginEnd="4dp"
-                    android:background="@drawable/btn_rounded_border"
-                    android:text="Send"
-                    android:textAllCaps="false"
-                    android:textColor="#1F1F1F" />
+                    <HorizontalScrollView
+                        android:id="@+id/scroll_images"
+                        android:layout_width="match_parent"
+                        android:layout_height="100dp"
+                        android:layout_margin="6dp"
+                        android:overScrollMode="never"
+                        android:visibility="gone">
+
+                        <LinearLayout
+                            android:id="@+id/ll_images_container"
+                            android:layout_width="wrap_content"
+                            android:layout_height="match_parent"
+                            android:layout_marginLeft="6dp"
+                            android:layout_marginEnd="6dp"
+                            android:orientation="horizontal" />
+                    </HorizontalScrollView>
+
+                    <EditText
+                        android:id="@+id/et_input"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:layout_marginBottom="6dp"
+                        android:background="@null"
+                        android:hint="Type prompt..."
+                        android:padding="6dp"
+                        android:text="hi"
+                        android:textColorHint="#ADADAD" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginRight="4dp"
+                            android:layout_weight="1"
+                            android:gravity="start"
+                            android:orientation="horizontal">
+
+                            <Button
+                                android:id="@+id/btn_add_image"
+                                android:layout_width="0dp"
+                                android:layout_height="32dp"
+                                android:layout_marginLeft="4dp"
+                                android:layout_marginRight="4dp"
+                                android:layout_weight="1"
+                                android:background="@drawable/btn_rounded_border"
+                                android:ellipsize="end"
+                                android:singleLine="true"
+                                android:text="Add Image"
+                                android:textAllCaps="false"
+                                android:textColor="#1F1F1F"
+                                android:visibility="invisible" />
+
+                            <Button
+                                android:id="@+id/btn_voice"
+                                android:layout_width="0dp"
+                                android:layout_height="32dp"
+                                android:layout_weight="1"
+                                android:background="@drawable/btn_rounded_border"
+                                android:ellipsize="end"
+                                android:singleLine="true"
+                                android:text="Record"
+                                android:textAllCaps="false"
+                                android:textColor="#1F1F1F"
+                                android:visibility="invisible" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="end"
+                            android:orientation="horizontal">
+
+                            <Button
+                                android:id="@+id/btn_clear_history"
+                                android:layout_width="0dp"
+                                android:layout_height="32dp"
+                                android:layout_marginRight="4dp"
+                                android:layout_weight="1"
+                                android:background="@drawable/btn_rounded_border"
+                                android:ellipsize="end"
+                                android:singleLine="true"
+                                android:text="Clear"
+                                android:textAllCaps="false"
+                                android:textColor="#1F1F1F" />
+
+                            <Button
+                                android:id="@+id/btn_send"
+                                android:layout_width="0dp"
+                                android:layout_height="32dp"
+                                android:layout_marginEnd="4dp"
+                                android:layout_weight="1"
+                                android:background="@drawable/btn_rounded_border"
+                                android:ellipsize="end"
+                                android:singleLine="true"
+                                android:text="Send"
+                                android:textAllCaps="false"
+                                android:textColor="#1F1F1F" />
+                        </LinearLayout>
+                    </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
-        </LinearLayout>
+
+            <FrameLayout
+                android:id="@+id/fl_index"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@color/white"
+                android:clickable="true" />
+        </FrameLayout>
 
 
     </LinearLayout>

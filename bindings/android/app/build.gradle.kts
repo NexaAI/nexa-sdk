@@ -64,6 +64,8 @@ android {
     }
 
     buildFeatures {
+        dataBinding = true
+        viewBinding = true
         compose = true
         buildConfig = true
     }
@@ -83,6 +85,11 @@ dependencies {
     implementation(":okdownload-okhttp@aar")
     implementation(":okdownload-ktx@aar")
     implementation(kotlin("reflect"))
+    implementation("androidx.cardview:cardview:1.0.0")
+    implementation(libs.material)
+    implementation(libs.imm.bar)
+    implementation(libs.imm.bar.ktx)
+    implementation(libs.auto.size)
     implementation(libs.okhttp)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.core.ktx)

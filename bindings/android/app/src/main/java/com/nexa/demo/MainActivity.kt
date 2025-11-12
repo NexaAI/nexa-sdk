@@ -8,6 +8,7 @@ import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -34,11 +35,14 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.content.edit
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.gyf.immersionbar.ktx.immersionBar
 import com.liulishuo.okdownload.DownloadContext
 import com.liulishuo.okdownload.DownloadTask
 import com.liulishuo.okdownload.OkDownload
@@ -53,10 +57,13 @@ import com.nexa.demo.bean.mmprojTokenFile
 import com.nexa.demo.bean.modelDir
 import com.nexa.demo.bean.modelFile
 import com.nexa.demo.bean.tokenFile
+import com.nexa.demo.databinding.ActivityMainBinding
+import com.nexa.demo.fragments.IndexFragment
 import com.nexa.demo.utils.ExecShell
 import com.nexa.demo.utils.ImgUtil
 import com.nexa.demo.utils.SharePreferenceKeys
 import com.nexa.demo.utils.WavRecorder
+import com.nexa.demo.utils.inflate
 import com.nexa.sdk.AsrWrapper
 import com.nexa.sdk.CvWrapper
 import com.nexa.sdk.EmbedderWrapper
@@ -101,8 +108,9 @@ import javax.net.ssl.SSLSocketFactory
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 
-class MainActivity : Activity() {
+class MainActivity : FragmentActivity() {
 
+    private val binding: ActivityMainBinding by inflate()
     private lateinit var spDownloaded: SharedPreferences
     private lateinit var llDownloading: LinearLayout
     private lateinit var tvDownloadProgress: TextView
@@ -118,7 +126,6 @@ class MainActivity : Activity() {
     private lateinit var btnAddImage: Button
     private lateinit var btnAudioRecord: Button
 
-    private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: ChatAdapter
     private lateinit var bottomPanel: LinearLayout
     private lateinit var btnAudioDone: Button
@@ -163,7 +170,10 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        immersionBar {
+            statusBarColorInt(Color.WHITE)
+            statusBarDarkFont(true)
+        }
         requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1002)
         okdownload()
         initData()
@@ -181,10 +191,8 @@ class MainActivity : Activity() {
     }
 
     private fun initView() {
-        recyclerView = findViewById<RecyclerView>(R.id.rv_chat)
         adapter = ChatAdapter(messages)
-        recyclerView.adapter = adapter
-        recyclerView.layoutManager = LinearLayoutManager(this)
+        binding.rvChat.adapter = adapter
 
         llDownloading = findViewById(R.id.ll_downloading)
         tvDownloadProgress = findViewById(R.id.tv_download_progress)
@@ -205,7 +213,7 @@ class MainActivity : Activity() {
 
                 messages.clear()
                 adapter.notifyDataSetChanged()
-                recyclerView.scrollTo(0, 0)
+                binding.rvChat.scrollTo(0, 0)
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) {
@@ -263,6 +271,14 @@ class MainActivity : Activity() {
         findViewById<View>(R.id.v_tip).setOnClickListener {
             Toast.makeText(this, "please unload model first", Toast.LENGTH_SHORT).show()
         }
+
+        replaceFragment(IndexFragment.newInstance("", ""))
+    }
+
+    private fun replaceFragment(fragment: Fragment) {
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.fl_index, fragment)
+            .commit()
     }
 
     private fun parseModelList() {
@@ -1488,7 +1504,7 @@ space ::= | " " | "\n" | "\r" | "\t"
 
     private fun reloadRecycleView() {
         adapter.notifyDataSetChanged()
-        recyclerView.scrollToPosition(messages.size - 1)
+        binding.rvChat.scrollToPosition(messages.size - 1)
     }
     companion object {
         private const val SP_DOWNLOADED = "sp_downloaded"
