@@ -155,6 +155,7 @@
                     android:textColor="#1f1f1f" />
 
                 <Button
+                    android:id="@+id/btn_search"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginLeft="15dp"

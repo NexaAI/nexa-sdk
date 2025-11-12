@@ -3,6 +3,7 @@ package com.nexa.demo.fragments
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
 import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.View
@@ -16,6 +17,7 @@ import com.nexa.demo.activity.FolderActivity
 import com.nexa.demo.activity.FolderActivity.Companion.KEY_SELECT_DIRS
 import com.nexa.demo.adapter.IndexViewPagerAdapter
 import com.nexa.demo.databinding.FragmentIndexBinding
+import com.nexa.demo.utils.KeyboardUtil
 import com.nexa.demo.utils.PermissionUtil
 import com.nexa.demo.utils.bindView
 import kotlinx.coroutines.CoroutineScope
@@ -25,6 +27,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -43,6 +46,7 @@ class IndexFragment : Fragment(R.layout.fragment_index) {
     private val binding by bindView<FragmentIndexBinding>()
     private lateinit var selectFolderResult: ActivityResultLauncher<Intent>
     private var uiState = UIState.NO_INDEX
+    private var allFileCount = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,7 +58,12 @@ class IndexFragment : Fragment(R.layout.fragment_index) {
             ActivityResultContracts.StartActivityForResult()
         ) { result -> //
             if (Activity.RESULT_OK == result.resultCode) {
+                allFileCount = 0
                 Log.d(TAG, "select dirs:${result.data?.getStringArrayListExtra(KEY_SELECT_DIRS)}")
+                result.data?.getStringArrayListExtra(KEY_SELECT_DIRS)?.forEach {
+                    allFileCount += File(it).listFiles()?.size ?: 0
+                }
+                binding.tvIndexDatabase.text = "Database: $allFileCount files"
                 uiState = UIState.INDEXING
                 changeUIState()
                 CoroutineScope(Dispatchers.IO).launch {
@@ -114,7 +123,7 @@ class IndexFragment : Fragment(R.layout.fragment_index) {
         }
 
         binding.btnImport.setOnClickListener {
-            if (PermissionUtil.checkManageStoragePermission(activity!!)){
+            if (PermissionUtil.checkManageStoragePermission(activity!!)) {
                 selectFolderResult.launch(Intent(context, FolderActivity::class.java))
             } else {
                 PermissionUtil.showRequestManageStoragePermissionDialog(activity as ComponentActivity)
@@ -136,6 +145,18 @@ class IndexFragment : Fragment(R.layout.fragment_index) {
             )
         binding.tlIndexed.setupWithViewPager(binding.vpIndexed)
 
+        binding.btnSearch.setOnClickListener {
+            if ("Search" == binding.btnSearch.text) {
+                binding.btnSearch.text = "Stop"
+                KeyboardUtil.hide(binding.etSearch)
+                it.postDelayed({
+                    binding.btnSearch.text = "Search"
+                }, 5000)
+            } else {
+                binding.btnSearch.text = "Search"
+                // TODO: stop search
+            }
+        }
     }
 
     enum class UIState {
