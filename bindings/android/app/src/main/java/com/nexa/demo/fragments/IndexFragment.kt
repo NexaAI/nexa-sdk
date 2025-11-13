@@ -12,6 +12,7 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.shape.CornerFamily
+import com.nexa.demo.MainActivity
 import com.nexa.demo.R
 import com.nexa.demo.activity.FolderActivity
 import com.nexa.demo.activity.FolderActivity.Companion.KEY_SELECT_DIRS
@@ -20,6 +21,7 @@ import com.nexa.demo.databinding.FragmentIndexBinding
 import com.nexa.demo.utils.KeyboardUtil
 import com.nexa.demo.utils.PermissionUtil
 import com.nexa.demo.utils.bindView
+import com.nexa.sdk.bean.EmbeddingConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
@@ -28,6 +30,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.Arrays
 
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -60,12 +63,25 @@ class IndexFragment : Fragment(R.layout.fragment_index) {
             if (Activity.RESULT_OK == result.resultCode) {
                 allFileCount = 0
                 Log.d(TAG, "select dirs:${result.data?.getStringArrayListExtra(KEY_SELECT_DIRS)}")
-                result.data?.getStringArrayListExtra(KEY_SELECT_DIRS)?.forEach {
+                val allFiles =
+                    result.data?.getStringArrayListExtra(KEY_SELECT_DIRS) ?: arrayListOf<String>()
+                allFiles.forEach {
                     allFileCount += File(it).listFiles()?.size ?: 0
                 }
                 binding.tvIndexDatabase.text = "Database: $allFileCount files"
                 uiState = UIState.INDEXING
                 changeUIState()
+                CoroutineScope(Dispatchers.IO).launch {
+                    (activity as MainActivity).embedderWrapper.let { embedderWrapper ->
+                        embedderWrapper?.embed(allFiles.toTypedArray(), EmbeddingConfig())
+                            ?.onSuccess {
+                                Log.d("nfl", "embed result:${it.contentToString()}")
+                            }
+                            ?.onFailure {
+                                Log.d("nfl", "embed result failed:$it")
+                            }
+                    }
+                }
                 CoroutineScope(Dispatchers.IO).launch {
                     var progress = 0
                     while (progress < 100 && uiState == UIState.INDEXING) {
@@ -90,21 +106,21 @@ class IndexFragment : Fragment(R.layout.fragment_index) {
                 binding.llIndexing.visibility = View.GONE
                 binding.tvIndexTip.visibility = View.VISIBLE
                 binding.llIndexed.visibility = View.GONE
-                // enable bottom
+                binding.vHideBottom.visibility = View.GONE
             }
 
             UIState.INDEXING -> {
                 binding.llIndexing.visibility = View.VISIBLE
                 binding.tvIndexTip.visibility = View.GONE
                 binding.llIndexed.visibility = View.GONE
-                // disable bottom
+                binding.vHideBottom.visibility = View.VISIBLE
             }
 
             UIState.INDEXED -> {
                 binding.llIndexing.visibility = View.GONE
                 binding.tvIndexTip.visibility = View.GONE
                 binding.llIndexed.visibility = View.VISIBLE
-                // enable bottom
+                binding.vHideBottom.visibility = View.GONE
             }
         }
     }
@@ -116,8 +132,8 @@ class IndexFragment : Fragment(R.layout.fragment_index) {
             cardView.setShapeAppearanceModel(
                 cardView.shapeAppearanceModel
                     .toBuilder()
-                    .setTopLeftCorner(CornerFamily.ROUNDED, 20f)
-                    .setTopRightCorner(CornerFamily.ROUNDED, 20f)
+                    .setTopLeftCorner(CornerFamily.ROUNDED, 80f)
+                    .setTopRightCorner(CornerFamily.ROUNDED, 80f)
                     .build()
             );
         }

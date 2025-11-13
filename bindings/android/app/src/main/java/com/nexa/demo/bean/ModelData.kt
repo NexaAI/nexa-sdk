@@ -12,6 +12,7 @@ data class ModelData(
     val id: String,
     val displayName: String,
     val modelName: String,
+    val modelTypeName: String? = null,
     val mmprojOrTokenName: String,
     val tokenName: String = "",
     val embeddingName: String = "",

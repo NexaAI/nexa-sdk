@@ -67,6 +67,7 @@
     "id": "embeddinggemma-300m-npu",
     "displayName": "embeddinggemma-300m-npu",
     "modelName": "files-1-2.nexa",
+    "modelTypeName": "embed-gemma",
     "mmprojOrTokenName": "",
     "sizeGb": 0.25,
     "params": "0.6 B",
@@ -80,6 +81,20 @@
       {"name": "weights-1-2.nexa", "path": "", "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/embeddinggemma-300m-npu-mobile/weights-1-2.nexa"},
       {"name": "weights-2-2.nexa", "path": "", "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/embeddinggemma-300m-npu-mobile/weights-2-2.nexa"}
     ]
+  },
+  {
+    "id": "embed_neural-npu",
+    "displayName": "embed_neural-npu",
+    "modelName": "files-1-2.nexa",
+    "modelTypeName": "embedneural",
+    "mmprojOrTokenName": "",
+    "sizeGb": 0.25,
+    "params": "0.6 B",
+    "features": ["Embedding"],
+    "type": "embedder",
+    "versionCode": 1,
+    "modelUrl": "https://nexa",
+    "mmprojOrTokenUrl":""
   },
   {
     "id": "jina-v2-rerank-npu",

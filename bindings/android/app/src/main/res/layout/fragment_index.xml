@@ -4,6 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/bg_normal"
     android:orientation="vertical"
     tools:context=".fragments.IndexFragment">
 
@@ -75,7 +76,6 @@
             android:id="@+id/ll_indexed"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="@color/white"
             android:orientation="vertical"
             android:visibility="gone"
             tools:visibility="visible">
@@ -113,64 +113,82 @@
         android:id="@+id/mcv_index"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:cardBackgroundColor="#12121212"
-        app:contentPadding="15dp">
+        android:layout_marginTop="2dp"
+        app:cardBackgroundColor="@color/white">
 
-        <LinearLayout
+        <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
-
-            <EditText
-                android:id="@+id/et_search"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Enter search term..."
-                android:maxLines="3"
-                android:padding="15dp"
-                android:paddingTop="22dp"
-                android:paddingBottom="22dp"
-                android:textColorHint="#adadad"
-                android:textSize="16sp" />
+            android:padding="15dp">
 
             <LinearLayout
+                android:id="@+id/ll_bottom"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:orientation="horizontal">
+                android:orientation="vertical"
+                app:layout_constraintTop_toTopOf="parent">
 
-                <Button
-                    android:id="@+id/btn_import"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/btn_rounded_border_18"
-                    android:elevation="0dp"
-                    android:minWidth="0dp"
-                    android:minHeight="0dp"
-                    android:paddingHorizontal="18dp"
-                    android:paddingVertical="4dp"
-                    android:stateListAnimator="@null"
-                    android:text="+ Import"
-                    android:textAllCaps="false"
-                    android:textColor="#1f1f1f" />
-
-                <Button
-                    android:id="@+id/btn_search"
+                <EditText
+                    android:id="@+id/et_search"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginLeft="15dp"
-                    android:background="@drawable/btn_rounded_black_bg_18"
-                    android:elevation="0dp"
-                    android:minWidth="0dp"
-                    android:minHeight="0dp"
-                    android:paddingHorizontal="18dp"
-                    android:paddingVertical="4dp"
-                    android:stateListAnimator="@null"
-                    android:text="Search"
-                    android:textAllCaps="false"
-                    android:textColor="@color/white" />
+                    android:hint="Enter search term..."
+                    android:maxLines="3"
+                    android:padding="15dp"
+                    android:paddingTop="22dp"
+                    android:paddingBottom="22dp"
+                    android:textColorHint="#adadad"
+                    android:textSize="16sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btn_import"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/btn_rounded_border_18"
+                        android:elevation="0dp"
+                        android:minWidth="0dp"
+                        android:minHeight="0dp"
+                        android:paddingHorizontal="18dp"
+                        android:paddingVertical="4dp"
+                        android:stateListAnimator="@null"
+                        android:text="+ Import"
+                        android:textAllCaps="false"
+                        android:textColor="#1f1f1f" />
+
+                    <Button
+                        android:id="@+id/btn_search"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginLeft="15dp"
+                        android:background="@drawable/btn_rounded_black_bg_18"
+                        android:elevation="0dp"
+                        android:minWidth="0dp"
+                        android:minHeight="0dp"
+                        android:paddingHorizontal="18dp"
+                        android:paddingVertical="4dp"
+                        android:stateListAnimator="@null"
+                        android:text="Search"
+                        android:textAllCaps="false"
+                        android:textColor="@color/white" />
+                </LinearLayout>
             </LinearLayout>
-        </LinearLayout>
+
+            <View
+                android:id="@+id/v_hide_bottom"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:background="#7dfcfcfc"
+                android:clickable="true"
+                android:visibility="gone"
+                app:layout_constraintBottom_toBottomOf="@id/ll_bottom"
+                app:layout_constraintTop_toTopOf="parent" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
     </com.google.android.material.card.MaterialCardView>
 

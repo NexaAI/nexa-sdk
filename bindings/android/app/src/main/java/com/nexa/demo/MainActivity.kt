@@ -138,7 +138,7 @@ class MainActivity : FragmentActivity() {
 
     private lateinit var llmWrapper: LlmWrapper
     private lateinit var vlmWrapper: VlmWrapper
-    private lateinit var embedderWrapper: EmbedderWrapper
+    var embedderWrapper: EmbedderWrapper? = null
     private lateinit var rerankerWrapper: RerankerWrapper
     private lateinit var cvWrapper: CvWrapper
     private lateinit var asrWrapper: AsrWrapper
@@ -669,7 +669,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                         // Handle embedder model loading with NPU paths using EmbedderCreateInput
                         // embed-gemma
                         val embedderCreateInput = EmbedderCreateInput(
-                            model_name = "embed-gemma",  // Model name for NPU plugin
+                            model_name = selectModelData.modelTypeName ?: "",  // Model name for NPU plugin
                             model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
                             tokenizer_path = selectModelData.tokenFile(this@MainActivity)?.absolutePath,
                             config = ModelConfig(),
@@ -901,7 +901,7 @@ space ::= | " " | "\n" | "\r" | "\t"
                     // ADD: Handle embedder inference
                     // Input format: single text or multiple texts separated by "|"
                     val texts = inputString.split("|").map { it.trim() }.toTypedArray()
-                    embedderWrapper.embed(texts, EmbeddingConfig()).onSuccess { embeddings ->
+                    embedderWrapper!!.embed(texts, EmbeddingConfig()).onSuccess { embeddings ->
                         runOnUiThread {
                             val result = StringBuilder()
                             val embeddingDim = embeddings.size / texts.size
@@ -1077,7 +1077,7 @@ space ::= | " " | "\n" | "\r" | "\t"
                     handleUnloadResult(0)
                 } else if (isLoadEmbedderModel) {
                     // ADD: Unload embedder
-                    embedderWrapper.destroy()
+                    embedderWrapper!!.destroy()
                     // TODO:
                     handleUnloadResult(0)
                 } else if (isLoadRerankerModel) {
