@@ -42,7 +42,7 @@ func pull() *cobra.Command {
 	pullCmd.Args = cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs)
 
 	pullCmd.Flags().SortFlags = false
-	pullCmd.Flags().StringVarP(&modelHub, "model-hub", "", "", "specify model hub to use: volces|s3|hf|localfs")
+	pullCmd.Flags().StringVarP(&modelHub, "model-hub", "", "", "specify model hub to use: volces|s3|hf|localfs|modelscope")
 	pullCmd.Flags().StringVarP(&localPath, "local-path", "", "", "[localfs] path to local directory")
 	pullCmd.Flags().StringVarP(&modelType, "model-type", "", "", "specify model type to use: [llm|vlm|embedder|reranker|tts|asr|diarize|cv|image_gen]")
 
@@ -219,6 +219,8 @@ func pullModel(name string, quant string) error {
 				return fmt.Errorf("local path is required for localfs model hub")
 			}
 			model_hub.SetHub(model_hub.NewLocalFS(localPath))
+		case "modelscope", "ms":
+			model_hub.SetHub(model_hub.NewModelScope())
 		default:
 			return fmt.Errorf("unknown model hub: %s", modelHub)
 		}

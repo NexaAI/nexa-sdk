@@ -93,7 +93,8 @@ Pull model from model hub
 
 ```bash
 nexa pull <model>
-nexa pull <model> --model-hub s3 # pull from specify model hub, [volces|s3|hf]
+nexa pull <model> --model-hub s3 # pull from specify model hub, [volces|s3|hf|modelscope]
+nexa pull <model> --model-hub modelscope # pull from ModelScope (requires Python modelscope SDK)
 ```
 
 Import model from local filesystem

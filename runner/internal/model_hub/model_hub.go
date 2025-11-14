@@ -32,6 +32,7 @@ var hubs = []ModelHub{
 	NewVolces(false),
 	NewS3(),
 	NewHuggingFace(),
+	NewModelScope(),
 }
 
 var errUnavailable = fmt.Errorf("no model hub contains the model")
