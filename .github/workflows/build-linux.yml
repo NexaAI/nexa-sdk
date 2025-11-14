@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-cli:
-    name: ${{ matrix.runner }}_${{ matrix.arch }}
+    name: Build ${{ matrix.runner }}
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -19,17 +19,12 @@ jobs:
           - runner: ubuntu-22.04-arm
             arch: arm64
 
+    env:
+      VERSION: ${{ github.ref_name }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Detect Tag Version
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
-
-      - name: Detect Commit Hash
-        if: github.event_name == 'workflow_dispatch'
-        run: echo "VERSION=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_ENV
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -55,8 +50,8 @@ jobs:
           path: runner/build
           include-hidden-files: true
 
-  package-and-release:
-    name: Package for ${{ matrix.runner }}_${{ matrix.arch }}
+  package-release:
+    name: Package Release ${{ matrix.runner }}
     needs: build-cli
     runs-on: ${{ matrix.runner }}
     if: github.ref_type == 'tag'
@@ -68,6 +63,7 @@ jobs:
             arch: x86_64
           - runner: ubuntu-22.04-arm
             arch: arm64
+
     env:
       VERSION: ${{ github.ref_name }}
 
@@ -115,3 +111,51 @@ jobs:
         shell: bash
         run: |
           aws s3 cp "nexa-cli_linux_${{ matrix.arch }}.sh" "s3://nexa-model-hub-bucket/public/nexa_sdk/downloads/nexa-cli_linux_${{ matrix.arch }}.sh"
+
+  docker-release:
+    name: Docker Release ${{ matrix.runner }}
+    needs: build-cli
+    runs-on: ubuntu-22.04
+    if: github.ref_type == 'tag'
+
+    env:
+      VERSION: ${{ github.ref_name }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare Build Context
+        run: |
+          mkdir -p runner/release/linux/nexa_sdk
+          mv artifacts/nexa-cli_linux_x86_64 runner/release/linux/nexa_sdk.amd64
+          mv artifacts/nexa-cli_linux_arm64 runner/release/linux/nexa_sdk.arm64
+          chmod +x runner/release/linux/*/nexa
+          chmod +x runner/release/linux/*/nexa-cli
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: runner/release/linux
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            nexa4ai/nexasdk:${{ env.VERSION }}
+            nexa4ai/nexasdk:latest
