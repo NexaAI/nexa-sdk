@@ -1,0 +1,7 @@
+matplotlib
+numpy
+pillow
+requests
+transformers
+coremltools
+gradio

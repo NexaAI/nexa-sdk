@@ -1,0 +1,9 @@
+videofiles/
+__pycache__/
+data/
+LongVideoBench/
+lmms-eval/
+videomme/
+.vscode/
+.venv/
+modelfiles/
