@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import com.gyf.immersionbar.ktx.immersionBar
 import com.nexa.demo.adapter.ShowFileDirAdapter
 import com.nexa.demo.databinding.ActivityFolderBinding
@@ -27,12 +28,11 @@ class FolderActivity : Activity() {
             finish()
         }
         binding.btnImport.setOnClickListener {
-            adapter.getSelectedDirs().let { selectedDirs->
-                if (selectedDirs.isNotEmpty()) {
-                    setResult(RESULT_OK, Intent().apply {
-                        this.putStringArrayListExtra(KEY_SELECT_DIRS, selectedDirs)
-                    })
-                }
+            adapter.getSelectedImages().let {images->
+                setResult(RESULT_OK, Intent().apply {
+                    Log.d("nfl", "return all images:$images")
+                    this.putStringArrayListExtra(KEY_SELECT_IMAGES, images)
+                })
             }
             finish()
         }
@@ -40,5 +40,6 @@ class FolderActivity : Activity() {
 
     companion object {
         const val KEY_SELECT_DIRS = "select_dirs"
+        const val KEY_SELECT_IMAGES = "select_dirs"
     }
 }

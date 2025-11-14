@@ -1,5 +1,6 @@
 package com.nexa.demo.adapter
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
@@ -33,9 +34,24 @@ class ShowFileDirAdapter : RecyclerView.Adapter<ShowFileDirAdapter.MyViewHolder>
         holder: MyViewHolder,
         position: Int
     ) {
+        if (showDirs[position].subImageFiles == null || showDirs[position].subVideoFiles == null) {
+            showDirs[position].subImageFiles = arrayListOf()
+            showDirs[position].subVideoFiles = arrayListOf()
+            showDirs[position].dir.listFiles()?.forEach {subFile->
+                if (subFile.name.endsWith("jpg", true) ||
+                    subFile.name.endsWith("jpeg", true) ||
+                    subFile.name.endsWith("png", true)
+                ) {
+                    showDirs[position].subImageFiles!!.add(subFile.absolutePath)
+                } else if (subFile.name.endsWith("mp4", true)) {
+                    showDirs[position].subVideoFiles!!.add(subFile.absolutePath)
+                }
+            }
+        }
+
         holder.binding.cbSelected.isChecked = showDirs[position].isSelected
         holder.binding.tvDirName.text = showDirs[position].dir.name.toString()
-        holder.binding.tvFileCount.text = "${showDirs[position].dir.listFiles()?.size ?: "0"} items"
+        holder.binding.tvFileCount.text = "${showDirs[position].subImageFiles?.size ?: "0"} items"
         holder.binding.cbSelected.setOnClickListener {
             showDirs[position].isSelected = holder.binding.cbSelected.isChecked
         }
@@ -45,10 +61,12 @@ class ShowFileDirAdapter : RecyclerView.Adapter<ShowFileDirAdapter.MyViewHolder>
         return showDirs.size
     }
 
-    fun getSelectedDirs(): ArrayList<String> {
-        return showDirs.filter { it.isSelected }.map {
-            it.dir.absolutePath
-        } as ArrayList<String>
+    fun getSelectedImages(): ArrayList<String> {
+        val allSelectedImages = arrayListOf<String>()
+        showDirs.filter { it.isSelected }.forEach {
+            allSelectedImages.addAll(it.subImageFiles!!.toTypedArray())
+        }
+        return allSelectedImages
     }
 
     class MyViewHolder(val binding: ItemSelectFileBinding) :

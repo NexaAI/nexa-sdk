@@ -8,8 +8,6 @@ import com.nexa.demo.adapter.SelectVideosAdapter
 import com.nexa.demo.databinding.FragmentIndexedVideosBinding
 import com.nexa.demo.utils.bindView
 
-// TODO: Rename parameter arguments, choose names that match
-// the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
 private const val ARG_PARAM1 = "param1"
 private const val ARG_PARAM2 = "param2"
 
@@ -18,10 +16,11 @@ private const val ARG_PARAM2 = "param2"
  * Use the [IndexedVideosFragment.newInstance] factory method to
  * create an instance of this fragment.
  */
-class IndexedVideosFragment : Fragment(R.layout.fragment_indexed_videos) {
-    // TODO: Rename and change types of parameters
+class IndexedVideosFragment : UpdatePercentFragment(R.layout.fragment_indexed_videos) {
+
     private var param1: String? = null
     private var param2: String? = null
+    private val adapter = SelectVideosAdapter()
 
     private val binding by bindView<FragmentIndexedVideosBinding>()
 
@@ -35,19 +34,19 @@ class IndexedVideosFragment : Fragment(R.layout.fragment_indexed_videos) {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        binding.rvVideos.adapter = SelectVideosAdapter()
+        binding.rvVideos.adapter = adapter
+    }
+
+    override fun updatePercent(allPercent: ArrayList<Int>) {
+
+    }
+
+    override fun updateImages(allImages: ArrayList<String>) {
+
     }
 
     companion object {
-        /**
-         * Use this factory method to create a new instance of
-         * this fragment using the provided parameters.
-         *
-         * @param param1 Parameter 1.
-         * @param param2 Parameter 2.
-         * @return A new instance of fragment IndexedVideosFragment.
-         */
-        // TODO: Rename and change types and number of parameters
+
         @JvmStatic
         fun newInstance(param1: String, param2: String) =
             IndexedVideosFragment().apply {

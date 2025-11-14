@@ -16,6 +16,7 @@ import com.nexa.demo.MainActivity
 import com.nexa.demo.R
 import com.nexa.demo.activity.FolderActivity
 import com.nexa.demo.activity.FolderActivity.Companion.KEY_SELECT_DIRS
+import com.nexa.demo.activity.FolderActivity.Companion.KEY_SELECT_IMAGES
 import com.nexa.demo.adapter.IndexViewPagerAdapter
 import com.nexa.demo.databinding.FragmentIndexBinding
 import com.nexa.demo.utils.KeyboardUtil
@@ -24,6 +25,7 @@ import com.nexa.demo.utils.bindView
 import com.nexa.sdk.bean.EmbeddingConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -47,9 +49,20 @@ class IndexFragment : Fragment(R.layout.fragment_index) {
     private var param1: String? = null
     private var param2: String? = null
     private val binding by bindView<FragmentIndexBinding>()
+    private lateinit var adapter:IndexViewPagerAdapter
+    private val titles: MutableList<String> = arrayListOf()
     private lateinit var selectFolderResult: ActivityResultLauncher<Intent>
     private var uiState = UIState.NO_INDEX
     private var allFileCount = 0
+
+    private val allImages = arrayListOf<String>()
+    private val allImagePercentList = arrayListOf<Int>()
+    private val allImageResultList = arrayListOf<FloatArray>()
+
+
+    private val allVideos = arrayListOf<String>()
+    private val allVideoPercentList = arrayListOf<Int>()
+    private val allVideoResultList = arrayListOf<FloatArray>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,36 +75,56 @@ class IndexFragment : Fragment(R.layout.fragment_index) {
         ) { result -> //
             if (Activity.RESULT_OK == result.resultCode) {
                 allFileCount = 0
-                Log.d(TAG, "select dirs:${result.data?.getStringArrayListExtra(KEY_SELECT_DIRS)}")
-                val allFiles =
-                    result.data?.getStringArrayListExtra(KEY_SELECT_DIRS) ?: arrayListOf<String>()
-                allFiles.forEach {
-                    allFileCount += File(it).listFiles()?.size ?: 0
+                Log.d(TAG, "select dirs:${result.data?.getStringArrayListExtra(KEY_SELECT_IMAGES)}")
+
+                allImages.clear()
+                result.data?.getStringArrayListExtra(KEY_SELECT_IMAGES)?.let {
+                    allImages.addAll(it)
                 }
+
+                allFileCount = allImages.size
                 binding.tvIndexDatabase.text = "Database: $allFileCount files"
-                uiState = UIState.INDEXING
-                changeUIState()
-                CoroutineScope(Dispatchers.IO).launch {
-                    (activity as MainActivity).embedderWrapper.let { embedderWrapper ->
-                        embedderWrapper?.embed(allFiles.toTypedArray(), EmbeddingConfig())
-                            ?.onSuccess {
-                                Log.d("nfl", "embed result:${it.contentToString()}")
-                            }
-                            ?.onFailure {
-                                Log.d("nfl", "embed result failed:$it")
-                            }
-                    }
+                if (allFileCount == 0) {
+                    binding.lpiIndexing.max = 1
+                    binding.lpiIndexing.progress = 1
+                    uiState = UIState.INDEXED
+                } else {
+                    binding.lpiIndexing.max = allFileCount
+                    uiState = UIState.INDEXING
                 }
+                changeUIState()
+                adapter.updateImages(0, allImages)
+
+                allImageResultList.clear()
+                allVideoResultList.clear()
+
                 CoroutineScope(Dispatchers.IO).launch {
-                    var progress = 0
-                    while (progress < 100 && uiState == UIState.INDEXING) {
-                        progress++
-                        delay(100)
-                        withContext(Dispatchers.Main) {
-                            binding.lpiIndexing.progress = progress
-                            if (progress >= 100) {
-                                uiState = UIState.INDEXED
-                                changeUIState()
+                    allImages.forEachIndexed { index, imagePath ->
+                        var temp = imagePath
+                        if (index == 0) {
+                            temp = "a feline sits on the mat"
+                        } else {
+                            temp = "the international space station orbits Earth";
+                        }
+
+                        (activity as MainActivity).embedderWrapper.let { embedderWrapper ->
+                            embedderWrapper?.embed(arrayOf(temp), EmbeddingConfig(batchSize = 1)).let {
+                                it?.onSuccess {
+                                    allImageResultList.add(index, it)
+                                    Log.d("nfl", "embed result size:${it.size}")
+                                    Log.d("nfl", "embed result:${it.contentToString()}")
+                                }
+                                    ?.onFailure {
+                                        Log.d("nfl", "embed result failed:$it")
+                                    }
+
+                                withContext(Dispatchers.Main) {
+                                    binding.lpiIndexing.progress = index + 1
+                                    if (index + 1 >= allFileCount) {
+                                        uiState = UIState.INDEXED
+                                        changeUIState()
+                                    }
+                                }
                             }
                         }
                     }
@@ -112,19 +145,32 @@ class IndexFragment : Fragment(R.layout.fragment_index) {
             UIState.INDEXING -> {
                 binding.llIndexing.visibility = View.VISIBLE
                 binding.tvIndexTip.visibility = View.GONE
-                binding.llIndexed.visibility = View.GONE
+
+                binding.llIndexed.visibility = View.VISIBLE
+                titles.clear()
+                titles.add("Images(${allImages.size})")
+                titles.add("Videos")
+                adapter.notifyDataSetChanged()
+
                 binding.vHideBottom.visibility = View.VISIBLE
             }
 
             UIState.INDEXED -> {
                 binding.llIndexing.visibility = View.GONE
                 binding.tvIndexTip.visibility = View.GONE
+
                 binding.llIndexed.visibility = View.VISIBLE
+                titles.clear()
+                titles.add("Images(${allImages.size})")
+                titles.add("Videos")
+                adapter.notifyDataSetChanged()
+
                 binding.vHideBottom.visibility = View.GONE
             }
         }
     }
 
+    private lateinit var searchJob: Job
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -138,6 +184,19 @@ class IndexFragment : Fragment(R.layout.fragment_index) {
             );
         }
 
+        titles.add("Images(${allImages.size})")
+        titles.add("Videos")
+        adapter = IndexViewPagerAdapter(
+            activity!!.supportFragmentManager,
+            arrayListOf(
+                IndexedImagesFragment.newInstance(allImages, ""),
+                IndexedVideosFragment.newInstance("", "")
+            ),
+            titles
+        )
+        binding.vpIndexed.adapter = adapter
+        binding.tlIndexed.setupWithViewPager(binding.vpIndexed)
+
         binding.btnImport.setOnClickListener {
             if (PermissionUtil.checkManageStoragePermission(activity!!)) {
                 selectFolderResult.launch(Intent(context, FolderActivity::class.java))
@@ -150,33 +209,77 @@ class IndexFragment : Fragment(R.layout.fragment_index) {
             uiState = UIState.NO_INDEX
             changeUIState()
         }
-        binding.vpIndexed.adapter =
-            IndexViewPagerAdapter(
-                activity!!.supportFragmentManager,
-                arrayListOf(
-                    IndexedImagesFragment.newInstance("", ""),
-                    IndexedVideosFragment.newInstance("", "")
-                ),
-                arrayListOf("Images", "Videos")
-            )
-        binding.tlIndexed.setupWithViewPager(binding.vpIndexed)
 
         binding.btnSearch.setOnClickListener {
             if ("Search" == binding.btnSearch.text) {
                 binding.btnSearch.text = "Stop"
                 KeyboardUtil.hide(binding.etSearch)
-                it.postDelayed({
-                    binding.btnSearch.text = "Search"
-                }, 5000)
+                searchJob = CoroutineScope(Dispatchers.IO).launch {
+                    (activity as MainActivity).embedderWrapper?.embed(
+//                        arrayOf(binding.etSearch.text.toString()),
+                        arrayOf("the cat is resting on the rug"),
+                        EmbeddingConfig(batchSize = 1)
+                    )?.onSuccess { searchResult ->
+                        allImagePercentList.clear()
+                        allImageResultList.forEach { imageResult ->
+                            allImagePercentList.add(
+                                (computeCosineSimilarity(
+                                    searchResult,
+                                    imageResult
+                                ).apply {
+                                    Log.d("nfl", "computeCosineSimilarity: $this")
+                                } * 100).toInt()
+                            )
+                        }
+                        withContext(Dispatchers.Main) {
+                            binding.btnSearch.text = "Search"
+                            (binding.vpIndexed.adapter as IndexViewPagerAdapter).let {
+                                it.updatePercent(0, allImagePercentList)
+                                it.updatePercent(1, allVideoPercentList)
+                            }
+                        }
+                    }?.onFailure {
+                        activity?.runOnUiThread {
+                            binding.btnSearch.text = "Search"
+                        }
+                    }
+                }
             } else {
                 binding.btnSearch.text = "Search"
-                // TODO: stop search
+                searchJob.cancel()
             }
         }
     }
 
     enum class UIState {
         NO_INDEX, INDEXING, INDEXED
+    }
+
+    fun computeCosineSimilarity(
+        embedding1: FloatArray?,
+        embedding2: FloatArray?
+    ): Float {
+        if (embedding1 == null || embedding2 == null) return 0.0f
+        if (embedding1.isEmpty() || embedding2.isEmpty()) return 0.0f
+        if (embedding1.size != embedding2.size) return 0.0f
+
+        var dotProduct = 0.0f
+        var norm1 = 0.0f
+        var norm2 = 0.0f
+
+        for (i in embedding1.indices) {
+            dotProduct += embedding1[i] * embedding2[i]
+            norm1 += embedding1[i] * embedding1[i]
+            norm2 += embedding2[i] * embedding2[i]
+        }
+
+        val epsilon = 1e-8f
+        norm1 = kotlin.math.sqrt(norm1 + epsilon)
+        norm2 = kotlin.math.sqrt(norm2 + epsilon)
+        Log.d("nfl", "norm1 > 0 ? ${norm1 > 0}")
+        Log.d("nfl", "norm2 > 0 ? ${norm2 > 0}")
+        Log.d("nfl", "dotProduct > 0 ? ${dotProduct > 0}")
+        return dotProduct / (norm1 * norm2)
     }
 
     companion object {

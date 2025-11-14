@@ -7,6 +7,7 @@
     android:layout_marginStart="0dp"
     android:layout_marginEnd="0dp"
     android:layout_marginBottom="20dp"
+    android:background="@color/bg_normal"
     android:fitsSystemWindows="true">
 
     <LinearLayout
@@ -105,6 +106,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:orientation="vertical">
+
                 <!-- chat display area -->
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/rv_chat"
@@ -241,9 +243,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:background="@color/white"
-                android:clickable="true" />
+                android:clickable="true"
+                android:visibility="gone" />
         </FrameLayout>
-
 
     </LinearLayout>
 
@@ -307,7 +309,7 @@
         android:gravity="center"
         android:orientation="vertical"
         android:visibility="invisible"
-        tools:visibility="visible">
+        tools:visibility="gone">
 
         <ProgressBar
             android:id="@+id/pb_downloading"
@@ -330,7 +332,7 @@
         android:gravity="center"
         android:orientation="vertical"
         android:visibility="invisible"
-        tools:visibility="visible">
+        tools:visibility="gone">
 
         <ProgressBar
             android:layout_width="wrap_content"

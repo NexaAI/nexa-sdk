@@ -271,14 +271,15 @@ class MainActivity : FragmentActivity() {
         findViewById<View>(R.id.v_tip).setOnClickListener {
             Toast.makeText(this, "please unload model first", Toast.LENGTH_SHORT).show()
         }
-
-        replaceFragment(IndexFragment.newInstance("", ""))
     }
 
     private fun replaceFragment(fragment: Fragment) {
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.fl_index, fragment)
-            .commit()
+        runOnUiThread {
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.fl_index, fragment)
+                .commit()
+            binding.flIndex.visibility = View.VISIBLE
+        }
     }
 
     private fun parseModelList() {
@@ -683,6 +684,9 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                                 isLoadEmbedderModel = true
                                 embedderWrapper = wrapper
                                 onLoadModelSuccess("embedder model loaded")
+                                if (selectModelData.id == "embedneural-npu") {
+                                    replaceFragment(IndexFragment.newInstance("", ""))
+                                }
                             }.onFailure { error ->
                                 onLoadModelFailed(error.message.toString())
                             }
@@ -1046,6 +1050,7 @@ space ::= | " " | "\n" | "\r" | "\t"
          * Step 6. others
          */
         btnUnloadModel.setOnClickListener {
+            binding.flIndex.visibility = View.GONE
             if (!hasLoadedModel()) {
                 Toast.makeText(this@MainActivity, "model not loaded", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener

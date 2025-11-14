@@ -78,6 +78,7 @@ dependencies {
     implementation(project(":bridgeLib"))
 //    implementation("ai.nexa:core:0.0.11")
     implementation(libs.aws.android.sdk.s3)
+    implementation("com.github.bumptech.glide:glide:5.0.5")
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("androidx.recyclerview:recyclerview:1.3.1")
     implementation(project(":transform"))

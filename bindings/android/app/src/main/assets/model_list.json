@@ -83,8 +83,8 @@
     ]
   },
   {
-    "id": "embed_neural-npu",
-    "displayName": "embed_neural-npu",
+    "id": "embedneural-npu",
+    "displayName": "embedneural-npu",
     "modelName": "files-1-2.nexa",
     "modelTypeName": "embedneural",
     "mmprojOrTokenName": "",
