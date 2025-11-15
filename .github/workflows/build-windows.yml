@@ -171,7 +171,7 @@ jobs:
         shell: bash
         run: |
           cp -r artifacts artifacts_cuda
-          rm -r artifacts_cuda/nexa_dml*
+          rm -r artifacts_cuda/nexaai*
           rm -r artifacts/nexa_cuda*
 
       - name: Compile Installer (CUDA) (X86_64)
