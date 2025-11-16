@@ -91,8 +91,7 @@ jobs:
           files: |
             nexa-cli_linux_${{ matrix.arch }}.sh
           draft: ${{ contains(github.ref, '-rc') }}
-          generate_release_notes: true
-          append_body: false
+          generate_release_notes: ${{ matrix.arch == 'x86_64' }}
           make_latest: ${{ !contains(github.ref, '-rc') }}
         env:
           GITHUB_TOKEN: ${{ secrets.ZACK_ACCESS_TOKEN }}
