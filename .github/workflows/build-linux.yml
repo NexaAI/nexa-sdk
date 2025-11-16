@@ -158,4 +158,4 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: |
             nexa4ai/nexasdk:${{ env.VERSION }}
-            nexa4ai/nexasdk:latest
+            ${{ !contains(github.ref, '-rc') && 'nexa4ai/nexasdk:latest' || '' }}
