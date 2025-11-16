@@ -148,6 +148,7 @@ jobs:
             artifacts/nexa-cli_macos_${{ matrix.arch }}.pkg
           draft: ${{ contains(github.ref, '-rc') }}
           generate_release_notes: true
+          append_body: false
           make_latest: ${{ !contains(github.ref, '-rc') }}
         env:
           GITHUB_TOKEN: ${{ secrets.ZACK_ACCESS_TOKEN }}
