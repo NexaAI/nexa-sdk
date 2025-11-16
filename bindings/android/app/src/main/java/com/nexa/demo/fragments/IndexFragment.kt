@@ -276,8 +276,6 @@ class IndexFragment : Fragment(R.layout.fragment_index) {
         val epsilon = 1e-8f
         norm1 = kotlin.math.sqrt(norm1 + epsilon)
         norm2 = kotlin.math.sqrt(norm2 + epsilon)
-        Log.d("nfl", "norm1 > 0 ? ${norm1 > 0}")
-        Log.d("nfl", "norm2 > 0 ? ${norm2 > 0}")
         Log.d("nfl", "dotProduct > 0 ? ${dotProduct > 0}")
         return dotProduct / (norm1 * norm2)
     }
