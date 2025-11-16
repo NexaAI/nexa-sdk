@@ -1,11 +1,20 @@
+# Multi-architecture Linux Docker image for Nexa SDK
+# Supports both amd64 and arm64 platforms
+# Usage: docker run --rm -it -v /path/to/data:/root/.cache/nexa.ai nexa4ai/nexasdk:latest
+
 FROM ubuntu:22.04
+
+LABEL org.opencontainers.image.title="Nexa SDK"
+LABEL org.opencontainers.image.description="Nexa SDK CLI for running multi models"
+LABEL org.opencontainers.image.vendor="NexaAI"
 
 ARG TARGETARCH
 
-ENV DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update && apt-get install -y libgomp1 curl ffmpeg sox
-COPY nexa_sdk.$TARGETARCH /opt/nexa_sdk
+RUN DEBIAN_FRONTEND=noninteractive \
+    apt-get update \
+    && apt-get install -y libgomp1 curl ffmpeg sox \
+    && rm -rf /var/lib/apt/lists/*
+COPY nexa_sdk.$TARGETARCH/ /opt/nexa_sdk/
 RUN ln -s /opt/nexa_sdk/nexa /usr/local/bin/nexa
 
 EXPOSE 18181
