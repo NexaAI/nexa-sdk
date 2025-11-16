@@ -96,6 +96,15 @@ curl -fsSL https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_
 curl -fsSL https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_linux_arm64.sh -o install.sh && chmod +x install.sh && ./install.sh && rm install.sh
 ```
 
+#### Uninstall
+
+```bash
+sudo rm -r /opt/nexa_sdk
+sudo rm /usr/local/bin/nexa
+# if you want to remove data as well
+# rm -r $HOME/.cache/nexa.ai
+```
+
 ## Step 2: Run models with one line of code
 
 You can run any compatible GGUF, MLX, or nexa model from 🤗 Hugging Face by using the `nexa infer <full repo name>`.
@@ -143,7 +152,6 @@ nexa infer NexaAI/gemma-3n-E4B-it-4bit-MLX
 #### Quick Start (Windows arm64, Snapdragon X Elite)
 
 1. **Login & Get Access Token (required for Pro Models)**
-
    - Create an account at [sdk.nexa.ai](https://sdk.nexa.ai)
    - Go to **Deployment → Create Token**
    - Run this once in your terminal (replace with your token):
