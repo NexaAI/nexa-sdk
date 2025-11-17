@@ -9,8 +9,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-
-	"golang.org/x/image/webp"
 )
 
 // TestSaveURIToTempFile_WebP tests WebP to PNG conversion
@@ -18,7 +16,7 @@ func TestSaveURIToTempFile_WebP(t *testing.T) {
 	// Create a simple test WebP image (1x1 red pixel)
 	// Note: This is a minimal valid WebP file in base64
 	webpData := "UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAQAcJaQAA3AA/v3AgAA="
-	
+
 	webpBytes, err := base64.StdEncoding.DecodeString(webpData)
 	if err != nil {
 		t.Fatalf("Failed to decode test WebP data: %v", err)
@@ -114,4 +112,3 @@ func TestSaveURIToTempFile_PNG(t *testing.T) {
 		t.Errorf("Expected PNG extension, got: %s", resultPath)
 	}
 }
-
