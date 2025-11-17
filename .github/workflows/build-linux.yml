@@ -147,7 +147,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and Push Docker Image
+      - name: Build and Push Docker Image (Base)
         uses: docker/build-push-action@v6
         with:
           context: runner/release/linux
@@ -156,3 +156,15 @@ jobs:
           tags: |
             nexa4ai/nexasdk:${{ env.VERSION }}
             ${{ !contains(github.ref, '-rc') && 'nexa4ai/nexasdk:latest' || '' }}
+
+      - name: Build and Push Docker Image (Cuda)
+        uses: docker/build-push-action@v6
+        with:
+          context: runner/release/linux
+          push: true
+          platforms: linux/amd64
+          build-args: |
+            BASE_IMAGE=nvidia/cuda:12.9.1-runtime-ubuntu22.04
+          tags: |
+            nexa4ai/nexasdk:${{ env.VERSION }}-cuda
+            ${{ !contains(github.ref, '-rc') && 'nexa4ai/nexasdk:latest-cuda' || '' }}
