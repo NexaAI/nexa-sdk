@@ -41,7 +41,7 @@ jobs:
           make build
           rm build/ml.h
           #TODO: temporary remove these files to let ane_py work
-          rm -rf build/{nexaai_cpu_gpu,ane,nexaml}
+          rm -rf build/{nexaai_cpu_gpu,ane,nexaml,cpu_gpu,metal}
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
