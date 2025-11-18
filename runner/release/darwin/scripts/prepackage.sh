@@ -51,6 +51,10 @@ if [ -d "${APP_PATH}/Contents/Resources/ane_py/python_runtime/bin" ]; then
   chmod -R +x "${APP_PATH}/Contents/Resources/ane_py/python_runtime/bin"
 fi
 
+echo "Removing test data files to avoid notarization warnings..."
+# Remove joblib test data files that cause notarization warnings
+find "${APP_PATH}/Contents/Resources" -type d -path "*/joblib/test/data" -exec rm -rf {} + 2>/dev/null || true
+
 echo "Preparing PKG scripts..."
 mkdir -p "pkg_scripts"
 cp runner/release/darwin/scripts/preinstall pkg_scripts/
