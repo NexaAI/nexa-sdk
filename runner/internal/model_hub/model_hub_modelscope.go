@@ -38,8 +38,9 @@ func (d *ModelScope) CheckAvailable(ctx context.Context, name string) error {
 	defer client.Close()
 
 	res, err := client.R().Get(fmt.Sprintf("%s/api/v1/models/%s/revisions", MS_ENDPOINT, name))
-	if err != nil || res.StatusCode() != 200 {
-		return fmt.Errorf("model %s not found on modelscope, please check model id, err: %s", name, err)
+	slog.Debug("ModelScope CheckAvailable", "name", name, "res", res, "err", err)
+	if err != nil || res == nil || res.StatusCode() != http.StatusOK {
+		return fmt.Errorf("model %s not found on modelscope, please check model id", name)
 	}
 
 	return nil
