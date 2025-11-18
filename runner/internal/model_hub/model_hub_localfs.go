@@ -15,6 +15,14 @@ func NewLocalFS(base string) *LocalFS {
 	return &LocalFS{base}
 }
 
+func (d *LocalFS) ChinaMainlandOnly() bool {
+	return false
+}
+
+func (d *LocalFS) MaxConcurrency() int {
+	return 4
+}
+
 func (d *LocalFS) CheckAvailable(ctx context.Context, name string) error {
 	// check is directory exists
 	info, err := os.Stat(d.basePath)
@@ -25,10 +33,6 @@ func (d *LocalFS) CheckAvailable(ctx context.Context, name string) error {
 		return os.ErrNotExist
 	}
 	return nil
-}
-
-func (d *LocalFS) MaxConcurrency() int {
-	return 4
 }
 
 func (d *LocalFS) ModelInfo(ctx context.Context, name string) ([]ModelFileInfo, error) {

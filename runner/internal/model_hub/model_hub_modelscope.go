@@ -1,168 +1,104 @@
 package model_hub
 
 import (
-	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
+	"net/http"
+	"time"
+
+	"github.com/bytedance/sonic"
+	"resty.dev/v3"
+
+	"github.com/NexaAI/nexa-sdk/runner/internal/downloader"
 )
 
-const msCacheRootEnv = "NEXA_MS_CACHE_DIR"
+const MS_ENDPOINT = "https://modelscope.cn"
 
-func msBaseCacheDir() (string, error) {
-	if custom := os.Getenv(msCacheRootEnv); custom != "" {
-		return custom, nil
-	}
-	base, err := os.UserCacheDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(base, "nexa.ai", "modelscope_cache"), nil
+type ModelScope struct {
+	downloader *downloader.HTTPDownloader
 }
 
-func msLocalCacheDir(modelName string) (string, error) {
-	base, err := msBaseCacheDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(base, filepath.FromSlash(modelName)), nil
+func NewModelScope() *ModelScope {
+	return &ModelScope{downloader: downloader.NewDownloader("")}
 }
 
-type ModelScope struct{}
+func (d *ModelScope) ChinaMainlandOnly() bool {
+	return true
+}
 
-func NewModelScope() *ModelScope { return &ModelScope{} }
+func (d *ModelScope) MaxConcurrency() int {
+	return 8
+}
 
-func (m *ModelScope) CheckAvailable(ctx context.Context, modelName string) error {
-	if _, err := exec.LookPath("python3"); err != nil {
-		return fmt.Errorf("python3 not found: %w", err)
+func (d *ModelScope) CheckAvailable(ctx context.Context, name string) error {
+	client := resty.New()
+	client.SetTimeout(5 * time.Second)
+	defer client.Close()
+
+	res, err := client.R().Get(fmt.Sprintf("%s/api/v1/models/%s/revisions", MS_ENDPOINT, name))
+	if err != nil || res.StatusCode() != 200 {
+		slog.Warn("modelscope check model available error", "model", name, "status_code", res.StatusCode(), "err", err)
+		return fmt.Errorf("model %s not found on modelscope, please check model id, err: %s", name, err)
 	}
+
 	return nil
 }
 
-func (m *ModelScope) MaxConcurrency() int { return 4 }
-
-func (m *ModelScope) ensureDownloaded(ctx context.Context, modelName string) (string, error) {
-	finalCacheDir, err := msLocalCacheDir(modelName)
-	if err != nil {
-		return "", err
-	}
-
-	// quick existence check: if directory exists and not empty, skip
-	if info, err := os.Stat(finalCacheDir); err == nil && info.IsDir() {
-		var nonEmpty bool
-		_ = filepath.WalkDir(finalCacheDir, func(path string, d os.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			if !d.IsDir() {
-				nonEmpty = true
-				return errors.New("done")
-			}
-			return nil
-		})
-		if nonEmpty {
-			return finalCacheDir, nil
-		}
-	}
-
-	baseCacheDir, err := msBaseCacheDir()
-	if err != nil {
-		return "", err
-	}
-
-	if err := os.MkdirAll(baseCacheDir, 0o755); err != nil {
-		return "", fmt.Errorf("failed to create base cache dir %s: %w", baseCacheDir, err)
-	}
-
-	py := strings.Join([]string{
-		"from modelscope.hub.snapshot_download import snapshot_download",
-		fmt.Sprintf("snapshot_download('%s', cache_dir=r'%s')", modelName, baseCacheDir),
-	}, ";\n")
-
-	cmd := exec.CommandContext(ctx, "python3", "-c", py)
-	cmd.Env = os.Environ()
-	stderr, _ := cmd.StderrPipe()
-	stdout, _ := cmd.StdoutPipe()
-	if err := cmd.Start(); err != nil {
-		return "", err
-	}
-	// stream logs (debug)
-	go func() {
-		s := bufio.NewScanner(stdout)
-		for s.Scan() {
-			slog.Debug("ms sdk", "out", s.Text())
-		}
-	}()
-	go func() {
-		s := bufio.NewScanner(stderr)
-		for s.Scan() {
-			slog.Warn("ms sdk", "err", s.Text())
-		}
-	}()
-	if err := cmd.Wait(); err != nil {
-		return "", fmt.Errorf("modelscope sdk download failed: %w", err)
-	}
-
-	return finalCacheDir, nil
+func (d *ModelScope) ModelInfo(ctx context.Context, name string) ([]ModelFileInfo, error) {
+	return d.modelInfo(ctx, name, "")
 }
 
-func (m *ModelScope) ModelInfo(ctx context.Context, modelName string) ([]ModelFileInfo, error) {
-	cacheDir, err := m.ensureDownloaded(ctx, modelName)
-	if err != nil {
+func (d *ModelScope) modelInfo(ctx context.Context, name string, root string) ([]ModelFileInfo, error) {
+	info := struct {
+		Data struct {
+			Files []struct {
+				Path string
+				Size int64
+				Type string
+			}
+		}
+	}{}
+
+	client := resty.New()
+	defer client.Close()
+	client.SetTimeout(10 * time.Second)
+
+	resp, err := client.R().
+		Get(fmt.Sprintf("%s/api/v1/models/%s/repo/files?Root=%s", MS_ENDPOINT, name, root))
+	if err != nil || resp.StatusCode() != http.StatusOK {
+		slog.Warn("modelscope get model info error", "model", name, "status_code", resp.StatusCode(), "err", err)
+		return nil, fmt.Errorf("failed to get model info from modelscope for model %s", name)
+	}
+
+	if err := sonic.UnmarshalString(resp.String(), &info); err != nil {
 		return nil, err
 	}
+
 	res := make([]ModelFileInfo, 0)
-	err = filepath.WalkDir(cacheDir, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return err
+	for _, file := range info.Data.Files {
+		// blob, tree
+		switch file.Type {
+		case "tree":
+			subFiles, err := d.modelInfo(ctx, name, file.Path)
+			if err != nil {
+				return nil, err
+			}
+			res = append(res, subFiles...)
+		case "blob":
+			res = append(res, ModelFileInfo{
+				Name: file.Path,
+				Size: file.Size,
+			})
+		default:
+			slog.Warn("modelscope unknown file type", "model", name, "file", file.Path, "type", file.Type)
+			continue
 		}
-		if d.IsDir() {
-			return nil
-		}
-		rel, err := filepath.Rel(cacheDir, path)
-		if err != nil {
-			return err
-		}
-		info, err := d.Info()
-		if err != nil {
-			return err
-		}
-		res = append(res, ModelFileInfo{Name: filepath.ToSlash(rel), Size: info.Size()})
-		return nil
-	})
-	if err != nil {
-		return nil, err
 	}
 	return res, nil
 }
 
-func (m *ModelScope) GetFileContent(ctx context.Context, modelName, fileName string, offset, limit int64, writer io.Writer) error {
-	cacheDir, err := m.ensureDownloaded(ctx, modelName)
-	if err != nil {
-		return err
-	}
-
-	filePath := filepath.Join(cacheDir, filepath.FromSlash(fileName))
-	f, err := os.Open(filePath)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	if offset > 0 {
-		if _, err := f.Seek(offset, io.SeekStart); err != nil {
-			return err
-		}
-	}
-	var r io.Reader = f
-	if limit > 0 {
-		r = io.LimitReader(f, limit)
-	}
-	_, err = io.Copy(writer, r)
-	return err
+func (d *ModelScope) GetFileContent(ctx context.Context, modelName, fileName string, offset, limit int64, writer io.Writer) error {
+	return d.downloader.DownloadChunk(ctx, fmt.Sprintf("%s/models/%s/resolve/main/%s", MS_ENDPOINT, modelName, fileName), offset, limit, writer)
 }

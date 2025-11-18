@@ -10,13 +10,16 @@ import (
 )
 
 type HTTPDownloader struct {
-	authToken string
+	authToken    string
+	maxRedirects int
+
 	fasthttp.Client
 }
 
 func NewDownloader(authToken string) *HTTPDownloader {
 	return &HTTPDownloader{
-		authToken: authToken,
+		authToken:    authToken,
+		maxRedirects: 3,
 		Client: fasthttp.Client{
 			NoDefaultUserAgentHeader:  true,
 			MaxIdemponentCallAttempts: 3,
@@ -32,99 +35,45 @@ func (d *HTTPDownloader) DownloadChunk(ctx context.Context, url string, offset, 
 	defer fasthttp.ReleaseRequest(req)
 	defer fasthttp.ReleaseResponse(resp)
 
-	_, currentURL, err := FastHTTPResolveRedirect(&d.Client, d.authToken, url, 3)
-	if err != nil {
-		return err
-	}
-
-	req.SetRequestURI(currentURL)
-	req.Header.SetMethod(fasthttp.MethodGet)
-	if d.authToken != "" {
-		req.Header.Set("Authorization", "Bearer "+d.authToken)
-	}
-	req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", offset, offset+limit-1))
-
-	if err := d.Client.Do(req, resp); err != nil {
-		return err
-	}
-
-	if resp.StatusCode() != fasthttp.StatusPartialContent && resp.StatusCode() != fasthttp.StatusOK {
-		return fmt.Errorf("unexpected status code: %d", resp.StatusCode())
-	}
-
-	_, err = writer.Write(resp.Body())
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (d *HTTPDownloader) GetFileSize(url string) (int64, error) {
-	req := fasthttp.AcquireRequest()
-	resp := fasthttp.AcquireResponse()
-	defer fasthttp.ReleaseRequest(req)
-	defer fasthttp.ReleaseResponse(resp)
-
-	_, currentURL, err := FastHTTPResolveRedirect(&d.Client, d.authToken, url, 3)
-	if err != nil {
-		return -1, err
-	}
-
-	req.SetRequestURI(currentURL)
-	req.Header.SetMethod(fasthttp.MethodHead)
-	if d.authToken != "" {
-		req.Header.Set("Authorization", "Bearer "+d.authToken)
-	}
-	req.Header.Set("Accept-Encoding", "identity")
-
-	if err := d.Client.Do(req, resp); err != nil {
-		return -1, err
-	}
-
-	return int64(resp.Header.ContentLength()), nil
-}
-
-func FastHTTPResolveRedirect(client *fasthttp.Client, authToken string, currentURL string, maxRedirect int) (int, string, error) {
-	req := fasthttp.AcquireRequest()
-	resp := fasthttp.AcquireResponse()
-	defer fasthttp.ReleaseRequest(req)
-	defer fasthttp.ReleaseResponse(resp)
-
-	for range maxRedirect {
+	for range d.maxRedirects {
 		req.Reset()
 		resp.Reset()
 
-		req.SetRequestURI(currentURL)
-		req.Header.SetMethod(fasthttp.MethodHead)
-		if authToken != "" {
-			req.Header.Set("Authorization", "Bearer "+authToken)
+		req.SetRequestURI(url)
+		req.Header.SetMethod(fasthttp.MethodGet)
+		req.Header.Set("User-Agent", "NexaSDK/0.0")
+		if d.authToken != "" {
+			req.Header.Set("Authorization", "Bearer "+d.authToken)
+		}
+		if offset > 0 || limit > 0 {
+			req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", offset, offset+limit-1))
 		}
 
-		if err := client.Do(req, resp); err != nil {
-			return 0, "", fmt.Errorf("request failed: %w", err)
+		if err := d.Client.Do(req, resp); err != nil {
+			return err
 		}
 
-		statusCode := resp.StatusCode()
-		if statusCode >= 300 && statusCode < 400 {
+		if resp.StatusCode() >= 300 && resp.StatusCode() < 400 {
 			location := resp.Header.Peek("Location")
 			if len(location) == 0 {
-				return 0, "", fmt.Errorf("redirect status %d with no Location", statusCode)
+				return fmt.Errorf("redirect status %d with no Location", resp.StatusCode())
 			}
-			currentURL = resolveRelativeURL(currentURL, string(location))
-			req.Reset()
-			resp.Reset()
+			url = resolveRelativeURL(url, string(location))
 			continue
 		}
 
-		if statusCode >= 200 && statusCode < 300 {
-			return statusCode, currentURL, nil
+		if resp.StatusCode() != fasthttp.StatusPartialContent && resp.StatusCode() != fasthttp.StatusOK {
+			return fmt.Errorf("unexpected status code: %d", resp.StatusCode())
 		}
 
-		return statusCode, "", fmt.Errorf("unexpected status code: %d (%s)", statusCode, currentURL)
+		_, err := writer.Write(resp.Body())
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 
-	return 0, "", fmt.Errorf("exceeded max redirects (%d)", maxRedirect)
+	return fmt.Errorf("exceeded max redirects (%d)", d.maxRedirects)
 }
 
 func resolveRelativeURL(base, location string) string {
