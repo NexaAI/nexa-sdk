@@ -47,6 +47,10 @@ if [ -d "${APP_PATH}/Contents/Resources/metal/python_runtime/bin" ]; then
   chmod -R +x "${APP_PATH}/Contents/Resources/metal/python_runtime/bin"
 fi
 
+if [ -d "${APP_PATH}/Contents/Resources/ane_py/python_runtime/bin" ]; then
+  chmod -R +x "${APP_PATH}/Contents/Resources/ane_py/python_runtime/bin"
+fi
+
 echo "Preparing PKG scripts..."
 mkdir -p "pkg_scripts"
 cp runner/release/darwin/scripts/preinstall pkg_scripts/

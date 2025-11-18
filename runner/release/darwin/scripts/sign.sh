@@ -20,6 +20,10 @@ if [ -d "$RESOURCES_PATH/metal/python_runtime/bin" ]; then
   find "$RESOURCES_PATH/metal/python_runtime/bin" -type f -name "python*" -exec codesign --force --options runtime --timestamp --verify -s "$SIGNING_IDENTITY" --entitlements runner/release/darwin/entitlements.plist {} \;
 fi
 
+if [ -d "$RESOURCES_PATH/ane_py/python_runtime/bin" ]; then
+  find "$RESOURCES_PATH/ane_py/python_runtime/bin" -type f -name "python*" -exec codesign --force --options runtime --timestamp --verify -s "$SIGNING_IDENTITY" --entitlements runner/release/darwin/entitlements.plist {} \;
+fi
+
 find "$RESOURCES_PATH" -type f -name "nexa*" -maxdepth 1 -exec codesign --force --options runtime --timestamp --verify -s "$SIGNING_IDENTITY" --entitlements runner/release/darwin/entitlements.plist {} \;
 codesign --force --options runtime --timestamp --verify -s "$SIGNING_IDENTITY" --entitlements runner/release/darwin/entitlements.plist "${APP_PATH}/Contents/MacOS/launcher"
 
