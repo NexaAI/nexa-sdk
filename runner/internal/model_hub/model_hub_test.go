@@ -9,7 +9,7 @@ import (
 	"github.com/lmittmann/tint"
 )
 
-const MODLE_NAME = "NexaAI/OmniNeural-4B"
+const MODEL_NAME = "NexaAI/OmniNeural-4B"
 
 func TestMain(m *testing.M) {
 	slog.SetDefault(slog.New(tint.NewHandler(os.Stderr, &tint.Options{
@@ -24,7 +24,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestModelInfo(t *testing.T) {
-	data, _, err := ModelInfo(context.Background(), MODLE_NAME)
+	data, _, err := ModelInfo(context.Background(), MODEL_NAME)
 	if err != nil {
 		t.Error(err)
 	}
@@ -32,7 +32,7 @@ func TestModelInfo(t *testing.T) {
 }
 
 func TestGetFileContent(t *testing.T) {
-	data, err := GetFileContent(context.Background(), MODLE_NAME, ".gitattributes")
+	data, err := GetFileContent(context.Background(), MODEL_NAME, ".gitattributes")
 	if err != nil {
 		t.Error(err)
 		return
@@ -42,13 +42,13 @@ func TestGetFileContent(t *testing.T) {
 }
 
 func TestDownload(t *testing.T) {
-	files, _, err := ModelInfo(context.Background(), MODLE_NAME)
+	files, _, err := ModelInfo(context.Background(), MODEL_NAME)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	resCh, errCh := StartDownload(context.Background(), MODLE_NAME, "/tmp/OmniNeural-4B", files)
+	resCh, errCh := StartDownload(context.Background(), MODEL_NAME, "/tmp/OmniNeural-4B", files)
 	for p := range resCh {
 		t.Logf("Downloaded: %d / %d", p.TotalDownloaded, p.TotalSize)
 	}

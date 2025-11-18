@@ -210,7 +210,7 @@ func pullModel(name string, quant string) error {
 		switch strings.ToLower(modelHub) {
 		case "volces":
 			model_hub.SetHub(model_hub.NewVolces())
-		case "ms", "modelsocpe":
+		case "ms", "modelscope":
 			model_hub.SetHub(model_hub.NewModelScope())
 		case "s3":
 			model_hub.SetHub(model_hub.NewS3())

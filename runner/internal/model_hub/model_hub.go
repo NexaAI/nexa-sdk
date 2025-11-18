@@ -281,7 +281,7 @@ func getHub(ctx context.Context, modelName string) (ModelHub, error) {
 	for _, h := range hubs {
 		if h.ChinaMainlandOnly() && !checkChinaMainland() {
 			slog.Info("skip china mainland only hub", "hub", reflect.TypeOf(h))
-			return nil, errUnavailable
+			continue
 		}
 		if err := h.CheckAvailable(ctx, modelName); err != nil {
 			slog.Warn("hub not available, try next", "hub", reflect.TypeOf(h), "err", err)

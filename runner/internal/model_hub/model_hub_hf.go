@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -60,7 +59,6 @@ func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileIn
 	resp, err := req.
 		Get(fmt.Sprintf("%s/api/models/%s", HF_ENDPOINT, name))
 	if err != nil || resp.StatusCode() != http.StatusOK {
-		slog.Warn("huggingface check model available error", "model", name, "status_code", resp.StatusCode(), "err", err)
 		return nil, fmt.Errorf("model %s not found on huggingface, please check model id, err: %s", name, err)
 	}
 
@@ -91,7 +89,6 @@ func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileIn
 			defer resLock.Unlock()
 
 			if err != nil || resp.StatusCode() != http.StatusOK {
-				slog.Error("Get file size error", "model", name, "file", info.Siblings[i].RFileName, "err", err)
 				error = err
 				return
 			}

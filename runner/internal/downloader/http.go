@@ -45,8 +45,10 @@ func (d *HTTPDownloader) DownloadChunk(ctx context.Context, url string, offset, 
 		if d.authToken != "" {
 			req.Header.Set("Authorization", "Bearer "+d.authToken)
 		}
-		if offset > 0 || limit > 0 {
+		if limit > 0 {
 			req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", offset, offset+limit-1))
+		} else {
+			req.Header.Set("Range", fmt.Sprintf("bytes=%d-", offset))
 		}
 
 		if err := d.Client.Do(req, resp); err != nil {

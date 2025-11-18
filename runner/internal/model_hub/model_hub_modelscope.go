@@ -39,7 +39,6 @@ func (d *ModelScope) CheckAvailable(ctx context.Context, name string) error {
 
 	res, err := client.R().Get(fmt.Sprintf("%s/api/v1/models/%s/revisions", MS_ENDPOINT, name))
 	if err != nil || res.StatusCode() != 200 {
-		slog.Warn("modelscope check model available error", "model", name, "status_code", res.StatusCode(), "err", err)
 		return fmt.Errorf("model %s not found on modelscope, please check model id, err: %s", name, err)
 	}
 
@@ -68,7 +67,6 @@ func (d *ModelScope) modelInfo(ctx context.Context, name string, root string) ([
 	resp, err := client.R().
 		Get(fmt.Sprintf("%s/api/v1/models/%s/repo/files?Root=%s", MS_ENDPOINT, name, root))
 	if err != nil || resp.StatusCode() != http.StatusOK {
-		slog.Warn("modelscope get model info error", "model", name, "status_code", resp.StatusCode(), "err", err)
 		return nil, fmt.Errorf("failed to get model info from modelscope for model %s", name)
 	}
 
