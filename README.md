@@ -57,7 +57,7 @@ NexaSDK is an easy-to-use developer toolkit for running any AI model locally —
 </div>
 
 ## Recent Wins
-
+- 📣 Support **Apple Neural Engine** for [Granite-4.0](https://huggingface.co/NexaAI/Granite-4-Micro-ANE), [Qwen3](https://huggingface.co/NexaAI/Qwen3-0.6B-ANE), [Gemma3](https://huggingface.co/NexaAI/Gemma3-1B-ANE), and [Parakeetv3](https://huggingface.co/NexaAI/parakeet-tdt-0.6b-v3-ane). Download NexaSDK for ANE [here](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_macos_arm64_ane.pkg).
 - 📣 Support **Android SDK** for NPU/GPU/CPU. See [Android SDK Doc](https://docs.nexa.ai/nexa-sdk-android/overview) and [Android SDK Demo App](bindings/android/README.md).
 - 📣 Support **SDXL-turbo** image generation on AMD NPU. See [AMD blog : Advancing AI with Nexa AI](https://www.amd.com/en/developer/resources/technical-articles/2025/advancing-ai-with-nexa-ai--image-generation-on-amd-npu-with-sdxl.html).
 - Support Android **Python SDK** for NPU/GPU/CPU. See [Android Python SDK Doc](https://docs.nexa.ai/nexa-sdk-android/python) and [Android Python SDK Demo App](bindings/android/README.md).
@@ -73,8 +73,8 @@ NexaSDK is an easy-to-use developer toolkit for running any AI model locally —
 ## Step 1: Download Nexa CLI with one click
 
 ### macOS
-
-- [arm64 with Apple Neural Engine support](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_macos_arm64.pkg)
+- [arm64 for Apple Neural Engine](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_macos_arm64_ane.pkg)
+- [arm64 for MLX](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_macos_arm64.pkg)
 - [x86_64](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_macos_x86_64.pkg)
 
 ### Windows
