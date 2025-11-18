@@ -96,6 +96,7 @@ type EmbedderEmbedInput struct {
 	InputIDs2D         [][]int32
 	InputIDsRowLengths []int32
 	TaskType           string
+	ImagePaths         []string
 }
 
 func (eei EmbedderEmbedInput) toCPtr() *C.ml_EmbedderEmbedInput {
@@ -165,6 +166,16 @@ func (eei EmbedderEmbedInput) toCPtr() *C.ml_EmbedderEmbedInput {
 		cPtr.task_type = nil
 	}
 
+	// Convert image paths array
+	if len(eei.ImagePaths) > 0 {
+		imagePathsArray, imageCount := sliceToCCharArray(eei.ImagePaths)
+		cPtr.image_paths = (*C.ml_Path)(unsafe.Pointer(imagePathsArray))
+		cPtr.image_count = imageCount
+	} else {
+		cPtr.image_paths = nil
+		cPtr.image_count = 0
+	}
+
 	return cPtr
 }
 
@@ -202,6 +213,11 @@ func freeEmbedderEmbedInput(cPtr *C.ml_EmbedderEmbedInput) {
 	// Free task_type
 	if cPtr.task_type != nil {
 		C.free(unsafe.Pointer(cPtr.task_type))
+	}
+
+	// Free image paths array
+	if cPtr.image_paths != nil {
+		freeCCharArray((**C.char)(unsafe.Pointer(cPtr.image_paths)), cPtr.image_count)
 	}
 
 	C.free(unsafe.Pointer(cPtr))
