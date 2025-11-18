@@ -42,10 +42,10 @@ chmod +x "${APP_PATH}/Contents/MacOS/launcher"
 chmod +x "${APP_PATH}/Contents/Resources/nexa"
 chmod +x "${APP_PATH}/Contents/Resources/nexa-cli"
 
-# IMPORTANT: this path needs to be updated if plugin name has been updated
-if [ -d "${APP_PATH}/Contents/Resources/metal/python_runtime/bin" ]; then
-  chmod -R +x "${APP_PATH}/Contents/Resources/metal/python_runtime/bin"
-fi
+# # IMPORTANT: this path needs to be updated if plugin name has been updated
+# if [ -d "${APP_PATH}/Contents/Resources/metal/python_runtime/bin" ]; then
+#   chmod -R +x "${APP_PATH}/Contents/Resources/metal/python_runtime/bin"
+# fi
 
 if [ -d "${APP_PATH}/Contents/Resources/ane_py/python_runtime/bin" ]; then
   chmod -R +x "${APP_PATH}/Contents/Resources/ane_py/python_runtime/bin"
