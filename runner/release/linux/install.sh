@@ -208,7 +208,6 @@ main() {
 
         status "${plain}Install complete! The Nexa SDK is now installed."
         status "You can use the 'nexa' commands from your terminal."
-        status "You may need to start a new terminal session for the 'nexa' group membership to take effect."
     fi
 }
 
