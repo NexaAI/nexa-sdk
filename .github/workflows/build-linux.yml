@@ -154,7 +154,7 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            nexa4ai/nexasdk:${{ env.VERSION }}
+            nexa4ai/nexasdk${{ contains(github.ref, '-rc') && '-test' || '' }}:${{ env.VERSION }}
             ${{ !contains(github.ref, '-rc') && 'nexa4ai/nexasdk:latest' || '' }}
 
       - name: Build and Push Docker Image (Cuda)
@@ -166,5 +166,5 @@ jobs:
           build-args: |
             BASE_IMAGE=nvidia/cuda:12.9.1-runtime-ubuntu22.04
           tags: |
-            nexa4ai/nexasdk:${{ env.VERSION }}-cuda
+            nexa4ai/nexasdk${{ contains(github.ref, '-rc') && '-test' || '' }}:${{ env.VERSION }}-cuda
             ${{ !contains(github.ref, '-rc') && 'nexa4ai/nexasdk:latest-cuda' || '' }}
