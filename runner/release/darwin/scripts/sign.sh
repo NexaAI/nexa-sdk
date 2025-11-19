@@ -25,11 +25,6 @@ if [ -d "$RESOURCES_PATH/ane_py/python_runtime/bin" ]; then
 fi
 
 echo "Signing torch binaries..."
-# Sign all binaries in torch/bin/ directories (these are executable binaries that need signing)
-if [ -d "$RESOURCES_PATH/metal/python_runtime/lib/python3.10/site-packages/torch/bin" ]; then
-  find "$RESOURCES_PATH/metal/python_runtime/lib/python3.10/site-packages/torch/bin" -type f -exec codesign --force --options runtime --timestamp --verify -s "$SIGNING_IDENTITY" --entitlements runner/release/darwin/entitlements.plist {} \;
-fi
-
 if [ -d "$RESOURCES_PATH/ane_py/python_runtime/lib/python3.10/site-packages/torch/bin" ]; then
   find "$RESOURCES_PATH/ane_py/python_runtime/lib/python3.10/site-packages/torch/bin" -type f -exec codesign --force --options runtime --timestamp --verify -s "$SIGNING_IDENTITY" --entitlements runner/release/darwin/entitlements.plist {} \;
 fi
