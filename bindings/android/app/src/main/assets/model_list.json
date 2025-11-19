@@ -9,7 +9,7 @@
     "features": ["Chat", "VLM"],
     "type": "multimodal",
     "versionCode": 1,
-    "modelUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/OmniNeural-4B-mobile/files-1-2.nexa",
+    "modelUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/OmniNeural-4B-mobile/files-1-1.nexa",
     "mmprojOrTokenUrl":"",
     "files": [
       {"name": "attachments-1-3.nexa", "path": "", "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/OmniNeural-4B-mobile/attachments-1-3.nexa"},
