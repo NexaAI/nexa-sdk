@@ -98,7 +98,7 @@ func update() *cobra.Command {
 					bar.Add(pg)
 				}
 			}()
-			if err = downloadPkg(ast.BrowserDownloadURL, dst, progress); err != nil {
+			if err = downloadPkg(ast.BrowserDownloadURL, dst, int64(ast.Size), progress); err != nil {
 				return err
 			}
 
@@ -169,7 +169,7 @@ type asset struct {
 }
 
 // downloadPkg a file from url to dst with progress
-func downloadPkg(url, dst string, progress chan int64) error {
+func downloadPkg(url, dst string, size int64, progress chan int64) error {
 	defer close(progress)
 
 	file, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
@@ -179,10 +179,6 @@ func downloadPkg(url, dst string, progress chan int64) error {
 	defer file.Close()
 
 	downloader := downloader.NewDownloader("")
-	size, err := downloader.GetFileSize(url)
-	if err != nil {
-		return err
-	}
 
 	for offset := int64(0); offset < size; offset += 1024 * 1024 {
 		limit := int64(1024 * 1024)

@@ -6,77 +6,26 @@ import (
 	"io"
 	"log/slog"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/smithy-go/logging"
-	"github.com/bytedance/sonic"
-	"resty.dev/v3"
 )
 
 type Volces struct {
-	isChinaMainland    bool
-	chinaMainlandCheck sync.Once
-
 	s3Client *s3.Client
 }
 
-func NewVolces(skipCNCheck bool) *Volces {
+func NewVolces() *Volces {
 	v := &Volces{}
-	if skipCNCheck {
-		v.chinaMainlandCheck.Do(func() {
-			v.isChinaMainland = true
-			slog.Info("Skip China mainland check for Volces model hub")
-		})
-	}
 	v.initS3Client()
 	return v
 }
 
 var (
-	errNotChinaMainland = fmt.Errorf("not in China mainland")
-	errNotSupported     = fmt.Errorf("not supported")
+	errNotSupported = fmt.Errorf("not supported")
 )
-
-func (v *Volces) checkChinaMainland() bool {
-	v.chinaMainlandCheck.Do(func() {
-		client := resty.New()
-		client.SetTimeout(2 * time.Second)
-		defer client.Close()
-
-		for _, ep := range [][]string{
-			{"http://ip-api.com/json", "countryCode"},
-			{"https://ipapi.co/json", "country_code"},
-			{"https://ipinfo.io/json", "country"},
-		} {
-			res, err := client.R().
-				// EnableDebug().
-				Get(ep[0])
-			if err != nil {
-				continue
-			}
-
-			n, err := sonic.GetFromString(res.String(), ep[1])
-			if err != nil {
-				continue
-			}
-
-			code, err := n.String()
-			if err != nil {
-				continue
-			}
-
-			slog.Info("Detected country code", "endpoint", ep[0], "code", code)
-			v.isChinaMainland = code == "CN"
-			return
-		}
-		slog.Error("Detect country code failed")
-	})
-	return v.isChinaMainland
-}
 
 func (v *Volces) initS3Client() {
 	cfg, err := config.LoadDefaultConfig(
@@ -92,11 +41,15 @@ func (v *Volces) initS3Client() {
 	v.s3Client = s3.NewFromConfig(cfg)
 }
 
-func (v *Volces) CheckAvailable(ctx context.Context, modelName string) error {
-	if !v.checkChinaMainland() {
-		return errNotChinaMainland
-	}
+func (v *Volces) ChinaMainlandOnly() bool {
+	return true
+}
 
+func (v *Volces) MaxConcurrency() int {
+	return 4
+}
+
+func (v *Volces) CheckAvailable(ctx context.Context, modelName string) error {
 	if !strings.HasPrefix(modelName, "NexaAI/") {
 		return errNotSupported
 	}
@@ -116,10 +69,6 @@ func (v *Volces) CheckAvailable(ctx context.Context, modelName string) error {
 	}
 
 	return nil
-}
-
-func (v *Volces) MaxConcurrency() int {
-	return 4
 }
 
 func (v *Volces) ModelInfo(ctx context.Context, modelName string) ([]ModelFileInfo, error) {

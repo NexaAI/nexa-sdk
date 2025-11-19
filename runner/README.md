@@ -93,7 +93,7 @@ Pull model from model hub
 
 ```bash
 nexa pull <model>
-nexa pull <model> --model-hub s3 # pull from specify model hub, [volces|s3|hf]
+nexa pull <model> --model-hub s3 # pull from specify model hub, [volces|modelscope|s3|hf]
 ```
 
 Import model from local filesystem

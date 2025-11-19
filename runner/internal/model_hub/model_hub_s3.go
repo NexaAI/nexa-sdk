@@ -36,6 +36,14 @@ func (s *S3) initS3Client() {
 	s.s3Client = s3.NewFromConfig(cfg)
 }
 
+func (s *S3) ChinaMainlandOnly() bool {
+	return false
+}
+
+func (s *S3) MaxConcurrency() int {
+	return 8
+}
+
 func (s *S3) CheckAvailable(ctx context.Context, modelName string) error {
 	if !strings.HasPrefix(modelName, "NexaAI/") {
 		return errNotSupported
@@ -56,10 +64,6 @@ func (s *S3) CheckAvailable(ctx context.Context, modelName string) error {
 	}
 
 	return nil
-}
-
-func (s *S3) MaxConcurrency() int {
-	return 8
 }
 
 func (s *S3) ModelInfo(ctx context.Context, modelName string) ([]ModelFileInfo, error) {
