@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -52,16 +51,15 @@ func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileIn
 	client := resty.New()
 	defer client.Close()
 	client.SetTimeout(10 * time.Second)
+	client.AddResponseMiddleware(code2error)
 
 	req := client.R()
 	if config.Get().HFToken != "" {
 		req.SetHeader("Authorization", "Bearer "+config.Get().HFToken)
 	}
-	resp, err := req.
-		Get(fmt.Sprintf("%s/api/models/%s", HF_ENDPOINT, name))
-	slog.Debug("HuggingFace ModelInfo", "name", name, "resp", resp, "err", err)
-	if err != nil || resp == nil || resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("model %s not found on huggingface, please check model id", name)
+	resp, err := req.Get(fmt.Sprintf("%s/api/models/%s", HF_ENDPOINT, name))
+	if err != nil {
+		return nil, err
 	}
 
 	if err := sonic.UnmarshalString(resp.String(), &info); err != nil {
@@ -93,8 +91,8 @@ func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileIn
 				error = err
 				return
 			}
-			if resp == nil || resp.StatusCode() != http.StatusOK {
-				error = fmt.Errorf("failed to get file info for %s", info.Siblings[i].RFileName)
+			if resp.StatusCode() != http.StatusOK {
+				error = fmt.Errorf("Get file [%s] info error: %s", info.Siblings[i].RFileName, resp.Status())
 				return
 			}
 			res[i] = ModelFileInfo{

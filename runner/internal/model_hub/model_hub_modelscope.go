@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"net/http"
 	"time"
 
 	"github.com/bytedance/sonic"
@@ -34,13 +33,13 @@ func (d *ModelScope) MaxConcurrency() int {
 
 func (d *ModelScope) CheckAvailable(ctx context.Context, name string) error {
 	client := resty.New()
-	client.SetTimeout(5 * time.Second)
 	defer client.Close()
+	client.SetTimeout(5 * time.Second)
+	client.AddResponseMiddleware(code2error)
 
-	res, err := client.R().Get(fmt.Sprintf("%s/api/v1/models/%s/revisions", MS_ENDPOINT, name))
-	slog.Debug("ModelScope CheckAvailable", "name", name, "res", res, "err", err)
-	if err != nil || res == nil || res.StatusCode() != http.StatusOK {
-		return fmt.Errorf("model %s not found on modelscope, please check model id", name)
+	_, err := client.R().Get(fmt.Sprintf("%s/api/v1/models/%s/revisions", MS_ENDPOINT, name))
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -64,11 +63,12 @@ func (d *ModelScope) modelInfo(ctx context.Context, name string, root string) ([
 	client := resty.New()
 	defer client.Close()
 	client.SetTimeout(10 * time.Second)
+	client.AddResponseMiddleware(code2error)
 
 	resp, err := client.R().
 		Get(fmt.Sprintf("%s/api/v1/models/%s/repo/files?Root=%s", MS_ENDPOINT, name, root))
-	if err != nil || resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("failed to get model info from modelscope for model %s", name)
+	if err != nil {
+		return nil, err
 	}
 
 	if err := sonic.UnmarshalString(resp.String(), &info); err != nil {

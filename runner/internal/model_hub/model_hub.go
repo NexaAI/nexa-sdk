@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -314,4 +315,15 @@ func doTask(ctx context.Context, hub ModelHub, task downloadTask) error {
 	}
 
 	return file.Close()
+}
+
+func code2error(client *resty.Client, response *resty.Response) error {
+	switch response.StatusCode() {
+	case http.StatusOK:
+		return nil
+	case http.StatusNotFound, http.StatusUnauthorized:
+		return fmt.Errorf("model not found, please check the model name or auth token")
+	default:
+		return fmt.Errorf("HTTPError: %s", response.Status())
+	}
 }
