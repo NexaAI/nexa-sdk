@@ -600,7 +600,7 @@ func chooseFiles(name, specifiedQuant string, files []model_hub.ModelFileInfo, r
 		if len(bundlePaths) > 0 {
 			// Use the first bundle as the model path
 			bundlePath := bundlePaths[0]
-			
+
 			// Calculate total size of the primary bundle
 			var primaryBundleSize int64
 			for _, file := range files {
@@ -762,7 +762,7 @@ func sumSize(files []model_hub.ModelFileInfo) int64 {
 // Returns a list of bundle paths (e.g., "EmbedNeuralVision.mlmodelc")
 func detectMacOSBundles(files []model_hub.ModelFileInfo) []string {
 	bundleMap := make(map[string]bool)
-	
+
 	for _, file := range files {
 		// Check if file path contains .mlmodelc/ or .mlpackage/
 		if idx := strings.Index(file.Name, ".mlmodelc/"); idx != -1 {
@@ -773,13 +773,13 @@ func detectMacOSBundles(files []model_hub.ModelFileInfo) []string {
 			bundleMap[bundlePath] = true
 		}
 	}
-	
+
 	// Convert map to sorted slice for consistent ordering
 	bundles := make([]string, 0, len(bundleMap))
 	for bundle := range bundleMap {
 		bundles = append(bundles, bundle)
 	}
 	sort.Strings(bundles)
-	
+
 	return bundles
 }
