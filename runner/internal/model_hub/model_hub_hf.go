@@ -83,6 +83,7 @@ func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileIn
 			if config.Get().HFToken != "" {
 				req.SetHeader("Authorization", "Bearer "+config.Get().HFToken)
 			}
+			req.SetHeader("Accept-Encoding", "identity")
 			resp, err := req.Head(fmt.Sprintf("%s/%s/resolve/main/%s", HF_ENDPOINT, name, info.Siblings[i].RFileName))
 			resLock.Lock()
 			defer resLock.Unlock()
@@ -91,7 +92,7 @@ func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileIn
 				error = err
 				return
 			}
-			if resp.StatusCode() != http.StatusOK {
+			if resp.StatusCode() != http.StatusOK || resp.RawResponse.ContentLength < 0 {
 				error = fmt.Errorf("Get file [%s] info error: %s", info.Siblings[i].RFileName, resp.Status())
 				return
 			}
