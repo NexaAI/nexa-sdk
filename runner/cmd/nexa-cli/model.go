@@ -764,11 +764,12 @@ func detectMacOSBundles(files []model_hub.ModelFileInfo) []string {
 	bundleMap := make(map[string]bool)
 
 	for _, file := range files {
-		// Check if file path contains .mlmodelc/ or .mlpackage/
-		if idx := strings.Index(file.Name, ".mlmodelc/"); idx != -1 {
+		// Case-insensitive check for .mlmodelc/ or .mlpackage/
+		lowerName := strings.ToLower(file.Name)
+		if idx := strings.Index(lowerName, ".mlmodelc/"); idx != -1 {
 			bundlePath := file.Name[:idx+len(".mlmodelc")]
 			bundleMap[bundlePath] = true
-		} else if idx := strings.Index(file.Name, ".mlpackage/"); idx != -1 {
+		} else if idx := strings.Index(lowerName, ".mlpackage/"); idx != -1 {
 			bundlePath := file.Name[:idx+len(".mlpackage")]
 			bundleMap[bundlePath] = true
 		}
