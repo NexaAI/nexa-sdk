@@ -107,8 +107,8 @@ var (
 	embedderFlags = func() *pflag.FlagSet {
 		embedderFlags := pflag.NewFlagSet("Embedder", pflag.ExitOnError)
 		embedderFlags.SortFlags = false
-		embedderFlags.StringVarP(&input, "input", "i", "", "prompt txt file")
-		embedderFlags.StringArrayVarP(&prompt, "prompt", "p", nil, "pass prompt")
+		embedderFlags.StringVarP(&input, "input", "i", "", "input text file or image file")
+		embedderFlags.StringArrayVarP(&prompt, "prompt", "p", nil, "pass prompt or image path (e.g., -p 'text' or -p '/path/to/image.jpg')")
 		embedderFlags.StringVarP(&taskType, "task-type", "", "default", "default|search_query|search_document")
 		return embedderFlags
 	}()
@@ -603,12 +603,27 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) error {
 	defer p.Destroy()
 
 	processor := &common.Processor{
-		TestMode: testMode,
-		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
+		ParseFile: true,
+		TestMode:  testMode,
+		Run: func(prompt string, images, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			embedInput := nexa_sdk.EmbedderEmbedInput{
 				TaskType: taskType,
-				Texts:    []string{strings.TrimSpace(prompt)},
 				Config:   &nexa_sdk.EmbeddingConfig{},
+			}
+
+			// Validate: image paths and text cannot be passed at the same time
+			trimmedPrompt := strings.TrimSpace(prompt)
+			if len(images) > 0 && trimmedPrompt != "" {
+				return "", nexa_sdk.ProfileData{}, fmt.Errorf("cannot pass both image paths and text at the same time")
+			}
+
+			// Handle text or image inputs
+			if len(images) > 0 {
+				embedInput.ImagePaths = images
+			} else if trimmedPrompt != "" {
+				embedInput.Texts = []string{trimmedPrompt}
+			} else {
+				return "", nexa_sdk.ProfileData{}, fmt.Errorf("must provide either text or image path")
 			}
 
 			result, err := p.Embed(embedInput)

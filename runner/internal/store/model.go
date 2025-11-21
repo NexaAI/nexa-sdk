@@ -6,12 +6,20 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/bytedance/sonic"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/model_hub"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 )
+
+// isBundlePath checks if a path is a macOS bundle (.mlmodelc or .mlpackage)
+// These are directory references, not downloadable files
+func isBundlePath(path string) bool {
+	return strings.HasSuffix(strings.ToLower(path), ".mlmodelc") ||
+		strings.HasSuffix(strings.ToLower(path), ".mlpackage")
+}
 
 // List returns all locally stored models by reading their manifest files
 func (s *Store) List() ([]types.ModelManifest, error) {
@@ -120,6 +128,11 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 		var needs []model_hub.ModelFileInfo
 		for _, f := range mf.ModelFile {
 			if f.Downloaded {
+				// Skip bundle paths (.mlmodelc and .mlpackage) - they are directory references, not files
+				// Only the individual files within the bundles will be downloaded via ExtraFiles
+				if isBundlePath(f.Name) {
+					continue
+				}
 				needs = append(needs, model_hub.ModelFileInfo{Name: f.Name, Size: f.Size})
 			}
 		}
@@ -203,6 +216,10 @@ func (s *Store) PullExtraQuant(ctx context.Context, omf, nmf types.ModelManifest
 		var needs []model_hub.ModelFileInfo
 		for q, f := range nmf.ModelFile {
 			if f.Downloaded && !omf.ModelFile[q].Downloaded {
+				// Skip bundle paths (.mlmodelc and .mlpackage) - they are directory references, not files
+				if isBundlePath(f.Name) {
+					continue
+				}
 				needs = append(needs, model_hub.ModelFileInfo{Name: f.Name, Size: f.Size})
 			}
 		}
