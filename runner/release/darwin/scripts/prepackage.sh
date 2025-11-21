@@ -42,10 +42,11 @@ chmod +x "${APP_PATH}/Contents/MacOS/launcher"
 chmod +x "${APP_PATH}/Contents/Resources/nexa"
 chmod +x "${APP_PATH}/Contents/Resources/nexa-cli"
 
-# IMPORTANT: this path needs to be updated if plugin name has been updated
-if [ -d "${APP_PATH}/Contents/Resources/metal/python_runtime/bin" ]; then
-  chmod -R +x "${APP_PATH}/Contents/Resources/metal/python_runtime/bin"
+if [ -d "${APP_PATH}/Contents/Resources/common/python_runtime/bin" ]; then
+  chmod -R +x "${APP_PATH}/Contents/Resources/common/python_runtime/bin"
 fi
+# Remove joblib test data files to avoid notarization warnings
+rm -rf "${APP_PATH}/Contents/Resources/common/python_runtime/lib/python3.10/site-packages/joblib/test/data"
 
 echo "Preparing PKG scripts..."
 mkdir -p "pkg_scripts"
