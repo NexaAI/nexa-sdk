@@ -104,6 +104,7 @@ func checkDependency() {
 		case "linux":
 			fmt.Println(render.GetTheme().Warning.Sprintf("  sudo apt install sox       # Debian/Ubuntu"))
 			fmt.Println(render.GetTheme().Warning.Sprintf("  sudo yum install sox       # RHEL/CentOS/Fedora"))
+    		fmt.Println(render.GetTheme().Warning.Sprintf("  sudo pacman -S sox         # Arch Linux"))
 		case "windows":
 			fmt.Println(render.GetTheme().Warning.Sprintf("  winget install --id=ChrisBagwell.SoX -e"))
 			fmt.Println(render.GetTheme().Warning.Sprintf("Then restart your terminal to make sure sox is in PATH"))
