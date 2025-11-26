@@ -1,5 +1,19 @@
 [
   {
+    "id": "Llama-3.2-1B-Instruct-GGUF",
+    "displayName": "Llama-3.2-1B-Instruct-GGUF",
+    "modelName": "Llama-3.2-1B-Instruct-Q4_0.gguf",
+    "mmprojOrTokenName": "",
+    "sizeGb": 1.2,
+    "params": "0.35 B",
+    "features": ["Chat"],
+    "type": "chat",
+    "versionCode": 1,
+    "pluginIds": 17,
+    "modelUrl": "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_0.gguf",
+    "mmprojOrTokenUrl":""
+  },
+  {
     "id": "Granite-4.0-h-350M-NPU",
     "displayName": "Granite-350M",
     "modelName": "files-1-2.nexa",

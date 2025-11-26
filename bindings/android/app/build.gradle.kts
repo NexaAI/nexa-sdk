@@ -75,8 +75,7 @@ val bridgePathExist = gradle.extra["bridgePathExist"] as Boolean
 print("bridgePathExist: $bridgePathExist\n")
 
 dependencies {
-//    implementation(libs.ai.nexa.core)
-    implementation(":app-release@aar")
+    implementation(libs.ai.nexa.core)
     implementation(project(":transform"))
     implementation(":okdownload-core@aar")
     implementation(":okdownload-sqlite@aar")
