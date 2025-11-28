@@ -19,7 +19,7 @@ ARG TARGETARCH
 COPY nexa_sdk.$TARGETARCH/ /opt/nexa_sdk/
 RUN ln -s /opt/nexa_sdk/nexa /usr/local/bin/nexa
 
-RUN mkdir -p /data && mkdir -p /root/.cache && ln -s /data /root/.cache/nexa.ai
+RUN mkdir -p /data && mkdir -p /root/.cache && ln -s /data /root/.cache/nexa.ai && ln -s /data /root/.nexa
 
 EXPOSE 18181
 ENTRYPOINT ["nexa"]
