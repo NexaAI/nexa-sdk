@@ -15,13 +15,15 @@ Here is the list of supported functions:
 
 - timenow(): return the current date and time
 - get_weather(city): return the weather for a certain city.
-- send_email(to, email_message): send an email to Simone containing a message.
+- send_email(to, email_message): send an email to a recipient containing a message.
 - finished: call this function with NO parameters when the user's goal is complete.
 
 You must return exactly one JSON object representing a function call per response.
+
 Respond only with a valid JSON. Do not include comments, explanations, tabs, or extra spaces.
 {"function":"function_name","describe":"describe your intent in three words","parameter":"parameter_value or Leave empty string '' if no parameters"}`
 """
+
 
 class AgentRunner:
     def __init__(self):
@@ -29,7 +31,7 @@ class AgentRunner:
             {"role": "system", "content": SYSTEM_PROMPT}
         ]
 
-    def run(self, task):
+    def run(self, base_url, task, model):
         self.history.append({"role": "user", "content": task})
 
         yield json.dumps({"status": "proccess", "message": "Starting analysis task..."})
@@ -39,9 +41,12 @@ class AgentRunner:
             max_retries = 3
             for attempt in range(1, max_retries + 1):
                 try:
-                    response = LLMService.chat(self.history)
+                    response = LLMService.chat(
+                        base_url=base_url, 
+                        messages=self.history,
+                        model=model
+                    )
                     message = response["choices"][0]["message"]["content"]
-                    print("[message: ]", message)
                     data = json.loads(message)
                     break
                 except Exception as e:

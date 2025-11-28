@@ -1,13 +1,13 @@
 
 import gradio as gr
 import json
-from serve import LLMService
+from serve import (LLMService, ALL_ASR_MODELS, ALL_INFER_MODELS, BASE_URL)
 from agent import AgentRunner
 from gradio import ChatMessage
 
 agent = AgentRunner()
 
-def run_task(history, audio):
+def run_task(history, audio, base_url, asr_model, llm_model):
     if history is None:
         history = []
 
@@ -20,7 +20,7 @@ def run_task(history, audio):
     yield history, None
     
     try:
-        task = LLMService.speech_to_text(audio)
+        task = LLMService.speech_to_text(base_url=base_url, audio=audio, model=asr_model)
     except Exception as e:
         history.append(ChatMessage(
                         role="assistant",
@@ -30,12 +30,11 @@ def run_task(history, audio):
         yield history, None
         return
     
-    print(task)
     # task = """
-    # give me the time right now, and tell me the weather for New York then send email to Mengsheng
+    # give me the time right now, and tell me the weather for New York then send email
     # """
     
-    for raw in agent.run(task):
+    for raw in agent.run(base_url=base_url, task=task, model=llm_model):
         # raw is expected to be a JSON string
         parsed = None
         if isinstance(raw, str):
@@ -90,15 +89,22 @@ def run_task(history, audio):
 
 with gr.Blocks() as demo:
     gr.Markdown("## Agent with Nexa serve")
-    with gr.Column(scale=2):
-        chatbox = gr.Chatbot(height=500)
-        audio_input = gr.Audio(
-            sources=["microphone"], 
-            type="filepath",
-            format='wav',
-            show_label=False
-        )
-    audio_input.stop_recording(fn=run_task, inputs=[chatbox, audio_input], outputs=[chatbox, audio_input])
+    with gr.Row():
+        with gr.Column(scale=2):
+            chatbox = gr.Chatbot(height=500)
+            audio_input = gr.Audio(
+                sources=["microphone"], 
+                type="filepath",
+                format='wav',
+                show_label=False
+            )
+            
+        with gr.Column(scale=1):
+            base_url=gr.Textbox(BASE_URL, label="Base URL")
+            asr_repo_id = gr.Dropdown(ALL_ASR_MODELS, label="Asr model repo Id", value=ALL_ASR_MODELS[0])
+            llm_repo_id = gr.Dropdown(ALL_INFER_MODELS, label="LLM model repo Id", value=ALL_INFER_MODELS[0])
+        
+    audio_input.stop_recording(fn=run_task, inputs=[chatbox, audio_input, base_url, asr_repo_id, llm_repo_id], outputs=[chatbox, audio_input])
 
 if __name__ == "__main__":
     demo.launch()

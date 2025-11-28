@@ -1,35 +1,34 @@
 # serve.py
 import requests
 
-BASE_URL = "http://127.0.0.1:18181"  
-# BASE_URL = "https://api.hyperlinkos.com"  
-CHAT_URL = f"{BASE_URL}/v1/chat/completions"
-ASR_URL  = f"{BASE_URL}/v1/audio/transcriptions"
-ASR_REPO_ID = "NexaAI/parakeet-tdt-0.6b-v2-MLX"
-INFER_REPO_ID = "NexaAI/Qwen3-4B-GGUF"
+BASE_URL = "http://127.0.0.1:18181" 
+# BASE_URL = "https://api.hyperlinkos.com" 
+
+ALL_ASR_MODELS = ["NexaAI/parakeet-tdt-0.6b-v2-MLX"]
+ALL_INFER_MODELS = ["NexaAI/Qwen3-4B-GGUF"]
 
 class LLMService:
 
     @staticmethod
-    def speech_to_text(audio):
+    def speech_to_text(base_url, audio, model):
         files = {
             "file": (audio, open(audio, "rb"), "audio/wav")
         }
         
         data = {
-            "model": ASR_REPO_ID,
+            "model": model,
             "language": "en"
         }
-        resp = requests.post(ASR_URL, data=data, files=files)
+        resp = requests.post(f"{base_url}/v1/audio/transcriptions", data=data, files=files)
         return resp.json().get("text", "")
 
     @staticmethod
-    def chat(messages, tools=None):
+    def chat(base_url, messages, model, tools=None):
         body = {
-            "model": INFER_REPO_ID,
+            "model": model,
             "messages": messages,
             "tools": tools if tools else [],
             "enable_think": False
         }
-        resp = requests.post(CHAT_URL, json=body)
+        resp = requests.post(f"{base_url}/v1/chat/completions", json=body)
         return resp.json()
