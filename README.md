@@ -3,12 +3,33 @@
       <img width="100%" src="assets/banner1.png" alt="Nexa AI Banner">
       <div align="center">
   <p style="font-size: 1.3em; font-weight: 600; margin-bottom: 10px;">🤝 Supported chipmakers </p>
-  <img src="assets/qualcomm.png" alt="Qualcomm" height="40" style="margin: 0 20px;">
-  <img src="assets/mediatek.png" alt="MediaTek" height="40" style="margin: 0 20px;">
-  <img src="assets/nvidia.png" alt="NVIDIA" height="40" style="margin: 0 20px;">
-  <img src="assets/apple.png" alt="Apple" height="40" style="margin: 0 20px;">
-  <img src="assets/AMD.png" alt="AMD" height="42" style="margin: 0 20px;">
-  <img src="assets/Intel_logo.png" alt="Intel" height="45" style="margin: 0 10px;">
+  <div style="display:flex; justify-content:center; align-items:center; gap:20px; margin-bottom:20px; height:50px;">
+  <img src="assets/qualcomm.png" alt="Qualcomm" height="40" style="display:block;">
+  <img src="assets/mediatek.png" alt="MediaTek" height="40" style="display:block;">
+  <img src="assets/nvidia.png" alt="NVIDIA" height="40" style="display:block;">
+  <img src="assets/apple.png" alt="Apple" height="50" style="display:block;">
+  <img src="assets/AMD.png" alt="AMD" height="42" style="display:block;">
+  <img src="assets/Intel_logo.png" alt="Intel" height="45" style="display:block;">
+  </div>
+</div>
+  </p>
+      <div align="center">
+  <p style="font-size: 1.3em; font-weight: 600; margin:30 0 10 0px;">🤝 Supported model provider </p>
+
+  <div style="display:flex; justify-content:center; align-items:center; gap:20px; margin-bottom:20px; height:40px;">
+    <img src="assets/provider/omnineural.png" height="30" style="display:block;">
+    <img src="assets/provider/embedneural.png" height="30" style="display:block;">
+    <img src="assets/provider/gemma.png" height="36" style="display:block;">
+    <img src="assets/provider/parakeet.png" height="30" style="display:block;">
+  </div>
+  <div style="display:flex; justify-content:center; align-items:center; gap:20px; height:40px;">
+    <img src="assets/provider/ibm.png" height="26" style="display:block;">
+    <img src="assets/provider/granite.png" height="17" style="display:block;">
+    <img src="assets/provider/paddle.png" height="36" style="display:block;">
+    <img src="assets/provider/jina.png" height="20" style="display:block;">
+    <img src="assets/provider/convnext.png" height="30" style="display:block;">
+    <img src="assets/provider/liquid.png" height="38" style="display:block;">
+  </div>
 </div>
   </p>
 
