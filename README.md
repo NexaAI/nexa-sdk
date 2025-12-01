@@ -3,7 +3,11 @@
       <img width="100%" src="assets/banner1.png" alt="Nexa AI Banner">
       <div align="center">
   <p style="font-size: 1.3em; font-weight: 600; margin-bottom: 10px;">🤝 Supported chipmakers </p>
+  <picture>
+  <source srcset="assets/chipmakers-dark.png" media="(prefers-color-scheme: dark)">
+  <source srcset="assets/chipmakers.png" media="(prefers-color-scheme: light)">
   <img src="assets/chipmakers.png" height="36">
+</picture>
 </div>
   </p>
       <div align="center">
