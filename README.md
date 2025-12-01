@@ -3,14 +3,12 @@
       <img width="100%" src="assets/banner1.png" alt="Nexa AI Banner">
       <div align="center">
   <p style="font-size: 1.3em; font-weight: 600; margin-bottom: 10px;">🤝 Supported chipmakers </p>
-  <p style="display:flex; justify-content:center; align-items:center; gap:20px; margin-bottom:20px; height:50px;">
-  <img src="assets/chipmakers.png" height="40">
-  </p>
+  <img src="assets/chipmakers.png" height="36">
 </div>
   </p>
       <div align="center">
-  <p style="font-size: 1.3em; font-weight: 600; margin:30 0 10 0px;">🤝 Supported model provider </p>
-  <img src="assets/provider/providers.png" height="80">
+  <p style="font-size: 1.3em; font-weight: 600;">🤝 Supported model provider </p>
+  <img src="assets/providers.png" height="86">
 </div>
   </p>
 
