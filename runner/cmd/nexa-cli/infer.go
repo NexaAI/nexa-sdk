@@ -1138,7 +1138,7 @@ func drawBBoxesOnImage(imagePath string, results []nexa_sdk.CVResult) (string, e
 	const bboxLineWidth = 2
 	d := &font.Drawer{
 		Dst:  rgba,
-		Src:  image.NewUniform(color.Black),
+		Src:  image.NewUniform(color.White),
 		Face: basicfont.Face7x13,
 	}
 	colors := []color.RGBA{
@@ -1211,8 +1211,6 @@ func drawBBoxesOnImage(imagePath string, results []nexa_sdk.CVResult) (string, e
 			bgRect.Min.Y = 0
 		}
 		draw.Draw(rgba, bgRect, image.NewUniform(bboxColor), image.Point{}, draw.Over)
-
-		d.Src = image.NewUniform(color.White)
 		d.Dot = fixed.P(x+padding, labelY+labelHeight+padding)
 		d.DrawString(label)
 	}
