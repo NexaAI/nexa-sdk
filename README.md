@@ -4,15 +4,19 @@
       <div align="center">
   <p style="font-size: 1.3em; font-weight: 600; margin-bottom: 10px;">🤝 Supported chipmakers </p>
   <picture>
-  <source srcset="assets/chipmakers-dark.png" media="(prefers-color-scheme: dark)">
-  <source srcset="assets/chipmakers.png" media="(prefers-color-scheme: light)">
-  <img src="assets/chipmakers.png" height="36">
-</picture>
+    <source srcset="assets/chipmakers-dark.png" media="(prefers-color-scheme: dark)" height="36">
+    <source srcset="assets/chipmakers.png" media="(prefers-color-scheme: light)" height="36">
+    <img src="assets/chipmakers.png" height="36">
+  </picture>
 </div>
   </p>
       <div align="center">
   <p style="font-size: 1.3em; font-weight: 600;">🤝 Supported model provider </p>
-  <img src="assets/providers.png" height="86">
+  <picture>
+    <source srcset="assets/providers-dark.png" media="(prefers-color-scheme: dark)" height="86">
+    <source srcset="assets/providers.png" media="(prefers-color-scheme: light)" height="86">
+    <img src="assets/providers.png" height="86">
+  </picture>
 </div>
   </p>
 
