@@ -13,9 +13,9 @@
       <div align="center">
   <p style="font-size: 1.3em; font-weight: 600;">🤝 Supported model provider </p>
   <picture>
-    <source srcset="assets/providers-dark.png" media="(prefers-color-scheme: dark)" height="86">
-    <source srcset="assets/providers.png" media="(prefers-color-scheme: light)" height="86">
-    <img src="assets/providers.png" height="86">
+    <source srcset="assets/providers-dark.png" media="(prefers-color-scheme: dark)" height="134">
+    <source srcset="assets/providers.png" media="(prefers-color-scheme: light)" height="134">
+    <img src="assets/providers.png" height="134">
   </picture>
 </div>
   </p>
