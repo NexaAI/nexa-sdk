@@ -12,18 +12,11 @@ import logging
 import os
 
 from nexaai.rerank import Reranker
-
-
-def setup_logging():
-    """Setup logging with debug level."""
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
+from nexaai import setup_logging
 
 
 def main():
-    setup_logging()
+    setup_logging(level=logging.DEBUG)
     parser = argparse.ArgumentParser(description="NexaAI Rerank Example")
     parser.add_argument(
         "-m",
