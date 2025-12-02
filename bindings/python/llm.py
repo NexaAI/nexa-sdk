@@ -10,19 +10,11 @@ import logging
 import os
 from typing import List
 
-from nexaai import LLM, GenerationConfig, ModelConfig, LlmChatMessage
-
-
-def setup_logging():
-    """Setup logging with debug level."""
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    )
+from nexaai import LLM, GenerationConfig, ModelConfig, LlmChatMessage, setup_logging
 
 
 def main():
-    setup_logging()
+    setup_logging(level=logging.DEBUG)
     parser = argparse.ArgumentParser(description='NexaAI LLM Example')
     parser.add_argument(
         '-m',

@@ -20,16 +20,9 @@ from nexaai import (
     ModelConfig,
     VlmChatMessage,
     VlmContent,
+    setup_logging,
 )
 from nexaai.vlm import VLM
-
-
-def setup_logging():
-    """Setup logging with debug level."""
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
 
 
 def parse_media_from_input(
@@ -59,7 +52,7 @@ def parse_media_from_input(
 
 
 def main():
-    setup_logging()
+    setup_logging(level=logging.DEBUG)
     parser = argparse.ArgumentParser(description="NexaAI VLM Example")
     parser.add_argument(
         "-m",

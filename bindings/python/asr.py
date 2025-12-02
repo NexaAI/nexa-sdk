@@ -9,18 +9,11 @@ import logging
 import os
 
 from nexaai.asr import ASR
-
-
-def setup_logging():
-    """Setup logging with debug level."""
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
+from nexaai import setup_logging
 
 
 def main():
-    setup_logging()
+    setup_logging(level=logging.DEBUG)
     parser = argparse.ArgumentParser(description="NexaAI ASR Example")
     parser.add_argument(
         "-m",
@@ -50,7 +43,9 @@ def main():
         help="Timestamps granularity: none|segment|word (if supported)",
     )
     parser.add_argument("--plugin-id", default=None, help="Plugin ID to use")
-    parser.add_argument("--device", default=None, help="Device to run on (e.g., cpu, gpu, 0)")
+    parser.add_argument(
+        "--device", default=None, help="Device to run on (e.g., cpu, gpu, 0)"
+    )
     args = parser.parse_args()
 
     audio_path = os.path.expanduser(args.audio)
@@ -75,5 +70,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
