@@ -4,15 +4,7 @@ This directory contains the NexaAI Python SDK and comprehensive examples for var
 
 ## Quick Start
 
-The easiest way to get started with NexaAI is through our interactive Jupyter notebooks. Choose the appropriate notebook for your platform:
-
-### 📓 Interactive Notebooks
-
-| Platform | Notebook | Description |
-|----------|----------|-------------|
-| **macOS** | [`notebook/macos.ipynb`](notebook/macos.ipynb) | Complete examples for macOS with Apple Silicon optimization |
-| **Windows (x64)** | [`notebook/windows(x64).ipynb`](notebook/windows(x64).ipynb) | Examples for Windows x64 systems |
-| **Windows (ARM64)** | [`notebook/winodws(arm64).ipynb`](notebook/winodws(arm64).ipynb) | NPU-optimized examples for Snapdragon X Elite |
+The easiest way to get started with NexaAI is through our interactive Jupyter notebooks. You can find example notebooks in the [`notebook/`](notebook/) directory.
 
 Each notebook includes:
 - **LLM (Large Language Model)**: Text generation and conversation
@@ -24,10 +16,13 @@ Each notebook includes:
 
 ## Prerequisites
 
-| Platform | Required Python | 
-|----------|----------------|
-| **Windows (ARM64, Snapdragon X Elite)** | **3.11 – 3.13 (arm64)** |
-| **macOS / Windows (x64)** | **3.10 (x64)** |
+- Python 3
+- Nexa CLI installed
+## Installation
+
+```bash
+pip install nexaai -v
+```
 
 ## Command Line Examples
 
@@ -87,9 +82,9 @@ The `--plugin-id` parameter supports different backends:
 
 ## Getting Started
 
-1. **Choose your platform** and open the corresponding notebook from the [`notebook/`](notebook/) directory
-2. **Follow the setup instructions** in the notebook for your specific platform
+1. **Open a notebook** from the [`notebook/`](notebook/) directory
+2. **Follow the setup instructions** in the notebook
 3. **Run the examples** step by step to explore different AI capabilities
 4. **Customize the examples** for your specific use cases
 
-For detailed setup instructions and platform-specific requirements, please refer to the individual notebooks.
+For detailed setup instructions, please refer to the individual notebooks.
