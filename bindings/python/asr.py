@@ -5,12 +5,22 @@ This example demonstrates how to use the NexaAI SDK to transcribe an audio file.
 """
 
 import argparse
+import logging
 import os
 
 from nexaai.asr import ASR
 
 
+def setup_logging():
+    """Setup logging with debug level."""
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+
+
 def main():
+    setup_logging()
     parser = argparse.ArgumentParser(description="NexaAI ASR Example")
     parser.add_argument(
         "-m",

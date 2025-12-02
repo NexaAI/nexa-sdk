@@ -8,12 +8,22 @@ It includes basic model initialization, single and batch embedding generation, a
 """
 
 import argparse
+import logging
 import os
 
 from nexaai.embedding import Embedder
 
 
+def setup_logging():
+    """Setup logging with debug level."""
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+
+
 def main():
+    setup_logging()
     parser = argparse.ArgumentParser(description="NexaAI Embedding Example")
     parser.add_argument(
         "-m",

@@ -8,12 +8,22 @@ It includes basic model initialization, document reranking, and score analysis.
 """
 
 import argparse
+import logging
 import os
 
 from nexaai.rerank import Reranker
 
 
+def setup_logging():
+    """Setup logging with debug level."""
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+
+
 def main():
+    setup_logging()
     parser = argparse.ArgumentParser(description="NexaAI Rerank Example")
     parser.add_argument(
         "-m",

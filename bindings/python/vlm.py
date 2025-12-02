@@ -10,6 +10,7 @@ It includes basic model initialization, text generation, streaming, and chat tem
 import os
 import argparse
 import io
+import logging
 import shlex
 from pathlib import Path
 from typing import Optional, List, Tuple
@@ -17,10 +18,18 @@ from typing import Optional, List, Tuple
 from nexaai import (
     GenerationConfig,
     ModelConfig,
-    VlmChatMessage as MultiModalMessage,
-    VlmContent as MultiModalMessageContent,
+    VlmChatMessage,
+    VlmContent,
 )
 from nexaai.vlm import VLM
+
+
+def setup_logging():
+    """Setup logging with debug level."""
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
 
 
 def parse_media_from_input(
@@ -50,6 +59,7 @@ def parse_media_from_input(
 
 
 def main():
+    setup_logging()
     parser = argparse.ArgumentParser(description="NexaAI VLM Example")
     parser.add_argument(
         "-m",
@@ -72,10 +82,10 @@ def main():
         plugin_id=args.plugin_id,
     )
 
-    conversation: List[MultiModalMessage] = [
-        MultiModalMessage(
+    conversation: List[VlmChatMessage] = [
+        VlmChatMessage(
             role="system",
-            contents=[MultiModalMessageContent(type="text", text=args.system)],
+            contents=[VlmContent(type="text", text=args.system)],
         )
     ]
     strbuff = io.StringIO()
@@ -106,14 +116,14 @@ def main():
 
         contents = []
         if prompt:
-            contents.append(MultiModalMessageContent(type="text", text=prompt))
+            contents.append(VlmContent(type="text", text=prompt))
         if images:
             for image in images:
-                contents.append(MultiModalMessageContent(type="image", text=image))
+                contents.append(VlmContent(type="image", text=image))
         if audios:
             for audio in audios:
-                contents.append(MultiModalMessageContent(type="audio", text=audio))
-        conversation.append(MultiModalMessage(role="user", contents=contents))
+                contents.append(VlmContent(type="audio", text=audio))
+        conversation.append(VlmChatMessage(role="user", contents=contents))
 
         prompt = instance.apply_chat_template(conversation)
         strbuff.truncate(0)
@@ -139,10 +149,10 @@ def main():
             print(f"\n{result.profile_data}")
 
         conversation.append(
-            MultiModalMessage(
+            VlmChatMessage(
                 role="assistant",
                 contents=[
-                    MultiModalMessageContent(type="text", text=strbuff.getvalue())
+                    VlmContent(type="text", text=strbuff.getvalue())
                 ],
             )
         )
