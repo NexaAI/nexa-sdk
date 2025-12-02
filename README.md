@@ -8,16 +8,6 @@
     <source srcset="assets/chipmakers.png" media="(prefers-color-scheme: light)" height="30">
     <img src="assets/chipmakers.png" height="30">
   </picture>
-</div>
-  </p>
-      <div align="center">
-  <p style="font-size: 1.3em; font-weight: 600; margin-top: 20px;">🤝 Supported model provider </p>
-  <picture>
-    <source srcset="assets/providers-dark.png" media="(prefers-color-scheme: dark)" height="112">
-    <source srcset="assets/providers.png" media="(prefers-color-scheme: light)" height="112">
-    <img src="assets/providers.png" height="112">
-  </picture>
-</div>
   </p>
 
   <p align="center">
