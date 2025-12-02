@@ -12,6 +12,9 @@ Each notebook includes:
 - **Embedder**: Text vectorization and similarity computation
 - **Reranker**: Document reranking
 - **ASR (Automatic Speech Recognition)**: Speech-to-text transcription
+- **TTS (Text-to-Speech)**: Text-to-speech synthesis
+- **Diarize**: Speaker diarization
+- **ImageGen**: Image generation from text or image-to-image transformation
 - **CV (Computer Vision)**: OCR/text recognition
 
 ## Prerequisites
@@ -51,6 +54,25 @@ python embedder.py
 ### Computer Vision
 ```bash
 python cv_ocr.py
+```
+
+### TTS (Text-to-Speech)
+```bash
+python tts.py --text "Hello, world!"
+```
+
+### Diarize
+```bash
+python diarize.py --audio path/to/audio.wav
+```
+
+### ImageGen
+```bash
+# Text-to-image
+python image_gen.py --prompt "A beautiful sunset over the ocean"
+
+# Image-to-image
+python image_gen.py --prompt "A beautiful sunset" --init-image path/to/image.png
 ```
 
 ## Common Arguments
