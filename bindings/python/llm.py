@@ -9,33 +9,36 @@ import io
 import os
 from typing import List
 
-from nexaai.llm import LLM, GenerationConfig
-from nexaai.common import ModelConfig, ChatMessage
+from nexaai import LLM, GenerationConfig, ModelConfig, LlmChatMessage as ChatMessage
 
 
 def main():
     parser = argparse.ArgumentParser(description="NexaAI LLM Example")
-    parser.add_argument("--model",
-                        default="~/.cache/nexa.ai/nexa_sdk/models/Qwen/Qwen3-0.6B-GGUF/Qwen3-0.6B-Q8_0.gguf",
-                        help="Path to the LLM model")
-    parser.add_argument("--device", default="cpu", help="Device to run on")
-    parser.add_argument("--max-tokens", type=int, default=100, help="Maximum tokens to generate")
-    parser.add_argument("--system", default="You are a helpful assistant.", 
-                       help="System message")
-    parser.add_argument("--plugin-id", default="cpu_gpu", help="Plugin ID to use")
+    parser.add_argument(
+        "-m",
+        "--model",
+        default="~/.cache/nexa.ai/nexa_sdk/models/Qwen/Qwen3-0.6B-GGUF/Qwen3-0.6B-Q8_0.gguf",
+        help="Path to the LLM model",
+    )
+    parser.add_argument("--device", default=None, help="Device to run on")
+    parser.add_argument(
+        "--max-tokens", type=int, default=128, help="Maximum tokens to generate"
+    )
+    parser.add_argument(
+        "--system", default="You are a helpful assistant.", help="System message"
+    )
+    parser.add_argument("--plugin-id", default=None, help="Plugin ID to use")
     args = parser.parse_args()
 
     model_path = os.path.expanduser(args.model)
-    m_cfg = ModelConfig()
+    config = ModelConfig()
 
-    instance = LLM.from_(model_path, plugin_id=args.plugin_id, device_id=args.device, m_cfg=m_cfg)
+    instance: LLM = LLM.from_(model=model_path, plugin_id=args.plugin_id, config=config)
 
     conversation: List[ChatMessage] = [ChatMessage(role="system", content=args.system)]
     strbuff = io.StringIO()
-
     print("Multi-round conversation started. Type '/quit' or '/exit' to end.")
     print("=" * 50)
-
     while True:
         user_input = input("\nUser: ").strip()
 
@@ -71,13 +74,20 @@ def main():
         strbuff.seek(0)
 
         print("Assistant: ", end="", flush=True)
-        for token in instance.generate_stream(prompt, g_cfg=GenerationConfig(max_tokens=args.max_tokens)):
-            print(token, end="", flush=True)
-            strbuff.write(token)
+        gen = instance.generate_stream(
+            prompt, GenerationConfig(max_tokens=args.max_tokens)
+        )
+        result = None
+        try:
+            while True:
+                token = next(gen)
+                print(token, end="", flush=True)
+                strbuff.write(token)
+        except StopIteration as e:
+            result = e.value
 
-        profiling_data = instance.get_profiling_data()
-        if profiling_data is not None:
-            print(profiling_data)
+        if result and hasattr(result, "profile_data") and result.profile_data:
+            print(f"\n{result.profile_data}")
 
         conversation.append(ChatMessage(role="assistant", content=strbuff.getvalue()))
 
