@@ -2,14 +2,14 @@
   <p>
       <img width="100%" src="assets/banner1.png" alt="Nexa AI Banner">
       <div align="center">
-  <p style="font-size: 1.3em; font-weight: 600; margin-bottom: 10px;">🤝 Trusted by Partners</p>
-  <img src="assets/qualcomm.png" alt="Qualcomm" height="40" style="margin: 0 20px;">
-  <img src="assets/nvidia.png" alt="NVIDIA" height="40" style="margin: 0 20px;">
-  <img src="assets/AMD.png" alt="AMD" height="42" style="margin: 0 20px;">
-  <img src="assets/Intel_logo.png" alt="Intel" height="45" style="margin: 0 10px;">
-</div>
-  </p>
-
+        <p style="font-size: 1.3em; font-weight: 600; margin-bottom: 20px;">🤝 Supported chipmakers </p>
+          <picture>
+            <source srcset="assets/chipmakers-dark.png" media="(prefers-color-scheme: dark)">
+            <source srcset="assets/chipmakers.png" media="(prefers-color-scheme: light)">
+            <img src="assets/chipmakers.png" style="max-height:30px; height:auto; width:auto;">
+          </picture>
+        </p>
+      </div>
   <p align="center">
     <a href="https://docs.nexa.ai">
         <img src="https://img.shields.io/badge/docs-website-brightgreen?logo=readthedocs" alt="Documentation">
@@ -24,8 +24,7 @@
     <a href="https://join.slack.com/t/nexa-ai-community/shared_invite/zt-3837k9xpe-LEty0disTTUnTUQ4O3uuNw">
         <img src="https://img.shields.io/badge/slack-join%20chat-4A154B?logo=slack&logoColor=white" alt="Join us on Slack">
     </a>
-</p>
-
+  </p>
 </div>
 
 # NexaSDK - Run any AI model on any backend
