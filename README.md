@@ -4,9 +4,9 @@
       <div align="center">
         <p style="font-size: 1.3em; font-weight: 600; margin-bottom: 20px;">🤝 Supported chipmakers </p>
           <picture>
-            <source srcset="assets/chipmakers-dark.png" media="(prefers-color-scheme: dark)" height="30">
-            <source srcset="assets/chipmakers.png" media="(prefers-color-scheme: light)" height="30">
-            <img src="assets/chipmakers.png" height="30">
+            <source srcset="assets/chipmakers-dark.png" media="(prefers-color-scheme: dark)">
+            <source srcset="assets/chipmakers.png" media="(prefers-color-scheme: light)">
+            <img src="assets/chipmakers.png" style="max-height:30px; height:auto; width:auto;">
           </picture>
         </p>
       </div>
