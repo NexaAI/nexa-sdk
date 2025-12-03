@@ -2,14 +2,14 @@
   <p>
       <img width="100%" src="assets/banner1.png" alt="Nexa AI Banner">
       <div align="center">
-  <p style="font-size: 1.3em; font-weight: 600; margin-bottom: 20px;">🤝 Supported chipmakers </p>
-  <picture>
-    <source srcset="assets/chipmakers-dark.png" media="(prefers-color-scheme: dark)" height="30">
-    <source srcset="assets/chipmakers.png" media="(prefers-color-scheme: light)" height="30">
-    <img src="assets/chipmakers.png" height="30">
-  </picture>
-  </p>
-
+        <p style="font-size: 1.3em; font-weight: 600; margin-bottom: 20px;">🤝 Supported chipmakers </p>
+          <picture>
+            <source srcset="assets/chipmakers-dark.png" media="(prefers-color-scheme: dark)" height="30">
+            <source srcset="assets/chipmakers.png" media="(prefers-color-scheme: light)" height="30">
+            <img src="assets/chipmakers.png" height="30">
+          </picture>
+        </p>
+      </div>
   <p align="center">
     <a href="https://docs.nexa.ai">
         <img src="https://img.shields.io/badge/docs-website-brightgreen?logo=readthedocs" alt="Documentation">
@@ -24,8 +24,7 @@
     <a href="https://join.slack.com/t/nexa-ai-community/shared_invite/zt-3837k9xpe-LEty0disTTUnTUQ4O3uuNw">
         <img src="https://img.shields.io/badge/slack-join%20chat-4A154B?logo=slack&logoColor=white" alt="Join us on Slack">
     </a>
-</p>
-
+  </p>
 </div>
 
 # NexaSDK - Run any AI model on any backend
