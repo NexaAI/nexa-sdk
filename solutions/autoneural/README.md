@@ -83,29 +83,9 @@ Ground natural language requests in visual context and emit structured outputs t
 
 > ⚠️ **Hardware Requirement:** AutoNeural is optimized for **Qualcomm NPUs**.
 
-### Step 1: Install Nexa-SDK
+The easiest way to get started with AutoNeural is through our interactive Jupyter notebook:
 
-Download the SDK and follow the installation steps provided on the [model page](https://huggingface.co/...).
-
-### Step 2: Configure Authentication
-
-Create an access token in the Model Hub, then run:
-
-```bash
-nexa config set license '<access_token>'
-```
-
-### Step 3: Run the Model
-
-```bash
-nexa infer NexaAI/AutoNeural
-```
-
-### Step 4: Image Input
-
-Drag and drop one or more image files into the terminal window.  
-Multiple images can be processed with a single query.
-
+📓 **[Open Quickstart Notebook](./quickstart.ipynb)**
 ---
 
 ## 📊 Performance
