@@ -6,14 +6,18 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
 	"sync"
 	"sync/atomic"
+	"time"
+
+	"github.com/bytedance/sonic"
+	"resty.dev/v3"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
-	"github.com/bytedance/sonic"
 )
 
 type ModelFileInfo struct {
@@ -22,14 +26,16 @@ type ModelFileInfo struct {
 }
 
 type ModelHub interface {
-	CheckAvailable(ctx context.Context, modelName string) error
+	ChinaMainlandOnly() bool
 	MaxConcurrency() int
+	CheckAvailable(ctx context.Context, modelName string) error
 	ModelInfo(ctx context.Context, modelName string) ([]ModelFileInfo, error)
 	GetFileContent(ctx context.Context, modelName, fileName string, offset, limit int64, writer io.Writer) error
 }
 
 var hubs = []ModelHub{
-	NewVolces(false),
+	NewVolces(),
+	NewModelScope(),
 	NewS3(),
 	NewHuggingFace(),
 }
@@ -222,8 +228,62 @@ func StartDownload(ctx context.Context, modelName, outputPath string, files []Mo
 	return resCh, errCh
 }
 
+var (
+	chinaMainlandCheck sync.Once
+	isChinaMainland    bool
+)
+
+func checkChinaMainland() bool {
+	chinaMainlandCheck.Do(func() {
+		client := resty.New()
+		client.SetTimeout(2 * time.Second)
+		defer client.Close()
+
+		for _, ep := range [][]string{
+			{"http://ip-api.com/json", "countryCode"},
+			{"https://ipapi.co/json", "country_code"},
+			{"https://ipinfo.io/json", "country"},
+		} {
+			res, err := client.R().
+				// EnableDebug().
+				Get(ep[0])
+			if err != nil {
+				continue
+			}
+
+			n, err := sonic.GetFromString(res.String(), ep[1])
+			if err != nil {
+				continue
+			}
+
+			code, err := n.String()
+			if err != nil {
+				continue
+			}
+
+			slog.Info("Detected country code", "endpoint", ep[0], "code", code)
+			isChinaMainland = code == "CN"
+			return
+		}
+		slog.Error("Detect country code failed")
+	})
+	return isChinaMainland
+}
+
 func getHub(ctx context.Context, modelName string) (ModelHub, error) {
+	// if only one hub specified, check availability first
+	if len(hubs) == 1 {
+		h := hubs[0]
+		slog.Info("specified single hub", "hub", reflect.TypeOf(h))
+		return h, h.CheckAvailable(ctx, modelName)
+	}
+
+	// try each hub
 	for _, h := range hubs {
+		if h.ChinaMainlandOnly() && !checkChinaMainland() {
+			slog.Info("skip china mainland only hub", "hub", reflect.TypeOf(h))
+			continue
+		}
 		if err := h.CheckAvailable(ctx, modelName); err != nil {
 			slog.Warn("hub not available, try next", "hub", reflect.TypeOf(h), "err", err)
 		} else {
@@ -231,6 +291,7 @@ func getHub(ctx context.Context, modelName string) (ModelHub, error) {
 			return h, nil
 		}
 	}
+
 	return nil, errUnavailable
 }
 
@@ -254,4 +315,15 @@ func doTask(ctx context.Context, hub ModelHub, task downloadTask) error {
 	}
 
 	return file.Close()
+}
+
+func code2error(client *resty.Client, response *resty.Response) error {
+	switch response.StatusCode() {
+	case http.StatusOK:
+		return nil
+	case http.StatusNotFound, http.StatusUnauthorized:
+		return fmt.Errorf("model not found, please check the model name or auth token")
+	default:
+		return fmt.Errorf("HTTPError: %s", response.Status())
+	}
 }

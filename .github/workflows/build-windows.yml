@@ -4,7 +4,6 @@ on:
   push:
     tags:
       - "v*"
-  workflow_dispatch:
 
 jobs:
   build-cli:
@@ -19,24 +18,17 @@ jobs:
           - runner: windows-11-arm
             arch: arm64
 
+    env:
+      VERSION: ${{ github.ref_name }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Detect Tag Version
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: echo "VERSION=${{ github.ref_name }}" >> $env:GITHUB_ENV
-
-      - name: Detect Commit Hash
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          $shortHash = "${{ github.sha }}".Substring(0, 7)
-          echo "VERSION=$shortHash" >> $env:GITHUB_ENV
-
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.25.1
+          go-version: 1.25.4
           cache-dependency-path: runner/go.sum
 
       - name: Setup MSYS2 (ARM64)
@@ -46,38 +38,12 @@ jobs:
           msystem: CLANGARM64
           location: C:/Tools
           update: true
+          install: mingw-w64-clang-aarch64-clang
 
       - name: Setup Compile Environment (ARM64)
         if: matrix.arch == 'arm64'
         shell: bash
         run: |
-          PKG=(
-            mingw-w64-clang-aarch64-clang-libs-20.1.8-2
-            mingw-w64-clang-aarch64-compiler-rt-20.1.8-2
-            mingw-w64-clang-aarch64-crt-git-13.0.0.r167.g2e31630bc-1
-            mingw-w64-clang-aarch64-gettext-runtime-0.26-1
-            mingw-w64-clang-aarch64-headers-git-13.0.0.r167.g2e31630bc-1
-            mingw-w64-clang-aarch64-libc++-20.1.8-1
-            mingw-w64-clang-aarch64-libffi-3.5.2-1
-            mingw-w64-clang-aarch64-libiconv-1.18-1
-            mingw-w64-clang-aarch64-libunwind-20.1.8-1
-            mingw-w64-clang-aarch64-libwinpthread-13.0.0.r167.g2e31630bc-1
-            mingw-w64-clang-aarch64-libxml2-2.14.6-1
-            mingw-w64-clang-aarch64-llvm-libs-20.1.8-2
-            mingw-w64-clang-aarch64-llvm-tools-20.1.8-2
-            mingw-w64-clang-aarch64-winpthreads-13.0.0.r167.g2e31630bc-1
-            mingw-w64-clang-aarch64-xz-5.8.1-2
-            mingw-w64-clang-aarch64-zlib-1.3.1-1
-            mingw-w64-clang-aarch64-zstd-1.5.7-1
-            mingw-w64-clang-aarch64-clang-20.1.8-2
-            mingw-w64-clang-aarch64-lld-20.1.8-2
-          )
-
-          for pkg in "${PKG[@]}"; do
-              echo "Downloading $pkg..."
-              curl -O "https://repo.msys2.org/mingw/clangarm64/${pkg}-any.pkg.tar.zst" -L
-          done
-          C:/Tools/msys64/usr/bin/pacman -U ./*.pkg.tar.zst --noconfirm
           echo "CC=C:/Tools/msys64/clangarm64/bin/clang.exe" >> $GITHUB_ENV
           echo "CXX=C:/Tools/msys64/clangarm64/bin/clang++.exe" >> $GITHUB_ENV
 
@@ -106,7 +72,6 @@ jobs:
     name: Build Windows Installer & Release
     needs: build-cli
     runs-on: ${{ matrix.runner }}
-    if: github.ref_type == 'tag'
     strategy:
       fail-fast: false
       matrix:
@@ -171,7 +136,7 @@ jobs:
         shell: bash
         run: |
           cp -r artifacts artifacts_cuda
-          rm -r artifacts_cuda/nexa_dml*
+          rm -r artifacts_cuda/nexaai*
           rm -r artifacts/nexa_cuda*
 
       - name: Compile Installer (CUDA) (X86_64)
@@ -237,7 +202,7 @@ jobs:
             nexa-cli_windows_${{ matrix.arch }}_cuda.exe
             nexa-cli_windows_${{ matrix.arch }}.exe
           draft: ${{ contains(github.ref, '-rc') }}
-          generate_release_notes: true
+          generate_release_notes: false
           make_latest: ${{ !contains(github.ref, '-rc') }}
         env:
           GITHUB_TOKEN: ${{ secrets.ZACK_ACCESS_TOKEN }}

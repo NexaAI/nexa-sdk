@@ -16,8 +16,13 @@ RESOURCES_PATH="${APP_PATH}/Contents/Resources"
 echo "Signing dylibs and executables..."
 find "$RESOURCES_PATH" -type f \( -name "*.dylib" -o -name "*.so" \) -exec codesign --force --options runtime --timestamp --verify -s "$SIGNING_IDENTITY" {} \;
 
-if [ -d "$RESOURCES_PATH/metal/python_runtime/bin" ]; then
-  find "$RESOURCES_PATH/metal/python_runtime/bin" -type f -name "python*" -exec codesign --force --options runtime --timestamp --verify -s "$SIGNING_IDENTITY" --entitlements runner/release/darwin/entitlements.plist {} \;
+if [ -d "$RESOURCES_PATH/common/python_runtime/bin" ]; then
+  find "$RESOURCES_PATH/common/python_runtime/bin" -type f -name "python*" -exec codesign --force --options runtime --timestamp --verify -s "$SIGNING_IDENTITY" --entitlements runner/release/darwin/entitlements.plist {} \;
+
+fi
+
+if [ -d "$RESOURCES_PATH/common/python_runtime/lib/python3.10/site-packages/torch/bin" ]; then
+  find "$RESOURCES_PATH/common/python_runtime/lib/python3.10/site-packages/torch/bin" -type f -exec codesign --force --options runtime --timestamp --verify -s "$SIGNING_IDENTITY" --entitlements runner/release/darwin/entitlements.plist {} \;
 fi
 
 find "$RESOURCES_PATH" -type f -name "nexa*" -maxdepth 1 -exec codesign --force --options runtime --timestamp --verify -s "$SIGNING_IDENTITY" --entitlements runner/release/darwin/entitlements.plist {} \;

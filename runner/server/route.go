@@ -11,6 +11,7 @@ import (
 )
 
 func RegisterRoot(r *gin.Engine) {
+	r.Use(middleware.CORS)
 	r.GET("/", func(c *gin.Context) {
 		c.String(200, "Nexa SDK is running")
 	})
@@ -25,7 +26,7 @@ func RegisterSwagger(r *gin.Engine) {
 
 func RegisterAPIv1(r *gin.Engine) {
 	g := r.Group("/v1")
-	g.Use(middleware.GIL)
+	g.Use(middleware.CORS, middleware.GIL)
 
 	// ==== legacy ====
 	g.POST("/completions", func(c *gin.Context) {

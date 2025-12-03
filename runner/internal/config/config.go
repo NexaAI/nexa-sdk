@@ -8,6 +8,7 @@ import (
 
 type Config struct {
 	Host      string // Server host and port (default: "127.0.0.1:18181")
+	Origins   string // Allowed CORS origins (default: "*")
 	KeepAlive int64  // Connection keep-alive timeout in seconds (default: 300)
 	HFToken   string
 
@@ -40,6 +41,7 @@ func GetLog() string {
 // These defaults are used if no environment variables are provided.
 func init() {
 	viper.SetDefault("host", "127.0.0.1:18181") // Default server address
+	viper.SetDefault("origins", "*")            // Default CORS origins
 	viper.SetDefault("keepalive", 300)          // Default 5-minute timeout
 	viper.SetDefault("hftoken", "")             // Default empty token
 

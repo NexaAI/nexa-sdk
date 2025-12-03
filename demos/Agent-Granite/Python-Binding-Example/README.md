@@ -1,13 +1,20 @@
 ## About
 
-This demo showcases a function tool implementation using NexaAI Python bindings. 
+This demo showcases a function tool implementation using NexaAI Python binding. 
 
 ## Setup
 
 ### Prerequisites
-- Windows ARM64 device with Snapdragon NPU
-- Python 3.11 – 3.13 (ARM64 build) - We provide detailed installation guides in Jupyter Notebook format
-[Windows ARM64 Installation Guide](https://github.com/NexaAI/nexa-sdk/blob/main/bindings/python/notebook/winodws(arm64).ipynb)
+
+| Platform | Required Python | 
+|----------|----------------|
+| **Windows (ARM64, Snapdragon X Elite)** | **3.11 – 3.13 (arm64)** |
+| **macOS / Windows (x64)** | **3.10 (x64)** |
+
+For python install, you can check our interactive Jupyter notebooks. Choose the appropriate notebook for your platform:
+- [macOS Installation Guide](../../../bindings/python/notebook/macos.ipynb)
+- [windows(x64) Installation Guide](../../../bindings/python/notebook/windows(x64).ipynb)
+- [windows(ARM64) Installation Guide](../../../bindings/python/notebook/winodws(arm64).ipynb)
 
 ### Install Dependencies
 
@@ -19,13 +26,14 @@ cd Python-Binding-Example
 python -m venv .venv
 
 # Activate the virtual environment
-.\.venv\Scripts\activate
+.\.venv\Scripts\activate # windows
+
+source .venv/bin/activate # macOS
+
 
 # Install all required dependencies
 pip install -r requirements.txt
 ```
-
-Note: Make sure you're using Python 3.11-3.13 (ARM64) as specified in the prerequisites. 
 
 ## Running the Example
 

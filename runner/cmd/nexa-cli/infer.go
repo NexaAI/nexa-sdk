@@ -3,6 +3,11 @@ package main
 import (
 	"errors"
 	"fmt"
+	"image"
+	"image/color"
+	"image/draw"
+	"image/jpeg"
+	"image/png"
 	"io"
 	"log/slog"
 	"os"
@@ -16,6 +21,9 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"golang.org/x/image/font"
+	"golang.org/x/image/font/basicfont"
+	"golang.org/x/image/math/fixed"
 
 	"github.com/NexaAI/nexa-sdk/runner/cmd/nexa-cli/common"
 	"github.com/NexaAI/nexa-sdk/runner/internal/record"
@@ -107,8 +115,8 @@ var (
 	embedderFlags = func() *pflag.FlagSet {
 		embedderFlags := pflag.NewFlagSet("Embedder", pflag.ExitOnError)
 		embedderFlags.SortFlags = false
-		embedderFlags.StringVarP(&input, "input", "i", "", "prompt txt file")
-		embedderFlags.StringArrayVarP(&prompt, "prompt", "p", nil, "pass prompt")
+		embedderFlags.StringVarP(&input, "input", "i", "", "input text file or image file")
+		embedderFlags.StringArrayVarP(&prompt, "prompt", "p", nil, "pass prompt or image path (e.g., -p 'text' or -p '/path/to/image.jpg')")
 		embedderFlags.StringVarP(&taskType, "task-type", "", "default", "default|search_query|search_document")
 		return embedderFlags
 	}()
@@ -603,12 +611,27 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) error {
 	defer p.Destroy()
 
 	processor := &common.Processor{
-		TestMode: testMode,
-		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
+		ParseFile: true,
+		TestMode:  testMode,
+		Run: func(prompt string, images, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			embedInput := nexa_sdk.EmbedderEmbedInput{
 				TaskType: taskType,
-				Texts:    []string{strings.TrimSpace(prompt)},
 				Config:   &nexa_sdk.EmbeddingConfig{},
+			}
+
+			// Validate: image paths and text cannot be passed at the same time
+			trimmedPrompt := strings.TrimSpace(prompt)
+			if len(images) > 0 && trimmedPrompt != "" {
+				return "", nexa_sdk.ProfileData{}, fmt.Errorf("cannot pass both image paths and text at the same time")
+			}
+
+			// Handle text or image inputs
+			if len(images) > 0 {
+				embedInput.ImagePaths = images
+			} else if trimmedPrompt != "" {
+				embedInput.Texts = []string{trimmedPrompt}
+			} else {
+				return "", nexa_sdk.ProfileData{}, fmt.Errorf("must provide either text or image path")
 			}
 
 			result, err := p.Embed(embedInput)
@@ -1096,6 +1119,122 @@ func inferDiarize(manifest *types.ModelManifest, quant string) error {
 	return processor.Process()
 }
 
+func drawBBoxesOnImage(imagePath string, results []nexa_sdk.CVResult) (string, error) {
+	file, err := os.Open(imagePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open image: %w", err)
+	}
+	defer file.Close()
+
+	img, format, err := image.Decode(file)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode image: %w", err)
+	}
+
+	bounds := img.Bounds()
+	rgba := image.NewRGBA(bounds)
+	draw.Draw(rgba, bounds, img, bounds.Min, draw.Src)
+
+	const bboxLineWidth = 2
+	d := &font.Drawer{
+		Dst:  rgba,
+		Src:  image.NewUniform(color.White),
+		Face: basicfont.Face7x13,
+	}
+	colors := []color.RGBA{
+		{R: 255, G: 0, B: 0, A: 255},   // Red
+		{R: 0, G: 255, B: 255, A: 255}, // Cyan
+		{R: 0, G: 255, B: 0, A: 255},   // Green
+		{R: 0, G: 0, B: 255, A: 255},   // Blue
+		{R: 255, G: 255, B: 0, A: 255}, // Yellow
+		{R: 255, G: 0, B: 255, A: 255}, // Magenta
+		{R: 255, G: 165, B: 0, A: 255}, // Orange
+		{R: 128, G: 0, B: 128, A: 255}, // Purple
+	}
+	for _, r := range results {
+		if r.BBox.Width <= 0 || r.BBox.Height <= 0 {
+			continue
+		}
+		bboxColor := colors[r.ClassID%int32(len(colors))]
+		x, y, w, h := int(r.BBox.X), int(r.BBox.Y), int(r.BBox.Width), int(r.BBox.Height)
+		if x < 0 {
+			x, w = 0, w+x
+		}
+		if y < 0 {
+			y, h = 0, h+y
+		}
+		if x+w > bounds.Dx() {
+			w = bounds.Dx() - x
+		}
+		if y+h > bounds.Dy() {
+			h = bounds.Dy() - y
+		}
+
+		for i := range bboxLineWidth {
+			for j := x; j < x+w && j < bounds.Dx(); j++ {
+				if y+i < bounds.Dy() {
+					rgba.Set(j, y+i, bboxColor)
+				}
+				if y+h-1-i >= 0 {
+					rgba.Set(j, y+h-1-i, bboxColor)
+				}
+			}
+			for j := y; j < y+h && j < bounds.Dy(); j++ {
+				if x+i < bounds.Dx() {
+					rgba.Set(x+i, j, bboxColor)
+				}
+				if x+w-1-i >= 0 {
+					rgba.Set(x+w-1-i, j, bboxColor)
+				}
+			}
+		}
+
+		textLabel := r.Text
+		label := fmt.Sprintf("%s %.2f", textLabel, r.Confidence)
+		labelWidth := d.MeasureString(label).Ceil()
+		labelHeight := 12
+		padding := 4
+
+		labelY := y - labelHeight - padding*2
+		if labelY < 0 {
+			labelY = y + h + padding
+		}
+
+		bgRect := image.Rect(x, labelY, x+labelWidth+padding*2, labelY+labelHeight+padding*2)
+		if bgRect.Max.X > bounds.Dx() {
+			bgRect.Max.X = bounds.Dx()
+		}
+		if bgRect.Max.Y > bounds.Dy() {
+			bgRect.Max.Y = bounds.Dy()
+		}
+		if bgRect.Min.Y < 0 {
+			bgRect.Min.Y = 0
+		}
+		draw.Draw(rgba, bgRect, image.NewUniform(bboxColor), image.Point{}, draw.Over)
+		d.Dot = fixed.P(x+padding, labelY+labelHeight+padding)
+		d.DrawString(label)
+	}
+
+	ext := filepath.Ext(imagePath)
+	baseName := strings.TrimSuffix(filepath.Base(imagePath), ext)
+	outputPath := filepath.Join(".", baseName+"_bbox"+ext)
+	outFile, err := os.Create(outputPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create output file: %w", err)
+	}
+	defer outFile.Close()
+
+	if format == "jpeg" || format == "jpg" {
+		err = jpeg.Encode(outFile, rgba, &jpeg.Options{Quality: 95})
+	} else {
+		err = png.Encode(outFile, rgba)
+	}
+	if err != nil {
+		return "", fmt.Errorf("failed to encode image: %w", err)
+	}
+	return outputPath, nil
+}
+
 func inferCV(manifest *types.ModelManifest, quant string) error {
 	s := store.Get()
 	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
@@ -1153,6 +1292,12 @@ func inferCV(manifest *types.ModelManifest, quant string) error {
 					render.GetTheme().Success.Sprintf("\"%s\"", cvResult.Text))
 				onToken(result)
 				data += result
+			}
+
+			if outputPath, err := drawBBoxesOnImage(images[0], result.Results); err != nil {
+				slog.Error("Failed to draw bboxes", "error", err)
+			} else if outputPath != "" {
+				onToken(render.GetTheme().Success.Sprintf("  Bounding boxes drawn and saved to: %s\n", outputPath))
 			}
 
 			return data, nexa_sdk.ProfileData{}, nil

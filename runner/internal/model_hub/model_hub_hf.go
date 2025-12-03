@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log/slog"
+	"net/http"
 	"sync"
+	"time"
 
 	"github.com/bytedance/sonic"
-	"github.com/valyala/fasthttp"
+	"resty.dev/v3"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/config"
 	"github.com/NexaAI/nexa-sdk/runner/internal/downloader"
@@ -24,8 +25,8 @@ func NewHuggingFace() *HuggingFace {
 	return &HuggingFace{downloader: downloader.NewDownloader(config.Get().HFToken)}
 }
 
-func (d *HuggingFace) CheckAvailable(ctx context.Context, name string) error {
-	return nil
+func (d *HuggingFace) ChinaMainlandOnly() bool {
+	return false
 }
 
 func (d *HuggingFace) MaxConcurrency() int {
@@ -36,6 +37,10 @@ func (d *HuggingFace) MaxConcurrency() int {
 	}
 }
 
+func (d *HuggingFace) CheckAvailable(ctx context.Context, name string) error {
+	return nil
+}
+
 func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileInfo, error) {
 	info := struct {
 		Siblings []struct {
@@ -43,36 +48,21 @@ func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileIn
 		} `json:"siblings"`
 	}{}
 
-	req := fasthttp.AcquireRequest()
-	resp := fasthttp.AcquireResponse()
-	defer fasthttp.ReleaseRequest(req)
-	defer fasthttp.ReleaseResponse(resp)
+	client := resty.New()
+	defer client.Close()
+	client.SetTimeout(10 * time.Second)
+	client.AddResponseMiddleware(code2error)
 
-	code, url, err := downloader.FastHTTPResolveRedirect(&d.downloader.Client, config.Get().HFToken, fmt.Sprintf("%s/api/models/%s", HF_ENDPOINT, name), 3)
-	if err != nil {
-		if code == 401 || code == 404 {
-			return nil, fmt.Errorf("model %s not found on huggingface, please check model id", name)
-		}
-		return nil, err
-	}
-	req.SetRequestURI(url)
-	req.Header.SetMethod(fasthttp.MethodGet)
+	req := client.R()
 	if config.Get().HFToken != "" {
-		req.Header.Set("Authorization", "Bearer "+config.Get().HFToken)
+		req.SetHeader("Authorization", "Bearer "+config.Get().HFToken)
 	}
-
-	if err := d.downloader.Client.Do(req, resp); err != nil {
+	resp, err := req.Get(fmt.Sprintf("%s/api/models/%s", HF_ENDPOINT, name))
+	if err != nil {
 		return nil, err
 	}
 
-	if resp.StatusCode() == 401 || resp.StatusCode() == 404 {
-		return nil, fmt.Errorf("model %s not found on huggingface, please check model id", name)
-	}
-	if resp.StatusCode() >= 400 {
-		return nil, fmt.Errorf("HTTPError: [%d] %s", resp.StatusCode(), string(resp.Body()))
-	}
-
-	if err := sonic.Unmarshal(resp.Body(), &info); err != nil {
+	if err := sonic.UnmarshalString(resp.String(), &info); err != nil {
 		return nil, err
 	}
 
@@ -81,6 +71,7 @@ func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileIn
 	var resLock sync.Mutex
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, d.MaxConcurrency())
+
 	for i := range info.Siblings {
 		wg.Add(1)
 		sem <- struct{}{}
@@ -88,22 +79,30 @@ func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileIn
 			defer wg.Done()
 			defer func() { <-sem }()
 
-			size, err := d.downloader.GetFileSize(fmt.Sprintf("%s/%s/resolve/main/%s", HF_ENDPOINT, name, info.Siblings[i].RFileName))
-
+			req := client.R()
+			if config.Get().HFToken != "" {
+				req.SetHeader("Authorization", "Bearer "+config.Get().HFToken)
+			}
+			req.SetHeader("Accept-Encoding", "identity")
+			resp, err := req.Head(fmt.Sprintf("%s/%s/resolve/main/%s", HF_ENDPOINT, name, info.Siblings[i].RFileName))
 			resLock.Lock()
 			defer resLock.Unlock()
 
 			if err != nil {
-				slog.Error("Get file size error", "model", name, "file", info.Siblings[i].RFileName, "err", err)
 				error = err
+				return
+			}
+			if resp.StatusCode() != http.StatusOK || resp.RawResponse.ContentLength < 0 {
+				error = fmt.Errorf("Get file [%s] info error: %s", info.Siblings[i].RFileName, resp.Status())
 				return
 			}
 			res[i] = ModelFileInfo{
 				Name: info.Siblings[i].RFileName,
-				Size: size,
+				Size: resp.RawResponse.ContentLength,
 			}
 		}(i)
 	}
+
 	wg.Wait()
 
 	if error != nil {
