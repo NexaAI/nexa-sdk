@@ -56,6 +56,9 @@ NexaSDK is an easy-to-use developer toolkit for running any AI model locally —
 </div>
 
 ## Recent Wins
+- 📣 Release Nexa AI’s AutoNeural-VL-1.5B, an NPU-native vision–language model built for real-time in-car assistants, delivering 14× lower latency, 3× faster decode, and 4× longer context on Qualcomm SA8295P — now also runnable on Qualcomm X Elite laptops.
+- 📣 Support Mistral AI's **Ministral-3-3B** across Qualcomm Hexagon NPU, Apple Neural Engine, GPU and CPU.
+- 📣 Release **Linux SDK** for NPU/GPU/CPU. See [Linux SDK Doc](https://docs.nexa.ai/nexa-sdk-docker/overview).
 - 📣 Support **Apple Neural Engine** for [Granite-4.0](https://huggingface.co/NexaAI/Granite-4-Micro-ANE), [Qwen3](https://huggingface.co/NexaAI/Qwen3-0.6B-ANE), [Gemma3](https://huggingface.co/NexaAI/Gemma3-1B-ANE), and [Parakeetv3](https://huggingface.co/NexaAI/parakeet-tdt-0.6b-v3-ane). Download NexaSDK for ANE [here](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_macos_arm64_ane.pkg).
 - 📣 Support **Android SDK** for NPU/GPU/CPU. See [Android SDK Doc](https://docs.nexa.ai/nexa-sdk-android/overview) and [Android SDK Demo App](bindings/android/README.md).
 - 📣 Support **SDXL-turbo** image generation on AMD NPU. See [AMD blog : Advancing AI with Nexa AI](https://www.amd.com/en/developer/resources/technical-articles/2025/advancing-ai-with-nexa-ai--image-generation-on-amd-npu-with-sdxl.html).
