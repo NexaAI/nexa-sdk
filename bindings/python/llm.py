@@ -10,7 +10,7 @@ import logging
 import os
 from typing import List
 
-from nexaai import LLM, GenerationConfig, ModelConfig, LlmChatMessage, setup_logging
+from nexaai import LLM, GenerationConfig, LlmChatMessage, ModelConfig, setup_logging
 
 
 def main():
@@ -26,12 +26,13 @@ def main():
     parser.add_argument('--max-tokens', type=int, default=128, help='Maximum tokens to generate')
     parser.add_argument('--system', default='You are a helpful assistant.', help='System message')
     parser.add_argument('--plugin-id', default=None, help='Plugin ID to use')
+    parser.add_argument('--quant', default=None, help='Quantization specification (e.g., Q4_K_M, Q2_K)')
     args = parser.parse_args()
 
     model_path = os.path.expanduser(args.model)
     config = ModelConfig()
 
-    instance: LLM = LLM.from_(model=model_path, plugin_id=args.plugin_id, config=config)
+    instance: LLM = LLM.from_(model=model_path, quant=args.quant, plugin_id=args.plugin_id, config=config)
 
     conversation: List[LlmChatMessage] = [LlmChatMessage(role='system', content=args.system)]
     strbuff = io.StringIO()

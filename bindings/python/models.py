@@ -1,73 +1,103 @@
 """
 Example script demonstrating how to use the model management API.
 
-This script shows how to:
-1. Download models from HuggingFace Hub
-2. List downloaded models
-3. Remove models from local store
-4. Use progress callbacks for download tracking
+Usage:
+    python models.py [--model MODEL_ID] [--quant QUANT_SPEC] [--token HF_TOKEN] [--no-progress]
 """
 
+import argparse
 import logging
+import time
+from typing import Dict
 
-from nexaai import download_model, get_plugin_list, list_models, remove_model, setup_logging, version
+from nexaai import (
+    DownloadProgressInfo,
+    download_model,
+    get_plugin_list,
+    list_models,
+    nexa_version,
+    remove_model,
+    setup_logging,
+    version,
+)
+from tqdm import tqdm
 
-setup_logging(logging.INFO)
-
-repo_id = 'NexaAI/yolov12-npu'
+_progress_bars: Dict[str, tqdm] = {}
 
 
-def progress_callback(info: dict) -> None:
-    filename = info['filename']
-    percentage = info['percentage']
-    downloaded_mb = info['downloaded_bytes'] / (1024 * 1024)
-    total_mb = info['total_bytes'] / (1024 * 1024) if info['total_bytes'] > 0 else 0
-
-    print(f'{filename}: {percentage:.1f}% ({downloaded_mb:.1f} MB / {total_mb:.1f} MB)')
+def progress_callback(info: DownloadProgressInfo) -> None:
+    print(info)
 
 
 def main():
-    print('NexaAI Model Management Examples')
-    print('=' * 50)
-    print(f'\nSDK Version: {version()}')
-
-    plugins = get_plugin_list()
-    print(f'Available plugins: {", ".join(plugins)}')
-
-    # Download model
-    print(f'Downloading model: {repo_id}')
-    download_model(
-        repo_id=repo_id,
-        quant_spec=None,  # Use default quant, or specify like 'Q4_K_M'
-        token=None,  # Optional: HuggingFace token for private repos
-        progress_callback=progress_callback,
+    parser = argparse.ArgumentParser(description="NexaAI Model Management Examples")
+    parser.add_argument(
+        "-m", "--model", default="NexaAI/yolov12-npu", help="HuggingFace repository ID"
     )
-    print(f'✓ Successfully downloaded {repo_id}')
+    parser.add_argument(
+        "--quant", default=None, help="Quantization specification (e.g., Q4_K_M)"
+    )
+    parser.add_argument(
+        "--token", default=None, help="HuggingFace token for private repos"
+    )
+    parser.add_argument(
+        "--no-progress", action="store_true", help="Disable progress bar"
+    )
+    args = parser.parse_args()
 
-    # List models
-    models = list_models()
-    print(f'Found {len(models)} model(s) in local store:\n')
-    for model in models:
-        size_gb = model.size / (1024**3) if model.size > 0 else 0
-        print(f'  Repository ID: {model.repo_id}')
-        print(f'  Model Name: {model.model_name}')
-        print(f'  Model Type: {model.model_type}')
-        print(f'  Size: {size_gb:.2f} GB')
-        print(f'  Plugin ID: {model.plugin_id or "default"}')
-        print(f'  Device ID: {model.device_id or "default"}')
+    setup_logging(logging.NOTSET)
+    print("NexaAI Model Management Examples")
+    print("=" * 50)
+    print(f"Python Version: {version()}")
+    print(f"SDK Version: {nexa_version()}\n")
+    print(f"Available plugins: {', '.join(get_plugin_list())}\n")
+
+    repo_id = args.model
+    if any(m.repo_id == repo_id for m in list_models()):
+        print(f"Removing existing model {repo_id}...")
+        remove_model(repo_id)
         print()
 
-    # Remove model
-    print(f'Removing model: {repo_id}')
+    print(f"Downloading model: {repo_id}")
+    if args.quant:
+        print(f"Quantization: {args.quant}")
+    print()
+
+    try:
+        download_model(
+            repo_id=repo_id,
+            quant_spec=args.quant,
+            token=args.token,
+            progress_callback=None if args.no_progress else progress_callback,
+        )
+        time.sleep(0.5)
+        print(f"\n✓ Successfully downloaded {repo_id}")
+    finally:
+        for pbar in _progress_bars.values():
+            if not pbar.disable:
+                pbar.close()
+        _progress_bars.clear()
+
+    models = list_models()
+    print(f"\nFound {len(models)} model(s) in local store:\n")
+    for m in models:
+        size_gb = m.size / (1024**3) if m.size > 0 else 0
+        print(f"  Repository ID: {m.repo_id}")
+        print(f"  Model Name: {m.model_name}")
+        print(f"  Model Type: {m.model_type}")
+        print(f"  Size: {size_gb:.2f} GB")
+        print(f"  Plugin ID: {m.plugin_id or 'default'}")
+        print(f"  Device ID: {m.device_id or 'default'}\n")
+
+    print(f"Removing model: {repo_id}")
     success = remove_model(repo_id)
-    if success:
-        print(f'✓ Successfully removed {repo_id}')
-    else:
-        print(f'✗ Failed to remove {repo_id} (model may not exist)')
+    print(
+        f"{'✓' if success else '✗'} {'Successfully removed' if success else 'Failed to remove'} {repo_id}"
+    )
 
-    print('\n' + '=' * 50)
-    print('Examples completed!')
+    print("\n" + "=" * 50)
+    print("Examples completed!")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
