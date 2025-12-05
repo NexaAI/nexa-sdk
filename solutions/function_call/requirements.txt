@@ -1,0 +1,6 @@
+nexaai==1.0.35rc11
+# MCP library - install from: pip install mcp
+# If not available on PyPI, install from: pip install git+https://github.com/modelcontextprotocol/python-sdk.git
+mcp
+python-dotenv>=1.0.0
+
