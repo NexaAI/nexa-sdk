@@ -1,75 +1,82 @@
-# Function Call Demo with Google Calendar
+# NexaAI VLM Function Call Demo with Google Calendar MCP
 
-This demo showcases the function calling capabilities of NexaAI/OmniNeural-4B model, integrated with Google Calendar MCP application.
+Demonstrates the function calling capabilities of NexaAI/OmniNeural-4B model, integrated with Google Calendar MCP server.
 
 ## Features
 
-- Interactive command-line interface for chatting with the model
-- Google Calendar integration via OAuth 2.0
-- Function calling support for calendar operations:
-  - Create calendar events
-  - List calendar events
-  - Update calendar events
-  - Delete calendar events
+- Uses NexaAI VLM model for function calling
+- Connects to Google Calendar via MCP protocol
+- Automatically parses and executes function calls
+- Supports text, image, and audio inputs via command line
 
-## Setup
+## Prerequisites
 
-### 1. Install Dependencies
+- Python 3.8+
+- Node.js and npm (for running MCP server)
+  - Install Node.js: https://nodejs.org/
+  - Ensure `npx` command is available in PATH
+
+## Installation
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Configure Google OAuth
+## Configuration
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select an existing one
-3. Enable the Google Calendar API
-4. Create OAuth 2.0 credentials (Desktop app)
-5. Download the credentials JSON file and save it as `gcp-oauth.keys.json` in this directory
+1. Create OAuth 2.0 credentials in Google Cloud Console: https://github.com/nspady/google-calendar-mcp?tab=readme-ov-file#google-cloud-setup
+2. Download the credentials file and save as `gcp-oauth.keys.json` (or specify via `--credentials` argument)
 
-**Note**: This demo uses the existing MCP server `@cocal/google-calendar-mcp` via npx, which handles OAuth authentication automatically.
+## Usage
 
-### 3. Run the Demo
+Run the demo with command line arguments:
 
 ```bash
-python main.py
+# Text input only
+python main.py --text "help me add a meeting tomorrow at 2pm"
+
+# Image input with text
+python main.py --image image.png --text "help me add this event to my calendar"
+
+# Audio input with text
+python main.py --audio audio.mp3 --text "transcribe and add to calendar"
 ```
 
 On first run, you'll be prompted to authorize the application to access your Google Calendar. The authorization token will be saved for future use.
 
-## Usage
+### Command Line Arguments
 
-Once started, you can interact with the model through natural language:
+- `--credentials`: Google OAuth credentials file path (default: `gcp-oauth.keys.json`)
+- `--text`: Text input
+- `--image`: Image file path
+- `--audio`: Audio file path
 
+### Environment Variables
+
+- `MODEL_PATH`: Path to the VLM model (default: `NexaAI/OmniNeural-4B`)
+- `MAX_TOKENS`: Maximum tokens to generate (default: `2048`)
+
+### Example
+
+```bash
+python main.py --image event.png --text "add this event to my calendar"
 ```
-User: Add a meeting tomorrow at 2pm called "Team Standup"
-Assistant: [Function call: create_calendar_event]
-          I've successfully created a calendar event "Team Standup" for tomorrow at 2:00 PM.
+
+Output:
+```
+[Function call: create-event]
+[Arguments: {'summary': '...', 'start': {...}, 'end': {...}}]
+[Function result: {...}]
+Assistant: I've successfully added the event to your calendar.
 ```
 
 ## Project Structure
 
 ```
 solutions/function_call/
-├── main.py                 # Main entry point with CLI interface
-├── mcp/                    # MCP application modules
-│   ├── __init__.py
-│   ├── base.py            # MCP base classes and interfaces
-│   └── google_calendar.py # Google Calendar MCP implementation
-├── models/                 # Model configuration
-│   └── config.py          # Model config and tool definitions
-├── utils/                  # Utility functions
-│   ├── __init__.py
-│   └── function_parser.py  # Function call parser
-├── requirements.txt        # Python dependencies
-├── README.md              # This file
-└── .env.example           # Environment variables template
+├── main.py           # Main entry point
+├── mcp_utils.py     # MCP utility functions
+├── function_parser.py # Function call parser
+├── requirements.txt  # Python dependencies
+└── README.md        # This file
 ```
-
-## Notes
-
-- The first authorization requires browser access for OAuth flow
-- Tokens are stored locally in `.google_token.json`
-- The model uses OmniNeural-4B by default, but can be configured via environment variables
-
