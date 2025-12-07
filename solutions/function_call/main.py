@@ -33,6 +33,52 @@ def extract_function_call(text: str):
     return None
 
 
+def build_system_prompt(tools: list) -> str:
+    """Build system prompt from tool schemas."""
+    tools_descriptions = []
+    for t in tools:
+        func = t.get('function', {})
+        name = func.get('name', '')
+        desc = func.get('description', '')
+        params = func.get('parameters', {})
+        props = params.get('properties', {})
+        required = params.get('required', [])
+        
+        param_list = []
+        for param_name, param_info in props.items():
+            param_type = param_info.get('type', 'string')
+            param_desc = param_info.get('description', '')
+            is_required = param_name in required
+            req_mark = " (required)" if is_required else " (optional)"
+            param_list.append(f"  - {param_name} ({param_type}){req_mark}: {param_desc}")
+        
+        params_str = "\n".join(param_list) if param_list else "  (no parameters)"
+        tools_descriptions.append(f"{name}: {desc}\nParameters:\n{params_str}")
+    
+    tools_list = "\n\n".join([f"{i+1}. {td}" for i, td in enumerate(tools_descriptions)])
+    system_prompt = f"""You are a helpful AI assistant with access to Google Calendar through function calling.
+
+Available functions (use EXACT names and parameter names):
+{tools_list}
+
+Output JSON for function calls: {{"name": "function_name", "arguments": {{"parameter_name": "value"}}}}
+
+CRITICAL RULES:
+- Use EXACT function names and parameter names as shown above
+- All required parameters MUST be included
+- Parameter names are case-sensitive
+- Use the exact parameter types (string, number, boolean, array, object)
+- ALWAYS use function calls when user asks about:
+  * Dates, times, schedules, events (use list-events)
+  * What to do on a specific date/month (use list-events)
+  * Creating/adding calendar events (use create-event)
+  * Searching for events (use list-events)
+  * Current time (use get-current-time)
+- When user asks "what should I do on [date/month]", call list-events to check their calendar"""
+    
+    return system_prompt
+
+
 async def main():
     setup_logging()
     
@@ -69,41 +115,11 @@ async def main():
                 tools = await get_mcp_tools(session)
                 print(f"[info] Found {len(tools)} available tools")
 
-                # Build system prompt with detailed tool schemas
-                tools_descriptions = []
-                for t in tools:
-                    func = t.get('function', {})
-                    name = func.get('name', '')
-                    desc = func.get('description', '')
-                    params = func.get('parameters', {})
-                    props = params.get('properties', {})
-                    required = params.get('required', [])
-                    
-                    param_list = []
-                    for param_name, param_info in props.items():
-                        param_type = param_info.get('type', 'string')
-                        param_desc = param_info.get('description', '')
-                        is_required = param_name in required
-                        req_mark = " (required)" if is_required else " (optional)"
-                        param_list.append(f"  - {param_name} ({param_type}){req_mark}: {param_desc}")
-                    
-                    params_str = "\n".join(param_list) if param_list else "  (no parameters)"
-                    tools_descriptions.append(f"{name}: {desc}\nParameters:\n{params_str}")
+                # only select tools in the list
+                tools = [t for t in tools if t.get('function', {}).get('name', '') in ['create-event', 'list-events', 'get-current-time']]
                 
-                tools_list = "\n\n".join([f"{i+1}. {td}" for i, td in enumerate(tools_descriptions)])
-                system_prompt = f"""You are a helpful AI assistant with access to Google Calendar through function calling.
-
-Available functions (use EXACT names and parameter names):
-{tools_list}
-
-Output JSON for function calls: {{"name": "function_name", "arguments": {{"parameter_name": "value"}}}}
-
-CRITICAL RULES:
-- Use EXACT function names and parameter names as shown above
-- All required parameters MUST be included
-- Parameter names are case-sensitive
-- Use the exact parameter types (string, number, boolean, array, object)
-- ALWAYS use function calls when user asks to add/create/search/update/delete calendar events"""
+                # Build system prompt
+                system_prompt = build_system_prompt(tools)
                 print(f"[info] System prompt: {system_prompt}")
                 vlm:VLM = VLM.from_("NexaAI/OmniNeural-4B", config=ModelConfig(
                     system_prompt=system_prompt,
@@ -161,9 +177,76 @@ CRITICAL RULES:
                 if func_call:
                     func_name, func_args = func_call
                     if func_name and isinstance(func_name, str):
-                        print(f"\n[Function call: {func_name}]")
-                        func_result = await execute_mcp_tool(session, func_name, func_args, tools)
-                        print(f"[Function result: {func_result}]")
+                        max_retries = 3
+                        retry_count = 0
+                        func_result = None
+                        
+                        while retry_count <= max_retries:
+                            print(f"\n[Function call: {func_name}]")
+                            func_result = await execute_mcp_tool(session, func_name, func_args, tools)
+                            print(f"[Function result: {func_result}]")
+                            
+                            # Check if result contains errors
+                            try:
+                                result_data = json.loads(func_result) if isinstance(func_result, str) else func_result
+                                is_error = result_data.get('isError', False)
+                                
+                                if is_error:
+                                    error_text = ""
+                                    if isinstance(result_data.get('content'), list):
+                                        for item in result_data['content']:
+                                            if item.get('type') == 'text':
+                                                error_text = item.get('text', '')
+                                                break
+                                    
+                                    # Auto-fix account errors
+                                    if "Account" in error_text and "not found" in error_text and "Available accounts:" in error_text:
+                                        match = re.search(r'Available accounts:\s*(\w+)', error_text)
+                                        if match:
+                                            correct_account = match.group(1)
+                                            print(f"[info] Auto-fixing account: using '{correct_account}'")
+                                            func_args['account'] = correct_account
+                                            retry_count += 1
+                                            continue
+                                        else:
+                                            # If account is optional, remove it
+                                            if 'account' in func_args:
+                                                print(f"[info] Removing invalid account parameter (optional)")
+                                                del func_args['account']
+                                                retry_count += 1
+                                                continue
+                                    
+                                    # Auto-fix eventId errors (eventId should not be provided for create-event)
+                                    if "Invalid event ID" in error_text or ("event ID" in error_text.lower() and "invalid" in error_text.lower()):
+                                        if 'eventId' in func_args:
+                                            print(f"[info] Removing invalid eventId parameter (not needed for create-event)")
+                                            del func_args['eventId']
+                                            retry_count += 1
+                                            continue
+                                    
+                                    # Auto-remove optional parameters that cause errors
+                                    if ("validation error" in error_text.lower() or "invalid" in error_text.lower()) and retry_count < max_retries:
+                                        # Try removing optional parameters that might be invalid
+                                        optional_params_to_remove = ['account', 'eventId', 'timeZone', 'fields']
+                                        removed = False
+                                        for param in optional_params_to_remove:
+                                            if param in func_args:
+                                                print(f"[info] Removing optional parameter '{param}' due to validation error")
+                                                del func_args[param]
+                                                removed = True
+                                                break
+                                        
+                                        if removed:
+                                            retry_count += 1
+                                            continue
+                                        else:
+                                            # No more optional params to remove, break
+                                            break
+                                
+                                # Success or non-retryable error
+                                break
+                            except Exception:
+                                break
 
                         # Follow-up response
                         followup = conversation + [
