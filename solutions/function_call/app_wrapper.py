@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
-"""NexaAI VLM Function Call Demo with Google Calendar MCP"""
-
 import asyncio
 import json
 import os
-import argparse
 import re
 
 from nexaai import GenerationConfig, ModelConfig, VlmChatMessage, VlmContent, setup_logging
@@ -78,30 +75,22 @@ CRITICAL RULES:
     
     return system_prompt
 
-async def main():
+async def run_agent(text: str = None, image: str = None, audio: str = None, credentials: str = "gcp-oauth.keys.json"):
     setup_logging()
     
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--credentials", default="gcp-oauth.keys.json")
-    parser.add_argument("--text", help="Text input")
-    parser.add_argument("--image", help="Image file path")
-    parser.add_argument("--audio", help="Audio file path")
-    args = parser.parse_args()
-    
-    if not args.text and not args.image and not args.audio:
-        parser.print_help()
+    if not text and not image and not audio:
         return
 
     # Initialize MCP first to get tools
     print("[info] Connecting to Google Calendar MCP server...")
-    if not os.path.exists(args.credentials):
-        print(f"[error] Credentials file not found: {os.path.abspath(args.credentials)}")
+    if not os.path.exists(credentials):
+        print(f"[error] Credentials file not found: {os.path.abspath(credentials)}")
         return
 
     server = StdioServerParameters(
         command="npx",
         args=["-y", "@cocal/google-calendar-mcp"],
-        env={"GOOGLE_OAUTH_CREDENTIALS": os.path.abspath(args.credentials)},
+        env={"GOOGLE_OAUTH_CREDENTIALS": os.path.abspath(credentials)},
     )
 
     try:
@@ -132,19 +121,19 @@ async def main():
                 image_paths = []
                 audio_paths = []
                 
-                if args.text:
-                    contents.append(VlmContent(type="text", text=args.text))
+                if text:
+                    contents.append(VlmContent(type="text", text=text))
                 
-                if args.image:
-                    image_path = os.path.abspath(args.image)
+                if image:
+                    image_path = os.path.abspath(image)
                     if not os.path.exists(image_path):
                         print(f"[error] Image file not found: {image_path}")
                         return
                     image_paths.append(image_path)
                     contents.append(VlmContent(type="image", text=image_path))
                 
-                if args.audio:
-                    audio_path = os.path.abspath(args.audio)
+                if audio:
+                    audio_path = os.path.abspath(audio)
                     if not os.path.exists(audio_path):
                         print(f"[error] Audio file not found: {audio_path}")
                         return
@@ -265,8 +254,5 @@ async def main():
                     print(response_text)
 
     except Exception as e:
+        raise e
         print(f"[error] Failed to initialize MCP connection: {e}")
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

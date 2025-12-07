@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Function Call Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            color: #F7F0E9;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #1a1a1a;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Header */
+        .header {
+            padding: 20px;
+            border-bottom: 1px solid #323232;
+            background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #F7F0E9;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 12px;
+            color: #ADA8A4;
+        }
+
+        /* Chat Messages Area */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #323232;
+            border-radius: 4px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #404040;
+        }
+
+        /* User Message */
+        .message {
+            display: flex;
+            margin-bottom: 8px;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.bot {
+            justify-content: flex-start;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            word-wrap: break-word;
+            word-break: break-word;
+        }
+
+        .user .message-content {
+            background: #323232;
+            color: #F7F0E9;
+            border: 1px solid #404040;
+        }
+
+        .bot .message-content {
+            background: transparent;
+            color: #ADA8A4;
+        }
+
+        /* User Image */
+        .message-image {
+            margin-bottom: 8px;
+        }
+
+        .user .message-image img {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 10px;
+            display: block;
+        }
+
+        /* Event Card */
+        .event-card {
+            background: #232323;
+            border: 1px solid #323232;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 8px;
+            max-width: 500px;
+        }
+
+        .event-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #323232;
+        }
+
+        .event-header-icon {
+            width: 16px;
+            height: 16px;
+            background: #4CAF50;
+            border-radius: 50%;
+            margin-right: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 10px;
+        }
+
+        .event-header-text {
+            color: #ADA8A4;
+            font-size: 12px;
+        }
+
+        .event-action {
+            margin-left: auto;
+        }
+
+        .btn-calendar {
+            background: transparent;
+            border: 1px solid #404040;
+            color: #F7F0E9;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-calendar:hover {
+            background: #323232;
+            border-color: #505050;
+        }
+
+        .event-detail {
+            margin-bottom: 12px;
+        }
+
+        .event-detail-label {
+            color: #C6C0BA;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+        }
+
+        .event-detail-label::before {
+            content: '●';
+            color: #ADA8A4;
+            margin-right: 8px;
+            font-size: 8px;
+        }
+
+        .event-detail-value {
+            color: #ADA8A4;
+            font-size: 12px;
+            margin-left: 16px;
+            padding: 4px 8px;
+            background: #323232;
+            border: 1px solid #404040;
+            border-radius: 6px;
+            display: inline-block;
+        }
+
+        .event-detail-description {
+            color: #ADA8A4;
+            font-size: 12px;
+            line-height: 1.5;
+            margin-top: 8px;
+        }
+
+        /* Input Area */
+        .input-area {
+            margin: 16px;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #7A7165;
+            background: #272727;
+        }
+
+        .input-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+            flex: 1;
+        }
+
+        .image-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border: 1px solid #323232;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: #272727;
+        }
+
+        .image-input-wrapper:hover {
+            border-color: #404040;
+            background: #272727;
+        }
+
+        .image-input-wrapper input {
+            display: none;
+        }
+
+        .image-input-label {
+            width: 32px;
+            height: 32px;
+            background-color: #272727;
+        }
+
+        .image-preview {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            background: #232323;
+            border: 1px solid #323232;
+            border-radius: 8px;
+            display: none;
+            overflow: hidden;
+            z-index: 5;
+            margin-bottom: 8px;
+        }
+
+        .image-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .image-preview.show {
+            display: block;
+        }
+
+        textarea {
+            flex: 1;
+            background: #272727;
+            border-radius: 8px;
+            border-color: #272727;
+            color: #F7F0E9;
+            padding: 8px 0px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: none;
+            max-height: 100px;
+            transition: all 0.2s ease;
+        }
+
+        textarea:focus {
+            outline: none;
+        }
+
+        textarea::placeholder {
+            color: #505050;
+        }
+
+        .btn-send {
+            background: transparent;
+            border: 1px solid #323232;
+            color: #F7F0E9;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            font-size: 18px;
+            margin-left: auto;
+        }
+
+        .btn-send:hover {
+            border-color: #404040;
+            background: #1a1a1a;
+        }
+
+        .btn-send:active {
+            transform: scale(0.95);
+        }
+
+        .btn-send:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Loading */
+        .loading {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #ADA8A4;
+            font-size: 12px;
+        }
+
+        .loading-dots {
+            display: inline-flex;
+            gap: 4px;
+        }
+
+        .loading-dots span {
+            width: 4px;
+            height: 4px;
+            background: #ADA8A4;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite;
+        }
+
+        .loading-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .loading-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes bounce {
+            0%, 80%, 100% {
+                opacity: 0.3;
+                transform: translateY(0);
+            }
+            40% {
+                opacity: 1;
+                transform: translateY(-8px);
+            }
+        }
+
+        /* Error Message */
+        .error-message {
+            background: #3d2626;
+            border: 1px solid #8b4545;
+            color: #ffcccc;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Timestamp */
+        .message-timestamp {
+            font-size: 10px;
+            color: #505050;
+            margin-top: 4px;
+            padding: 0 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Chat Messages -->
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot">
+                <div class="message-content">
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Message -->
+        <div class="error-message" id="errorMessage"></div>
+
+        <!-- Input Area -->
+        <div class="input-area">
+            <form class="input-form" id="messageForm" enctype="multipart/form-data">
+                <div class="image-preview" id="imagePreview"></div>
+                <textarea 
+                        id="messageInput" 
+                        placeholder="Enter query... (Shift+Enter Send)"
+                        rows="1"
+                        ></textarea>
+                <div class="input-wrapper">
+                    <div class="image-input-wrapper">
+                        <input 
+                            type="file" 
+                            id="imageInput" 
+                            accept="image/*"
+                            />
+                        <label for="imageInput" class="image-input-label">
+                            <img src="/static/image.png" alt="Add image" style="width: 32px; height: 32px; border-radius: 4px;">
+                        </label>
+                    </div>
+                    <button type="submit" class="btn-send" id="sendBtn" title="Send Message">
+                        <img src="./static/send.png" alt="Send" style="width:16px; height:16px;">
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const imageInput = document.getElementById('imageInput');
+        const imagePreview = document.getElementById('imagePreview');
+        const messageForm = document.getElementById('messageForm');
+        const sendBtn = document.getElementById('sendBtn');
+        const errorMessage = document.getElementById('errorMessage');
+
+        // 自动调整 textarea 高度
+        messageInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+        });
+
+        // image preview
+        imageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    imagePreview.innerHTML = `<img src="${event.target.result}" alt="preview">`;
+                    imagePreview.classList.add('show');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // sende message
+        messageForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const messageText = messageInput.value.trim();
+            const hasImage = imageInput.files.length > 0;
+            
+            if (!messageText && !hasImage) {
+                showError('Please enter a message or select an image.');
+                return;
+            }
+
+            // disable inputs
+            sendBtn.disabled = true;
+            messageInput.disabled = true;
+            imageInput.disabled = true;
+
+            // Create FormData
+            const formData = new FormData();
+            if (messageText) {
+                formData.append('message', messageText);
+            }
+            if (hasImage) {
+                formData.append('image', imageInput.files[0]);
+            }
+
+            try {
+                // send message to server
+                const response = await fetch('/api/send-message', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Send Failed');
+                }
+
+                const data = await response.json();
+
+                // show user message
+                if (data.user_message) {
+                    if (data.user_message.text) {
+                        displayUserMessage(data.user_message.text);
+                    }
+                    if (data.user_message.image) {
+                        displayUserImageFromBase64(data.user_message.image);
+                    }
+                }
+
+                // show bot loading message
+                const loadingMessageEl = displayBotLoadingMessage();
+
+                // poll for response
+                const taskId = data.task_id;
+                let isProcessing = true;
+                
+                while (isProcessing) {
+                    await new Promise(resolve => setTimeout(resolve, 500)); 
+                    
+                    const pollResponse = await fetch(`/api/get-response/${taskId}`);
+                    if (!pollResponse.ok) {
+                        throw new Error('Response Polling Failed');
+                    }
+                    
+                    const pollData = await pollResponse.json();
+                    
+                    if (pollData.status === 'done' && pollData.bot_response) {
+                        isProcessing = false;
+                        // remove loading message
+                        if (loadingMessageEl && loadingMessageEl.parentNode) {
+                            loadingMessageEl.remove();
+                        }
+                        // show bot response
+                        displayBotResponse(pollData.bot_response);
+                    }
+                }
+
+                // clear inputs
+                messageInput.value = '';
+                messageInput.style.height = 'auto';
+                imageInput.value = '';
+                imagePreview.classList.remove('show');
+                imagePreview.innerHTML = '';
+
+                scrollToBottom();
+
+            } catch (error) {
+                removeLoadingMessage();
+                showError(error.message);
+                console.error('Error:', error);
+            } finally {
+                sendBtn.disabled = false;
+                messageInput.disabled = false;
+                imageInput.disabled = false;
+                messageInput.focus();
+            }
+        });
+
+        // send message on Enter key
+        messageInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                messageForm.dispatchEvent(new Event('submit'));
+            }
+        });
+
+        function displayUserMessage(text) {
+            const messageEl = document.createElement('div');
+            messageEl.className = 'message user';
+            messageEl.innerHTML = `
+                <div class="message-content">
+                    ${escapeHtml(text)}
+                </div>
+            `;
+            chatMessages.appendChild(messageEl);
+        }
+
+        function displayUserImage(file) {
+            const messageEl = document.createElement('div');
+            messageEl.className = 'message user';
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const imgEl = document.createElement('div');
+                imgEl.className = 'message-image';
+                imgEl.innerHTML = `<img src="${e.target.result}" alt="user image">`;
+                messageEl.appendChild(imgEl);
+                chatMessages.appendChild(messageEl);
+                scrollToBottom();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function displayUserImageFromBase64(base64Data) {
+            const messageEl = document.createElement('div');
+            messageEl.className = 'message user';
+            const imgEl = document.createElement('div');
+            imgEl.className = 'message-image';
+            imgEl.innerHTML = `<img src="${base64Data}" alt="user image">`;
+            messageEl.appendChild(imgEl);
+            chatMessages.appendChild(messageEl);
+            scrollToBottom();
+        }
+
+        function displayBotResponse(response) {
+            if (response.response_type === 'event') {
+                displayEventCard(response.content);
+            } else {
+                displayBotMessage(response.content);
+            }
+        }
+
+        function displayBotMessage(text) {
+            const messageEl = document.createElement('div');
+            messageEl.className = 'message bot';
+            const timestamp = new Date().toLocaleTimeString('zh-CN', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            messageEl.innerHTML = `
+                <div class="message-content">
+                    ${escapeHtml(text)}
+                    <div class="message-timestamp">${timestamp}</div>
+                </div>
+            `;
+            chatMessages.appendChild(messageEl);
+            scrollToBottom();
+        }
+
+        function displayEventCard(event) {
+            const messageEl = document.createElement('div');
+            messageEl.className = 'message bot';
+            messageEl.innerHTML = `
+                <div class="event-card">
+                    <div class="event-header">
+                        <div class="event-header-icon">✓</div>
+                        <div class="event-header-text">Event added to your calendar</div>
+                        <div class="event-action">
+                            <button class="btn-calendar" onclick="openCalendar()">Open the Calendar!</button>
+                        </div>
+                    </div>
+                    
+                    <div class="event-detail">
+                        <div class="event-detail-label">Event Name</div>
+                        <div class="event-detail-value">${escapeHtml(event.event_name)}</div>
+                    </div>
+                    
+                    <div class="event-detail">
+                        <div class="event-detail-label">Event Time</div>
+                        <div style="margin-left: 16px;">
+                            <div style="margin-bottom: 4px;">
+                                <span style="color: #ADA8A4; font-size: 12px;">Date:</span>
+                                <span class="event-detail-value">${escapeHtml(event.date)}</span>
+                            </div>
+                            <div style="margin-bottom: 4px;">
+                                <span style="color: #ADA8A4; font-size: 12px;">Start Time:</span>
+                                <span class="event-detail-value">${escapeHtml(event.start_time)}</span>
+                            </div>
+                            <div>
+                                <span style="color: #ADA8A4; font-size: 12px;">End Time:</span>
+                                <span class="event-detail-value">${escapeHtml(event.end_time)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="event-detail">
+                        <div class="event-detail-label">Event Location</div>
+                        <div style="margin-left: 16px;">
+                            <div style="margin-bottom: 4px;">
+                                <span style="color: #ADA8A4; font-size: 12px;">Venue:</span>
+                                <span class="event-detail-value">${escapeHtml(event.venue)}</span>
+                            </div>
+                            <div>
+                                <span style="color: #ADA8A4; font-size: 12px;">Address:</span>
+                                <span class="event-detail-value">${escapeHtml(event.address)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="event-detail">
+                        <div class="event-detail-label">Event Description</div>
+                        <div class="event-detail-description">${escapeHtml(event.description)}</div>
+                    </div>
+                </div>
+            `;
+            chatMessages.appendChild(messageEl);
+            scrollToBottom();
+        }
+
+        function displayLoadingMessage() {
+            const messageEl = document.createElement('div');
+            messageEl.className = 'message bot';
+            messageEl.id = 'loadingMessage';
+            messageEl.innerHTML = `
+                <div class="loading">
+                    <span>Loading... </span>
+                    <div class="loading-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            `;
+            chatMessages.appendChild(messageEl);
+            scrollToBottom();
+        }
+
+        function displayBotLoadingMessage() {
+            const messageEl = document.createElement('div');
+            messageEl.className = 'message bot';
+            messageEl.id = 'botLoadingMessage';
+            messageEl.innerHTML = `
+                <div class="message-content">
+                    <div class="loading" style="background: transparent;">
+                        <span style="color: #ADA8A4;">loading</span>
+                        <div class="loading-dots">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            chatMessages.appendChild(messageEl);
+            scrollToBottom();
+            return messageEl;
+        }
+
+        function removeLoadingMessage() {
+            const loadingEl = document.getElementById('loadingMessage');
+            if (loadingEl) {
+                loadingEl.remove();
+            }
+        }
+
+        function scrollToBottom() {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function showError(message) {
+            errorMessage.textContent = '❌ ' + message;
+            errorMessage.classList.add('show');
+            setTimeout(() => {
+                errorMessage.classList.remove('show');
+            }, 5000);
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        function openCalendar() {
+            alert('Opening calendar application...');
+        }
+
+        messageInput.focus();
+    </script>
+</body>
+</html>
