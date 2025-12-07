@@ -11,10 +11,13 @@ Demonstrates the function calling capabilities of NexaAI/OmniNeural-4B model, in
 
 ## Prerequisites
 
-- Python 3.8+
+- Python 3 in architecture arm64
 - Node.js and npm (for running MCP server)
-  - Install Node.js: https://nodejs.org/
-  - Ensure `npx` command is available in PATH
+```
+winget install OpenJS.NodeJS.LTS
+```
+Restart terminal or your IDE after installation.
+
 
 ## Installation
 
