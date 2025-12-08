@@ -31,23 +31,52 @@
 
         /* Header */
         .header {
-            padding: 20px;
+            padding-bottom: 10px;
+            padding-top: 10px;
             border-bottom: 1px solid #323232;
             background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .header h1 {
-            font-size: 24px;
-            font-weight: 600;
+        .header img {
+            display: block;
+            margin: 0 auto;
+        }
+        
+        /* Top menu: left label + right-aligned new-chat button */
+        .menu {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px;
+            border-bottom: 1px solid #272727;
             color: #F7F0E9;
-            margin-bottom: 5px;
+            background: #1C1C1C;
         }
 
-        .header p {
+        .menu > div {
+            font-size: 16px;
+            font-weight: 400;
+            color: #F7F0E9;
+        }
+
+        .btn-new-chat {
+            background: #EDEBD8;
+            color: #3F3831;
+            padding: 6px 8px;
             font-size: 12px;
-            color: #ADA8A4;
+            font-style: normal;
+            font-weight: 400;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
-
+        
         /* Chat Messages Area */
         .chat-messages {
             flex: 1;
@@ -448,6 +477,18 @@
 </head>
 <body>
     <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <img src="./static/nexaai.png" alt="Logo" style="width:65px; height:12px; vertical-align: middle;">
+        </div>
+
+        <!-- Menu -->
+        <div class="menu">
+            <!-- Future menu items can be added here -->
+            <div>Chat</div>
+            <button type="submit" class="btn-new-chat" id="newChat" onclick="newChat()">New Chat</button>
+        </div>
+
         <!-- Chat Messages -->
         <div class="chat-messages" id="chatMessages">
             <div class="message bot">
@@ -849,6 +890,18 @@
 
         function openCalendar(url) {
             window.open(url, '_blank', 'noopener,noreferrer');
+        }
+
+        function newChat() {
+            window.location.reload();
+            try {
+                // send message to server
+                const response = fetch('/api/clear-history', {
+                    method: 'POST'
+                });
+            } catch (error) {
+                console.error('Error:', error);
+            }
         }
 
         messageInput.focus();
