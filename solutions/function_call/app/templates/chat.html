@@ -119,7 +119,7 @@
 
         .bot .message-content {
             background: transparent;
-            color: #ADA8A4;
+            color: #F7F0E9;
         }
 
         /* User Image */
@@ -139,8 +139,7 @@
             background: #232323;
             border: 1px solid #323232;
             border-radius: 12px;
-            padding: 16px;
-            margin-top: 8px;
+            padding: 12px;
             max-width: 500px;
         }
 
@@ -303,7 +302,6 @@
             display: none;
             overflow: hidden;
             z-index: 5;
-            margin-bottom: 8px;
         }
 
         .image-preview img {
@@ -314,6 +312,22 @@
 
         .image-preview.show {
             display: block;
+        }
+
+        /* Close button inside image preview */
+        .image-preview .close-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 18px;
+            height: 18px;
+            background: #2D2D2D;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 4px;
         }
 
         textarea {
@@ -493,8 +507,24 @@
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(event) {
-                    imagePreview.innerHTML = `<img src="${event.target.result}" alt="preview">`;
+                    // include a close button inside preview
+                    imagePreview.innerHTML = `
+                        <div class="preview-wrapper">
+                            <img src="${event.target.result}" alt="preview">
+                            <div class="close-btn" title="Remove image">
+                                <img src="/static/close.png" alt="Close" style="width:12px; height:12px;">
+                            </div>
+                        </div>
+                    `;
                     imagePreview.classList.add('show');
+
+                    // attach close handler
+                    const closeBtn = imagePreview.querySelector('.close-btn');
+                    if (closeBtn) {
+                        closeBtn.addEventListener('click', function() {
+                            clearImagePreview();
+                        });
+                    }
                 };
                 reader.readAsDataURL(file);
             }
@@ -525,6 +555,11 @@
             if (hasImage) {
                 formData.append('image', imageInput.files[0]);
             }
+
+            // clear inputs
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            clearImagePreview();
 
             try {
                 // send message to server
@@ -577,13 +612,6 @@
                         displayBotResponse(pollData.bot_response);
                     }
                 }
-
-                // clear inputs
-                messageInput.value = '';
-                messageInput.style.height = 'auto';
-                imageInput.value = '';
-                imagePreview.classList.remove('show');
-                imagePreview.innerHTML = '';
 
                 scrollToBottom();
 
@@ -644,8 +672,20 @@
             scrollToBottom();
         }
 
+        function clearImagePreview() {
+            try {
+                imagePreview.classList.remove('show');
+                imagePreview.innerHTML = '';
+                // clear the file input
+                imageInput.value = '';
+            } catch (e) {
+                console.error('clearImagePreview error', e);
+            }
+        }
+
         function displayBotResponse(response) {
             if (response.response_type === 'event') {
+                displayBotMessage("The event has been successfully added to your calendar");
                 displayEventCard(response.content);
             } else {
                 displayBotMessage(response.content);
@@ -671,7 +711,7 @@
                 <div class="event-card">
                     <div class="event-header">
                         <div class="event-header-icon">
-                            <img src="/static/check.png" alt="Calendar" style="width:16px; height:16px;">
+                            <img src="/static/check.png" alt="Calendar" style="width:14px; height:14px;">
                         </div>
                         <div class="event-header-text">Event added to your calendar</div>
                         <div class="event-action">
