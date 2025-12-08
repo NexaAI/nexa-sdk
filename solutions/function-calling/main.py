@@ -7,6 +7,7 @@ import os
 import sys
 import argparse
 import re
+from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
 
 from nexaai import GenerationConfig, ModelConfig, VlmChatMessage, VlmContent, setup_logging
@@ -248,6 +249,14 @@ def init_vlm(tools: List[Dict[str, Any]]) -> VLM:
     ))
 
 
+
+@dataclass
+class FunctionCallAgentResult:
+    """Result of function call agent execution."""
+    func_name: Optional[str]
+    func_result: Optional[str]
+    response_text: str
+
 async def call_agent(
     vlm: VLM,
     session: ClientSession,
@@ -255,26 +264,10 @@ async def call_agent(
     text: Optional[str] = None,
     image: Optional[str] = None,
     audio: Optional[str] = None
-) -> tuple[Optional[str], str]:
-    """Call the agent with given inputs.
-    
-    Args:
-        vlm: Initialized VLM instance
-        session: MCP client session
-        tools: List of available tools
-        text: Text input for the agent
-        image: Image file path
-        audio: Audio file path
-        
-    Returns:
-        Tuple of (func_result, response_text):
-        - func_result: Function call result if function was called, None otherwise
-        - response_text: Final response text from the agent
-    """
+) -> FunctionCallAgentResult:
     if not text and not image and not audio:
         raise ValueError("At least one of text, image, or audio must be provided")
     
-    # Build message content
     contents = []
     image_paths = []
     audio_paths = []
@@ -312,7 +305,11 @@ async def call_agent(
     func_call = extract_function_call(response_text)
     if not func_call:
         print(f"[error] Failed to extract function call from response")
-        return None, response_text
+        return FunctionCallAgentResult(
+            func_name=None,
+            func_result=None,
+            response_text=response_text
+        )
     
     func_name, func_args = func_call
     if func_name and isinstance(func_name, str):
@@ -328,9 +325,17 @@ async def call_agent(
             config=GenerationConfig(max_tokens=2048)
         ):
             followup_response += token
-        return func_result, followup_response
+        return FunctionCallAgentResult(
+            func_name=func_name,
+            func_result=func_result,
+            response_text=followup_response
+        )
     
-    return None, response_text
+    return FunctionCallAgentResult(
+        func_name=None,
+        func_result=None,
+        response_text=response_text
+    )
 
 
 async def main():
@@ -357,10 +362,10 @@ async def main():
                     ['create-event', 'get-current-time']]
             
             vlm = init_vlm(tools)
-            func_result, response_text = await call_agent(vlm, session, tools, args.text, args.image, args.audio)
+            result = await call_agent(vlm, session, tools, args.text, args.image, args.audio)
 
-    if response_text:
-        print(response_text)
+    if result.response_text:
+        print(result.response_text)
     
 
 if __name__ == "__main__":
