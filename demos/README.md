@@ -11,6 +11,12 @@ Lightweight on-device AI assistant with function calling (web search) using Gran
 - [Python-Binding-Example](./Agent-Granite/Python-Binding-Example)
 - [Serve-Example](./Agent-Granite/Serve-Example)
 
+### 🔧 Function-Calling
+
+Function calling capabilities with NexaAI VLM model, integrated with Google Calendar via MCP protocol. Supports multi-modal input (text, image, audio) with Web UI and CLI interfaces.
+
+- [Demo](./function-calling)
+
 ### 📚 RAG-LLM
 
 End-to-end Retrieval-Augmented Generation pipeline with embeddings, reranking, and generation models. Query your own documents (PDFs, Word, text) locally on device.
