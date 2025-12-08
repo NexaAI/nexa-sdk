@@ -23,7 +23,7 @@
             display: flex;
             flex-direction: column;
             height: 100vh;
-            max-width: 1000px;
+            max-width: 70%;
             margin: 0 auto;
             background: #1a1a1a;
             box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
@@ -66,6 +66,7 @@
             background: #EDEBD8;
             color: #3F3831;
             padding: 6px 8px;
+            margin-right: 4px;
             font-size: 11px;
             font-style: normal;
             font-weight: 400;
@@ -492,7 +493,10 @@
         <div class="menu">
             <!-- Future menu items can be added here -->
             <div>Chat</div>
-            <button type="submit" class="btn-new-chat" id="newChat" onclick="newChat()">New Chat</button>
+            <button type="submit" class="btn-new-chat" id="newChat" onclick="newChat()">
+                <img src="./static/plus.png" alt="New Chat" style="width:12px; height:12px; margin-right:4px; vertical-align: middle;">
+                New Chat
+            </button>
         </div>
 
         <!-- Chat Messages -->
@@ -512,7 +516,7 @@
                 <div class="image-preview" id="imagePreview"></div>
                 <textarea 
                         id="messageInput" 
-                        placeholder="Enter query... (Shift+Enter Send)"
+                        placeholder="Ask Anything..."
                         rows="1"
                         ></textarea>
                 <div class="input-wrapper">
