@@ -181,6 +181,40 @@ async def get_response(task_id):
                     processing_tasks[task_id]['result'] = result
                     # return and let client clear on next poll
                     return jsonify(result)
+                elif response.func_name == "get-current-time" and response.func_result is not None:
+                    import json
+                    data = json.loads(response.func_result)
+                    is_error = bool(data.get("isError"))
+                    content = data.get("content") or []
+                    bot_response = None
+                    if is_error:
+                        bot_response = add_bot_response(
+                            response_type='text',
+                            content=content[0]["text"]
+                        )
+                    else:
+                        text = json.loads(content[0]["text"])
+                        current_time = text.get("currentTime", None)
+                        timezone = text.get("timezone", None)
+                        if current_time and timezone:
+                            bot_response = add_bot_response(
+                                response_type='text',
+                                content=f"The current time is {current_time} in {timezone}."
+                            )
+                        elif current_time:
+                            bot_response = add_bot_response(
+                                response_type='text',
+                                content=f"The current time is {current_time}."
+                            )
+                        else:
+                            bot_response = add_bot_response(
+                                response_type='text',
+                                content="Sorry, I couldn't retrieve the current time."
+                            )
+                    result = {'status': 'done', 'bot_response': bot_response}
+                    processing_tasks[task_id]['status'] = 'done'
+                    processing_tasks[task_id]['result'] = result
+                    return jsonify(result)
                 elif response.response_text is not None:
                     bot_response = add_bot_response(
                         response_type='text',
