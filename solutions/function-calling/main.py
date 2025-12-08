@@ -156,28 +156,29 @@ def build_system_prompt(tools: list) -> str:
             param_type = param_info.get('type', 'string')
             param_desc = param_info.get('description', '')
             is_required = param_name in required
-            req_mark = " (required)" if is_required else " (optional)"
-            param_list.append(f"  - {param_name} ({param_type}){req_mark}: {param_desc}")
+            req_mark = " (required)" if is_required else ""
+            if param_desc:
+                param_list.append(f"  {param_name} ({param_type}){req_mark}: {param_desc}")
+            else:
+                param_list.append(f"  {param_name} ({param_type}){req_mark}")
         
         params_str = "\n".join(param_list) if param_list else "  (no parameters)"
-        tools_descriptions.append(f"{name}: {desc}\nParameters:\n{params_str}")
+        tools_descriptions.append(f"{name}: {desc}\n{params_str}")
     
     tools_list = "\n\n".join([f"{i+1}. {td}" for i, td in enumerate(tools_descriptions)])
-    return f"""You are a helpful AI assistant with access to Google Calendar through function calling.
+    return f"""You are a calendar assistant. When the user requests calendar actions, respond with ONLY a JSON object in this format:
 
-Available functions (use EXACT names and parameter names):
+{{"name": "function_name", "arguments": {{"param": "value"}}}}
+
+Available functions:
 {tools_list}
 
-Output JSON for function calls: {{"name": "function_name", "arguments": {{"parameter_name": "value"}}}}
-
-CRITICAL RULES:
-- Use EXACT function names and parameter names as shown above
-- All required parameters MUST be included
-- Parameter names are case-sensitive
-- Use the exact parameter types (string, number, boolean, array, object)
-- ALWAYS use function calls when user asks about:
-  * Creating/adding calendar events (use create-event)
-  * Current time (use get-current-time)
+Rules:
+- Output ONLY valid JSON, no other text
+- Use exact function and parameter names (case-sensitive)
+- Include all required parameters
+- For calendar events, use create-event
+- For current time, use get-current-time
 """
 
 
@@ -242,6 +243,7 @@ async def _execute_with_retry(session: ClientSession, func_name: str, func_args:
 def init_vlm(tools: List[Dict[str, Any]]) -> VLM:
     """Initialize VLM with tools."""
     system_prompt = build_system_prompt(tools)
+    print('[debug] system_prompt:', system_prompt)
     return VLM.from_("NexaAI/OmniNeural-4B", config=ModelConfig(
         system_prompt=system_prompt,
         n_ctx=4096, n_threads=0, n_threads_batch=0, n_batch=0, 
@@ -293,6 +295,8 @@ async def call_agent(
     
     # Generate initial response
     prompt = vlm.apply_chat_template(conversation)
+    print('[debug] prompt:', prompt)
+    print('[debug] generate_stream...')
     response_text = ""
     for token in vlm.generate_stream(prompt, config=GenerationConfig(
         max_tokens=2048, image_paths=image_paths or None, 
@@ -301,7 +305,7 @@ async def call_agent(
         print(token, end="", flush=True)
         response_text += token
     print()
-    
+    print('[debug] response_text:', response_text)
     func_call = extract_function_call(response_text)
     if not func_call:
         print(f"[error] Failed to extract function call from response")
