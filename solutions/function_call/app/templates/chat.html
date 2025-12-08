@@ -126,9 +126,9 @@
         }
 
         .user .message-image img {
-            max-width: 200px;
-            max-height: 200px;
-            border-radius: 10px;
+            max-width: 140px;
+            max-height: 140px;
+            border-radius: 12px;
             display: block;
         }
 
@@ -195,8 +195,9 @@
 
         .event-detail-label {
             color: #C6C0BA;
-            font-size: 12px;
-            font-weight: 600;
+            font-size: 14px;
+            font-style: normal;
+            font-weight: 500;
             margin-bottom: 4px;
             display: flex;
             align-items: center;
@@ -222,15 +223,30 @@
 
         .event-detail-description {
             color: #ADA8A4;
-            font-size: 12px;
+            font-size: 14px;
+            font-style: normal;
+            font-weight: 400;
             line-height: 1.5;
             margin-top: 8px;
+            margin-left: 16px;
+            display: inline-block;
+        }
+
+         .event-detail-name {
+            color: #ADA8A4;
+            font-size: 14px;
+            font-style: normal;
+            font-weight: 400;
+            line-height: 1.5;
+            margin-left: 16px;
+            display: inline-block;
+
         }
 
         /* Input Area */
         .input-area {
             margin: 16px;
-            padding: 20px;
+            padding: 8px;
             border-radius: 8px;
             border: 1px solid #7A7165;
             background: #272727;
@@ -254,10 +270,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 40px;
-            height: 40px;
-            border: 1px solid #323232;
-            border-radius: 8px;
+            width: 30px;
+            height: 30px;
             cursor: pointer;
             transition: all 0.2s ease;
             background: #272727;
@@ -273,17 +287,16 @@
         }
 
         .image-input-label {
-            width: 32px;
-            height: 32px;
+            width: 30px;
+            height: 30px;
             background-color: #272727;
         }
 
         .image-preview {
             position: relative;
-            width: 100px;
-            height: 100px;
-            background: #232323;
-            border: 1px solid #323232;
+            width: 50px;
+            height: 50px;
+            background: transparent;
             border-radius: 8px;
             display: none;
             overflow: hidden;
@@ -325,27 +338,17 @@
 
         .btn-send {
             background: transparent;
-            border: 1px solid #323232;
+            border: none;
+            background-color: transparent;
             color: #F7F0E9;
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
+            width: 30px;
+            height: 30px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: all 0.2s ease;
-            font-size: 18px;
             margin-left: auto;
-        }
-
-        .btn-send:hover {
-            border-color: #404040;
-            background: #1a1a1a;
-        }
-
-        .btn-send:active {
-            transform: scale(0.95);
         }
 
         .btn-send:disabled {
@@ -420,14 +423,6 @@
                 transform: translateY(0);
             }
         }
-
-        /* Timestamp */
-        .message-timestamp {
-            font-size: 10px;
-            color: #505050;
-            margin-top: 4px;
-            padding: 0 4px;
-        }
     </style>
 </head>
 <body>
@@ -460,11 +455,11 @@
                             accept="image/*"
                             />
                         <label for="imageInput" class="image-input-label">
-                            <img src="/static/image.png" alt="Add image" style="width: 32px; height: 32px; border-radius: 4px;">
+                            <img src="/static/image.png" alt="Add image" style="width: 30px; height: 30px;">
                         </label>
                     </div>
                     <button type="submit" class="btn-send" id="sendBtn" title="Send Message">
-                        <img src="./static/send.png" alt="Send" style="width:16px; height:16px;">
+                        <img src="./static/send.png" alt="Send" style="width:25px; height:25px;">
                     </button>
                 </div>
             </form>
@@ -668,7 +663,9 @@
             messageEl.innerHTML = `
                 <div class="event-card">
                     <div class="event-header">
-                        <div class="event-header-icon">✓</div>
+                        <div class="event-header-icon">
+                            <img src="/static/check.png" alt="Calendar" style="width:16px; height:16px;">
+                        </div>
                         <div class="event-header-text">Event added to your calendar</div>
                         <div class="event-action">
                             <button class="btn-calendar" onclick='openCalendar(${JSON.stringify(event.htmlLink)})'>Open the Calendar!</button>
@@ -677,7 +674,7 @@
                     
                     <div class="event-detail">
                         <div class="event-detail-label">Event Name</div>
-                        <div class="event-detail-value">${escapeHtml(event.event_name)}</div>
+                        <div class="event-detail-name">${escapeHtml(event.event_name)}</div>
                     </div>
                     
                     <div class="event-detail">
