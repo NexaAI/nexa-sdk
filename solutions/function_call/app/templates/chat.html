@@ -103,16 +103,18 @@
 
         .message-content {
             max-width: 70%;
-            padding: 12px 16px;
+            padding: 8px;
             border-radius: 10px;
             word-wrap: break-word;
             word-break: break-word;
+            font-size: 16px;
+            font-weight: 400;
+            font-size: normal;
         }
 
         .user .message-content {
             background: #323232;
             color: #F7F0E9;
-            border: 1px solid #404040;
         }
 
         .bot .message-content {
@@ -198,7 +200,7 @@
             font-size: 14px;
             font-style: normal;
             font-weight: 500;
-            margin-bottom: 4px;
+            margin-bottom: 12px;
             display: flex;
             align-items: center;
         }
@@ -213,8 +215,8 @@
         .event-detail-value {
             color: #ADA8A4;
             font-size: 12px;
-            margin-left: 16px;
-            padding: 4px 8px;
+            margin-left: 2px;
+            padding: 2px 4px;
             background: #323232;
             border: 1px solid #404040;
             border-radius: 6px;
@@ -326,6 +328,11 @@
             resize: none;
             max-height: 100px;
             transition: all 0.2s ease;
+        }
+
+        textarea::-webkit-scrollbar {
+            width: 0px;
+            height: 0px;
         }
 
         textarea:focus {
@@ -668,7 +675,7 @@
                         </div>
                         <div class="event-header-text">Event added to your calendar</div>
                         <div class="event-action">
-                            <button class="btn-calendar" onclick='openCalendar(${JSON.stringify(event.htmlLink)})'>Open the Calendar!</button>
+                            <button class="btn-calendar" onclick='openCalendar(${JSON.stringify(event.htmlLink)})'>Open the Calendar</button>
                         </div>
                     </div>
                     
@@ -680,32 +687,30 @@
                     <div class="event-detail">
                         <div class="event-detail-label">Event Time</div>
                         <div style="margin-left: 16px;">
-                            <div style="margin-bottom: 4px;">
-                                <span style="color: #ADA8A4; font-size: 12px;">Date:</span>
-                                <span class="event-detail-value">${escapeHtml(event.date)}</span>
-                            </div>
-                            <div style="margin-bottom: 4px;">
-                                <span style="color: #ADA8A4; font-size: 12px;">Start Time:</span>
-                                <span class="event-detail-value">${escapeHtml(event.start_time)}</span>
-                            </div>
-                            <div>
-                                <span style="color: #ADA8A4; font-size: 12px;">End Time:</span>
-                                <span class="event-detail-value">${escapeHtml(event.end_time)}</span>
-                            </div>
+                            <span style="color: #ADA8A4; font-size: 14px;">Date:</span>
+                            <span class="event-detail-value">${escapeHtml(event.date)}</span>
+                            <span>&nbsp;&nbsp;</span>
+
+                            <span style="color: #ADA8A4; font-size: 14px;">Start Time:</span>
+                            <span class="event-detail-value">${escapeHtml(event.start_time)}</span>
+                            <span>&nbsp;&nbsp;</span>
+
+                            <span style="color: #ADA8A4; font-size: 14px;">End Time:</span>
+                            <span class="event-detail-value">${escapeHtml(event.end_time)}</span>
                         </div>
                     </div>
                     
                     <div class="event-detail">
                         <div class="event-detail-label">Event Location</div>
                         <div style="margin-left: 16px;">
-                            <div style="margin-bottom: 4px;">
-                                <span style="color: #ADA8A4; font-size: 12px;">Venue:</span>
-                                <span class="event-detail-value">${escapeHtml(event.venue)}</span>
-                            </div>
-                            <div>
-                                <span style="color: #ADA8A4; font-size: 12px;">Address:</span>
-                                <span class="event-detail-value">${escapeHtml(event.address)}</span>
-                            </div>
+                            <span style="color: #ADA8A4; font-size: 14px;">Venue:</span>
+                            <span class="event-detail-value">${escapeHtml(event.venue)}</span>
+
+                            <span>&nbsp;&nbsp;</span>
+                        
+                            <span style="color: #ADA8A4; font-size: 14px;">Address:</span>
+                            <span class="event-detail-value">${escapeHtml(event.address)}</span>
+
                         </div>
                     </div>
                     
