@@ -317,7 +317,9 @@ async def call_agent(
     
     func_name, func_args = func_call
     if func_name and isinstance(func_name, str):
+        print('[debug] calling function:', func_name)
         func_result = await _execute_with_retry(session, func_name, func_args, tools)
+        print('[debug] func_result:', func_result)
         followup = conversation + [
             VlmChatMessage(role="user", contents=[VlmContent(type="text", 
                 text=f"You called {func_name} with {func_args}. Result: {func_result}. "
