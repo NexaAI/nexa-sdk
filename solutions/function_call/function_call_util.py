@@ -236,20 +236,8 @@ async def run_agent(text: str = None, image: str = None, audio: str = None, cred
                             except Exception:
                                 break
 
-                        # Follow-up response
-                        followup = conversation + [
-                            VlmChatMessage(role="assistant", contents=[VlmContent(type="text", text=response_text)]),
-                            VlmChatMessage(role="user", contents=[VlmContent(type="text", text=f"You called {func_name} with {func_args}. Result: {func_result}. Provide a natural language response. Do NOT call any function again.")])
-                        ]
-                        print("\nAssistant: ", end="", flush=True)
-                        followup_response = ""
-                        for token in vlm.generate_stream(
-                            vlm.apply_chat_template(followup, enable_thinking=False),
-                            config=GenerationConfig(max_tokens=512)
-                        ):
-                            print(token, end="", flush=True)
-                            followup_response += token
-                        print()
+                        print(f"[info] Final function result: {func_result}")
+                        return func_result
                 else:
                     print(response_text)
 

@@ -75,7 +75,7 @@ CRITICAL RULES:
   * Searching for events (use list-events)
   * Current time (use get-current-time)
 - When user asks "what should I do on [date/month]", call list-events to check their calendar"""
-    
+
     return system_prompt
 
 async def main():
@@ -246,7 +246,8 @@ async def main():
                                 break
                             except Exception:
                                 break
-
+                        print(f"[info] Final function result: {func_result}")
+                        
                         # Follow-up response
                         followup = conversation + [
                             VlmChatMessage(role="assistant", contents=[VlmContent(type="text", text=response_text)]),

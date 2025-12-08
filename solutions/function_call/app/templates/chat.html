@@ -176,6 +176,7 @@
             background: transparent;
             border: 1px solid #404040;
             color: #F7F0E9;
+            margin-left: 8px;
             padding: 6px 12px;
             border-radius: 6px;
             cursor: pointer;
@@ -479,7 +480,6 @@
         const sendBtn = document.getElementById('sendBtn');
         const errorMessage = document.getElementById('errorMessage');
 
-        // 自动调整 textarea 高度
         messageInput.addEventListener('input', function() {
             this.style.height = 'auto';
             this.style.height = Math.min(this.scrollHeight, 100) + 'px';
@@ -653,14 +653,9 @@
         function displayBotMessage(text) {
             const messageEl = document.createElement('div');
             messageEl.className = 'message bot';
-            const timestamp = new Date().toLocaleTimeString('zh-CN', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            });
             messageEl.innerHTML = `
                 <div class="message-content">
                     ${escapeHtml(text)}
-                    <div class="message-timestamp">${timestamp}</div>
                 </div>
             `;
             chatMessages.appendChild(messageEl);
@@ -676,7 +671,7 @@
                         <div class="event-header-icon">✓</div>
                         <div class="event-header-text">Event added to your calendar</div>
                         <div class="event-action">
-                            <button class="btn-calendar" onclick="openCalendar()">Open the Calendar!</button>
+                            <button class="btn-calendar" onclick='openCalendar(${JSON.stringify(event.htmlLink)})'>Open the Calendar!</button>
                         </div>
                     </div>
                     
@@ -724,6 +719,21 @@
                 </div>
             `;
             chatMessages.appendChild(messageEl);
+            // attach click handler as a safe fallback in case inline handler is problematic
+            try {
+                const btn = messageEl.querySelector('.btn-calendar');
+                if (btn) {
+                    btn.addEventListener('click', function(ev) {
+                        // prefer data attribute or argument if present
+                        const url = ev.currentTarget.getAttribute('data-url') || ev.currentTarget.getAttribute('onclick')?.match(/openCalendar\((.*)\)/)?.[1];
+                        // strip surrounding quotes if any
+                        const clean = url ? url.replace(/^['\"]|['\"]$/g, '') : null;
+                        openCalendar(clean);
+                    });
+                }
+            } catch (e) {
+                console.error('attach btn-calendar listener failed', e);
+            }
             scrollToBottom();
         }
 
@@ -752,7 +762,6 @@
             messageEl.innerHTML = `
                 <div class="message-content">
                     <div class="loading" style="background: transparent;">
-                        <span style="color: #ADA8A4;">loading</span>
                         <div class="loading-dots">
                             <span></span>
                             <span></span>
@@ -796,8 +805,8 @@
             return text.replace(/[&<>"']/g, m => map[m]);
         }
 
-        function openCalendar() {
-            alert('Opening calendar application...');
+        function openCalendar(url) {
+            window.open(url, '_blank', 'noopener,noreferrer');
         }
 
         messageInput.focus();

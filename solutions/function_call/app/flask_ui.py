@@ -7,7 +7,7 @@ import asyncio
 
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from app_wrapper import run_agent
+from function_call_util import run_agent
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
@@ -118,35 +118,70 @@ async def get_response(task_id):
             processing_tasks[task_id]['status'] = 'processing'
             try:
                 
-                # TODO: integrate actual agent call here
-                # result = await run_agent(
-                #     text=task['user_text'],
-                #     image=task['image_path']
-                # )
                 
-                # print(f"[debug] Agent result: {result}")
-                  
-                bot_response = add_bot_response(
-                    response_type='event',
-                    content={
-                        'event_name': 'The Voice of AGI',
-                        'date': 'Saturday, September 20',
-                        'start_time': '11:00 AM',
-                        'end_time': '11:00 PM',
-                        'venue': 'AGI House',
-                        'address': '170 St. Germain Ave. San Francisco CA 94114',
-                        'description': 'The voice interface, from sci-fi\'s of old like the Hitchhiker\'s Guide to the Galaxy to Ironman, the Voice Interface lays out a future form of connection, command and interaction. Come co-create the future of voice interfaces with cracked hackers & fast friends!'
-                    }
+                response = await run_agent(
+                    text=task['user_text'],
+                    image=task['image_path']
                 )
+                
+                import json
+                data = json.loads(response)
+                is_error = bool(data.get("isError"))
+                content = data.get("content") or []
+                bot_response = None
+                if is_error:
+                    bot_response = add_bot_response(
+                        response_type='text',
+                        content=content[0]["text"]
+                    )
+                else:
+                    text = json.loads(content[0]["text"])
+                    event = text["event"]
+                    print(f"[info] Event detected: {event}")
+                    summary=event.get("summary", "No Title")
+                    date = "N/A"
+                    if event.get("start"):
+                        start_time = event["start"].get("dateTime", "N/A")
+                        date = start_time.split("T")[0]
+                        start_time = start_time.split("T")[1] if "T" in start_time else "N/A"
+                    else:
+                        start_time = "N/A"
+                    if event.get("end"):
+                        end_time = event["end"].get("dateTime", "N/A")
+                        end_time = end_time.split("T")[1] if "T" in end_time else "N/A"
+                    else:
+                        end_time = "N/A"
+                    venue = event.get("location", "N/A")
+                    description = event.get("description", summary)
+                    address = event.get("address", "N/A")
+                    htmlLink = event.get("htmlLink", "")
+                    bot_response = add_bot_response(
+                        response_type='event',
+                        content={
+                            'event_name': summary,
+                            'date': date,
+                            'start_time': start_time,
+                            'end_time': end_time,
+                            'venue': venue,
+                            'address': address,
+                            'description': description,
+                            'htmlLink': htmlLink
+                        }
+                    )
                 result = {'status': 'done', 'bot_response': bot_response}
                 processing_tasks[task_id]['status'] = 'done'
                 processing_tasks[task_id]['result'] = result
                 # return and let client clear on next poll
                 return jsonify(result)
             except Exception as e:
+                bot_response = add_bot_response(
+                    response_type='text',
+                    content=str(e)
+                )
+                result = {'status': 'done', 'bot_response': bot_response}
                 processing_tasks[task_id]['status'] = 'done'
-                processing_tasks[task_id]['result'] = {'status': 'error', 'error': str(e)}
-                return jsonify({'status': 'error', 'error': str(e)}), 500
+                processing_tasks[task_id]['result'] = result
+                return jsonify(result)
     
     return jsonify({
         'status': 'done'
