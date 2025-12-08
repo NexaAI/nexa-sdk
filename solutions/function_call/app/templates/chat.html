@@ -66,7 +66,7 @@
             background: #EDEBD8;
             color: #3F3831;
             padding: 6px 8px;
-            font-size: 12px;
+            font-size: 11px;
             font-style: normal;
             font-weight: 400;
             border-radius: 6px;
@@ -75,6 +75,10 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
+        }
+
+        .btn-new-chat:hover {
+            background: #f3efca;
         }
         
         /* Chat Messages Area */
@@ -183,14 +187,12 @@
         .event-header-icon {
             width: 16px;
             height: 16px;
-            background: #4CAF50;
+            background: transparent;
             border-radius: 50%;
             margin-right: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
-            font-size: 10px;
         }
 
         .event-header-text {
@@ -203,9 +205,9 @@
         }
 
         .btn-calendar {
-            background: transparent;
-            border: 1px solid #404040;
-            color: #F7F0E9;
+            background: #EDEBD8;
+            color: #3F3831;
+            border: none;
             margin-left: 8px;
             padding: 6px 12px;
             border-radius: 6px;
@@ -215,8 +217,7 @@
         }
 
         .btn-calendar:hover {
-            background: #323232;
-            border-color: #505050;
+            background: #f3efca;
         }
 
         .event-detail {
@@ -241,7 +242,7 @@
         }
 
         .event-detail-value {
-            color: #ADA8A4;
+            color: #DB805F;
             font-size: 12px;
             margin-left: 2px;
             padding: 2px 4px;
@@ -473,6 +474,11 @@
                 transform: translateY(0);
             }
         }
+
+        .placeholder-empty-messages {
+            margin-top: 30%;
+        }
+
     </style>
 </head>
 <body>
@@ -490,11 +496,11 @@
         </div>
 
         <!-- Chat Messages -->
-        <div class="chat-messages" id="chatMessages">
-            <div class="message bot">
-                <div class="message-content">
-                </div>
-            </div>
+        <div class="chat-messages" id="chatMessages"></div>
+
+        <div class="placeholder-empty-messages" id="emptyMessages">
+            <div style="margin-left: 24px; font-size: 20px; color: #F7F0E9;">Hi!</div>
+            <div style="margin-left: 24px; font-size: 20px; color: #ADA8A4;">How can I help?</div>
         </div>
 
         <!-- Error Message -->
@@ -536,7 +542,11 @@
         const messageForm = document.getElementById('messageForm');
         const sendBtn = document.getElementById('sendBtn');
         const errorMessage = document.getElementById('errorMessage');
+        const emptyMessages = document.getElementById('emptyMessages');
 
+        window.onload = function() {
+            updateMessagesVisibility();
+        };
         messageInput.addEventListener('input', function() {
             this.style.height = 'auto';
             this.style.height = Math.min(this.scrollHeight, 100) + 'px';
@@ -685,6 +695,7 @@
                 </div>
             `;
             chatMessages.appendChild(messageEl);
+            updateMessagesVisibility();
         }
 
         function displayUserImage(file) {
@@ -697,6 +708,7 @@
                 imgEl.innerHTML = `<img src="${e.target.result}" alt="user image">`;
                 messageEl.appendChild(imgEl);
                 chatMessages.appendChild(messageEl);
+                updateMessagesVisibility();
                 scrollToBottom();
             };
             reader.readAsDataURL(file);
@@ -710,6 +722,7 @@
             imgEl.innerHTML = `<img src="${base64Data}" alt="user image">`;
             messageEl.appendChild(imgEl);
             chatMessages.appendChild(messageEl);
+            updateMessagesVisibility();
             scrollToBottom();
         }
 
@@ -731,6 +744,7 @@
             } else {
                 displayBotMessage(response.content);
             }
+            updateMessagesVisibility();
         }
 
         function displayBotMessage(text) {
@@ -742,6 +756,7 @@
                 </div>
             `;
             chatMessages.appendChild(messageEl);
+            updateMessagesVisibility();
             scrollToBottom();
         }
 
@@ -754,9 +769,15 @@
                         <div class="event-header-icon">
                             <img src="/static/check.png" alt="Calendar" style="width:14px; height:14px;">
                         </div>
-                        <div class="event-header-text">Event added to your calendar</div>
+                        <div class="event-header-text">
+                            <span>Event added to </span>
+                            <span style="color: #DB805F">@Your calendar</span>
+                        </div>
                         <div class="event-action">
-                            <button class="btn-calendar" onclick='openCalendar(${JSON.stringify(event.htmlLink)})'>Open the Calendar</button>
+                            <button class="btn-calendar" onclick='openCalendar(${JSON.stringify(event.htmlLink)})'>
+                                <img src="/static/calendar.png" alt="Calendar" style="width:12px; height:12px; vertical-align: middle; margin-right:4px;">
+                                Open the Calendar
+                            </button>
                         </div>
                     </div>
                     
@@ -802,6 +823,7 @@
                 </div>
             `;
             chatMessages.appendChild(messageEl);
+            updateMessagesVisibility();
             // attach click handler as a safe fallback in case inline handler is problematic
             try {
                 const btn = messageEl.querySelector('.btn-calendar');
@@ -818,6 +840,18 @@
                 console.error('attach btn-calendar listener failed', e);
             }
             scrollToBottom();
+        }
+        // Show/hide chatMessages and emptyMessages depending on message count
+        function updateMessagesVisibility() {
+            // Only count .message elements inside chatMessages
+            const hasMessages = chatMessages.querySelectorAll('.message').length > 0;
+            if (hasMessages) {
+                chatMessages.style.display = '';
+                emptyMessages.style.display = 'none';
+            } else {
+                chatMessages.style.display = 'none';
+                emptyMessages.style.display = '';
+            }
         }
 
         function displayLoadingMessage() {
@@ -905,6 +939,8 @@
         }
 
         messageInput.focus();
+        // Initial visibility on page load
+        updateMessagesVisibility();
     </script>
 </body>
 </html>
