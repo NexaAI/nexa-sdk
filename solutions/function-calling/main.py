@@ -4,32 +4,138 @@
 import asyncio
 import json
 import os
+import sys
 import argparse
 import re
+from typing import List, Dict, Any, Optional
 
 from nexaai import GenerationConfig, ModelConfig, VlmChatMessage, VlmContent, setup_logging
 from nexaai.vlm import VLM
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from mcp_utils import get_mcp_tools, execute_mcp_tool
+
+def mcp_tool_to_openai_format(tool) -> Dict[str, Any]:
+    """Convert MCP tool to OpenAI function calling format."""
+    properties = {}
+    required = []
+    
+    if tool.inputSchema and "properties" in tool.inputSchema:
+        for prop_name, prop_schema in tool.inputSchema["properties"].items():
+            properties[prop_name] = {
+                "type": prop_schema.get("type", "string"),
+                "description": prop_schema.get("description", ""),
+            }
+            if tool.inputSchema.get("required") and prop_name in tool.inputSchema["required"]:
+                required.append(prop_name)
+    
+    return {
+        "type": "function",
+        "function": {
+            "name": tool.name,
+            "description": tool.description or "",
+            "parameters": {
+                "type": "object",
+                "properties": properties,
+                "required": required,
+            }
+        }
+    }
+
+
+async def get_mcp_tools(session: ClientSession) -> List[Dict[str, Any]]:
+    """Get tools from MCP server and convert to OpenAI format."""
+    result = await session.list_tools()
+    return [mcp_tool_to_openai_format(tool) for tool in result.tools]
+
+
+def normalize_tool_name(tool_name: str, available_tools: List[Dict[str, Any]]) -> str:
+    """Normalize tool name to match available tools."""
+    name_mappings = {
+        "create_calendar_event": "create-event",
+        "create-event": "create-event",
+        "list_calendar_events": "list-events",
+        "list-events": "list-events",
+        "update_calendar_event": "update-event",
+        "update-event": "update-event",
+        "delete_calendar_event": "delete-event",
+        "delete-event": "delete-event",
+        "get_current_time": "get-current-time",
+        "get-current-time": "get-current-time",
+    }
+    
+    tool_names = [t.get("function", {}).get("name", "") for t in available_tools]
+    
+    if tool_name in name_mappings:
+        normalized = name_mappings[tool_name]
+        if normalized in tool_names:
+            return normalized
+    
+    if tool_name in tool_names:
+        return tool_name
+    
+    normalized = tool_name.replace("_", "-")
+    return normalized if normalized in tool_names else tool_name
+
+
+async def execute_mcp_tool(session: ClientSession, tool_name: str, arguments: Dict[str, Any], 
+                           available_tools: Optional[List[Dict[str, Any]]] = None) -> str:
+    """Execute a tool call via MCP server."""
+    try:
+        if available_tools:
+            tool_name = normalize_tool_name(tool_name, available_tools)
+        result = await session.call_tool(tool_name, arguments=arguments)
+        return result.model_dump_json(indent=2)
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+
+def create_calendar_server(credentials: str) -> StdioServerParameters:
+    """Create Google Calendar MCP server parameters."""
+    if not os.path.exists(credentials):
+        raise FileNotFoundError(
+            f"Credentials file not found: {credentials}\n"
+            f"Please create the OAuth credentials file at: {os.path.abspath(credentials)}"
+        )
+    return StdioServerParameters(
+        command="npx",
+        args=["-y", "@cocal/google-calendar-mcp"],
+        env={"GOOGLE_OAUTH_CREDENTIALS": os.path.abspath(credentials)},
+    )
 
 
 def extract_function_call(text: str):
     """Extract function call JSON from LLM response."""
+    if not text:
+        return None
+    
     text = re.sub(r"<\|[^|]+\|>", "", text.strip())
-    match = re.search(r'\{[^{}]*"name"\s*:\s*"([^"]+)"[^{}]*"arguments"\s*:\s*(\{[^{}]*\})[^{}]*\}', text, re.DOTALL)
-    if match:
-        try:
-            return match.group(1), json.loads(match.group(2))
-        except:
-            pass
+    
     try:
         parsed = json.loads(text)
         if isinstance(parsed, dict) and "name" in parsed:
             return parsed.get("name"), parsed.get("arguments", {})
-    except:
-        pass
+    except json.JSONDecodeError:
+        json_start = text.find('{')
+        if json_start == -1:
+            return None
+        
+        brace_count = 0
+        for i in range(json_start, len(text)):
+            if text[i] == '{':
+                brace_count += 1
+            elif text[i] == '}':
+                brace_count -= 1
+                if brace_count == 0:
+                    json_str = text[json_start:i + 1]
+                    try:
+                        parsed = json.loads(json_str)
+                        if isinstance(parsed, dict) and "name" in parsed:
+                            return parsed.get("name"), parsed.get("arguments", {})
+                    except json.JSONDecodeError:
+                        pass
+                    break
+    
     return None
 
 
@@ -56,7 +162,7 @@ def build_system_prompt(tools: list) -> str:
         tools_descriptions.append(f"{name}: {desc}\nParameters:\n{params_str}")
     
     tools_list = "\n\n".join([f"{i+1}. {td}" for i, td in enumerate(tools_descriptions)])
-    system_prompt = f"""You are a helpful AI assistant with access to Google Calendar through function calling.
+    return f"""You are a helpful AI assistant with access to Google Calendar through function calling.
 
 Available functions (use EXACT names and parameter names):
 {tools_list}
@@ -69,16 +175,166 @@ CRITICAL RULES:
 - Parameter names are case-sensitive
 - Use the exact parameter types (string, number, boolean, array, object)
 - ALWAYS use function calls when user asks about:
-  * Dates, times, schedules, events (use list-events)
-  * What to do on a specific date/month (use list-events)
   * Creating/adding calendar events (use create-event)
-  * Searching for events (use list-events)
   * Current time (use get-current-time)
-- When user asks "what should I do on [date/month]", call list-events to check their calendar"""
+"""
 
-    return system_prompt
+
+def _handle_function_call_error(error_text: str, func_args: Dict[str, Any]) -> bool:
+    """Handle function call errors and auto-fix parameters. Returns True if should retry."""
+    # Auto-fix account errors
+    if "Account" in error_text and "not found" in error_text and "Available accounts:" in error_text:
+        match = re.search(r'Available accounts:\s*(\w+)', error_text)
+        if match:
+            func_args['account'] = match.group(1)
+            return True
+        elif 'account' in func_args:
+            del func_args['account']
+            return True
+    
+    # Auto-fix eventId errors
+    if "Invalid event ID" in error_text or ("event ID" in error_text.lower() and "invalid" in error_text.lower()):
+        if 'eventId' in func_args:
+            del func_args['eventId']
+            return True
+    
+    # Auto-remove optional parameters that cause errors
+    if "validation error" in error_text.lower() or "invalid" in error_text.lower():
+        optional_params = ['account', 'eventId', 'timeZone', 'fields']
+        for param in optional_params:
+            if param in func_args:
+                del func_args[param]
+                return True
+    
+    return False
+
+
+async def _execute_with_retry(session: ClientSession, func_name: str, func_args: Dict[str, Any], 
+                               tools: List[Dict[str, Any]], max_retries: int = 3) -> str:
+    """Execute function call with automatic error handling and retry."""
+    retry_count = 0
+    func_result = ""
+    
+    while retry_count <= max_retries:
+        func_result = await execute_mcp_tool(session, func_name, func_args, tools)
+        
+        try:
+            result_data = json.loads(func_result) if isinstance(func_result, str) else func_result
+            if result_data.get('isError', False):
+                error_text = ""
+                if isinstance(result_data.get('content'), list):
+                    for item in result_data['content']:
+                        if item.get('type') == 'text':
+                            error_text = item.get('text', '')
+                            break
+                
+                if retry_count < max_retries and _handle_function_call_error(error_text, func_args):
+                    retry_count += 1
+                    continue
+            break
+        except Exception:
+            break
+    
+    return func_result or ""
+
+
+def init_vlm(tools: List[Dict[str, Any]]) -> VLM:
+    """Initialize VLM with tools."""
+    system_prompt = build_system_prompt(tools)
+    return VLM.from_("NexaAI/OmniNeural-4B", config=ModelConfig(
+        system_prompt=system_prompt,
+        n_ctx=4096, n_threads=0, n_threads_batch=0, n_batch=0, 
+        n_ubatch=0, n_seq_max=0, n_gpu_layers=999
+    ))
+
+
+async def call_agent(
+    vlm: VLM,
+    session: ClientSession,
+    tools: List[Dict[str, Any]],
+    text: Optional[str] = None,
+    image: Optional[str] = None,
+    audio: Optional[str] = None
+) -> tuple[Optional[str], str]:
+    """Call the agent with given inputs.
+    
+    Args:
+        vlm: Initialized VLM instance
+        session: MCP client session
+        tools: List of available tools
+        text: Text input for the agent
+        image: Image file path
+        audio: Audio file path
+        
+    Returns:
+        Tuple of (func_result, response_text):
+        - func_result: Function call result if function was called, None otherwise
+        - response_text: Final response text from the agent
+    """
+    if not text and not image and not audio:
+        raise ValueError("At least one of text, image, or audio must be provided")
+    
+    # Build message content
+    contents = []
+    image_paths = []
+    audio_paths = []
+    
+    if image:
+        image_path = os.path.abspath(image)
+        if not os.path.exists(image_path):
+            raise FileNotFoundError(f"Image file not found: {image_path}")
+        image_paths.append(image_path)
+        contents.append(VlmContent(type="image", text=image_path))
+    
+    if audio:
+        audio_path = os.path.abspath(audio)
+        if not os.path.exists(audio_path):
+            raise FileNotFoundError(f"Audio file not found: {audio_path}")
+        audio_paths.append(audio_path)
+        contents.append(VlmContent(type="audio", text=audio_path))
+    
+    if text:
+        contents.append(VlmContent(type="text", text=text))
+
+    conversation = [VlmChatMessage(role="user", contents=contents)]
+    
+    # Generate initial response
+    prompt = vlm.apply_chat_template(conversation)
+    response_text = ""
+    for token in vlm.generate_stream(prompt, config=GenerationConfig(
+        max_tokens=2048, image_paths=image_paths or None, 
+        audio_paths=audio_paths or None, image_max_length=512
+    )):
+        print(token, end="", flush=True)
+        response_text += token
+    print()
+    
+    func_call = extract_function_call(response_text)
+    if not func_call:
+        print(f"[error] Failed to extract function call from response")
+        return None, response_text
+    
+    func_name, func_args = func_call
+    if func_name and isinstance(func_name, str):
+        func_result = await _execute_with_retry(session, func_name, func_args, tools)
+        followup = conversation + [
+            VlmChatMessage(role="user", contents=[VlmContent(type="text", 
+                text=f"You called {func_name} with {func_args}. Result: {func_result}. "
+                     f"Provide a natural language response. Do NOT call any function again.")])
+        ]
+        followup_response = ""
+        for token in vlm.generate_stream(
+            vlm.apply_chat_template(followup, enable_thinking=False),
+            config=GenerationConfig(max_tokens=2048)
+        ):
+            followup_response += token
+        return func_result, followup_response
+    
+    return None, response_text
+
 
 async def main():
+    """Command-line interface for the agent."""
     setup_logging()
     
     parser = argparse.ArgumentParser()
@@ -91,183 +347,21 @@ async def main():
     if not args.text and not args.image and not args.audio:
         parser.print_help()
         return
+    
+    server = create_calendar_server(args.credentials)
+    async with stdio_client(server) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            tools = await get_mcp_tools(session)
+            tools = [t for t in tools if t.get('function', {}).get('name', '') in 
+                    ['create-event', 'get-current-time']]
+            
+            vlm = init_vlm(tools)
+            func_result, response_text = await call_agent(vlm, session, tools, args.text, args.image, args.audio)
 
-    # Initialize MCP first to get tools
-    print("[info] Connecting to Google Calendar MCP server...")
-    if not os.path.exists(args.credentials):
-        print(f"[error] Credentials file not found: {os.path.abspath(args.credentials)}")
-        return
-
-    server = StdioServerParameters(
-        command="npx",
-        args=["-y", "@cocal/google-calendar-mcp"],
-        env={"GOOGLE_OAUTH_CREDENTIALS": os.path.abspath(args.credentials)},
-    )
-
-    try:
-        async with stdio_client(server) as (read, write):
-            async with ClientSession(read, write) as session:
-                await session.initialize()
-                print("[info] MCP connection established")
-
-                # Get tools
-                tools = await get_mcp_tools(session)
-                print(f"[info] Found {len(tools)} available tools")
-
-                # only select tools in the list
-                tools = [t for t in tools if t.get('function', {}).get('name', '') in ['create-event', 'list-events', 'get-current-time']]
-                
-                # Build system prompt
-                system_prompt = build_system_prompt(tools)
-                print(f"[info] System prompt: {system_prompt}")
-                vlm:VLM = VLM.from_("NexaAI/OmniNeural-4B", config=ModelConfig(
-                    system_prompt=system_prompt,
-                    n_ctx=4096, n_threads=0, n_threads_batch=0, n_batch=0, n_ubatch=0, n_seq_max=0, n_gpu_layers=999
-                ))
-                print("[info] Model loaded successfully")
-
-                conversation = []
-                # Build message content from command line arguments
-                contents = []
-                image_paths = []
-                audio_paths = []
-                
-                if args.text:
-                    contents.append(VlmContent(type="text", text=args.text))
-                
-                if args.image:
-                    image_path = os.path.abspath(args.image)
-                    if not os.path.exists(image_path):
-                        print(f"[error] Image file not found: {image_path}")
-                        return
-                    image_paths.append(image_path)
-                    contents.append(VlmContent(type="image", text=image_path))
-                
-                if args.audio:
-                    audio_path = os.path.abspath(args.audio)
-                    if not os.path.exists(audio_path):
-                        print(f"[error] Audio file not found: {audio_path}")
-                        return
-                    audio_paths.append(audio_path)
-                    contents.append(VlmContent(type="audio", text=audio_path))
-
-                if not contents:
-                    print("[error] No input provided")
-                    return
-
-                conversation.append(VlmChatMessage(role="user", contents=contents))
-
-                # Generate
-                prompt = vlm.apply_chat_template(conversation, enable_thinking=False)
-                print(f"[info] Prompt: {prompt}")
-                print("Assistant: ", end="", flush=True)
-                
-                response_text = ""
-                for token in vlm.generate_stream(prompt, config=GenerationConfig(
-                    max_tokens=512, image_paths=image_paths or None, audio_paths=audio_paths or None, image_max_length=512
-                )):
-                    print(token, end="", flush=True)
-                    response_text += token
-                print()
-
-                # Check function call
-                func_call = extract_function_call(response_text)
-                print(f"[info] Function call: {func_call}")
-                if func_call:
-                    func_name, func_args = func_call
-                    if func_name and isinstance(func_name, str):
-                        max_retries = 3
-                        retry_count = 0
-                        func_result = None
-                        
-                        while retry_count <= max_retries:
-                            print(f"\n[Function call: {func_name}]")
-                            func_result = await execute_mcp_tool(session, func_name, func_args, tools)
-                            print(f"[Function result: {func_result}]")
-                            
-                            # Check if result contains errors
-                            try:
-                                result_data = json.loads(func_result) if isinstance(func_result, str) else func_result
-                                is_error = result_data.get('isError', False)
-                                
-                                if is_error:
-                                    error_text = ""
-                                    if isinstance(result_data.get('content'), list):
-                                        for item in result_data['content']:
-                                            if item.get('type') == 'text':
-                                                error_text = item.get('text', '')
-                                                break
-                                    
-                                    # Auto-fix account errors
-                                    if "Account" in error_text and "not found" in error_text and "Available accounts:" in error_text:
-                                        match = re.search(r'Available accounts:\s*(\w+)', error_text)
-                                        if match:
-                                            correct_account = match.group(1)
-                                            print(f"[info] Auto-fixing account: using '{correct_account}'")
-                                            func_args['account'] = correct_account
-                                            retry_count += 1
-                                            continue
-                                        else:
-                                            # If account is optional, remove it
-                                            if 'account' in func_args:
-                                                print(f"[info] Removing invalid account parameter (optional)")
-                                                del func_args['account']
-                                                retry_count += 1
-                                                continue
-                                    
-                                    # Auto-fix eventId errors (eventId should not be provided for create-event)
-                                    if "Invalid event ID" in error_text or ("event ID" in error_text.lower() and "invalid" in error_text.lower()):
-                                        if 'eventId' in func_args:
-                                            print(f"[info] Removing invalid eventId parameter (not needed for create-event)")
-                                            del func_args['eventId']
-                                            retry_count += 1
-                                            continue
-                                    
-                                    # Auto-remove optional parameters that cause errors
-                                    if ("validation error" in error_text.lower() or "invalid" in error_text.lower()) and retry_count < max_retries:
-                                        # Try removing optional parameters that might be invalid
-                                        optional_params_to_remove = ['account', 'eventId', 'timeZone', 'fields']
-                                        removed = False
-                                        for param in optional_params_to_remove:
-                                            if param in func_args:
-                                                print(f"[info] Removing optional parameter '{param}' due to validation error")
-                                                del func_args[param]
-                                                removed = True
-                                                break
-                                        
-                                        if removed:
-                                            retry_count += 1
-                                            continue
-                                        else:
-                                            # No more optional params to remove, break
-                                            break
-                                
-                                # Success or non-retryable error
-                                break
-                            except Exception:
-                                break
-                        print(f"[info] Final function result: {func_result}")
-                        
-                        # Follow-up response
-                        followup = conversation + [
-                            VlmChatMessage(role="assistant", contents=[VlmContent(type="text", text=response_text)]),
-                            VlmChatMessage(role="user", contents=[VlmContent(type="text", text=f"You called {func_name} with {func_args}. Result: {func_result}. Provide a natural language response. Do NOT call any function again.")])
-                        ]
-                        print("\nAssistant: ", end="", flush=True)
-                        followup_response = ""
-                        for token in vlm.generate_stream(
-                            vlm.apply_chat_template(followup, enable_thinking=False),
-                            config=GenerationConfig(max_tokens=512)
-                        ):
-                            print(token, end="", flush=True)
-                            followup_response += token
-                        print()
-                else:
-                    print(response_text)
-
-    except Exception as e:
-        print(f"[error] Failed to initialize MCP connection: {e}")
-
+    if response_text:
+        print(response_text)
+    
 
 if __name__ == "__main__":
     asyncio.run(main())
