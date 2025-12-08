@@ -342,6 +342,30 @@ async def call_agent(
     )
 
 
+async def call_agent_wrapper(
+    text: Optional[str] = None,
+    image: Optional[str] = None,
+    audio: Optional[str] = None,
+    credentials: str = "gcp-oauth.keys.json"
+) -> FunctionCallAgentResult:
+    setup_logging()
+
+    if not text and not image and not audio:
+        raise ValueError("At least one of text, image, or audio must be provided") 
+    
+    server = create_calendar_server(credentials)
+    async with stdio_client(server) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            tools = await get_mcp_tools(session)
+            tools = [t for t in tools if t.get('function', {}).get('name', '') in 
+                    ['create-event', 'get-current-time']]
+            
+            vlm = init_vlm(tools)
+            result = await call_agent(vlm, session, tools, text, image, audio)
+            return result
+    
+    
 async def main():
     """Command-line interface for the agent."""
     setup_logging()
