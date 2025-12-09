@@ -64,6 +64,8 @@ android {
     }
 
     buildFeatures {
+        viewBinding = true
+        dataBinding = true
         compose = true
         buildConfig = true
     }
@@ -73,16 +75,21 @@ val bridgePathExist = gradle.extra["bridgePathExist"] as Boolean
 print("bridgePathExist: $bridgePathExist\n")
 
 dependencies {
-    implementation("ai.nexa:core:0.0.11")
-    implementation(libs.aws.android.sdk.s3)
-    implementation("com.google.code.gson:gson:2.10.1")
-    implementation("androidx.recyclerview:recyclerview:1.3.1")
+    implementation("ai.nexa:core:0.0.13")
     implementation(project(":transform"))
     implementation(":okdownload-core@aar")
     implementation(":okdownload-sqlite@aar")
     implementation(":okdownload-okhttp@aar")
     implementation(":okdownload-ktx@aar")
     implementation(kotlin("reflect"))
+    implementation(libs.glide)
+    implementation(libs.gson)
+    implementation(libs.recyclerview)
+    implementation(libs.toaster)
+    implementation(libs.material)
+    implementation(libs.imm.bar)
+    implementation(libs.imm.bar.ktx)
+    implementation(libs.auto.size)
     implementation(libs.okhttp)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.core.ktx)
