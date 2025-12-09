@@ -4,6 +4,9 @@ import android.annotation.SuppressLint
 import android.content.Context
 import com.nexa.demo.FileConfig
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonBuilder
+import org.json.JSONObject
 import java.io.File
 
 @SuppressLint("UnsafeOptInUsageError")
@@ -12,6 +15,19 @@ data class ModelData(
     val id: String,
     val displayName: String,
     val modelName: String,
+    /**
+     * support plugin_id
+     * 0: default, will use cpu;
+     * 0x1: cpu, 0x10:gpu, 0x100:npu
+     * cpu: 1,
+     * gpu: 16,
+     * npu: 256,
+     * cpu_gpu: 17,
+     * cpu_npu: 257,
+     * gpu_npu: 272,
+     * cpu_gpu_npu: 273
+     */
+    val pluginIds:Int? = 0,
     val mmprojOrTokenName: String,
     val tokenName: String = "",
     val embeddingName: String = "",
@@ -178,4 +194,43 @@ fun ModelData.downloadableFiles(modelDir: File): List<DownloadableFile> = listOf
 fun ModelData.allModelFilesExist(modelDir: File): Boolean {
     val files = this.downloadableFiles(modelDir).map { it.file }
     return files.all { it.exists() && it.length() > 0 }
+}
+
+fun ModelData.getNonExistModelFile(modelDir: File):String? {
+    this.downloadableFiles(modelDir).forEach {
+        if (!(it.file.exists() && it.file.length() > 0)) {
+            return it.file.absolutePath.replace("/data/user/0", "/data/data")
+        }
+    }
+    return null
+}
+
+fun ModelData.getNexaManifest(context: Context): NexaManifestBean? {
+    try {
+        val str = File(modelDir(context), "nexa.manifest").bufferedReader().use { it.readText() }
+        return Json { 
+            ignoreUnknownKeys = true
+        }.decodeFromString<NexaManifestBean>(str)
+    } catch (e: Exception) {
+        e.printStackTrace()
+        return null
+    }
+}
+
+fun ModelData.getSupportPluginIds(): ArrayList<String> {
+    val pluginIds = arrayListOf<String>()
+    if (this.pluginIds == 0) {
+        pluginIds.add("cpu")
+    } else {
+        if (this.pluginIds!! and 0x100 == 0x100) {
+            pluginIds.add("npu")
+        }
+        if (this.pluginIds and 0x10 == 0x10) {
+            pluginIds.add("gpu")
+        }
+        if (this.pluginIds and 0x1 == 0x1) {
+            pluginIds.add("cpu")
+        }
+    }
+    return pluginIds
 }

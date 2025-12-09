@@ -18,6 +18,10 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven { url = uri("https://jitpack.io") } // Added JitPack for AndroidAutoSize
+//        maven {
+//            url = uri("https://raw.githubusercontent.com/NexaAI/core/main")
+//        }
         flatDir {
             dirs("app/libs")
         }
@@ -27,7 +31,7 @@ dependencyResolutionManagement {
 rootProject.name = "NexaDemo"
 
 // Path to nexasdk-bridge library
-val defaultBridgeLibDir = File(rootDir,"../../nexasdk-bridge/bindings/android/app")
+val defaultBridgeLibDir = File(rootDir, "../../nexasdk-bridge/bindings/android/app")
 val bridgeLibDirPath: String = System.getenv("NEXA_BRIDGE_ANDROID")
     ?: defaultBridgeLibDir.absolutePath
 
