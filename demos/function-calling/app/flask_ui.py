@@ -149,19 +149,29 @@ async def get_response(task_id):
                         summary=event.get("summary", "No Title")
                         date = "N/A"
                         if event.get("start"):
-                            start_time = event["start"].get("dateTime", "N/A")
-                            date = start_time.split("T")[0]
-                            start_time = start_time.split("T")[1] if "T" in start_time else "N/A"
+                            start_time = event["start"].get("dateTime", None)
+                            from datetime import datetime
+                            if start_time is not None:
+                                dt = datetime.fromisoformat(start_time)
+                                date = dt.date().isoformat()
+                                start_time = dt.strftime("%I:%M %p")
+                            else:
+                                date = "N/A"
+                                start_time = "N/A"
                         else:
                             start_time = "N/A"
                         if event.get("end"):
-                            end_time = event["end"].get("dateTime", "N/A")
-                            end_time = end_time.split("T")[1] if "T" in end_time else "N/A"
+                            end_time = event["end"].get("dateTime", None)
+                            if end_time is not None:
+                                dt = datetime.fromisoformat(end_time)
+                                end_time = dt.strftime("%I:%M %p")  
+                            else:
+                                end_time = "N/A"
                         else:
                             end_time = "N/A"
                         venue = event.get("location", "N/A")
                         description = event.get("description", summary)
-                        address = event.get("address", "N/A")
+                        address = event.get("address", venue)
                         htmlLink = event.get("htmlLink", "")
                         bot_response = add_bot_response(
                             response_type='event',
