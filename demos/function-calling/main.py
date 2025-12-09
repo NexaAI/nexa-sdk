@@ -16,6 +16,36 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 
+def _convert_schema_property(prop_schema: Dict[str, Any]) -> Dict[str, Any]:
+    """Recursively convert a schema property, handling nested objects."""
+    result = {
+        "type": prop_schema.get("type", "string"),
+    }
+    
+    if "description" in prop_schema:
+        result["description"] = prop_schema["description"]
+    
+    # Handle nested objects
+    if prop_schema.get("type") == "object" and "properties" in prop_schema:
+        nested_props = {}
+        nested_required = []
+        
+        for nested_name, nested_schema in prop_schema["properties"].items():
+            nested_props[nested_name] = _convert_schema_property(nested_schema)
+            if nested_name in prop_schema.get("required", []):
+                nested_required.append(nested_name)
+        
+        result["properties"] = nested_props
+        if nested_required:
+            result["required"] = nested_required
+    
+    # Handle arrays of objects
+    if prop_schema.get("type") == "array" and "items" in prop_schema:
+        result["items"] = _convert_schema_property(prop_schema["items"])
+    
+    return result
+
+
 def mcp_tool_to_openai_format(tool) -> Dict[str, Any]:
     """Convert MCP tool to OpenAI function calling format."""
     properties = {}
@@ -23,10 +53,7 @@ def mcp_tool_to_openai_format(tool) -> Dict[str, Any]:
     
     if tool.inputSchema and "properties" in tool.inputSchema:
         for prop_name, prop_schema in tool.inputSchema["properties"].items():
-            properties[prop_name] = {
-                "type": prop_schema.get("type", "string"),
-                "description": prop_schema.get("description", ""),
-            }
+            properties[prop_name] = _convert_schema_property(prop_schema)
             if tool.inputSchema.get("required") and prop_name in tool.inputSchema["required"]:
                 required.append(prop_name)
     
@@ -140,6 +167,43 @@ def extract_function_call(text: str):
     return None
 
 
+def _format_nested_properties(props: Dict[str, Any], required: List[str], prefix: str = "", indent: int = 2) -> List[str]:
+    """Recursively format nested object properties with required field indicators."""
+    param_list = []
+    indent_str = " " * indent
+    
+    for param_name, param_info in props.items():
+        param_type = param_info.get('type', 'string')
+        param_desc = param_info.get('description', '')
+        is_required = param_name in required
+        full_param_name = f"{prefix}.{param_name}" if prefix else param_name
+        
+        # Handle nested objects
+        if param_type == 'object' and 'properties' in param_info:
+            nested_props = param_info.get('properties', {})
+            nested_required = param_info.get('required', [])
+            req_mark = " (REQUIRED)" if is_required else ""
+            
+            if param_desc:
+                param_list.append(f"{indent_str}{param_name} (object){req_mark}: {param_desc}")
+            else:
+                param_list.append(f"{indent_str}{param_name} (object){req_mark}")
+            
+            # Recursively format nested properties
+            nested_params = _format_nested_properties(
+                nested_props, nested_required, full_param_name, indent + 2
+            )
+            param_list.extend(nested_params)
+        else:
+            req_mark = " (REQUIRED)" if is_required else ""
+            if param_desc:
+                param_list.append(f"{indent_str}{param_name} ({param_type}){req_mark}: {param_desc}")
+            else:
+                param_list.append(f"{indent_str}{param_name} ({param_type}){req_mark}")
+    
+    return param_list
+
+
 def build_system_prompt(tools: list) -> str:
     """Build system prompt from tool schemas."""
     tools_descriptions = []
@@ -151,34 +215,48 @@ def build_system_prompt(tools: list) -> str:
         props = params.get('properties', {})
         required = params.get('required', [])
         
-        param_list = []
-        for param_name, param_info in props.items():
-            param_type = param_info.get('type', 'string')
-            param_desc = param_info.get('description', '')
-            is_required = param_name in required
-            req_mark = " (required)" if is_required else ""
-            if param_desc:
-                param_list.append(f"  {param_name} ({param_type}){req_mark}: {param_desc}")
-            else:
-                param_list.append(f"  {param_name} ({param_type}){req_mark}")
+        # Format parameters with nested object support
+        param_list = _format_nested_properties(props, required)
         
         params_str = "\n".join(param_list) if param_list else "  (no parameters)"
-        tools_descriptions.append(f"{name}: {desc}\n{params_str}")
+        
+        # Highlight required parameters at the top
+        required_params = [p for p in required]
+        required_str = f"\n  REQUIRED parameters: {', '.join(required_params)}" if required_params else ""
+        
+        tools_descriptions.append(f"{name}: {desc}{required_str}\n{params_str}")
     
     tools_list = "\n\n".join([f"{i+1}. {td}" for i, td in enumerate(tools_descriptions)])
+    
+    # Add example for create-event
+    example_json = """{
+  "name": "create-event",
+  "arguments": {
+    "calendarId": "primary",
+    "summary": "Meeting",
+    "start": "2025-01-01T10:00:00",
+    "end": "2025-01-01T11:00:00"
+  }
+}"""
+    
     return f"""You are a calendar assistant. When the user requests calendar actions, respond with ONLY a JSON object in this format:
 
 {{"name": "function_name", "arguments": {{"param": "value"}}}}
 
+CRITICAL RULES:
+- You MUST include ALL required parameters (marked as REQUIRED)
+- For nested objects, ALL required fields within the object must be included
+- If a parameter is marked as REQUIRED, it cannot be omitted
+- Output ONLY valid JSON, no other text before or after
+- Use exact function and parameter names (case-sensitive)
+
+Example for create-event:
+{example_json}
+
 Available functions:
 {tools_list}
 
-Rules:
-- Output ONLY valid JSON, no other text
-- Use exact function and parameter names (case-sensitive)
-- Include all required parameters
-- For calendar events, use create-event
-- For current time, use get-current-time
+IMPORTANT: Before creating events, you may need to call get-current-time first to get accurate date/time context. Always include calendarId="primary" for create-event unless specified otherwise.
 """
 
 
@@ -320,10 +398,38 @@ async def call_agent(
         print('[debug] calling function:', func_name)
         func_result = await _execute_with_retry(session, func_name, func_args, tools)
         print('[debug] func_result:', func_result)
+        
+        # Parse function result to extract success/error message
+        result_message = ""
+        try:
+            result_data = json.loads(func_result) if isinstance(func_result, str) else func_result
+            if result_data.get('isError', False):
+                # Extract error message
+                if isinstance(result_data.get('content'), list):
+                    for item in result_data['content']:
+                        if item.get('type') == 'text':
+                            result_message = item.get('text', '')
+                            break
+            else:
+                # Extract success message or summary
+                if isinstance(result_data.get('content'), list):
+                    for item in result_data['content']:
+                        if item.get('type') == 'text':
+                            result_message = item.get('text', '')
+                            break
+        except Exception:
+            result_message = str(func_result)
+        
         followup = conversation + [
+            VlmChatMessage(role="assistant", contents=[VlmContent(type="text", text=response_text)]),
             VlmChatMessage(role="user", contents=[VlmContent(type="text", 
-                text=f"You called {func_name} with {func_args}. Result: {func_result}. "
-                     f"Provide a natural language response. Do NOT call any function again.")])
+                text=f"Function execution completed. Result: {result_message}\n\n"
+                     f"Now respond to the user in natural language. You are in RESPONSE MODE, not function calling mode.\n"
+                     f"- DO NOT output any JSON format\n"
+                     f"- DO NOT use {{}} brackets\n"
+                     f"- DO NOT call any function\n"
+                     f"- Just speak naturally like a helpful assistant\n"
+                     f"- Tell the user what happened with the calendar event in a friendly way")])
         ]
         followup_response = ""
         for token in vlm.generate_stream(
