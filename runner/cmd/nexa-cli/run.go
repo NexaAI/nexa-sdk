@@ -150,7 +150,11 @@ func runCompletions(manifest types.ModelManifest, quant string) error {
 	if systemPrompt != "" {
 		warmUpRequest.Messages = append(warmUpRequest.Messages, openai.SystemMessage(systemPrompt))
 	}
-	_, err := client.Chat.Completions.New(context.TODO(), warmUpRequest)
+	_, err := client.Chat.Completions.New(context.TODO(),
+		warmUpRequest,
+		option.WithJSONSet("ngl", ngl),
+		option.WithJSONSet("nctx", nctx),
+	)
 	spin.Stop()
 
 	if err != nil {
