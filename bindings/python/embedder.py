@@ -21,7 +21,7 @@ def main():
     parser.add_argument(
         "-m",
         "--model",
-        default="~/.cache/nexa.ai/nexa_sdk/models/NexaAI/jina-v2-fp16-mlx/model.safetensors",
+        default="NexaAI/jina-v2-fp16-mlx",
         help="Path to the embedding model",
     )
     parser.add_argument(

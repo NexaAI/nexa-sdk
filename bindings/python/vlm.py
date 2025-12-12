@@ -57,7 +57,7 @@ def main():
     parser.add_argument(
         "-m",
         "--model",
-        default="~/.cache/nexa.ai/nexa_sdk/models/NexaAI/gemma-3n-E4B-it-4bit-MLX/model-00001-of-00002.safetensors",
+        default="NexaAI/Qwen2.5-Omni-3B-GGUF",
         help="Path to the VLM model",
     )
     parser.add_argument(
