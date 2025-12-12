@@ -1,0 +1,66 @@
+name: "Model request"
+description: "Request support for a new model or variant in NexaSDK"
+labels: ["model-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Request support for a new model to be added to NexaSDK.
+
+        Please include as much detail as you can so we can prioritize properly.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: "Pre-checks"
+      options:
+        - label: "I searched existing issues and discussions for this model"
+          required: true
+
+  - type: input
+    id: model-name
+    attributes:
+      label: "Model name"
+      description: "Name of the model you’d like supported."
+      placeholder: "e.g. Ministral-8x7B, Qwen3-VL-32B, etc."
+    validations:
+      required: true
+
+  - type: input
+    id: model-source
+    attributes:
+      label: "Model source / link"
+      description: "Link to the model (Hugging Face, GitHub, vendor page, etc.)."
+      placeholder: "https://huggingface.co/..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-cases
+    attributes:
+      label: "Primary use cases"
+      description: "What are you planning to build with this model?"
+      placeholder: |
+        e.g. On-device coding assistant, in-car multimodal assistant, document RAG, etc.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: hardware
+    attributes:
+      label: "Target hardware / backend"
+      description: "Where do you want this model to run?"
+      placeholder: |
+        e.g. Snapdragon X Elite NPU, SA8295P, RTX 4080, Apple M4, CPU-only, etc.
+      render: text
+     validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: "Additional context"
+      description: "Benchmarks, papers, licensing notes, or anything else that helps us evaluate."
+      render: markdown
+
