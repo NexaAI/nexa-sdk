@@ -1,0 +1,107 @@
+name: "Bug report"
+description: "Something isn't working right with NexaSDK"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug in NexaSDK 🙏
+
+        Before filing:
+        - Search existing issues to see if this has already been reported.
+        - Try the latest release, if possible.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: "Pre-checks"
+      options:
+        - label: "I searched existing issues"
+          required: true
+        - label: "I’m using the latest NexaSDK release"
+          required: false
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: "What happened?"
+      description: "Describe the bug and what you expected to happen."
+      placeholder: |
+        When I do sth with model X on backend Y, it does Z.
+        I expected it to ...
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: "Steps to reproduce"
+      description: "Minimal steps or code to trigger the issue."
+      placeholder: |
+        1. Install NexaSDK using ...
+        2. Run: ...
+        3. See error: ...
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: "Logs & stack traces"
+      description: "Paste any relevant logs or error messages."
+      placeholder: |
+        ```text
+        <logs here>
+        ```
+      render: text
+
+  - type: textarea
+    id: models
+    attributes:
+      label: "Model(s) and quantization"
+      description: "Which model(s) and quantization are you using?"
+      placeholder: |
+        e.g. Ministral-3-3B-Instruct-2512 Q4_K_M, AutoNeural-SA8295P int4, Qwen2.5 fp16
+      render: text
+
+  - type: input
+    id: nexasdk-version
+    attributes:
+      label: "NexaSDK version"
+      description: 'Output of `python -c "import nexa; print(nexa.__version__)"` or similar.'
+      placeholder: "e.g. 0.13.2"
+    validations:
+      required: true
+
+  - type: input
+    id: install-method
+    attributes:
+      label: "Install method"
+      description: "How did you install NexaSDK?"
+      placeholder: "pip, conda, docker, from source, other"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: "OS and version"
+      placeholder: "e.g. Windows 11, Ubuntu 22.04, macOS 15"
+    validations:
+      required: true
+
+  - type: input
+    id: hardware
+    attributes:
+      label: "Hardware / accelerator"
+      description: "CPU/GPU/NPU and device details."
+      placeholder: "e.g. RTX 4090, Snapdragon X Elite NPU, SA8295P, M4 Max"
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: "Additional context"
+      description: "Anything else that might help (configs, screenshots, links)."
+      render: markdown
