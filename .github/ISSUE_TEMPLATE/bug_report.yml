@@ -70,8 +70,11 @@ body:
     id: nexasdk-version
     attributes:
       label: "NexaSDK version"
-      description: 'Output of `python -c "import nexa; print(nexa.__version__)"` or similar.'
-      placeholder: "e.g. 0.13.2"
+      description: 'Output of `nexa version` or `python -c "import nexa; print(nexa.__version__)"` or similar.'
+      placeholder: |
+        e.g.
+        NexaSDK Bridge Version: v1.0.31
+        NexaSDK CLI Version:    v0.2.60
     validations:
       required: true
 

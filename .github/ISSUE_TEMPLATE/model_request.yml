@@ -54,7 +54,7 @@ body:
       placeholder: |
         e.g. Snapdragon X Elite NPU, SA8295P, RTX 4080, Apple M4, CPU-only, etc.
       render: text
-     validations:
+    validations:
       required: true
 
   - type: textarea
@@ -63,4 +63,3 @@ body:
       label: "Additional context"
       description: "Benchmarks, papers, licensing notes, or anything else that helps us evaluate."
       render: markdown
-
