@@ -10,18 +10,27 @@ It includes basic model initialization, text generation, streaming, and chat tem
 import os
 import argparse
 import io
+import logging
 import shlex
 from pathlib import Path
 from typing import Optional, List, Tuple
 
-from nexaai.vlm import VLM, GenerationConfig
-from nexaai.common import ModelConfig, MultiModalMessage, MultiModalMessageContent
+from nexaai import (
+    GenerationConfig,
+    ModelConfig,
+    VlmChatMessage,
+    VlmContent,
+    setup_logging,
+)
+from nexaai.vlm import VLM
 
 
-def parse_media_from_input(user_input: str) -> Tuple[str, Optional[List[str]], Optional[List[str]]]:
+def parse_media_from_input(
+    user_input: str,
+) -> Tuple[str, Optional[List[str]], Optional[List[str]]]:
     tokens = shlex.split(user_input, posix=False)
-    image_exts = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'}
-    audio_exts = {'.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a'}
+    image_exts = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp"}
+    audio_exts = {".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a"}
 
     image_paths, audio_paths, prompt_parts = [], [], []
 
@@ -38,32 +47,40 @@ def parse_media_from_input(user_input: str) -> Tuple[str, Optional[List[str]], O
         else:
             prompt_parts.append(token)
 
-    prompt = ' '.join(prompt_parts).strip()
+    prompt = " ".join(prompt_parts).strip()
     return prompt, image_paths or None, audio_paths or None
 
 
 def main():
+    setup_logging(level=logging.DEBUG)
     parser = argparse.ArgumentParser(description="NexaAI VLM Example")
-    parser.add_argument("--model",
-                        default="~/.cache/nexa.ai/nexa_sdk/models/NexaAI/gemma-3n-E4B-it-4bit-MLX/model-00001-of-00002.safetensors",
-                        help="Path to the VLM model")
-    parser.add_argument("--device", default="", help="Device to run on")
-    parser.add_argument("--max-tokens", type=int, default=100,
-                        help="Maximum tokens to generate")
-    parser.add_argument("--system", default="You are a helpful assistant.",
-                        help="System message")
-    parser.add_argument("--plugin-id", default="cpu_gpu",
-                        help="Plugin ID to use")
+    parser.add_argument(
+        "-m",
+        "--model",
+        default="NexaAI/Qwen2.5-Omni-3B-GGUF",
+        help="Path to the VLM model",
+    )
+    parser.add_argument(
+        "--max-tokens", type=int, default=128, help="Maximum tokens to generate"
+    )
+    parser.add_argument(
+        "--system", default="You are a helpful assistant.", help="System message"
+    )
+    parser.add_argument("--plugin-id", default=None, help="Plugin ID to use")
     args = parser.parse_args()
 
-    model_path = os.path.expanduser(args.model)
-    m_cfg = ModelConfig()
+    instance: VLM = VLM.from_(
+        model=os.path.expanduser(args.model),
+        config=ModelConfig(),
+        plugin_id=args.plugin_id,
+    )
 
-    instance = VLM.from_(name_or_path=model_path, m_cfg=m_cfg,
-                         plugin_id=args.plugin_id, device_id=args.device)
-
-    conversation: List[MultiModalMessage] = [MultiModalMessage(role="system",
-                                                               content=[MultiModalMessageContent(type="text", text=args.system)])]
+    conversation: List[VlmChatMessage] = [
+        VlmChatMessage(
+            role="system",
+            contents=[VlmContent(type="text", text=args.system)],
+        )
+    ]
     strbuff = io.StringIO()
 
     print("Multi-round conversation started. Type '/quit' or '/exit' to end.")
@@ -80,51 +97,58 @@ def main():
             if cmds[0] in {"/quit", "/exit", "/q"}:
                 print("Goodbye!")
                 break
-            elif cmds[0] in {"/save", "/s"}:
-                instance.save_kv_cache(cmds[1])
-                print("KV cache saved to", cmds[1])
-                continue
-            elif cmds[0] in {"/load", "/l"}:
-                instance.load_kv_cache(cmds[1])
-                print("KV cache loaded from", cmds[1])
-                continue
             elif cmds[0] in {"/reset", "/r"}:
                 instance.reset()
                 print("Conversation reset")
+                continue
+            else:
+                print("Unknown command. Available commands: /quit, /exit, /reset")
                 continue
 
         prompt, images, audios = parse_media_from_input(user_input)
 
         contents = []
         if prompt:
-            contents.append(MultiModalMessageContent(type="text", text=prompt))
+            contents.append(VlmContent(type="text", text=prompt))
         if images:
             for image in images:
-                contents.append(MultiModalMessageContent(
-                    type="image", path=image))
+                contents.append(VlmContent(type="image", text=image))
         if audios:
             for audio in audios:
-                contents.append(MultiModalMessageContent(
-                    type="audio", path=audio))
-        conversation.append(MultiModalMessage(role="user", content=contents))
+                contents.append(VlmContent(type="audio", text=audio))
+        conversation.append(VlmChatMessage(role="user", contents=contents))
 
-        # Apply the chat template
         prompt = instance.apply_chat_template(conversation)
         strbuff.truncate(0)
         strbuff.seek(0)
 
         print("Assistant: ", end="", flush=True)
-        for token in instance.generate_stream(prompt, g_cfg=GenerationConfig(max_tokens=args.max_tokens, image_paths=images, audio_paths=audios)):
-            print(token, end="", flush=True)
-            strbuff.write(token)
+        gen = instance.generate_stream(
+            prompt,
+            config=GenerationConfig(
+                max_tokens=args.max_tokens, image_paths=images, audio_paths=audios
+            ),
+        )
+        result = None
+        try:
+            while True:
+                token = next(gen)
+                print(token, end="", flush=True)
+                strbuff.write(token)
+        except StopIteration as e:
+            result = e.value
 
-        # Get profiling data
-        profiling_data = instance.get_profiling_data()
-        if profiling_data is not None:
-            print(profiling_data)
+        if result and hasattr(result, "profile_data") and result.profile_data:
+            print(f"\n{result.profile_data}")
 
-        conversation.append(MultiModalMessage(role="assistant", content=[
-                            MultiModalMessageContent(type="text", text=strbuff.getvalue())]))
+        conversation.append(
+            VlmChatMessage(
+                role="assistant",
+                contents=[
+                    VlmContent(type="text", text=strbuff.getvalue())
+                ],
+            )
+        )
 
 
 if __name__ == "__main__":
