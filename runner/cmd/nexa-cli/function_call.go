@@ -129,6 +129,7 @@ func fcLLM(plugin, modelfile string) error {
 		Messages:    messages,
 		EnableThink: false, // disable thinking mode for function call mode
 		Tools:       tools,
+		AddGenerationPrompt: true,
 	})
 	if err != nil {
 		fmt.Println(render.GetTheme().Error.Sprintf("apply chat template error: %s", err))
