@@ -394,6 +394,7 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 			templateOutput, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
 				Messages:    history,
 				EnableThink: enableThink,
+				AddGenerationPrompt: true,
 			})
 			if err != nil {
 				return "", nexa_sdk.ProfileData{}, err

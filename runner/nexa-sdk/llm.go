@@ -221,9 +221,10 @@ func freeLlmChatMessages(cPtr *C.ml_LlmChatMessage, count C.int32_t) {
 }
 
 type LlmApplyChatTemplateInput struct {
-	Messages    []LlmChatMessage
-	Tools       string
-	EnableThink bool
+	Messages            []LlmChatMessage
+	Tools               string
+	EnableThink         bool
+	AddGenerationPrompt bool
 }
 
 func (lati LlmApplyChatTemplateInput) toCPtr() *C.ml_LlmApplyChatTemplateInput {
@@ -241,6 +242,7 @@ func (lati LlmApplyChatTemplateInput) toCPtr() *C.ml_LlmApplyChatTemplateInput {
 	}
 
 	cPtr.enable_thinking = C.bool(lati.EnableThink)
+	cPtr.add_generation_prompt = C.bool(lati.AddGenerationPrompt)
 
 	return cPtr
 }

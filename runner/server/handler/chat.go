@@ -198,6 +198,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 		Messages:    messages,
 		Tools:       tools,
 		EnableThink: param.EnableThink,
+		AddGenerationPrompt: true,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
