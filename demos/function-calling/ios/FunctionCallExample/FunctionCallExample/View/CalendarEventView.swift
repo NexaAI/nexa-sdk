@@ -13,37 +13,44 @@ struct CalendarEventView: View {
                     .padding(.leading, 22)
             }
 
-            VStack(alignment: .leading) {
-                subtitleView("Event Time")
-                HStack {
-                    Text("Date:")
-                        .padding(.leading, 22)
-                    buildDateTime(event.startDate)
+            if !event.startDate.isEmpty {
+                VStack(alignment: .leading) {
+                    subtitleView("Event Time")
+                    HStack {
+                        Text("Date:")
+                            .padding(.leading, 22)
+                        buildDateTime(event.startDate)
+                    }
+
+                    HStack {
+                        Text("Start:")
+                            .padding(.leading, 22)
+                        buildDateTime(event.startDateTime)
+
+                        if !event.endDateTime.isEmpty {
+                            Text("End:")
+                                .padding(.leading, 12)
+                            buildDateTime(event.endDateTime)
+                        }
+                    }
                 }
+            }
 
-                HStack {
-                    Text("Start:")
+            if !event.location.isEmpty {
+                VStack(alignment: .leading) {
+                    subtitleView("Event Location")
+                    Text(event.location)
                         .padding(.leading, 22)
-                    buildDateTime(event.startDateTime)
-
-                    Text("End:")
-                        .padding(.leading, 12)
-                    buildDateTime(event.endDateTime)
                 }
             }
 
-            VStack(alignment: .leading) {
-                subtitleView("Event Location")
-                Text(event.location)
-                    .padding(.leading, 22)
+            if !event.description.isEmpty {
+                VStack(alignment: .leading) {
+                    subtitleView("Event Description")
+                    Text(event.description)
+                        .padding(.leading, 22)
+                }
             }
-
-            VStack(alignment: .leading) {
-                subtitleView("Event Description")
-                Text(event.description)
-                    .padding(.leading, 22)
-            }
-
         }
         .font(.system(size: 14))
         .foregroundStyle(Color.Text.primary)
@@ -53,6 +60,7 @@ struct CalendarEventView: View {
                 .fill(Color.Background.primary)
                 .stroke(Color.Thinkingbox.border)
         )
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder

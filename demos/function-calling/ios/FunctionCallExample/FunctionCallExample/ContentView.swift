@@ -7,13 +7,12 @@ struct ContentView: View {
     @FocusState private var isFocused: Bool
 
     @State private var showPhotoPicker: Bool = false
-    @State private var selectedItems: [PhotosPickerItem] = []
-
     @State private var showSettingView: Bool = false
 
     var body: some View {
         GeometryReader { geo in
             mainView
+                .background(Color.Background.secondary)
         }
     }
 
@@ -41,12 +40,11 @@ struct ContentView: View {
         }
         .photosPicker(
             isPresented: $showPhotoPicker,
-            selection: $selectedItems,
+            selection: $vm.selectedItems,
             maxSelectionCount: 1,
             matching: .images
         )
-        .animation(.smooth, value: vm.messages.count)
-        .onChange(of: selectedItems) { oldValue, newValue in
+        .onChange(of: vm.selectedItems) { oldValue, newValue in
             vm.handlePhotosImagePickerResult(newValue)
         }
         .sheet(isPresented: $showSettingView) {
@@ -81,6 +79,7 @@ struct ContentView: View {
                     .anyButton {
                         vm.clear()
                     }
+                    .disabled(vm.isGenerating)
             }
             .foregroundStyle(Color.Text.primary)
             .padding(12)
@@ -90,7 +89,6 @@ struct ContentView: View {
                 .background(Color.Background.primary)
         }
         .frame(maxWidth: .infinity)
-        .background(Color.Background.secondary)
     }
 
     @ViewBuilder
@@ -159,15 +157,15 @@ struct ContentView: View {
     }
 
     private var disableButton: Bool {
-        vm.isLoading || vm.isGenerating
+        vm.isGenerating
     }
 
     @ViewBuilder
     var promptTextField: some View {
         TextField(
-            "Enter prompt...",
+            "Type prompt...",
             text: $vm.query,
-            prompt: Text("Enter prompt...").textStyle(.body1(textColor: Color.Text.inactive)),
+            prompt: Text("Type prompt...").textStyle(.body1(textColor: Color.Text.inactive)),
             axis: .vertical
         )
         .textStyle(.body1(textColor: Color.Text.primary))
@@ -185,17 +183,6 @@ struct ContentView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     Text("").frame(height: 16)
-
-                    if vm.messages.isEmpty {
-                        Text("Please load the model or download the model before use.")
-                            .multilineTextAlignment(.center)
-                            .fontSize(14)
-                            .foregroundStyle(Color.Text.secondary)
-                            .padding(.top, 100)
-                            .padding(.horizontal, 12)
-                            .frame(maxWidth: .infinity)
-                    }
-
                     VStack(spacing: 16) {
                         ForEach(Array(vm.messages.enumerated()), id: \.offset) { (idx, message) in
                             ChatBubbleView(item: message)
@@ -211,7 +198,6 @@ struct ContentView: View {
                 .scrollDismissesKeyboard(.immediately)
                 .defaultScrollAnchor(.top)
                 .scrollContentBackground(.hidden)
-                .background(Color.Background.secondary)
             }
         }
     }
