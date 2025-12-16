@@ -76,5 +76,5 @@ python main.py --serve --port 8088
 
 Example curl request:
 ```bash
-curl -X POST http://localhost:8088/api/function-call -H "Content-Type: application/json" -d '{"text": "what is the time now?"}'
+curl -X POST http://192.168.0.102:8088/api/function-call -H "Content-Type: application/json" -d '{"text": "what is the time now?"}'
 ```
