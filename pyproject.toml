@@ -1,9 +1,8 @@
-[tool.basedpyright]
-reportImplicitRelativeImport = false
-reportUnusedCallResult = false
-reportAny = false
-reportExplicitAny = false
+[tool.ruff]
+line-length = 120
+select = ["E", "F", "I", "N", "UP"]
 
-[tool.yapf]
-based_on_style = "pep8"
-column_limit = 120
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "auto"

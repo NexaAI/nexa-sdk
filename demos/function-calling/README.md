@@ -68,3 +68,13 @@ python main.py --audio audio.mp3 --text "transcribe and add to calendar"
 ```powershell
 python .\web\flask_ui.py
 ```
+
+### Http server
+```powershell
+python main.py --serve --port 8088
+```
+
+Example curl request:
+```bash
+curl -X POST http://localhost:8088/api/function-call -H "Content-Type: application/json" -d '{"text": "what is the time now?"}'
+```
