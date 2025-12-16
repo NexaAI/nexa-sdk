@@ -66,5 +66,5 @@ python main.py --audio audio.mp3 --text "transcribe and add to calendar"
 ### Web UI
 
 ```powershell
-python .\app\flask_ui.py
+python .\web\flask_ui.py
 ```
