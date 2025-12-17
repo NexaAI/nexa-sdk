@@ -1,0 +1,75 @@
+[versions]
+agp = "8.9.0"
+kotlin = "2.2.10"
+coreKtx = "1.16.0"
+junit = "4.13.2"
+junitVersion = "1.2.1"
+espressoCore = "3.6.1"
+lifecycleRuntimeKtx = "2.9.1"
+activityCompose = "1.10.1"
+composeBom = "2025.10.00"
+navigation-compose = "2.9.1"
+koin-android = "3.5.0"
+datastore-android = "1.1.7"
+gson = "2.10.1"
+room = "2.7.2"
+coil-compose="3.3.0"
+coil-transforms="3.0.0"
+kotlinx-serialization ="1.6.3"
+accompanist ="0.34.0"
+smallfactory ="1.2.2"
+accompanist-permissions = "0.34.0"
+splashscreen = "1.0.1"
+uiText = "1.9.3"
+ui = "1.9.3"
+lottie-version='6.1.0'
+camerax = '1.5.0-alpha03'
+okdownload = '1.0.7'
+okhttp3 = '4.12.0'
+amazon = '2.33.0'
+aws-android-s3 = '2.81.0'
+multiplatformMarkdown = "0.38.0-b01"
+material3 = '1.2.1'
+
+[libraries]
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+okhttp3 = {group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp3"}
+okhttp3-logging = {group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp3"}
+multiplatform-markdown-renderer-android = { module = "com.mikepenz:multiplatform-markdown-renderer-android", version.ref = "multiplatformMarkdown" }
+multiplatform-markdown-renderer-android-m3 = { module = "com.mikepenz:multiplatform-markdown-renderer-m3-android", version.ref = "multiplatformMarkdown" }
+multiplatform-markdown-coil3 = { module = "com.mikepenz:multiplatform-markdown-renderer-coil3-android", version.ref = "multiplatformMarkdown" }
+multiplatform-markdown-code = { module = "com.mikepenz:multiplatform-markdown-renderer-code-android", version.ref = "multiplatformMarkdown" }
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil-compose" }
+coil-gif = { module = "io.coil-kt.coil3:coil-gif", version.ref = "coil-compose" }
+#coil-transformations = { module = "io.coil-kt:coil-transformations", version.ref = "coil-compose" }
+coil-transforms = { module = "com.github.Commit451.coil-transformations:transformations", version.ref = "coil-transforms"}
+accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanist-permissions" }
+accompanist-navigation-animation = { module = "com.google.accompanist:accompanist-navigation-animation", version.ref = "accompanist" }
+androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigation-compose" }
+koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin-android" }
+koin-androidx-compose = { module = "io.insert-koin:koin-androidx-compose", version.ref = "koin-android" }
+androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore-android" }
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
+androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
+androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
+androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+
+[bundles]
+markdown-group = ["multiplatform-markdown-renderer-android", "multiplatform-markdown-renderer-android-m3",
+    "multiplatform-markdown-coil3", "multiplatform-markdown-code"]
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+

@@ -1,0 +1,25 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+
+    <!-- 背景圆形，纯色，不透明，半径24（直径48） -->
+    <path
+        android:pathData="M24,0
+                          A24,24 0 0 1 48,24
+                          A24,24 0 0 1 24,48
+                          A24,24 0 0 1 0,24
+                          A24,24 0 0 1 24,0Z"
+        android:fillColor="#F6F7F9"
+        android:fillAlpha="0.6"/>
+
+    <!-- 中间的 X（需要移动到居中位置） -->
+    <path
+        android:pathData="M32,16L16,32M16,16L32,32"
+        android:strokeLineJoin="round"
+        android:strokeWidth="2"
+        android:fillColor="#00000000"
+        android:strokeColor="#454545"
+        android:strokeLineCap="round"/>
+</vector>
