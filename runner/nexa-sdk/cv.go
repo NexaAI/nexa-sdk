@@ -6,6 +6,7 @@ package nexa_sdk
 */
 import "C"
 import (
+	"fmt"
 	"log/slog"
 	"unsafe"
 )
@@ -52,6 +53,14 @@ type CVResult struct {
 	Text         string
 	Embedding    []float32
 	EmbeddingDim int32
+	Mask         []float32
+	MaskWidth    int32
+	MaskHeight   int32
+}
+
+func (c CVResult) String() string {
+	return fmt.Sprintf("CVResult{ImagePaths: %v, ClassID: %d, Confidence: %.4f, BBox: %v, Text: %s, EmbeddingDim: %d, MaskWidth: %d, MaskHeight: %d}",
+		c.ImagePaths, c.ClassID, c.Confidence, c.BBox, c.Text, c.EmbeddingDim, c.MaskWidth, c.MaskHeight)
 }
 
 func newCVResultFromCPtr(c *C.ml_CVResult) CVResult {
@@ -91,6 +100,18 @@ func newCVResultFromCPtr(c *C.ml_CVResult) CVResult {
 		result.EmbeddingDim = int32(c.embedding_dim)
 	}
 
+	// Convert mask
+	if c.mask != nil && c.mask_w > 0 && c.mask_h > 0 {
+		maskSize := int(c.mask_w * c.mask_h)
+		mask := unsafe.Slice((*C.float)(unsafe.Pointer(c.mask)), maskSize)
+		result.Mask = make([]float32, maskSize)
+		for i := range result.Mask {
+			result.Mask[i] = float32(mask[i])
+		}
+		result.MaskWidth = int32(c.mask_w)
+		result.MaskHeight = int32(c.mask_h)
+	}
+
 	return result
 }
 
@@ -118,6 +139,11 @@ func freeCVResult(ptr *C.ml_CVResult) {
 	// Free embedding
 	if ptr.embedding != nil {
 		mlFree(unsafe.Pointer(ptr.embedding))
+	}
+
+	// Free mask
+	if ptr.mask != nil {
+		mlFree(unsafe.Pointer(ptr.mask))
 	}
 }
 
