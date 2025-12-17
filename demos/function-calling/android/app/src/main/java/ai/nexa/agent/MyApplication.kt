@@ -3,8 +3,7 @@ package ai.nexa.agent
 import ai.nexa.agent.constant.Configs
 import android.app.Application
 import android.content.Context
-import android.os.Build
-import com.nexa.studio.koin.appModule
+import ai.nexa.agent.koin.appModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.GlobalContext.startKoin
 

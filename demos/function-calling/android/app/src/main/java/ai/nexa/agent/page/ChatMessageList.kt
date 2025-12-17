@@ -9,9 +9,12 @@ import ai.nexa.agent.model.ChatViewModel
 import ai.nexa.agent.state.LocalBannerState
 import ai.nexa.agent.state.OperationState
 import ai.nexa.agent.ui.theme.ChatMessageAssistantProfilingButton
+import ai.nexa.agent.ui.theme.Primary
 import ai.nexa.agent.ui.theme.chatImagePreviewBg
 import ai.nexa.agent.ui.theme.chatImagePreviewDivider
 import ai.nexa.agent.ui.theme.chatImagePreviewTitle
+import ai.nexa.agent.ui.theme.chatInputBackground
+import ai.nexa.agent.ui.theme.chatInputBorder
 import ai.nexa.agent.ui.theme.chatMessageThinkBg
 import ai.nexa.agent.ui.theme.chatMessageThinkBorder
 import ai.nexa.agent.ui.theme.chatMessageThinkContent
@@ -19,6 +22,7 @@ import ai.nexa.agent.ui.theme.chatMessageThinkExpandIcon
 import ai.nexa.agent.ui.theme.chatMessageThinkTitle
 import ai.nexa.agent.ui.theme.chatMessageUserBg
 import ai.nexa.agent.ui.theme.chatMessageUserText
+import ai.nexa.agent.ui.theme.commonSettingsUnSelectedText
 import ai.nexa.agent.ui.theme.errorBannerIcon
 import ai.nexa.agent.ui.theme.errorBannerText
 import ai.nexa.agent.ui.theme.ic_close
@@ -80,11 +84,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontWeight.Companion.W500
 import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -93,7 +100,6 @@ import coil3.compose.rememberAsyncImagePainter
 import com.nexa.studio.ui.chat.markdown.CustomMarkdown
 import com.nexa.studio.ui.chat.markdown.rememberStreamingMarkdownState
 import kotlinx.coroutines.delay
-import java.text.DateFormat
 import java.text.SimpleDateFormat
 
 private val mediaPlayer = MediaPlayer()
@@ -649,6 +655,80 @@ fun MessageRichContent(
 }
 
 @Composable
+private fun GoogleCalendarItemTitle(title: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.size(10.dp)
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.light_green_dot_bg),
+                contentDescription = null,
+                tint = Color.Unspecified,
+                modifier = Modifier.size(10.dp)
+            )
+            Icon(
+                painter = painterResource(R.drawable.light_green_dot_front),
+                contentDescription = null,
+                tint = Color.Unspecified,
+                modifier = Modifier.size(7.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(5.dp))
+        Text(
+            title,
+            fontWeight = W500,
+            textAlign = TextAlign.Justify,
+            fontSize = 16.sp,
+            color = MaterialTheme.colorScheme.chatMessageUserText
+        )
+    }
+}
+
+@Composable
+private fun GoogleCalendarItemContentTag(itemLeftMargin: Int, tip: String, tag: String) {
+    Row() {
+        Text(
+            tip,
+            textAlign = TextAlign.Justify,
+            modifier = Modifier
+                .padding(
+                    itemLeftMargin.dp,
+                    0.dp,
+                    0.dp,
+                    0.dp
+                ),
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.chatMessageUserText
+        )
+        Text(
+            tag,
+            textAlign = TextAlign.Justify,
+            modifier = Modifier
+                .padding(
+                    5.dp,
+                    0.dp,
+                    0.dp,
+                    0.dp
+                )
+                .clip(RoundedCornerShape(8.dp))
+                .background(color = MaterialTheme.colorScheme.chatInputBackground)
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.chatInputBorder,
+                    shape = RoundedCornerShape(8.dp)
+                ).padding(horizontal = 6.dp),
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.commonSettingsUnSelectedText
+        )
+    }
+}
+
+@Composable
 fun AssistantMessageRichContent(
     deviceId: String,
     modifier: Modifier,
@@ -682,35 +762,29 @@ fun AssistantMessageRichContent(
                     )
                     .padding(15.dp)
             ) {
+                val itemLeftMargin = 15
                 Text(
-                    "Event added to @Google Calendar",
+                    text = buildAnnotatedString {
+                        append("Event added to ")
+                        withStyle(style = SpanStyle(color = Primary)) {
+                            append("@Google Calendar")
+                        }
+                    },
                     textAlign = TextAlign.Justify,
                     fontWeight = W500,
                     fontSize = 18.sp,
                     color = MaterialTheme.colorScheme.chatMessageUserText
                 )
                 Spacer(modifier = Modifier.height(20.dp))
-                Text(
-                    "Event name",
-                    fontWeight = W500,
-                    textAlign = TextAlign.Justify,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.chatMessageUserText
-                )
+                GoogleCalendarItemTitle("Event name")
                 Text(
                     "${event?.summary}",
                     textAlign = TextAlign.Justify,
+                    modifier = Modifier.padding(itemLeftMargin.dp, 0.dp, 0.dp, 0.dp),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.chatMessageUserText
                 )
                 Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    "Event time",
-                    fontWeight = W500,
-                    textAlign = TextAlign.Justify,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.chatMessageUserText
-                )
 //                val startDateStr = "2025-12-20T09:00:00-11:00"
                 var date: String = ""
                 var startTime: String = ""
@@ -723,53 +797,43 @@ fun AssistantMessageRichContent(
                             if (times.size == 2) {
                                 startTime = times[0]
                                 endTime = times[1]
-                                Text(
-                                    "Date:${
+                                GoogleCalendarItemTitle("Event time")
+                                GoogleCalendarItemContentTag(
+                                    itemLeftMargin, "Date:", " ${
                                         SimpleDateFormat("yyyy-MM-dd").parse(date).toString()
                                             .split("00:00:00").let { dates ->
-                                            dates[0]
-                                        }
-                                    }",
-                                    textAlign = TextAlign.Justify,
-                                    fontSize = 14.sp,
-                                    color = MaterialTheme.colorScheme.chatMessageUserText
-                                )
-                                Text(
-                                    "Start:${startTime}  End:${endTime}",
-                                    textAlign = TextAlign.Justify,
-                                    fontSize = 14.sp,
-                                    color = MaterialTheme.colorScheme.chatMessageUserText
-                                )
+                                                dates[0]
+                                            }
+                                    }")
+                                Spacer(modifier = Modifier.height(5.dp))
+                                Row() {
+                                    GoogleCalendarItemContentTag(
+                                        itemLeftMargin, "Start:", startTime.take(5)
+                                    )
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    GoogleCalendarItemContentTag(
+                                        itemLeftMargin, "End:", endTime
+                                    )
+                                }
                                 Spacer(modifier = Modifier.height(10.dp))
                             }
                         }
                     }
                 }
-
-                Text(
-                    "Event Location",
-                    fontWeight = W500,
-                    textAlign = TextAlign.Justify,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.chatMessageUserText
-                )
+                GoogleCalendarItemTitle("Event Location")
                 Text(
                     "${event?.location}",
                     textAlign = TextAlign.Justify,
                     fontSize = 14.sp,
+                    modifier = Modifier.padding(itemLeftMargin.dp, 0.dp, 0.dp, 0.dp),
                     color = MaterialTheme.colorScheme.chatMessageUserText
                 )
                 Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    "Event Description",
-                    fontWeight = W500,
-                    textAlign = TextAlign.Justify,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.chatMessageUserText
-                )
+                GoogleCalendarItemTitle("Event Description")
                 Text(
                     "${event?.description}",
                     textAlign = TextAlign.Justify,
+                    modifier = Modifier.padding(itemLeftMargin.dp, 0.dp, 0.dp, 0.dp),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.chatMessageUserText
                 )

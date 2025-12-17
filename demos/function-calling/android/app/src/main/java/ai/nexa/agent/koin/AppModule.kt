@@ -1,4 +1,4 @@
-package com.nexa.studio.koin
+package ai.nexa.agent.koin
 
 import ai.nexa.agent.model.ChatViewModel
 import ai.nexa.agent.model.CommonSettingViewModel

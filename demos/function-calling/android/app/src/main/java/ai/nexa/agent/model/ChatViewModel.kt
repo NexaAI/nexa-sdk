@@ -5,8 +5,10 @@ import ai.nexa.agent.bean.ChatMessageType
 import ai.nexa.agent.bean.ChatRole
 import ai.nexa.agent.bean.ChatUiMessage
 import ai.nexa.agent.bean.GoogleCalendarEvent
-import ai.nexa.agent.bean.ResponseBean
+import ai.nexa.agent.bean.GoogleRequestData
+import ai.nexa.agent.bean.GoogleResponseBean
 import ai.nexa.agent.constant.SharePreferenceKeys
+import ai.nexa.agent.retrofit.RetrofitClient
 import ai.nexa.agent.state.ChatIntent
 import ai.nexa.agent.state.ChatSingleEvent
 import ai.nexa.agent.state.ChatUiState
@@ -104,6 +106,8 @@ class ChatViewModel(
                 }, selectedImageFiles = emptyList())
             }
             delay(3000)
+            RetrofitClient.switchApiServer(state.value.serverIpAddress)
+//            val responseBean = RetrofitClient.instance.getGoogleCalendarResult(GoogleRequestData(image = imageBase64))
             val testStr = "{" +
                     "  \"meta\": null," +
                     "  \"content\": [" +
@@ -119,7 +123,7 @@ class ChatViewModel(
                     "}"
             val responseBean = Json {
                 ignoreUnknownKeys = true
-            }.decodeFromString<ResponseBean>(testStr.trim())
+            }.decodeFromString<GoogleResponseBean>(testStr.trim())
             val temp = Json {
                 ignoreUnknownKeys = true
             }.decodeFromString<GoogleCalendarEvent>(responseBean.content!![0].text!!)

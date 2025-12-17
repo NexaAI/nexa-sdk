@@ -3,7 +3,7 @@ package ai.nexa.agent.bean
 import kotlinx.serialization.Serializable
 
 @Serializable
-class ResponseBean {
+class GoogleResponseBean {
     var meta: String? = null
     var content: MutableList<Content>? = null
     var structuredContent: String? = null
