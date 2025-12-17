@@ -10,7 +10,7 @@ import os
 import re
 import tempfile
 from dataclasses import asdict, dataclass
-from typing import Any, Optional, dict, list
+from typing import Any, Optional
 from urllib.parse import unquote
 
 from flask import Flask, jsonify, request

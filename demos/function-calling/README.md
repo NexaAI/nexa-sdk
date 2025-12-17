@@ -26,6 +26,23 @@ Demonstrates function calling capabilities of NexaAI/OmniNeural-4B model, integr
 pip install -r requirements.txt
 ```
 
+## Building Executable (Windows Only)
+
+Build a standalone executable using PyInstaller:
+
+```powershell
+make build
+```
+
+This will create `dist\function-calling-demo.exe`.
+
+The executable can be run directly:
+```powershell
+dist\function-calling-demo.exe --text "what is the time now?"
+```
+
+**Note**: The executable still requires Node.js and npm to be installed for MCP server functionality.
+
 ## Google Calendar Setup
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com)

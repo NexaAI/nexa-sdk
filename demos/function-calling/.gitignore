@@ -1,3 +1,5 @@
 __pycache__/
-*.json
+build/
+dist/
 app/uploads/
+*.json
