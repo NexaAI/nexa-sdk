@@ -9,6 +9,15 @@ android {
     namespace = "ai.nexa.agent"
     compileSdk = 35
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("test")
+            storePassword = "123456"
+            keyAlias = "test"
+            keyPassword = "123456"
+        }
+    }
+
     defaultConfig {
         applicationId = "ai.nexa.agent"
         minSdk = 24
@@ -26,6 +35,16 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release")
+        }
+
+        debug {
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
