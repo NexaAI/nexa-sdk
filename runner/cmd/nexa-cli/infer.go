@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -1171,7 +1172,7 @@ func inferCV(manifest *types.ModelManifest, quant string) error {
 				return data, nexa_sdk.ProfileData{}, nil
 			}
 
-			if len(result.Results) == 1 && len(result.Results[0].Mask) > 0 {
+			if len(result.Results) == 1 && reflect.ValueOf(result.Results[0].BBox).IsZero() {
 				// rmbg
 				onToken(render.GetTheme().Info.Sprintf("Mask output detected\n"))
 

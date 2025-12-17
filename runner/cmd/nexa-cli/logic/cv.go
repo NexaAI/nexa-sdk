@@ -10,7 +10,10 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"reflect"
+	"runtime"
 	"strings"
+	"sync"
 
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/basicfont"
@@ -20,6 +23,8 @@ import (
 )
 
 func drawBBoxes(img *image.RGBA, results []nexa_sdk.CVResult) {
+	slog.Debug("Drawing bounding boxes on image", "num_results", len(results))
+
 	bounds := img.Bounds()
 	const bboxLineWidth = 2
 
@@ -108,6 +113,8 @@ func drawBBoxes(img *image.RGBA, results []nexa_sdk.CVResult) {
 }
 
 func drawMask(img *image.RGBA, mask []float32, maskColor *color.RGBA) {
+	slog.Debug("Drawing mask on image", "mask_size", len(mask))
+
 	bounds := img.Bounds()
 
 	if len(mask) != bounds.Dx()*bounds.Dy() {
@@ -115,25 +122,32 @@ func drawMask(img *image.RGBA, mask []float32, maskColor *color.RGBA) {
 		return
 	}
 
+	var wg sync.WaitGroup
+	workerSem := make(chan struct{}, runtime.NumCPU())
 	for y := 0; y < bounds.Dy(); y++ {
-		for x := 0; x < bounds.Dx(); x++ {
-			idx := y*bounds.Dx() + x
-			color := color.RGBAModel.Convert(img.At(x, y)).(color.RGBA)
-			if maskColor != nil {
-				// Blend with provided mask color
-				alpha := mask[idx] * (float32(maskColor.A) / 255.0)
-				invAlpha := 1.0 - alpha
-				color.R = uint8(float32(maskColor.R)*alpha + float32(color.R)*invAlpha)
-				color.G = uint8(float32(maskColor.G)*alpha + float32(color.G)*invAlpha)
-				color.B = uint8(float32(maskColor.B)*alpha + float32(color.B)*invAlpha)
-				color.A = 255
-			} else {
-				// Blend with alpha only
-				color.A = uint8(mask[idx] * 255)
+		wg.Add(1)
+		workerSem <- struct{}{}
+		go func(y int) {
+			defer wg.Done()
+			defer func() { <-workerSem }()
+			for x := 0; x < bounds.Dx(); x++ {
+				idx := y*bounds.Dx() + x
+				pixel := color.RGBAModel.Convert(img.At(x, y)).(color.RGBA)
+				if maskColor != nil {
+					alpha := mask[idx] * (float32(maskColor.A) / 255.0)
+					invAlpha := 1.0 - alpha
+					pixel.R = uint8(float32(maskColor.R)*alpha + float32(pixel.R)*invAlpha)
+					pixel.G = uint8(float32(maskColor.G)*alpha + float32(pixel.G)*invAlpha)
+					pixel.B = uint8(float32(maskColor.B)*alpha + float32(pixel.B)*invAlpha)
+					pixel.A = 255
+				} else {
+					pixel.A = uint8(mask[idx] * 255)
+				}
+				img.Set(x, y, pixel)
 			}
-			img.Set(x, y, color)
-		}
+		}(y)
 	}
+	wg.Wait()
 }
 
 func CVPostProcess(input string, results []nexa_sdk.CVResult) (string, error) {
@@ -154,9 +168,7 @@ func CVPostProcess(input string, results []nexa_sdk.CVResult) (string, error) {
 	rgba := image.NewRGBA(bounds)
 	draw.Draw(rgba, bounds, img, bounds.Min, draw.Src)
 
-	if len(results) == 1 && len(results[0].Mask) > 0 &&
-		results[0].BBox.X == 0 && results[0].BBox.Y == 0 &&
-		results[0].BBox.Width == 0 && results[0].BBox.Height == 0 {
+	if len(results) == 1 && reflect.ValueOf(results[0].BBox).IsZero() {
 		drawMask(rgba, results[0].Mask, nil)
 	} else {
 		drawBBoxes(rgba, results)
