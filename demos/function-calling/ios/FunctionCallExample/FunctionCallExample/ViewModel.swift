@@ -134,6 +134,7 @@ class ViewModel {
             eventModel.id = event.id
             eventModel.eventName = event.summary ?? ""
             eventModel.description = event.description ?? ""
+            eventModel.location = event.location ?? ""
 
             let dateFormatter = DateFormatter()
             dateFormatter.locale = Locale(identifier: "en_US")
