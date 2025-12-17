@@ -20,7 +20,7 @@ Demonstrates function calling capabilities of NexaAI/OmniNeural-4B model, integr
   ```
   Restart terminal/IDE after installation.
 
-## Installation
+## Quick start
 
 ```bash
 pip install -r requirements.txt
@@ -42,6 +42,34 @@ dist\function-calling-demo.exe --text "what is the time now?"
 ```
 
 **Note**: The executable still requires Node.js and npm to be installed for MCP server functionality.
+
+## Packaging Installer (Windows ARM64 Only)
+
+Create a Windows ARM64 installer using InnoSetup:
+
+1. Install InnoSetup
+```
+winget install --id JRSoftware.InnoSetup -e -s winget
+```
+
+2. Package:
+```powershell
+make package
+```
+
+This will:
+- Build the executable (if not already built)
+- Create an installer at `build\installer\function-calling-demo-setup-arm64.exe`
+
+The installer will:
+- Install the application to `%LOCALAPPDATA%\Programs\NexaAI\FunctionCallingDemo`
+- Create Start Menu shortcuts
+- Optionally create a desktop shortcut
+- Launch the application with `--serve` parameter after installation
+
+**Note**: 
+- This installer is for Windows ARM64 platform only
+- The installed application still requires Node.js and npm to be installed for MCP server functionality
 
 ## Google Calendar Setup
 

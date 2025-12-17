@@ -3,3 +3,4 @@ build/
 dist/
 app/uploads/
 *.json
+*.spec
