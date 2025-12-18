@@ -61,7 +61,7 @@ object RetrofitClient {
         currentBaseUrl = if (newBaseUrl.startsWith("http")) {
             newBaseUrl
         } else {
-            "https://$newBaseUrl"
+            "http://$newBaseUrl"
         }
     }
 }

@@ -69,6 +69,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -388,8 +389,13 @@ fun ServerIpAddressDialog(
 //                    .padding(vertical = 4.dp, horizontal = 8.dp),
                 singleLine = true,
                 maxLines = 1,
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White
+                ),
                 textStyle = TextStyle(
                     fontSize = 14.sp,
+                    lineHeight = 15.sp,
                     color = MaterialTheme.colorScheme.textPrimary
                 ),
 //                cursorBrush = SolidColor(MaterialTheme.colorScheme.handleColor),

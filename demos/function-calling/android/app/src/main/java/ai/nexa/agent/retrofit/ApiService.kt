@@ -8,6 +8,6 @@ import retrofit2.http.POST
 
 interface ApiService {
 
-    @POST("posts")
+    @POST("api/function-call")
     suspend fun getGoogleCalendarResult(@Body googleRequestData: GoogleRequestData): GoogleResponseBean
 }
