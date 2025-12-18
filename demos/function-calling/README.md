@@ -71,6 +71,24 @@ The installer will:
 - This installer is for Windows ARM64 platform only
 - The installed application still requires Node.js and npm to be installed for MCP server functionality
 
+### Before running the installer
+1. Set the `NEXA_TOKEN` environment variable to your User environment variable
+```powershell
+[System.Environment]::SetEnvironmentVariable(
+    "NEXA_TOKEN",
+    "YOUR_NEXA_TOKEN_HERE",
+    "User"
+)
+```
+### After installed the application
+1. Put the `gcp-oauth.keys.json` file in the same directory as your application. See [Google Calendar Setup](#google-calendar-setup) for more details.
+
+
+Now, you can try to use the application with curl request:
+```bash
+curl -X POST http://192.168.0.102:8080/api/function-call -H "Content-Type: application/json" -d '{"text": "what is the time now?"}'
+```
+
 ## Google Calendar Setup
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com)
@@ -116,10 +134,10 @@ python .\web\flask_ui.py
 
 ### Http server
 ```powershell
-python main.py --serve --port 8088
+python main.py --serve --port 8080
 ```
 
 Example curl request:
 ```bash
-curl -X POST http://192.168.0.102:8088/api/function-call -H "Content-Type: application/json" -d '{"text": "what is the time now?"}'
+curl -X POST http://192.168.0.102:8080/api/function-call -H "Content-Type: application/json" -d '{"text": "what is the time now?"}'
 ```
