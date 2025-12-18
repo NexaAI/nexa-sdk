@@ -7,14 +7,17 @@ import (
 )
 
 type Config struct {
+	// Global settings
+	DataDir string
+
 	// Server settings
 	Host      string // Server host and port (default: "127.0.0.1:18181")
 	Origins   string // Allowed CORS origins (default: "*")
 	KeepAlive int64  // Connection keep-alive timeout in seconds (default: 300)
 	// HTTPS / TLS settings
-	EnableHTTPS bool   // Whether to serve over HTTPS (default: false)
-	CertFile    string // TLS certificate file path
-	KeyFile     string // TLS private key file path
+	HTTPS    bool   // Whether to serve over HTTPS (default: false)
+	CertFile string // TLS certificate file path
+	KeyFile  string // TLS private key file path
 
 	// Env only params
 	HFToken string
