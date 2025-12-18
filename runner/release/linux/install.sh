@@ -211,7 +211,7 @@ main() {
     fi
 
     # warning for missing libgomp1
-    warning "libgomp1 is required for Nexa SDK to function properly. make sure it is installed on your system."
+    warning "libgomp1 is required for Nexa SDK to function properly. Make sure it is installed on your system."
     warning "You can install it using your package manager, e.g., 'sudo apt-get install libgomp1' on Debian-based systems."
 }
 
