@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<animation-list xmlns:android="http://schemas.android.com/apk/res/android"
+    android:oneshot="false">
+
+    <item
+        android:drawable="@drawable/icon_record_01"
+        android:duration="80" />
+    <item
+        android:drawable="@drawable/icon_record_02"
+        android:duration="80" />
+    <item
+        android:drawable="@drawable/icon_record_03"
+        android:duration="80" />
+    <item
+        android:drawable="@drawable/icon_record_04"
+        android:duration="80" />
+
+</animation-list>
