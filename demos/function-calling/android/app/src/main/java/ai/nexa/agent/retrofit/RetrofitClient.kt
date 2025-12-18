@@ -1,5 +1,6 @@
 package ai.nexa.agent.retrofit
 
+import ai.nexa.agent.constant.Configs
 import ai.nexa.agent.koin.getUnsafeOkHttpClient
 import okhttp3.Interceptor
 import okhttp3.Response
@@ -8,7 +9,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitClient {
 
-    private const val BASE_URL = "https://192.168.1.107/"
+    private const val BASE_URL = "http://${Configs.DEFAULT_SERVER_IP}/"
 
     val instance: ApiService by lazy {
         Retrofit.Builder()
@@ -19,7 +20,8 @@ object RetrofitClient {
             .create(ApiService::class.java)
     }
 
-    class GlobalBaseUrlInterceptor(private val baseUrlProvider: () -> String) : Interceptor {
+    private class GlobalBaseUrlInterceptor(private val baseUrlProvider: () -> String) :
+        Interceptor {
         override fun intercept(chain: Interceptor.Chain): Response {
             var request = chain.request()
             val baseUrl = baseUrlProvider()
@@ -27,6 +29,7 @@ object RetrofitClient {
             if (baseUrl.isNotEmpty()) {
                 val newUrl = request.url.newBuilder()
                     .scheme(getScheme(baseUrl))
+                    .port(getPort(baseUrl))
                     .host(getHost(baseUrl))
                     .build()
 
@@ -45,18 +48,29 @@ object RetrofitClient {
         private fun getHost(url: String): String {
             return url.removePrefix("http://")
                 .removePrefix("https://")
-                .split("/").first()
+                .split("/").first().split(":").first()
+        }
+
+        private fun getPort(url: String): Int {
+            var port = 443
+            url.split(":").let {
+                if (it.first() == "http") {
+                    port = 80
+                }
+                if (it.size == 3) {
+                    port = it[2].replace("/", "").toInt()
+                }
+            }
+            return port
         }
     }
 
-    // 使用
-    var currentBaseUrl = "https://default-api.com"
+    var currentBaseUrl = BASE_URL
 
     val okHttpClient = getUnsafeOkHttpClient()
         .addInterceptor(GlobalBaseUrlInterceptor { currentBaseUrl })
         .build()
 
-    // 动态修改 baseUrl
     fun switchApiServer(newBaseUrl: String) {
         currentBaseUrl = if (newBaseUrl.startsWith("http")) {
             newBaseUrl

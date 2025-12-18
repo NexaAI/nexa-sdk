@@ -6,6 +6,7 @@ import ai.nexa.agent.model.ChatViewModel
 import ai.nexa.agent.navigation.RoutePaths
 import ai.nexa.agent.state.ChatIntent
 import ai.nexa.agent.state.LocalBannerState
+import ai.nexa.agent.ui.theme.Primary
 import ai.nexa.agent.ui.theme.chatBg
 import ai.nexa.agent.ui.theme.chatBtnBorder
 import ai.nexa.agent.ui.theme.chatBtnText
@@ -58,6 +59,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -86,6 +88,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -372,33 +375,27 @@ fun ServerIpAddressDialog(
                 )
             )
             Spacer(modifier = Modifier.height(20.dp))
-            TextField(
+            BasicTextField(
                 value = ipAddress,
-                onValueChange = { newText ->
-                    ipAddress = newText
+                onValueChange = {
+                    ipAddress = it
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-//                    .heightIn(min = 30.dp, max = 30.dp)
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(10.dp))
                     .border(
                         width = 1.dp,
                         color = MaterialTheme.colorScheme.chatMessageInfoCardBorder,
-                        shape = RoundedCornerShape(20.dp)
-                    ),
-//                    .padding(vertical = 4.dp, horizontal = 8.dp),
+                        shape = RoundedCornerShape(10.dp)
+                    )
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
                 singleLine = true,
-                maxLines = 1,
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White
-                ),
                 textStyle = TextStyle(
                     fontSize = 14.sp,
                     lineHeight = 15.sp,
                     color = MaterialTheme.colorScheme.textPrimary
                 ),
-//                cursorBrush = SolidColor(MaterialTheme.colorScheme.handleColor),
+                cursorBrush = SolidColor(Primary)
             )
             Spacer(modifier = Modifier.height(20.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {

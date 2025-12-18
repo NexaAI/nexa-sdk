@@ -18,7 +18,7 @@ import ai.nexa.agent.util.L
 import android.content.Context
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
@@ -30,12 +30,18 @@ class ChatViewModel(
         Context.MODE_PRIVATE
     )
     private val ioScope = CoroutineScope(Dispatchers.IO)
+    private val netScope = CoroutineScope(Dispatchers.IO)
+    private val netJobs = mutableListOf<Job>()
 
     override fun onIntent(intent: ChatIntent) {
         when (intent) {
             is ChatIntent.InputChanged -> handleInputChanged(intent)
             is ChatIntent.SendMessage -> handleSendStreamMessage(intent)
             is ChatIntent.StopWaitingResponse -> {
+                netJobs.forEach {
+                    it.cancel()
+                }
+                netJobs.clear()
                 updateState { copy(input = "", operationState = OperationState.DEFAULT) }
             }
 
@@ -59,6 +65,7 @@ class ChatViewModel(
             }
 
             is ChatIntent.ChangeServerIPAddress -> {
+                RetrofitClient.switchApiServer(intent.ipAddress)
                 updateState { copy(serverIpAddress = intent.ipAddress) }
             }
 
@@ -105,43 +112,56 @@ class ChatViewModel(
                     )
                 }, selectedImageFiles = emptyList())
             }
-            delay(3000)
-            RetrofitClient.switchApiServer(state.value.serverIpAddress)
-//            val responseBean = RetrofitClient.instance.getGoogleCalendarResult(GoogleRequestData(image = imageBase64))
-            val testStr = "{" +
-                    "  \"meta\": null," +
-                    "  \"content\": [" +
-                    "    {" +
-                    "      \"type\": \"text\"," +
-                    "      \"text\": \"{\\\"event\\\":{\\\"id\\\":\\\"a06q5sjcq1cp7ta5u765nt4krs\\\",\\\"summary\\\":\\\"The Voice of AGI\\\",\\\"description\\\":\\\"The voice interface from sci-fi's of old like the Hitchikeer's Guide to the Galaxy to Ironman, the Voice Interface lays out a futurre form of connection, command and interaction.\\\",\\\"location\\\":\\\"AGI House SF: 170 St. Germain Ave, San Francsoco CA 94114\\\",\\\"start\\\":{\\\"dateTime\\\":\\\"2025-12-20T09:00:00-11:00\\\",\\\"timeZone\\\":\\\"Pacific/Pago_Pago\\\"},\\\"end\\\":{\\\"dateTime\\\":\\\"2025-12-20T22:00:00-11:00\\\",\\\"timeZone\\\":\\\"Pacific/Pago_Pago\\\"},\\\"status\\\":\\\"confirmed\\\",\\\"htmlLink\\\":\\\"https://www.google.com/calendar/event?eid=YTA2cTVzamNxMWNwN3RhNXU3NjVudDRrcnMgeWFuZ3hpYW5kYTAwN0AxNjMuY29t\\\",\\\"created\\\":\\\"2025-12-16T13:50:01.000Z\\\",\\\"updated\\\":\\\"2025-12-16T13:50:01.724Z\\\",\\\"creator\\\":{\\\"email\\\":\\\"yangxianda007@163.com\\\",\\\"self\\\":true},\\\"organizer\\\":{\\\"email\\\":\\\"yangxianda007@163.com\\\",\\\"self\\\":true},\\\"iCalUID\\\":\\\"a06q5sjcq1cp7ta5u765nt4krs@google.com\\\",\\\"sequence\\\":0,\\\"reminders\\\":{\\\"useDefault\\\":true},\\\"eventType\\\":\\\"default\\\",\\\"calendarId\\\":\\\"primary\\\",\\\"accountId\\\":\\\"normal\\\"}}\",       " +
-                    "      \"annotations\": null," +
-                    "      \"meta\": null" +
-                    "    }" +
-                    "  ]," +
-                    "  \"structuredContent\": null," +
-                    "  \"isError\": false" +
-                    "}"
-            val responseBean = Json {
-                ignoreUnknownKeys = true
-            }.decodeFromString<GoogleResponseBean>(testStr.trim())
-            val temp = Json {
-                ignoreUnknownKeys = true
-            }.decodeFromString<GoogleCalendarEvent>(responseBean.content!![0].text!!)
-            L.d("nfl", "GoogleCalendarEvent bean:${temp.event?.start?.dateTime}")
-            updateState {
-                copy(
-                    operationState = OperationState.DEFAULT,
-                    chatMsgList = state.value.chatMsgList.apply {
-                        this.add(
-                            ChatUiMessage(
-                                role = ChatRole.ASSISTANT.role,
-                                content = "intent.text",
-                                extMsg = temp
-                            )
+            netScope.launch {
+                var responseBean = runCatching {
+                    RetrofitClient.instance.getGoogleCalendarResult(
+                        GoogleRequestData(
+                            text = intent.text,
+                            image = imageBase64
                         )
-                    },
-                    selectedImageFiles = emptyList()
-                )
+                    )
+                }.getOrElse { e ->
+                    L.d(TAG, "getGoogleCalendarResult failed:$e")
+                    null
+                }
+                val json = Json { ignoreUnknownKeys = true }
+                if (responseBean == null) {
+                    val testStr = "{" +
+                            "  \"meta\": null," +
+                            "  \"content\": [" +
+                            "    {" +
+                            "      \"type\": \"text\"," +
+                            "      \"text\": \"{\\\"event\\\":{\\\"id\\\":\\\"a06q5sjcq1cp7ta5u765nt4krs\\\",\\\"summary\\\":\\\"The Voice of AGI\\\",\\\"description\\\":\\\"The voice interface from sci-fi's of old like the Hitchikeer's Guide to the Galaxy to Ironman, the Voice Interface lays out a futurre form of connection, command and interaction.\\\",\\\"location\\\":\\\"AGI House SF: 170 St. Germain Ave, San Francsoco CA 94114\\\",\\\"start\\\":{\\\"dateTime\\\":\\\"2025-12-20T09:00:00-11:00\\\",\\\"timeZone\\\":\\\"Pacific/Pago_Pago\\\"},\\\"end\\\":{\\\"dateTime\\\":\\\"2025-12-20T22:00:00-11:00\\\",\\\"timeZone\\\":\\\"Pacific/Pago_Pago\\\"},\\\"status\\\":\\\"confirmed\\\",\\\"htmlLink\\\":\\\"https://www.google.com/calendar/event?eid=YTA2cTVzamNxMWNwN3RhNXU3NjVudDRrcnMgeWFuZ3hpYW5kYTAwN0AxNjMuY29t\\\",\\\"created\\\":\\\"2025-12-16T13:50:01.000Z\\\",\\\"updated\\\":\\\"2025-12-16T13:50:01.724Z\\\",\\\"creator\\\":{\\\"email\\\":\\\"yangxianda007@163.com\\\",\\\"self\\\":true},\\\"organizer\\\":{\\\"email\\\":\\\"yangxianda007@163.com\\\",\\\"self\\\":true},\\\"iCalUID\\\":\\\"a06q5sjcq1cp7ta5u765nt4krs@google.com\\\",\\\"sequence\\\":0,\\\"reminders\\\":{\\\"useDefault\\\":true},\\\"eventType\\\":\\\"default\\\",\\\"calendarId\\\":\\\"primary\\\",\\\"accountId\\\":\\\"normal\\\"}}\",       " +
+                            "      \"annotations\": null," +
+                            "      \"meta\": null" +
+                            "    }" +
+                            "  ]," +
+                            "  \"structuredContent\": null," +
+                            "  \"isError\": false" +
+                            "}"
+                    responseBean = json.decodeFromString<GoogleResponseBean>(testStr.trim())
+                }
+                if (state.value.operationState == OperationState.WAITING_SEND_RESPONSE) {
+                    updateState {
+                        copy(
+                            operationState = OperationState.DEFAULT,
+                            chatMsgList = state.value.chatMsgList.apply {
+                                this.add(
+                                    ChatUiMessage(
+                                        role = ChatRole.ASSISTANT.role,
+                                        content = intent.text,
+                                        extMsg = responseBean.content?.first()?.text?.let {
+                                            json.decodeFromString<GoogleCalendarEvent>(it)
+                                        }
+                                    )
+                                )
+                            },
+                            selectedImageFiles = emptyList()
+                        )
+                    }
+                }
+            }.let {
+                netJobs.add(it)
             }
         }
     }

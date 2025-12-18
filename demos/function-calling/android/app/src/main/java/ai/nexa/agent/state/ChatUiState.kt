@@ -1,6 +1,7 @@
 package ai.nexa.agent.state
 
 import ai.nexa.agent.bean.ChatUiMessage
+import ai.nexa.agent.constant.Configs
 import android.se.omapi.Session
 import java.io.File
 
@@ -12,7 +13,7 @@ data class ChatUiState(
     val selectedImageFiles: List<File> = emptyList(),
     val selectedAudioFiles: List<File> = emptyList(),
     val resetSession: Boolean = false,
-    val serverIpAddress: String = "192.168.1.107:8088"
+    val serverIpAddress: String = Configs.DEFAULT_SERVER_IP
 )
 
 enum class OperationState {
