@@ -20,10 +20,73 @@ Demonstrates function calling capabilities of NexaAI/OmniNeural-4B model, integr
   ```
   Restart terminal/IDE after installation.
 
-## Installation
+## Quick start
 
 ```bash
 pip install -r requirements.txt
+```
+
+## Building Executable (Windows Only)
+
+Build a standalone executable using PyInstaller:
+
+```powershell
+make build
+```
+
+This will create `dist\function-calling-demo.exe`.
+
+The executable can be run directly:
+```powershell
+dist\function-calling-demo.exe --text "what is the time now?"
+```
+
+**Note**: The executable still requires Node.js and npm to be installed for MCP server functionality.
+
+## Packaging Installer (Windows ARM64 Only)
+
+Create a Windows ARM64 installer using InnoSetup:
+
+1. Install InnoSetup
+```
+winget install --id JRSoftware.InnoSetup -e -s winget
+```
+
+2. Package:
+```powershell
+make package
+```
+
+This will:
+- Build the executable (if not already built)
+- Create an installer at `build\installer\function-calling-demo-setup-arm64.exe`
+
+The installer will:
+- Install the application to `%LOCALAPPDATA%\Programs\NexaAI\FunctionCallingDemo`
+- Create Start Menu shortcuts
+- Optionally create a desktop shortcut
+- Launch the application with `--serve` parameter after installation
+
+**Note**: 
+- This installer is for Windows ARM64 platform only
+- The installed application still requires Node.js and npm to be installed for MCP server functionality
+
+### Before running the installer
+1. Set the `NEXA_TOKEN` environment variable to your User environment variable
+```powershell
+[System.Environment]::SetEnvironmentVariable(
+    "NEXA_TOKEN",
+    "YOUR_NEXA_TOKEN_HERE",
+    "User"
+)
+```
+### After installed the application
+1. Put the `gcp-oauth.keys.json` file in the same directory as your application. See [Google Calendar Setup](#google-calendar-setup) for more details.
+
+
+Now, you can try to use the application with curl request:
+```bash
+curl -X POST http://192.168.0.102:8080/api/function-call -H "Content-Type: application/json" -d '{"text": "what is the time now?"}'
 ```
 
 ## Google Calendar Setup
@@ -71,10 +134,10 @@ python .\web\flask_ui.py
 
 ### Http server
 ```powershell
-python main.py --serve --port 8088
+python main.py --serve --port 8080
 ```
 
 Example curl request:
 ```bash
-curl -X POST http://192.168.0.102:8088/api/function-call -H "Content-Type: application/json" -d '{"text": "what is the time now?"}'
+curl -X POST http://192.168.0.102:8080/api/function-call -H "Content-Type: application/json" -d '{"text": "what is the time now?"}'
 ```
