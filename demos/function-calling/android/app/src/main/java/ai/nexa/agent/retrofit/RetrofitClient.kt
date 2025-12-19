@@ -6,6 +6,7 @@ import okhttp3.Interceptor
 import okhttp3.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
 
@@ -68,6 +69,9 @@ object RetrofitClient {
     var currentBaseUrl = BASE_URL
 
     val okHttpClient = getUnsafeOkHttpClient()
+        .connectTimeout(2, TimeUnit.MINUTES)
+        .readTimeout(2, TimeUnit.MINUTES)
+        .writeTimeout(2, TimeUnit.MINUTES)
         .addInterceptor(GlobalBaseUrlInterceptor { currentBaseUrl })
         .build()
 
