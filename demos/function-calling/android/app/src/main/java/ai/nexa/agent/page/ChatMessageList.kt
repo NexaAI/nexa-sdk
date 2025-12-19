@@ -4,6 +4,7 @@ import ai.nexa.agent.R
 import ai.nexa.agent.bean.ChatMessageType
 import ai.nexa.agent.bean.ChatUiMessage
 import ai.nexa.agent.bean.GoogleCalendarEvent
+import ai.nexa.agent.bean.GoogleResponseBean2
 import ai.nexa.agent.constant.Configs
 import ai.nexa.agent.model.ChatViewModel
 import ai.nexa.agent.state.LocalBannerState
@@ -739,8 +740,8 @@ fun AssistantMessageRichContent(
     showRegenerateIcon: Boolean,
     useTextView: Boolean = true
 ) {
-    if (message.extMsg is GoogleCalendarEvent) {
-        val event = message.extMsg.event
+    if (message.extMsg is GoogleResponseBean2) {
+        val event = message.extMsg.data
         Column(
             modifier = modifier
                 .fillMaxWidth()
@@ -786,43 +787,31 @@ fun AssistantMessageRichContent(
                 )
                 Spacer(modifier = Modifier.height(10.dp))
 //                val startDateStr = "2025-12-20T09:00:00-11:00"
-                var date: String = ""
-                var startTime: String = ""
-                var endTime: String = ""
-                event?.start?.dateTime?.split("T")?.let {
-                    if (it.size == 2) {
-                        date = it[0]
-
-                        it[1].split("-").let { times ->
-                            if (times.size == 2) {
-                                startTime = times[0]
-                                endTime = times[1]
-                                GoogleCalendarItemTitle("Event time")
-                                GoogleCalendarItemContentTag(
-                                    itemLeftMargin, "Date:", " ${
-                                        SimpleDateFormat("yyyy-MM-dd").parse(date).toString()
-                                            .split("00:00:00").let { dates ->
-                                                dates[0]
-                                            }
-                                    }")
-                                Spacer(modifier = Modifier.height(5.dp))
-                                Row() {
-                                    GoogleCalendarItemContentTag(
-                                        itemLeftMargin, "Start:", startTime.take(5)
-                                    )
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    GoogleCalendarItemContentTag(
-                                        itemLeftMargin, "End:", endTime
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(10.dp))
+                var date: String = event?.start?.split("T")?.first() ?:""
+                var startTime: String = event?.start?.split("T")?.last() ?:""
+                var endTime: String = event?.end?.split("T")?.last() ?:""
+                GoogleCalendarItemTitle("Event time")
+                GoogleCalendarItemContentTag(
+                    itemLeftMargin, "Date:", " ${
+                        SimpleDateFormat("yyyy-MM-dd").parse(date).toString()
+                            .split("00:00:00").let { dates ->
+                                dates[0]
                             }
-                        }
-                    }
+                    }")
+                Spacer(modifier = Modifier.height(5.dp))
+                Row() {
+                    GoogleCalendarItemContentTag(
+                        itemLeftMargin, "Start:", startTime
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    GoogleCalendarItemContentTag(
+                        itemLeftMargin, "End:", endTime
+                    )
                 }
+                Spacer(modifier = Modifier.height(10.dp))
                 GoogleCalendarItemTitle("Event Location")
                 Text(
-                    "${event?.location}",
+                    "${event?.timeZone}",
                     textAlign = TextAlign.Justify,
                     fontSize = 14.sp,
                     modifier = Modifier.padding(itemLeftMargin.dp, 0.dp, 0.dp, 0.dp),
@@ -831,7 +820,7 @@ fun AssistantMessageRichContent(
                 Spacer(modifier = Modifier.height(10.dp))
                 GoogleCalendarItemTitle("Event Description")
                 Text(
-                    "${event?.description}",
+                    "${event?.summary}",
                     textAlign = TextAlign.Justify,
                     modifier = Modifier.padding(itemLeftMargin.dp, 0.dp, 0.dp, 0.dp),
                     fontSize = 14.sp,

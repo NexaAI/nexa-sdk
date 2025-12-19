@@ -12,6 +12,6 @@ class Configs {
         val userChatMsgBoxHeight = 50
 
         const val gptOssFinalTag = "final<|message|>"
-        const val DEFAULT_SERVER_IP = "192.168.0.107:8088"
+        const val DEFAULT_SERVER_IP = "8.137.53.212:10052"
     }
 }

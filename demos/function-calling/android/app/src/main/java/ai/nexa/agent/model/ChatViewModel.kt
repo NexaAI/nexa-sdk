@@ -6,7 +6,9 @@ import ai.nexa.agent.bean.ChatRole
 import ai.nexa.agent.bean.ChatUiMessage
 import ai.nexa.agent.bean.GoogleCalendarEvent
 import ai.nexa.agent.bean.GoogleRequestData
+import ai.nexa.agent.bean.GoogleRequestData2
 import ai.nexa.agent.bean.GoogleResponseBean
+import ai.nexa.agent.bean.GoogleResponseBean2
 import ai.nexa.agent.constant.SharePreferenceKeys
 import ai.nexa.agent.retrofit.RetrofitClient
 import ai.nexa.agent.state.ChatIntent
@@ -115,9 +117,9 @@ class ChatViewModel(
             netScope.launch {
                 var responseBean = runCatching {
                     RetrofitClient.instance.getGoogleCalendarResult(
-                        GoogleRequestData(
-                            text = intent.text,
-                            image = imageBase64
+                        GoogleRequestData2(
+                            query = intent.text,
+                            base64 = imageBase64
                         )
                     )
                 }.getOrElse { e ->
@@ -126,20 +128,20 @@ class ChatViewModel(
                 }
                 val json = Json { ignoreUnknownKeys = true }
                 if (responseBean == null) {
-                    val testStr = "{" +
-                            "  \"meta\": null," +
-                            "  \"content\": [" +
-                            "    {" +
-                            "      \"type\": \"text\"," +
-                            "      \"text\": \"{\\\"event\\\":{\\\"id\\\":\\\"a06q5sjcq1cp7ta5u765nt4krs\\\",\\\"summary\\\":\\\"The Voice of AGI\\\",\\\"description\\\":\\\"The voice interface from sci-fi's of old like the Hitchikeer's Guide to the Galaxy to Ironman, the Voice Interface lays out a futurre form of connection, command and interaction.\\\",\\\"location\\\":\\\"AGI House SF: 170 St. Germain Ave, San Francsoco CA 94114\\\",\\\"start\\\":{\\\"dateTime\\\":\\\"2025-12-20T09:00:00-11:00\\\",\\\"timeZone\\\":\\\"Pacific/Pago_Pago\\\"},\\\"end\\\":{\\\"dateTime\\\":\\\"2025-12-20T22:00:00-11:00\\\",\\\"timeZone\\\":\\\"Pacific/Pago_Pago\\\"},\\\"status\\\":\\\"confirmed\\\",\\\"htmlLink\\\":\\\"https://www.google.com/calendar/event?eid=YTA2cTVzamNxMWNwN3RhNXU3NjVudDRrcnMgeWFuZ3hpYW5kYTAwN0AxNjMuY29t\\\",\\\"created\\\":\\\"2025-12-16T13:50:01.000Z\\\",\\\"updated\\\":\\\"2025-12-16T13:50:01.724Z\\\",\\\"creator\\\":{\\\"email\\\":\\\"yangxianda007@163.com\\\",\\\"self\\\":true},\\\"organizer\\\":{\\\"email\\\":\\\"yangxianda007@163.com\\\",\\\"self\\\":true},\\\"iCalUID\\\":\\\"a06q5sjcq1cp7ta5u765nt4krs@google.com\\\",\\\"sequence\\\":0,\\\"reminders\\\":{\\\"useDefault\\\":true},\\\"eventType\\\":\\\"default\\\",\\\"calendarId\\\":\\\"primary\\\",\\\"accountId\\\":\\\"normal\\\"}}\",       " +
-                            "      \"annotations\": null," +
-                            "      \"meta\": null" +
-                            "    }" +
-                            "  ]," +
-                            "  \"structuredContent\": null," +
-                            "  \"isError\": false" +
-                            "}"
-                    responseBean = json.decodeFromString<GoogleResponseBean>(testStr.trim())
+//                    val testStr = "{" +
+//                            "  \"meta\": null," +
+//                            "  \"content\": [" +
+//                            "    {" +
+//                            "      \"type\": \"text\"," +
+//                            "      \"text\": \"{\\\"event\\\":{\\\"id\\\":\\\"a06q5sjcq1cp7ta5u765nt4krs\\\",\\\"summary\\\":\\\"The Voice of AGI\\\",\\\"description\\\":\\\"The voice interface from sci-fi's of old like the Hitchikeer's Guide to the Galaxy to Ironman, the Voice Interface lays out a futurre form of connection, command and interaction.\\\",\\\"location\\\":\\\"AGI House SF: 170 St. Germain Ave, San Francsoco CA 94114\\\",\\\"start\\\":{\\\"dateTime\\\":\\\"2025-12-20T09:00:00-11:00\\\",\\\"timeZone\\\":\\\"Pacific/Pago_Pago\\\"},\\\"end\\\":{\\\"dateTime\\\":\\\"2025-12-20T22:00:00-11:00\\\",\\\"timeZone\\\":\\\"Pacific/Pago_Pago\\\"},\\\"status\\\":\\\"confirmed\\\",\\\"htmlLink\\\":\\\"https://www.google.com/calendar/event?eid=YTA2cTVzamNxMWNwN3RhNXU3NjVudDRrcnMgeWFuZ3hpYW5kYTAwN0AxNjMuY29t\\\",\\\"created\\\":\\\"2025-12-16T13:50:01.000Z\\\",\\\"updated\\\":\\\"2025-12-16T13:50:01.724Z\\\",\\\"creator\\\":{\\\"email\\\":\\\"yangxianda007@163.com\\\",\\\"self\\\":true},\\\"organizer\\\":{\\\"email\\\":\\\"yangxianda007@163.com\\\",\\\"self\\\":true},\\\"iCalUID\\\":\\\"a06q5sjcq1cp7ta5u765nt4krs@google.com\\\",\\\"sequence\\\":0,\\\"reminders\\\":{\\\"useDefault\\\":true},\\\"eventType\\\":\\\"default\\\",\\\"calendarId\\\":\\\"primary\\\",\\\"accountId\\\":\\\"normal\\\"}}\",       " +
+//                            "      \"annotations\": null," +
+//                            "      \"meta\": null" +
+//                            "    }" +
+//                            "  ]," +
+//                            "  \"structuredContent\": null," +
+//                            "  \"isError\": false" +
+//                            "}"
+//                    responseBean = json.decodeFromString<GoogleResponseBean2>(testStr.trim())
                 }
                 if (state.value.operationState == OperationState.WAITING_SEND_RESPONSE) {
                     updateState {
@@ -149,10 +151,8 @@ class ChatViewModel(
                                 this.add(
                                     ChatUiMessage(
                                         role = ChatRole.ASSISTANT.role,
-                                        content = intent.text,
-                                        extMsg = responseBean.content?.first()?.text?.let {
-                                            json.decodeFromString<GoogleCalendarEvent>(it)
-                                        }
+                                        content = responseBean?.message ?: "Failed",
+                                        extMsg = responseBean
                                     )
                                 )
                             },
