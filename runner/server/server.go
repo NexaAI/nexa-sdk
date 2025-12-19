@@ -29,7 +29,7 @@ func Serve() {
 	var err error
 
 	// Determine whether to serve over HTTPS
-	if cfg.EnableHTTPS {
+	if cfg.HTTPS {
 		certFile := cfg.CertFile
 		keyFile := cfg.KeyFile
 

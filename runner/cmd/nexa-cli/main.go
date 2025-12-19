@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/NexaAI/nexa-sdk/runner/cmd/nexa-cli/common"
 	"github.com/NexaAI/nexa-sdk/runner/internal/config"
@@ -19,6 +20,7 @@ import (
 )
 
 var (
+	dataDir     string
 	skipUpdate  bool
 	skipMigrate bool
 	testMode    bool
@@ -74,6 +76,8 @@ func RootCmd() *cobra.Command {
 			return nil
 		},
 	}
+	rootCmd.PersistentFlags().StringVarP(&dataDir, "data-dir", "", "", "Custom data directory (env: NEXA_DATADIR)")
+	viper.BindPFlag("datadir", rootCmd.PersistentFlags().Lookup("data-dir"))
 	rootCmd.PersistentFlags().BoolVarP(&skipUpdate, "skip-update", "", false, "Skip checking for updates")
 	rootCmd.PersistentFlags().BoolVarP(&skipMigrate, "skip-migrate", "", false, "Skip checking for model migrations")
 	rootCmd.PersistentFlags().BoolVarP(&testMode, "test-mode", "", false, "Enable test mode")
@@ -104,7 +108,7 @@ func checkDependency() {
 		case "linux":
 			fmt.Println(render.GetTheme().Warning.Sprintf("  sudo apt install sox       # Debian/Ubuntu"))
 			fmt.Println(render.GetTheme().Warning.Sprintf("  sudo yum install sox       # RHEL/CentOS/Fedora"))
-    		fmt.Println(render.GetTheme().Warning.Sprintf("  sudo pacman -S sox         # Arch Linux"))
+			fmt.Println(render.GetTheme().Warning.Sprintf("  sudo pacman -S sox         # Arch Linux"))
 		case "windows":
 			fmt.Println(render.GetTheme().Warning.Sprintf("  winget install --id=ChrisBagwell.SoX -e"))
 			fmt.Println(render.GetTheme().Warning.Sprintf("Then restart your terminal to make sure sox is in PATH"))

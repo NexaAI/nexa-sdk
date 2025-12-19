@@ -25,7 +25,7 @@ func serve() *cobra.Command {
 	serveCmd.Flags().String("origins", "*", "Default CORS origins (env: NEXA_ORIGINS)")
 	serveCmd.Flags().Int("keepalive", 300, "Keepalive seconds (env: NEXA_KEEPALIVE)")
 	// HTTPS / TLS flags
-	serveCmd.Flags().Bool("https", false, "Enable HTTPS/TLS (env: NEXA_ENABLEHTTPS)")
+	serveCmd.Flags().Bool("https", false, "Enable HTTPS/TLS (env: NEXA_HTTPS)")
 	serveCmd.Flags().String("certfile", "cert.pem", "TLS certificate file path (env: NEXA_CERTFILE)")
 	serveCmd.Flags().String("keyfile", "key.pem", "TLS private key file path (env: NEXA_KEYFILE)")
 
