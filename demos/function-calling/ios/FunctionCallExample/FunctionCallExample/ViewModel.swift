@@ -8,9 +8,9 @@ import UniformTypeIdentifiers
 class ViewModel {
 
     var query: String = ""
-    var ipAddress: String = "https://falciform-seminormally-dorine.ngrok-free.dev"
-    let modelName: String = "OmniNeural"
-    
+    var ipAddress: String = "http://8.137.53.212:10052"
+    let modelName: String = "Function Call Demo"
+
     private(set) var messages: [ChatItem] = .init()
     private(set) var currentGenerateItem: ChatItem?
 
@@ -46,12 +46,12 @@ class ViewModel {
 
             currentGenerateItem = .waiting(.init(content: "Analyzing..."))
 
-            Task {
-                try? await Task.sleep(for: .seconds(3.5))
-                currentGenerateItem = .waiting(.init(content: "Interacting with MCP..."))
-            }
+//            Task {
+//                try? await Task.sleep(for: .seconds(3.5))
+//                currentGenerateItem = .waiting(.init(content: "Interacting with MCP..."))
+//            }
 
-            let (eventModel, responseText) = try await sendFunctionCallRequest(text: prompt, imageUrl: imageUrl)
+            let (eventModel, responseText) = try await sendWithRetry(text: prompt, imageUrl: imageUrl)
 
             if let eventModel {
                 messages.append(.assistant(.assistant("The event has been successfully added to your calendar.")))
@@ -85,21 +85,47 @@ class ViewModel {
         }
     }
 
+    func sendWithRetry(
+        text: String,
+        imageUrl: URL?,
+        maxRetries: Int = 3
+    ) async throws -> (event: CalendarEventModel?, responseText: String) {
+
+        var lastResponseText = ""
+        for attempt in 1...maxRetries {
+            let (event, responseText) = try await sendFunctionCallRequest(
+                text: text,
+                imageUrl: imageUrl
+            )
+
+            lastResponseText = responseText
+
+            if event != nil {
+                return (event, responseText)
+            }
+            if attempt < maxRetries {
+                try Task.checkCancellation()
+                try await Task.sleep(for: .milliseconds(300))
+            }
+        }
+        return (nil, lastResponseText)
+    }
+
     func sendFunctionCallRequest(text: String, imageUrl: URL?) async throws -> (event: CalendarEventModel?, responseText: String) {
-        guard let url = URL(string: "\(ipAddress)/api/function-call") else {
+        guard let url = URL(string: "\(ipAddress)/api/calendar/create") else {
             throw NSError(domain: "Bad url", code: NSURLErrorBadURL)
         }
 
         var image: String = ""
         if let imageUrl = imageUrl,
-            let imageData = try? Data(contentsOf: imageUrl) {
+           let imageData = try? Data(contentsOf: imageUrl) {
             let base64String = imageData.base64EncodedString()
-            image = "data:image/png;base64,\(base64String)"
+            image = base64String
         }
 
         let body: [String: String] = [
-            "text": text,
-            "image": image
+            "query": text,
+            "base64": image
         ]
 
         var request = URLRequest(url: url)
@@ -116,63 +142,51 @@ class ViewModel {
             throw VMError.statusCode(httpResponse.statusCode, data)
         }
 
-        let functionCallResponse = try JSONDecoder().decode(FunctionCallResponse.self, from: data)
-        let responseText = functionCallResponse.response_text ?? ""
-        
-        guard let innerData = functionCallResponse.func_result?.data(using: .utf8) else {
-            throw VMError.invalidResponse
+        print("result: ", String(data: data, encoding: .utf8) ?? "")
+        let functionCallResponse = try JSONDecoder().decode(CreateCalendarResponse.self, from: data)
+        guard functionCallResponse.success, let calendar = functionCallResponse.data else {
+            return (nil, functionCallResponse.message)
         }
 
-        let funcResult = try JSONDecoder().decode(FuncResultContent.self, from: innerData)
-        if let textItem = funcResult.content?.first?.text {
-            let eventData = Data(textItem.utf8)
-            let eventWrapper = try JSONDecoder().decode(EventWrapper.self, from: eventData)
-            let event = eventWrapper.event
+        var eventModel = CalendarEventModel()
+        eventModel.id = calendar.calendarId ?? ""
+        eventModel.eventName = calendar.summary ?? ""
+        eventModel.description = calendar.description ?? ""
+        eventModel.location = calendar.location ?? ""
 
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "en_US")
+        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
 
-            var eventModel = CalendarEventModel()
-            eventModel.id = event.id
-            eventModel.eventName = event.summary ?? ""
-            eventModel.description = event.description ?? ""
-            eventModel.location = event.location ?? ""
+        if let startDate = calendar.start,
+           !startDate.isEmpty,
+           let date = dateFormatter.date(from: startDate) {
 
-            let dateFormatter = DateFormatter()
-            dateFormatter.locale = Locale(identifier: "en_US")
+            if let timeZoneID = calendar.timeZone {
+                let timeZone = TimeZone(identifier: timeZoneID) ?? .current
+                dateFormatter.timeZone = timeZone
+            }
+
             dateFormatter.dateFormat = "EEEE, MMMM d"
+            eventModel.startDate = dateFormatter.string(from: date)
 
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withInternetDateTime]
-            if let startDate = event.start?.dateTime,
-                !startDate.isEmpty,
-                let date = formatter.date(from: startDate) {
-
-                if let timeZoneID = event.start?.timeZone {
-                    let timeZone = TimeZone(identifier: timeZoneID) ?? .current
-                    dateFormatter.timeZone = timeZone
-                }
-
-                eventModel.startDate = dateFormatter.string(from: date)
-
-                dateFormatter.dateFormat = "h:mm a"
-                eventModel.startDateTime = dateFormatter.string(from: date)
-            }
-
-            if let endDate = event.end?.dateTime,
-                !endDate.isEmpty,
-                let date = formatter.date(from: endDate) {
-
-                if let timeZoneID = event.end?.timeZone {
-                    let timeZone = TimeZone(identifier: timeZoneID) ?? .current
-                    dateFormatter.timeZone = timeZone
-                }
-                dateFormatter.dateFormat = "h:mm a"
-                eventModel.endDateTime = dateFormatter.string(from: date)
-            }
-
-            return (eventModel, responseText)
+            dateFormatter.dateFormat = "h:mm a"
+            eventModel.startDateTime = dateFormatter.string(from: date)
         }
 
-        return (nil, responseText)
+        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        if let endDate = calendar.end,
+           !endDate.isEmpty,
+           let date = dateFormatter.date(from: endDate) {
+            if let timeZoneID = calendar.timeZone {
+                let timeZone = TimeZone(identifier: timeZoneID) ?? .current
+                dateFormatter.timeZone = timeZone
+            }
+            dateFormatter.dateFormat = "h:mm a"
+            eventModel.endDateTime = dateFormatter.string(from: date)
+        }
+
+        return (eventModel, functionCallResponse.message)
     }
 }
 
@@ -199,40 +213,19 @@ extension URL: @retroactive Identifiable {
 }
 
 
-struct FunctionCallResponse: Codable {
-    var func_name: String?
-    var func_result: String?
-    var response_text: String?
+struct CreateCalendarResponse: Codable {
+    let success: Bool
+    let data: CalendarEventData?
+    let message: String
 }
 
-struct FuncResultContent: Codable {
-    let meta: String?
-    let content: [ContentItem]?
-    let structuredContent: String?
-    let isError: Bool?
-}
-
-struct ContentItem: Codable {
-    let type: String?
-    let text: String?
-}
-
-struct EventWrapper: Codable {
-    let event: Event
-}
-
-struct Event: Codable {
-    let id: String
-    let summary: String?
-    let start: EventDate?
-    let end: EventDate?
-    let status: String?
+struct CalendarEventData: Codable {
     let htmlLink: String?
-    let description: String?
-    let location: String?
-}
-
-struct EventDate: Codable {
-    let dateTime: String?
+    let calendarId: String?
+    let summary: String?
+    let start: String?
+    let end: String?
     let timeZone: String?
+    let location: String?
+    let description: String?
 }
