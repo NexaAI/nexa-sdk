@@ -1,9 +1,11 @@
 package ai.nexa.agent.bean
 
+import com.google.gson.annotations.SerializedName
 import kotlinx.serialization.Serializable
 
 @Serializable
 class GoogleResponseBean2 {
+    @SerializedName("success")
     var isSuccess: Boolean = false
     var data: Data? = null
     var message: String? = null
@@ -16,5 +18,7 @@ class GoogleResponseBean2 {
         var start: String? = null
         var end: String? = null
         var timeZone: String? = null
+        var location: String? = null
+        var description: String? = null
     }
 }

@@ -814,7 +814,7 @@ fun AssistantMessageRichContent(
                 Spacer(modifier = Modifier.height(10.dp))
                 GoogleCalendarItemTitle("Event Location")
                 Text(
-                    "${event?.timeZone}",
+                    "${event?.location ?: "N/A"}",
                     textAlign = TextAlign.Justify,
                     fontSize = 14.sp,
                     modifier = Modifier.padding(itemLeftMargin.dp, 0.dp, 0.dp, 0.dp),
@@ -823,7 +823,7 @@ fun AssistantMessageRichContent(
                 Spacer(modifier = Modifier.height(10.dp))
                 GoogleCalendarItemTitle("Event Description")
                 Text(
-                    "${event?.summary}",
+                    "${event?.description ?: "N/A"}",
                     textAlign = TextAlign.Justify,
                     modifier = Modifier.padding(itemLeftMargin.dp, 0.dp, 0.dp, 0.dp),
                     fontSize = 14.sp,
