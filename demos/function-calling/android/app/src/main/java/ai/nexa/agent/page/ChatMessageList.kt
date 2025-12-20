@@ -787,17 +787,20 @@ fun AssistantMessageRichContent(
                 )
                 Spacer(modifier = Modifier.height(10.dp))
 //                val startDateStr = "2025-12-20T09:00:00-11:00"
-                var date: String = event?.start?.split("T")?.first() ?:""
-                var startTime: String = event?.start?.split("T")?.last() ?:""
-                var endTime: String = event?.end?.split("T")?.last() ?:""
+                var date: String = event?.start?.split("T")?.first() ?: ""
+                var startTime: String = event?.start?.split("T")?.last() ?: ""
+                var endTime: String = event?.end?.split("T")?.last() ?: ""
                 GoogleCalendarItemTitle("Event time")
+                val formattedDate = if (date.isNotEmpty()) {
+                    runCatching {
+                        SimpleDateFormat("yyyy-MM-dd").parse(date)?.toString()
+                            ?.split("00:00:00")?.firstOrNull() ?: date
+                    }.getOrElse { date }
+                } else {
+                    "N/A"
+                }
                 GoogleCalendarItemContentTag(
-                    itemLeftMargin, "Date:", " ${
-                        SimpleDateFormat("yyyy-MM-dd").parse(date).toString()
-                            .split("00:00:00").let { dates ->
-                                dates[0]
-                            }
-                    }")
+                    itemLeftMargin, "Date:", " $formattedDate")
                 Spacer(modifier = Modifier.height(5.dp))
                 Row() {
                     GoogleCalendarItemContentTag(
