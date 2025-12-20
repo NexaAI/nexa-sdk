@@ -37,16 +37,16 @@ NexaSDK 是一款易用的开发者工具包，支持本地在 NPU、GPU 及 CPU
 
 <div align="center">
 
-| 功能特性                                   | **NexaSDK**                | **Ollama** | **llama.cpp** | **LM Studio** |
-| ------------------------------------------ | --------------------------- | ---------- | ------------- | ------------- |
-| NPU 支持                                   | ✅ NPU 优先                | ⚠️         | ⚠️            | ❌            |
-| 安卓/iOS SDK 支持                          | ✅ NPU/GPU/CPU 兼容        | ⚠️         | ⚠️            | ❌            |
-| Docker 支持                                | ✅                        | ✅         | ✅            | ❌            |
-| 全格式模型支持（GGUF, MLX, NEXA）         | ✅ 底层控制               | ❌         | ⚠️            | ❌            |
-| 完全多模态支持                             | ✅ 图像、音频、文本        | ⚠️         | ⚠️            | ⚠️            |
-| 跨平台                                     | ✅ 桌面/移动/车载/IoT      | ⚠️         | ⚠️            | ⚠️            |
-| 一行代码启动                               | ✅                        | ✅         | ⚠️            | ✅            |
-| OpenAI 兼容API + 函数调用                  | ✅                        | ✅         | ✅            | ✅            |
+| 功能特性                          | **NexaSDK**           | **Ollama** | **llama.cpp** | **LM Studio** |
+| --------------------------------- | --------------------- | ---------- | ------------- | ------------- |
+| NPU 支持                          | ✅ NPU 优先           | ⚠️         | ⚠️            | ❌            |
+| 安卓/iOS SDK 支持                 | ✅ NPU/GPU/CPU 兼容   | ⚠️         | ⚠️            | ❌            |
+| Docker 支持                       | ✅                    | ✅         | ✅            | ❌            |
+| 全格式模型支持（GGUF, MLX, NEXA） | ✅ 底层控制           | ❌         | ⚠️            | ❌            |
+| 完全多模态支持                    | ✅ 图像、音频、文本   | ⚠️         | ⚠️            | ⚠️            |
+| 跨平台                            | ✅ 桌面/移动/车载/IoT | ⚠️         | ⚠️            | ⚠️            |
+| 一行代码启动                      | ✅                    | ✅         | ⚠️            | ✅            |
+| OpenAI 兼容API + Function calling | ✅                    | ✅         | ✅            | ✅            |
 
 <p align="center" style="margin-top:14px">
   <i>
@@ -80,8 +80,8 @@ NexaSDK 是一款易用的开发者工具包，支持本地在 NPU、GPU 及 CPU
 
 ### macOS
 
-- [arm64](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_macos_arm64.pkg)
-- [x86_64](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_macos_x86_64.pkg)
+- [支持 MLX / ANE 的 arm64 版本](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_macos_arm64.pkg)
+- [x86_64 版本](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_macos_x86_64.pkg)
 
 ### Windows
 
@@ -174,17 +174,17 @@ nexa infer NexaAI/Qwen3-VL-4B-Instruct-NPU
 
 ## CLI 命令速查
 
-| 常用命令                                  | 说明                                   |
-| ----------------------------------------- | -------------------------------------- |
-| `nexa -h`                                | 展示所有 CLI 命令                      |
-| `nexa pull <repo>`                       | 交互式下载与模型缓存                   |
-| `nexa infer <repo>`                      | 本地推理                               |
-| `nexa list`                              | 显示所有缓存模型及体积                 |
-| `nexa remove <repo>` / `nexa clean`      | 删除单个/全部缓存模型                  |
-| `nexa serve --host 127.0.0.1:8080`       | 启动 OpenAI 兼容 REST 服务             |
-| `nexa run <repo>`                        | 通过服务器与模型聊天                   |
+| 常用命令                            | 说明                       |
+| ----------------------------------- | -------------------------- |
+| `nexa -h`                           | 展示所有 CLI 命令          |
+| `nexa pull <repo>`                  | 交互式下载与模型缓存       |
+| `nexa infer <repo>`                 | 本地推理                   |
+| `nexa list`                         | 显示所有缓存模型及体积     |
+| `nexa remove <repo>` / `nexa clean` | 删除单个/全部缓存模型      |
+| `nexa serve --host 127.0.0.1:8080`  | 启动 OpenAI 兼容 REST 服务 |
+| `nexa run <repo>`                   | 通过服务器与模型聊天       |
 
-👉 多模态模型推理支持直接在 CLI 拖入图片、音频，可批量处理。
+👉 多模态模型推理支持直接在 CLI 拖入图片、音频 - 你甚至可以一次拖入多张图片！
 
 详见 [CLI 指令全览](https://nexaai.mintlify.app/nexa-sdk-go/NexaCLI)。
 
@@ -197,7 +197,7 @@ nexa pull <model> --model-hub localfs --local-path /path/to/modeldir
 
 ## 🎯 你决定下一个支持的模型
 
-**[Nexa 许愿池](https://sdk.nexa.ai/wishlist)** —— 申请、投票你想本地部署的模型。
+**[Nexa Wishlist](https://sdk.nexa.ai/wishlist)** —— 申请、投票你想本地部署的模型。
 
 提交 Hugging Face repo ID，选择你希望的后端格式（GGUF、MLX 或面向 Qualcomm/Apple NPU 的 Nexa 格式），社区投票最多的模型优先上线！
 
@@ -214,9 +214,8 @@ nexa pull <model> --model-hub localfs --local-path /path/to/modeldir
 
 ## 加入 Builder Bounty 计划
 
-开发 NexaSDK 有机会赢取高达 $1500 美元奖励！
+使用 NexaSDK 构建作品可获得高达 1,500 美元奖励！
 
 ![开发者 Bounty](assets/developer_bounty.png)
 
 了解更多：[参与细则](https://docs.nexa.ai/community/builder-bounty)。
-

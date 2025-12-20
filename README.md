@@ -80,7 +80,7 @@ NexaSDK is an easy-to-use developer toolkit for running any AI model locally —
 
 ### macOS
 
-- [arm64](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_macos_arm64.pkg)
+- [arm64 with MLX / ANE support](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_macos_arm64.pkg)
 - [x86_64](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_macos_x86_64.pkg)
 
 ### Windows
