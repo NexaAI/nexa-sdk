@@ -96,16 +96,16 @@ NexaSDK 是一款易用的开发者工具包，支持本地在 NPU、GPU 及 CPU
 
 ### Linux
 
+#### arm64 平台 （适配高通 NPU）：
+
+```bash
+curl -fsSL https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_linux_arm64.sh -o install.sh && chmod +x install.sh && ./install.sh && rm install.sh
+```
+
 #### x86_64 平台：
 
 ```bash
 curl -fsSL https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_linux_x86_64.sh -o install.sh && chmod +x install.sh && ./install.sh && rm install.sh
-```
-
-#### arm64 平台：
-
-```bash
-curl -fsSL https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_linux_arm64.sh -o install.sh && chmod +x install.sh && ./install.sh && rm install.sh
 ```
 
 #### 卸载
