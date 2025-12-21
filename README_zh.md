@@ -5,7 +5,7 @@
     |
     <a href="README.md"> English </a>
   </p>
-  <p style="font-size: 1.3em; font-weight: 600; margin-bottom: 20px;">🤝 支持的芯片厂商 </p>
+  <p style="font-size: 1.3em; font-weight: 600; margin-bottom: 20px;">🤝 NexaSDK端侧推理支持的芯片厂商 </p>
     <picture>
       <source srcset="assets/chipmakers-dark.png" media="(prefers-color-scheme: dark)">
       <source srcset="assets/chipmakers.png" media="(prefers-color-scheme: light)">
@@ -36,22 +36,22 @@
 
 # NexaSDK —— 全模型支持，全硬件兼容
 
-NexaSDK 是一款易用的开发者工具包，支持本地在 NPU、GPU 及 CPU 上运行任意 AI 模型——其核心动力是 NexaML 引擎，从零自研，专为各类硬件堆栈挖掘极致性能。与仅为现成推理框架提供封装的其它工具不同，NexaML 是底层一体化推理引擎，可实现 Day-0 新模型架构（包括大模型、音频、多模态、视觉）的即刻支持。NexaML 支持三种模型格式：GGUF、MLX 及 Nexa AI 自有 `.nexa` 格式。
+NexaSDK 是一款易用的开发者工具包，支持本地在 NPU、GPU 及 CPU 上运行任意 AI 模型——其技术核心是 **NexaML** 引擎，由 Nexa AI 团队从零自研，适配各类硬件推理，力求发挥 AI 模型推理的极致性能。与诸多简单集成第三方推理框架的工具不同，NexaML 是从底层架构从零搭建，可实现在 day-0 支持最新的前沿模型（包括大语言模型、视觉语言模型、计算机视觉模型、嵌入模型、重排序模型、语音识别模型、文本转语音模型等等）。NexaML 支持三种模型格式：GGUF、MLX 及 Nexa AI 自有 `.nexa` 格式。
 
-### ⚙️ 产品差异化
+### ⚙️ 差异化优势
 
 <div align="center">
 
-| 功能特性                           | **NexaSDK**           | **Ollama** | **llama.cpp** | **LM Studio** |
-| ---------------------------------- | --------------------- | ---------- | ------------- | ------------- |
-| NPU 支持                           | ✅ NPU 优先           | ⚠️         | ⚠️            | ❌            |
-| 安卓/iOS SDK 支持                  | ✅ NPU/GPU/CPU 兼容   | ⚠️         | ⚠️            | ❌            |
-| Docker 支持                        | ✅                    | ✅         | ✅            | ❌            |
-| 全格式模型支持（GGUF, MLX, NEXA）  | ✅ 底层控制           | ❌         | ⚠️            | ❌            |
-| 完全多模态支持                     | ✅ 图像、音频、文本   | ⚠️         | ⚠️            | ⚠️            |
-| 跨平台                             | ✅ 桌面/移动/车载/IoT | ⚠️         | ⚠️            | ⚠️            |
-| 一行代码启动                       | ✅                    | ✅         | ⚠️            | ✅            |
-| OpenAI 兼容 API + Function calling | ✅                    | ✅         | ✅            | ✅            |
+| 功能特性                           | **NexaSDK**                                     | **Ollama** | **llama.cpp** | **LM Studio** |
+| ---------------------------------- | ----------------------------------------------- | ---------- | ------------- | ------------- |
+| NPU 支持                           | ✅ NPU 优先                                     | ⚠️         | ⚠️            | ❌            |
+| 安卓/iOS SDK 支持                  | ✅ NPU/GPU/CPU 兼容                             | ⚠️         | ⚠️            | ❌            |
+| Linux 支持 (Docker 镜像)           | ✅                                              | ✅         | ✅            | ❌            |
+| 全格式模型支持（GGUF, MLX, NEXA）  | ✅ 底层控制                                     | ❌         | ⚠️            | ❌            |
+| 完全多模态支持                     | ✅ 图像、音频、文本                             | ⚠️         | ⚠️            | ⚠️            |
+| 跨平台                             | ✅ 桌面、移动 (Android, iOS)、车载、IoT (Linux) | ⚠️         | ⚠️            | ⚠️            |
+| 一行代码启动                       | ✅                                              | ✅         | ⚠️            | ✅            |
+| OpenAI 兼容 API + Function calling | ✅                                              | ✅         | ✅            | ✅            |
 
 <p align="center" style="margin-top:14px">
   <i>
