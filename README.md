@@ -1,23 +1,30 @@
-<div align="center">
+<div align="center" style="text-decoration: none;">
+  <img width="100%" src="assets/banner1.png" alt="Nexa AI Banner">
+  <p style="font-size: 1.3em; font-weight: 600; margin-bottom: 20px;"> 
+    <a href="README_zh.md"> 简体中文 </a>
+    |
+    <a href="README.md"> English </a>
+  </p>
+  <p style="font-size: 1.3em; font-weight: 600; margin-bottom: 20px;">🤝 Supported chipmakers </p>
+    <picture>
+      <source srcset="assets/chipmakers-dark.png" media="(prefers-color-scheme: dark)">
+      <source srcset="assets/chipmakers.png" media="(prefers-color-scheme: light)">
+      <img src="assets/chipmakers.png" style="max-height:30px; height:auto; width:auto;">
+    </picture>
+  </p>
   <p>
-      <img width="100%" src="assets/banner1.png" alt="Nexa AI Banner">
-      <div align="center">
-        <p style="font-size: 1.3em; font-weight: 600; margin-bottom: 20px;">🤝 Supported chipmakers </p>
-          <picture>
-            <source srcset="assets/chipmakers-dark.png" media="(prefers-color-scheme: dark)">
-            <source srcset="assets/chipmakers.png" media="(prefers-color-scheme: light)">
-            <img src="assets/chipmakers.png" style="max-height:30px; height:auto; width:auto;">
-          </picture>
-        </p>
-      </div>
-  <p align="center">
+    <a href="https://www.producthunt.com/products/nexasdk-for-mobile?embed=true&utm_source=badge-top-post-badge&utm_medium=badge&utm_campaign=badge-nexasdk-for-mobile" target="_blank" rel="noopener noreferrer">
+        <img alt="NexaSDK for Mobile - #1 Product of the Day" width="180" height="39" src="https://api.producthunt.com/widgets/embed-image/v1/top-post-badge.svg?post_id=1049998&theme=dark&period=daily&t=1765991451976">
+    </a>
+  </p>
+  <p>
     <a href="https://docs.nexa.ai">
         <img src="https://img.shields.io/badge/docs-website-brightgreen?logo=readthedocs" alt="Documentation">
     </a>
     <a href="https://sdk.nexa.ai/wishlist">
         <img src="https://img.shields.io/badge/🎯_Vote_for-Next_Models-ff69b4?style=flat-square" alt="Vote for Next Models">
     </a>
-   <a href="https://x.com/nexa_ai"><img alt="X account" src="https://img.shields.io/twitter/url/https/twitter.com/diffuserslib.svg?style=social&label=Follow%20%40Nexa_AI"></a>
+    <a href="https://x.com/nexa_ai"><img alt="X account" src="https://img.shields.io/twitter/url/https/twitter.com/diffuserslib.svg?style=social&label=Follow%20%40Nexa_AI"></a>
     <a href="https://discord.com/invite/nexa-ai">
         <img src="https://img.shields.io/discord/1192186167391682711?color=5865F2&logo=discord&logoColor=white&style=flat-square" alt="Join us on Discord">
     </a>
@@ -29,21 +36,22 @@
 
 # NexaSDK - Run any AI model on any backend
 
-NexaSDK is an easy-to-use developer toolkit for running any AI model locally — across NPUs, GPUs, and CPUs — powered by our NexaML engine, built entirely from scratch for peak performance on every hardware stack. Unlike wrappers that depend on existing runtimes, NexaML is a unified inference engine built at the kernel level. It’s what lets NexaSDK achieve Day-0 support for new model architectures (LLMs, multimodal, audio, vision). NexaML supports 3 model formats: GGUF, MLX, and Nexa AI's own `.nexa` format.
+NexaSDK is an easy-to-use developer toolkit for running any AI model locally — across NPUs, GPUs, and CPUs — powered by our **NexaML** engine, built entirely from scratch for peak performance on every hardware stack. Unlike wrappers that depend on existing runtimes, NexaML is a unified inference engine built at the kernel level. It’s what lets NexaSDK achieve Day-0 support for new model architectures (LLM. VLM, CV, Embedding, Rerank, ASR, TTS). NexaML supports 3 model formats: GGUF, MLX, and Nexa AI's own `.nexa` format.
 
 ### ⚙️ Differentiation
 
 <div align="center">
 
-| Features                                    | **NexaSDK**                         | **Ollama** | **llama.cpp** | **LM Studio** |
-| ------------------------------------------- | ----------------------------------- | ---------- | ------------- | ------------- |
-| NPU support                                 | ✅ NPU-first                        | ❌         | ❌            | ❌            |
-| Android SDK support                         | ✅ NPU/GPU/CPU support              | ⚠️         | ⚠️            | ❌            |
-| Support any model in GGUF, MLX, NEXA format | ✅ Low-level Control                | ❌         | ⚠️            | ❌            |
-| Full multimodality support                  | ✅ Image, Audio, Text               | ⚠️         | ⚠️            | ⚠️            |
-| Cross-platform support                      | ✅ Desktop, Mobile, Automotive, IoT | ⚠️         | ⚠️            | ⚠️            |
-| One line of code to run                     | ✅                                  | ✅         | ⚠️            | ✅            |
-| OpenAI-compatible API + Function calling    | ✅                                  | ✅         | ✅            | ✅            |
+| Features                                    | **NexaSDK**                                                | **Ollama** | **llama.cpp** | **LM Studio** |
+| ------------------------------------------- | ---------------------------------------------------------- | ---------- | ------------- | ------------- |
+| NPU support                                 | ✅ NPU-first                                               | ⚠️         | ⚠️            | ❌            |
+| Android/iOS SDK support                     | ✅ NPU/GPU/CPU support                                     | ⚠️         | ⚠️            | ❌            |
+| Linux support (Docker image)                | ✅                                                         | ✅         | ✅            | ❌            |
+| Support any model in GGUF, MLX, NEXA format | ✅ Low-level Control                                       | ❌         | ⚠️            | ❌            |
+| Full multimodality support                  | ✅ Image, Audio, Text, Embedding, Rerank, ASR, TTS         | ⚠️         | ⚠️            | ⚠️            |
+| Cross-platform support                      | ✅ Desktop, Mobile (Android, iOS), Automotive, IoT (Linux) | ⚠️         | ⚠️            | ⚠️            |
+| One line of code to run                     | ✅                                                         | ✅         | ⚠️            | ✅            |
+| OpenAI-compatible API + Function calling    | ✅                                                         | ✅         | ✅            | ✅            |
 
 <p align="center" style="margin-top:14px">
   <i>
@@ -56,6 +64,8 @@ NexaSDK is an easy-to-use developer toolkit for running any AI model locally —
 </div>
 
 ## Recent Wins
+
+- 📣 **NexaSDK for Android** is highlighted by [Qualcomm blog](https://www.qualcomm.com/developer/blog/2025/11/nexa-ai-for-android-simple-way-to-bring-on-device-ai-to-smartphones-with-snapdragon) as "a simple way to bring on-device AI to smartphones with Snapdragon", and **NexaML engine** is featured in [Qualcomm blog](https://www.qualcomm.com/developer/blog/2025/09/omnineural-4b-nexaml-qualcomm-hexagon-npu) as "Revolutionizing On-Device AI Inferencing".
 - 📣 Release Nexa AI’s **AutoNeural-VL-1.5B**, an NPU-native vision–language model built for real-time in-car assistants, delivering **14×** lower latency, **3×** faster decode, and **4×** longer context on Qualcomm SA8295P — now also runnable on Qualcomm X Elite laptops.
 - 📣 Support Mistral AI's **Ministral-3-3B** across Qualcomm Hexagon NPU, Apple Neural Engine, GPU and CPU.
 - 📣 Release **Linux SDK** for NPU/GPU/CPU. See [Linux SDK Doc](https://docs.nexa.ai/nexa-sdk-docker/overview).
@@ -74,11 +84,6 @@ NexaSDK is an easy-to-use developer toolkit for running any AI model locally —
 
 ## Step 1: Download Nexa CLI with one click
 
-### macOS
-- [arm64 for Apple Neural Engine](https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/downloads/nexa-cli_macos_arm64_ane.pkg)
-- [arm64 for MLX](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_macos_arm64.pkg)
-- [x86_64](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_macos_x86_64.pkg)
-
 ### Windows
 
 - [arm64 with Qualcomm NPU support](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_windows_arm64.exe)
@@ -86,17 +91,22 @@ NexaSDK is an easy-to-use developer toolkit for running any AI model locally —
 
 ### Linux
 
+#### For arm64 (Qualcomm NPU)
+
+```bash
+curl -fsSL https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_linux_arm64.sh -o install.sh && chmod +x install.sh && ./install.sh && rm install.sh
+```
+
 #### For x86_64:
 
 ```bash
 curl -fsSL https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_linux_x86_64.sh -o install.sh && chmod +x install.sh && ./install.sh && rm install.sh
 ```
 
-#### For arm64:
+### macOS
 
-```bash
-curl -fsSL https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_linux_arm64.sh -o install.sh && chmod +x install.sh && ./install.sh && rm install.sh
-```
+- [arm64 with MLX / ANE support](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_macos_arm64.pkg)
+- [x86_64](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_macos_x86_64.pkg)
 
 #### Uninstall
 
@@ -114,7 +124,7 @@ You can run any compatible GGUF, MLX, or nexa model from 🤗 Hugging Face by us
 ### GGUF models
 
 > [!TIP]
-> GGUF runs on macOS, Linux, and Windows on CPU/GPU. Note certain GGUF models are only supported by NexaSDK (e.g. Qwen3-VL-4B and 8B).
+> GGUF runs on macOS, Linux, and Windows on CPU/GPU. Note certain GGUF models are only supported by NexaSDK (e.g. DeepSeek-OCR).
 
 📝 Run and chat with LLMs, e.g. Qwen3:
 
@@ -154,6 +164,7 @@ nexa infer NexaAI/gemma-3n-E4B-it-4bit-MLX
 #### Quick Start (Windows arm64, Snapdragon X Elite)
 
 1. **Login & Get Access Token (required for Pro Models)**
+
    - Create an account at [sdk.nexa.ai](https://sdk.nexa.ai)
    - Go to **Deployment → Create Token**
    - Run this once in your terminal (replace with your token):
