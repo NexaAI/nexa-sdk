@@ -1,5 +1,9 @@
 # Nexa Android SDK 演示 App
 
+[![Product Hunt](https://api.producthunt.com/widgets/embed-image/v1/top-post-badge.svg?post_id=1049998&theme=dark&period=daily&t=1765991451976)](https://www.producthunt.com/products/nexasdk-for-mobile)
+
+> 📣 **NexaSDK for Android** 被 [Qualcomm 博客](https://www.qualcomm.com/developer/blog/2025/11/nexa-ai-for-android-simple-way-to-bring-on-device-ai-to-smartphones-with-snapdragon) 评价为"将端侧 AI 引入 Snapdragon 智能手机的简易方案"
+
 ## 概述
 
 Nexa AI Android SDK 让 Android 应用可以在设备端使用 NPU 加速进行 AI 推理。支持在 Android 设备上运行大型语言模型（LLMs）、视觉语言模型（VLMs）、嵌入模型、语音识别（ASR）、重排序和计算机视觉模型，并可在 NPU、GPU 或 CPU 上进行推理。更多详情请参考 [Android SDK 文档](https://docs.nexa.ai/nexa-sdk-android/overview)。本文件夹包含 Android SDK 的演示应用。
