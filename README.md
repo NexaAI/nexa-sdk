@@ -84,11 +84,6 @@ NexaSDK is an easy-to-use developer toolkit for running any AI model locally —
 
 ## Step 1: Download Nexa CLI with one click
 
-### macOS
-
-- [arm64 with MLX / ANE support](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_macos_arm64.pkg)
-- [x86_64](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_macos_x86_64.pkg)
-
 ### Windows
 
 - [arm64 with Qualcomm NPU support](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_windows_arm64.exe)
@@ -96,17 +91,22 @@ NexaSDK is an easy-to-use developer toolkit for running any AI model locally —
 
 ### Linux
 
+#### For arm64 (Qualcomm NPU)
+
+```bash
+curl -fsSL https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_linux_arm64.sh -o install.sh && chmod +x install.sh && ./install.sh && rm install.sh
+```
+
 #### For x86_64:
 
 ```bash
 curl -fsSL https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_linux_x86_64.sh -o install.sh && chmod +x install.sh && ./install.sh && rm install.sh
 ```
 
-#### For arm64:
+### macOS
 
-```bash
-curl -fsSL https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_linux_arm64.sh -o install.sh && chmod +x install.sh && ./install.sh && rm install.sh
-```
+- [arm64 with MLX / ANE support](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_macos_arm64.pkg)
+- [x86_64](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_macos_x86_64.pkg)
 
 #### Uninstall
 

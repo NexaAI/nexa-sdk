@@ -84,11 +84,6 @@ NexaSDK 是一款易用的开发者工具包，支持本地在 NPU、GPU 及 CPU
 
 ## 第一步：一键下载 Nexa CLI
 
-### macOS
-
-- [支持 MLX / ANE 的 arm64 版本](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_macos_arm64.pkg)
-- [x86_64 版本](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_macos_x86_64.pkg)
-
 ### Windows
 
 - [支持 Qualcomm NPU 的 arm64 版本](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_windows_arm64.exe)
@@ -107,6 +102,11 @@ curl -fsSL https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_
 ```bash
 curl -fsSL https://github.com/NexaAI/nexa-sdk/releases/latest/download/nexa-cli_linux_x86_64.sh -o install.sh && chmod +x install.sh && ./install.sh && rm install.sh
 ```
+
+### macOS
+
+- [支持 MLX / ANE 的 arm64 版本](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_macos_arm64.pkg)
+- [x86_64 版本](https://public-storage.nexa4ai.com/nexa_sdk/downloads/nexa-cli_macos_x86_64.pkg)
 
 #### 卸载
 
