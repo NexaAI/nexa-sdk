@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/bytedance/sonic"
@@ -27,6 +29,9 @@ const (
 
 	updateCheckInterval  = 24 * time.Hour
 	notificationInterval = 8 * time.Hour
+
+	defaultChunkSize  = 16 * 1024 * 1024
+	defaultNumWorkers = 4
 )
 
 func update() *cobra.Command {
@@ -178,20 +183,74 @@ func downloadPkg(url, dst string, size int64, progress chan int64) error {
 	}
 	defer file.Close()
 
-	downloader := downloader.NewDownloader("")
-
-	for offset := int64(0); offset < size; offset += 1024 * 1024 {
-		limit := int64(1024 * 1024)
-		if offset+limit > size {
-			limit = size - offset
+	chunkSize := int64(defaultChunkSize)
+	numWorkers := defaultNumWorkers
+	if size < defaultChunkSize*int64(numWorkers) {
+		if size < chunkSize {
+			chunkSize = size
+			numWorkers = 1
+		} else {
+			numWorkers = int((size + chunkSize - 1) / chunkSize)
+			if numWorkers > defaultNumWorkers {
+				numWorkers = defaultNumWorkers
+			}
 		}
-		if err = downloader.DownloadChunk(context.Background(), url, offset, limit, file); err != nil {
-			return err
-		}
-		progress <- int64(limit)
 	}
 
-	return nil
+	chunkChan := make(chan int64, numWorkers)
+	go func() {
+		defer close(chunkChan)
+		for offset := int64(0); offset < size; offset += chunkSize {
+			chunkChan <- offset
+		}
+	}()
+
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var firstErr error
+	downloader := downloader.NewDownloader("")
+	ctx := context.Background()
+
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for offset := range chunkChan {
+				limit := chunkSize
+				if offset+limit > size {
+					limit = size - offset
+				}
+
+				var buf bytes.Buffer
+				if err := downloader.DownloadChunk(ctx, url, offset, limit, &buf); err != nil {
+					mu.Lock()
+					if firstErr == nil {
+						firstErr = fmt.Errorf("failed to download chunk at offset %d: %w", offset, err)
+					}
+					mu.Unlock()
+					return
+				}
+
+				if _, err := file.WriteAt(buf.Bytes(), offset); err != nil {
+					mu.Lock()
+					if firstErr == nil {
+						firstErr = fmt.Errorf("failed to write chunk at offset %d: %w", offset, err)
+					}
+					mu.Unlock()
+					return
+				}
+
+				mu.Lock()
+				if firstErr == nil {
+					progress <- int64(buf.Len())
+				}
+				mu.Unlock()
+			}
+		}()
+	}
+
+	wg.Wait()
+	return firstErr
 }
 
 func installPkg(pkgPath string) error {
