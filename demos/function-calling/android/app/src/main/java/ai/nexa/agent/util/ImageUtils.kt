@@ -31,7 +31,7 @@ class ImageUtils {
                     inputStream.read(it)
                 }
             }
-            return "data:image/png;base64," +
+            return "data:image/${file.extension};base64," +
                     Base64.encodeToString(bytes, Base64.DEFAULT)
         }
     }
