@@ -24,8 +24,6 @@
 
 - [Use Cases](#-use-cases)
 - [Quickstart](#-quickstart)
-- [License](#-license)
-- [Enterprise Deployment](#-contact-sales)
 
 ---
 
