@@ -3,7 +3,7 @@
 ## AutoNeural – NPU-Native Multimodal Model for Automotive Cockpits
 
 <p align="center">
-  <img src="./assets/AutoNeural_Poster.png" alt="AutoNeural overview" width="100%">
+  <img src="./AutoNeural/assets/AutoNeural_Poster.png" alt="AutoNeural overview" width="100%">
 </p>
 
 <p align="center">
@@ -18,6 +18,6 @@
 
 For more details, please refer to [AutoNeural README](./autoneural/README.md).
 
-## EmbedNeural – Image Search with Nexa SDK for Mobile, IoT and PC
+## EmbedNeural – NPU-native Image Search for Mobile, IoT and PC
 
 For more details, please refer to [EmbedNeural README](./embedneural/README.md).
