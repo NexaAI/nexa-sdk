@@ -16,4 +16,4 @@ class OCR(BaseCase):
 
     @override
     def param(self) -> list[str]:
-        return ['-i', './assets/text.png']
+        return ['-i', './assets/text.jpeg']

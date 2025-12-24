@@ -10,7 +10,7 @@ class ImageMultiRound(BaseCase):
     def param(self) -> list[str]:
         return [
             '-p',
-            'describe the image ./assets/text.png',
+            'describe the image ./assets/text.jpeg',
             '-p',
-            'compare the two images ./assets/text.png and ./assets/cat.jpg',
+            'compare the two images ./assets/text.jpeg and ./assets/cat.jpg',
         ]

@@ -8,4 +8,4 @@ class ASR(BaseCase):
 
     @override
     def param(self) -> list[str]:
-        return ['-i', './assets/osr_us.wav']
+        return ['-i', './assets/jfk.wav']
