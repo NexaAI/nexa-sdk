@@ -217,7 +217,6 @@ Drop a Hugging Face repo ID, pick your preferred backend (GGUF, MLX, or Nexa for
 ## Acknowledgements
 
 We would like to thank the following projects:
-
 - [ggml](https://github.com/ggml-org/ggml)
 - [mlx-lm](https://github.com/ml-explore/mlx-lm)
 - [mlx-vlm](https://github.com/Blaizzy/mlx-vlm)
@@ -230,3 +229,14 @@ Earn up to 1,500 USD for building with NexaSDK.
 ![Developer Bounty](assets/developer_bounty.png)
 
 Learn more in our [Participant Details](https://docs.nexa.ai/community/builder-bounty).
+
+## License
+
+NexaSDK uses a dual licensing model:
+
+### CPU/GPU Components
+Licensed under [Apache License 2.0](LICENSE).
+
+### NPU Components
+- **Personal Use**: Free license key available from [Nexa AI Model Hub](https://sdk.nexa.ai/model). Each key activates 1 device for NPU usage.
+- **Commercial Use**: Contact [hello@nexa.ai](mailto:hello@nexa.ai) for licensing.

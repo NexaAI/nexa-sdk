@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/ollama/ollama/readline"
+	"github.com/chzyer/readline"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
@@ -60,18 +60,17 @@ func (r *Repl) GetPrompt() (string, error) {
 		}
 
 		// init readline
-		rl, err := readline.New(readline.Prompt{
-			Prompt:         render.GetTheme().Prompt.Sprint("> "),
-			AltPrompt:      render.GetTheme().Prompt.Sprint(". "),
-			Placeholder:    "Send a message, press /? for help",
-			AltPlaceholder: `Use """ to end multi-line input`,
-		})
+		config := &readline.Config{
+			Prompt:          render.GetTheme().Prompt.Sprint("> "),
+			HistoryFile:     "", // Disable history file for now
+			InterruptPrompt: "^C",
+			EOFPrompt:       "exit",
+		}
+		rl, err := readline.NewEx(config)
 		if err != nil {
 			panic(err)
 		}
 		r.rl = rl
-		// TODO: graceful shutdown
-		fmt.Print(readline.StartBracketedPaste)
 
 		r.init = true
 	}
@@ -86,6 +85,13 @@ func (r *Repl) GetPrompt() (string, error) {
 			fmt.Println(render.GetTheme().Info.Sprintf("Current stash audios: %s", strings.Join(recordAudios, ", ")))
 		}
 
+		// Update prompt based on multiline state
+		if multiline != MultilineNone {
+			r.rl.SetPrompt(render.GetTheme().Prompt.Sprint(". "))
+		} else {
+			r.rl.SetPrompt(render.GetTheme().Prompt.Sprint("> "))
+		}
+
 		line, err := r.rl.Readline()
 
 		// check err or exit
@@ -98,14 +104,14 @@ func (r *Repl) GetPrompt() (string, error) {
 				fmt.Println("\nUse Ctrl + d or /exit to exit.")
 				fmt.Println()
 			}
-			r.rl.Prompt.UseAlt = false
 			sb.Reset()
+			multiline = MultilineNone
 			continue
 		case err != nil:
 			return "", err
 		}
 
-		// check multiline state and paste state
+		// check multiline state
 		switch {
 		case multiline != MultilineNone:
 			// check if there's a multiline terminating string
@@ -117,7 +123,6 @@ func (r *Repl) GetPrompt() (string, error) {
 			}
 
 			multiline = MultilineNone
-			r.rl.Prompt.UseAlt = false
 
 		case strings.HasPrefix(line, `"""`):
 			line := strings.TrimPrefix(line, `"""`)
@@ -127,12 +132,7 @@ func (r *Repl) GetPrompt() (string, error) {
 				// no multiline terminating string; need more input
 				fmt.Fprintln(&sb)
 				multiline = MultilinePrompt
-				r.rl.Prompt.UseAlt = true
 			}
-
-		case r.rl.Pasting:
-			fmt.Fprintln(&sb, line)
-			continue
 
 		default:
 			sb.WriteString(line)
@@ -244,7 +244,7 @@ func (r *Repl) GetPrompt() (string, error) {
 }
 
 func (r *Repl) Close() {
-	if r.init {
-		fmt.Printf(readline.EndBracketedPaste)
+	if r.init && r.rl != nil {
+		r.rl.Close()
 	}
 }
