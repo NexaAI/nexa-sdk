@@ -12,5 +12,5 @@ class ImageMultiRound(BaseCase):
             '-p',
             'describe the image ./assets/text.jpeg',
             '-p',
-            'compare the two images ./assets/text.jpeg and ./assets/cat.jpg',
+            'compare the two images ./assets/text.jpeg and ./assets/cat.png',
         ]

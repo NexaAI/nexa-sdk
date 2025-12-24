@@ -8,7 +8,7 @@ class ImageRecognition(BaseCase):
 
     @override
     def param(self) -> list[str]:
-        return ['-i', './assets/cat.jpg']
+        return ['-i', './assets/cat.png']
 
 
 @final
