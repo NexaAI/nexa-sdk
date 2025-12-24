@@ -1,23 +1,77 @@
-# Image Search with Nexa SDK for Qualcomm Hexagon NPU
+# EmbedNeural – NPU-Native Multimodal Search for Mobile, IoT and PC
 
-Efficient image search using Nexa SDK for Qualcomm Hexagon NPU.
+<p align="center">
+  <img src="./images/embedneural.png" alt="EmbedNeural overview" width="100%">
+</p>
 
-## Prerequisites
+- 📖 **[Blog Post](https://nexa.ai/blogs/EmbedNeural)**
+- 🎬 **[Demo on Qualcomm](https://youtu.be/iy2X6bJHl1E)**
+- 🎬 **[Demo on Apple](https://youtu.be/W077X06ypPQ)**
 
-1. **Start Nexa Serve**: Before running this application, you need to start the nexa localhost server:
+> **EmbedNeural** is an NPU-native multimodal embedding model designed for on-device image and text search, optimized for **Apple and Qualcomm NPUs**. It enables efficient, privacy-preserving semantic search directly on mobile, IoT, and PC devices—no cloud required.
+
+### ✨ Key Features
+
+- **NPU-native architecture** – Purpose-built for Apple Neural Engine and Qualcomm Hexagon NPU, maximizing hardware efficiency.
+- **Multimodal search** – Supports searching across text, images, and audio with unified embeddings.
+- **Privacy-preserving** – All processing happens locally on-device, ensuring data never leaves the user's hardware.
+- **Cross-platform support** – Runs on mobile (iOS/Android), IoT devices, and PC with Apple Silicon or Qualcomm chips.
+- **Low latency** – Optimized quantization and NPU-friendly operators deliver real-time search performance.
+
+---
+
+## 📚 Table of Contents
+
+- [Use Cases](#-use-cases)
+- [Quickstart](#-quickstart)
+- [License](#-license)
+- [Enterprise Deployment](#-contact-sales)
+
+---
+
+## 🎯 Use Case Examples
+
+### Phone: Meme Library Search
+
+Your embarrassing screenshots, personal photos, and saved designs never touch the cloud. Visual search runs 100% locally.
+
+<p align="center">
+  <img src="./images/embedneural_mobile.png" alt="EmbedNeural on Mobile" width="600">
+</p>
+
+### Laptop: Visual Reference Library
+
+EmbedNeural turns your chaotic image library into an instantly searchable visual database—without compromising speed, privacy, or battery life.
+
+<p align="center">
+  <img src="./images/embedneural_pc.png" alt="EmbedNeural on PC" width="600">
+</p>
+
+---
+
+## 🚀 Quickstart
+
+> ⚠️ **Hardware Requirement:** EmbedNeural is optimized for **Apple Neural Engine** and **Qualcomm Hexagon NPU**.
+
+### Step 1: Pull the Model
 
 ```bash
 nexa pull NexaAI/EmbedNeural
+```
+
+### Step 2: Start Nexa Serve
+
+```bash
 nexa serve
 ```
 
-2. **Install Dependencies**: Install the required Python packages:
+### Step 3: Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Launch the Gradio UI:
+### Step 4: Launch the Demo
 
 ```bash
 python gradio_ui.py

@@ -85,8 +85,7 @@ Ground natural language requests in visual context and emit structured outputs t
 
 The easiest way to get started with AutoNeural is through our interactive Jupyter notebook:
 
-📓 **[Open Quickstart Notebook](./quickstart.ipynb)**
----
+## 📓 **[Open Quickstart Notebook](./quickstart.ipynb)**
 
 ## 📊 Performance
 
