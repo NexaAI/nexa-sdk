@@ -229,3 +229,14 @@ nexa pull <model> --model-hub localfs --local-path /path/to/modeldir
 ![开发者 Bounty](assets/developer_bounty.png)
 
 了解更多：[参与细则](https://docs.nexa.ai/community/builder-bounty)。
+
+## 开源协议
+
+NexaSDK 采用双重许可模式：
+
+### CPU/GPU 组件
+基于 [Apache License 2.0](LICENSE) 开源协议。
+
+### NPU 组件
+- **个人使用**：可从 [Nexa AI 模型中心](https://sdk.nexa.ai/model)免费获取许可密钥。每个密钥可激活 1 台设备的 NPU 使用权限。
+- **商业使用**：请联系 [hello@nexa.ai](mailto:hello@nexa.ai) 获取商业授权。

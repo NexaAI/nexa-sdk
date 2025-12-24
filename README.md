@@ -230,3 +230,14 @@ Earn up to 1,500 USD for building with NexaSDK.
 ![Developer Bounty](assets/developer_bounty.png)
 
 Learn more in our [Participant Details](https://docs.nexa.ai/community/builder-bounty).
+
+## License
+
+NexaSDK uses a dual licensing model:
+
+### CPU/GPU Components
+Licensed under [Apache License 2.0](LICENSE).
+
+### NPU Components
+- **Personal Use**: Free license key available from [Nexa AI Model Hub](https://sdk.nexa.ai/model). Each key activates 1 device for NPU usage.
+- **Commercial Use**: Contact [hello@nexa.ai](mailto:hello@nexa.ai) for licensing.
