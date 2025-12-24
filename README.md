@@ -217,7 +217,6 @@ Drop a Hugging Face repo ID, pick your preferred backend (GGUF, MLX, or Nexa for
 ## Acknowledgements
 
 We would like to thank the following projects:
-
 - [ggml](https://github.com/ggml-org/ggml)
 - [mlx-lm](https://github.com/ml-explore/mlx-lm)
 - [mlx-vlm](https://github.com/Blaizzy/mlx-vlm)

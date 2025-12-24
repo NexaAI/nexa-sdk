@@ -216,7 +216,6 @@ nexa pull <model> --model-hub localfs --local-path /path/to/modeldir
 ## 鸣谢
 
 特别感谢以下项目：
-
 - [ggml](https://github.com/ggml-org/ggml)
 - [mlx-lm](https://github.com/ml-explore/mlx-lm)
 - [mlx-vlm](https://github.com/Blaizzy/mlx-vlm)

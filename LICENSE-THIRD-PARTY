@@ -63,10 +63,10 @@ This document provides information about third-party libraries used in the NexaS
 - **URL**: https://github.com/hashicorp/go-version
 - **Description**: Library for parsing and verifying versions and version constraints
 
-### ollama/ollama
+### chzyer/readline
 - **License**: MIT License
-- **URL**: https://github.com/ollama/ollama
-- **Description**: Get up and running with large language models
+- **URL**: https://github.com/chzyer/readline
+- **Description**: Pure Go readline library with support for command line editing and history
 
 ### openai/openai-go
 - **License**: Apache License 2.0
@@ -244,11 +244,6 @@ This document provides information about third-party libraries used in the NexaS
 - **License**: Apache License 2.0
 - **URL**: https://github.com/Kotlin/kotlinx.coroutines
 - **Description**: Library support for Kotlin coroutines
-
-### JUnit
-- **License**: Eclipse Public License 2.0
-- **URL**: https://github.com/junit-team/junit4
-- **Description**: Simple framework for writing repeatable tests
 
 ### Material Components for Android
 - **License**: Apache License 2.0
