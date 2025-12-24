@@ -4,14 +4,6 @@ This repository contains comprehensive demos and examples for Nexa SDK across di
 
 ---
 
-## 📁 Directory Structure
-
-- **`PC/`** - Python bindings demos for Windows, macOS, and Linux
-- **`android/`** - Android platform-specific demos (coming soon, see [bindings/android](../bindings/android) for Android SDK)
-- **`linux/`** - Linux-specific demos (coming soon)
-
----
-
 ## 🖥️ PC Demos (Python Bindings)
 
 All PC demos are located in the [`PC/`](./PC) directory and run on **Windows (x64/ARM64 Snapdragon)**, **macOS**, and **Linux**.
@@ -58,16 +50,10 @@ Local multimodal LLM-driven browser automation using Qwen3-VL. Enables autonomou
 
 ## 📱 Android Demos
 
-For Android SDK demos and examples, please refer to [`bindings/android`](../bindings/android).
+For Android SDK demos and examples, please refer to [`android/`](./android).
 
 ---
 
 ## 🐧 Linux Demos
 
 Linux-specific demos coming soon in the [`linux/`](./linux) directory.
-
----
-
-## 🔒 Privacy First
-
-**All demos run locally** — no data leaves your device.
