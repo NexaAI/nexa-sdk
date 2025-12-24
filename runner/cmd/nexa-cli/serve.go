@@ -1,3 +1,17 @@
+// Copyright 2024-2025 Nexa AI, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
@@ -25,10 +39,9 @@ func serve() *cobra.Command {
 	serveCmd.Flags().String("origins", "*", "Default CORS origins (env: NEXA_ORIGINS)")
 	serveCmd.Flags().Int("keepalive", 300, "Keepalive seconds (env: NEXA_KEEPALIVE)")
 	// HTTPS / TLS flags
-	serveCmd.Flags().Bool("https", false, "Enable HTTPS/TLS (env: NEXA_ENABLEHTTPS)")
+	serveCmd.Flags().Bool("https", false, "Enable HTTPS/TLS (env: NEXA_HTTPS)")
 	serveCmd.Flags().String("certfile", "cert.pem", "TLS certificate file path (env: NEXA_CERTFILE)")
 	serveCmd.Flags().String("keyfile", "key.pem", "TLS private key file path (env: NEXA_KEYFILE)")
-	serveCmd.Flags().Bool("ngrok", false, "Use ngrok for public HTTPS tunnel (env: NEXA_NGROK)")
 
 	viper.BindPFlag("host", serveCmd.Flags().Lookup("host"))
 	viper.BindPFlag("origins", serveCmd.Flags().Lookup("origins"))
@@ -36,7 +49,6 @@ func serve() *cobra.Command {
 	viper.BindPFlag("enablehttps", serveCmd.Flags().Lookup("https"))
 	viper.BindPFlag("certfile", serveCmd.Flags().Lookup("certfile"))
 	viper.BindPFlag("keyfile", serveCmd.Flags().Lookup("keyfile"))
-	viper.BindPFlag("ngrok", serveCmd.Flags().Lookup("ngrok"))
 
 	serveCmd.Run = func(cmd *cobra.Command, args []string) {
 		checkDependency()

@@ -1,3 +1,17 @@
+// Copyright 2024-2025 Nexa AI, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package nexa_sdk
 
 /*
@@ -221,9 +235,10 @@ func freeLlmChatMessages(cPtr *C.ml_LlmChatMessage, count C.int32_t) {
 }
 
 type LlmApplyChatTemplateInput struct {
-	Messages    []LlmChatMessage
-	Tools       string
-	EnableThink bool
+	Messages            []LlmChatMessage
+	Tools               string
+	EnableThink         bool
+	AddGenerationPrompt bool
 }
 
 func (lati LlmApplyChatTemplateInput) toCPtr() *C.ml_LlmApplyChatTemplateInput {
@@ -241,6 +256,7 @@ func (lati LlmApplyChatTemplateInput) toCPtr() *C.ml_LlmApplyChatTemplateInput {
 	}
 
 	cPtr.enable_thinking = C.bool(lati.EnableThink)
+	cPtr.add_generation_prompt = C.bool(lati.AddGenerationPrompt)
 
 	return cPtr
 }

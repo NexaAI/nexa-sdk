@@ -1,3 +1,17 @@
+// Copyright 2024-2025 Nexa AI, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -64,6 +78,8 @@ android {
     }
 
     buildFeatures {
+        viewBinding = true
+        dataBinding = true
         compose = true
         buildConfig = true
     }
@@ -73,16 +89,21 @@ val bridgePathExist = gradle.extra["bridgePathExist"] as Boolean
 print("bridgePathExist: $bridgePathExist\n")
 
 dependencies {
-    implementation("ai.nexa:core:0.0.11")
-    implementation(libs.aws.android.sdk.s3)
-    implementation("com.google.code.gson:gson:2.10.1")
-    implementation("androidx.recyclerview:recyclerview:1.3.1")
+    implementation("ai.nexa:core:0.0.13")
     implementation(project(":transform"))
     implementation(":okdownload-core@aar")
     implementation(":okdownload-sqlite@aar")
     implementation(":okdownload-okhttp@aar")
     implementation(":okdownload-ktx@aar")
     implementation(kotlin("reflect"))
+    implementation(libs.glide)
+    implementation(libs.gson)
+    implementation(libs.recyclerview)
+    implementation(libs.toaster)
+    implementation(libs.material)
+    implementation(libs.imm.bar)
+    implementation(libs.imm.bar.ktx)
+    implementation(libs.auto.size)
     implementation(libs.okhttp)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.core.ktx)

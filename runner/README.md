@@ -22,10 +22,27 @@ go env -w CGO_ENABLED=1
 
 Setup MSYS2
 
-- `winget install --id=MSYS2.MSYS2 -e`
-- add `C:\msys64\usr\bin`, `C:\msys64\clangarm64\bin` to your PATH
-- `pacman -Syu`
-- `pacman -S make mingw-w64-clang-aarch64-clang`
+```powershell
+winget install --id=MSYS2.MSYS2 -e
+```
+
+Add MSYS2 bins to PATH (run in PowerShell):
+
+```powershell
+[Environment]::SetEnvironmentVariable(
+    "PATH",
+    $env:PATH + ";C:\msys64\usr\bin;C:\msys64\clangarm64\bin",
+    "User"
+)
+# Close and reopen PowerShell for the change to take effect
+```
+
+Open an MSYS2 shell and run:
+
+```bash
+pacman -Syu
+pacman -S make mingw-w64-clang-aarch64-clang
+```
 
 Setup GO Env
 

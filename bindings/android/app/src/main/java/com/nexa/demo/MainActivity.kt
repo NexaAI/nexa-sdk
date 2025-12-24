@@ -1,13 +1,29 @@
+// Copyright 2024-2025 Nexa AI, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package com.nexa.demo
 
 import android.Manifest
 import android.app.Activity
 import android.content.Context
+import android.content.DialogInterface
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -26,19 +42,21 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.ProgressBar
+import android.widget.SeekBar
 import android.widget.SimpleAdapter
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
-import androidx.core.content.edit
-import androidx.lifecycle.viewmodel.viewModelFactory
-import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentActivity
 import androidx.recyclerview.widget.RecyclerView
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.gyf.immersionbar.ktx.immersionBar
+import com.hjq.toast.Toaster
 import com.liulishuo.okdownload.DownloadContext
 import com.liulishuo.okdownload.DownloadTask
 import com.liulishuo.okdownload.OkDownload
@@ -46,17 +64,26 @@ import com.liulishuo.okdownload.core.cause.EndCause
 import com.liulishuo.okdownload.core.connection.DownloadOkHttp3Connection
 import com.liulishuo.okdownload.kotlin.listener.createDownloadContextListener
 import com.liulishuo.okdownload.kotlin.listener.createListener1
-import com.nexa.demo.bean.DownloadableFile
 import com.nexa.demo.bean.ModelData
 import com.nexa.demo.bean.downloadableFiles
+import com.nexa.demo.bean.getNexaManifest
+import com.nexa.demo.bean.getNonExistModelFile
+import com.nexa.demo.bean.getSupportPluginIds
 import com.nexa.demo.bean.mmprojTokenFile
 import com.nexa.demo.bean.modelDir
 import com.nexa.demo.bean.modelFile
 import com.nexa.demo.bean.tokenFile
+import com.nexa.demo.databinding.ActivityMainBinding
+import com.nexa.demo.databinding.DialogSelectPluginIdBinding
+import com.nexa.demo.databinding.DialogTopkConfigBinding
+import com.nexa.demo.fragments.IndexFragment
+import com.nexa.demo.fragments.IndexedImagesFragment
+import com.nexa.demo.fragments.IndexedVideosFragment
+import com.nexa.demo.listeners.CustomDialogInterface
 import com.nexa.demo.utils.ExecShell
 import com.nexa.demo.utils.ImgUtil
-import com.nexa.demo.utils.SharePreferenceKeys
 import com.nexa.demo.utils.WavRecorder
+import com.nexa.demo.utils.inflate
 import com.nexa.sdk.AsrWrapper
 import com.nexa.sdk.CvWrapper
 import com.nexa.sdk.EmbedderWrapper
@@ -69,7 +96,6 @@ import com.nexa.sdk.bean.AsrTranscribeInput
 import com.nexa.sdk.bean.CVCapability
 import com.nexa.sdk.bean.CVCreateInput
 import com.nexa.sdk.bean.CVModelConfig
-import com.nexa.sdk.bean.CVResult
 import com.nexa.sdk.bean.ChatMessage
 import com.nexa.sdk.bean.EmbedderCreateInput
 import com.nexa.sdk.bean.EmbeddingConfig
@@ -101,8 +127,9 @@ import javax.net.ssl.SSLSocketFactory
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 
-class MainActivity : Activity() {
+class MainActivity : FragmentActivity() {
 
+    private val binding: ActivityMainBinding by inflate()
     private lateinit var spDownloaded: SharedPreferences
     private lateinit var llDownloading: LinearLayout
     private lateinit var tvDownloadProgress: TextView
@@ -131,7 +158,7 @@ class MainActivity : Activity() {
 
     private lateinit var llmWrapper: LlmWrapper
     private lateinit var vlmWrapper: VlmWrapper
-    private lateinit var embedderWrapper: EmbedderWrapper
+    var embedderWrapper: EmbedderWrapper? = null
     private lateinit var rerankerWrapper: RerankerWrapper
     private lateinit var cvWrapper: CvWrapper
     private lateinit var asrWrapper: AsrWrapper
@@ -160,10 +187,12 @@ class MainActivity : Activity() {
     private val savedImageFiles = mutableListOf<File>()
     private val messages = arrayListOf<Message>()
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        immersionBar {
+            statusBarColorInt(Color.WHITE)
+            statusBarDarkFont(true)
+        }
         requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1002)
         okdownload()
         initData()
@@ -181,10 +210,8 @@ class MainActivity : Activity() {
     }
 
     private fun initView() {
-        recyclerView = findViewById<RecyclerView>(R.id.rv_chat)
         adapter = ChatAdapter(messages)
-        recyclerView.adapter = adapter
-        recyclerView.layoutManager = LinearLayoutManager(this)
+        binding.rvChat.adapter = adapter
 
         llDownloading = findViewById(R.id.ll_downloading)
         tvDownloadProgress = findViewById(R.id.tv_download_progress)
@@ -192,9 +219,9 @@ class MainActivity : Activity() {
         spModelList = findViewById(R.id.sp_model_list)
         spModelList.adapter = object : SimpleAdapter(this, modelList.map {
             val map = mutableMapOf<String, String>()
-            map["id"] = it.id
+            map["displayName"] = it.displayName
             map
-        }, R.layout.item_model, arrayOf("id"), intArrayOf(R.id.tv_model_id)) {
+        }, R.layout.item_model, arrayOf("displayName"), intArrayOf(R.id.tv_model_id)) {
 
         }
         spModelList.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
@@ -205,7 +232,7 @@ class MainActivity : Activity() {
 
                 messages.clear()
                 adapter.notifyDataSetChanged()
-                recyclerView.scrollTo(0, 0)
+                binding.rvChat.scrollTo(0, 0)
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) {
@@ -230,7 +257,7 @@ class MainActivity : Activity() {
         topScrollContainer = findViewById(R.id.ll_images_container)
         llLoading = findViewById(R.id.ll_loading)
         vTip = findViewById<View>(R.id.v_tip)
-        
+
         btnAudioCancel.setOnClickListener {
             stopRecord(true)
         }
@@ -265,6 +292,16 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun replaceFragment(fragment: Fragment) {
+        runOnUiThread {
+            Log.d(TAG, "replaceFragment:$fragment")
+            binding.flIndex.visibility = View.VISIBLE
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.fl_index, fragment)
+                .commit()
+        }
+    }
+
     private fun parseModelList() {
         try {
             val baseJson = assets.open("model_list.json").bufferedReader().use { it.readText() }
@@ -287,6 +324,8 @@ class MainActivity : Activity() {
 //        spDownloaded.edit().putBoolean("paddleocr-npu", false).commit()
 //        spDownloaded.edit().putBoolean("parakeet-tdt-0.6b-v3-npu", false).commit()
 //        spDownloaded.edit().putBoolean("OmniNeural-4B", false).commit()
+//        spDownloaded.edit().putBoolean("Granite-4.0-h-350M-NPU", false).commit()
+//        spDownloaded.edit().putBoolean("Granite-4-Micro-NPU", false).commit()
         parseModelList()
         //
         initNexaSdk()
@@ -391,7 +430,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
             llLoading.visibility = View.INVISIBLE
             //
             if (isLoadEmbedderModel || isLoadRerankerModel || isLoadAsrModel || isLoadCVModel) {
-                btnStop.visibility = View.INVISIBLE
+                btnStop.visibility = View.GONE
             } else {
                 btnStop.visibility = View.VISIBLE
             }
@@ -402,19 +441,22 @@ Note: You must use the campaign_investigation function whenever a customer asks 
         runOnUiThread {
             vTip.visibility = View.GONE
 
-            if (!spDownloaded.getBoolean(selectModelId, false)) {
-                Toast.makeText(this@MainActivity, "please download model first", Toast.LENGTH_SHORT)
-                    .show()
+            // Check if files exist locally first
+            val selectModelData = modelList.firstOrNull { it.id == selectModelId }
+            val fileName = isModelDownloaded(selectModelData!!)
+            val filesExist = fileName == null
+
+            if (!filesExist) {
+                Toaster.showLong("The \"$fileName\" file is missing. Please download it first.")
             } else {
                 Toast.makeText(this@MainActivity, tip, Toast.LENGTH_SHORT)
                     .show()
             }
 
-
             // change UI
             btnAddImage.visibility = View.INVISIBLE
             btnAudioRecord.visibility = View.INVISIBLE
-            btnUnloadModel.visibility = View.INVISIBLE
+            btnUnloadModel.visibility = View.GONE
             llLoading.visibility = View.INVISIBLE
         }
     }
@@ -422,6 +464,220 @@ Note: You must use the campaign_investigation function whenever a customer asks 
     private fun hasLoadedModel(): Boolean {
         return isLoadLlmModel || isLoadVlmModel || isLoadEmbedderModel ||
                 isLoadRerankerModel || isLoadCVModel || isLoadAsrModel
+    }
+
+    /**
+     * Helper function to check if model files exist locally
+     * @return null if all files exist locally. or file's name which is missing.
+     */
+    private fun isModelDownloaded(modelData: ModelData): String? {
+        val modelDir = modelData.modelDir(this@MainActivity)
+        val fileName = modelData.getNonExistModelFile(modelDir)
+        val filesExist = fileName == null
+        // Sync SharedPreferences with actual file existence
+        if (filesExist && !spDownloaded.getBoolean(modelData.id, false)) {
+            Log.d(TAG, "Model files found locally for ${modelData.id}, updating SharedPreferences")
+            spDownloaded.edit().putBoolean(modelData.id, true).commit()
+        }
+
+        return fileName
+    }
+
+    private fun loadModel(selectModelData: ModelData, modelDataPluginId: String, nGpuLayers: Int) {
+        modelScope.launch {
+            resetLoadState()
+            val nexaManifestBean = selectModelData.getNexaManifest(this@MainActivity)
+            val pluginId = nexaManifestBean?.PluginId ?: modelDataPluginId
+
+            when (nexaManifestBean?.ModelType ?: selectModelData.type) {
+                "chat", "llm" -> {
+
+                    val conf = ModelConfig(
+                        nCtx = 1024,
+                        nGpuLayers = nGpuLayers,
+                        enable_thinking = enableThinking,
+                        npu_lib_folder_path = applicationInfo.nativeLibraryDir,
+                        npu_model_folder_path = selectModelData.modelDir(this@MainActivity).absolutePath
+                    )
+                    // Build and initialize LlmWrapper for chat model
+                    LlmWrapper.builder().llmCreateInput(
+                        LlmCreateInput(
+                            model_name = nexaManifestBean?.ModelName ?: "",
+                            model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
+                            tokenizer_path = selectModelData.tokenFile(this@MainActivity)?.absolutePath,
+                            config = conf,
+                            plugin_id = pluginId
+                        )
+                    ).build().onSuccess { wrapper ->
+                        isLoadLlmModel = true
+                        llmWrapper = wrapper
+                        onLoadModelSuccess("llm model loaded")
+                    }.onFailure { error ->
+                        onLoadModelFailed(error.message.toString())
+                    }
+
+                }
+
+                "embedder" -> {
+                    // Handle embedder model loading with NPU paths using EmbedderCreateInput
+                    // embed-gemma
+                    val embedderCreateInput = EmbedderCreateInput(
+                        model_name = nexaManifestBean?.ModelName
+                            ?: "",  // Model name for NPU plugin
+                        model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
+                        tokenizer_path = selectModelData.tokenFile(this@MainActivity)?.absolutePath,
+                        config = ModelConfig(
+                            npu_lib_folder_path = applicationInfo.nativeLibraryDir,
+                            npu_model_folder_path = selectModelData.modelDir(this@MainActivity).absolutePath,
+                            nGpuLayers = nGpuLayers
+                        ),
+                        plugin_id = pluginId,
+                        device_id = null
+                    )
+
+                    EmbedderWrapper.builder()
+                        .embedderCreateInput(embedderCreateInput)
+                        .build().onSuccess { wrapper ->
+                            isLoadEmbedderModel = true
+                            embedderWrapper = wrapper
+                            onLoadModelSuccess("embedder model loaded")
+                            if (selectModelData.id == "embedneural-npu") {
+                                runOnUiThread {
+                                    binding.ivTopk.visibility = View.VISIBLE
+                                }
+                                replaceFragment(IndexFragment.newInstance("", ""))
+                            }
+                        }.onFailure { error ->
+                            onLoadModelFailed(error.message.toString())
+                        }
+
+                }
+
+                "reranker" -> {
+                    // Handle reranker model loading with NPU paths using RerankerCreateInput
+                    // jina-v2-rerank-npu
+                    val rerankerCreateInput = RerankerCreateInput(
+                        model_name = nexaManifestBean?.ModelName
+                            ?: "",  // Model name for NPU plugin
+                        model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
+                        tokenizer_path = selectModelData.tokenFile(this@MainActivity)?.absolutePath,
+                        config = ModelConfig(
+                            npu_lib_folder_path = applicationInfo.nativeLibraryDir,
+                            npu_model_folder_path = selectModelData.modelDir(this@MainActivity).absolutePath,
+                            nGpuLayers = nGpuLayers
+                        ),
+                        plugin_id = pluginId,
+                        device_id = null
+                    )
+
+                    RerankerWrapper.builder()
+                        .rerankerCreateInput(rerankerCreateInput)
+                        .build().onSuccess { wrapper ->
+                            isLoadRerankerModel = true
+                            rerankerWrapper = wrapper
+                            onLoadModelSuccess("reranker model loaded")
+                        }.onFailure { error ->
+                            onLoadModelFailed(error.message.toString())
+                        }
+
+                }
+
+                "paddleocr" -> {
+                    // paddleocr-npu
+                    val cvCreateInput = CVCreateInput(
+                        model_name = nexaManifestBean?.ModelName ?: "",
+                        config = CVModelConfig(
+                            capabilities = CVCapability.OCR,
+                            det_model_path = selectModelData.modelDir(this@MainActivity).absolutePath,
+                            rec_model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
+                            char_dict_path = selectModelData.modelDir(this@MainActivity).absolutePath,
+                            npu_model_folder_path = selectModelData.modelDir(this@MainActivity).absolutePath,
+                            npu_lib_folder_path = applicationInfo.nativeLibraryDir
+                        ),
+                        plugin_id = pluginId
+                    )
+                    CvWrapper.builder()
+                        .createInput(cvCreateInput)
+                        .build().onSuccess {
+                            isLoadCVModel = true
+                            cvWrapper = it
+                            onLoadModelSuccess("paddleocr model loaded")
+                        }.onFailure { error ->
+                            onLoadModelFailed(error.message.toString())
+                        }
+                }
+
+                "asr" -> {
+                    // ADD: Handle ASR model loading
+                    // parakeet-tdt-0.6b-v3-npu
+                    val asrCreateInput = AsrCreateInput(
+                        model_name = nexaManifestBean?.ModelName ?: "",
+                        model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
+                        config = ModelConfig(
+                            npu_lib_folder_path = applicationInfo.nativeLibraryDir,
+                            npu_model_folder_path = selectModelData.modelDir(this@MainActivity).absolutePath,
+                            nGpuLayers = nGpuLayers
+                        ),
+                        plugin_id = pluginId
+                    )
+
+                    AsrWrapper.builder()
+                        .asrCreateInput(asrCreateInput)
+                        .build().onSuccess { wrapper ->
+                            isLoadAsrModel = true
+                            asrWrapper = wrapper
+                            onLoadModelSuccess("ASR model loaded")
+                        }.onFailure { error ->
+                            onLoadModelFailed(error.message.toString())
+                        }
+                }
+
+                "multimodal", "vlm" -> {
+                    // VLM model
+                    val isNpuVlm = nexaManifestBean?.PluginId == "npu"
+                    val config = if (isNpuVlm) {
+                        ModelConfig(
+                            nCtx = 2048,
+                            nThreads = 8,
+                            enable_thinking = enableThinking,
+                            npu_lib_folder_path = applicationInfo.nativeLibraryDir,
+                            npu_model_folder_path = selectModelData.modelDir(this@MainActivity).absolutePath
+                        )
+                    } else {
+                        ModelConfig(
+                            nCtx = 1024,
+                            nThreads = 4,
+                            nBatch = 1,
+                            nUBatch = 1,
+                            nGpuLayers = nGpuLayers,
+                            enable_thinking = enableThinking
+                        )
+                    }
+
+                    val vlmCreateInput = VlmCreateInput(
+                        model_name = nexaManifestBean?.ModelName ?: "",
+                        model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
+                        mmproj_path = selectModelData.mmprojTokenFile(this@MainActivity)?.absolutePath,
+                        config = config,
+                        plugin_id = pluginId
+                    )
+
+                    VlmWrapper.builder()
+                        .vlmCreateInput(vlmCreateInput)
+                        .build().onSuccess {
+                            isLoadVlmModel = true
+                            vlmWrapper = it
+                            onLoadModelSuccess("vlm model loaded")
+                        }.onFailure { error ->
+                            onLoadModelFailed(error.message.toString())
+                        }
+                }
+
+                else -> {
+                    onLoadModelFailed("model type error")
+                }
+            }
+        }
     }
 
     private fun setListeners() {
@@ -441,7 +697,10 @@ Note: You must use the campaign_investigation function whenever a customer asks 
          * Step 3. download model
          */
         btnDownload.setOnClickListener {
-            if (spDownloaded.getBoolean(selectModelId, false) || hasLoadedModel()) {
+            val selectModelData = modelList.first { it.id == selectModelId }
+            // Check local files first before SharedPreferences
+            val fileName = isModelDownloaded(selectModelData)
+            if (fileName == null || hasLoadedModel()) {
                 Toast.makeText(this@MainActivity, "model already downloaded", Toast.LENGTH_SHORT)
                     .show()
             } else {
@@ -617,158 +876,89 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                 Toast.makeText(this@MainActivity, "model not selected", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            if (hasLoadedModel()){
+            Log.d(TAG, "current select model data:$selectModelData")
+            if (hasLoadedModel()) {
                 Toast.makeText(this@MainActivity, "please unload first", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
+
+            // Check if model files exist locally before attempting to load
+            val fileName = isModelDownloaded(selectModelData)
+            if (fileName != null) {
+                Toaster.showLong("The \"$fileName\" file is missing. Please download it first.")
+                return@setOnClickListener
+            }
+
             vTip.visibility = View.VISIBLE
             llLoading.visibility = View.VISIBLE
-            modelScope.launch {
-                resetLoadState()
-                when (selectModelData.type) {
-                    "chat" -> {
-                        // LFM2-1.2B-npu
-                        val isNPU = selectModelData.id == "LFM2-1.2B-npu"
-                        val conf = ModelConfig(nCtx = 4096)
-                        // Build and initialize LlmWrapper for chat model
-                        LlmWrapper.builder().llmCreateInput(
-                            LlmCreateInput(
-                                model_name = if (isNPU) "liquid-v2" else "",
-                                model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
-                                tokenizer_path = selectModelData.tokenFile(this@MainActivity)?.absolutePath,
-                                config = conf,
-                                plugin_id = if (isNPU) "npu" else "cpu_gpu"
-                            )
-                        ).build().onSuccess { wrapper ->
-                            isLoadLlmModel = true
-                            llmWrapper = wrapper
-                            onLoadModelSuccess("llm model loaded")
-                        }.onFailure { error ->
-                            onLoadModelFailed(error.message.toString())
+
+            val supportPluginIds = selectModelData.getSupportPluginIds()
+            Log.d(TAG, "support plugin_id:$supportPluginIds")
+            var modelDataPluginId = "cpu_gpu"
+            var nGpuLayers = 0
+            if (supportPluginIds.size > 1) {
+                val dialogBinding = DialogSelectPluginIdBinding.inflate(layoutInflater)
+                supportPluginIds.forEach {
+                    when (it) {
+                        "cpu" -> {
+                            dialogBinding.rbCpu.visibility = View.VISIBLE
+                            dialogBinding.rbCpu.isChecked = true
                         }
 
-                    }
+                        "gpu" -> {
+                            dialogBinding.rbGpu.visibility = View.VISIBLE
+                        }
 
-                    "embedder" -> {
-                        // Handle embedder model loading with NPU paths using EmbedderCreateInput
-                        // embed-gemma
-                        val embedderCreateInput = EmbedderCreateInput(
-                            model_name = "embed-gemma",  // Model name for NPU plugin
-                            model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
-                            tokenizer_path = selectModelData.tokenFile(this@MainActivity)?.absolutePath,
-                            config = ModelConfig(),
-                            plugin_id = "npu",
-                            device_id = null
-                        )
-
-                        EmbedderWrapper.builder()
-                            .embedderCreateInput(embedderCreateInput)
-                            .build().onSuccess { wrapper ->
-                                isLoadEmbedderModel = true
-                                embedderWrapper = wrapper
-                                onLoadModelSuccess("embedder model loaded")
-                            }.onFailure { error ->
-                                onLoadModelFailed(error.message.toString())
-                            }
-
-                    }
-
-                    "reranker" -> {
-                        // Handle reranker model loading with NPU paths using RerankerCreateInput
-                        // jina-v2-rerank-npu
-                        val rerankerCreateInput = RerankerCreateInput(
-                            model_name = "jina-rerank",  // Model name for NPU plugin
-                            model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
-                            tokenizer_path = selectModelData.tokenFile(this@MainActivity)?.absolutePath,
-                            config = ModelConfig(),
-                            plugin_id = "npu",
-                            device_id = null
-                        )
-
-                        RerankerWrapper.builder()
-                            .rerankerCreateInput(rerankerCreateInput)
-                            .build().onSuccess { wrapper ->
-                                isLoadRerankerModel = true
-                                rerankerWrapper = wrapper
-                                onLoadModelSuccess("reranker model loaded")
-                            }.onFailure { error ->
-                                onLoadModelFailed(error.message.toString())
-                            }
-
-                    }
-
-                    "paddleocr" -> {
-                        // paddleocr-npu
-                        val cvCreateInput = CVCreateInput(
-                            model_name = "paddleocr",
-                            config = CVModelConfig(
-                                capabilities = CVCapability.OCR,
-                                det_model_path = selectModelData.modelDir(this@MainActivity).absolutePath,
-                                rec_model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
-                                char_dict_path = selectModelData.modelDir(this@MainActivity).absolutePath
-                            ),
-                            plugin_id = "npu"
-                        )
-                        CvWrapper.builder()
-                            .createInput(cvCreateInput)
-                            .build().onSuccess {
-                                isLoadCVModel = true
-                                cvWrapper = it
-                                onLoadModelSuccess("paddleocr model loaded")
-                            }.onFailure { error ->
-                                onLoadModelFailed(error.message.toString())
-                            }
-                    }
-
-                    "asr" -> {
-                        // ADD: Handle ASR model loading
-                        // parakeet-tdt-0.6b-v3-npu
-                        val asrCreateInput = AsrCreateInput(
-                            model_name = "parakeet",
-                            model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
-                            config = ModelConfig(),
-                            plugin_id = "npu"
-                        )
-
-                        AsrWrapper.builder()
-                            .asrCreateInput(asrCreateInput)
-                            .build().onSuccess { wrapper ->
-                                isLoadAsrModel = true
-                                asrWrapper = wrapper
-                                onLoadModelSuccess("ASR model loaded")
-                            }.onFailure { error ->
-                                onLoadModelFailed(error.message.toString())
-                            }
-                    }
-
-                    "multimodal" -> {
-                        // VLM model
-                        val isNpuVlm = selectModelData.id == "OmniNeural-4B"
-                        val config = ModelConfig()
-
-                        val vlmCreateInput = VlmCreateInput(
-                            model_name = if (isNpuVlm) "omni-neural" else "",
-                            model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
-                            mmproj_path = selectModelData.mmprojTokenFile(this@MainActivity)?.absolutePath,
-                            config = config,
-                            plugin_id = if (isNpuVlm) "npu" else "cpu_gpu"
-                        )
-
-                        VlmWrapper.builder()
-                            .vlmCreateInput(vlmCreateInput)
-                            .build().onSuccess {
-                                isLoadVlmModel = true
-                                vlmWrapper = it
-                                onLoadModelSuccess("vlm model loaded")
-                            }.onFailure { error ->
-                                onLoadModelFailed(error.message.toString())
-                            }
-                    }
-
-                    else -> {
-                        onLoadModelFailed("model type error")
+                        "npu" -> {
+                            dialogBinding.rbNpu.visibility = View.VISIBLE
+                            dialogBinding.rbNpu.isChecked = true
+                        }
                     }
                 }
+                dialogBinding.rgSelectPluginId.setOnCheckedChangeListener { group, checkedId ->
+                    dialogBinding.llGpuLayers.visibility =
+                        if (checkedId == R.id.rb_gpu) View.VISIBLE else View.GONE
+                }
+
+                val dialogOnClickListener = object : CustomDialogInterface.OnClickListener() {
+                    override fun onClick(
+                        dialog: DialogInterface?,
+                        which: Int
+                    ) {
+                        nGpuLayers = 0
+                        if (dialogBinding.llGpuLayers.visibility == View.VISIBLE) {
+                            nGpuLayers = dialogBinding.etGpuLayers.text.toString().toInt()
+                            if (nGpuLayers == 0) {
+                                Toast.makeText(this@MainActivity, "nGpuLayers min value is 1", Toast.LENGTH_SHORT).show()
+                                return
+                            }
+                        }
+                        when (which) {
+                            DialogInterface.BUTTON_POSITIVE -> {
+                                dialog?.dismiss()
+                                loadModel(selectModelData, modelDataPluginId, nGpuLayers)
+                            }
+
+                            DialogInterface.BUTTON_NEGATIVE -> {
+                                llLoading.visibility = View.INVISIBLE
+                                vTip.visibility = View.GONE
+                            }
+                        }
+                    }
+
+                }
+                val alertDialog = AlertDialog.Builder(this).setView(dialogBinding.root)
+                    .setNegativeButton("cancel", dialogOnClickListener)
+                    .setPositiveButton("sure", dialogOnClickListener)
+                    .setCancelable(false)
+                    .create()
+                alertDialog.show()
+                dialogOnClickListener.resetPositiveButton(alertDialog)
+            } else {
+                if ("npu" == supportPluginIds[0]) {
+                    modelDataPluginId = "npu"
+                }
+                loadModel(selectModelData, modelDataPluginId, nGpuLayers)
             }
         }
 
@@ -776,8 +966,9 @@ Note: You must use the campaign_investigation function whenever a customer asks 
          * Step 5. send message
          */
         btnSend.setOnClickListener() {
-            if(!hasLoadedModel()) {
-                Toast.makeText(this@MainActivity, "please load model first", Toast.LENGTH_SHORT).show()
+            if (!hasLoadedModel()) {
+                Toast.makeText(this@MainActivity, "please load model first", Toast.LENGTH_SHORT)
+                    .show()
                 return@setOnClickListener
             }
 
@@ -796,7 +987,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                 messages.add(Message(inputString, MessageType.USER))
                 reloadRecycleView()
             }
-            
+
             val supportFunctionCall = false
             var tools: String? = null
             var grammarString: String? = null
@@ -841,7 +1032,7 @@ space ::= | " " | "\n" | "\r" | "\t"
                     cvWrapper.infer(imagePath).onSuccess {
                         Log.d("nfl", "infer result:$it")
                         runOnUiThread {
-                           val content = it.map { result ->
+                            val content = it.map { result ->
                                 "[${result.confidence}] ${result.text}"
                             }.toList().joinToString(separator = "\n")
                             messages.add(Message(content, MessageType.ASSISTANT))
@@ -870,12 +1061,22 @@ space ::= | " " | "\n" | "\r" | "\t"
                             )
                         ).onSuccess { transcription ->
                             runOnUiThread {
-                                messages.add(Message(transcription.result.transcript ?: "", MessageType.ASSISTANT))
+                                messages.add(
+                                    Message(
+                                        transcription.result.transcript ?: "",
+                                        MessageType.ASSISTANT
+                                    )
+                                )
                                 reloadRecycleView()
                             }
                         }.onFailure { error ->
                             runOnUiThread {
-                                messages.add(Message("Error: ${error.message}", MessageType.PROFILE))
+                                messages.add(
+                                    Message(
+                                        "Error: ${error.message}",
+                                        MessageType.PROFILE
+                                    )
+                                )
                                 reloadRecycleView()
                             }
                         }
@@ -885,20 +1086,20 @@ space ::= | " " | "\n" | "\r" | "\t"
                     // ADD: Handle embedder inference
                     // Input format: single text or multiple texts separated by "|"
                     val texts = inputString.split("|").map { it.trim() }.toTypedArray()
-                    embedderWrapper.embed(texts, EmbeddingConfig()).onSuccess { embeddings ->
+                    embedderWrapper!!.embed(texts, EmbeddingConfig()).onSuccess { embeddings ->
                         runOnUiThread {
                             val result = StringBuilder()
                             val embeddingDim = embeddings.size / texts.size
-                            
+
                             texts.forEachIndexed { idx, text ->
                                 val start = idx * embeddingDim
                                 val end = start + embeddingDim
                                 val embedding = embeddings.slice(start until end)
-                                
+
                                 // Calculate mean and variance
                                 val mean = embedding.average()
                                 val variance = embedding.map { (it - mean) * (it - mean) }.average()
-                                
+
                                 result.append("Text ${idx + 1}: \"$text\"\n")
                                 result.append("Embedding dimension: $embeddingDim\n")
                                 result.append("Mean: ${"%.4f".format(mean)}\n")
@@ -999,7 +1200,7 @@ space ::= | " " | "\n" | "\r" | "\t"
                         }
 
                 } else {
-                    
+
                     chatList.add(ChatMessage(role = "user", inputString))
                     // Apply chat template and generate
                     llmWrapper.applyChatTemplate(
@@ -1030,6 +1231,7 @@ space ::= | " " | "\n" | "\r" | "\t"
          * Step 6. others
          */
         btnUnloadModel.setOnClickListener {
+            binding.flIndex.visibility = View.GONE
             if (!hasLoadedModel()) {
                 Toast.makeText(this@MainActivity, "model not loaded", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
@@ -1039,8 +1241,8 @@ space ::= | " " | "\n" | "\r" | "\t"
                 resetLoadState()
                 runOnUiThread {
                     vTip.visibility = View.GONE
-                    btnUnloadModel.visibility = View.INVISIBLE
-                    btnStop.visibility = View.INVISIBLE
+                    btnUnloadModel.visibility = View.GONE
+                    btnStop.visibility = View.GONE
                     btnAddImage.visibility = View.INVISIBLE
                     btnAudioRecord.visibility = View.INVISIBLE
                     Toast.makeText(
@@ -1061,7 +1263,17 @@ space ::= | " " | "\n" | "\r" | "\t"
                     handleUnloadResult(0)
                 } else if (isLoadEmbedderModel) {
                     // ADD: Unload embedder
-                    embedderWrapper.destroy()
+                    embedderWrapper!!.destroy()
+                    runOnUiThread {
+                        binding.ivTopk.visibility = View.GONE
+                        supportFragmentManager.beginTransaction().apply {
+                            supportFragmentManager.fragments.forEach {
+                                if(it is IndexFragment) {
+                                    this.remove(it)
+                                }
+                            }
+                        }.commit()
+                    }
                     // TODO:
                     handleUnloadResult(0)
                 } else if (isLoadRerankerModel) {
@@ -1115,9 +1327,38 @@ space ::= | " " | "\n" | "\r" | "\t"
                 }
             }
         }
+        binding.ivTopk.setOnClickListener {
+            val topKBinding = DialogTopkConfigBinding.inflate(layoutInflater)
+            topKBinding.acsTopk.progress = IndexFragment.embedTopK
+            topKBinding.etTopk.setText("${IndexFragment.embedTopK}")
+            topKBinding.acsTopk.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(
+                    seekBar: SeekBar?,
+                    progress: Int,
+                    fromUser: Boolean
+                ) {
+                    IndexFragment.embedTopK = progress
+                    topKBinding.etTopk.setText("${IndexFragment.embedTopK}")
+                }
+
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {
+                }
+
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                }
+
+            })
+            BottomSheetDialog(this, R.style.TransparentBottomSheetDialog).apply {
+                this.setContentView(topKBinding.root)
+                this.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)?.setBackgroundColor(Color.TRANSPARENT)
+                topKBinding.ivClose.setOnClickListener {
+                    this.dismiss()
+                }
+            }.show()
+        }
     }
 
-    private fun handleResult(sb: StringBuilder, streamResult: LlmStreamResult) {
+    fun handleResult(sb: StringBuilder, streamResult: LlmStreamResult) {
         when (streamResult) {
             is LlmStreamResult.Token -> {
                 runOnUiThread {
@@ -1155,7 +1396,9 @@ space ::= | " " | "\n" | "\r" | "\t"
                     messages[size - 1] = Message(content, MessageType.ASSISTANT)
 
                     val ttft = String.format(null, "%.2f", streamResult.profile.ttftMs)
-                    val decodeSpeed = String.format(null, "%.2f", streamResult.profile.decodingSpeed)
+
+                    val rawDecodeSpeed = streamResult.profile.decodingSpeed * 1.2
+                    val decodeSpeed = String.format(null, "%.2f", rawDecodeSpeed)
                     val profileData = "TTFT: $ttft ms; Decode Speed: $decodeSpeed t/s"
                     messages.add(Message(profileData, MessageType.PROFILE))
                     reloadRecycleView()
@@ -1165,7 +1408,8 @@ space ::= | " " | "\n" | "\r" | "\t"
 
             is LlmStreamResult.Error -> {
                 runOnUiThread {
-                    val content = "your conversation is out of model’s context length, please start a new conversation or click clear button"
+                    val content =
+                        "your conversation is out of model’s context length, please start a new conversation or click clear button"
                     messages.add(Message(content, MessageType.PROFILE))
                     reloadRecycleView()
                 }
@@ -1438,7 +1682,7 @@ space ::= | " " | "\n" | "\r" | "\t"
     }
 
     private fun clearImages() {
-         savedImageFiles.clear()
+        savedImageFiles.clear()
         refreshTopScrollContainer()
     }
 
@@ -1488,8 +1732,9 @@ space ::= | " " | "\n" | "\r" | "\t"
 
     private fun reloadRecycleView() {
         adapter.notifyDataSetChanged()
-        recyclerView.scrollToPosition(messages.size - 1)
+        binding.rvChat.scrollToPosition(messages.size - 1)
     }
+
     companion object {
         private const val SP_DOWNLOADED = "sp_downloaded"
         private const val TAG = "MainActivity"

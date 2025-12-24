@@ -1,3 +1,17 @@
+// Copyright 2024-2025 Nexa AI, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package config
 
 import (
@@ -7,18 +21,21 @@ import (
 )
 
 type Config struct {
+	// Global settings
+	DataDir string
+
+	// Server settings
 	Host      string // Server host and port (default: "127.0.0.1:18181")
 	Origins   string // Allowed CORS origins (default: "*")
 	KeepAlive int64  // Connection keep-alive timeout in seconds (default: 300)
-	HFToken   string
-
-	Log string // Enable backend log
-
 	// HTTPS / TLS settings
-	EnableHTTPS bool   // Whether to serve over HTTPS (default: false)
-	CertFile    string // TLS certificate file path
-	KeyFile     string // TLS private key file path
-	UseNgrok    bool   // Whether to use ngrok for public HTTPS tunnel (default: false)
+	HTTPS    bool   // Whether to serve over HTTPS (default: false)
+	CertFile string // TLS certificate file path
+	KeyFile  string // TLS private key file path
+
+	// Env only params
+	HFToken string
+	Log     string
 }
 
 var config *Config
@@ -40,18 +57,9 @@ func GetLog() string {
 // init sets up default configuration values using Viper.
 // These defaults are used if no environment variables are provided.
 func init() {
-	viper.SetDefault("host", "127.0.0.1:18181") // Default server address
-	viper.SetDefault("origins", "*")            // Default CORS origins
-	viper.SetDefault("keepalive", 300)          // Default 5-minute timeout
-	viper.SetDefault("hftoken", "")             // Default empty token
-
+	// ENV only param need to set default here
+	viper.SetDefault("hftoken", "") // Default empty token
 	viper.SetDefault("log", "none") // Default log level
-
-	// HTTPS defaults - disabled unless explicitly enabled
-	viper.SetDefault("enablehttps", false)
-	viper.SetDefault("certfile", "cert.pem")
-	viper.SetDefault("keyfile", "key.pem")
-	viper.SetDefault("ngrok", false)
 }
 
 // get initializes the configuration by reading from environment variables.
@@ -66,7 +74,4 @@ func get() {
 	viper.AutomaticEnv()
 	// Unmarshal configuration into the Config struct
 	viper.Unmarshal(config)
-
-	// Map the ngrok flag properly
-	config.UseNgrok = viper.GetBool("ngrok")
 }

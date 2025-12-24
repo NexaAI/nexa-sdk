@@ -1,4 +1,17 @@
 #!/bin/bash
+# Copyright 2024-2025 Nexa AI, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 # Self-contained installer for the Nexa SDK on Linux.
 # This script includes an embedded binary payload.
@@ -77,32 +90,32 @@ validate_requirements() {
 # Extract-only function
 extract_only() {
     local target_dir="./nexa_sdk"
-    
+
     status "Starting Nexa SDK extraction..."
-    
+
     # --- 1. Locate and extract the embedded payload ---
     local payload_line
     payload_line=$(awk '/^__PAYLOAD_BELOW__/ {print NR + 1}' "$0")
     if [ -z "$payload_line" ]; then
         error "Could not find payload in the script. The installer appears to be corrupted."
     fi
-    
+
     status "Creating extraction directory: $target_dir"
     mkdir -p "$target_dir"
-    
+
     status "Extracting embedded payload to $target_dir..."
     tail -n "+$payload_line" "$0" | tar -xzf - -C "$target_dir"
     if [ $? -ne 0 ]; then
         error "Failed to extract payload. The installer might be corrupted or incomplete."
     fi
-    
+
     # Make binaries executable
     chmod +x "$target_dir/nexa" "$target_dir/nexa-cli" 2>/dev/null || true
-    
+
     # Get absolute path for display
     local abs_dir
     abs_dir=$(cd "$target_dir" && pwd)
-    
+
     status "${plain}Extraction complete! Files extracted to: $abs_dir"
     echo ""
     status "To use the extracted binaries, add the following to your PATH:"
@@ -209,6 +222,10 @@ main() {
         status "${plain}Install complete! The Nexa SDK is now installed."
         status "You can use the 'nexa' commands from your terminal."
     fi
+
+    # warning for missing libgomp1
+    warning "libgomp1 is required for Nexa SDK to function properly. make sure it is installed on your system."
+    warning "You can install it using your package manager, e.g., 'sudo apt-get install libgomp1' on Debian-based systems."
 }
 
 # Run the main function with all arguments passed to the script

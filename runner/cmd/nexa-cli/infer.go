@@ -1,17 +1,27 @@
+// Copyright 2024-2025 Nexa AI, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
 	"errors"
 	"fmt"
-	"image"
-	"image/color"
-	"image/draw"
-	"image/jpeg"
-	"image/png"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -21,11 +31,9 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"golang.org/x/image/font"
-	"golang.org/x/image/font/basicfont"
-	"golang.org/x/image/math/fixed"
 
 	"github.com/NexaAI/nexa-sdk/runner/cmd/nexa-cli/common"
+	"github.com/NexaAI/nexa-sdk/runner/cmd/nexa-cli/logic"
 	"github.com/NexaAI/nexa-sdk/runner/internal/record"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
@@ -392,8 +400,9 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 			history = append(history, nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
 
 			templateOutput, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
-				Messages:    history,
-				EnableThink: enableThink,
+				Messages:            history,
+				EnableThink:         enableThink,
+				AddGenerationPrompt: true,
 			})
 			if err != nil {
 				return "", nexa_sdk.ProfileData{}, err
@@ -1119,122 +1128,6 @@ func inferDiarize(manifest *types.ModelManifest, quant string) error {
 	return processor.Process()
 }
 
-func drawBBoxesOnImage(imagePath string, results []nexa_sdk.CVResult) (string, error) {
-	file, err := os.Open(imagePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to open image: %w", err)
-	}
-	defer file.Close()
-
-	img, format, err := image.Decode(file)
-	if err != nil {
-		return "", fmt.Errorf("failed to decode image: %w", err)
-	}
-
-	bounds := img.Bounds()
-	rgba := image.NewRGBA(bounds)
-	draw.Draw(rgba, bounds, img, bounds.Min, draw.Src)
-
-	const bboxLineWidth = 2
-	d := &font.Drawer{
-		Dst:  rgba,
-		Src:  image.NewUniform(color.White),
-		Face: basicfont.Face7x13,
-	}
-	colors := []color.RGBA{
-		{R: 255, G: 0, B: 0, A: 255},   // Red
-		{R: 0, G: 255, B: 255, A: 255}, // Cyan
-		{R: 0, G: 255, B: 0, A: 255},   // Green
-		{R: 0, G: 0, B: 255, A: 255},   // Blue
-		{R: 255, G: 255, B: 0, A: 255}, // Yellow
-		{R: 255, G: 0, B: 255, A: 255}, // Magenta
-		{R: 255, G: 165, B: 0, A: 255}, // Orange
-		{R: 128, G: 0, B: 128, A: 255}, // Purple
-	}
-	for _, r := range results {
-		if r.BBox.Width <= 0 || r.BBox.Height <= 0 {
-			continue
-		}
-		bboxColor := colors[r.ClassID%int32(len(colors))]
-		x, y, w, h := int(r.BBox.X), int(r.BBox.Y), int(r.BBox.Width), int(r.BBox.Height)
-		if x < 0 {
-			x, w = 0, w+x
-		}
-		if y < 0 {
-			y, h = 0, h+y
-		}
-		if x+w > bounds.Dx() {
-			w = bounds.Dx() - x
-		}
-		if y+h > bounds.Dy() {
-			h = bounds.Dy() - y
-		}
-
-		for i := range bboxLineWidth {
-			for j := x; j < x+w && j < bounds.Dx(); j++ {
-				if y+i < bounds.Dy() {
-					rgba.Set(j, y+i, bboxColor)
-				}
-				if y+h-1-i >= 0 {
-					rgba.Set(j, y+h-1-i, bboxColor)
-				}
-			}
-			for j := y; j < y+h && j < bounds.Dy(); j++ {
-				if x+i < bounds.Dx() {
-					rgba.Set(x+i, j, bboxColor)
-				}
-				if x+w-1-i >= 0 {
-					rgba.Set(x+w-1-i, j, bboxColor)
-				}
-			}
-		}
-
-		textLabel := r.Text
-		label := fmt.Sprintf("%s %.2f", textLabel, r.Confidence)
-		labelWidth := d.MeasureString(label).Ceil()
-		labelHeight := 12
-		padding := 4
-
-		labelY := y - labelHeight - padding*2
-		if labelY < 0 {
-			labelY = y + h + padding
-		}
-
-		bgRect := image.Rect(x, labelY, x+labelWidth+padding*2, labelY+labelHeight+padding*2)
-		if bgRect.Max.X > bounds.Dx() {
-			bgRect.Max.X = bounds.Dx()
-		}
-		if bgRect.Max.Y > bounds.Dy() {
-			bgRect.Max.Y = bounds.Dy()
-		}
-		if bgRect.Min.Y < 0 {
-			bgRect.Min.Y = 0
-		}
-		draw.Draw(rgba, bgRect, image.NewUniform(bboxColor), image.Point{}, draw.Over)
-		d.Dot = fixed.P(x+padding, labelY+labelHeight+padding)
-		d.DrawString(label)
-	}
-
-	ext := filepath.Ext(imagePath)
-	baseName := strings.TrimSuffix(filepath.Base(imagePath), ext)
-	outputPath := filepath.Join(".", baseName+"_bbox"+ext)
-	outFile, err := os.Create(outputPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to create output file: %w", err)
-	}
-	defer outFile.Close()
-
-	if format == "jpeg" || format == "jpg" {
-		err = jpeg.Encode(outFile, rgba, &jpeg.Options{Quality: 95})
-	} else {
-		err = png.Encode(outFile, rgba)
-	}
-	if err != nil {
-		return "", fmt.Errorf("failed to encode image: %w", err)
-	}
-	return outputPath, nil
-}
-
 func inferCV(manifest *types.ModelManifest, quant string) error {
 	s := store.Get()
 	modelfile := s.ModelfilePath(manifest.Name, manifest.ModelFile[quant].Name)
@@ -1277,28 +1170,44 @@ func inferCV(manifest *types.ModelManifest, quant string) error {
 			}
 
 			result, err := p.Infer(inferInput)
+			slog.Debug("CV Infer result", "result", result, "error", err)
 			if err != nil {
 				return "", nexa_sdk.ProfileData{}, err
 			}
 
 			onToken(render.GetTheme().Success.Sprintf("✓ CV inference completed successfully"))
 			onToken("\n")
-			onToken(render.GetTheme().Info.Sprintf("  Found %d results\n", len(result.Results)))
+			onToken(render.GetTheme().Info.Sprintf("  Found %d results, ", len(result.Results)))
 
 			data := ""
-			for _, cvResult := range result.Results {
-				result := fmt.Sprintf("[%s] %s\n",
-					render.GetTheme().Info.Sprintf("%.3f", cvResult.Confidence),
-					render.GetTheme().Success.Sprintf("\"%s\"", cvResult.Text))
-				onToken(result)
-				data += result
+
+			if len(result.Results) == 0 {
+				onToken(render.GetTheme().Info.Sprintf("no output, skip generate output image\n"))
+				return data, nexa_sdk.ProfileData{}, nil
 			}
 
-			if outputPath, err := drawBBoxesOnImage(images[0], result.Results); err != nil {
-				slog.Error("Failed to draw bboxes", "error", err)
-			} else if outputPath != "" {
-				onToken(render.GetTheme().Success.Sprintf("  Bounding boxes drawn and saved to: %s\n", outputPath))
+			if len(result.Results) == 1 && reflect.ValueOf(result.Results[0].BBox).IsZero() {
+				// rmbg
+				onToken(render.GetTheme().Info.Sprintf("Mask output detected\n"))
+
+			} else {
+				// bbox
+				onToken(render.GetTheme().Info.Sprintf("BBox output detected\n"))
+				for _, cvResult := range result.Results {
+					result := fmt.Sprintf("[%s] %s\n",
+						render.GetTheme().Info.Sprintf("%.3f", cvResult.Confidence),
+						render.GetTheme().Success.Sprintf("\"%s\"", cvResult.Text))
+					onToken(result)
+					data += result
+				}
 			}
+
+			outputPath, err := logic.CVPostProcess(images[0], result.Results)
+			if err != nil {
+				return data, nexa_sdk.ProfileData{}, err
+			}
+
+			onToken(render.GetTheme().Success.Sprintf("  Result drawn and saved to: %s\n", outputPath))
 
 			return data, nexa_sdk.ProfileData{}, nil
 		},

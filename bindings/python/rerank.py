@@ -1,3 +1,17 @@
+# Copyright 2024-2025 Nexa AI, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 #!/usr/bin/env python3
 
 """
@@ -8,33 +22,54 @@ It includes basic model initialization, document reranking, and score analysis.
 """
 
 import argparse
+import logging
 import os
-from nexaai.rerank import Reranker, RerankConfig
+
+from nexaai.rerank import Reranker
+from nexaai import setup_logging
 
 
 def main():
+    setup_logging(level=logging.DEBUG)
     parser = argparse.ArgumentParser(description="NexaAI Rerank Example")
-    parser.add_argument("--model", 
-                       default="~/.cache/nexa.ai/nexa_sdk/models/NexaAI/jina-v2-rerank-mlx/jina-reranker-v2-base-multilingual-f16.safetensors",
-                       help="Path to the rerank model")
-    parser.add_argument("--query", default="Where is on-device AI?",
-                       help="Query text for reranking")
-    parser.add_argument("--documents", nargs="+",
-                       default=["On-device AI is a type of AI that is processed on the device itself, rather than in the cloud.",
-                               "edge computing",
-                               "A ragdoll is a breed of cat that is known for its long, flowing hair and gentle personality.",
-                               "The capital of France is Paris."],
-                       help="Documents to rerank")
+    parser.add_argument(
+        "-m",
+        "--model",
+        default="~/.cache/nexa.ai/nexa_sdk/models/NexaAI/jina-v2-rerank-mlx/jina-reranker-v2-base-multilingual-f16.safetensors",
+        help="Path to the rerank model",
+    )
+    parser.add_argument(
+        "--query",
+        default="Where is on-device AI?",
+        help="Query text for reranking",
+    )
+    parser.add_argument(
+        "--documents",
+        nargs="+",
+        default=[
+            "On-device AI is a type of AI that is processed on the device itself, rather than in the cloud.",
+            "edge computing",
+            "A ragdoll is a breed of cat that is known for its long, flowing hair and gentle personality.",
+            "The capital of France is Paris.",
+        ],
+        help="Documents to rerank",
+    )
     parser.add_argument("--batch-size", type=int, help="Batch size for processing")
-    parser.add_argument("--plugin-id", default="cpu_gpu", help="Plugin ID to use")
+    parser.add_argument("--plugin-id", default=None, help="Plugin ID to use")
     args = parser.parse_args()
 
-    model_path = os.path.expanduser(args.model)
-    reranker = Reranker.from_(name_or_path=model_path, plugin_id=args.plugin_id)
-    
+    reranker = Reranker.from_(
+        model=os.path.expanduser(args.model),
+        plugin_id=args.plugin_id,
+    )
+
     batch_size = args.batch_size or len(args.documents)
-    scores = reranker.rerank(query=args.query, documents=args.documents, 
-                           config=RerankConfig(batch_size=batch_size))
+    result = reranker.rerank(
+        query=args.query,
+        documents=args.documents,
+        batch_size=batch_size,
+    )
+    scores = result.scores
 
     print(f"Query: {args.query}")
     print(f"Documents: {len(args.documents)} documents")
