@@ -3,7 +3,7 @@
 ## AutoNeural – NPU-Native Multimodal Model for Automotive Cockpits
 
 <p align="center">
-  <img src="./AutoNeural/assets/AutoNeural_Poster.png" alt="AutoNeural overview" width="100%">
+  <img src="./autoneural/assets/AutoNeural_Poster.png" alt="AutoNeural overview" width="100%">
 </p>
 
 <p align="center">
