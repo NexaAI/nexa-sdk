@@ -11,12 +11,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"sync"
 	"time"
 
 	"github.com/bytedance/sonic"
 	goversion "github.com/hashicorp/go-version"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/downloader"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
@@ -30,8 +30,8 @@ const (
 	updateCheckInterval  = 24 * time.Hour
 	notificationInterval = 8 * time.Hour
 
-	defaultChunkSize  = 16 * 1024 * 1024
-	defaultNumWorkers = 4
+	defaultChunkSize  = 4 * 1024 * 1024
+	defaultNumWorkers = 16
 )
 
 func update() *cobra.Command {
@@ -184,73 +184,35 @@ func downloadPkg(url, dst string, size int64, progress chan int64) error {
 	defer file.Close()
 
 	chunkSize := int64(defaultChunkSize)
-	numWorkers := defaultNumWorkers
-	if size < defaultChunkSize*int64(numWorkers) {
-		if size < chunkSize {
-			chunkSize = size
-			numWorkers = 1
-		} else {
-			numWorkers = int((size + chunkSize - 1) / chunkSize)
-			if numWorkers > defaultNumWorkers {
-				numWorkers = defaultNumWorkers
-			}
-		}
-	}
+	numWorkers := min(int((size+chunkSize-1)/chunkSize), defaultNumWorkers)
+	slog.Debug("downloading package", "url", url, "size", size, "chunkSize", chunkSize, "numWorkers", numWorkers)
 
-	chunkChan := make(chan int64, numWorkers)
-	go func() {
-		defer close(chunkChan)
-		for offset := int64(0); offset < size; offset += chunkSize {
-			chunkChan <- offset
-		}
-	}()
-
-	var wg sync.WaitGroup
-	var mu sync.Mutex
-	var firstErr error
-	downloader := downloader.NewDownloader("")
 	ctx := context.Background()
+	g, ctx := errgroup.WithContext(ctx)
+	g.SetLimit(numWorkers)
 
-	for i := 0; i < numWorkers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for offset := range chunkChan {
-				limit := chunkSize
-				if offset+limit > size {
-					limit = size - offset
-				}
+	downloader := downloader.NewDownloader("")
 
-				var buf bytes.Buffer
-				if err := downloader.DownloadChunk(ctx, url, offset, limit, &buf); err != nil {
-					mu.Lock()
-					if firstErr == nil {
-						firstErr = fmt.Errorf("failed to download chunk at offset %d: %w", offset, err)
-					}
-					mu.Unlock()
-					return
-				}
+	for offset := int64(0); offset < size; offset += chunkSize {
+		offset := offset
+		g.Go(func() error {
+			limit := min(chunkSize, size-offset)
 
-				if _, err := file.WriteAt(buf.Bytes(), offset); err != nil {
-					mu.Lock()
-					if firstErr == nil {
-						firstErr = fmt.Errorf("failed to write chunk at offset %d: %w", offset, err)
-					}
-					mu.Unlock()
-					return
-				}
-
-				mu.Lock()
-				if firstErr == nil {
-					progress <- int64(buf.Len())
-				}
-				mu.Unlock()
+			buf := bytes.NewBuffer(make([]byte, 0, int(limit)))
+			if err := downloader.DownloadChunk(ctx, url, offset, limit, buf); err != nil {
+				return fmt.Errorf("failed to download chunk at offset %d: %w", offset, err)
 			}
-		}()
+
+			if _, err := file.WriteAt(buf.Bytes(), offset); err != nil {
+				return fmt.Errorf("failed to write chunk at offset %d: %w", offset, err)
+			}
+
+			progress <- int64(buf.Len())
+			return nil
+		})
 	}
 
-	wg.Wait()
-	return firstErr
+	return g.Wait()
 }
 
 func installPkg(pkgPath string) error {
