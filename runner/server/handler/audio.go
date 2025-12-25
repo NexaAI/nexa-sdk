@@ -349,6 +349,7 @@ func AudioStream(c *gin.Context) {
 			response.IsFinal = true
 		}
 
+		// WriteJSON is protected by mutex to prevent concurrent writes to the WebSocket connection
 		if err := conn.WriteJSON(response); err != nil {
 			slog.Error("Failed to send transcription", "error", err)
 		}
@@ -426,6 +427,12 @@ func AudioStream(c *gin.Context) {
 
 // bytesToFloat32 converts byte array (16-bit PCM) to float32 array
 func bytesToFloat32(data []byte) []float32 {
+	// Validate byte array length (must be even for 16-bit samples)
+	if len(data)%2 != 0 {
+		slog.Warn("Invalid audio data length (not even), truncating last byte", "length", len(data))
+		data = data[:len(data)-1]
+	}
+
 	// Assuming 16-bit PCM audio (little-endian)
 	numSamples := len(data) / 2
 	result := make([]float32, numSamples)
