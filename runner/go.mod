@@ -17,6 +17,7 @@ require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/gofrs/flock v0.13.0
 	github.com/gookit/color v1.6.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/go-version v1.7.0
 	github.com/jedib0t/go-pretty/v6 v6.7.2
 	github.com/lmittmann/tint v1.1.2
@@ -71,7 +72,6 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/goccy/go-yaml v1.18.0 // indirect
-	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.18.1 // indirect

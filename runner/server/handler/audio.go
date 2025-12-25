@@ -207,32 +207,47 @@ func Diarize(c *gin.Context) {
 	}
 }
 
+const (
+	// WebSocket buffer sizes
+	wsReadBufferSize  = 1024
+	wsWriteBufferSize = 1024
+
+	// ASR streaming configuration defaults
+	defaultMaxQueueSize = 100
+	defaultBufferSize   = 4096
+
+	// Audio conversion constants
+	int16MaxValue = 32768.0 // Maximum value for signed 16-bit integers (2^15)
+)
+
 // WebSocket upgrader
 var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
+	ReadBufferSize:  wsReadBufferSize,
+	WriteBufferSize: wsWriteBufferSize,
 	CheckOrigin: func(r *http.Request) bool {
-		// Allow all origins for now - in production, you should validate this
+		// TODO: Implement proper origin validation for production
+		// For now, allow all origins to facilitate development and testing
+		// In production, validate against allowed origins list
 		return true
 	},
 }
 
 // StreamConfig represents the configuration for ASR streaming
 type StreamConfig struct {
-	Model               string  `json:"model"`
-	Language            string  `json:"language"`
-	SampleRate          int32   `json:"sample_rate"`
-	EnablePartialResults bool   `json:"enable_partial_results"`
-	EnableWordTimestamps bool   `json:"enable_word_timestamps"`
-	VADEnabled          bool    `json:"vad_enabled"`
-	ChunkDuration       float32 `json:"chunk_duration"`
-	OverlapDuration     float32 `json:"overlap_duration"`
-	BeamSize            int32   `json:"beam_size"`
+	Model                string  `json:"model"`
+	Language             string  `json:"language"`
+	SampleRate           int32   `json:"sample_rate"`
+	EnablePartialResults bool    `json:"enable_partial_results"`
+	EnableWordTimestamps bool    `json:"enable_word_timestamps"`
+	VADEnabled           bool    `json:"vad_enabled"`
+	ChunkDuration        float32 `json:"chunk_duration"`
+	OverlapDuration      float32 `json:"overlap_duration"`
+	BeamSize             int32   `json:"beam_size"`
 }
 
 // TranscriptionResponse represents the response sent back to the client
 type TranscriptionResponse struct {
-	Type       string  `json:"type"`       // "partial" or "final"
+	Type       string  `json:"type"` // "partial" or "final"
 	Text       string  `json:"text"`
 	Confidence float64 `json:"confidence,omitempty"`
 	Timestamp  int64   `json:"timestamp"`
@@ -331,8 +346,8 @@ func AudioStream(c *gin.Context) {
 		ChunkDuration:   config.ChunkDuration,
 		OverlapDuration: config.OverlapDuration,
 		SampleRate:      config.SampleRate,
-		MaxQueueSize:    100,
-		BufferSize:      4096,
+		MaxQueueSize:    defaultMaxQueueSize,
+		BufferSize:      defaultBufferSize,
 		BeamSize:        config.BeamSize,
 	}
 
@@ -370,7 +385,7 @@ func AudioStream(c *gin.Context) {
 		if messageType == websocket.BinaryMessage {
 			// Convert bytes to float32 array (assuming 16-bit PCM audio)
 			audioData := bytesToFloat32(message)
-			
+
 			if len(audioData) > 0 {
 				err = asr.StreamPushAudio(nexa_sdk.AsrStreamPushAudioInput{
 					AudioData: audioData,
@@ -401,14 +416,14 @@ func bytesToFloat32(data []byte) []float32 {
 	// Assuming 16-bit PCM audio (little-endian)
 	numSamples := len(data) / 2
 	result := make([]float32, numSamples)
-	
+
 	for i := 0; i < numSamples; i++ {
 		// Read 16-bit sample
 		sample := int16(binary.LittleEndian.Uint16(data[i*2 : i*2+2]))
 		// Normalize to [-1.0, 1.0]
-		result[i] = float32(sample) / 32768.0
+		result[i] = float32(sample) / int16MaxValue
 	}
-	
+
 	return result
 }
 
