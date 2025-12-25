@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -29,6 +30,7 @@ import (
 	"github.com/bytedance/sonic"
 	goversion "github.com/hashicorp/go-version"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/downloader"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
@@ -41,6 +43,9 @@ const (
 
 	updateCheckInterval  = 24 * time.Hour
 	notificationInterval = 8 * time.Hour
+
+	defaultChunkSize  = 4 * 1024 * 1024
+	defaultNumWorkers = 16
 )
 
 func update() *cobra.Command {
@@ -192,20 +197,36 @@ func downloadPkg(url, dst string, size int64, progress chan int64) error {
 	}
 	defer file.Close()
 
+	chunkSize := int64(defaultChunkSize)
+	numWorkers := min(int((size+chunkSize-1)/chunkSize), defaultNumWorkers)
+	slog.Debug("downloading package", "url", url, "size", size, "chunkSize", chunkSize, "numWorkers", numWorkers)
+
+	ctx := context.Background()
+	g, ctx := errgroup.WithContext(ctx)
+	g.SetLimit(numWorkers)
+
 	downloader := downloader.NewDownloader("")
 
-	for offset := int64(0); offset < size; offset += 1024 * 1024 {
-		limit := int64(1024 * 1024)
-		if offset+limit > size {
-			limit = size - offset
-		}
-		if err = downloader.DownloadChunk(context.Background(), url, offset, limit, file); err != nil {
-			return err
-		}
-		progress <- int64(limit)
+	for offset := int64(0); offset < size; offset += chunkSize {
+		offset := offset
+		g.Go(func() error {
+			limit := min(chunkSize, size-offset)
+
+			buf := bytes.NewBuffer(make([]byte, 0, int(limit)))
+			if err := downloader.DownloadChunk(ctx, url, offset, limit, buf); err != nil {
+				return fmt.Errorf("failed to download chunk at offset %d: %w", offset, err)
+			}
+
+			if _, err := file.WriteAt(buf.Bytes(), offset); err != nil {
+				return fmt.Errorf("failed to write chunk at offset %d: %w", offset, err)
+			}
+
+			progress <- int64(buf.Len())
+			return nil
+		})
 	}
 
-	return nil
+	return g.Wait()
 }
 
 func installPkg(pkgPath string) error {
