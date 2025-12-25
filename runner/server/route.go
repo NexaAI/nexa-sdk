@@ -57,6 +57,9 @@ func RegisterAPIv1(r *gin.Engine) {
 	g.POST("/audio/diarize", handler.Diarize)
 	g.POST("/reranking", handler.Reranking)
 	g.POST("/cv", handler.CV)
+	
+	// ==== websocket streaming ====
+	g.GET("/audio/stream", handler.AudioStream)
 
 	// ==== model management ====
 	g.GET("/models/*model", handler.RetrieveModel)

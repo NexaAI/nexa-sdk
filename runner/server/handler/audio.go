@@ -15,17 +15,21 @@
 package handler
 
 import (
+	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"os"
 	"path"
+	"sync"
 	"time"
 
 	"github.com/NexaAI/nexa-sdk/runner/server/service"
 	"github.com/NexaAI/nexa-sdk/runner/server/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"github.com/openai/openai-go"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
@@ -200,5 +204,221 @@ func Diarize(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
 	} else {
 		c.JSON(http.StatusOK, res)
+	}
+}
+
+// WebSocket upgrader
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		// Allow all origins for now - in production, you should validate this
+		return true
+	},
+}
+
+// StreamConfig represents the configuration for ASR streaming
+type StreamConfig struct {
+	Model               string  `json:"model"`
+	Language            string  `json:"language"`
+	SampleRate          int32   `json:"sample_rate"`
+	EnablePartialResults bool   `json:"enable_partial_results"`
+	EnableWordTimestamps bool   `json:"enable_word_timestamps"`
+	VADEnabled          bool    `json:"vad_enabled"`
+	ChunkDuration       float32 `json:"chunk_duration"`
+	OverlapDuration     float32 `json:"overlap_duration"`
+	BeamSize            int32   `json:"beam_size"`
+}
+
+// TranscriptionResponse represents the response sent back to the client
+type TranscriptionResponse struct {
+	Type       string  `json:"type"`       // "partial" or "final"
+	Text       string  `json:"text"`
+	Confidence float64 `json:"confidence,omitempty"`
+	Timestamp  int64   `json:"timestamp"`
+	IsFinal    bool    `json:"is_final"`
+}
+
+// AudioStream handles WebSocket connections for real-time ASR
+func AudioStream(c *gin.Context) {
+	// Upgrade HTTP connection to WebSocket
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		slog.Error("Failed to upgrade to WebSocket", "error", err)
+		return
+	}
+	defer conn.Close()
+
+	slog.Info("WebSocket connection established")
+
+	// Read configuration message (expected as first message)
+	_, configMsg, err := conn.ReadMessage()
+	if err != nil {
+		slog.Error("Failed to read config message", "error", err)
+		sendError(conn, "Failed to read configuration")
+		return
+	}
+
+	var config StreamConfig
+	if err := json.Unmarshal(configMsg, &config); err != nil {
+		slog.Error("Failed to parse config", "error", err)
+		sendError(conn, "Invalid configuration format")
+		return
+	}
+
+	// Validate and set defaults
+	if config.Model == "" {
+		config.Model = "NexaAI/parakeet-npu"
+	}
+	if config.Language == "" {
+		config.Language = "en-US"
+	}
+	if config.SampleRate == 0 {
+		config.SampleRate = 16000
+	}
+	if config.ChunkDuration == 0 {
+		config.ChunkDuration = 0.5 // 500ms default
+	}
+	if config.BeamSize == 0 {
+		config.BeamSize = 5
+	}
+
+	slog.Info("Stream config received",
+		"model", config.Model,
+		"language", config.Language,
+		"sample_rate", config.SampleRate,
+		"enable_partial_results", config.EnablePartialResults,
+	)
+
+	// Get ASR instance from service
+	asr, err := service.KeepAliveGet[nexa_sdk.ASR](
+		config.Model,
+		types.ModelParam{},
+		false,
+	)
+	if err != nil {
+		slog.Error("Failed to get ASR instance", "error", err)
+		sendError(conn, fmt.Sprintf("Failed to initialize ASR: %v", err))
+		return
+	}
+
+	// Set up callback for transcription results
+	var mu sync.Mutex
+	transcriptionCallback := func(text string, userData any) {
+		mu.Lock()
+		defer mu.Unlock()
+
+		response := TranscriptionResponse{
+			Type:      "partial",
+			Text:      text,
+			Timestamp: time.Now().UnixMilli(),
+			IsFinal:   false,
+		}
+
+		// If partial results are not enabled, mark as final
+		if !config.EnablePartialResults {
+			response.Type = "final"
+			response.IsFinal = true
+		}
+
+		if err := conn.WriteJSON(response); err != nil {
+			slog.Error("Failed to send transcription", "error", err)
+		}
+	}
+
+	// Initialize ASR streaming
+	streamConfig := &nexa_sdk.ASRStreamConfig{
+		ChunkDuration:   config.ChunkDuration,
+		OverlapDuration: config.OverlapDuration,
+		SampleRate:      config.SampleRate,
+		MaxQueueSize:    100,
+		BufferSize:      4096,
+		BeamSize:        config.BeamSize,
+	}
+
+	_, err = asr.StreamBegin(nexa_sdk.AsrStreamBeginInput{
+		StreamConfig:    streamConfig,
+		Language:        config.Language,
+		OnTranscription: transcriptionCallback,
+	})
+	if err != nil {
+		slog.Error("Failed to begin ASR streaming", "error", err)
+		sendError(conn, fmt.Sprintf("Failed to start streaming: %v", err))
+		return
+	}
+
+	// Ensure we stop streaming when done
+	defer func() {
+		if err := asr.StreamStop(nexa_sdk.AsrStreamStopInput{Graceful: true}); err != nil {
+			slog.Error("Failed to stop ASR streaming", "error", err)
+		}
+	}()
+
+	// Process incoming audio data
+	for {
+		messageType, message, err := conn.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				slog.Error("WebSocket error", "error", err)
+			} else {
+				slog.Info("WebSocket closed", "error", err)
+			}
+			break
+		}
+
+		// Handle binary audio data
+		if messageType == websocket.BinaryMessage {
+			// Convert bytes to float32 array (assuming 16-bit PCM audio)
+			audioData := bytesToFloat32(message)
+			
+			if len(audioData) > 0 {
+				err = asr.StreamPushAudio(nexa_sdk.AsrStreamPushAudioInput{
+					AudioData: audioData,
+				})
+				if err != nil {
+					slog.Error("Failed to push audio data", "error", err)
+					sendError(conn, fmt.Sprintf("Failed to process audio: %v", err))
+					break
+				}
+			}
+		} else if messageType == websocket.TextMessage {
+			// Handle control messages (e.g., "stop", "pause")
+			var controlMsg map[string]string
+			if err := json.Unmarshal(message, &controlMsg); err == nil {
+				if controlMsg["action"] == "stop" {
+					slog.Info("Stop signal received from client")
+					break
+				}
+			}
+		}
+	}
+
+	slog.Info("WebSocket connection closed")
+}
+
+// bytesToFloat32 converts byte array (16-bit PCM) to float32 array
+func bytesToFloat32(data []byte) []float32 {
+	// Assuming 16-bit PCM audio (little-endian)
+	numSamples := len(data) / 2
+	result := make([]float32, numSamples)
+	
+	for i := 0; i < numSamples; i++ {
+		// Read 16-bit sample
+		sample := int16(binary.LittleEndian.Uint16(data[i*2 : i*2+2]))
+		// Normalize to [-1.0, 1.0]
+		result[i] = float32(sample) / 32768.0
+	}
+	
+	return result
+}
+
+// sendError sends an error message to the WebSocket client
+func sendError(conn *websocket.Conn, message string) {
+	err := conn.WriteJSON(map[string]string{
+		"type":  "error",
+		"error": message,
+	})
+	if err != nil {
+		slog.Error("Failed to send error message", "error", err)
 	}
 }
