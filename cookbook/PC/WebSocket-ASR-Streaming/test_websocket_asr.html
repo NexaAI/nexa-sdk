@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket ASR Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            background-color: #4CAF50;
+            color: white;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            background-color: #e3f2fd;
+        }
+        .transcription {
+            padding: 15px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #fafafa;
+            min-height: 100px;
+        }
+        .log {
+            padding: 10px;
+            margin: 10px 0;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .config {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .config-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .config-item label {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .config-item input, .config-item select {
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WebSocket ASR Streaming Test</h1>
+        
+        <div class="config">
+            <div class="config-item">
+                <label>Server URL:</label>
+                <input type="text" id="serverUrl" value="ws://localhost:8080/v1/audio/stream">
+            </div>
+            <div class="config-item">
+                <label>Model:</label>
+                <input type="text" id="model" value="NexaAI/parakeet-npu">
+            </div>
+            <div class="config-item">
+                <label>Language:</label>
+                <input type="text" id="language" value="en-US">
+            </div>
+            <div class="config-item">
+                <label>Sample Rate:</label>
+                <input type="number" id="sampleRate" value="16000">
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button id="connectBtn" onclick="connect()">Connect</button>
+            <button id="startBtn" onclick="startRecording()" disabled>Start Recording</button>
+            <button id="stopBtn" onclick="stopRecording()" disabled>Stop Recording</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+        </div>
+        
+        <div class="status" id="status">Status: Disconnected</div>
+        
+        <h3>Transcription:</h3>
+        <div class="transcription" id="transcription">
+            Transcription will appear here...
+        </div>
+        
+        <h3>Log:</h3>
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        let ws = null;
+        let mediaRecorder = null;
+        let audioContext = null;
+        let isRecording = false;
+
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}<br>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function updateStatus(status) {
+            document.getElementById('status').innerText = `Status: ${status}`;
+        }
+
+        function connect() {
+            const url = document.getElementById('serverUrl').value;
+            
+            try {
+                ws = new WebSocket(url);
+                
+                ws.onopen = () => {
+                    log('WebSocket connected');
+                    updateStatus('Connected');
+                    
+                    // Send configuration
+                    const config = {
+                        model: document.getElementById('model').value,
+                        language: document.getElementById('language').value,
+                        sample_rate: parseInt(document.getElementById('sampleRate').value),
+                        enable_partial_results: true,
+                        enable_word_timestamps: false,
+                        vad_enabled: true,
+                        chunk_duration: 0.5,
+                        beam_size: 5
+                    };
+                    
+                    ws.send(JSON.stringify(config));
+                    log('Configuration sent: ' + JSON.stringify(config));
+                    
+                    document.getElementById('connectBtn').disabled = true;
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('disconnectBtn').disabled = false;
+                };
+                
+                ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    log('Received: ' + JSON.stringify(data));
+                    
+                    if (data.type === 'error') {
+                        updateStatus('Error: ' + data.error);
+                    } else if (data.text) {
+                        const transcriptionDiv = document.getElementById('transcription');
+                        const prefix = data.is_final ? '[FINAL] ' : '[PARTIAL] ';
+                        transcriptionDiv.innerHTML += prefix + data.text + '<br>';
+                        transcriptionDiv.scrollTop = transcriptionDiv.scrollHeight;
+                    }
+                };
+                
+                ws.onerror = (error) => {
+                    log('WebSocket error: ' + error.message);
+                    updateStatus('Error');
+                };
+                
+                ws.onclose = () => {
+                    log('WebSocket closed');
+                    updateStatus('Disconnected');
+                    
+                    document.getElementById('connectBtn').disabled = false;
+                    document.getElementById('startBtn').disabled = true;
+                    document.getElementById('stopBtn').disabled = true;
+                    document.getElementById('disconnectBtn').disabled = true;
+                };
+            } catch (error) {
+                log('Connection error: ' + error.message);
+                updateStatus('Connection failed');
+            }
+        }
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        sampleRate: 16000,
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    } 
+                });
+                
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                    sampleRate: 16000
+                });
+                
+                const source = audioContext.createMediaStreamSource(stream);
+                const processor = audioContext.createScriptProcessor(4096, 1, 1);
+                
+                processor.onaudioprocess = (e) => {
+                    if (ws && ws.readyState === WebSocket.OPEN && isRecording) {
+                        const audioData = e.inputBuffer.getChannelData(0);
+                        
+                        // Convert float32 to int16 PCM
+                        const int16Data = new Int16Array(audioData.length);
+                        for (let i = 0; i < audioData.length; i++) {
+                            const s = Math.max(-1, Math.min(1, audioData[i]));
+                            int16Data[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                        }
+                        
+                        ws.send(int16Data.buffer);
+                    }
+                };
+                
+                source.connect(processor);
+                processor.connect(audioContext.destination);
+                
+                isRecording = true;
+                log('Recording started');
+                updateStatus('Recording...');
+                
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                
+            } catch (error) {
+                log('Error starting recording: ' + error.message);
+                updateStatus('Recording failed');
+            }
+        }
+
+        function stopRecording() {
+            isRecording = false;
+            
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            
+            log('Recording stopped');
+            updateStatus('Connected (not recording)');
+            
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+        }
+
+        function disconnect() {
+            if (isRecording) {
+                stopRecording();
+            }
+            
+            if (ws) {
+                // Send stop signal
+                ws.send(JSON.stringify({ action: 'stop' }));
+                ws.close();
+                ws = null;
+            }
+            
+            log('Disconnected');
+            updateStatus('Disconnected');
+        }
+    </script>
+</body>
+</html>
