@@ -217,7 +217,10 @@ const (
 	defaultBufferSize   = 4096
 
 	// Audio conversion constants
-	int16MaxValue = 32768.0 // Maximum value for signed 16-bit integers (2^15)
+	// For 16-bit PCM audio: negative values use 32768, positive values use 32767
+	// to maintain symmetry and proper range
+	int16MinValue = 32768.0 // Minimum value magnitude for signed 16-bit integers (2^15)
+	int16MaxValue = 32767.0 // Maximum value for signed 16-bit integers (2^15 - 1)
 )
 
 // WebSocket upgrader
@@ -421,7 +424,12 @@ func bytesToFloat32(data []byte) []float32 {
 		// Read 16-bit sample
 		sample := int16(binary.LittleEndian.Uint16(data[i*2 : i*2+2]))
 		// Normalize to [-1.0, 1.0]
-		result[i] = float32(sample) / int16MaxValue
+		// Use different divisors for negative and positive values for precise conversion
+		if sample < 0 {
+			result[i] = float32(sample) / int16MinValue
+		} else {
+			result[i] = float32(sample) / int16MaxValue
+		}
 	}
 
 	return result
