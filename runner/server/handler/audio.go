@@ -213,8 +213,13 @@ const (
 	wsWriteBufferSize = 1024
 
 	// ASR streaming configuration defaults
-	defaultMaxQueueSize = 100
-	defaultBufferSize   = 4096
+	defaultModel         = "NexaAI/parakeet-npu"
+	defaultLanguage      = "en-US"
+	defaultSampleRate    = 16000
+	defaultChunkDuration = 0.5 // seconds
+	defaultBeamSize      = 5
+	defaultMaxQueueSize  = 100
+	defaultBufferSize    = 4096
 
 	// Audio conversion constants
 	// For 16-bit PCM audio: negative values use 32768, positive values use 32767
@@ -228,9 +233,14 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  wsReadBufferSize,
 	WriteBufferSize: wsWriteBufferSize,
 	CheckOrigin: func(r *http.Request) bool {
-		// TODO: Implement proper origin validation for production
-		// For now, allow all origins to facilitate development and testing
-		// In production, validate against allowed origins list
+		// SECURITY WARNING: This currently allows all origins for development.
+		// In production, implement proper origin validation:
+		// 1. Maintain an allowlist of trusted origins
+		// 2. Check r.Header.Get("Origin") against the allowlist
+		// 3. Return true only for allowed origins
+		// Example production code:
+		//   origin := r.Header.Get("Origin")
+		//   return origin == "https://yourdomain.com" || origin == "https://app.yourdomain.com"
 		return true
 	},
 }
@@ -286,19 +296,19 @@ func AudioStream(c *gin.Context) {
 
 	// Validate and set defaults
 	if config.Model == "" {
-		config.Model = "NexaAI/parakeet-npu"
+		config.Model = defaultModel
 	}
 	if config.Language == "" {
-		config.Language = "en-US"
+		config.Language = defaultLanguage
 	}
 	if config.SampleRate == 0 {
-		config.SampleRate = 16000
+		config.SampleRate = defaultSampleRate
 	}
 	if config.ChunkDuration == 0 {
-		config.ChunkDuration = 0.5 // 500ms default
+		config.ChunkDuration = defaultChunkDuration
 	}
 	if config.BeamSize == 0 {
-		config.BeamSize = 5
+		config.BeamSize = defaultBeamSize
 	}
 
 	slog.Info("Stream config received",
