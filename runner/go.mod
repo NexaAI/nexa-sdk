@@ -17,6 +17,7 @@ require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/gofrs/flock v0.13.0
 	github.com/gookit/color v1.6.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/go-version v1.7.0
 	github.com/jedib0t/go-pretty/v6 v6.7.2
 	github.com/lmittmann/tint v1.1.2
