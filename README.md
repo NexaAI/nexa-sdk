@@ -68,6 +68,7 @@ NexaSDK is an easy-to-use developer toolkit for running any AI model locally —
 
 ## Recent Wins
 
+- 📣 **NexaSDK for Linux** is released in partnership with Qualcomm and Docker Inc. See [Linux SDK Doc](http://docs.nexa.ai/en/nexa-sdk-docker/overview) for usages.
 - 📣 **NexaSDK for Android** is highlighted by [Qualcomm blog](https://www.qualcomm.com/developer/blog/2025/11/nexa-ai-for-android-simple-way-to-bring-on-device-ai-to-smartphones-with-snapdragon) as "a simple way to bring on-device AI to smartphones with Snapdragon", and **NexaML engine** is featured in [Qualcomm blog](https://www.qualcomm.com/developer/blog/2025/09/omnineural-4b-nexaml-qualcomm-hexagon-npu) as "Revolutionizing On-Device AI Inferencing".
 - 📣 Release Nexa AI’s **AutoNeural-VL-1.5B**, an NPU-native vision–language model built for real-time in-car assistants, delivering **14×** lower latency, **3×** faster decode, and **4×** longer context on Qualcomm SA8295P — now also runnable on Qualcomm X Elite laptops.
 - 📣 Support Mistral AI's **Ministral-3-3B** across Qualcomm Hexagon NPU, Apple Neural Engine, GPU and CPU.
@@ -217,6 +218,7 @@ Drop a Hugging Face repo ID, pick your preferred backend (GGUF, MLX, or Nexa for
 ## Acknowledgements
 
 We would like to thank the following projects:
+
 - [ggml](https://github.com/ggml-org/ggml)
 - [mlx-lm](https://github.com/ml-explore/mlx-lm)
 - [mlx-vlm](https://github.com/Blaizzy/mlx-vlm)
@@ -235,8 +237,10 @@ Learn more in our [Participant Details](https://docs.nexa.ai/community/builder-b
 NexaSDK uses a dual licensing model:
 
 ### CPU/GPU Components
+
 Licensed under [Apache License 2.0](LICENSE).
 
 ### NPU Components
+
 - **Personal Use**: Free license key available from [Nexa AI Model Hub](https://sdk.nexa.ai/model). Each key activates 1 device for NPU usage.
 - **Commercial Use**: Contact [hello@nexa.ai](mailto:hello@nexa.ai) for licensing.
