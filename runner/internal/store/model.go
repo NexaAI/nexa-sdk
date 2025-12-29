@@ -16,6 +16,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -23,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/bytedance/sonic"
+	"github.com/shirou/gopsutil/disk"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/model_hub"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
@@ -33,6 +35,21 @@ import (
 func isBundlePath(path string) bool {
 	return strings.HasSuffix(strings.ToLower(path), ".mlmodelc") ||
 		strings.HasSuffix(strings.ToLower(path), ".mlpackage")
+}
+
+func (s *Store) ensureEnoughDiskSpace(requiredBytes int64) error {
+	usage, err := disk.Usage(s.ModelDirPath())
+	if err != nil {
+		return err
+	}
+
+	free := int64(usage.Free)
+	slog.Debug("Disk space check", "required_bytes", requiredBytes, "free_bytes", free)
+	if free < requiredBytes {
+		return fmt.Errorf("not enough disk space: required %d bytes, available %d bytes", requiredBytes, free)
+	}
+
+	return nil
 }
 
 // List returns all locally stored models by reading their manifest files
@@ -125,6 +142,12 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 	go func() {
 		defer close(errC)
 		defer close(infoC)
+
+		// check free disk space
+		if err := s.ensureEnoughDiskSpace(mf.GetSize()); err != nil {
+			errC <- err
+			return
+		}
 
 		// clean before
 		if err := s.Remove(mf.Name); err != nil {
@@ -244,6 +267,16 @@ func (s *Store) PullExtraQuant(ctx context.Context, omf, nmf types.ModelManifest
 			if f.Downloaded && !omf.ExtraFiles[q].Downloaded {
 				needs = append(needs, model_hub.ModelFileInfo{Name: f.Name, Size: f.Size})
 			}
+		}
+
+		// check free disk space
+		totalNeeded := int64(0)
+		for _, n := range needs {
+			totalNeeded += n.Size
+		}
+		if err := s.ensureEnoughDiskSpace(totalNeeded); err != nil {
+			errC <- err
+			return
 		}
 
 		// Create model directory structure

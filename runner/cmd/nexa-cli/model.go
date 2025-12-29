@@ -311,6 +311,7 @@ func pullModel(name string, quant string) error {
 		}
 
 		pgCh, errCh := s.Pull(context.TODO(), manifest)
+
 		bar := render.NewProgressBar(manifest.GetSize(), "downloading")
 
 		for pg := range pgCh {
