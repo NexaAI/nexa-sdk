@@ -28,7 +28,6 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/shirou/gopsutil/disk"
 	"github.com/spf13/cobra"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/model_hub"
@@ -313,14 +312,6 @@ func pullModel(name string, quant string) error {
 
 		pgCh, errCh := s.Pull(context.TODO(), manifest)
 
-		hasEnoughDisk, err := hasEnoughDiskSpace(localPath, manifest.GetSize())
-		if err != nil {
-			return fmt.Errorf("Failed to check disk space: %w", err)
-		}
-		if !hasEnoughDisk {
-			return fmt.Errorf("Not enough disk space: required %.2f GB", float64(manifest.GetSize())/1024/1024/1024)
-		}
-
 		bar := render.NewProgressBar(manifest.GetSize(), "downloading")
 
 		for pg := range pgCh {
@@ -357,19 +348,6 @@ func getQuant(name string) string {
 		quant = "N/A"
 	}
 	return quant
-}
-
-func hasEnoughDiskSpace(path string, requiredBytes int64) (bool, error) {
-	// default to current directory if localPath is unset
-	if path == "" {
-		path = "."
-	}
-	usage, err := disk.Usage(path)
-	if err != nil {
-		return false, err
-	}
-	free := int64(usage.Free)
-	return free >= requiredBytes, nil
 }
 
 func choosePluginId(name string) string {
