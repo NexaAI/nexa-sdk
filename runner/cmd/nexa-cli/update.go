@@ -28,7 +28,6 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
-	goversion "github.com/hashicorp/go-version"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 
@@ -164,15 +163,11 @@ func getLastRelease() (release, error) {
 }
 
 func hasUpdate(cur, latest string) (bool, error) {
-	curVer, err := goversion.NewVersion(cur)
+	result, err := compareVersion(cur, latest)
 	if err != nil {
-		return false, fmt.Errorf("invalid SemVer %s: %w", cur, err)
+		return false, fmt.Errorf("invalid version %s or %s: %w", cur, latest, err)
 	}
-	latestVer, err := goversion.NewVersion(latest)
-	if err != nil {
-		return false, fmt.Errorf("invalid SemVer %s: %w", latest, err)
-	}
-	return curVer.Compare(latestVer) < 0, nil
+	return result < 0, nil
 }
 
 type release struct {
