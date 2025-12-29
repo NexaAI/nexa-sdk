@@ -17,7 +17,6 @@ require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/gofrs/flock v0.13.0
 	github.com/gookit/color v1.6.0
-	github.com/hashicorp/go-version v1.7.0
 	github.com/jedib0t/go-pretty/v6 v6.7.2
 	github.com/lmittmann/tint v1.1.2
 	github.com/openai/openai-go v1.12.0
@@ -27,6 +26,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/valyala/fasthttp v1.68.0
 	golang.org/x/image v0.33.0
+	golang.org/x/sync v0.18.0
 	golang.org/x/sys v0.38.0
 	resty.dev/v3 v3.0.0-beta.3
 )
@@ -110,7 +110,6 @@ require (
 	golang.org/x/crypto v0.43.0 // indirect
 	golang.org/x/mod v0.29.0 // indirect
 	golang.org/x/net v0.46.0 // indirect
-	golang.org/x/sync v0.18.0 // indirect
 	golang.org/x/term v0.36.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
 	golang.org/x/tools v0.38.0 // indirect
