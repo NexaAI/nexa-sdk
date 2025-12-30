@@ -275,7 +275,7 @@ func (p *Processor) printProfile(pd nexa_sdk.ProfileData) {
 			1.0/pd.RealTimeFactor)
 
 	} else if pd.DecodingSpeed != 0 {
-		text = fmt.Sprintf("— %.1f tok/s • %d tok • %.1f s first token -",
+		text = fmt.Sprintf("— %.1f tok/s • %d tok • %.1f s first token —",
 			pd.DecodingSpeed,
 			pd.GeneratedTokens,
 			float64(pd.TTFT)/1e6)
