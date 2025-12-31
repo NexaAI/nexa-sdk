@@ -58,11 +58,6 @@ This document provides information about third-party libraries used in the NexaS
 - **URL**: https://github.com/gofrs/flock
 - **Description**: Thread-safe file locking library
 
-### hashicorp/go-version
-- **License**: Mozilla Public License 2.0
-- **URL**: https://github.com/hashicorp/go-version
-- **Description**: Library for parsing and verifying versions and version constraints
-
 ### chzyer/readline
 - **License**: MIT License
 - **URL**: https://github.com/chzyer/readline

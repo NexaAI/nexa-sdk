@@ -17,8 +17,9 @@ package main
 import (
 	"fmt"
 	"log/slog"
+	"strconv"
+	"strings"
 
-	goversion "github.com/hashicorp/go-version"
 	"github.com/spf13/cobra"
 
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
@@ -41,6 +42,49 @@ func version() *cobra.Command {
 	return versionCmd
 }
 
+// compareVersion compares two version strings in format v0.0.0
+// Returns: -1 if v1 < v2, 0 if v1 == v2, 1 if v1 > v2
+func compareVersion(v1, v2 string) (int, error) {
+	parseVersion := func(v string) ([3]int, error) {
+		parts := strings.Split(strings.TrimPrefix(v, "v"), ".")
+		if len(parts) != 3 {
+			return [3]int{}, fmt.Errorf("invalid format: %s", v)
+		}
+		var nums [3]int
+		for i, p := range parts {
+			n, err := strconv.Atoi(p)
+			if err != nil {
+				return [3]int{}, fmt.Errorf("invalid format: %s", v)
+			}
+			if n < 0 {
+				return [3]int{}, fmt.Errorf("invalid format: %s", v)
+			}
+			nums[i] = n
+		}
+		return nums, nil
+	}
+
+	n1, err := parseVersion(v1)
+	if err != nil {
+		return 0, err
+	}
+
+	n2, err := parseVersion(v2)
+	if err != nil {
+		return 0, err
+	}
+
+	for i := range 3 {
+		if n1[i] < n2[i] {
+			return -1, nil
+		}
+		if n1[i] > n2[i] {
+			return 1, nil
+		}
+	}
+	return 0, nil
+}
+
 func isValidVersion(minVersion string) bool {
 	// community repo or dev version
 	if minVersion == "" || Version == "" {
@@ -48,13 +92,9 @@ func isValidVersion(minVersion string) bool {
 	}
 
 	slog.Debug("check version", "minVersion", minVersion, "curVersion", Version)
-	minV, err := goversion.NewVersion(minVersion)
+	result, err := compareVersion(Version, minVersion)
 	if err != nil {
 		panic(err)
 	}
-	curV, err := goversion.NewVersion(Version)
-	if err != nil {
-		panic(err)
-	}
-	return curV.GreaterThanOrEqual(minV)
+	return result >= 0
 }

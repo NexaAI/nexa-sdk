@@ -1012,6 +1012,8 @@ space ::= | " " | "\n" | "\r" | "\t"
             }
 
             modelScope.launch {
+                val selectModelData = modelList.first { it.id == selectModelId }
+                val isNpuModel = selectModelData.getNexaManifest(this@MainActivity)?.PluginId == "npu"
                 val sb = StringBuilder()
                 if (isLoadCVModel) {
                     // FIXME: Temporarily select the last image
@@ -1149,10 +1151,6 @@ space ::= | " " | "\n" | "\r" | "\t"
                             }
                         }
                 } else if (isLoadVlmModel) {
-                    val selectModelData = modelList.first { it.id == selectModelId }
-                    val isNpuVlm = selectModelData.id == "OmniNeural-4B"
-                    Log.d(TAG, "isNpuVlm: $isNpuVlm")
-
                     val contents = savedImageFiles.map {
                         VlmContent("image", it.absolutePath)
                     }.toMutableList()
@@ -1178,6 +1176,7 @@ space ::= | " " | "\n" | "\r" | "\t"
                     Log.d(TAG, "before apply chat template:$vlmChatList")
                     vlmWrapper.applyChatTemplate(vlmChatList.toTypedArray(), tools, enableThinking)
                         .onSuccess { result ->
+                            Log.d(TAG, "vlm result.formattedText1:${result.formattedText}")
                             val baseConfig =
                                 GenerationConfigSample().toGenerationConfig(grammarString)
                             val configWithMedia = vlmWrapper.injectMediaPathsToConfig(
@@ -1186,9 +1185,10 @@ space ::= | " " | "\n" | "\r" | "\t"
                             )
 
                             Log.d(TAG, "Config has ${configWithMedia.imageCount} images")
+                            Log.d(TAG, "vlm result.formattedText2:${result.formattedText}")
 
                             vlmWrapper.generateStreamFlow(
-                                result.formattedText,
+                                if(isNpuModel) inputString else result.formattedText,
                                 configWithMedia  // Use the updated config with media paths
                             ).collect { handleResult(sb, it) }
                         }.onFailure {
@@ -1200,7 +1200,6 @@ space ::= | " " | "\n" | "\r" | "\t"
                         }
 
                 } else {
-
                     chatList.add(ChatMessage(role = "user", inputString))
                     // Apply chat template and generate
                     llmWrapper.applyChatTemplate(
@@ -1210,7 +1209,7 @@ space ::= | " " | "\n" | "\r" | "\t"
                     ).onSuccess { templateOutput ->
                         Log.d(TAG, "chat template:${templateOutput.formattedText}")
                         llmWrapper.generateStreamFlow(
-                            templateOutput.formattedText,
+                            if (isNpuModel) inputString else templateOutput.formattedText,
                             GenerationConfigSample().toGenerationConfig(grammarString)
                         ).collect { streamResult ->
                             handleResult(sb, streamResult)
@@ -1731,8 +1730,10 @@ space ::= | " " | "\n" | "\r" | "\t"
     }
 
     private fun reloadRecycleView() {
-        adapter.notifyDataSetChanged()
-        binding.rvChat.scrollToPosition(messages.size - 1)
+        runOnUiThread {
+            adapter.notifyDataSetChanged()
+            binding.rvChat.scrollToPosition(messages.size - 1)
+        }
     }
 
     companion object {
