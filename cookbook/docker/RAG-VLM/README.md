@@ -33,14 +33,14 @@ This demo showcases video analysis using AutoNeural model through Nexa SDK. It e
 ## Prerequisites
 
 - Docker installed
-- AutoNeural model downloaded (will be pulled automatically by nexa serve if not cached)
+- AutoNeural model downloaded
 
 ## Quick Start
 
 ### Build Docker Image
 
 ```bash
-cd cookbook/PC/Q
+cd cookbook/docker/RAG-VLM
 docker build -t autoneural-video-demo .
 ```
 
@@ -49,13 +49,15 @@ docker build -t autoneural-video-demo .
 ```bash
 docker run -d \
   --name autoneural-demo \
-  -p 18181:18181 \
+  -p 18182:18181 \
   -p 7860:7860 \
-  -v /path/to/model/cache:/root/.cache/nexa.ai \
+  -v ~/.cache/nexa.ai:/root/.cache/nexa.ai \
   autoneural-video-demo
 ```
 
-**Note**: Replace `/path/to/model/cache` with your local model cache directory, or omit the `-v` flag to use container's internal cache.
+**Note**: 
+- Replace `~/.cache/nexa.ai` with your local model cache directory, or omit the `-v` flag to use container's internal cache.
+- Ensure you have the AutoNeural model downloaded: `nexa pull NexaAI/AutoNeural`
 
 ### Access the UI
 
@@ -81,9 +83,10 @@ http://localhost:7860
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.10+
 - Nexa SDK installed and `nexa` command available
 - Python dependencies installed
+- AutoNeural model downloaded: `nexa pull NexaAI/AutoNeural`
 
 ### Setup
 
@@ -117,17 +120,6 @@ python gradio_ui.py
 - **Default Endpoint**: `http://127.0.0.1:18181`
 
 These can be changed in the UI's "Model Settings" accordion.
-
-## File Structure
-
-```
-cookbook/PC/Q/
-├── gradio_ui.py          # Gradio UI main file
-├── requirements.txt      # Python dependencies
-├── Dockerfile            # Docker image configuration
-├── start.sh              # Startup script
-└── README.md             # This file
-```
 
 ## Troubleshooting
 
