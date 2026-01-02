@@ -49,11 +49,11 @@ NexaSDK supports latest models **weeks or months before anyone else** — Qwen3-
 
 | Platform        | Links                                                                                          |
 | --------------- | ---------------------------------------------------------------------------------------------- |
-| 🖥️ CLI          | [Quick Start](#-cli) ｜ [Full Docs](https://docs.nexa.ai/en/nexa-sdk-go/NexaCLI)               |
-| 🐍 Python       | [Quick Start](#-python-sdk) ｜ [Full Docs](https://docs.nexa.ai/en/nexa-sdk-python/overview)   |
-| 🤖 Android      | [Quick Start](#-android-sdk) ｜ [Full Docs](https://docs.nexa.ai/en/nexa-sdk-android/overview) |
-| 🍎 iOS          | [Quick Start](#-ios-sdk) ｜ [Full Docs](https://docs.nexa.ai/en/nexa-sdk-ios/overview)         |
-| 🐳 Linux Docker | [Quick Start](#-linux-docker) ｜ [Full Docs](https://docs.nexa.ai/en/nexa-sdk-docker/overview) |
+| 🖥️ CLI          | [Quick Start](#-cli) ｜ [Docs](https://docs.nexa.ai/en/nexa-sdk-go/NexaCLI)               |
+| 🐍 Python       | [Quick Start](#-python-sdk) ｜ [Docs](https://docs.nexa.ai/en/nexa-sdk-python/overview)   |
+| 🤖 Android      | [Quick Start](#-android-sdk) ｜ [Docs](https://docs.nexa.ai/en/nexa-sdk-android/overview) |
+| 🐳 Linux Docker | [Quick Start](#-linux-docker) ｜ [Docs](https://docs.nexa.ai/en/nexa-sdk-docker/overview) |
+| 🍎 iOS          | [Quick Start](#-ios-sdk) ｜ [Docs](https://docs.nexa.ai/en/nexa-sdk-ios/overview)         |
 
 ---
 
@@ -79,7 +79,7 @@ nexa infer NexaAI/Qwen3-VL-4B-Instruct-GGUF
 nexa infer NexaAI/OmniNeural-4B
 ```
 
-[📖 Full CLI Reference](https://docs.nexa.ai/en/nexa-sdk-go/NexaCLI)
+[📖 CLI Reference Docs](https://docs.nexa.ai/en/nexa-sdk-go/NexaCLI)
 
 ---
 
@@ -90,35 +90,65 @@ pip install nexaai
 ```
 
 ```python
-from nexaai import NexaLLM
+from nexaai import LLM, GenerationConfig, ModelConfig, LlmChatMessage
 
-model = NexaLLM("ggml-org/Qwen3-1.7B-GGUF")
-response = model.generate("Hello, tell me a joke")
-print(response)
+llm = LLM.from_(model="NexaAI/Qwen3-0.6B-GGUF", config=ModelConfig())
+
+conversation = [
+    LlmChatMessage(role="user", content="Hello, tell me a joke")
+]
+prompt = llm.apply_chat_template(conversation)
+for token in llm.generate_stream(prompt, GenerationConfig(max_tokens=100)):
+    print(token, end="", flush=True)
 ```
 
-[📖 Full Docs](https://docs.nexa.ai/en/nexa-sdk-python/overview)
+[📖 Python SDK Docs](https://docs.nexa.ai/en/nexa-sdk-python/quickstart)
 
 ---
 
 ### 🤖 Android SDK
 
-Add to your `build.gradle`:
+Add to your `build.gradle.kts`:
 
-```gradle
-implementation 'ai.nexa:nexasdk:latest'
+```kotlin
+dependencies {
+    implementation("ai.nexa:core:0.0.15")
+}
 ```
 
 ```kotlin
-val llm = NexaLLM.Builder()
-    .model("NexaAI/Qwen3-4B-Instruct")
-    .backend(Backend.NPU)
-    .build()
+// Initialize SDK
+NexaSdk.getInstance().init(this)
 
-llm.generate("Hello!") { token -> print(token) }
+// Load and run model
+VlmWrapper.builder()
+    .vlmCreateInput(VlmCreateInput(
+        model_name = "omni-neural",
+        model_path = "/data/data/your.app/files/models/OmniNeural-4B",
+        plugin_id = "npu"
+    ))
+    .build()
+    .onSuccess { vlm ->
+        vlm.generateStreamFlow("Hello!", GenerationConfig()).collect { print(it) }
+    }
 ```
 
-[📖 Full Docs](https://docs.nexa.ai/en/nexa-sdk-android/overview)
+[📖 Android SDK Docs](https://docs.nexa.ai/en/nexa-sdk-android/quickstart)
+
+---
+
+### 🐳 Linux Docker
+
+```bash
+docker pull nexa4ai/nexasdk:latest
+
+export NEXA_TOKEN="your_token_here"
+docker run --rm -it --privileged \
+  -e NEXA_TOKEN \
+  nexa4ai/nexasdk:latest infer NexaAI/Granite-4.0-h-350M-NPU
+```
+
+[📖 Linux Docker Docs](https://docs.nexa.ai/en/nexa-sdk-docker/quickstart)
 
 ---
 
@@ -129,27 +159,15 @@ Download [NexaSdk.xcframework](https://nexa-model-hub-bucket.s3.us-west-1.amazon
 ```swift
 import NexaSdk
 
-let llm = try LLM()
-try await llm.load(from: modelURL)
+// Example: Speech Recognition
+let asr = try Asr(plugin: .ane)
+try await asr.load(from: modelURL)
 
-let stream = await llm.generateAsyncStream(prompt: "Hello!")
-for try await token in stream {
-    print(token, terminator: "")
-}
+let result = try await asr.transcribe(options: .init(audioPath: "audio.wav"))
+print(result.asrResult.transcript)
 ```
 
-[📖 Full Docs](https://docs.nexa.ai/en/nexa-sdk-ios/overview)
-
----
-
-### 🐳 Linux Docker
-
-```bash
-docker pull nexaai/nexa-sdk:latest
-docker run -it nexaai/nexa-sdk nexa infer ggml-org/Qwen3-1.7B-GGUF
-```
-
-[📖 Full Docs](https://docs.nexa.ai/en/nexa-sdk-docker/overview)
+[📖 iOS SDK Docs](https://docs.nexa.ai/en/nexa-sdk-ios/quickstart)
 
 ## 🏆 Recognized Milestones
 
