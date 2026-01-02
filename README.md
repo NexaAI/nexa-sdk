@@ -39,7 +39,7 @@
 
 # NexaSDK
 
-**NexaSDK lets you build the smartest and fastest on-device AI with minimum energy.** It runs latest AI models locally on NPU, GPU, and CPU - across Android, Windows, Linux, macOS, and iOS devices with a few lines of code. 
+**NexaSDK lets you build the smartest and fastest on-device AI with minimum energy.** It is a highly performant local inference framework that runs the latest multimodal AI models locally on NPU, GPU, and CPU - across Android, Windows, Linux, macOS, and iOS devices with a few lines of code. 
 
 NexaSDK supports latest models **weeks or months before anyone else** — Qwen3-VL, DeepSeek-OCR, Gemma3n (Vision), and more.
 
@@ -152,13 +152,15 @@ docker run -it nexaai/nexa-sdk nexa infer ggml-org/Qwen3-1.7B-GGUF
 
 
 
-## 🏆 Recent Wins
+## 🏆 Recognized Milestones
 
-- **Qualcomm** — Featured as ["revolutionizing on-device AI"](https://www.qualcomm.com/developer/blog/2025/09/omnineural-4b-nexaml-qualcomm-hexagon-npu). Linux SDK released in partnership with Qualcomm & Docker.
-- **Qwen** — [Day-0 Qwen3-VL support](https://x.com/Alibaba_Qwen/status/1978154384098754943) in GGUF — we're the only framework that supports it.
-- **IBM** — [Day-0 Granite 4.0 support](https://x.com/IBM/status/1978154384098754943) — featured alongside vLLM, llama.cpp, MLX.
-- **Google** — [Featured for EmbeddingGemma NPU support](https://x.com/googleaidevs/status/1969188152049889511). First Gemma-3n multimodal inference in GGUF.
-- **AMD** — [SDXL-turbo image generation on AMD NPU](https://www.amd.com/en/developer/resources/technical-articles/2025/advancing-ai-with-nexa-ai--image-generation-on-amd-npu-with-sdxl.html).
+- **Qualcomm** featured us **3 times** in official blogs. as ["revolutionizing on-device AI"](https://www.qualcomm.com/developer/blog/2025/09/omnineural-4b-nexaml-qualcomm-hexagon-npu). Linux SDK released in partnership with Qualcomm & Docker.
+- **Qwen** featured us for [Day-0 Qwen3-VL support on NPU, GPU, and CPU](https://x.com/Alibaba_Qwen/status/1978154384098754943). We are 3 weeks ahead of ollama and llama.cpp on GGUF support, and nobody else supports it on NPU till now.
+- **IBM** featured us for [Day-0 Granite 4.0 support](https://www.ibm.com/new/announcements/ibm-granite-4-0-hyper-efficient-high-performance-hybrid-models) and IBM featured our NexaML inference engine alongside vLLM, llama.cpp, and MLX in official IBM blog.
+- **Google** featured us for [EmbeddingGemma Day-0 NPU support](https://x.com/googleaidevs/status/1969188152049889511).
+- **AMD** featured us for [enabling SDXL-turbo image generation on AMD NPU](https://www.amd.com/en/developer/resources/technical-articles/2025/advancing-ai-with-nexa-ai--image-generation-on-amd-npu-with-sdxl.html).
+- **NVIDIA** featured us for [enabling SDXL-turbo image generation on NVIDIA NPU](https://www.nvidia.com/en-us/geforce/news/nexa-ai-enables-sdxl-turbo-image-generation-on-nvidia-npu/).
+- **Microsoft** featured us for [enabling SDXL-turbo image generation on Microsoft NPU](https://www.microsoft.com/en-us/research/blog/sdxl-turbo-image-generation-on-microsoft-npu/).
 
 
 
@@ -278,3 +280,7 @@ Licensed under [Apache License 2.0](LICENSE).
 
 - **Personal Use**: Free license key available from [Nexa AI Model Hub](https://sdk.nexa.ai/model). Each key activates 1 device for NPU usage.
 - **Commercial Use**: Contact [hello@nexa.ai](mailto:hello@nexa.ai) for licensing.
+
+## Contact Us
+
+For launching partner, business inquiries, or any other questions, please schedule a call with us [here](https://nexa.ai/book-a-call).
