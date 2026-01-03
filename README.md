@@ -45,10 +45,24 @@ NexaSDK supports latest models **weeks or months before anyone else** — Qwen3-
 
 > ⭐ **Star this repo** to keep up with exciting updates and new releases about latest on-device AI capabilities.
 
+## 🏆 Recognized Milestones
+
+- **Qualcomm** featured us **3 times** in official blogs.
+  - [Innovating Multimodal AI on Qualcomm Hexagon NPU](https://www.qualcomm.com/developer/blog/2025/09/omnineural-4b-nexaml-qualcomm-hexagon-npu).
+  - [First-ever Day-0 model support on Qualcomm Hexagon NPU for compute and mobile platforms, Auto and IoT](https://www.qualcomm.com/developer/blog/2025/10/granite-4-0-to-the-edge-on-device-ai-for-real-world-performance).
+  - [A simple way to bring on-device AI to smartphones with Snapdragon](https://www.qualcomm.com/developer/blog/2025/11/nexa-ai-for-android-simple-way-to-bring-on-device-ai-to-smartphones-with-snapdragon)
+- **Qwen** featured us for [Day-0 Qwen3-VL support on NPU, GPU, and CPU](https://x.com/Alibaba_Qwen/status/1978154384098754943). We were 3 weeks ahead of Ollama and llama.cpp on GGUF support, and no one else supports it on NPU to date.
+- **IBM** featured our NexaML inference engine alongside vLLM, llama.cpp, and MLX in [official IBM blog](https://www.ibm.com/new/announcements/ibm-granite-4-0-hyper-efficient-high-performance-hybrid-models) and also for Day-0 Granite 4.0 support.
+- **Google** featured us for [EmbeddingGemma Day-0 NPU support](https://x.com/googleaidevs/status/1969188152049889511).
+- **AMD** featured us for [enabling SDXL-turbo image generation on AMD NPU](https://www.amd.com/en/developer/resources/technical-articles/2025/advancing-ai-with-nexa-ai--image-generation-on-amd-npu-with-sdxl.html).
+- **NVIDIA** featured Hyperlink, a viral local AI app powered by NexaSDK, in their [official blog](https://blogs.nvidia.com/blog/rtx-ai-garage-nexa-hyperlink-local-agent/).
+- **Microsoft** presented us on stage at Microsoft Ignite 2025 as [official partner](https://www.linkedin.com/posts/mixen_excited-to-celebrate-our-developer-partnerships-activity-7396601602327007232-AmCR?utm_source=share&utm_medium=member_desktop&rcm=ACoAAChXnS8B4gqbBLUlWfwt-ck0XAv472NzT4k).
+- **Intel** featured us for [Intel NPU support in NexaSDK](https://www.linkedin.com/posts/intel-software_ai-ondeviceai-nexasdk-activity-7376337062087667712-xw7i?utm_source=share&utm_medium=member_desktop&rcm=ACoAAChXnS8B4gqbBLUlWfwt-ck0XAv472NzT4k).
+
 ## 🚀 Quick Start
 
-| Platform        | Links                                                                                          |
-| --------------- | ---------------------------------------------------------------------------------------------- |
+| Platform        | Links                                                                                     |
+| --------------- | ----------------------------------------------------------------------------------------- |
 | 🖥️ CLI          | [Quick Start](#-cli) ｜ [Docs](https://docs.nexa.ai/en/nexa-sdk-go/NexaCLI)               |
 | 🐍 Python       | [Quick Start](#-python-sdk) ｜ [Docs](https://docs.nexa.ai/en/nexa-sdk-python/overview)   |
 | 🤖 Android      | [Quick Start](#-android-sdk) ｜ [Docs](https://docs.nexa.ai/en/nexa-sdk-android/overview) |
@@ -79,7 +93,10 @@ nexa infer NexaAI/Qwen3-VL-4B-Instruct-GGUF
 nexa infer NexaAI/OmniNeural-4B
 ```
 
-[📖 CLI Reference Docs](https://docs.nexa.ai/en/nexa-sdk-go/NexaCLI)
+- **Models:** LLM, Multimodal, ASR, OCR, Rerank, Object Detection, Image Generation, Embedding
+- **Formats:** GGUF, MLX, NEXA
+- **NPU Models:** [Model Hub](https://sdk.nexa.ai/model)
+- 📖 [CLI Reference Docs](https://docs.nexa.ai/en/nexa-sdk-go/NexaCLI)
 
 ---
 
@@ -102,7 +119,10 @@ for token in llm.generate_stream(prompt, GenerationConfig(max_tokens=100)):
     print(token, end="", flush=True)
 ```
 
-[📖 Python SDK Docs](https://docs.nexa.ai/en/nexa-sdk-python/quickstart)
+- **Models:** LLM, Multimodal, ASR, OCR, Rerank, Object Detection, Image Generation, Embedding
+- **Formats:** GGUF, MLX, NEXA
+- **NPU Models:** [Model Hub](https://sdk.nexa.ai/model)
+- 📖 [Python SDK Docs](https://docs.nexa.ai/en/nexa-sdk-python/quickstart)
 
 ---
 
@@ -133,7 +153,10 @@ VlmWrapper.builder()
     }
 ```
 
-[📖 Android SDK Docs](https://docs.nexa.ai/en/nexa-sdk-android/quickstart)
+- **Requirements:** Qualcomm Snapdragon 8 Gen 4 Chip
+- **Models:** LLM, Multimodal, ASR, OCR, Rerank, Embedding
+- **NPU Models:** [Supported Models](https://docs.nexa.ai/en/nexa-sdk-android/overview#supported-models)
+- 📖 [Android SDK Docs](https://docs.nexa.ai/en/nexa-sdk-android/quickstart)
 
 ---
 
@@ -148,7 +171,10 @@ docker run --rm -it --privileged \
   nexa4ai/nexasdk:latest infer NexaAI/Granite-4.0-h-350M-NPU
 ```
 
-[📖 Linux Docker Docs](https://docs.nexa.ai/en/nexa-sdk-docker/quickstart)
+- **Requirements:** Qualcomm Dragonwing IQ9, ARM64 systems
+- **Models:** LLM, VLM, ASR, CV, Rerank, Embedding
+- **NPU Models:** [Supported Models](https://docs.nexa.ai/en/nexa-sdk-docker/overview#supported-models)
+- 📖 [Linux Docker Docs](https://docs.nexa.ai/en/nexa-sdk-docker/quickstart)
 
 ---
 
@@ -167,21 +193,10 @@ let result = try await asr.transcribe(options: .init(audioPath: "audio.wav"))
 print(result.asrResult.transcript)
 ```
 
-[📖 iOS SDK Docs](https://docs.nexa.ai/en/nexa-sdk-ios/quickstart)
-
-## 🏆 Recognized Milestones
-
-- **Qualcomm** featured us **3 times** in official blogs.
-  - [Innovating Multimodal AI on Qualcomm Hexagon NPU](https://www.qualcomm.com/developer/blog/2025/09/omnineural-4b-nexaml-qualcomm-hexagon-npu).
-  - [First-ever Day-0 model support on Qualcomm Hexagon NPU for compute and mobile platforms, Auto and IoT](https://www.qualcomm.com/developer/blog/2025/10/granite-4-0-to-the-edge-on-device-ai-for-real-world-performance).
-  - [A simple way to bring on-device AI to smartphones with Snapdragon](https://www.qualcomm.com/developer/blog/2025/11/nexa-ai-for-android-simple-way-to-bring-on-device-ai-to-smartphones-with-snapdragon)
-- **Qwen** featured us for [Day-0 Qwen3-VL support on NPU, GPU, and CPU](https://x.com/Alibaba_Qwen/status/1978154384098754943). We were 3 weeks ahead of Ollama and llama.cpp on GGUF support, and no one else supports it on NPU to date.
-- **IBM** featured our NexaML inference engine alongside vLLM, llama.cpp, and MLX in [official IBM blog](https://www.ibm.com/new/announcements/ibm-granite-4-0-hyper-efficient-high-performance-hybrid-models) and also for Day-0 Granite 4.0 support.
-- **Google** featured us for [EmbeddingGemma Day-0 NPU support](https://x.com/googleaidevs/status/1969188152049889511).
-- **AMD** featured us for [enabling SDXL-turbo image generation on AMD NPU](https://www.amd.com/en/developer/resources/technical-articles/2025/advancing-ai-with-nexa-ai--image-generation-on-amd-npu-with-sdxl.html).
-- **NVIDIA** featured Hyperlink, a viral local AI app powered by NexaSDK, in their [official blog](https://blogs.nvidia.com/blog/rtx-ai-garage-nexa-hyperlink-local-agent/).
-- **Microsoft** presented us on stage at Microsoft Ignite 2025 as [official partner](https://www.linkedin.com/posts/mixen_excited-to-celebrate-our-developer-partnerships-activity-7396601602327007232-AmCR?utm_source=share&utm_medium=member_desktop&rcm=ACoAAChXnS8B4gqbBLUlWfwt-ck0XAv472NzT4k).
-- **Intel** featured us for [Intel NPU support in NexaSDK](https://www.linkedin.com/posts/intel-software_ai-ondeviceai-nexasdk-activity-7376337062087667712-xw7i?utm_source=share&utm_medium=member_desktop&rcm=ACoAAChXnS8B4gqbBLUlWfwt-ck0XAv472NzT4k).
+- **Requirements:** iOS 17.0+ / macOS 15.0+, Swift 5.9+
+- **Models:** LLM, ASR, OCR, Rerank, Embedding
+- **ANE Models:** [Apple Neural Engine Models](https://huggingface.co/collections/NexaAI/apple-neural-engine)
+- 📖 [iOS SDK Docs](https://docs.nexa.ai/en/nexa-sdk-ios/quickstart)
 
 ## ⚙️ Features & Comparisons
 
@@ -246,6 +261,19 @@ Licensed under [Apache License 2.0](LICENSE).
 - **Personal Use**: Free license key available from [Nexa AI Model Hub](https://sdk.nexa.ai/model). Each key activates 1 device for NPU usage.
 - **Commercial Use**: Contact [hello@nexa.ai](mailto:hello@nexa.ai) for licensing.
 
-## Contact Us
+## 🤝 Contact & Community Support
+
+### Business Inquiries
 
 For model launching partner, business inquiries, or any other questions, please schedule a call with us [here](https://nexa.ai/book-a-call).
+
+### Community & Support
+
+Want more model support, backend support, device support or other features? We'd love to hear from you!
+
+Feel free to [submit an issue](https://github.com/NexaAI/nexa-sdk/issues) on our GitHub repository with your requests, suggestions, or feedback. Your input helps us prioritize what to build next.
+
+Join our community:
+
+- [Discord](https://discord.gg/thRu2HaK4D)
+- [Slack](https://join.slack.com/t/nexaai/shared_invite/zt-30a8yfv8k-1JqAXv~OjKJKLqvbKqHJxA)
