@@ -104,7 +104,7 @@ def image_array_to_base64(image_array: np.ndarray) -> str:
 
 
 def call_nexa_chat_stream(
-    session: requests.Session, model: str, messages: list, endpoint: str
+    session: requests.Session, model: str, messages: list, endpoint: str, ngl: int
 ) -> Generator[
     Tuple[Optional[str], Optional[float], Optional[Dict[str, float | int]]], None, None
 ]:
@@ -131,6 +131,7 @@ def call_nexa_chat_stream(
         "max_tokens": 512,
         "enable_think": False,
         "stream_options": {"include_usage": True},
+        "ngl": int(ngl),
     }
 
     try:
@@ -288,6 +289,7 @@ def process_video_stream(
     prompt: str,
     stop_event: threading.Event,
     interval_seconds: float = DEFAULT_FRAME_INTERVAL,
+    ngl: int = 999,
 ) -> Generator[Tuple[Optional[np.ndarray], str], None, None]:
     """Process video frames sequentially and call API for inference."""
     logger.info(
@@ -355,7 +357,7 @@ def process_video_stream(
 
             # Stream response and update UI in real-time
             for chunk, ttft, stats in call_nexa_chat_stream(
-                session, model, messages, endpoint
+                session, model, messages, endpoint, ngl
             ):
                 if stop_event.is_set():
                     break
@@ -387,7 +389,7 @@ def process_video_stream(
             if decode_speed_value is not None:
                 metrics_info.append(f"Decoding speed: {decode_speed_value:.2f} tok/s")
 
-            metrics_suffix = f"\n*{' | '.join(metrics_info)}*" if metrics_info else ""
+            metrics_suffix = f"\n\n*{' | '.join(metrics_info)}*" if metrics_info else ""
 
             accumulated_results[-1] = (
                 result_entry_prefix + result_text + metrics_suffix + "\n"
@@ -447,6 +449,14 @@ with gr.Blocks(title="AutoNeural Video Inference") as demo:
                     label="Frame Interval (seconds)",
                     info="Extract frame every N seconds",
                 )
+                ngl_input = gr.Slider(
+                    0,
+                    999,
+                    value=999,
+                    step=1,
+                    label="NGL (GPU Layers)",
+                    info="Number of GPU layers to offload",
+                )
                 prompt_input = gr.Textbox(
                     label="Prompt",
                     value="Describe what you see in this image in few sentences.",
@@ -504,10 +514,10 @@ with gr.Blocks(title="AutoNeural Video Inference") as demo:
             endpoint = endpoint[:-20]
         return endpoint.rstrip("/")
 
-    def process_wrapper(video, model, endpoint, prompt, interval):
+    def process_wrapper(video, model, endpoint, prompt, interval, ngl):
         """Wrapper to handle processing with UI updates."""
         logger.info(
-            f"Processing started - video: {video}, model: {model}, interval: {interval}s"
+            f"Processing started - video: {video}, model: {model}, interval: {interval}s, ngl: {ngl}"
         )
         if not video:
             logger.warning("No video file provided")
@@ -526,7 +536,7 @@ with gr.Blocks(title="AutoNeural Video Inference") as demo:
 
         try:
             for frame_img, results in process_video_stream(
-                video, model, base_endpoint, prompt, stop_processing, interval
+                video, model, base_endpoint, prompt, stop_processing, interval, int(ngl)
             ):
                 if stop_processing.is_set():
                     logger.info("Processing stopped by user in wrapper")
@@ -559,7 +569,14 @@ with gr.Blocks(title="AutoNeural Video Inference") as demo:
 
     btn_start.click(
         fn=process_wrapper,
-        inputs=[video_input, model_name, endpoint_url, prompt_input, frame_interval],
+        inputs=[
+            video_input,
+            model_name,
+            endpoint_url,
+            prompt_input,
+            frame_interval,
+            ngl_input,
+        ],
         outputs=[current_frame, results_text, status],
     )
 
