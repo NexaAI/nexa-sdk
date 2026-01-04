@@ -483,6 +483,14 @@ func inferVLM(manifest *types.ModelManifest, quant string) error {
 	if manifest.TokenizerFile.Name != "" {
 		tokenizerfile = s.ModelfilePath(manifest.Name, manifest.TokenizerFile.Name)
 	}
+	// if systemPrompt is a path, read file content
+	if _, err := os.Stat(systemPrompt); err == nil {
+		content, err := os.ReadFile(systemPrompt)
+		if err == nil {
+			systemPrompt = strings.TrimSpace(string(content))
+		}
+		slog.Debug("read system prompt from file", "path", systemPrompt)
+	}
 	spin := render.NewSpinner("loading model...")
 	spin.Start()
 	p, err := nexa_sdk.NewVLM(nexa_sdk.VlmCreateInput{
