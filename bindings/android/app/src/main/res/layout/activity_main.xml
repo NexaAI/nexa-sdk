@@ -172,7 +172,10 @@
                         android:hint="Type prompt..."
                         android:padding="6dp"
                         android:text="hi"
-                        android:textColorHint="#ADADAD" />
+                        android:textColorHint="#ADADAD"
+                        android:maxLines="6"
+                        android:scrollbars="vertical"
+                        android:inputType="textMultiLine|textCapSentences" />
 
                     <LinearLayout
                         android:layout_width="match_parent"

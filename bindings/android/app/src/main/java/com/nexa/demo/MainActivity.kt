@@ -1394,11 +1394,25 @@ space ::= | " " | "\n" | "\r" | "\t"
                     val size = messages.size
                     messages[size - 1] = Message(content, MessageType.ASSISTANT)
 
+                    // Format TTFT in milliseconds (2 decimal places)
                     val ttft = String.format(null, "%.2f", streamResult.profile.ttftMs)
-
-                    val rawDecodeSpeed = streamResult.profile.decodingSpeed * 1.2
-                    val decodeSpeed = String.format(null, "%.2f", rawDecodeSpeed)
-                    val profileData = "TTFT: $ttft ms; Decode Speed: $decodeSpeed t/s"
+                    
+                    // Format prompt tokens
+                    val promptTokens = streamResult.profile.promptTokens
+                    
+                    // Format prefilling speed (2 decimal places)
+                    val prefillSpeed = String.format(null, "%.2f", streamResult.profile.prefillSpeed)
+                    
+                    // Format generated tokens
+                    val generatedTokens = streamResult.profile.generatedTokens
+                    
+                    // Format decoding speed (2 decimal places)
+                    val decodingSpeed = String.format(null, "%.2f", streamResult.profile.decodingSpeed)
+                    
+                    // Build 3-line profile data
+                    val profileData = "TTFT: $ttft ms; Prompt Tokens: $promptTokens\n" +
+                                     "Prefilling Speed: $prefillSpeed tok/s\n" +
+                                     "Generated Tokens: $generatedTokens; Decoding Speed: $decodingSpeed tok/s"
                     messages.add(Message(profileData, MessageType.PROFILE))
                     reloadRecycleView()
                 }
