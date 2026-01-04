@@ -19,6 +19,7 @@ import json
 import logging
 import sys
 import threading
+import time
 from typing import Optional, Generator, Tuple
 
 import gradio as gr
@@ -104,7 +105,7 @@ def image_array_to_base64(image_array: np.ndarray) -> str:
 
 def call_nexa_chat_stream(
     session: requests.Session, model: str, messages: list, endpoint: str
-) -> Generator[str, None, None]:
+) -> Generator[Tuple[str, Optional[float]], None, None]:
     """
     Call Nexa /v1/chat/completions endpoint (streaming).
 
@@ -115,7 +116,9 @@ def call_nexa_chat_stream(
         endpoint: Base URL for API endpoint
 
     Yields:
-        Text chunks as they arrive
+        Tuple of (text_chunk, ttft) where:
+        - text_chunk: Text chunk as it arrives
+        - ttft: Time to first token in seconds (only on first chunk with content, None otherwise)
     """
     url = f"{endpoint.rstrip('/')}/v1/chat/completions"
     payload = {
@@ -128,6 +131,9 @@ def call_nexa_chat_stream(
 
     try:
         logger.debug(f"Calling streaming API: {url} with model: {model}")
+        request_start_time = time.time()
+        first_token_time = None
+        
         with session.post(url, json=payload, stream=True, timeout=300) as resp:
             resp.raise_for_status()
 
@@ -147,7 +153,13 @@ def call_nexa_chat_stream(
                             delta = choices[0].get("delta") or {}
                             piece = delta.get("content", "")
                             if piece:
-                                yield piece
+                                # Calculate TTFT on first token
+                                if first_token_time is None:
+                                    first_token_time = time.time()
+                                    ttft = first_token_time - request_start_time
+                                    yield piece, ttft
+                                else:
+                                    yield piece, None
                     except json.JSONDecodeError:
                         continue
                     except Exception as e:
@@ -157,10 +169,10 @@ def call_nexa_chat_stream(
             logger.debug("Streaming API call completed")
     except requests.exceptions.RequestException as e:
         logger.error(f"Streaming API request failed: {e}")
-        yield f"Error: {str(e)}"
+        yield f"Error: {str(e)}", None
     except Exception as e:
         logger.exception(f"Unexpected error in streaming API call: {e}")
-        yield f"Error: {str(e)}"
+        yield f"Error: {str(e)}", None
 
 
 def extract_first_frame(video_path: str) -> Optional[np.ndarray]:
@@ -298,15 +310,20 @@ def process_video_stream(
             # Call streaming API and accumulate text in real-time
             result_text = ""
             result_entry_prefix = f"**Frame at {timestamp:.1f}s:**\n"
+            ttft_value = None
 
             # Create a temporary entry that will be updated as stream progresses
             current_entry = result_entry_prefix
             accumulated_results.append(current_entry)
 
             # Stream response and update UI in real-time
-            for chunk in call_nexa_chat_stream(session, model, messages, endpoint):
+            for chunk, ttft in call_nexa_chat_stream(session, model, messages, endpoint):
                 if stop_event.is_set():
                     break
+
+                # Capture TTFT value from first chunk
+                if ttft is not None:
+                    ttft_value = ttft
 
                 result_text += chunk
                 # Update the last entry with accumulated text
@@ -315,10 +332,13 @@ def process_video_stream(
                 # Yield updated results for real-time display
                 yield frame_image, "\n\n".join(accumulated_results)
 
-            # Final update with complete result
-            accumulated_results[-1] = result_entry_prefix + result_text + "\n"
+            # Final update with complete result and TTFT
+            ttft_info = ""
+            if ttft_value is not None:
+                ttft_info = f"\n*TTFT: {ttft_value:.3f}s*"
+            accumulated_results[-1] = result_entry_prefix + result_text + ttft_info + "\n"
             logger.debug(
-                f"Frame {idx}/{len(frames)} processed successfully, length: {len(result_text)}"
+                f"Frame {idx}/{len(frames)} processed successfully, length: {len(result_text)}, TTFT: {ttft_value:.3f}s" if ttft_value is not None else f"Frame {idx}/{len(frames)} processed successfully, length: {len(result_text)}"
             )
             yield frame_image, "\n\n".join(accumulated_results)
 
