@@ -184,6 +184,7 @@ func runCompletions(manifest types.ModelManifest, quant string) error {
 	processor := &common.Processor{
 		HideThink: hideThink,
 		ParseFile: manifest.ModelType == types.ModelTypeVLM,
+		Verbose:   verbose,
 		TestMode:  testMode,
 		Run: func(prompt string, images, audios []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			if len(images) > 0 || len(audios) > 0 {
@@ -331,6 +332,7 @@ func runEmbeddings(manifest types.ModelManifest, quant string) error {
 
 	processor := &common.Processor{
 		ParseFile: manifest.ModelType == types.ModelTypeVLM,
+		Verbose:   verbose,
 		TestMode:  testMode,
 		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			start := time.Now()
@@ -413,6 +415,7 @@ func runReranking(manifest types.ModelManifest, quant string) error {
 	const SEP = "\\n"
 	processor := &common.Processor{
 		ParseFile: manifest.ModelType == types.ModelTypeVLM,
+		Verbose:   verbose,
 		TestMode:  testMode,
 		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			parsedPrompt := strings.Split(prompt, SEP)
@@ -519,6 +522,7 @@ func runAudioSpeech(manifest types.ModelManifest, quant string) error {
 	}
 
 	processor := &common.Processor{
+		Verbose:  verbose,
 		TestMode: testMode,
 		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 
@@ -597,8 +601,9 @@ func runAudioTranscription(manifest types.ModelManifest, quant string) error {
 	}
 
 	processor := &common.Processor{
-		TestMode:  testMode,
 		ParseFile: true,
+		Verbose:   verbose,
+		TestMode:  testMode,
 		Run: func(prompt string, _, audios []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			if len(audios) == 0 {
 				return "", nexa_sdk.ProfileData{}, common.ErrNoAudio
@@ -692,8 +697,9 @@ func runAudioDiarize(manifest types.ModelManifest, quant string) error {
 	}
 
 	processor := &common.Processor{
-		TestMode:  testMode,
 		ParseFile: true,
+		Verbose:   verbose,
+		TestMode:  testMode,
 		Run: func(_ string, _, audios []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			if len(audios) == 0 {
 				return "", nexa_sdk.ProfileData{}, common.ErrNoAudio
@@ -792,8 +798,9 @@ func runCV(manifest types.ModelManifest, quant string) error {
 	}
 
 	processor := &common.Processor{
-		TestMode:  testMode,
 		ParseFile: true,
+		Verbose:   verbose,
+		TestMode:  testMode,
 		Run: func(_ string, images, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			start := time.Now()
 
@@ -885,6 +892,7 @@ func runImagesGenerations(manifest types.ModelManifest, quant string) error {
 	}
 
 	processor := &common.Processor{
+		Verbose:  verbose,
 		TestMode: testMode,
 		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			start := time.Now()

@@ -395,6 +395,7 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 
 	processor := &common.Processor{
 		HideThink: hideThink,
+		Verbose:   verbose,
 		TestMode:  testMode,
 		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			history = append(history, nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
@@ -514,6 +515,7 @@ func inferVLM(manifest *types.ModelManifest, quant string) error {
 	processor := &common.Processor{
 		ParseFile: true,
 		HideThink: hideThink,
+		Verbose:   verbose,
 		TestMode:  testMode,
 		Run: func(prompt string, images, audios []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			msg := nexa_sdk.VlmChatMessage{Role: nexa_sdk.VlmRoleUser}
@@ -621,6 +623,7 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) error {
 
 	processor := &common.Processor{
 		ParseFile: true,
+		Verbose:   verbose,
 		TestMode:  testMode,
 		Run: func(prompt string, images, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			embedInput := nexa_sdk.EmbedderEmbedInput{
@@ -703,6 +706,7 @@ func inferReranker(manifest *types.ModelManifest, quant string) error {
 
 	const SEP = "\\n"
 	processor := &common.Processor{
+		Verbose:  verbose,
 		TestMode: testMode,
 		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			parsedPrompt := strings.Split(prompt, SEP)
@@ -802,6 +806,7 @@ func inferTTS(manifest *types.ModelManifest, quant string) error {
 	}
 
 	processor := &common.Processor{
+		Verbose:  verbose,
 		TestMode: testMode,
 		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			textToSynthesize := strings.TrimSpace(prompt)
@@ -889,6 +894,7 @@ func inferASR(manifest *types.ModelManifest, quant string) error {
 
 	processor := &common.Processor{
 		ParseFile: true,
+		Verbose:   verbose,
 		TestMode:  testMode,
 		Run: func(_ string, _, audios []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			if len(audios) == 0 {
@@ -1050,6 +1056,7 @@ func inferDiarize(manifest *types.ModelManifest, quant string) error {
 
 	processor := &common.Processor{
 		ParseFile: true,
+		Verbose:   verbose,
 		TestMode:  testMode,
 		Run: func(_ string, _, audios []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			if len(audios) == 0 {
@@ -1156,6 +1163,7 @@ func inferCV(manifest *types.ModelManifest, quant string) error {
 
 	processor := &common.Processor{
 		ParseFile: true,
+		Verbose:   verbose,
 		TestMode:  testMode,
 		Run: func(_ string, images, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			if len(images) == 0 {
@@ -1254,6 +1262,7 @@ func inferImageGen(manifest *types.ModelManifest, _ string) error {
 	defer p.Destroy()
 
 	processor := &common.Processor{
+		Verbose:  verbose,
 		TestMode: testMode,
 		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
 			textPrompt := strings.TrimSpace(prompt)
