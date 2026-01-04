@@ -128,6 +128,12 @@ for token in llm.generate_stream(prompt, GenerationConfig(max_tokens=100)):
 
 ### 🤖 Android SDK
 
+Add to your `app/AndroidManifest.xml`
+
+```xml
+<application android:extractNativeLibs="true">
+```
+
 Add to your `build.gradle.kts`:
 
 ```kotlin
@@ -144,8 +150,9 @@ NexaSdk.getInstance().init(this)
 VlmWrapper.builder()
     .vlmCreateInput(VlmCreateInput(
         model_name = "omni-neural",
-        model_path = "/data/data/your.app/files/models/OmniNeural-4B",
-        plugin_id = "npu"
+        model_path = "/data/data/your.app/files/models/OmniNeural-4B/files-1-1.nexa",
+        plugin_id = "npu",
+        config = ModelConfig()
     ))
     .build()
     .onSuccess { vlm ->
@@ -153,7 +160,7 @@ VlmWrapper.builder()
     }
 ```
 
-- **Requirements:** Qualcomm Snapdragon 8 Gen 4 Chip
+- **Requirements:** Android minSdk 27, Qualcomm Snapdragon 8 Gen 4 Chip
 - **Models:** LLM, Multimodal, ASR, OCR, Rerank, Embedding
 - **NPU Models:** [Supported Models](https://docs.nexa.ai/en/nexa-sdk-android/overview#supported-models)
 - 📖 [Android SDK Docs](https://docs.nexa.ai/en/nexa-sdk-android/quickstart)
