@@ -20,7 +20,7 @@ import logging
 import sys
 import threading
 import time
-from typing import Optional, Generator, Tuple
+from typing import Optional, Generator, Tuple, Dict
 
 import gradio as gr
 import requests
@@ -105,7 +105,9 @@ def image_array_to_base64(image_array: np.ndarray) -> str:
 
 def call_nexa_chat_stream(
     session: requests.Session, model: str, messages: list, endpoint: str
-) -> Generator[Tuple[str, Optional[float]], None, None]:
+) -> Generator[
+    Tuple[Optional[str], Optional[float], Optional[Dict[str, float | int]]], None, None
+]:
     """
     Call Nexa /v1/chat/completions endpoint (streaming).
 
@@ -116,9 +118,10 @@ def call_nexa_chat_stream(
         endpoint: Base URL for API endpoint
 
     Yields:
-        Tuple of (text_chunk, ttft) where:
-        - text_chunk: Text chunk as it arrives
+        Tuple of (text_chunk, ttft, stats) where:
+        - text_chunk: Text chunk as it arrives (None for final stats-only event)
         - ttft: Time to first token in seconds (only on first chunk with content, None otherwise)
+        - stats: Optional dict containing completion_tokens, decode_time, decode_speed
     """
     url = f"{endpoint.rstrip('/')}/v1/chat/completions"
     payload = {
@@ -127,13 +130,18 @@ def call_nexa_chat_stream(
         "stream": True,
         "max_tokens": 512,
         "enable_think": False,
+        "stream_options": {"include_usage": True},
     }
 
     try:
         logger.debug(f"Calling streaming API: {url} with model: {model}")
         request_start_time = time.time()
         first_token_time = None
-        
+        last_token_time = None
+        completion_tokens = None
+        decode_time = None
+        decode_speed = None
+
         with session.post(url, json=payload, stream=True, timeout=300) as resp:
             resp.raise_for_status()
 
@@ -148,6 +156,9 @@ def call_nexa_chat_stream(
 
                     try:
                         obj = json.loads(chunk)
+                        if usage := obj.get("usage"):
+                            completion_tokens = usage.get("completion_tokens")
+
                         choices = obj.get("choices", [])
                         if choices:
                             delta = choices[0].get("delta") or {}
@@ -157,22 +168,44 @@ def call_nexa_chat_stream(
                                 if first_token_time is None:
                                     first_token_time = time.time()
                                     ttft = first_token_time - request_start_time
-                                    yield piece, ttft
+                                    last_token_time = first_token_time
+                                    yield piece, ttft, None
                                 else:
-                                    yield piece, None
+                                    last_token_time = time.time()
+                                    yield piece, None, None
                     except json.JSONDecodeError:
                         continue
                     except Exception as e:
                         logger.warning(f"Error parsing stream chunk: {e}")
                         continue
 
+            if first_token_time is not None and last_token_time is not None:
+                decode_time = max(last_token_time - first_token_time, 0.0)
+                if completion_tokens is not None and decode_time > 0:
+                    decode_speed = completion_tokens / decode_time
+
+            # Emit a final stats event so callers can render usage metrics
+            if (
+                completion_tokens is not None
+                or decode_time is not None
+                or decode_speed is not None
+            ):
+                yield (
+                    None,
+                    None,
+                    {
+                        "completion_tokens": completion_tokens,
+                        "decode_time": decode_time,
+                        "decode_speed": decode_speed,
+                    },
+                )
             logger.debug("Streaming API call completed")
     except requests.exceptions.RequestException as e:
         logger.error(f"Streaming API request failed: {e}")
-        yield f"Error: {str(e)}", None
+        yield f"Error: {str(e)}", None, None
     except Exception as e:
         logger.exception(f"Unexpected error in streaming API call: {e}")
-        yield f"Error: {str(e)}", None
+        yield f"Error: {str(e)}", None, None
 
 
 def extract_first_frame(video_path: str) -> Optional[np.ndarray]:
@@ -316,29 +349,51 @@ def process_video_stream(
             current_entry = result_entry_prefix
             accumulated_results.append(current_entry)
 
+            completion_tokens = None
+            decode_time_value = None
+            decode_speed_value = None
+
             # Stream response and update UI in real-time
-            for chunk, ttft in call_nexa_chat_stream(session, model, messages, endpoint):
+            for chunk, ttft, stats in call_nexa_chat_stream(
+                session, model, messages, endpoint
+            ):
                 if stop_event.is_set():
                     break
+
+                if stats:
+                    completion_tokens = stats.get(
+                        "completion_tokens", completion_tokens
+                    )
+                    decode_time_value = stats.get("decode_time", decode_time_value)
+                    decode_speed_value = stats.get("decode_speed", decode_speed_value)
+                    continue
 
                 # Capture TTFT value from first chunk
                 if ttft is not None:
                     ttft_value = ttft
 
-                result_text += chunk
+                if chunk:
+                    result_text += chunk
                 # Update the last entry with accumulated text
                 accumulated_results[-1] = result_entry_prefix + result_text + "\n"
 
                 # Yield updated results for real-time display
                 yield frame_image, "\n\n".join(accumulated_results)
 
-            # Final update with complete result and TTFT
-            ttft_info = ""
+            # Final update with complete result and metrics
+            metrics_info = []
             if ttft_value is not None:
-                ttft_info = f"\n*TTFT: {ttft_value:.3f}s*"
-            accumulated_results[-1] = result_entry_prefix + result_text + ttft_info + "\n"
+                metrics_info.append(f"TTFT: {ttft_value:.3f}s")
+            if decode_speed_value is not None:
+                metrics_info.append(f"Decoding speed: {decode_speed_value:.2f} tok/s")
+
+            metrics_suffix = f"\n*{' | '.join(metrics_info)}*" if metrics_info else ""
+
+            accumulated_results[-1] = (
+                result_entry_prefix + result_text + metrics_suffix + "\n"
+            )
             logger.debug(
-                f"Frame {idx}/{len(frames)} processed successfully, length: {len(result_text)}, TTFT: {ttft_value:.3f}s" if ttft_value is not None else f"Frame {idx}/{len(frames)} processed successfully, length: {len(result_text)}"
+                f"Frame {idx}/{len(frames)} processed successfully, length: {len(result_text)}, metrics: TTFT={ttft_value}, completion_tokens={completion_tokens}, decode_time={decode_time_value}, decode_speed={decode_speed_value}"
             )
             yield frame_image, "\n\n".join(accumulated_results)
 
