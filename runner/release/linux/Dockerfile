@@ -13,7 +13,7 @@ LABEL org.opencontainers.image.vendor="NexaAI"
 # We might be able to reduce the "-dev" dependencies to non-dev ones, but need testing for that.
 RUN DEBIAN_FRONTEND=noninteractive \
     apt-get update \
-    && apt-get install -y libgomp1 curl ffmpeg sox libtbb-dev libomp-dev libespeak-ng1 \
+    && apt-get install -y curl ffmpeg sox libtbb-dev libomp-dev libespeak-ng1 \
     && rm -rf /var/lib/apt/lists/*
 
 ARG TARGETARCH
