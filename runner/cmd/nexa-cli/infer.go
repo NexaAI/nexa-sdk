@@ -21,7 +21,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -1194,13 +1193,9 @@ func inferCV(manifest *types.ModelManifest, quant string) error {
 				return data, nexa_sdk.ProfileData{}, nil
 			}
 
-			if len(result.Results) == 1 && reflect.ValueOf(result.Results[0].BBox).IsZero() {
-				// rmbg
-				onToken(render.GetTheme().Info.Sprintf("Mask output detected\n"))
-
-			} else {
-				// bbox
-				onToken(render.GetTheme().Info.Sprintf("BBox output detected\n"))
+			cvType := logic.CVDetectType(result.Results)
+			onToken(render.GetTheme().Info.Sprintf("%s output detected\n", cvType))
+			if cvType == logic.BBox {
 				for _, cvResult := range result.Results {
 					result := fmt.Sprintf("[%s] %s\n",
 						render.GetTheme().Info.Sprintf("%.3f", cvResult.Confidence),

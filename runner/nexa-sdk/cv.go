@@ -116,7 +116,7 @@ func newCVResultFromCPtr(c *C.ml_CVResult) CVResult {
 
 	// Convert mask
 	if c.mask != nil && c.mask_w > 0 && c.mask_h > 0 {
-		maskSize := int(c.mask_w * c.mask_h)
+		maskSize := int(c.mask_w*c.mask_h) * 3
 		mask := unsafe.Slice((*C.float)(unsafe.Pointer(c.mask)), maskSize)
 		result.Mask = make([]float32, maskSize)
 		for i := range result.Mask {

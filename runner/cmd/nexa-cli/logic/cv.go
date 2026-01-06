@@ -27,16 +27,16 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
-	"sync"
 
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/basicfont"
 	"golang.org/x/image/math/fixed"
+	"golang.org/x/sync/errgroup"
 
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 )
 
-func drawBBoxes(img *image.RGBA, results []nexa_sdk.CVResult) {
+func drawBBoxes(img *image.RGBA, results []nexa_sdk.CVResult) error {
 	slog.Debug("Drawing bounding boxes on image", "num_results", len(results))
 
 	bounds := img.Bounds()
@@ -121,29 +121,29 @@ func drawBBoxes(img *image.RGBA, results []nexa_sdk.CVResult) {
 		if len(r.Mask) > 0 {
 			color := colors[r.ClassID%int32(len(colors))]
 			color.A = 100
-			drawMask(img, r.Mask, &color)
+			if err := drawMask(img, r.Mask, &color); err != nil {
+				return err
+			}
 		}
 	}
+
+	return nil
 }
 
-func drawMask(img *image.RGBA, mask []float32, maskColor *color.RGBA) {
+func drawMask(img *image.RGBA, mask []float32, maskColor *color.RGBA) error {
 	slog.Debug("Drawing mask on image", "mask_size", len(mask))
 
 	bounds := img.Bounds()
 
 	if len(mask) != bounds.Dx()*bounds.Dy() {
-		slog.Error("Mask size does not match image size", "mask_size", len(mask), "image_size", bounds.Dx()*bounds.Dy())
-		return
+		return fmt.Errorf("Mask size does not match image size: mask size %d, image size %d", len(mask), bounds.Dx()*bounds.Dy())
 	}
 
-	var wg sync.WaitGroup
-	workerSem := make(chan struct{}, runtime.NumCPU())
+	g := errgroup.Group{}
+	g.SetLimit(runtime.NumCPU())
 	for y := 0; y < bounds.Dy(); y++ {
-		wg.Add(1)
-		workerSem <- struct{}{}
-		go func(y int) {
-			defer wg.Done()
-			defer func() { <-workerSem }()
+		y := y
+		g.Go(func() error {
 			for x := 0; x < bounds.Dx(); x++ {
 				idx := y*bounds.Dx() + x
 				pixel := color.RGBAModel.Convert(img.At(x, y)).(color.RGBA)
@@ -159,9 +159,36 @@ func drawMask(img *image.RGBA, mask []float32, maskColor *color.RGBA) {
 				}
 				img.Set(x, y, pixel)
 			}
-		}(y)
+			return nil
+		})
 	}
-	wg.Wait()
+	return g.Wait()
+}
+
+func drawUpscaling(img *image.RGBA, mask []float32) error {
+	bounds := img.Bounds()
+
+	if len(mask) != 3*bounds.Dx()*bounds.Dy() {
+		return fmt.Errorf("Mask size does not match image size: mask size %d, image size %d", len(mask), bounds.Dx()*bounds.Dy())
+	}
+
+	// rgb
+	g := errgroup.Group{}
+	g.SetLimit(runtime.NumCPU())
+	for y := 0; y < bounds.Dy(); y++ {
+		y := y
+		g.Go(func() error {
+			for x := 0; x < bounds.Dx(); x++ {
+				idx := (y*bounds.Dx() + x) * 3
+				r := uint8(mask[idx] * 255)
+				g := uint8(mask[idx+1] * 255)
+				b := uint8(mask[idx+2] * 255)
+				img.Set(x, y, color.RGBA{R: r, G: g, B: b, A: 255})
+			}
+			return nil
+		})
+	}
+	return g.Wait()
 }
 
 func CVPostProcess(input string, results []nexa_sdk.CVResult) (string, error) {
@@ -179,13 +206,23 @@ func CVPostProcess(input string, results []nexa_sdk.CVResult) (string, error) {
 	}
 
 	bounds := img.Bounds()
-	rgba := image.NewRGBA(bounds)
-	draw.Draw(rgba, bounds, img, bounds.Min, draw.Src)
+	var rgba *image.RGBA
 
-	if len(results) == 1 && reflect.ValueOf(results[0].BBox).IsZero() {
-		drawMask(rgba, results[0].Mask, nil)
-	} else {
-		drawBBoxes(rgba, results)
+	switch CVDetectType(results) {
+	case BBox:
+		rgba = image.NewRGBA(bounds)
+		draw.Draw(rgba, bounds, img, bounds.Min, draw.Src)
+		err = drawBBoxes(rgba, results)
+	case Mask:
+		rgba = image.NewRGBA(bounds)
+		draw.Draw(rgba, bounds, img, bounds.Min, draw.Src)
+		err = drawMask(rgba, results[0].Mask, nil)
+	case Upscaling:
+		rgba = image.NewRGBA(image.Rect(0, 0, int(results[0].MaskWidth), int(results[0].MaskHeight)))
+		err = drawUpscaling(rgba, results[0].Mask)
+	}
+	if err != nil {
+		return "", err
 	}
 
 	// save output image
@@ -205,4 +242,22 @@ func CVPostProcess(input string, results []nexa_sdk.CVResult) (string, error) {
 	}
 
 	return outputPath, nil
+}
+
+const (
+	BBox      = "BBox"
+	Mask      = "Mask"
+	Upscaling = "Upscaling"
+)
+
+func CVDetectType(results []nexa_sdk.CVResult) string {
+	if len(results) == 1 && reflect.ValueOf(results[0].BBox).IsZero() {
+		if results[0].MaskWidth > 0 {
+			return Upscaling
+		} else {
+			return Mask
+		}
+	} else {
+		return BBox
+	}
 }
