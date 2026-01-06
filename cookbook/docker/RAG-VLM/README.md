@@ -47,21 +47,27 @@ docker build -t autoneural-video-demo .
 ### Run Docker Container
 
 ```bash
+export NEXA_TOKEN={your_token_here}
+
 docker run -d \
   --name autoneural-demo \
+  --privileged \
   -p 18182:18181 \
   -p 7860:7860 \
+  -e NEXA_TOKEN \
   -v ~/.cache/nexa.ai:/root/.cache/nexa.ai \
   autoneural-video-demo
 ```
 
-**Note**: 
+**Note**:
+
 - Replace `~/.cache/nexa.ai` with your local model cache directory, or omit the `-v` flag to use container's internal cache.
 - Ensure you have the AutoNeural model downloaded: `nexa pull NexaAI/AutoNeural`
 
 ### Access the UI
 
 Open your browser and navigate to:
+
 ```
 http://localhost:7860
 ```
@@ -74,7 +80,7 @@ http://localhost:7860
    - Endpoint: Default is `http://127.0.0.1:18181`
    - Prompt: Customize the analysis prompt (default: "Describe what you see in this image in detail.")
 3. **Start Processing**: Click "Start Processing" button
-4. **View Results**: 
+4. **View Results**:
    - Left panel shows the current frame being processed
    - Right panel shows accumulated inference results for all processed frames
 5. **Stop Processing**: Click "Stop" button to interrupt processing
@@ -91,16 +97,19 @@ http://localhost:7860
 ### Setup
 
 1. Install dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
 
 2. Start nexa serve in a separate terminal:
+
 ```bash
 nexa serve --host 127.0.0.1:18181
 ```
 
 3. Run Gradio UI:
+
 ```bash
 python gradio_ui.py
 ```
@@ -162,4 +171,3 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-
