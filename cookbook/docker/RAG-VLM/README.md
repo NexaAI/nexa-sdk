@@ -46,8 +46,21 @@ docker build -t autoneural-video-demo .
 
 ### Run Docker Container
 
-```bash
+1. Set your Nexa license token
+
+Mac or Linux
+```
 export NEXA_TOKEN={your_token_here}
+```
+
+Windows (Powershell)
+```
+$env:NEXA_TOKEN={your_token_here}
+```
+
+2. Run the docker container
+```bash
+
 
 docker run -d \
   --name autoneural-demo \
