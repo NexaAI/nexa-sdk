@@ -35,6 +35,7 @@ import (
 
 var (
 	dataDir     string
+	verbose     bool
 	skipUpdate  bool
 	skipMigrate bool
 	testMode    bool
@@ -92,6 +93,7 @@ func RootCmd() *cobra.Command {
 	}
 	rootCmd.PersistentFlags().StringVarP(&dataDir, "data-dir", "", "", "Custom data directory (env: NEXA_DATADIR)")
 	viper.BindPFlag("datadir", rootCmd.PersistentFlags().Lookup("data-dir"))
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose output")
 	rootCmd.PersistentFlags().BoolVarP(&skipUpdate, "skip-update", "", false, "Skip checking for updates")
 	rootCmd.PersistentFlags().BoolVarP(&skipMigrate, "skip-migrate", "", false, "Skip checking for model migrations")
 	rootCmd.PersistentFlags().BoolVarP(&testMode, "test-mode", "", false, "Enable test mode")

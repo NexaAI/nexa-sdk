@@ -1730,8 +1730,10 @@ space ::= | " " | "\n" | "\r" | "\t"
     }
 
     private fun reloadRecycleView() {
-        adapter.notifyDataSetChanged()
-        binding.rvChat.scrollToPosition(messages.size - 1)
+        runOnUiThread {
+            adapter.notifyDataSetChanged()
+            binding.rvChat.scrollToPosition(messages.size - 1)
+        }
     }
 
     companion object {

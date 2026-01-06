@@ -40,6 +40,7 @@ type Processor struct {
 	ParseFile bool
 	HideThink bool
 
+	Verbose  bool
 	TestMode bool
 
 	GetPrompt func() (string, error)
@@ -267,27 +268,52 @@ func (p *Processor) fsmEvent(token string) {
 func (p *Processor) printProfile(pd nexa_sdk.ProfileData) {
 	var text string
 
-	if pd.AudioDuration > 0 { // ASR TTS
-		text = fmt.Sprintf("processing_time %.2fs  |  audio_duration %.2fs  |  RTF %.2f (%.1fx realtime)",
+	if p.Verbose {
+		text = fmt.Sprintf(
+			strings.TrimSpace(`
+total time:     %fs
+ttft:           %fs
+prompt time:    %fs
+prompt tokens:  %d token(s)
+prompt speed:   %f tok/s
+decode time:    %fs
+decode tokens:  %d token(s)
+decode speed:   %f tok/s
+stop reason:    %s
+			`),
 			float64(pd.TotalTimeUs())/1e6,
-			float64(pd.AudioDuration)/1e6,
-			pd.RealTimeFactor,
-			1.0/pd.RealTimeFactor)
-
-	} else if pd.DecodingSpeed != 0 {
-		text = fmt.Sprintf("— %.1f tok/s • %d tok • %.1f s first token -",
-			pd.DecodingSpeed,
+			float64(pd.TTFT)/1e6,
+			float64(pd.PromptTime)/1e6,
+			pd.PromptTokens,
+			pd.PrefillSpeed,
+			float64(pd.DecodeTime)/1e6,
 			pd.GeneratedTokens,
-			float64(pd.TTFT)/1e6)
+			pd.DecodingSpeed,
+			pd.StopReason,
+		)
 
 	} else {
-		if pd.TotalTimeUs() != 0 {
-			text = fmt.Sprintf("- %.1f s -",
+		if pd.AudioDuration > 0 { // ASR TTS
+			text = fmt.Sprintf("processing_time %.2fs  |  audio_duration %.2fs  |  RTF %.2f (%.1fx realtime)",
 				float64(pd.TotalTimeUs())/1e6,
-			)
+				float64(pd.AudioDuration)/1e6,
+				pd.RealTimeFactor,
+				1.0/pd.RealTimeFactor)
+
+		} else if pd.DecodingSpeed != 0 {
+			text = fmt.Sprintf("— %.1f tok/s • %d tok • %.1f s first token —",
+				pd.DecodingSpeed,
+				pd.GeneratedTokens,
+				float64(pd.TTFT)/1e6)
+
+		} else {
+			if pd.TotalTimeUs() != 0 {
+				text = fmt.Sprintf("- %.1f s -",
+					float64(pd.TotalTimeUs())/1e6,
+				)
+			}
 		}
 	}
-
 	if text == "" {
 		return
 	}
