@@ -20,8 +20,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/chzyer/readline"
-
+	"github.com/NexaAI/nexa-sdk/runner/internal/readline"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 )
@@ -44,17 +43,10 @@ type Repl struct {
 	RecordImmediate bool
 
 	init bool
-	rl   *readline.Instance
+	rl   *readline.Readline
 }
 
 // ========= repl tool ========
-
-type MultilineState int
-
-const (
-	MultilineNone MultilineState = iota
-	MultilinePrompt
-)
 
 func (r *Repl) GetPrompt() (string, error) {
 	if !r.init {
@@ -75,12 +67,12 @@ func (r *Repl) GetPrompt() (string, error) {
 
 		// init readline
 		config := &readline.Config{
-			Prompt:          render.GetTheme().Prompt.Sprint("> "),
-			HistoryFile:     "", // Disable history file for now
-			InterruptPrompt: "^C",
-			EOFPrompt:       "exit",
+			Prompt: render.GetTheme().Prompt.Sprint("> "),
+			// HistoryFile:     "", // Disable history file for now
+			// InterruptPrompt: "^C",
+			// EOFPrompt:       "exit",
 		}
-		rl, err := readline.NewEx(config)
+		rl, err := readline.New(config)
 		if err != nil {
 			panic(err)
 		}
@@ -90,23 +82,15 @@ func (r *Repl) GetPrompt() (string, error) {
 	}
 
 	var sb strings.Builder
-	var multiline MultilineState
 	var recordAudios []string
 
 	for {
 		// print stashed content
-		if multiline == MultilineNone && len(recordAudios) > 0 {
+		if len(recordAudios) > 0 {
 			fmt.Println(render.GetTheme().Info.Sprintf("Current stash audios: %s", strings.Join(recordAudios, ", ")))
 		}
 
-		// Update prompt based on multiline state
-		if multiline != MultilineNone {
-			r.rl.SetPrompt(render.GetTheme().Prompt.Sprint(". "))
-		} else {
-			r.rl.SetPrompt(render.GetTheme().Prompt.Sprint("> "))
-		}
-
-		line, err := r.rl.Readline()
+		line, err := r.rl.Read()
 
 		// check err or exit
 		switch {
@@ -119,44 +103,43 @@ func (r *Repl) GetPrompt() (string, error) {
 				fmt.Println()
 			}
 			sb.Reset()
-			multiline = MultilineNone
 			continue
 		case err != nil:
 			return "", err
 		}
 
-		// check multiline state
-		switch {
-		case multiline != MultilineNone:
-			// check if there's a multiline terminating string
-			before, ok := strings.CutSuffix(line, `"""`)
-			sb.WriteString(before)
-			if !ok {
-				fmt.Fprintln(&sb)
-				continue
-			}
-
-			multiline = MultilineNone
-
-		case strings.HasPrefix(line, `"""`):
-			line := strings.TrimPrefix(line, `"""`)
-			line, ok := strings.CutSuffix(line, `"""`)
-			sb.WriteString(line)
-			if !ok {
-				// no multiline terminating string; need more input
-				fmt.Fprintln(&sb)
-				multiline = MultilinePrompt
-			}
-
-		default:
-			sb.WriteString(line)
-		}
-
-		// empty input or multiline state
-		if (sb.Len() == 0 && len(recordAudios) == 0) ||
-			multiline != MultilineNone {
-			continue
-		}
+		// // check multiline state
+		// switch {
+		// case multiline != MultilineNone:
+		// 	// check if there's a multiline terminating string
+		// 	before, ok := strings.CutSuffix(line, `"""`)
+		// 	sb.WriteString(before)
+		// 	if !ok {
+		// 		fmt.Fprintln(&sb)
+		// 		continue
+		// 	}
+		//
+		// 	multiline = MultilineNone
+		//
+		// case strings.HasPrefix(line, `"""`):
+		// 	line := strings.TrimPrefix(line, `"""`)
+		// 	line, ok := strings.CutSuffix(line, `"""`)
+		// 	sb.WriteString(line)
+		// 	if !ok {
+		// 		// no multiline terminating string; need more input
+		// 		fmt.Fprintln(&sb)
+		// 		multiline = MultilinePrompt
+		// 	}
+		//
+		// default:
+		// 	sb.WriteString(line)
+		// }
+		//
+		// // empty input or multiline state
+		// if (sb.Len() == 0 && len(recordAudios) == 0) ||
+		// 	multiline != MultilineNone {
+		// 	continue
+		// }
 
 		// read input
 		line = sb.String()
