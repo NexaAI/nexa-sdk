@@ -1,6 +1,6 @@
 package readline
 
-import ()
+import "errors"
 
 type Config struct {
 	Prompt    string
@@ -10,6 +10,15 @@ type Config struct {
 type Readline struct {
 	term *Terminal
 	buf  *Buffer
+
+	eventMap map[rune]func() error
+
+	// csi
+	isEsc       bool
+	isEscEx     bool
+	escBuf      string
+	csiEventMap map[string]func() error
+	isPaste     bool
 }
 
 func New(config *Config) (*Readline, error) {
@@ -23,16 +32,77 @@ func New(config *Config) (*Readline, error) {
 	buf.altPrompt = config.AltPrompt
 	buf.getWidth = term.GetWidth
 
-	return &Readline{
+	rl := Readline{
 		term: term,
 		buf:  buf,
-	}, nil
+	}
+	rl.initializeEventMaps()
+	return &rl, nil
 }
 
-func (r *Readline) Read() (string, error) {
-	return r.buf.Read()
+func (rl *Readline) Read() (string, error) {
+	rl.buf.resetState()
+	rl.buf.refresh()
+	for {
+		r, err := rl.term.Read()
+		if err != nil {
+			return "", err
+		}
+
+		if err := rl.parse(r); err != nil {
+			if errors.Is(err, ErrComplete) {
+				return string(rl.buf.data), nil
+			}
+			return "", err
+		}
+	}
 }
 
-func (r *Readline) Close() error {
-	return r.term.Close()
+func (rl *Readline) parse(r rune) error {
+	if rl.isEsc {
+		// escape sequence
+
+		rl.isEsc = false
+		if r == '[' {
+			rl.isEsc = false
+			rl.isEscEx = true
+			rl.escBuf = ""
+			return nil
+		}
+
+	} else if rl.isEscEx {
+		// escape ex sequence
+
+		if r < 0x20 || r >= 0x80 {
+			// invalid char, end escape ex
+			rl.isEscEx = false
+		}
+		rl.escBuf += string(r)
+		if r >= 0x40 {
+			// end of escape ex
+			rl.isEscEx = false
+			if event, ok := rl.csiEventMap[rl.escBuf]; !ok {
+				print("\nUnknown escape ex sequence:", rl.escBuf, "\n") // for debug
+			} else if err := event(); err != nil {
+				return err
+			}
+		}
+
+	} else {
+		// single char
+		// print("read rune: ", r, "\n") // for debug
+
+		if event, ok := rl.eventMap[r]; !ok {
+			rl.buf.data = append(rl.buf.data, r)
+		} else if err := event(); err != nil {
+			return err
+		}
+	}
+
+	rl.buf.refresh()
+	return nil
+}
+
+func (rl *Readline) Close() error {
+	return rl.term.Close()
 }

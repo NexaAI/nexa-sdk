@@ -1,18 +1,20 @@
 package readline
 
 import (
+	"bufio"
 	"os"
 	"syscall"
 )
 
 type Terminal struct {
 	oldTermios *syscall.Termios
+	r          *bufio.Reader
 }
 
 func NewTerminal() (*Terminal, error) {
 	t := &Terminal{}
 
-	termios, err := getTermios(os.Stdin.Fd())
+	termios, err := getTermios()
 	if err != nil {
 		return nil, err
 	}
@@ -27,11 +29,20 @@ func NewTerminal() (*Terminal, error) {
 	newTermios.Cc[syscall.VMIN] = 1
 	newTermios.Cc[syscall.VTIME] = 0
 
-	setTermios(os.Stdin.Fd(), &newTermios)
+	setTermios(&newTermios)
+	print("\x1b[?2004h") // enable bracketed paste mode"
+
+	t.r = bufio.NewReader(os.Stdin)
 
 	return t, nil
 }
 
+func (t *Terminal) Read() (rune, error) {
+	r, _, err := t.r.ReadRune()
+	return r, err
+}
+
 func (t *Terminal) Close() error {
-	return setTermios(os.Stdin.Fd(), t.oldTermios)
+	print("\x1b[?2004l") // disable bracketed paste mode
+	return setTermios(t.oldTermios)
 }

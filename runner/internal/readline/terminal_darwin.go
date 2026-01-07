@@ -7,8 +7,8 @@ import (
 
 func getTermios() (*syscall.Termios, error) {
 	fd := uintptr(syscall.Stdin)
-	termios := &syscall.Termios{}
-	_, _, err := syscall.Syscall6(syscall.SYS_IOCTL, fd, syscall.TCGETS, uintptr(unsafe.Pointer(termios)), 0, 0, 0)
+	termios := new(syscall.Termios)
+	_, _, err := syscall.Syscall6(syscall.SYS_IOCTL, uintptr(fd), syscall.TIOCGETA, uintptr(unsafe.Pointer(termios)), 0, 0, 0)
 	if err != 0 {
 		return nil, err
 	}
@@ -17,7 +17,7 @@ func getTermios() (*syscall.Termios, error) {
 
 func setTermios(termios *syscall.Termios) error {
 	fd := uintptr(syscall.Stdin)
-	_, _, err := syscall.Syscall6(syscall.SYS_IOCTL, fd, syscall.TCSETS, uintptr(unsafe.Pointer(termios)), 0, 0, 0)
+	_, _, err := syscall.Syscall6(syscall.SYS_IOCTL, fd, syscall.TIOCSETA, uintptr(unsafe.Pointer(termios)), 0, 0, 0)
 	if err != 0 {
 		return err
 	}
