@@ -21,3 +21,19 @@ func setTermios(fd uintptr, termios *syscall.Termios) error {
 	}
 	return nil
 }
+
+func (t *Terminal) GetWidth() (int, error) {
+	ws := &struct {
+		Row    uint16
+		Col    uint16
+		Xpixel uint16
+		Ypixel uint16
+	}{}
+
+	_, _, err := syscall.Syscall(syscall.SYS_IOCTL, uintptr(syscall.Stdout), syscall.TIOCGWINSZ, uintptr(unsafe.Pointer(ws)))
+	if err != 0 {
+		return 0, err
+	}
+
+	return int(ws.Col), nil
+}

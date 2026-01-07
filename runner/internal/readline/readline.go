@@ -3,7 +3,8 @@ package readline
 import ()
 
 type Config struct {
-	Prompt string
+	Prompt    string
+	AltPrompt string
 }
 
 type Readline struct {
@@ -19,6 +20,8 @@ func New(config *Config) (*Readline, error) {
 
 	buf := NewBuffer()
 	buf.prompt = config.Prompt
+	buf.altPrompt = config.AltPrompt
+	buf.getWidth = term.GetWidth
 
 	return &Readline{
 		term: term,

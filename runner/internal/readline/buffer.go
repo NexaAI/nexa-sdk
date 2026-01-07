@@ -3,14 +3,23 @@ package readline
 import (
 	"bufio"
 	"errors"
+	"fmt"
+	"log/slog"
 	"os"
+
+	"github.com/mattn/go-runewidth"
 )
 
 type Buffer struct {
-	prompt string
+	prompt    string
+	altPrompt string
+	getWidth  func() (int, error)
 
 	data []rune
 	r    *bufio.Reader
+
+	cursor int
+	height int
 }
 
 func NewBuffer() *Buffer {
@@ -22,6 +31,8 @@ func NewBuffer() *Buffer {
 func (b *Buffer) Read() (string, error) {
 	b.data = b.data[:0]
 	b.r = bufio.NewReader(os.Stdin)
+	b.cursor = 0
+	b.height = 1
 	b.refresh()
 
 	for {
@@ -57,7 +68,47 @@ func (b *Buffer) parse(r rune) error {
 }
 
 func (b *Buffer) refresh() {
-	print("\r")
+	width, err := b.getWidth()
+	if err != nil {
+		width = 80
+		slog.Warn("failed to get terminal width", "error", err)
+	}
+
+	// check min width
+	if width <= runewidth.StringWidth(b.prompt)+4 || width <= runewidth.StringWidth(b.altPrompt)+4 {
+		print("terminal width is too small\n")
+		return
+	}
+
+	// move cursor to the top
+	if b.height > 1 {
+		fmt.Printf("\x1b[%dA", b.height-1)
+	}
+
+	// render lines
+
+	curLine := 0
+	b.height = 1
+
+	fmt.Printf("\x1b[2K") // clean current line
+	fmt.Printf("\r")      // move cursor to beginning
 	print(b.prompt)
-	print(string(b.data))
+	curLine += runewidth.StringWidth(b.prompt)
+
+	for _, r := range b.data {
+
+		// line wrap
+		rw := runewidth.RuneWidth(r)
+		if curLine+rw > width {
+			print("\n")
+			fmt.Printf("\x1b[2K")
+			b.height++
+			curLine = 0
+			print(b.altPrompt)
+			curLine += runewidth.StringWidth(b.altPrompt)
+		} else {
+			print(string(r))
+			curLine += rw
+		}
+	}
 }

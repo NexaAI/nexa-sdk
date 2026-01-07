@@ -32,6 +32,6 @@ func NewTerminal() (*Terminal, error) {
 	return t, nil
 }
 
-func (t Terminal) Close() error {
+func (t *Terminal) Close() error {
 	return setTermios(os.Stdin.Fd(), t.oldTermios)
 }

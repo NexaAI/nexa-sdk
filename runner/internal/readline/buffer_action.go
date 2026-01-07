@@ -37,6 +37,10 @@ const (
 	CharBackspace = 127
 )
 
+const (
+	Esc = "\x1b"
+)
+
 var eventMap = map[rune]func(*Buffer) error{
 	CharNull:      noop,
 	CharLineStart: noop,
@@ -73,6 +77,8 @@ func interrupt(b *Buffer) error {
 	}
 
 	b.data = b.data[:0]
+	b.cursor = 0
+	b.height = 1
 	println()
 	return nil
 }
