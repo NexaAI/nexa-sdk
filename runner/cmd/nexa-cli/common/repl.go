@@ -67,7 +67,8 @@ func (r *Repl) GetPrompt() (string, error) {
 
 		// init readline
 		config := &readline.Config{
-			Prompt: render.GetTheme().Prompt.Sprint("> "),
+			Prompt:    render.GetTheme().Prompt.Sprint("> "),
+			AltPrompt: render.GetTheme().Prompt.Sprint(". "),
 			// HistoryFile:     "", // Disable history file for now
 			// InterruptPrompt: "^C",
 			// EOFPrompt:       "exit",
@@ -81,7 +82,6 @@ func (r *Repl) GetPrompt() (string, error) {
 		r.init = true
 	}
 
-	var sb strings.Builder
 	var recordAudios []string
 
 	for {
@@ -102,48 +102,10 @@ func (r *Repl) GetPrompt() (string, error) {
 				fmt.Println("\nUse Ctrl + d or /exit to exit.")
 				fmt.Println()
 			}
-			sb.Reset()
 			continue
 		case err != nil:
 			return "", err
 		}
-
-		// // check multiline state
-		// switch {
-		// case multiline != MultilineNone:
-		// 	// check if there's a multiline terminating string
-		// 	before, ok := strings.CutSuffix(line, `"""`)
-		// 	sb.WriteString(before)
-		// 	if !ok {
-		// 		fmt.Fprintln(&sb)
-		// 		continue
-		// 	}
-		//
-		// 	multiline = MultilineNone
-		//
-		// case strings.HasPrefix(line, `"""`):
-		// 	line := strings.TrimPrefix(line, `"""`)
-		// 	line, ok := strings.CutSuffix(line, `"""`)
-		// 	sb.WriteString(line)
-		// 	if !ok {
-		// 		// no multiline terminating string; need more input
-		// 		fmt.Fprintln(&sb)
-		// 		multiline = MultilinePrompt
-		// 	}
-		//
-		// default:
-		// 	sb.WriteString(line)
-		// }
-		//
-		// // empty input or multiline state
-		// if (sb.Len() == 0 && len(recordAudios) == 0) ||
-		// 	multiline != MultilineNone {
-		// 	continue
-		// }
-
-		// read input
-		line = sb.String()
-		sb.Reset()
 
 		// check if it's a command
 		var fileds []string
