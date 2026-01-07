@@ -1,6 +1,8 @@
 package readline
 
-import "errors"
+import (
+	"errors"
+)
 
 type Config struct {
 	Prompt    string
@@ -43,6 +45,12 @@ func New(config *Config) (*Readline, error) {
 func (rl *Readline) Read() (string, error) {
 	rl.buf.resetState()
 	rl.buf.refresh()
+
+	if err := rl.term.EnterRaw(); err != nil {
+		return "", err
+	}
+	defer rl.term.ExitRaw()
+
 	for {
 		r, err := rl.term.Read()
 		if err != nil {

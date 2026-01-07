@@ -70,7 +70,6 @@ func (r *Repl) GetPrompt() (string, error) {
 			Prompt:    render.GetTheme().Prompt.Sprint("> "),
 			AltPrompt: render.GetTheme().Prompt.Sprint(". "),
 			// HistoryFile:     "", // Disable history file for now
-			// InterruptPrompt: "^C",
 			// EOFPrompt:       "exit",
 		}
 		rl, err := readline.New(config)

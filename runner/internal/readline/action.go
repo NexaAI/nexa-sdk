@@ -1,6 +1,9 @@
 package readline
 
-import "errors"
+import (
+	"errors"
+	"io"
+)
 
 var (
 	ErrComplete = errors.New("Complete") // readline complete
@@ -13,7 +16,7 @@ const (
 	CharLineStart = 1
 	CharBackward  = 2
 	CharInterrupt = 3
-	CharDelete    = 4
+	CharCtrlD     = 4
 	CharLineEnd   = 5
 	CharForward   = 6
 	CharBell      = 7
@@ -46,7 +49,7 @@ func (rl *Readline) initializeEventMaps() {
 		CharLineStart: rl.noop,
 		CharBackward:  rl.noop,
 		CharInterrupt: rl.interrupt,
-		CharDelete:    rl.delete,
+		CharCtrlD:     rl.eof,
 		CharLineEnd:   rl.noop,
 		CharForward:   rl.noop,
 		CharBell:      rl.noop,
@@ -71,6 +74,7 @@ func (rl *Readline) initializeEventMaps() {
 	rl.csiEventMap = map[string]func() error{
 		"200~": func() error { rl.isPaste = true; return nil },
 		"201~": func() error { rl.isPaste = false; return nil },
+		"3~":   rl.delete,
 	}
 }
 
@@ -82,6 +86,13 @@ func (rl *Readline) interrupt() error {
 
 	rl.buf.resetState()
 	println()
+	return nil
+}
+
+func (rl *Readline) eof() error {
+	if len(rl.buf.data) == 0 {
+		return io.EOF
+	}
 	return nil
 }
 

@@ -7,7 +7,8 @@ import (
 )
 
 type Terminal struct {
-	oldTermios *syscall.Termios
+	oldTermios syscall.Termios
+	termios    syscall.Termios
 	r          *bufio.Reader
 }
 
@@ -19,18 +20,15 @@ func NewTerminal() (*Terminal, error) {
 		return nil, err
 	}
 
-	t.oldTermios = termios
+	t.oldTermios = *termios
 
-	newTermios := *termios
-	newTermios.Iflag &^= syscall.IGNBRK | syscall.BRKINT | syscall.PARMRK | syscall.ISTRIP | syscall.INLCR | syscall.IGNCR | syscall.ICRNL | syscall.IXON
-	newTermios.Lflag &^= syscall.ECHO | syscall.ECHONL | syscall.ICANON | syscall.ISIG | syscall.IEXTEN
-	newTermios.Cflag &^= syscall.CSIZE | syscall.PARENB
-	newTermios.Cflag |= syscall.CS8
-	newTermios.Cc[syscall.VMIN] = 1
-	newTermios.Cc[syscall.VTIME] = 0
-
-	setTermios(&newTermios)
-	print("\x1b[?2004h") // enable bracketed paste mode"
+	t.termios = *termios
+	t.termios.Iflag &^= syscall.IGNBRK | syscall.BRKINT | syscall.PARMRK | syscall.ISTRIP | syscall.INLCR | syscall.IGNCR | syscall.ICRNL | syscall.IXON
+	t.termios.Lflag &^= syscall.ECHO | syscall.ECHONL | syscall.ICANON | syscall.ISIG | syscall.IEXTEN
+	t.termios.Cflag &^= syscall.CSIZE | syscall.PARENB
+	t.termios.Cflag |= syscall.CS8
+	t.termios.Cc[syscall.VMIN] = 1
+	t.termios.Cc[syscall.VTIME] = 0
 
 	t.r = bufio.NewReader(os.Stdin)
 
@@ -43,6 +41,19 @@ func (t *Terminal) Read() (rune, error) {
 }
 
 func (t *Terminal) Close() error {
+	return t.ExitRaw()
+}
+
+func (t *Terminal) EnterRaw() error {
+	err := setTermios(&t.termios)
+	if err != nil {
+		return err
+	}
+	print("\x1b[?2004h") // enable bracketed paste mode
+	return nil
+}
+
+func (t *Terminal) ExitRaw() error {
 	print("\x1b[?2004l") // disable bracketed paste mode
-	return setTermios(t.oldTermios)
+	return setTermios(&t.oldTermios)
 }
