@@ -65,10 +65,15 @@ var eventMap = map[rune]func(*Buffer) error{
 	CharCtrlW:     noop,
 	CharCtrlY:     noop,
 	CharCtrlZ:     noop,
-	CharEsc:       noop,
-	CharEscapeEx:  noop,
+	CharEsc:       esc,
 	CharBackspace: backspace,
 }
+
+var escEventMap = map[rune]func(*Buffer) error{
+	CharEscapeEx: escEx,
+}
+
+var escExEventMap = map[rune]func(*Buffer) error{}
 
 func interrupt(b *Buffer) error {
 	if len(b.data) == 0 {
@@ -76,9 +81,7 @@ func interrupt(b *Buffer) error {
 		return ErrInterrupt
 	}
 
-	b.data = b.data[:0]
-	b.cursor = 0
-	b.height = 1
+	b.resetState()
 	println()
 	return nil
 }
@@ -93,6 +96,16 @@ func delete(b *Buffer) error {
 func enter(b *Buffer) error {
 	println()
 	return ErrComplete
+}
+
+func esc(b *Buffer) error {
+	b.esc = true
+	return nil
+}
+
+func escEx(b *Buffer) error {
+	b.escEx = true
+	return nil
 }
 
 func backspace(b *Buffer) error {

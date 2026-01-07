@@ -10,14 +10,21 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
+// TODO: placeholder
 type Buffer struct {
+	// configuration
 	prompt    string
 	altPrompt string
 	getWidth  func() (int, error)
 
-	data []rune
-	r    *bufio.Reader
+	r *bufio.Reader
 
+	// state
+	data  []rune
+	esc   bool
+	escEx bool
+
+	// rendering state
 	cursor int
 	height int
 }
@@ -29,10 +36,8 @@ func NewBuffer() *Buffer {
 }
 
 func (b *Buffer) Read() (string, error) {
-	b.data = b.data[:0]
 	b.r = bufio.NewReader(os.Stdin)
-	b.cursor = 0
-	b.height = 1
+	b.resetState()
 	b.refresh()
 
 	for {
@@ -51,20 +56,41 @@ func (b *Buffer) Read() (string, error) {
 }
 
 func (b *Buffer) parse(r rune) error {
-	event, exists := eventMap[r]
-	if !exists {
-		b.data = append(b.data, r)
-		b.refresh()
-		return nil
+	var event func(*Buffer) error
+
+	if b.escEx {
+		b.escEx = false
+		if ev, ok := escExEventMap[r]; ok {
+			event = ev
+		}
+	} else if b.esc {
+		b.esc = false
+		if ev, ok := escEventMap[r]; ok {
+			event = ev
+		}
+	} else {
+		if ev, ok := eventMap[r]; ok {
+			event = ev
+		} else {
+			b.data = append(b.data, r)
+		}
 	}
 
-	err := event(b)
-	if err != nil {
-		return err
+	if event != nil {
+		err := event(b)
+		if err != nil {
+			return err
+		}
 	}
 
 	b.refresh()
 	return nil
+}
+
+func (b *Buffer) resetState() {
+	b.data = b.data[:0]
+	b.cursor = 0
+	b.height = 1
 }
 
 func (b *Buffer) refresh() {
@@ -90,8 +116,8 @@ func (b *Buffer) refresh() {
 	curLine := 0
 	b.height = 1
 
-	fmt.Printf("\x1b[2K") // clean current line
-	fmt.Printf("\r")      // move cursor to beginning
+	fmt.Printf("\r")     // move cursor to beginning
+	fmt.Printf("\x1b[J") // clean after
 	print(b.prompt)
 	curLine += runewidth.StringWidth(b.prompt)
 
@@ -101,7 +127,6 @@ func (b *Buffer) refresh() {
 		rw := runewidth.RuneWidth(r)
 		if curLine+rw > width {
 			print("\n")
-			fmt.Printf("\x1b[2K")
 			b.height++
 			curLine = 0
 			print(b.altPrompt)
