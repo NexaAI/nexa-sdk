@@ -46,9 +46,11 @@ func (rl *Buffer) refresh() {
 		return
 	}
 
+	buffer := ""
+
 	// move cursor to the top
 	if rl.height > 1 {
-		fmt.Printf("\x1b[%dA", rl.height-1)
+		buffer += fmt.Sprintf("\x1b[%dA", rl.height-1)
 	}
 
 	// render lines
@@ -56,23 +58,24 @@ func (rl *Buffer) refresh() {
 	curLine := 0
 	rl.height = 1
 
-	fmt.Printf("\x1b[1G") // move cursor to beginning
-	fmt.Printf("\x1b[J")  // clean after
-	print(rl.prompt)
+	buffer += "\x1b[1G" // move cursor to beginning
+	buffer += "\x1b[J"  // clean after
+	buffer += rl.prompt
 	curLine += runewidth.StringWidth(rl.prompt)
 
 	for _, r := range rl.data {
 		// line wrap
 		rw := runewidth.RuneWidth(r)
 		if r == CharCtrlJ || curLine+rw > width {
-			print("\n")
+			buffer += "\n"
+			buffer += rl.altPrompt
 			rl.height++
-			curLine = 0
-			print(rl.altPrompt)
-			curLine += runewidth.StringWidth(rl.altPrompt)
+			curLine = runewidth.StringWidth(rl.altPrompt)
 		} else {
-			print(string(r))
+			buffer += string(r)
 			curLine += rw
 		}
 	}
+
+	print(buffer)
 }
