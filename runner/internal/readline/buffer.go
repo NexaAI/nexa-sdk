@@ -3,6 +3,7 @@ package readline
 import (
 	"fmt"
 	"log/slog"
+	"regexp"
 
 	"github.com/mattn/go-runewidth"
 )
@@ -57,13 +58,13 @@ func (rl *Buffer) refresh() {
 
 	curWidth := 0
 	rl.height = 1
-	cursorHeight := 1
 	cursorWidth := 0
+	cursorHeight := 1
 
 	buffer += "\x1b[1G" // move cursor to beginning
 	buffer += "\x1b[J"  // clean after
 	buffer += rl.prompt
-	curWidth += runewidth.StringWidth(rl.prompt)
+	curWidth += calcANSIWidth(rl.prompt)
 	cursorWidth = curWidth
 
 	for i, r := range rl.data {
@@ -74,14 +75,14 @@ func (rl *Buffer) refresh() {
 			buffer += "\n"
 			buffer += rl.altPrompt
 			rl.height++
-			curWidth = runewidth.StringWidth(rl.altPrompt)
+			curWidth = calcANSIWidth(rl.altPrompt)
 		} else if curWidth+rw == width {
 			// exactly fit
 			buffer += string(r)
 			buffer += "\n"
 			buffer += rl.altPrompt
 			rl.height++
-			curWidth = runewidth.StringWidth(rl.altPrompt)
+			curWidth = calcANSIWidth(rl.altPrompt)
 		} else if curWidth+rw > width {
 			// over flow
 			buffer += "\n"
@@ -115,4 +116,10 @@ func (rl *Buffer) refresh() {
 	}
 
 	print(buffer)
+}
+
+var ansiRegexp = regexp.MustCompile(`\x1b\[[0-9;?]*[ -/]*[@-~]`)
+
+func calcANSIWidth(s string) int {
+	return runewidth.StringWidth(ansiRegexp.ReplaceAllString(s, ""))
 }
