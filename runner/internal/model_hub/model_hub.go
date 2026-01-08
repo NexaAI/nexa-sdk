@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
+	"golang.org/x/sync/errgroup"
 	"resty.dev/v3"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
@@ -170,73 +171,49 @@ func StartDownload(ctx context.Context, modelName, outputPath string, files []Mo
 		}
 
 		// create tasks
-		tasks := make(chan downloadTask, maxConcurrency)
-		nctx, cancel := context.WithCancel(ctx)
+		g, gctx := errgroup.WithContext(ctx)
+		g.SetLimit(maxConcurrency)
 
-		var wg1 sync.WaitGroup
-		wg1.Add(1)
-		go func() {
-			defer wg1.Done()
-			for _, f := range files {
-				err := os.MkdirAll(filepath.Dir(filepath.Join(outputPath, f.Name)), 0o755)
-				if err != nil {
-					errCh <- fmt.Errorf("failed to create directory: %v, %s", err, f.Name)
-					cancel()
-					return
-				}
+		for _, f := range files {
+			f := f
 
-				// create task
+			// create directory
+			if err := os.MkdirAll(filepath.Dir(filepath.Join(outputPath, f.Name)), 0o755); err != nil {
+				errCh <- fmt.Errorf("failed to create directory: %v, %s", err, f.Name)
+				return
+			}
+
+			// create download tasks for each chunk
+			chunkSize := max(minChunkSize, f.Size/128)
+			slog.Info("Download file", "name", f.Name, "size", f.Size, "chunkSize", chunkSize)
+
+			for offset := int64(0); offset < f.Size; offset += chunkSize {
 				task := downloadTask{
 					OutputPath: outputPath,
 					ModelName:  modelName,
 					FileName:   f.Name,
+					Offset:     offset,
+					Limit:      min(chunkSize, f.Size-offset),
 				}
 
-				// enqueue tasks
-				chunkSize := max(minChunkSize, f.Size/128)
-				slog.Info("Download file", "name", f.Name, "size", f.Size, "chunkSize", chunkSize)
-				for task.Offset = 0; task.Offset < f.Size; task.Offset += chunkSize {
-					task.Limit = min(chunkSize, f.Size-task.Offset)
-
-					// send chunk
-					select {
-					case tasks <- task:
-					case <-nctx.Done():
-						slog.Warn("download canceled", "error", nctx.Err())
-						return
-					}
-				}
-			}
-		}()
-
-		// concurrent control
-		var wg2 sync.WaitGroup
-		for range maxConcurrency {
-			wg2.Add(1)
-			go func() {
-				defer wg2.Done()
-
-				for task := range tasks {
-					err := doTask(nctx, hub, task)
-					if err != nil {
+				g.Go(func() error {
+					if err := doTask(gctx, hub, task); err != nil {
 						slog.Error("Download task failed", "task", task, "error", err)
-						errCh <- err
-						cancel()
-						return
+						return err
 					}
 
 					resCh <- types.DownloadInfo{
 						TotalDownloaded: atomic.AddInt64(&downloaded, task.Limit),
 						TotalSize:       totalSize,
 					}
-				}
-			}()
+					return nil
+				})
+			}
 		}
 
-		wg1.Wait()
-		close(tasks)
-		wg2.Wait()
-		cancel()
+		if err := g.Wait(); err != nil {
+			errCh <- err
+		}
 	}()
 
 	return resCh, errCh
