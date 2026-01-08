@@ -12,69 +12,67 @@ var (
 )
 
 const (
-	CharNull      = 0
-	CharLineStart = 1
-	CharBackward  = 2
-	CharInterrupt = 3
-	CharCtrlD     = 4
-	CharLineEnd   = 5
-	CharForward   = 6
-	CharBell      = 7
-	CharCtrlH     = 8
-	CharTab       = 9
-	CharCtrlJ     = 10
-	CharKill      = 11
-	CharCtrlL     = 12
-	CharEnter     = 13
-	CharNext      = 14
-	CharPrev      = 16
-	CharBckSearch = 18
-	CharFwdSearch = 19
-	CharTranspose = 20
-	CharCtrlU     = 21
-	CharCtrlW     = 23
-	CharCtrlY     = 25
-	CharCtrlZ     = 26
-	CharEsc       = 27
-	CharBackspace = 127
-)
-
-const (
-	Esc = "\x1b"
+	Null      = 0
+	LineStart = 1
+	CtrlB     = 2
+	CtrlC     = 3
+	CtrlD     = 4
+	LineEnd   = 5
+	CtrlF     = 6
+	Bell      = 7
+	CtrlH     = 8
+	Tab       = 9
+	CtrlJ     = 10
+	Kill      = 11
+	CtrlL     = 12
+	Enter     = 13
+	Next      = 14
+	Prev      = 16
+	BckSearch = 18
+	FwdSearch = 19
+	Transpose = 20
+	CtrlU     = 21
+	CtrlW     = 23
+	CtrlY     = 25
+	CtrlZ     = 26
+	Esc       = 27
+	Backspace = 127
 )
 
 func (rl *Readline) initializeEventMaps() {
 	rl.eventMap = map[rune]func() error{
-		CharNull:      rl.noop,
-		CharLineStart: rl.noop,
-		CharBackward:  rl.noop,
-		CharInterrupt: rl.interrupt,
-		CharCtrlD:     rl.eof,
-		CharLineEnd:   rl.noop,
-		CharForward:   rl.noop,
-		CharBell:      rl.noop,
-		CharCtrlH:     rl.noop,
-		CharTab:       rl.noop,
-		CharCtrlJ:     rl.lf,
-		CharKill:      rl.noop,
-		CharCtrlL:     rl.noop,
-		CharEnter:     rl.enter,
-		CharNext:      rl.noop,
-		CharPrev:      rl.noop,
-		CharBckSearch: rl.noop,
-		CharFwdSearch: rl.noop,
-		CharTranspose: rl.noop,
-		CharCtrlU:     rl.noop,
-		CharCtrlW:     rl.noop,
-		CharCtrlY:     rl.noop,
-		CharCtrlZ:     rl.noop,
-		CharEsc:       rl.esc,
-		CharBackspace: rl.backspace,
+		Null:      rl.noop,
+		LineStart: rl.noop,
+		CtrlB:     rl.left,
+		CtrlC:     rl.interrupt,
+		CtrlD:     rl.eof,
+		LineEnd:   rl.noop,
+		CtrlF:     rl.right,
+		Bell:      rl.noop,
+		CtrlH:     rl.noop,
+		Tab:       rl.noop,
+		CtrlJ:     rl.lf,
+		Kill:      rl.noop,
+		CtrlL:     rl.clear,
+		Enter:     rl.enter,
+		Next:      rl.noop,
+		Prev:      rl.noop,
+		BckSearch: rl.noop,
+		FwdSearch: rl.noop,
+		Transpose: rl.noop,
+		CtrlU:     rl.noop,
+		CtrlW:     rl.noop,
+		CtrlY:     rl.noop,
+		CtrlZ:     rl.noop,
+		Esc:       rl.esc,
+		Backspace: rl.backspace,
 	}
 	rl.csiEventMap = map[string]func() error{
 		"200~": func() error { rl.isPaste = true; return nil },
 		"201~": func() error { rl.isPaste = false; return nil },
 		"3~":   rl.delete,
+		"D":    rl.left,
+		"C":    rl.right,
 	}
 }
 
@@ -97,19 +95,21 @@ func (rl *Readline) eof() error {
 }
 
 func (rl *Readline) delete() error {
-	if len(rl.buf.data) > 0 {
-		rl.buf.data = rl.buf.data[:len(rl.buf.data)-1]
+	if rl.buf.cursor < len(rl.buf.data) {
+		rl.buf.data = append(rl.buf.data[:rl.buf.cursor], rl.buf.data[rl.buf.cursor+1:]...)
 	}
 	return nil
 }
 
 func (rl *Readline) lf() error {
-	if rl.isPaste {
-		rl.buf.data = append(rl.buf.data, CharCtrlJ)
-		return nil
-	}
-	println()
-	return ErrComplete
+	rl.buf.data = append(rl.buf.data, CtrlJ)
+	rl.buf.cursor++
+	return nil
+}
+
+func (rl *Readline) clear() error {
+	print("\x1b[H\x1b[2J") // clear screen
+	return nil
 }
 
 func (rl *Readline) enter() error {
@@ -124,7 +124,22 @@ func (rl *Readline) esc() error {
 
 func (rl *Readline) backspace() error {
 	if len(rl.buf.data) > 0 {
-		rl.buf.data = rl.buf.data[:len(rl.buf.data)-1]
+		rl.buf.data = append(rl.buf.data[:rl.buf.cursor-1], rl.buf.data[rl.buf.cursor:]...)
+		rl.buf.cursor--
+	}
+	return nil
+}
+
+func (rl *Readline) left() error {
+	if rl.buf.cursor > 0 {
+		rl.buf.cursor--
+	}
+	return nil
+}
+
+func (rl *Readline) right() error {
+	if rl.buf.cursor < len(rl.buf.data) {
+		rl.buf.cursor++
 	}
 	return nil
 }

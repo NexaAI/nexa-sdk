@@ -14,11 +14,10 @@ type Buffer struct {
 	altPrompt string
 	getWidth  func() (int, error)
 
-	data []rune
-
 	// state
-	cursor int
+	data   []rune
 	height int
+	cursor int
 }
 
 func NewBuffer() *Buffer {
@@ -42,7 +41,8 @@ func (rl *Buffer) refresh() {
 
 	// check min width
 	if width <= runewidth.StringWidth(rl.prompt)+4 || width <= runewidth.StringWidth(rl.altPrompt)+4 {
-		print("terminal width is too small\n")
+		print("\x1b[H\x1b[2J")
+		print("terminal width is too small!")
 		return
 	}
 
@@ -55,26 +55,63 @@ func (rl *Buffer) refresh() {
 
 	// render lines
 
-	curLine := 0
+	curWidth := 0
 	rl.height = 1
+	cursorHeight := 1
+	cursorWidth := 0
 
 	buffer += "\x1b[1G" // move cursor to beginning
 	buffer += "\x1b[J"  // clean after
 	buffer += rl.prompt
-	curLine += runewidth.StringWidth(rl.prompt)
+	curWidth += runewidth.StringWidth(rl.prompt)
+	cursorWidth = curWidth
 
-	for _, r := range rl.data {
+	for i, r := range rl.data {
 		// line wrap
 		rw := runewidth.RuneWidth(r)
-		if r == CharCtrlJ || curLine+rw > width {
+		if r == CtrlJ {
+			// new line
 			buffer += "\n"
 			buffer += rl.altPrompt
 			rl.height++
-			curLine = runewidth.StringWidth(rl.altPrompt)
-		} else {
+			curWidth = runewidth.StringWidth(rl.altPrompt)
+		} else if curWidth+rw == width {
+			// exactly fit
 			buffer += string(r)
-			curLine += rw
+			buffer += "\n"
+			buffer += rl.altPrompt
+			rl.height++
+			curWidth = runewidth.StringWidth(rl.altPrompt)
+		} else if curWidth+rw > width {
+			// over flow
+			buffer += "\n"
+			buffer += rl.altPrompt
+			rl.height++
+			buffer += string(r)
+			curWidth += rw
+		} else {
+			// normal char
+			buffer += string(r)
+			curWidth += rw
 		}
+		// record cursor position
+		if i == rl.cursor-1 {
+			cursorHeight = rl.height
+			cursorWidth = curWidth
+		}
+	}
+
+	// move cursor to the position
+
+	if rl.height > cursorHeight {
+		buffer += fmt.Sprintf("\x1b[%dA", rl.height-cursorHeight-1)
+	}
+	buffer += "\x1b[1G" // move cursor to beginning
+	// print("DEBUG: cursorHeight:", cursorHeight, " cursorWidth:", cursorWidth, "\n")
+	if cursorHeight > 1 {
+		buffer += fmt.Sprintf("\x1b[%dC", cursorWidth)
+	} else {
+		buffer += fmt.Sprintf("\x1b[%dC", cursorWidth)
 	}
 
 	print(buffer)

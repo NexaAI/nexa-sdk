@@ -98,10 +98,16 @@ func (rl *Readline) parse(r rune) error {
 
 	} else {
 		// single char
-		// print("read rune: ", r, "\n") // for debug
+		// print("====read rune: ", r, "\n") // for debug
 
 		if event, ok := rl.eventMap[r]; !ok {
+			left := rl.buf.data[:rl.buf.cursor]
+			right := rl.buf.data[rl.buf.cursor:]
+			rl.buf.data = make([]rune, 0, len(rl.buf.data)+1)
+			rl.buf.data = append(rl.buf.data, left...)
 			rl.buf.data = append(rl.buf.data, r)
+			rl.buf.data = append(rl.buf.data, right...)
+			rl.buf.cursor++
 		} else if err := event(); err != nil {
 			return err
 		}
