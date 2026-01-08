@@ -17,21 +17,22 @@ type Buffer struct {
 
 	// state
 	data         []rune
-	height       int
-	cursor       int
+	cursorIndex  int
 	cursorHeight int
 }
 
-func NewBuffer() *Buffer {
+func NewBuffer(prompt, altPrompt string, getWidth func() (int, error)) *Buffer {
 	return &Buffer{
-		data: make([]rune, 0),
+		prompt:    prompt,
+		altPrompt: altPrompt,
+		getWidth:  getWidth,
+		data:      make([]rune, 0),
 	}
 }
 
 func (rl *Buffer) resetState() {
 	rl.data = rl.data[:0]
-	rl.height = 1
-	rl.cursor = 0
+	rl.cursorIndex = 0
 	rl.cursorHeight = 1
 }
 
@@ -59,7 +60,7 @@ func (rl *Buffer) refresh() {
 	// render lines
 
 	curWidth := 0
-	rl.height = 1
+	curHeight := 1
 	cursorWidth := 0
 	cursorHeight := 1
 
@@ -76,20 +77,20 @@ func (rl *Buffer) refresh() {
 			// new line
 			buffer += "\n"
 			buffer += rl.altPrompt
-			rl.height++
+			curHeight++
 			curWidth = calcANSIWidth(rl.altPrompt)
 		} else if curWidth+rw == width {
 			// exactly fit
 			buffer += string(r)
 			buffer += "\n"
 			buffer += rl.altPrompt
-			rl.height++
+			curHeight++
 			curWidth = calcANSIWidth(rl.altPrompt)
 		} else if curWidth+rw > width {
 			// over flow
 			buffer += "\n"
 			buffer += rl.altPrompt
-			rl.height++
+			curHeight++
 			buffer += string(r)
 			curWidth += rw
 		} else {
@@ -98,8 +99,8 @@ func (rl *Buffer) refresh() {
 			curWidth += rw
 		}
 		// record cursor position
-		if i == rl.cursor-1 {
-			cursorHeight = rl.height
+		if i == rl.cursorIndex-1 {
+			cursorHeight = curHeight
 			cursorWidth = curWidth
 		}
 	}
@@ -107,8 +108,8 @@ func (rl *Buffer) refresh() {
 	// move cursor to the position
 
 	rl.cursorHeight = cursorHeight
-	if rl.height > cursorHeight {
-		buffer += fmt.Sprintf("\x1b[%dA", rl.height-cursorHeight)
+	if curHeight > cursorHeight {
+		buffer += fmt.Sprintf("\x1b[%dA", curHeight-cursorHeight)
 	}
 	buffer += "\x1b[1G" // move cursor to beginning
 	if cursorHeight > 1 {

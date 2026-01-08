@@ -67,12 +67,34 @@ func (rl *Readline) initializeEventMaps() {
 		Esc:       rl.esc,
 		Backspace: rl.backspace,
 	}
-	rl.csiEventMap = map[string]func() error{
-		"200~": func() error { rl.isPaste = true; return nil },
-		"201~": func() error { rl.isPaste = false; return nil },
-		"3~":   rl.delete,
-		"D":    rl.left,
-		"C":    rl.right,
+	rl.escEventMap = map[string]func() error{
+		"[200~": func() error { rl.isPaste = true; return nil },  // start paste
+		"[201~": func() error { rl.isPaste = false; return nil }, // end paste
+
+		"[2~": rl.noop,   // insert
+		"[3~": rl.delete, // delete
+		"[5~": rl.noop,   // page up
+		"[6~": rl.noop,   // page down
+		"[H":  rl.noop,   // home
+		"[F":  rl.noop,   // end
+
+		"[A": rl.prevHistory, // up
+		"[B": rl.nextHistory, // down
+		"[C": rl.right,       // right
+		"[D": rl.left,        // left
+
+		"OP":   rl.noop, // F1
+		"OQ":   rl.noop, // F2
+		"OR":   rl.noop, // F3
+		"OS":   rl.noop, // F4
+		"[15~": rl.noop, // F5
+		"[17~": rl.noop, // F6
+		"[18~": rl.noop, // F7
+		"[19~": rl.noop, // F8
+		"[20~": rl.noop, // F9
+		"[21~": rl.noop, // F10
+		"[23~": rl.noop, // F11
+		"[24~": rl.noop, // F12
 	}
 }
 
@@ -108,26 +130,26 @@ func (rl *Readline) esc() error {
 // cursor move
 
 func (rl *Readline) left() error {
-	if rl.buf.cursor > 0 {
-		rl.buf.cursor--
+	if rl.buf.cursorIndex > 0 {
+		rl.buf.cursorIndex--
 	}
 	return nil
 }
 
 func (rl *Readline) right() error {
-	if rl.buf.cursor < len(rl.buf.data) {
-		rl.buf.cursor++
+	if rl.buf.cursorIndex < len(rl.buf.data) {
+		rl.buf.cursorIndex++
 	}
 	return nil
 }
 
 func (rl *Readline) begin() error {
-	rl.buf.cursor = 0
+	rl.buf.cursorIndex = 0
 	return nil
 }
 
 func (rl *Readline) end() error {
-	rl.buf.cursor = len(rl.buf.data)
+	rl.buf.cursorIndex = len(rl.buf.data)
 	return nil
 }
 
@@ -135,15 +157,15 @@ func (rl *Readline) end() error {
 
 func (rl *Readline) backspace() error {
 	if len(rl.buf.data) > 0 {
-		rl.buf.data = append(rl.buf.data[:rl.buf.cursor-1], rl.buf.data[rl.buf.cursor:]...)
-		rl.buf.cursor--
+		rl.buf.data = append(rl.buf.data[:rl.buf.cursorIndex-1], rl.buf.data[rl.buf.cursorIndex:]...)
+		rl.buf.cursorIndex--
 	}
 	return nil
 }
 
 func (rl *Readline) delete() error {
-	if rl.buf.cursor < len(rl.buf.data) {
-		rl.buf.data = append(rl.buf.data[:rl.buf.cursor], rl.buf.data[rl.buf.cursor+1:]...)
+	if rl.buf.cursorIndex < len(rl.buf.data) {
+		rl.buf.data = append(rl.buf.data[:rl.buf.cursorIndex], rl.buf.data[rl.buf.cursorIndex+1:]...)
 	}
 	return nil
 }
@@ -155,5 +177,26 @@ func (rl *Readline) clear() error {
 
 func (rl *Readline) enter() error {
 	println()
+
+	rl.history.Add(rl.buf.data)
+
 	return ErrComplete
+}
+
+func (rl *Readline) prevHistory() error {
+	hist := rl.history.Prev()
+	if hist != nil {
+		rl.buf.data = []rune(hist)
+		rl.buf.cursorIndex = len(rl.buf.data)
+	}
+	return nil
+}
+
+func (rl *Readline) nextHistory() error {
+	hist := rl.history.Next()
+	if hist != nil {
+		rl.buf.data = []rune(hist)
+		rl.buf.cursorIndex = len(rl.buf.data)
+	}
+	return nil
 }

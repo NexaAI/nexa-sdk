@@ -5,13 +5,15 @@ import (
 )
 
 type Config struct {
-	Prompt    string
-	AltPrompt string
+	Prompt      string
+	AltPrompt   string
+	HistoryFile string
 }
 
 type Readline struct {
-	term *Terminal
-	buf  *Buffer
+	term    *Terminal
+	buf     *Buffer
+	history *History
 
 	eventMap map[rune]func() error
 
@@ -19,7 +21,7 @@ type Readline struct {
 	isEsc       bool
 	isEscEx     bool
 	escBuf      string
-	csiEventMap map[string]func() error
+	escEventMap map[string]func() error
 	isPaste     bool
 }
 
@@ -29,14 +31,18 @@ func New(config *Config) (*Readline, error) {
 		return nil, err
 	}
 
-	buf := NewBuffer()
-	buf.prompt = config.Prompt
-	buf.altPrompt = config.AltPrompt
-	buf.getWidth = term.GetWidth
+	buf := NewBuffer(
+		config.Prompt,
+		config.AltPrompt,
+		term.GetWidth,
+	)
+
+	hist := NewHistory(config.HistoryFile)
 
 	rl := Readline{
-		term: term,
-		buf:  buf,
+		term:    term,
+		buf:     buf,
+		history: hist,
 	}
 	rl.initializeEventMaps()
 	return &rl, nil
@@ -71,10 +77,15 @@ func (rl *Readline) parse(r rune) error {
 		// escape sequence
 
 		rl.isEsc = false
-		if r == '[' {
-			rl.isEsc = false
+
+		switch r {
+		case 'O': // VT100
 			rl.isEscEx = true
-			rl.escBuf = ""
+			rl.escBuf = "O"
+			return nil
+		case '[': // CSI
+			rl.isEscEx = true
+			rl.escBuf = "["
 			return nil
 		}
 
@@ -89,10 +100,12 @@ func (rl *Readline) parse(r rune) error {
 		if r >= 0x40 {
 			// end of escape ex
 			rl.isEscEx = false
-			if event, ok := rl.csiEventMap[rl.escBuf]; ok {
+			if event, ok := rl.escEventMap[rl.escBuf]; ok {
 				if err := event(); err != nil {
 					return err
 				}
+			} else {
+				// print("unknown escape sequence: " + rl.escBuf + "\n") // debug
 			}
 		}
 
@@ -100,13 +113,13 @@ func (rl *Readline) parse(r rune) error {
 		// single char
 
 		if event, ok := rl.eventMap[r]; !ok {
-			left := rl.buf.data[:rl.buf.cursor]
-			right := rl.buf.data[rl.buf.cursor:]
+			left := rl.buf.data[:rl.buf.cursorIndex]
+			right := rl.buf.data[rl.buf.cursorIndex:]
 			rl.buf.data = make([]rune, 0, len(rl.buf.data)+1)
 			rl.buf.data = append(rl.buf.data, left...)
 			rl.buf.data = append(rl.buf.data, r)
 			rl.buf.data = append(rl.buf.data, right...)
-			rl.buf.cursor++
+			rl.buf.cursorIndex++
 		} else if err := event(); err != nil {
 			return err
 		}
