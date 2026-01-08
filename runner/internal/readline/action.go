@@ -51,7 +51,7 @@ func (rl *Readline) initializeEventMaps() {
 		Bell:      rl.noop,
 		CtrlH:     rl.noop,
 		Tab:       rl.noop,
-		CtrlJ:     rl.lf,
+		// CtrlJ:     rl.lf,
 		Kill:      rl.noop,
 		CtrlL:     rl.clear,
 		Enter:     rl.enter,
@@ -98,12 +98,6 @@ func (rl *Readline) delete() error {
 	if rl.buf.cursor < len(rl.buf.data) {
 		rl.buf.data = append(rl.buf.data[:rl.buf.cursor], rl.buf.data[rl.buf.cursor+1:]...)
 	}
-	return nil
-}
-
-func (rl *Readline) lf() error {
-	rl.buf.data = append(rl.buf.data, CtrlJ)
-	rl.buf.cursor++
 	return nil
 }
 

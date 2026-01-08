@@ -16,9 +16,10 @@ type Buffer struct {
 	getWidth  func() (int, error)
 
 	// state
-	data   []rune
-	height int
-	cursor int
+	data         []rune
+	height       int
+	cursor       int
+	cursorHeight int
 }
 
 func NewBuffer() *Buffer {
@@ -29,8 +30,9 @@ func NewBuffer() *Buffer {
 
 func (rl *Buffer) resetState() {
 	rl.data = rl.data[:0]
-	rl.cursor = 0
 	rl.height = 1
+	rl.cursor = 0
+	rl.cursorHeight = 1
 }
 
 func (rl *Buffer) refresh() {
@@ -50,8 +52,8 @@ func (rl *Buffer) refresh() {
 	buffer := ""
 
 	// move cursor to the top
-	if rl.height > 1 {
-		buffer += fmt.Sprintf("\x1b[%dA", rl.height-1)
+	if rl.cursorHeight != 1 {
+		buffer += fmt.Sprintf("\x1b[%dA", rl.cursorHeight-1)
 	}
 
 	// render lines
@@ -104,11 +106,11 @@ func (rl *Buffer) refresh() {
 
 	// move cursor to the position
 
+	rl.cursorHeight = cursorHeight
 	if rl.height > cursorHeight {
-		buffer += fmt.Sprintf("\x1b[%dA", rl.height-cursorHeight-1)
+		buffer += fmt.Sprintf("\x1b[%dA", rl.height-cursorHeight)
 	}
 	buffer += "\x1b[1G" // move cursor to beginning
-	// print("DEBUG: cursorHeight:", cursorHeight, " cursorWidth:", cursorWidth, "\n")
 	if cursorHeight > 1 {
 		buffer += fmt.Sprintf("\x1b[%dC", cursorWidth)
 	} else {

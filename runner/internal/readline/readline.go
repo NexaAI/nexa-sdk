@@ -89,16 +89,15 @@ func (rl *Readline) parse(r rune) error {
 		if r >= 0x40 {
 			// end of escape ex
 			rl.isEscEx = false
-			if event, ok := rl.csiEventMap[rl.escBuf]; !ok {
-				print("\nUnknown escape ex sequence:", rl.escBuf, "\n") // for debug
-			} else if err := event(); err != nil {
-				return err
+			if event, ok := rl.csiEventMap[rl.escBuf]; ok {
+				if err := event(); err != nil {
+					return err
+				}
 			}
 		}
 
 	} else {
 		// single char
-		// print("====read rune: ", r, "\n") // for debug
 
 		if event, ok := rl.eventMap[r]; !ok {
 			left := rl.buf.data[:rl.buf.cursor]
