@@ -13,11 +13,11 @@ var (
 
 const (
 	Null      = 0
-	LineStart = 1
+	CtrlA     = 1
 	CtrlB     = 2
 	CtrlC     = 3
 	CtrlD     = 4
-	LineEnd   = 5
+	CtrlE     = 5
 	CtrlF     = 6
 	Bell      = 7
 	CtrlH     = 8
@@ -41,16 +41,16 @@ const (
 
 func (rl *Readline) initializeEventMaps() {
 	rl.eventMap = map[rune]func() error{
-		Null:      rl.noop,
-		LineStart: rl.noop,
-		CtrlB:     rl.left,
-		CtrlC:     rl.interrupt,
-		CtrlD:     rl.eof,
-		LineEnd:   rl.noop,
-		CtrlF:     rl.right,
-		Bell:      rl.noop,
-		CtrlH:     rl.noop,
-		Tab:       rl.noop,
+		Null:  rl.noop,
+		CtrlA: rl.begin,
+		CtrlB: rl.left,
+		CtrlC: rl.interrupt,
+		CtrlD: rl.eof,
+		CtrlE: rl.end,
+		CtrlF: rl.right,
+		Bell:  rl.noop,
+		CtrlH: rl.noop,
+		Tab:   rl.noop,
 		// CtrlJ:     rl.lf,
 		Kill:      rl.noop,
 		CtrlL:     rl.clear,
@@ -76,6 +76,12 @@ func (rl *Readline) initializeEventMaps() {
 	}
 }
 
+func (rl *Readline) noop() error {
+	return nil
+}
+
+// control actions
+
 func (rl *Readline) interrupt() error {
 	if len(rl.buf.data) == 0 {
 		println("^C")
@@ -90,6 +96,47 @@ func (rl *Readline) interrupt() error {
 func (rl *Readline) eof() error {
 	if len(rl.buf.data) == 0 {
 		return io.EOF
+	}
+	return nil
+}
+
+func (rl *Readline) esc() error {
+	rl.isEsc = true
+	return nil
+}
+
+// cursor move
+
+func (rl *Readline) left() error {
+	if rl.buf.cursor > 0 {
+		rl.buf.cursor--
+	}
+	return nil
+}
+
+func (rl *Readline) right() error {
+	if rl.buf.cursor < len(rl.buf.data) {
+		rl.buf.cursor++
+	}
+	return nil
+}
+
+func (rl *Readline) begin() error {
+	rl.buf.cursor = 0
+	return nil
+}
+
+func (rl *Readline) end() error {
+	rl.buf.cursor = len(rl.buf.data)
+	return nil
+}
+
+// edit actions
+
+func (rl *Readline) backspace() error {
+	if len(rl.buf.data) > 0 {
+		rl.buf.data = append(rl.buf.data[:rl.buf.cursor-1], rl.buf.data[rl.buf.cursor:]...)
+		rl.buf.cursor--
 	}
 	return nil
 }
@@ -109,35 +156,4 @@ func (rl *Readline) clear() error {
 func (rl *Readline) enter() error {
 	println()
 	return ErrComplete
-}
-
-func (rl *Readline) esc() error {
-	rl.isEsc = true
-	return nil
-}
-
-func (rl *Readline) backspace() error {
-	if len(rl.buf.data) > 0 {
-		rl.buf.data = append(rl.buf.data[:rl.buf.cursor-1], rl.buf.data[rl.buf.cursor:]...)
-		rl.buf.cursor--
-	}
-	return nil
-}
-
-func (rl *Readline) left() error {
-	if rl.buf.cursor > 0 {
-		rl.buf.cursor--
-	}
-	return nil
-}
-
-func (rl *Readline) right() error {
-	if rl.buf.cursor < len(rl.buf.data) {
-		rl.buf.cursor++
-	}
-	return nil
-}
-
-func (rl *Readline) noop() error {
-	return nil
 }
