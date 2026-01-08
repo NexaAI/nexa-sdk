@@ -136,7 +136,6 @@ def call_nexa_chat_stream(
 
     try:
         logger.debug(f"Calling streaming API: {url} with model: {model}")
-        request_start_time = time.time()
         first_token_time = None
         last_token_time = None
         completion_tokens = None
@@ -145,6 +144,8 @@ def call_nexa_chat_stream(
 
         with session.post(url, json=payload, stream=True, timeout=300) as resp:
             resp.raise_for_status()
+            # Start timer after connection is established, before receiving first token
+            request_start_time = time.time()
 
             for line in resp.iter_lines(decode_unicode=True):
                 if not line:
