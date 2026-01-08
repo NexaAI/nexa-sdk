@@ -175,9 +175,6 @@ func StartDownload(ctx context.Context, modelName, outputPath string, files []Mo
 		g.SetLimit(maxConcurrency)
 
 		for _, f := range files {
-			f := f
-
-			// create directory
 			if err := os.MkdirAll(filepath.Dir(filepath.Join(outputPath, f.Name)), 0o755); err != nil {
 				errCh <- fmt.Errorf("failed to create directory: %v, %s", err, f.Name)
 				return
