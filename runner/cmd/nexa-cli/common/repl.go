@@ -18,11 +18,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 
-	"github.com/chzyer/readline"
-
+	"github.com/NexaAI/nexa-sdk/runner/internal/readline"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
+	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 )
 
@@ -44,17 +45,10 @@ type Repl struct {
 	RecordImmediate bool
 
 	init bool
-	rl   *readline.Instance
+	rl   *readline.Readline
 }
 
 // ========= repl tool ========
-
-type MultilineState int
-
-const (
-	MultilineNone MultilineState = iota
-	MultilinePrompt
-)
 
 func (r *Repl) GetPrompt() (string, error) {
 	if !r.init {
@@ -75,12 +69,11 @@ func (r *Repl) GetPrompt() (string, error) {
 
 		// init readline
 		config := &readline.Config{
-			Prompt:          render.GetTheme().Prompt.Sprint("> "),
-			HistoryFile:     "", // Disable history file for now
-			InterruptPrompt: "^C",
-			EOFPrompt:       "exit",
+			Prompt:      render.GetTheme().Prompt.Sprint("> "),
+			AltPrompt:   render.GetTheme().Prompt.Sprint(". "),
+			HistoryFile: filepath.Join(store.Get().DataPath(), "history"),
 		}
-		rl, err := readline.NewEx(config)
+		rl, err := readline.New(config)
 		if err != nil {
 			panic(err)
 		}
@@ -89,24 +82,15 @@ func (r *Repl) GetPrompt() (string, error) {
 		r.init = true
 	}
 
-	var sb strings.Builder
-	var multiline MultilineState
 	var recordAudios []string
 
 	for {
 		// print stashed content
-		if multiline == MultilineNone && len(recordAudios) > 0 {
+		if len(recordAudios) > 0 {
 			fmt.Println(render.GetTheme().Info.Sprintf("Current stash audios: %s", strings.Join(recordAudios, ", ")))
 		}
 
-		// Update prompt based on multiline state
-		if multiline != MultilineNone {
-			r.rl.SetPrompt(render.GetTheme().Prompt.Sprint(". "))
-		} else {
-			r.rl.SetPrompt(render.GetTheme().Prompt.Sprint("> "))
-		}
-
-		line, err := r.rl.Readline()
+		line, err := r.rl.Read()
 
 		// check err or exit
 		switch {
@@ -118,52 +102,13 @@ func (r *Repl) GetPrompt() (string, error) {
 				fmt.Println("\nUse Ctrl + d or /exit to exit.")
 				fmt.Println()
 			}
-			sb.Reset()
-			multiline = MultilineNone
 			continue
 		case err != nil:
 			return "", err
 		}
 
-		// check multiline state
-		switch {
-		case multiline != MultilineNone:
-			// check if there's a multiline terminating string
-			before, ok := strings.CutSuffix(line, `"""`)
-			sb.WriteString(before)
-			if !ok {
-				fmt.Fprintln(&sb)
-				continue
-			}
-
-			multiline = MultilineNone
-
-		case strings.HasPrefix(line, `"""`):
-			line := strings.TrimPrefix(line, `"""`)
-			line, ok := strings.CutSuffix(line, `"""`)
-			sb.WriteString(line)
-			if !ok {
-				// no multiline terminating string; need more input
-				fmt.Fprintln(&sb)
-				multiline = MultilinePrompt
-			}
-
-		default:
-			sb.WriteString(line)
-		}
-
-		// empty input or multiline state
-		if (sb.Len() == 0 && len(recordAudios) == 0) ||
-			multiline != MultilineNone {
-			continue
-		}
-
-		// read input
-		line = sb.String()
-		sb.Reset()
-
 		// check if it's a command
-		var fileds []string
+		var fields []string
 		if !strings.HasPrefix(line, "/") {
 			if len(recordAudios) > 0 {
 				line += " " + strings.Join(recordAudios, " ")
@@ -171,8 +116,8 @@ func (r *Repl) GetPrompt() (string, error) {
 			recordAudios = nil // clear stashed audios after use
 			return line, nil
 		}
-		fileds = strings.Fields(strings.TrimSpace(line))
-		if strings.Contains(fileds[0][1:], "/") || strings.Contains(fileds[0], ".") {
+		fields = strings.Fields(strings.TrimSpace(line))
+		if strings.Contains(fields[0][1:], "/") || strings.Contains(fields[0], ".") {
 			if len(recordAudios) > 0 {
 				line += " " + strings.Join(recordAudios, " ")
 			}
@@ -180,7 +125,7 @@ func (r *Repl) GetPrompt() (string, error) {
 			return line, nil
 		}
 
-		switch fileds[0] {
+		switch fields[0] {
 		case "/?", "/h", "/help":
 			fmt.Println("Commands:")
 			for _, h := range help {
@@ -199,13 +144,13 @@ func (r *Repl) GetPrompt() (string, error) {
 			continue
 
 		case "/load":
-			if len(fileds) != 2 {
+			if len(fields) != 2 {
 				fmt.Println(render.GetTheme().Error.Sprintf("Usage: /load <filename>"))
 				fmt.Println()
 				continue
 			}
 			r.Reset()
-			err := r.LoadKVCache(fileds[1])
+			err := r.LoadKVCache(fields[1])
 			if err != nil {
 				if errors.Is(err, nexa_sdk.ErrCommonNotSupport) {
 					fmt.Println(render.GetTheme().Warning.Sprintf("Load conversation history is not supported for this model yet"))
@@ -218,12 +163,12 @@ func (r *Repl) GetPrompt() (string, error) {
 			continue
 
 		case "/save":
-			if len(fileds) != 2 {
+			if len(fields) != 2 {
 				fmt.Println(render.GetTheme().Error.Sprintf("Usage: /save <filename>"))
 				fmt.Println()
 				continue
 			}
-			err := r.SaveKVCache(fileds[1])
+			err := r.SaveKVCache(fields[1])
 			if err != nil {
 				if errors.Is(err, nexa_sdk.ErrCommonNotSupport) {
 					fmt.Println(render.GetTheme().Warning.Sprintf("Save conversation history is not supported for this model yet"))
@@ -250,7 +195,7 @@ func (r *Repl) GetPrompt() (string, error) {
 			continue
 
 		default:
-			fmt.Println(render.GetTheme().Error.Sprintf("Unknown command: %s", fileds[0]))
+			fmt.Println(render.GetTheme().Error.Sprintf("Unknown command: %s", fields[0]))
 			fmt.Println()
 			continue
 		}
