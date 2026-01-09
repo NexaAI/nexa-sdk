@@ -3,10 +3,12 @@ package readline
 import (
 	"fmt"
 	"log/slog"
+	"os"
 	"regexp"
 	"strings"
 
 	"github.com/mattn/go-runewidth"
+	"golang.org/x/term"
 )
 
 // TODO: placeholder
@@ -14,7 +16,6 @@ type Buffer struct {
 	// configuration
 	prompt    string
 	altPrompt string
-	getWidth  func() (int, error)
 
 	// state
 	data         []rune
@@ -22,11 +23,10 @@ type Buffer struct {
 	cursorHeight int
 }
 
-func NewBuffer(prompt, altPrompt string, getWidth func() (int, error)) *Buffer {
+func NewBuffer(prompt, altPrompt string) *Buffer {
 	return &Buffer{
 		prompt:    prompt,
 		altPrompt: altPrompt,
-		getWidth:  getWidth,
 		data:      make([]rune, 0),
 	}
 }
@@ -48,7 +48,7 @@ func (b *Buffer) resetState() {
 }
 
 func (b *Buffer) refresh() {
-	width, err := b.getWidth()
+	width, _, err := term.GetSize(int(os.Stdout.Fd()))
 	if err != nil {
 		width = 80
 		slog.Warn("failed to get terminal width", "error", err)
@@ -103,7 +103,7 @@ func (b *Buffer) refresh() {
 			buffer.WriteString(b.altPrompt)
 			curHeight++
 			buffer.WriteString(string(r))
-			curWidth += rw
+			curWidth = calcANSIWidth(b.altPrompt) + rw
 		} else {
 			// normal char
 			buffer.WriteString(string(r))
@@ -123,11 +123,7 @@ func (b *Buffer) refresh() {
 		fmt.Fprintf(&buffer, "\x1b[%dA", curHeight-cursorHeight)
 	}
 	buffer.WriteString("\x1b[1G") // move cursor to beginning
-	if cursorHeight > 1 {
-		fmt.Fprintf(&buffer, "\x1b[%dC", cursorWidth)
-	} else {
-		fmt.Fprintf(&buffer, "\x1b[%dC", cursorWidth)
-	}
+	fmt.Fprintf(&buffer, "\x1b[%dC", cursorWidth)
 
 	print(buffer.String())
 }

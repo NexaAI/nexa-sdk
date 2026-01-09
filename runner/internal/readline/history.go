@@ -1,5 +1,6 @@
 package readline
 
+// TODO: implement history persistence
 type History struct {
 	// config
 	file string

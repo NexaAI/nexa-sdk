@@ -166,7 +166,7 @@ func (rl *Readline) end() error {
 // edit actions
 
 func (rl *Readline) backspace() error {
-	if len(rl.buf.data) > 0 {
+	if len(rl.buf.data) > 0 && rl.buf.cursorIndex > 0 {
 		rl.buf.data = append(rl.buf.data[:rl.buf.cursorIndex-1], rl.buf.data[rl.buf.cursorIndex:]...)
 		rl.buf.cursorIndex--
 	}

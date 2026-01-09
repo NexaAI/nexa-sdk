@@ -108,7 +108,7 @@ func (r *Repl) GetPrompt() (string, error) {
 		}
 
 		// check if it's a command
-		var fileds []string
+		var fields []string
 		if !strings.HasPrefix(line, "/") {
 			if len(recordAudios) > 0 {
 				line += " " + strings.Join(recordAudios, " ")
@@ -116,8 +116,8 @@ func (r *Repl) GetPrompt() (string, error) {
 			recordAudios = nil // clear stashed audios after use
 			return line, nil
 		}
-		fileds = strings.Fields(strings.TrimSpace(line))
-		if strings.Contains(fileds[0][1:], "/") || strings.Contains(fileds[0], ".") {
+		fields = strings.Fields(strings.TrimSpace(line))
+		if strings.Contains(fields[0][1:], "/") || strings.Contains(fields[0], ".") {
 			if len(recordAudios) > 0 {
 				line += " " + strings.Join(recordAudios, " ")
 			}
@@ -125,7 +125,7 @@ func (r *Repl) GetPrompt() (string, error) {
 			return line, nil
 		}
 
-		switch fileds[0] {
+		switch fields[0] {
 		case "/?", "/h", "/help":
 			fmt.Println("Commands:")
 			for _, h := range help {
@@ -144,13 +144,13 @@ func (r *Repl) GetPrompt() (string, error) {
 			continue
 
 		case "/load":
-			if len(fileds) != 2 {
+			if len(fields) != 2 {
 				fmt.Println(render.GetTheme().Error.Sprintf("Usage: /load <filename>"))
 				fmt.Println()
 				continue
 			}
 			r.Reset()
-			err := r.LoadKVCache(fileds[1])
+			err := r.LoadKVCache(fields[1])
 			if err != nil {
 				if errors.Is(err, nexa_sdk.ErrCommonNotSupport) {
 					fmt.Println(render.GetTheme().Warning.Sprintf("Load conversation history is not supported for this model yet"))
@@ -163,12 +163,12 @@ func (r *Repl) GetPrompt() (string, error) {
 			continue
 
 		case "/save":
-			if len(fileds) != 2 {
+			if len(fields) != 2 {
 				fmt.Println(render.GetTheme().Error.Sprintf("Usage: /save <filename>"))
 				fmt.Println()
 				continue
 			}
-			err := r.SaveKVCache(fileds[1])
+			err := r.SaveKVCache(fields[1])
 			if err != nil {
 				if errors.Is(err, nexa_sdk.ErrCommonNotSupport) {
 					fmt.Println(render.GetTheme().Warning.Sprintf("Save conversation history is not supported for this model yet"))
@@ -195,7 +195,7 @@ func (r *Repl) GetPrompt() (string, error) {
 			continue
 
 		default:
-			fmt.Println(render.GetTheme().Error.Sprintf("Unknown command: %s", fileds[0]))
+			fmt.Println(render.GetTheme().Error.Sprintf("Unknown command: %s", fields[0]))
 			fmt.Println()
 			continue
 		}

@@ -34,7 +34,6 @@ func New(config *Config) (*Readline, error) {
 	buf := NewBuffer(
 		config.Prompt,
 		config.AltPrompt,
-		term.GetWidth,
 	)
 
 	hist := NewHistory(config.HistoryFile)
@@ -95,6 +94,7 @@ func (rl *Readline) parse(r rune) error {
 		if r < 0x20 || r >= 0x80 {
 			// invalid char, end escape ex
 			rl.isEscEx = false
+			return nil
 		}
 		rl.escBuf += string(r)
 		if r >= 0x40 {
