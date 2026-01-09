@@ -1,17 +1,14 @@
-//go:build !windows
-
 package readline
 
 import (
 	"bufio"
 	"os"
-	"syscall"
 )
 
 type Terminal struct {
-	oldTermios syscall.Termios
-	termios    syscall.Termios
-	r          *bufio.Reader
+	oldState Termios
+	state    Termios
+	r        *bufio.Reader
 }
 
 func NewTerminal() (*Terminal, error) {
@@ -22,15 +19,9 @@ func NewTerminal() (*Terminal, error) {
 		return nil, err
 	}
 
-	t.oldTermios = *termios
-
-	t.termios = *termios
-	t.termios.Iflag &^= syscall.IGNBRK | syscall.BRKINT | syscall.PARMRK | syscall.ISTRIP | syscall.INLCR | syscall.IGNCR | syscall.ICRNL | syscall.IXON
-	t.termios.Lflag &^= syscall.ECHO | syscall.ECHONL | syscall.ICANON | syscall.ISIG | syscall.IEXTEN
-	t.termios.Cflag &^= syscall.CSIZE | syscall.PARENB
-	t.termios.Cflag |= syscall.CS8
-	t.termios.Cc[syscall.VMIN] = 1
-	t.termios.Cc[syscall.VTIME] = 0
+	t.oldState = *termios
+	t.state = *termios
+	applyRawMode(&t.state)
 
 	t.r = bufio.NewReader(os.Stdin)
 
@@ -47,7 +38,7 @@ func (t *Terminal) Close() error {
 }
 
 func (t *Terminal) EnterRaw() error {
-	err := setTermios(&t.termios)
+	err := setTermios(&t.state)
 	if err != nil {
 		return err
 	}
@@ -57,5 +48,5 @@ func (t *Terminal) EnterRaw() error {
 
 func (t *Terminal) ExitRaw() error {
 	print("\x1b[?2004l") // disable bracketed paste mode
-	return setTermios(&t.oldTermios)
+	return setTermios(&t.oldState)
 }

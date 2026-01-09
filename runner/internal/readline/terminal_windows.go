@@ -1,33 +1,24 @@
 package readline
 
-import (
-	"errors"
-)
+import "golang.org/x/sys/windows"
 
-type Terminal struct {
+type Termios uint32
+
+func getTermios() (*Termios, error) {
+	termios := new(Termios)
+	return termios, windows.GetConsoleMode(windows.Stdin, (*uint32)(termios))
 }
 
-func NewTerminal() (*Terminal, error) {
-	return nil, errors.New("terminal not supported on Windows")
+func setTermios(termios *Termios) error {
+	return windows.SetConsoleMode(windows.Stdin, uint32(*termios))
 }
 
-func (t *Terminal) Read() (rune, error) {
-	return 'a', errors.New("terminal not supported on Windows")
-}
-
-func (t *Terminal) Close() error {
-	return t.ExitRaw()
-}
-
-func (t *Terminal) EnterRaw() error {
-	return errors.New("terminal not supported on Windows")
-
-}
-
-func (t *Terminal) ExitRaw() error {
-	return errors.New("terminal not supported on Windows")
+func applyRawMode(termios *Termios) {
+	*termios &^= windows.ENABLE_ECHO_INPUT | windows.ENABLE_LINE_INPUT | windows.ENABLE_PROCESSED_INPUT
+	*termios |= windows.ENABLE_VIRTUAL_TERMINAL_INPUT
 }
 
 func (t *Terminal) GetWidth() (int, error) {
-	return 0, errors.New("terminal not supported on Windows")
+	info := new(windows.ConsoleScreenBufferInfo)
+	return int(info.Size.X), windows.GetConsoleScreenBufferInfo(windows.Stdout, info)
 }

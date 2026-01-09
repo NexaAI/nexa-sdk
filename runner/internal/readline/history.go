@@ -1,13 +1,19 @@
 package readline
 
 type History struct {
+	// config
+	file string
+
+	// state
 	entries [][]rune
 	index   int
 }
 
 func NewHistory(file string) *History {
 	return &History{
+		file:    file,
 		entries: [][]rune{},
+		index:   0,
 	}
 }
 
