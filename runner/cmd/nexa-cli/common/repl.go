@@ -18,10 +18,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/readline"
 	"github.com/NexaAI/nexa-sdk/runner/internal/render"
+	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 )
 
@@ -67,10 +69,9 @@ func (r *Repl) GetPrompt() (string, error) {
 
 		// init readline
 		config := &readline.Config{
-			Prompt:    render.GetTheme().Prompt.Sprint("> "),
-			AltPrompt: render.GetTheme().Prompt.Sprint(". "),
-			// HistoryFile:     "", // Disable history file for now
-			// EOFPrompt:       "exit",
+			Prompt:      render.GetTheme().Prompt.Sprint("> "),
+			AltPrompt:   render.GetTheme().Prompt.Sprint(". "),
+			HistoryFile: filepath.Join(store.Get().DataPath(), "history"),
 		}
 		rl, err := readline.New(config)
 		if err != nil {

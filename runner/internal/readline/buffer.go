@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"regexp"
+	"strings"
 
 	"github.com/mattn/go-runewidth"
 )
@@ -50,11 +51,11 @@ func (rl *Buffer) refresh() {
 		return
 	}
 
-	buffer := ""
+	var buffer strings.Builder
 
 	// move cursor to the top
 	if rl.cursorHeight != 1 {
-		buffer += fmt.Sprintf("\x1b[%dA", rl.cursorHeight-1)
+		fmt.Fprintf(&buffer, "\x1b[%dA", rl.cursorHeight-1)
 	}
 
 	// render lines
@@ -64,9 +65,9 @@ func (rl *Buffer) refresh() {
 	cursorWidth := 0
 	cursorHeight := 1
 
-	buffer += "\x1b[1G" // move cursor to beginning
-	buffer += "\x1b[J"  // clean after
-	buffer += rl.prompt
+	buffer.WriteString("\x1b[1G") // move cursor to beginning
+	buffer.WriteString("\x1b[J")  // clean after
+	buffer.WriteString(rl.prompt)
 	curWidth += calcANSIWidth(rl.prompt)
 	cursorWidth = curWidth
 
@@ -75,27 +76,27 @@ func (rl *Buffer) refresh() {
 		rw := runewidth.RuneWidth(r)
 		if r == CtrlJ {
 			// new line
-			buffer += "\n"
-			buffer += rl.altPrompt
+			buffer.WriteString("\n")
+			buffer.WriteString(rl.altPrompt)
 			curHeight++
 			curWidth = calcANSIWidth(rl.altPrompt)
 		} else if curWidth+rw == width {
 			// exactly fit
-			buffer += string(r)
-			buffer += "\n"
-			buffer += rl.altPrompt
+			buffer.WriteString(string(r))
+			buffer.WriteString("\n")
+			buffer.WriteString(rl.altPrompt)
 			curHeight++
 			curWidth = calcANSIWidth(rl.altPrompt)
 		} else if curWidth+rw > width {
 			// over flow
-			buffer += "\n"
-			buffer += rl.altPrompt
+			buffer.WriteString("\n")
+			buffer.WriteString(rl.altPrompt)
 			curHeight++
-			buffer += string(r)
+			buffer.WriteString(string(r))
 			curWidth += rw
 		} else {
 			// normal char
-			buffer += string(r)
+			buffer.WriteString(string(r))
 			curWidth += rw
 		}
 		// record cursor position
@@ -109,16 +110,16 @@ func (rl *Buffer) refresh() {
 
 	rl.cursorHeight = cursorHeight
 	if curHeight > cursorHeight {
-		buffer += fmt.Sprintf("\x1b[%dA", curHeight-cursorHeight)
+		fmt.Fprintf(&buffer, "\x1b[%dA", curHeight-cursorHeight)
 	}
-	buffer += "\x1b[1G" // move cursor to beginning
+	buffer.WriteString("\x1b[1G") // move cursor to beginning
 	if cursorHeight > 1 {
-		buffer += fmt.Sprintf("\x1b[%dC", cursorWidth)
+		fmt.Fprintf(&buffer, "\x1b[%dC", cursorWidth)
 	} else {
-		buffer += fmt.Sprintf("\x1b[%dC", cursorWidth)
+		fmt.Fprintf(&buffer, "\x1b[%dC", cursorWidth)
 	}
 
-	print(buffer)
+	print(buffer.String())
 }
 
 var ansiRegexp = regexp.MustCompile(`\x1b\[[0-9;?]*[ -/]*[@-~]`)

@@ -68,8 +68,8 @@ func (rl *Readline) initializeEventMaps() {
 		Backspace: rl.backspace,
 	}
 	rl.escEventMap = map[string]func() error{
-		"[200~": func() error { rl.isPaste = true; return nil },  // start paste
-		"[201~": func() error { rl.isPaste = false; return nil }, // end paste
+		"[200~": rl.pasteStart, // start paste
+		"[201~": rl.pasteEnd,   // end paste
 
 		"[2~": rl.noop,   // insert
 		"[3~": rl.delete, // delete
@@ -124,6 +124,16 @@ func (rl *Readline) eof() error {
 
 func (rl *Readline) esc() error {
 	rl.isEsc = true
+	return nil
+}
+
+func (rl *Readline) pasteStart() error {
+	rl.isPaste = true
+	return nil
+}
+
+func (rl *Readline) pasteEnd() error {
+	rl.isPaste = false
 	return nil
 }
 
