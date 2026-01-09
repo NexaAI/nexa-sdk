@@ -186,11 +186,20 @@ func (rl *Readline) clear() error {
 }
 
 func (rl *Readline) enter() error {
-	println()
-
-	rl.history.Add(rl.buf.data)
-
-	return ErrComplete
+	if rl.isPaste {
+		left := rl.buf.data[:rl.buf.cursorIndex]
+		right := rl.buf.data[rl.buf.cursorIndex:]
+		rl.buf.data = make([]rune, 0, len(rl.buf.data)+1)
+		rl.buf.data = append(rl.buf.data, left...)
+		rl.buf.data = append(rl.buf.data, CtrlJ)
+		rl.buf.data = append(rl.buf.data, right...)
+		rl.buf.cursorIndex++
+		return nil
+	} else {
+		println()
+		rl.history.Add(rl.buf.data)
+		return ErrComplete
+	}
 }
 
 func (rl *Readline) prevHistory() error {
