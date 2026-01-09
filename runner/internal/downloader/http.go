@@ -18,7 +18,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/url"
+	"time"
 
 	"github.com/valyala/fasthttp"
 )
@@ -27,6 +29,9 @@ type HTTPDownloader struct {
 	authToken    string
 	maxRedirects int
 
+	maxRetries   int
+	retryDelayMs int
+
 	fasthttp.Client
 }
 
@@ -34,6 +39,8 @@ func NewDownloader(authToken string) *HTTPDownloader {
 	return &HTTPDownloader{
 		authToken:    authToken,
 		maxRedirects: 3,
+		maxRetries:   3,
+		retryDelayMs: 1000,
 		Client: fasthttp.Client{
 			NoDefaultUserAgentHeader:  true,
 			MaxIdemponentCallAttempts: 3,
@@ -49,7 +56,7 @@ func (d *HTTPDownloader) DownloadChunk(ctx context.Context, url string, offset, 
 	defer fasthttp.ReleaseRequest(req)
 	defer fasthttp.ReleaseResponse(resp)
 
-	for range d.maxRedirects {
+	for redirectTry := 0; redirectTry < d.maxRedirects; redirectTry++ {
 		req.Reset()
 		resp.Reset()
 
@@ -65,8 +72,32 @@ func (d *HTTPDownloader) DownloadChunk(ctx context.Context, url string, offset, 
 			req.Header.Set("Range", fmt.Sprintf("bytes=%d-", offset))
 		}
 
-		if err := d.Client.Do(req, resp); err != nil {
-			return err
+		var lastErr error
+		baseDelay := d.retryDelayMs
+		for retry := 0; retry < d.maxRetries; retry++ {
+			if retry > 0 {
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				default:
+				}
+				time.Sleep(time.Duration(baseDelay) * time.Millisecond)
+			}
+			if err := d.Client.Do(req, resp); err != nil {
+				lastErr = err
+				if err == fasthttp.ErrTimeout || err == io.EOF {
+					slog.Warn("Request failed, retrying", "error", err, "retry", retry+1)
+					continue
+				}
+				// Other errors are returned directly
+				return err
+			} else {
+				lastErr = nil
+				break
+			}
+		}
+		if lastErr != nil {
+			return fmt.Errorf("download failed after %d retries: %w", d.maxRetries, lastErr)
 		}
 
 		if resp.StatusCode() >= 300 && resp.StatusCode() < 400 {
