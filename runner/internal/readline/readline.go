@@ -113,13 +113,7 @@ func (rl *Readline) parse(r rune) error {
 		// single char
 
 		if event, ok := rl.eventMap[r]; !ok {
-			left := rl.buf.data[:rl.buf.cursorIndex]
-			right := rl.buf.data[rl.buf.cursorIndex:]
-			rl.buf.data = make([]rune, 0, len(rl.buf.data)+1)
-			rl.buf.data = append(rl.buf.data, left...)
-			rl.buf.data = append(rl.buf.data, r)
-			rl.buf.data = append(rl.buf.data, right...)
-			rl.buf.cursorIndex++
+			rl.buf.insertRuneAtCursor(r)
 		} else if err := event(); err != nil {
 			return err
 		}

@@ -50,7 +50,7 @@ func (rl *Readline) initializeEventMaps() {
 		CtrlF: rl.right,
 		Bell:  rl.noop,
 		CtrlH: rl.noop,
-		Tab:   rl.noop,
+		Tab:   rl.tab,
 		// CtrlJ:     rl.lf,
 		Kill:      rl.noop,
 		CtrlL:     rl.clear,
@@ -185,15 +185,17 @@ func (rl *Readline) clear() error {
 	return nil
 }
 
+func (rl *Readline) tab() error {
+	rl.buf.insertRuneAtCursor(' ')
+	rl.buf.insertRuneAtCursor(' ')
+	rl.buf.insertRuneAtCursor(' ')
+	rl.buf.insertRuneAtCursor(' ')
+	return nil
+}
+
 func (rl *Readline) enter() error {
 	if rl.isPaste {
-		left := rl.buf.data[:rl.buf.cursorIndex]
-		right := rl.buf.data[rl.buf.cursorIndex:]
-		rl.buf.data = make([]rune, 0, len(rl.buf.data)+1)
-		rl.buf.data = append(rl.buf.data, left...)
-		rl.buf.data = append(rl.buf.data, CtrlJ)
-		rl.buf.data = append(rl.buf.data, right...)
-		rl.buf.cursorIndex++
+		rl.buf.insertRuneAtCursor(CtrlJ)
 		return nil
 	} else {
 		println()

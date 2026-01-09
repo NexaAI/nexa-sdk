@@ -31,21 +31,31 @@ func NewBuffer(prompt, altPrompt string, getWidth func() (int, error)) *Buffer {
 	}
 }
 
-func (rl *Buffer) resetState() {
-	rl.data = rl.data[:0]
-	rl.cursorIndex = 0
-	rl.cursorHeight = 1
+func (b *Buffer) insertRuneAtCursor(r rune) {
+	left := b.data[:b.cursorIndex]
+	right := b.data[b.cursorIndex:]
+	b.data = make([]rune, 0, len(b.data)+1)
+	b.data = append(b.data, left...)
+	b.data = append(b.data, r)
+	b.data = append(b.data, right...)
+	b.cursorIndex++
 }
 
-func (rl *Buffer) refresh() {
-	width, err := rl.getWidth()
+func (b *Buffer) resetState() {
+	b.data = b.data[:0]
+	b.cursorIndex = 0
+	b.cursorHeight = 1
+}
+
+func (b *Buffer) refresh() {
+	width, err := b.getWidth()
 	if err != nil {
 		width = 80
 		slog.Warn("failed to get terminal width", "error", err)
 	}
 
 	// check min width
-	if width <= runewidth.StringWidth(rl.prompt)+4 || width <= runewidth.StringWidth(rl.altPrompt)+4 {
+	if width <= runewidth.StringWidth(b.prompt)+4 || width <= runewidth.StringWidth(b.altPrompt)+4 {
 		print("\x1b[H\x1b[2J")
 		print("terminal width is too small!")
 		return
@@ -54,8 +64,8 @@ func (rl *Buffer) refresh() {
 	var buffer strings.Builder
 
 	// move cursor to the top
-	if rl.cursorHeight != 1 {
-		fmt.Fprintf(&buffer, "\x1b[%dA", rl.cursorHeight-1)
+	if b.cursorHeight != 1 {
+		fmt.Fprintf(&buffer, "\x1b[%dA", b.cursorHeight-1)
 	}
 
 	// render lines
@@ -67,30 +77,30 @@ func (rl *Buffer) refresh() {
 
 	buffer.WriteString("\x1b[1G") // move cursor to beginning
 	buffer.WriteString("\x1b[J")  // clean after
-	buffer.WriteString(rl.prompt)
-	curWidth += calcANSIWidth(rl.prompt)
+	buffer.WriteString(b.prompt)
+	curWidth += calcANSIWidth(b.prompt)
 	cursorWidth = curWidth
 
-	for i, r := range rl.data {
+	for i, r := range b.data {
 		// line wrap
 		rw := runewidth.RuneWidth(r)
 		if r == CtrlJ {
 			// new line
 			buffer.WriteString("\n")
-			buffer.WriteString(rl.altPrompt)
+			buffer.WriteString(b.altPrompt)
 			curHeight++
-			curWidth = calcANSIWidth(rl.altPrompt)
+			curWidth = calcANSIWidth(b.altPrompt)
 		} else if curWidth+rw == width {
 			// exactly fit
 			buffer.WriteString(string(r))
 			buffer.WriteString("\n")
-			buffer.WriteString(rl.altPrompt)
+			buffer.WriteString(b.altPrompt)
 			curHeight++
-			curWidth = calcANSIWidth(rl.altPrompt)
+			curWidth = calcANSIWidth(b.altPrompt)
 		} else if curWidth+rw > width {
 			// over flow
 			buffer.WriteString("\n")
-			buffer.WriteString(rl.altPrompt)
+			buffer.WriteString(b.altPrompt)
 			curHeight++
 			buffer.WriteString(string(r))
 			curWidth += rw
@@ -100,7 +110,7 @@ func (rl *Buffer) refresh() {
 			curWidth += rw
 		}
 		// record cursor position
-		if i == rl.cursorIndex-1 {
+		if i == b.cursorIndex-1 {
 			cursorHeight = curHeight
 			cursorWidth = curWidth
 		}
@@ -108,7 +118,7 @@ func (rl *Buffer) refresh() {
 
 	// move cursor to the position
 
-	rl.cursorHeight = cursorHeight
+	b.cursorHeight = cursorHeight
 	if curHeight > cursorHeight {
 		fmt.Fprintf(&buffer, "\x1b[%dA", curHeight-cursorHeight)
 	}
