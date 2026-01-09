@@ -16,6 +16,7 @@ package downloader
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -56,7 +57,7 @@ func (d *HTTPDownloader) DownloadChunk(ctx context.Context, url string, offset, 
 	defer fasthttp.ReleaseRequest(req)
 	defer fasthttp.ReleaseResponse(resp)
 
-	for redirectTry := 0; redirectTry < d.maxRedirects; redirectTry++ {
+	for range d.maxRedirects {
 		req.Reset()
 		resp.Reset()
 
@@ -85,7 +86,7 @@ func (d *HTTPDownloader) DownloadChunk(ctx context.Context, url string, offset, 
 			}
 			if err := d.Client.Do(req, resp); err != nil {
 				lastErr = err
-				if err == fasthttp.ErrTimeout || err == io.EOF {
+				if errors.Is(err, fasthttp.ErrTimeout) || errors.Is(err, io.EOF) {
 					slog.Warn("Request failed, retrying", "error", err, "retry", retry+1)
 					continue
 				}
