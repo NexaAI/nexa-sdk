@@ -34,11 +34,10 @@ import (
 )
 
 var (
-	dataDir     string
-	verbose     bool
-	skipUpdate  bool
-	skipMigrate bool
-	testMode    bool
+	dataDir    string
+	verbose    bool
+	skipUpdate bool
+	testMode   bool
 )
 
 // RootCmd creates the main Nexa CLI command with all subcommands.
@@ -54,14 +53,6 @@ func RootCmd() *cobra.Command {
 			common.ApplyLogLevel()
 
 			subCmd := cmd.CalledAs()
-
-			// force check migrate
-			if !skipMigrate && slices.Contains([]string{"infer", "fc", "functioncall", "serve", "run"}, subCmd) {
-				if err := checkMigrate(); err != nil {
-					fmt.Println(render.GetTheme().Error.Sprintf("Migrate error: %s", err))
-					os.Exit(1)
-				}
-			}
 
 			// skip update check
 			if !skipUpdate {
@@ -95,7 +86,6 @@ func RootCmd() *cobra.Command {
 	viper.BindPFlag("datadir", rootCmd.PersistentFlags().Lookup("data-dir"))
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose output")
 	rootCmd.PersistentFlags().BoolVarP(&skipUpdate, "skip-update", "", false, "Skip checking for updates")
-	rootCmd.PersistentFlags().BoolVarP(&skipMigrate, "skip-migrate", "", false, "Skip checking for model migrations")
 	rootCmd.PersistentFlags().BoolVarP(&testMode, "test-mode", "", false, "Enable test mode")
 
 	rootCmd.AddGroup(
