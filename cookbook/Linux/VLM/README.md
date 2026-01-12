@@ -40,7 +40,7 @@ This demo showcases video analysis using AutoNeural model through Nexa SDK. It e
 ### Build Docker Image
 
 ```bash
-cd cookbook/docker/RAG-VLM
+cd cookbook/Linux/VLM
 docker build -t autoneural-video-demo .
 ```
 
@@ -49,16 +49,19 @@ docker build -t autoneural-video-demo .
 1. Set your Nexa license token
 
 Mac or Linux
+
 ```
 export NEXA_TOKEN={your_token_here}
 ```
 
 Windows (Powershell)
+
 ```
 $env:NEXA_TOKEN={your_token_here}
 ```
 
 2. Run the docker container
+
 ```bash
 
 
@@ -168,19 +171,3 @@ These can be changed in the UI's "Model Settings" accordion.
 - Verify nexa serve is running and accessible
 - Check endpoint URL in UI settings
 - Ensure firewall allows connections on port 18181
-
-## License
-
-Copyright 2024-2025 Nexa AI, Inc.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.

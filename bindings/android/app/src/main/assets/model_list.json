@@ -1,5 +1,40 @@
 [
   {
+    "id": "LFM2.5-1.2B-NPU",
+    "displayName": "LFM2.5-1.2B-NPU",
+    "modelName": "files-1-2.nexa",
+    "mmprojOrTokenName": "",
+    "sizeGb": 0.9,
+    "params": "1.2 B",
+    "features": ["Chat"],
+    "type": "chat",
+    "versionCode": 1,
+    "modelUrl": "https://huggingface.co/NexaAI/LFM2.5-1.2B-mobile/blob/main/files-1-2.nexa",
+    "mmprojOrTokenUrl": "",
+    "files": [
+      {
+        "name": "nexa.manifest",
+        "path": "",
+        "url": "https://huggingface.co/NexaAI/LFM2.5-1.2B-mobile/blob/main/nexa.manifest"
+      },
+      {
+        "name": "files-2-2.nexa",
+        "path": "",
+        "url": "https://huggingface.co/NexaAI/LFM2.5-1.2B-mobile/blob/main/files-2-2.nexa"
+      },
+      {
+        "name": "weights-1-2.nexa",
+        "path": "",
+        "url": "https://huggingface.co/NexaAI/LFM2.5-1.2B-mobile/blob/main/weights-1-2.nexa"
+      },
+      {
+        "name": "weights-2-2.nexa",
+        "path": "",
+        "url": "https://huggingface.co/NexaAI/LFM2.5-1.2B-mobile/blob/main/weights-2-2.nexa"
+      }
+    ]
+  },
+  {
     "id": "Granite-4.0-h-350M-NPU",
     "displayName": "Granite-350M",
     "modelName": "files-1-2.nexa",
