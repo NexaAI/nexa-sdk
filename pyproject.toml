@@ -4,6 +4,8 @@ reportUnusedCallResult = false
 reportAny = false
 reportExplicitAny = false
 
-[tool.yapf]
-based_on_style = "pep8"
-column_limit = 120
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.format]
+quote-style = "single"

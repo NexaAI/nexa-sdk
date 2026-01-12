@@ -32,13 +32,13 @@ def init():
     os.makedirs(log_dir, exist_ok=True)
 
     log_file = open(os.path.join(log_dir, 'environment'), 'w', encoding='utf-8')
-    print(f"========== Environment ===========")
-    print(f"OS: {platform.system()}")
-    print(f"Arch: {platform.machine()}")
-    print(f"Python version: {sys.version}")
+    print('========== Environment ===========')
+    print(f'OS: {platform.system()}')
+    print(f'Arch: {platform.machine()}')
+    print(f'Python version: {sys.version}')
     res = utils.execute_nexa(['version'])
     if res.returncode != 0:
-        raise RuntimeError("Failed to get nexa version")
+        raise RuntimeError('Failed to get nexa version')
     for line in res.stdout.strip().splitlines():
         print(line)
     log_file.close()
