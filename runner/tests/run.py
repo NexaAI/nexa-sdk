@@ -31,23 +31,23 @@ testcases: list[config.case]
 
 def init_benchmark():
     global testcases
-    log.print("========= Init Benchmark =========")
+    log.print('========= Init Benchmark =========')
 
     plugins = config.get_plugins()
     log.print(f'Plugins: {plugins}')
     if len(plugins) == 0:
-        raise Exception("No supported plugins found")
+        raise Exception('No supported plugins found')
 
     testcases = config.get_testcases(plugins)
     # count total Testcases
     log.print(f'Found {len(testcases)} Models with {sum(len(tc[2]) for tc in testcases)} TestCases')
     if len(testcases) == 0:
-        raise Exception("No TestCases found")
+        raise Exception('No TestCases found')
 
 
 def check_models():
     global testcases
-    log.print("========== Check Models ==========")
+    log.print('========== Check Models ==========')
 
     res = utils.execute_nexa(['list'])
     if res.returncode != 0:
@@ -72,21 +72,23 @@ def check_models():
                 exist_models.add(f'{name}:{quant.strip()}')
 
     for i, (_, model, type, _) in enumerate(testcases):
-        mp = f'{i+1:0{len(str(len(testcases)))}}/{len(testcases)}'
+        mp = f'{i + 1:0{len(str(len(testcases)))}}/{len(testcases)}'
 
         if model in exist_models:
             log.print(f'  --> [{mp}] {model} already exists, skip download')
             continue
         log.print(f'  --> [{mp}] {model} not found, downloading...')
-        res = utils.execute_nexa([
-            'pull',
-            model,
-            '--model-type',
-            type,
-        ],
-                                 timeout=3600,
-                                 stdout=sys.stdout,
-                                 stderr=sys.stderr)
+        res = utils.execute_nexa(
+            [
+                'pull',
+                model,
+                '--model-type',
+                type,
+            ],
+            timeout=3600,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+        )
         if res.returncode != 0:
             raise RuntimeError(f'Failed to download model {model}, exit code: {res.returncode}')
 
@@ -126,10 +128,10 @@ def _do_case(type: str, model: str, tc: BaseCase, tc_log: pathlib.Path) -> None 
         for line in stderr:
             of.write(f'{line}\n')
             if tc.check(json.loads(line)):
-                of.write(f'  --> Passed\n')
+                of.write('  --> Passed\n')
                 continue
             else:
-                of.write(f'  --> Failed\n')
+                of.write('  --> Failed\n')
                 failed = True
 
         if failed:
@@ -176,20 +178,24 @@ def _stop_server():
 
 
 def run_benchmark():
-    log.print("========== Run Benchmark =========")
+    log.print('========== Run Benchmark =========')
 
     # plugin, model, tc, reason, log_file
     failed_cases: list[tuple[str, str, str, str, str]] = []
 
     for i, (plugin, model, _, tcs) in enumerate(testcases):
         os.makedirs(log.log_dir / plugin, exist_ok=True)
-        mp = f'{i+1:0{len(str(len(testcases)))}}/{len(testcases)}'
+        mp = f'{i + 1:0{len(str(len(testcases)))}}/{len(testcases)}'
         log.print(f'==> [{mp}] Plugin: {plugin}, Model: {model}')
 
         for j, tcc in enumerate(tcs):
             tc = tcc()
-            tcp = f'{j+1:0{len(str(len(tcs)))}}/{len(tcs)}'
-            tc_log = log.log_dir / plugin / f'{mp.split("/")[0]}-{tcp.split("/")[0]}-{model.replace("/", "-").replace(":", "-")}-{tc.name()}'
+            tcp = f'{j + 1:0{len(str(len(tcs)))}}/{len(tcs)}'
+            tc_log = (
+                log.log_dir
+                / plugin
+                / f'{mp.split("/")[0]}-{tcp.split("/")[0]}-{model.replace("/", "-").replace(":", "-")}-{tc.name()}'
+            )
 
             res = _do_case('infer', model, tc, tc_log)
             if res is None:
@@ -216,7 +222,7 @@ def run_benchmark():
             finally:
                 _stop_server()
 
-    log.print("======== Benchmark Result ========")
+    log.print('======== Benchmark Result ========')
     if len(failed_cases) == 0:
         log.print('All TestCases passed')
     else:
@@ -232,5 +238,5 @@ def main():
     run_benchmark()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

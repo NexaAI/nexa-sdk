@@ -38,14 +38,16 @@ def _search_nexa() -> str:
     if global_nexa is not None:
         return global_nexa
 
-    raise FileNotFoundError("nexa command not found")
+    raise FileNotFoundError('nexa command not found')
 
 
-def start_nexa(args: list[str],
-               debug_log: bool = False,
-               stdout: Any = subprocess.PIPE,
-               stderr: Any = subprocess.PIPE,
-               **kwargs: Any) -> subprocess.Popen[str]:
+def start_nexa(
+    args: list[str],
+    debug_log: bool = False,
+    stdout: Any = subprocess.PIPE,
+    stderr: Any = subprocess.PIPE,
+    **kwargs: Any,
+) -> subprocess.Popen[str]:
     global nexa_path
 
     if nexa_path is None:
@@ -55,20 +57,24 @@ def start_nexa(args: list[str],
     env['NEXA_LOG'] = 'trace' if debug_log else ''
     env['NO_COLOR'] = '1'
 
-    return subprocess.Popen([nexa_path, '--test-mode', '--skip-migrate', '--skip-update'] + args,
-                            text=True,
-                            encoding='utf-8',
-                            cwd=Path(__file__).parent.parent,
-                            env=env,
-                            stdout=stdout,
-                            stderr=stderr,
-                            **kwargs)
+    return subprocess.Popen(
+        [nexa_path, '--test-mode', '--skip-update'] + args,
+        text=True,
+        encoding='utf-8',
+        cwd=Path(__file__).parent.parent,
+        env=env,
+        stdout=stdout,
+        stderr=stderr,
+        **kwargs,
+    )
 
 
-def execute_nexa(args: list[str],
-                 debug_log: bool = False,
-                 timeout: int | None = None,
-                 **kwargs: Any) -> subprocess.CompletedProcess[str]:
+def execute_nexa(
+    args: list[str],
+    debug_log: bool = False,
+    timeout: int | None = None,
+    **kwargs: Any,
+) -> subprocess.CompletedProcess[str]:
     proc = start_nexa(args, debug_log=debug_log, **kwargs)
     stdout, stderr = proc.communicate(timeout=timeout)
     return subprocess.CompletedProcess(proc.args, proc.returncode, stdout, stderr)
