@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
+	"golang.org/x/sync/errgroup"
 	"resty.dev/v3"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/config"
@@ -81,46 +82,41 @@ func (d *HuggingFace) ModelInfo(ctx context.Context, name string) ([]ModelFileIn
 	}
 
 	res := make([]ModelFileInfo, len(info.Siblings))
-	var error error
 	var resLock sync.Mutex
-	var wg sync.WaitGroup
-	sem := make(chan struct{}, d.MaxConcurrency())
+
+	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(d.MaxConcurrency())
 
 	for i := range info.Siblings {
-		wg.Add(1)
-		sem <- struct{}{}
-		go func(i int) {
-			defer wg.Done()
-			defer func() { <-sem }()
-
+		i := i
+		g.Go(func() error {
 			req := client.R()
 			if config.Get().HFToken != "" {
 				req.SetHeader("Authorization", "Bearer "+config.Get().HFToken)
 			}
 			req.SetHeader("Accept-Encoding", "identity")
-			resp, err := req.Head(fmt.Sprintf("%s/%s/resolve/main/%s", HF_ENDPOINT, name, info.Siblings[i].RFileName))
-			resLock.Lock()
-			defer resLock.Unlock()
 
+			resp, err := req.SetContext(gctx).Head(fmt.Sprintf("%s/%s/resolve/main/%s", HF_ENDPOINT, name, info.Siblings[i].RFileName))
 			if err != nil {
-				error = err
-				return
+				return err
 			}
 			if resp.StatusCode() != http.StatusOK || resp.RawResponse.ContentLength < 0 {
-				error = fmt.Errorf("Get file [%s] info error: %s", info.Siblings[i].RFileName, resp.Status())
-				return
+				return fmt.Errorf("Get file [%s] info error: %s", info.Siblings[i].RFileName, resp.Status())
 			}
+
+			resLock.Lock()
 			res[i] = ModelFileInfo{
 				Name: info.Siblings[i].RFileName,
 				Size: resp.RawResponse.ContentLength,
 			}
-		}(i)
+			resLock.Unlock()
+
+			return nil
+		})
 	}
 
-	wg.Wait()
-
-	if error != nil {
-		return nil, error
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
 
 	return res, nil
