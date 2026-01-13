@@ -193,6 +193,12 @@ func CVPostProcess(input string, results []nexa_sdk.CVResult) (string, error) {
 	outputPath := filepath.Join(".", baseName+"_output.png")
 	outFile, err := os.Create(outputPath)
 	if err != nil {
+		// Check if it's a permission error and provide a helpful message
+		if os.IsPermission(err) {
+			cwd, _ := os.Getwd()
+			slog.Error("Permission denied writing output image", "output_path", outputPath, "cwd", cwd, "error", err)
+			return "", fmt.Errorf("failed to write %s to the current directory. Permission denied", filepath.Base(outputPath))
+		}
 		slog.Error("Failed to create output image file", "error", err)
 		return "", err
 	}
