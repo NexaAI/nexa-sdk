@@ -46,7 +46,12 @@ func version() *cobra.Command {
 // Returns: -1 if v1 < v2, 0 if v1 == v2, 1 if v1 > v2
 func compareVersion(v1, v2 string) (int, error) {
 	parseVersion := func(v string) ([3]int, error) {
-		parts := strings.Split(strings.TrimPrefix(v, "v"), ".")
+		v = strings.TrimPrefix(v, "v")
+		// Strip pre-release suffixes like -rc2, -beta, -alpha, etc.
+		if idx := strings.IndexAny(v, "-+"); idx != -1 {
+			v = v[:idx]
+		}
+		parts := strings.Split(v, ".")
 		if len(parts) != 3 {
 			return [3]int{}, fmt.Errorf("invalid format: %s", v)
 		}
