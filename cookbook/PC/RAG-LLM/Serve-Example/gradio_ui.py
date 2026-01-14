@@ -277,8 +277,8 @@ with gr.Blocks(title="RAG System") as demo:
             
             # File uploader for documents
             uploader = gr.Files(
-                label="Upload files (txt/pdf/docx)",
-                file_types=[".txt", ".pdf", ".docx"],
+                label="Upload files (txt/docx)",
+                file_types=[".txt", ".docx"],
                 file_count="multiple",
             )
             

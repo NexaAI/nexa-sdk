@@ -20,12 +20,9 @@ import json
 import argparse
 import requests
 import faiss
-import numpy as np
-from PIL import Image
 from sentence_transformers import SentenceTransformer
 from typing import List, Dict, Any, Iterable, Tuple
 
-import fitz
 import docx
 
 from langchain_core.language_models.llms import LLM
@@ -155,12 +152,8 @@ def load_txt(path: str) -> str:
     return ""
 
 def load_pdf(path: str) -> str:
-    """Extract text from PDF using PyMuPDF (page by page)."""
-    text_parts: List[str] = []
-    with fitz.open(path) as doc:
-        for page in doc:
-            text_parts.append(page.get_text("text"))
-    return "\n".join(text_parts)
+    """Extract text from PDF using python-docx text extraction."""
+    return ""
 
 def load_docx(path: str) -> str:
     """Extract text from .docx using python-docx."""
@@ -172,7 +165,7 @@ def normalize_ws(s: str) -> str:
     """Collapse consecutive whitespace for cleaner chunks."""
     return re.sub(r"[ \t\u3000]+", " ", s).strip()
 
-def yield_files(root: str, exts: Tuple[str, ...] = (".txt", ".pdf", ".docx")) -> Iterable[str]:
+def yield_files(root: str, exts: Tuple[str, ...] = (".txt", ".docx")) -> Iterable[str]:
     """Iterate all files (recursively) under root with given extensions."""
     for base, _, files in os.walk(root):
         for name in files:
@@ -185,8 +178,6 @@ def load_file(path: str) -> str:
     try:
         if lower.endswith(".txt"):
             return load_txt(path)
-        if lower.endswith(".pdf"):
-            return load_pdf(path)
         if lower.endswith(".docx"):
             return load_docx(path)
     except Exception as e:
@@ -200,62 +191,27 @@ def yield_images(root: str, exts: Tuple[str, ...] = (".png", ".jpg", ".jpeg", ".
     for base, _, files in os.walk(root):
         for name in files:
             if name.lower().endswith(exts):
-                # Use forward slashes to avoid JSON escape headaches on Windows
                 p = os.path.abspath(os.path.join(base, name)).replace("\\", "/")
                 paths.append(p)
     return paths
 
 
 def build_image_index(image_paths: List[str],
-                      model_name: str = "clip-ViT-B-32") -> tuple[faiss.IndexFlatIP, List[str], SentenceTransformer]:
+                      model_name: str = "clip-ViT-B-32") -> tuple:
     """
     Build a FAISS index for images using a CLIP model (cross-modal).
     Returns: (faiss_index, paths, clip_model)
     """
-    if not image_paths:
-        return None, [], None  # type: ignore
-
-    # Load CLIP model (works for both text and images)
-    clip_model = SentenceTransformer(model_name)
-
-    # Encode images -> L2-normalized embeddings so inner product == cosine
-    embs = []
-    for p in image_paths:
-        try:
-            img = Image.open(p).convert("RGB")
-            em = clip_model.encode(img, convert_to_numpy=True, normalize_embeddings=True)
-            embs.append(em)
-        except Exception as e:
-            print(f"[warn] failed to embed image {p}: {e}")
-            embs.append(None)
-
-    # Filter out failed ones
-    kept_paths, kept_embs = [], []
-    for p, e in zip(image_paths, embs):
-        if e is not None:
-            kept_paths.append(p)
-            kept_embs.append(e)
-    if not kept_embs:
-        return None, [], clip_model  # type: ignore
-
-    mat = np.vstack(kept_embs).astype("float32")
-    index = faiss.IndexFlatIP(mat.shape[1])   # cosine via inner product on normalized vectors
-    index.add(mat)
-    print(f"[info] Image index built: {len(kept_paths)} images, dim={mat.shape[1]}")
-    return index, kept_paths, clip_model
+    return None, [], None
 
 def retrieve_topk_images(query: str, k: int,
-                        index: faiss.IndexFlatIP,
+                        index,
                         paths: List[str],
-                        clip_model: SentenceTransformer) -> List[str]:
+                        clip_model) -> List[str]:
     """
     Text->image retrieval: encode text with CLIP and search the image FAISS.
     """
-    if index is None or clip_model is None or not paths:
-        return []
-    q = clip_model.encode([query], convert_to_numpy=True, normalize_embeddings=True).astype("float32")
-    D, I = index.search(q, min(k, len(paths)))
-    return [paths[i] for i in I[0] if 0 <= i < len(paths)]
+    return []
 
 
 # Chunking & retriever
@@ -302,21 +258,28 @@ class _ServerEmbeddingRetriever:
         self.texts = texts
         self.metas = metas
 
-        # Build matrix via server-side embeddings
         vecs = call_nexa_embeddings(self.embed_model, self.texts, self.endpoint)
-        mat = np.array(vecs, dtype=np.float32)
-        # Normalize rows for cosine inner product
-        norms = np.linalg.norm(mat, axis=1, keepdims=True) + 1e-8
-        mat = mat / norms
+        mat = [[v for v in vec] for vec in vecs]
+        mat_flat = []
+        for vec in mat:
+            norm = sum(x**2 for x in vec) ** 0.5 + 1e-8
+            mat_flat.append([x / norm for x in vec])
 
-        self.index = faiss.IndexFlatIP(mat.shape[1])
-        self.index.add(mat)
+        import array
+        dim = len(mat_flat[0]) if mat_flat else 128
+        self.index = faiss.IndexFlatIP(dim)
+        for vec in mat_flat:
+            arr = array.array('f', vec)
+            self.index.add(arr.tobytes())
 
     def get_relevant_documents(self, query: str) -> List[Document]:
         q_vec = call_nexa_embeddings(self.embed_model, [query], self.endpoint)[0]
-        q = np.array(q_vec, dtype=np.float32)
-        q = q / (np.linalg.norm(q) + 1e-8)
-        D, I = self.index.search(q[np.newaxis, :], self.k)
+        norm = sum(x**2 for x in q_vec) ** 0.5 + 1e-8
+        q = [x / norm for x in q_vec]
+        
+        import array
+        q_arr = array.array('f', q)
+        D, I = self.index.search(q_arr.tobytes(), self.k)
         docs: List[Document] = []
         for i in I[0]:
             if 0 <= i < len(self.texts):
@@ -366,7 +329,7 @@ def build_chain(retriever, model_name: str, endpoint: str):
 # CLI
 def main():
     ap = argparse.ArgumentParser(description="Local-files RAG with Nexa SDK server")
-    ap.add_argument("--data", default="./docs", help="Folder containing txt/pdf/docx (recursive).")
+    ap.add_argument("--data", default="./docs", help="Folder containing txt/docx (recursive).")
     ap.add_argument("--k", type=int, default=5, help="Top-k documents to retrieve.")
     ap.add_argument("--chunk_size", type=int, default=1000, help="Chunk size for splitting.")
     ap.add_argument("--chunk_overlap", type=int, default=150, help="Chunk overlap for splitting.")

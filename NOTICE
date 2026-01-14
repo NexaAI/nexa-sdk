@@ -197,23 +197,11 @@ This document provides information about third-party libraries used in the NexaS
 - **URL**: https://github.com/python-openxml/python-docx
 - **Description**: Create and modify Word documents with Python
 
-### pdfplumber
-
-- **License**: MIT License
-- **URL**: https://github.com/jsvine/pdfplumber
-- **Description**: Plumb a PDF for detailed information about each char, rectangle, line, et cetera
-
 ### psutil
 
 - **License**: BSD 3-Clause License
 - **URL**: https://github.com/giampaolo/psutil
 - **Description**: Cross-platform library for process and system monitoring
-
-### numpy
-
-- **License**: BSD 3-Clause License
-- **URL**: https://github.com/numpy/numpy
-- **Description**: Fundamental package for scientific computing with Python
 
 ### openai
 
