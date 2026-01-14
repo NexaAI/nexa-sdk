@@ -1,3 +1,2 @@
-nexaai==1.0.35rc11
 mcp
 Flask[async]

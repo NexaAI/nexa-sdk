@@ -3,4 +3,3 @@ pydantic>=2.0
 psutil
 gradio
 google-search-results
-nexaai
