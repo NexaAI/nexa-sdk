@@ -66,6 +66,7 @@ nexa serve
 ### Step 3: Install Dependencies
 
 ```bash
+pip install gradio
 pip install -r requirements.txt
 ```
 

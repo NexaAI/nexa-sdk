@@ -1,8 +1,7 @@
 faiss-cpu>=1.8
-requests>=2.31
-pydantic>=2.0
+requests>=2.32.4
+pydantic>=2.4.0
 python-docx>=1.1
 psutil
-gradio
 sentence_transformers
-langchain<0.2.0
+langchain>=0.3.1
