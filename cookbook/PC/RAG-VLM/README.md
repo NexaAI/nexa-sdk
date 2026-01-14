@@ -32,6 +32,7 @@ conda create -n rag-nexa python=3.10 -y
 conda activate rag-nexa
 
 # install python dependencies
+pip install gradio
 pip install -r requirements.txt
 ```
 

@@ -115,6 +115,7 @@ http://localhost:7860
 1. Install dependencies:
 
 ```bash
+pip install gradio
 pip install -r requirements.txt
 ```
 

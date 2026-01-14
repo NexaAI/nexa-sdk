@@ -32,6 +32,7 @@ source .venv/bin/activate # macOS
 
 
 # Install all required dependencies
+pip install gradio
 pip install -r requirements.txt
 ```
 

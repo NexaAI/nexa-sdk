@@ -1,5 +1,4 @@
 requests>=2.32.4
 pydantic>=2.4.0
 psutil
-gradio>=6.3.0
 google-search-results
