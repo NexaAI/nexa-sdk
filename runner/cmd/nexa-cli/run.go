@@ -458,18 +458,18 @@ func runReranking(manifest types.ModelManifest, quant string) error {
 			fmt.Println(render.GetTheme().Success.Sprintf("✓ Reranking completed successfully. Generated %d scores", len(res.Result)))
 
 			// Display results
-			data := ""
+			var data strings.Builder
 			for i, doc := range document {
 				if i < len(res.Result) {
 					line := fmt.Sprintf("\n%s [%d]: %s\n", render.GetTheme().Info.Sprintf("Document"), i+1, doc)
 					onToken(line)
-					data += line
+					data.WriteString(line)
 					line = fmt.Sprintf("%s: %.6f\n", render.GetTheme().Info.Sprintf("Score"), res.Result[i])
 					onToken(line)
-					data += line
+					data.WriteString(line)
 				}
 			}
-			return data, profileData, err
+			return data.String(), profileData, err
 		},
 	}
 
@@ -842,15 +842,15 @@ func runCV(manifest types.ModelManifest, quant string) error {
 			onToken("\n")
 			onToken(render.GetTheme().Info.Sprintf("  Found %d results\n", len(res.Results)))
 
-			data := ""
+			var data strings.Builder
 			for _, cvResult := range res.Results {
 				result := fmt.Sprintf("[%s] %s\n",
 					render.GetTheme().Info.Sprintf("%.3f", cvResult.Confidence),
 					render.GetTheme().Success.Sprintf("\"%s\"", cvResult.Text))
 				onToken(result)
-				data += result
+				data.WriteString(result)
 			}
-			return data, profileData, err
+			return data.String(), profileData, err
 		},
 	}
 	if input != "" {

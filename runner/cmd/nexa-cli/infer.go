@@ -736,18 +736,18 @@ func inferReranker(manifest *types.ModelManifest, quant string) error {
 			fmt.Println(render.GetTheme().Success.Sprintf("✓ Reranking completed successfully. Generated %d scores", len(result.Scores)))
 
 			// Display results
-			data := ""
+			var data strings.Builder
 			for i, doc := range document {
 				if i < len(result.Scores) {
 					line := fmt.Sprintf("\n%s [%d]: %s\n", render.GetTheme().Info.Sprintf("Document"), i+1, doc)
 					onToken(line)
-					data += line
+					data.WriteString(line)
 					line = fmt.Sprintf("%s: %.6f\n", render.GetTheme().Info.Sprintf("Score"), result.Scores[i])
 					onToken(line)
-					data += line
+					data.WriteString(line)
 				}
 			}
-			return data, result.ProfileData, nil
+			return data.String(), result.ProfileData, nil
 		},
 	}
 
@@ -1189,41 +1189,41 @@ func inferCV(manifest *types.ModelManifest, quant string) error {
 
 			data := ""
 
-		if len(result.Results) == 0 {
-			onToken(render.GetTheme().Info.Sprintf("no output, skip generate output image\n"))
-			return data, nexa_sdk.ProfileData{}, nil
-		}
-
-		if len(result.Results) == 1 && reflect.ValueOf(result.Results[0].BBox).IsZero() {
-			// rmbg
-			onToken(render.GetTheme().Info.Sprintf("Mask output detected\n"))
-
-		} else {
-			// bbox
-			onToken(render.GetTheme().Info.Sprintf("BBox output detected\n"))
-			for _, cvResult := range result.Results {
-				result := fmt.Sprintf("[%s] %s\n",
-					render.GetTheme().Info.Sprintf("%.3f", cvResult.Confidence),
-					render.GetTheme().Success.Sprintf("\"%s\"", cvResult.Text))
-				onToken(result)
-				data += result
+			if len(result.Results) == 0 {
+				onToken(render.GetTheme().Info.Sprintf("no output, skip generate output image\n"))
+				return data, nexa_sdk.ProfileData{}, nil
 			}
-		}
 
-		// Only create output image if there are meaningful bboxes or masks to draw
-		for _, cvResult := range result.Results {
-			if (cvResult.BBox.Width > 0 && cvResult.BBox.Height > 0) || len(cvResult.Mask) > 0 {
-				outputPath, err := logic.CVPostProcess(images[0], result.Results)
-				if err != nil {
-					return data, nexa_sdk.ProfileData{}, err
+			if len(result.Results) == 1 && reflect.ValueOf(result.Results[0].BBox).IsZero() {
+				// rmbg
+				onToken(render.GetTheme().Info.Sprintf("Mask output detected\n"))
+
+			} else {
+				// bbox
+				onToken(render.GetTheme().Info.Sprintf("BBox output detected\n"))
+				for _, cvResult := range result.Results {
+					result := fmt.Sprintf("[%s] %s\n",
+						render.GetTheme().Info.Sprintf("%.3f", cvResult.Confidence),
+						render.GetTheme().Success.Sprintf("\"%s\"", cvResult.Text))
+					onToken(result)
+					data += result
 				}
-
-				onToken(render.GetTheme().Success.Sprintf("  Result drawn and saved to: %s\n", outputPath))
-				break
 			}
-		}
 
-		return data, nexa_sdk.ProfileData{}, nil
+			// Only create output image if there are meaningful bboxes or masks to draw
+			for _, cvResult := range result.Results {
+				if (cvResult.BBox.Width > 0 && cvResult.BBox.Height > 0) || len(cvResult.Mask) > 0 {
+					outputPath, err := logic.CVPostProcess(images[0], result.Results)
+					if err != nil {
+						return data, nexa_sdk.ProfileData{}, err
+					}
+
+					onToken(render.GetTheme().Success.Sprintf("  Result drawn and saved to: %s\n", outputPath))
+					break
+				}
+			}
+
+			return data, nexa_sdk.ProfileData{}, nil
 		},
 	}
 
