@@ -14,7 +14,6 @@
 
 # !/usr/bin/env python3
 
-import numpy as np
 from typing import Union, List
 from openai import OpenAI
 
@@ -39,7 +38,7 @@ class NexaClient:
         self.client = OpenAI(base_url=base_url, api_key="not-needed")
         self.model = model
     
-    def get_embedding(self, input: Union[str, List[str]]) -> np.ndarray:
+    def get_embedding(self, input: Union[str, List[str]]):
         """
         Get embedding for text or image path(s).
         
@@ -47,10 +46,9 @@ class NexaClient:
             input: Single text string, image path, or list of texts/image paths
             
         Returns:
-            numpy array of embeddings. If single input, returns 1D array.
-            If list input, returns 2D array with shape (len(input), embedding_dim).
+            list of embeddings. If single input, returns 1D list.
+            If list input, returns 2D list with shape (len(input), embedding_dim).
         """
-        # Ensure input is a list
         if isinstance(input, str):
             input_list = [input]
             single_input = True
@@ -65,14 +63,11 @@ class NexaClient:
                 encoding_format="float"
             )
             
-            # Extract embeddings from response
             embeddings = [item.embedding for item in response.data]
-            embeddings_array = np.array(embeddings)
             
-            # Return 1D array for single input, 2D array for multiple inputs
             if single_input:
-                return embeddings_array[0]
-            return embeddings_array
+                return embeddings[0]
+            return embeddings
             
         except Exception as e:
             raise RuntimeError(f"Failed to get embedding from Nexa API: {e}")

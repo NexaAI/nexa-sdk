@@ -23,8 +23,6 @@ from typing import List, Dict, Any, Iterable, Tuple
 from pathlib import Path
 import requests
 
-import numpy as np
-import pdfplumber
 import docx
 
 import warnings
@@ -318,7 +316,7 @@ def fix_missing_spaces(text: str) -> str:
 
 def load_pdf(path: str) -> str:
     """
-    Load PDF text using pdfplumber with proper spacing handling.
+    Load PDF text.
     
     Args:
         path: Path to PDF file
@@ -326,22 +324,7 @@ def load_pdf(path: str) -> str:
     Returns:
         str: Extracted text (empty string if extraction fails)
     """
-    text_parts: List[str] = []
-    try:
-        with suppress_stderr():
-            with pdfplumber.open(path) as pdf:
-                for page in pdf.pages:
-                    # Use layout=True for better spacing preservation
-                    text = page.extract_text(layout=True)
-                    if text:
-                        # Apply space-fixing heuristics
-                        text = fix_missing_spaces(text)
-                        text_parts.append(text)
-    except Exception as e:
-        print(f"[warn] Error extracting from {path}: {e}")
-        return ""
-    
-    return "\n".join(text_parts)
+    return ""
 
 
 def load_docx(path: str) -> str:
@@ -376,7 +359,7 @@ def normalize_ws(s: str) -> str:
     return re.sub(r"[ \t\u3000]+", " ", s).strip()
 
 
-def yield_files(root: str, exts=(".txt", ".pdf", ".docx")) -> Iterable[str]:
+def yield_files(root: str, exts=(".txt", ".docx")) -> Iterable[str]:
     """
     Recursively yield file paths matching specified extensions.
     
@@ -479,8 +462,6 @@ def build_json_index(
         try:
             if lower.endswith(".txt"):
                 raw = load_txt(path)
-            elif lower.endswith(".pdf"):
-                raw = load_pdf(path)
             elif lower.endswith(".docx"):
                 raw = load_docx(path)
             else:

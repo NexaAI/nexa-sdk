@@ -16,7 +16,6 @@
 
 from dataclasses import dataclass
 from typing import List
-import numpy as np
 from pathlib import Path
 
 from nexa_client import NexaClient
@@ -106,11 +105,10 @@ class NexaImageSearch:
         print(f"Calculating embedding for query: {query}")
         query_embedding = self.client.get_embedding(query)
         
-        # Calculate distances
         distances = []
         for image_path, image_embedding in self._image_embeddings.items():
             if metric == "l2":
-                distance = np.linalg.norm(query_embedding - image_embedding)
+                distance = sum((q - i) ** 2 for q, i in zip(query_embedding, image_embedding)) ** 0.5
             else:
                 raise ValueError(f"Unsupported metric: {metric}. Only 'l2' is supported.")
             

@@ -24,8 +24,6 @@ from typing import Optional, Generator, Tuple, Dict
 
 import gradio as gr
 import requests
-import numpy as np
-from PIL import Image
 import imageio
 
 # Configuration
@@ -81,33 +79,31 @@ logger = logging.getLogger(__name__)
 setup_logging(log_level="DEBUG")
 
 
-def image_array_to_base64(image_array: np.ndarray) -> str:
+def image_array_to_base64(image_array) -> str:
     """Convert numpy image array to base64 data URI (in-memory, no disk I/O)."""
-    # Convert to PIL Image
-    if image_array.dtype != np.uint8:
-        image_array = (
-            (image_array * 255).astype(np.uint8)
-            if image_array.max() <= 1.0
-            else image_array.astype(np.uint8)
-        )
-
-    pil_image = Image.fromarray(image_array)
-
-    # Save to bytes buffer
-    buffer = io.BytesIO()
-    pil_image.save(buffer, format="JPEG", quality=95)
-    image_bytes = buffer.getvalue()
-
-    # Encode to base64
+    import cv2
+    
+    if hasattr(image_array, 'dtype'):
+        if str(image_array.dtype) != 'uint8':
+            if hasattr(image_array, 'max') and callable(image_array.max):
+                max_val = image_array.max()
+            else:
+                max_val = max(max(row) for row in image_array)
+            if max_val <= 1.0:
+                image_array = [[int(v * 255) for v in row] for row in image_array]
+            else:
+                image_array = [[int(v) for v in row] for row in image_array]
+    
+    _, buffer = cv2.imencode('.jpg', image_array, [cv2.IMWRITE_JPEG_QUALITY, 95])
+    image_bytes = buffer.tobytes()
+    
     base64_data = base64.b64encode(image_bytes).decode("utf-8")
     return f"data:image/jpeg;base64,{base64_data}"
 
 
 def call_nexa_chat_stream(
     session: requests.Session, model: str, messages: list, endpoint: str, ngl: int
-) -> Generator[
-    Tuple[Optional[str], Optional[float], Optional[Dict[str, float | int]]], None, None
-]:
+):
     """
     Call Nexa /v1/chat/completions endpoint (streaming).
 
@@ -209,15 +205,14 @@ def call_nexa_chat_stream(
         yield f"Error: {str(e)}", None, None
 
 
-def extract_first_frame(video_path: str) -> Optional[np.ndarray]:
+def extract_first_frame(video_path: str):
     """Extract the first frame from video."""
     logger.info(f"Extracting first frame from: {video_path}")
     try:
         with imageio.get_reader(video_path) as reader:
-            frame = reader.get_data(0)  # type: ignore
-            result = frame if isinstance(frame, np.ndarray) else np.array(frame)
-            logger.debug(f"Successfully extracted first frame, shape: {result.shape}")
-            return result
+            frame = reader.get_data(0)
+            logger.debug(f"Successfully extracted first frame")
+            return frame
     except Exception as e:
         logger.error(
             f"Error extracting first frame from {video_path}: {e}", exc_info=True
@@ -262,14 +257,11 @@ def extract_frames_from_video(
         frame_indices = list(range(0, total_frames, frame_interval))
         logger.info(f"Extracting {len(frame_indices)} frames at intervals")
 
-        for frame_idx in frame_indices:
+            for frame_idx in frame_indices:
             try:
-                frame = reader.get_data(frame_idx)  # type: ignore
+                frame = reader.get_data(frame_idx)
                 timestamp = frame_idx / fps
-                frame_array = (
-                    frame if isinstance(frame, np.ndarray) else np.array(frame)
-                )
-                frames.append((frame_array, timestamp))
+                frames.append((frame, timestamp))
             except (IndexError, Exception) as e:
                 logger.warning(f"Reached end of video at frame {frame_idx}: {e}")
                 break
@@ -283,14 +275,14 @@ def extract_frames_from_video(
 
 
 def process_video_stream(
-    video_file: Optional[str],
+    video_file,
     model: str,
     endpoint: str,
     prompt: str,
     stop_event: threading.Event,
     interval_seconds: float = DEFAULT_FRAME_INTERVAL,
     ngl: int = 999,
-) -> Generator[Tuple[Optional[np.ndarray], str], None, None]:
+):
     """Process video frames sequentially and call API for inference."""
     logger.info(
         f"Starting video processing: {video_file}, model: {model}, endpoint: {endpoint}"

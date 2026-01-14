@@ -1,5 +1,3 @@
 gradio
-numpy
 openai
-pillow
 
