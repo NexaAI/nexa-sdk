@@ -230,22 +230,6 @@ print(result.asrResult.transcript)
 </p>
 </div>
 
-## 🎯 You Decide What Model We Support Next
-
-**[Nexa Wishlist](https://sdk.nexa.ai/wishlist)** — Request and vote for the models you want to run on-device.
-
-Drop a Hugging Face repo ID, pick your preferred backend (GGUF, MLX, or Nexa format for Qualcomm + Apple NPUs), and watch the community's top requests go live in NexaSDK.
-
-👉 **[Vote now at sdk.nexa.ai/wishlist](https://sdk.nexa.ai/wishlist)**
-
-## 💰 Join Builder Bounty Program
-
-Earn up to 1,500 USD for building with NexaSDK.
-
-![Developer Bounty](assets/developer_bounty.png)
-
-Learn more in our [Participant Details](https://docs.nexa.ai/en/community/builder-bounty#builder-bounty-program)).
-
 ## 🙏 Acknowledgements
 
 We would like to thank the following projects:
@@ -284,3 +268,13 @@ Join our community:
 
 - [Discord](https://discord.gg/thRu2HaK4D)
 - [Slack](https://join.slack.com/t/nexaai/shared_invite/zt-30a8yfv8k-1JqAXv~OjKJKLqvbKqHJxA)
+- **[Nexa Wishlist](https://sdk.nexa.ai/wishlist)** — Request and vote for the models you want to run on-device.
+
+## 🏆 Nexa × Qualcomm On-Device Bounty Program
+
+Round 1: Build a working Android AI app that runs fully on-device on Qualcomm Hexagon NPU with NexaSDK.
+
+Timeline (PT): Jan 15 → Feb 15
+Prizes: $6,500 cash prize, Qualcomm official spotlight, flagship Snapdragon device, expert mentorship, and more
+
+👉 Join & details: [https://sdk.nexa.ai/bounty](https://sdk.nexa.ai/bounty)
