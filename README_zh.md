@@ -230,22 +230,6 @@ print(result.asrResult.transcript)
 </p>
 </div>
 
-## 🎯 你决定我们下一步支持什么模型
-
-**[Nexa Wishlist](https://sdk.nexa.ai/wishlist)** —— 提交并为你想要运行在本地的模型投票。
-
-填入一个 Hugging Face repo ID，选择你希望的后端（GGUF、MLX，或面向 Qualcomm/Apple NPU 的 Nexa 格式），看看社区最高票的模型如何在 NexaSDK 上线。
-
-👉 **[现在就去 sdk.nexa.ai/wishlist 投票](https://sdk.nexa.ai/wishlist)**
-
-## 💰 加入 Builder Bounty 计划
-
-构建 NexaSDK 应用可获得最高 1,500 美元奖励。
-
-![Developer Bounty](assets/developer_bounty.png)
-
-更多信息见我们的 [参与细则](https://docs.nexa.ai/en/community/builder-bounty#builder-bounty-program))。
-
 ## 🙏 致谢
 
 我们感谢以下项目：
@@ -284,3 +268,4 @@ NexaSDK 采用双重许可模式：
 
 - [Discord](https://discord.gg/thRu2HaK4D)
 - [Slack](https://join.slack.com/t/nexaai/shared_invite/zt-30a8yfv8k-1JqAXv~OjKJKLqvbKqHJxA)
+- **[Nexa Wishlist](https://sdk.nexa.ai/wishlist)** —— 提交并为你想要运行在本地的模型投票。
