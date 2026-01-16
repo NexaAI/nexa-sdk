@@ -28,6 +28,7 @@ import (
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/config"
 	"github.com/NexaAI/nexa-sdk/runner/internal/downloader"
+	"github.com/NexaAI/nexa-sdk/runner/internal/render"
 )
 
 const HF_ENDPOINT = "https://huggingface.co"
@@ -48,6 +49,7 @@ func (d *HuggingFace) MaxConcurrency() int {
 	if config.Get().HFToken != "" {
 		return 8
 	} else {
+		fmt.Println(render.GetTheme().Warning.Sprintf("NEXA_HFTOKEN not set. Set it for speeding up downloads from https://huggingface.co/settings/tokens"))
 		return 1
 	}
 }
