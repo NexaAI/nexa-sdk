@@ -58,7 +58,7 @@ var (
 	enableThink    bool
 	hideThink      bool
 	prompt         []string
-	TokenFile      string
+	tokenFile      string
 	taskType       string
 	query          string
 	document       []string
@@ -116,7 +116,7 @@ var (
 		llmFlags.StringVarP(&systemPrompt, "system-prompt", "s", "", "system prompt to set model behavior")
 		llmFlags.StringVarP(&input, "input", "i", "", "prompt txt file")
 		llmFlags.StringArrayVarP(&prompt, "prompt", "p", nil, "pass prompt")
-		llmFlags.StringVarP(&TokenFile, "token-file", "t", "", "path to token file (space-separated token IDs)")
+		llmFlags.StringVarP(&tokenFile, "token-file", "t", "", "path to token file (space-separated token IDs)")
 		return llmFlags
 	}()
 	vlmFlags = func() *pflag.FlagSet {
@@ -423,8 +423,8 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 	// Check if using token ID input mode
 	var tokenIDs []int32
 	useTokenIDs := false
-	if TokenFile != "" {
-		content, err := os.ReadFile(TokenFile)
+	if tokenFile != "" {
+		content, err := os.ReadFile(tokenFile)
 		if err != nil {
 			return fmt.Errorf("failed to read token file: %w", err)
 		}
@@ -436,9 +436,7 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 			tokenIDs = append(tokenIDs, int32(tokenID))
 		}
 		useTokenIDs = true
-		fmt.Println(render.GetTheme().Info.Sprintf("Using token IDs from file: %s (%d tokens)", TokenFile, len(tokenIDs)))
-		// For token ID mode, add a dummy prompt to trigger execution
-		prompt = []string{""}
+		fmt.Println(render.GetTheme().Info.Sprintf("Using token IDs from file: %s (%d tokens)", tokenFile, len(tokenIDs)))
 	}
 
 	processor := &common.Processor{
@@ -496,7 +494,15 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 		},
 	}
 
-	if len(prompt) > 0 || input != "" || TokenFile != "" {
+	if useTokenIDs {
+		processor.GetPrompt = func() (string, error) {
+			if !useTokenIDs {
+				return "", io.EOF
+			}
+			useTokenIDs = false
+			return "", nil
+		}
+	} else if len(prompt) > 0 || input != "" {
 		processor.GetPrompt = getPromptOrInput
 	} else {
 		repl := common.Repl{
