@@ -52,6 +52,8 @@ var (
 	ngl            int32
 	nctx           int32
 	maxTokens      int32
+	stop           []string
+	stopFile       string
 	imageMaxLength int32
 	enableThink    bool
 	hideThink      bool
@@ -106,6 +108,8 @@ var (
 		llmFlags.Int32VarP(&ngl, "ngl", "n", 999, "num of layers pass to gpu")
 		llmFlags.Int32VarP(&nctx, "nctx", "", 4096, "context window size")
 		llmFlags.Int32VarP(&maxTokens, "max-tokens", "", 2048, "max tokens")
+		llmFlags.StringArrayVarP(&stop, "stop", "", nil, "stop sequences")
+		llmFlags.StringVarP(&stopFile, "stop-file", "", "", "file containing stop sequences")
 		llmFlags.BoolVarP(&enableThink, "enable-think", "", true, "enable thinking mode")
 		llmFlags.BoolVarP(&hideThink, "hide-think", "", false, "hide thinking output")
 		llmFlags.StringVarP(&systemPrompt, "system-prompt", "s", "", "system prompt to set model behavior")
@@ -349,6 +353,23 @@ func getPromptOrInput() (string, error) {
 	return "", io.EOF
 }
 
+func loadStopSequences() ([]string, error) {
+	var stopSequences []string
+	if stopFile != "" {
+		content, err := os.ReadFile(stopFile)
+		if err != nil {
+			return nil, err
+		}
+		for line := range strings.SplitSeq(string(content), "\n") {
+			if line != "" {
+				stopSequences = append(stopSequences, line)
+			}
+		}
+	}
+	stopSequences = append(stopSequences, stop...)
+	return stopSequences, nil
+}
+
 func inferLLM(manifest *types.ModelManifest, quant string) error {
 	samplerConfig := &nexa_sdk.SamplerConfig{
 		Temperature:       temperature,
@@ -362,6 +383,10 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 		GrammarPath:       grammarPath,
 		GrammarString:     grammarString,
 		EnableJson:        enableJson,
+	}
+	stopSequences, err := loadStopSequences()
+	if err != nil {
+		return err
 	}
 
 	s := store.Get()
@@ -414,6 +439,7 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 				OnToken:    onToken,
 				Config: &nexa_sdk.GenerationConfig{
 					MaxTokens:     maxTokens,
+					Stop:          stopSequences,
 					SamplerConfig: samplerConfig,
 				},
 			},
@@ -472,6 +498,10 @@ func inferVLM(manifest *types.ModelManifest, quant string) error {
 		GrammarPath:       grammarPath,
 		GrammarString:     grammarString,
 		EnableJson:        enableJson,
+	}
+	stopSequences, err := loadStopSequences()
+	if err != nil {
+		return err
 	}
 
 	s := store.Get()
@@ -542,6 +572,7 @@ func inferVLM(manifest *types.ModelManifest, quant string) error {
 				OnToken:    onToken,
 				Config: &nexa_sdk.GenerationConfig{
 					MaxTokens:      maxTokens,
+					Stop:           stopSequences,
 					SamplerConfig:  samplerConfig,
 					ImagePaths:     images,
 					ImageMaxLength: imageMaxLength,
