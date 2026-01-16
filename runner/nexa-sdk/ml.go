@@ -61,6 +61,8 @@ func SDKErrorCode(err error) int32 {
 var (
 	ErrCommonNotSupport             = SDKError(C.ML_ERROR_COMMON_NOT_SUPPORTED)
 	ErrCommonModelLoad              = SDKError(C.ML_ERROR_COMMON_MODEL_LOAD)
+	ErrCommonPluginLoad             = SDKError(C.ML_ERROR_COMMON_PLUGIN_LOAD)
+	ErrCommonPluginInvalid          = SDKError(C.ML_ERROR_COMMON_PLUGIN_INVALID)
 	ErrLlmTokenizationContextLength = SDKError(C.ML_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH)
 )
 

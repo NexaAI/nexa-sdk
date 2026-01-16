@@ -136,14 +136,10 @@ func run() *cobra.Command {
 		switch err {
 		case nil:
 			os.Exit(0)
-		case nexa_sdk.ErrCommonModelLoad:
-			fmt.Println(modelLoadFailMsg)
-		case nexa_sdk.ErrLlmTokenizationContextLength:
-			fmt.Println(render.GetTheme().Info.Sprintf("Context length exceeded, please start a new conversation"))
 		default:
 			fmt.Println(render.GetTheme().Error.Sprintf("Error: %s", err))
+			os.Exit(1)
 		}
-		os.Exit(1)
 	}
 	return runCmd
 }

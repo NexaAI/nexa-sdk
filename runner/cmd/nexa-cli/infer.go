@@ -279,8 +279,14 @@ func infer() *cobra.Command {
 		switch err {
 		case nil:
 			os.Exit(0)
+		case nexa_sdk.ErrCommonNotSupport:
+			fmt.Println(render.GetTheme().Error.Sprint(err.Error()))
 		case nexa_sdk.ErrCommonModelLoad:
-			fmt.Println(modelLoadFailMsg)
+			fmt.Println(render.GetTheme().Error.Sprint(err.Error()))
+		case nexa_sdk.ErrCommonPluginLoad:
+			fmt.Println(render.GetTheme().Error.Sprint(err.Error()))
+		case nexa_sdk.ErrCommonPluginInvalid:
+			fmt.Println(render.GetTheme().Error.Sprint(err.Error()))
 		case nexa_sdk.ErrLlmTokenizationContextLength:
 			fmt.Println(render.GetTheme().Info.Sprintf("Context length exceeded, please start a new conversation"))
 		default:
@@ -408,8 +414,7 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 	spin.Stop()
 
 	if err != nil {
-		slog.Error("failed to create LLM", "error", err)
-		return nexa_sdk.ErrCommonModelLoad
+		return err
 	}
 	defer p.Destroy()
 
