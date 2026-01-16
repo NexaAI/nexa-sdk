@@ -422,7 +422,6 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 
 	// Check if using token ID input mode
 	var tokenIDs []int32
-	useTokenIDs := false
 	if tokenFile != "" {
 		content, err := os.ReadFile(tokenFile)
 		if err != nil {
@@ -435,7 +434,6 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 			}
 			tokenIDs = append(tokenIDs, int32(tokenID))
 		}
-		useTokenIDs = true
 		fmt.Println(render.GetTheme().Info.Sprintf("Using token IDs from file: %s (%d tokens)", tokenFile, len(tokenIDs)))
 	}
 
@@ -447,7 +445,7 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 			var res nexa_sdk.LlmGenerateOutput
 			var err error
 
-			if useTokenIDs {
+			if len(tokenIDs) > 0 {
 				// When using token IDs, skip chat template and use IDs directly
 				res, err = p.Generate(nexa_sdk.LlmGenerateInput{
 					InputIDs: tokenIDs,
@@ -460,6 +458,8 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 				if err != nil {
 					return "", nexa_sdk.ProfileData{}, err
 				}
+				// Clear tokenIDs after use so subsequent calls use normal mode
+				tokenIDs = nil
 			} else {
 				// Normal text prompt mode with chat template
 				history = append(history, nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
@@ -494,12 +494,11 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 		},
 	}
 
-	if useTokenIDs {
+	if len(tokenIDs) > 0 {
 		processor.GetPrompt = func() (string, error) {
-			if !useTokenIDs {
+			if len(tokenIDs) == 0 {
 				return "", io.EOF
 			}
-			useTokenIDs = false
 			return "", nil
 		}
 	} else if len(prompt) > 0 || input != "" {
