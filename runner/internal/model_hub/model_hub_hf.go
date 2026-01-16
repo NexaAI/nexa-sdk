@@ -49,7 +49,7 @@ func (d *HuggingFace) MaxConcurrency() int {
 	if config.Get().HFToken != "" {
 		return 8
 	} else {
-		fmt.Println(render.GetTheme().Warning.Sprintf("WARN: NEXA_HFTOKEN not set - downloads will use single-threaded mode. Set NEXA_HFTOKEN environment variable for faster multi-threaded downloads"))
+		fmt.Println(render.GetTheme().Warning.Sprintf("NEXA_HFTOKEN not set. Set it for speeding up downloads from https://huggingface.co/settings/tokens"))
 		return 1
 	}
 }
