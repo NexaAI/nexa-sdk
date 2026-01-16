@@ -125,6 +125,7 @@ func freeLlmCreateInput(cPtr *C.ml_LlmCreateInput) {
 
 type LlmGenerateInput struct {
 	PromptUTF8 string
+	InputIDs   []int32
 	Config     *GenerationConfig
 	OnToken    OnTokenCallback
 	// UserData   unsafe.Pointer
@@ -134,7 +135,23 @@ func (lgi LlmGenerateInput) toCPtr() *C.ml_LlmGenerateInput {
 	cPtr := (*C.ml_LlmGenerateInput)(C.malloc(C.size_t(unsafe.Sizeof(C.ml_LlmGenerateInput{}))))
 	*cPtr = C.ml_LlmGenerateInput{}
 
-	cPtr.prompt_utf8 = C.CString(lgi.PromptUTF8)
+	if lgi.PromptUTF8 != "" {
+		cPtr.prompt_utf8 = C.CString(lgi.PromptUTF8)
+	}
+
+	if len(lgi.InputIDs) > 0 {
+		cPtr.input_ids_count = C.int32_t(len(lgi.InputIDs))
+		cInputIDs := (*C.int32_t)(C.malloc(C.size_t(len(lgi.InputIDs)) * C.size_t(unsafe.Sizeof(C.int32_t(0)))))
+		cInputIDsSlice := unsafe.Slice(cInputIDs, len(lgi.InputIDs))
+		for i, id := range lgi.InputIDs {
+			cInputIDsSlice[i] = C.int32_t(id)
+		}
+		cPtr.input_ids = cInputIDs
+	} else {
+		cPtr.input_ids = nil
+		cPtr.input_ids_count = 0
+	}
+
 	if lgi.Config != nil {
 		cPtr.config = lgi.Config.toCPtr()
 	} else {
@@ -152,6 +169,10 @@ func freeLlmGenerateInput(cPtr *C.ml_LlmGenerateInput) {
 	if cPtr != nil {
 		if cPtr.prompt_utf8 != nil {
 			C.free(unsafe.Pointer(cPtr.prompt_utf8))
+		}
+
+		if cPtr.input_ids != nil {
+			C.free(unsafe.Pointer(cPtr.input_ids))
 		}
 
 		if cPtr.config != nil {

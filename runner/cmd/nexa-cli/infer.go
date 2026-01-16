@@ -58,6 +58,7 @@ var (
 	enableThink    bool
 	hideThink      bool
 	prompt         []string
+	TokenFile      string
 	taskType       string
 	query          string
 	document       []string
@@ -115,6 +116,7 @@ var (
 		llmFlags.StringVarP(&systemPrompt, "system-prompt", "s", "", "system prompt to set model behavior")
 		llmFlags.StringVarP(&input, "input", "i", "", "prompt txt file")
 		llmFlags.StringArrayVarP(&prompt, "prompt", "p", nil, "pass prompt")
+		llmFlags.StringVarP(&TokenFile, "token-file", "t", "", "path to token file (space-separated token IDs)")
 		return llmFlags
 	}()
 	vlmFlags = func() *pflag.FlagSet {
@@ -418,42 +420,83 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 		history = append(history, nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleSystem, Content: systemPrompt})
 	}
 
+	// Check if using token ID input mode
+	var tokenIDs []int32
+	useTokenIDs := false
+	if TokenFile != "" {
+		content, err := os.ReadFile(TokenFile)
+		if err != nil {
+			return fmt.Errorf("failed to read token file: %w", err)
+		}
+		for field := range strings.FieldsSeq(string(content)) {
+			tokenID, err := strconv.ParseInt(field, 10, 32)
+			if err != nil {
+				return fmt.Errorf("invalid token ID: %s", field)
+			}
+			tokenIDs = append(tokenIDs, int32(tokenID))
+		}
+		useTokenIDs = true
+		fmt.Println(render.GetTheme().Info.Sprintf("Using token IDs from file: %s (%d tokens)", TokenFile, len(tokenIDs)))
+		// For token ID mode, add a dummy prompt to trigger execution
+		prompt = []string{""}
+	}
+
 	processor := &common.Processor{
 		HideThink: hideThink,
 		Verbose:   verbose,
 		TestMode:  testMode,
 		Run: func(prompt string, _, _ []string, onToken func(string) bool) (string, nexa_sdk.ProfileData, error) {
-			history = append(history, nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
+			var res nexa_sdk.LlmGenerateOutput
+			var err error
 
-			templateOutput, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
-				Messages:            history,
-				EnableThink:         enableThink,
-				AddGenerationPrompt: true,
-			})
-			if err != nil {
-				return "", nexa_sdk.ProfileData{}, err
+			if useTokenIDs {
+				// When using token IDs, skip chat template and use IDs directly
+				res, err = p.Generate(nexa_sdk.LlmGenerateInput{
+					InputIDs: tokenIDs,
+					OnToken:  onToken,
+					Config: &nexa_sdk.GenerationConfig{
+						MaxTokens:     maxTokens,
+						SamplerConfig: samplerConfig,
+					},
+				})
+				if err != nil {
+					return "", nexa_sdk.ProfileData{}, err
+				}
+			} else {
+				// Normal text prompt mode with chat template
+				history = append(history, nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleUser, Content: prompt})
+
+				templateOutput, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
+					Messages:            history,
+					EnableThink:         enableThink,
+					AddGenerationPrompt: true,
+				})
+				if err != nil {
+					return "", nexa_sdk.ProfileData{}, err
+				}
+
+				res, err = p.Generate(nexa_sdk.LlmGenerateInput{
+					PromptUTF8: templateOutput.FormattedText,
+					OnToken:    onToken,
+					Config: &nexa_sdk.GenerationConfig{
+						MaxTokens:     maxTokens,
+						Stop:          stopSequences,
+						SamplerConfig: samplerConfig,
+					},
+				})
+				
+				if err != nil {
+					return "", nexa_sdk.ProfileData{}, err
+				}
+
+				history = append(history, nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: res.FullText})
 			}
 
-			res, err := p.Generate(nexa_sdk.LlmGenerateInput{
-				PromptUTF8: templateOutput.FormattedText,
-				OnToken:    onToken,
-				Config: &nexa_sdk.GenerationConfig{
-					MaxTokens:     maxTokens,
-					Stop:          stopSequences,
-					SamplerConfig: samplerConfig,
-				},
-			},
-			)
-			if err != nil {
-				return "", nexa_sdk.ProfileData{}, err
-			}
-
-			history = append(history, nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleAssistant, Content: res.FullText})
 			return res.FullText, res.ProfileData, nil
 		},
 	}
 
-	if len(prompt) > 0 || input != "" {
+	if len(prompt) > 0 || input != "" || TokenFile != "" {
 		processor.GetPrompt = getPromptOrInput
 	} else {
 		repl := common.Repl{
