@@ -482,7 +482,7 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 						SamplerConfig: samplerConfig,
 					},
 				})
-				
+
 				if err != nil {
 					return "", nexa_sdk.ProfileData{}, err
 				}
@@ -496,10 +496,8 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 
 	if len(tokenIDs) > 0 {
 		processor.GetPrompt = func() (string, error) {
-			if len(tokenIDs) == 0 {
-				return "", io.EOF
-			}
-			return "", nil
+			// In token ID mode, no textual prompt is required; signal end of input immediately.
+			return "", io.EOF
 		}
 	} else if len(prompt) > 0 || input != "" {
 		processor.GetPrompt = getPromptOrInput
