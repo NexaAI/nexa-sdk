@@ -138,7 +138,7 @@ Add to your `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("ai.nexa:core:0.0.15")
+    implementation("ai.nexa:core:0.0.16")
 }
 ```
 
