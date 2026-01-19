@@ -495,9 +495,14 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 	}
 
 	if len(tokenIDs) > 0 {
+		// Token ID mode: return empty prompt once, then EOF to exit after first round
+		firstCall := true
 		processor.GetPrompt = func() (string, error) {
-			// In token ID mode, no textual prompt is required; signal end of input immediately.
-			return "", io.EOF
+			if firstCall {
+				firstCall = false
+				return "", nil // Trigger first round with empty prompt (token IDs will be used)
+			}
+			return "", io.EOF // Exit after first round
 		}
 	} else if len(prompt) > 0 || input != "" {
 		processor.GetPrompt = getPromptOrInput
