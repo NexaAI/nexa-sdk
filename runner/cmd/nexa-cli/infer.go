@@ -41,12 +41,6 @@ import (
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 )
 
-const modelLoadFailMsg = `⚠️ Oops. Model failed to load.
-
-👉 Try these:
-- Verify your system meets the model's requirements.
-- Seek help in our discord or slack.`
-
 var (
 	// disableStream *bool // reuse in run.go
 	ngl            int32
@@ -280,13 +274,34 @@ func infer() *cobra.Command {
 		case nil:
 			os.Exit(0)
 		case nexa_sdk.ErrCommonNotSupport:
-			fmt.Println(render.GetTheme().Error.Sprint(err.Error()))
+			fmt.Println(render.GetTheme().Error.Sprint(`
+⚠️ Oops. This model type is not supported yet.
+
+👉 Try these:
+- Check back later for updates.
+- See help in our discord or slack.`))
 		case nexa_sdk.ErrCommonModelLoad:
-			fmt.Println(render.GetTheme().Error.Sprint(err.Error()))
+			fmt.Println(render.GetTheme().Error.Sprint(`
+⚠️ Oops. Model failed to load.
+
+👉 Try these:
+- Redownload the model.
+- Verify your system meets the model's requirements.
+- See help in our discord or slack.`))
 		case nexa_sdk.ErrCommonPluginLoad:
-			fmt.Println(render.GetTheme().Error.Sprint(err.Error()))
+			fmt.Println(render.GetTheme().Error.Sprint(`
+⚠️ Oops. Plugin failed to load.
+
+👉 Try these:
+- Ensure all plugin dependencies are correct.
+- See help in our discord or slack.`))
 		case nexa_sdk.ErrCommonPluginInvalid:
-			fmt.Println(render.GetTheme().Error.Sprint(err.Error()))
+			fmt.Println(render.GetTheme().Error.Sprint(`
+⚠️ Oops. Plugin is invalid.
+
+👉 Try these:
+- This model may not be compatible with your system. Try another model.
+- See help in our discord or slack.`))
 		case nexa_sdk.ErrLlmTokenizationContextLength:
 			fmt.Println(render.GetTheme().Info.Sprintf("Context length exceeded, please start a new conversation"))
 		default:
@@ -538,7 +553,7 @@ func inferVLM(manifest *types.ModelManifest, quant string) error {
 
 	if err != nil {
 		slog.Error("failed to create VLM", "error", err)
-		return nexa_sdk.ErrCommonModelLoad
+		return err
 	}
 	defer p.Destroy()
 
@@ -653,7 +668,7 @@ func inferEmbedder(manifest *types.ModelManifest, quant string) error {
 
 	if err != nil {
 		slog.Error("failed to create embedder", "error", err)
-		return nexa_sdk.ErrCommonModelLoad
+		return err
 	}
 	defer p.Destroy()
 
@@ -736,7 +751,7 @@ func inferReranker(manifest *types.ModelManifest, quant string) error {
 
 	if err != nil {
 		slog.Error("failed to create reranker", "error", err)
-		return nexa_sdk.ErrCommonModelLoad
+		return err
 	}
 	defer p.Destroy()
 
@@ -828,7 +843,7 @@ func inferTTS(manifest *types.ModelManifest, quant string) error {
 
 	if err != nil {
 		slog.Error("failed to create TTS", "error", err)
-		return nexa_sdk.ErrCommonModelLoad
+		return err
 	}
 	defer p.Destroy()
 
@@ -915,7 +930,7 @@ func inferASR(manifest *types.ModelManifest, quant string) error {
 
 	if err != nil {
 		slog.Error("failed to create ASR", "error", err)
-		return nexa_sdk.ErrCommonModelLoad
+		return err
 	}
 	defer p.Destroy()
 
@@ -1086,7 +1101,7 @@ func inferDiarize(manifest *types.ModelManifest, quant string) error {
 
 	if err != nil {
 		slog.Error("failed to create diarization model", "error", err)
-		return nexa_sdk.ErrCommonModelLoad
+		return err
 	}
 	defer p.Destroy()
 
@@ -1193,7 +1208,7 @@ func inferCV(manifest *types.ModelManifest, quant string) error {
 
 	if err != nil {
 		slog.Error("failed to create CV", "error", err)
-		return nexa_sdk.ErrCommonModelLoad
+		return err
 	}
 	defer p.Destroy()
 
@@ -1299,7 +1314,7 @@ func inferImageGen(manifest *types.ModelManifest, _ string) error {
 
 	if err != nil {
 		slog.Error("failed to create ImageGen", "error", err)
-		return nexa_sdk.ErrCommonModelLoad
+		return err
 	}
 	defer p.Destroy()
 
