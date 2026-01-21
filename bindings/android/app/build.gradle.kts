@@ -25,10 +25,12 @@ android {
 
     signingConfigs {
         create("release") {
+            // Note: For production builds, use environment variables or local.properties
+            // Example: storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
             storeFile = file("test")
-            storePassword = "123456"
+            storePassword = project.findProperty("KEYSTORE_PASSWORD")?.toString() ?: "123456"
             keyAlias = "test"
-            keyPassword = "123456"
+            keyPassword = project.findProperty("KEY_PASSWORD")?.toString() ?: "123456"
         }
     }
 
