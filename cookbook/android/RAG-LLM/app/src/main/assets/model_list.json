@@ -1,0 +1,114 @@
+[
+  {
+    "id": "Llama3.2-3B-NPU-Turbo-NPU-mobile",
+    "displayName": "Llama3.2-3B",
+    "modelName": "files-1-2.nexa",
+    "versionCode": 1,
+    "pluginIds": 273,
+    "dependencies": ["Llama-3.2-3B-Instruct-Q4_0"],
+    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/Llama3.2-3B-NPU-Turbo-NPU-mobile/",
+    "modelUrl": "files-1-2.nexa"
+  },
+  {
+    "id": "Llama-3.2-3B-Instruct-Q4_0",
+    "displayName": "Llama3.2-3B Q40 GGUF",
+    "modelName": "Llama-3.2-3B-Instruct-Q4_0.gguf",
+    "type": "chat",
+    "versionCode": 1,
+    "pluginIds": 17,
+    "show": false,
+    "dependencies": ["embeddinggemma-300m-npu-mobile"],
+    "modelUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/Llama-3.2-3B-Instruct-GGUF/Llama-3.2-3B-Instruct-Q4_0.gguf"
+  },
+  {
+    "id": "Qwen3-4B-Instruct-2507-npu",
+    "displayName": "Qwen3-4B",
+    "modelName": "files-1-2.nexa",
+    "versionCode": 1,
+    "pluginIds": 273,
+    "dependencies": ["Qwen3-4B-Q4_0"],
+    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/Qwen3-4B-Instruct-2507-npu-mobile/",
+    "modelUrl": "files-1-2.nexa"
+  },
+  {
+    "id": "Qwen3-4B-Q4_0",
+    "displayName": "Qwen3-4B Q40 GGUF",
+    "modelName": "Qwen3-4B-Q4_0.gguf",
+    "type": "chat",
+    "versionCode": 1,
+    "pluginIds": 17,
+    "show": false,
+    "dependencies": ["embeddinggemma-300m-npu-mobile"],
+    "modelUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/Qwen3-4B-GGUF/Qwen3-4B-Q4_0.gguf"
+  },
+  {
+    "id": "Granite-4-Micro-NPU-mobile",
+    "displayName": "Granite4-Micro(3B)",
+    "modelName": "files-1-2.nexa",
+    "versionCode": 1,
+    "pluginIds": 273,
+    "dependencies": ["granite-4.0-micro-Q4_0"],
+    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/Granite-4-Micro-NPU-mobile/",
+    "modelUrl": "files-1-2.nexa"
+  },
+  {
+    "id": "granite-4.0-micro-Q4_0",
+    "displayName": "Granite4-Micro(3B) Q40 GGUF",
+    "modelName": "granite-4.0-micro-Q4_0.gguf",
+    "type": "chat",
+    "versionCode": 1,
+    "show": false,
+    "dependencies": ["embeddinggemma-300m-npu-mobile"],
+    "modelUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/granite-4.0-micro-GGUF/granite-4.0-micro-Q4_0.gguf"
+  },
+  {
+    "id": "Granite-4.0-h-350M-NPU-mobile",
+    "displayName": "Granite4-350M",
+    "modelName": "files-1-2.nexa",
+    "versionCode": 1,
+    "pluginIds": 273,
+    "dependencies": ["granite-4.0-350m-Q4_0"],
+    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/Granite-4.0-h-350M-NPU-mobile/",
+    "modelUrl": "files-1-2.nexa"
+  },
+  {
+    "id": "granite-4.0-350m-Q4_0",
+    "displayName": "Granite4-350M Q40 GGUF",
+    "modelName": "granite-4.0-350m-Q4_0.gguf",
+    "type": "chat",
+    "versionCode": 1,
+    "show": false,
+    "dependencies": ["embeddinggemma-300m-npu-mobile"],
+    "modelUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/granite-4.0-350m-GGUF/granite-4.0-350m-Q4_0.gguf"
+  },
+  {
+    "id": "LFM2-1.2B-npu-mobile",
+    "displayName": "LFM2-1.2B",
+    "modelName": "files-1-2.nexa",
+    "versionCode": 1,
+    "pluginIds": 273,
+    "dependencies": ["LFM2-1.2B-Q4_0"],
+    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/LFM2-1.2B-npu-mobile/",
+    "modelUrl": "files-1-2.nexa"
+  },
+  {
+    "id": "LFM2-1.2B-Q4_0",
+    "displayName": "LFM2-1.2B Q40 GGUF",
+    "modelName": "LFM2-1.2B-Q4_0.gguf",
+    "type": "chat",
+    "versionCode": 1,
+    "pluginIds": 17,
+    "show": false,
+    "dependencies": ["embeddinggemma-300m-npu-mobile"],
+    "modelUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/LFM2-1.2B-GGUF/LFM2-1.2B-Q4_0.gguf"
+  },
+  {
+    "id": "embeddinggemma-300m-npu-mobile",
+    "displayName": "embed-gemma",
+    "modelName": "files-1-2.nexa",
+    "versionCode": 1,
+    "show": false,
+    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/embeddinggemma-300m-npu-mobile/",
+    "modelUrl": "files-1-2.nexa"
+  }
+]

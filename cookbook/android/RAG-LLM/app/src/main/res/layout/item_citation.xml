@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center"
+    android:orientation="horizontal"
+    android:paddingVertical="16dp">
+
+    <TextView
+        android:id="@+id/tv_position"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:background="@drawable/bg_circle_gray"
+        android:gravity="center"
+        android:textColor="@color/font_black"
+        android:textSize="13sp"
+        tools:text="99" />
+
+    <TextView
+        android:id="@+id/tv_file_name"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="20dp"
+        android:layout_weight="1"
+        android:textColor="@color/font_black"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        tools:text="test.txt" />
+
+    <Button
+        android:id="@+id/btn_chunk"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/btn_rounded_border_gray"
+        android:minWidth="1dp"
+        android:minHeight="1dp"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="2dp"
+        android:stateListAnimator="@null"
+        android:textAllCaps="false"
+        android:textColor="#676767"
+        android:textSize="14sp"
+        tools:text="Chunk 1" />
+
+</LinearLayout>
