@@ -44,19 +44,8 @@ dependencyResolutionManagement {
 
 rootProject.name = "NexaDemo"
 
-// Path to nexasdk-bridge library
-val defaultBridgeLibDir = File(rootDir, "../../nexasdk-bridge/bindings/android/app")
-val bridgeLibDirPath: String = System.getenv("NEXA_BRIDGE_ANDROID")
-    ?: defaultBridgeLibDir.absolutePath
-
-print("bridgeLibDirPath:${bridgeLibDirPath} exist? ${File(bridgeLibDirPath).exists()}\n")
-if (File(bridgeLibDirPath).exists()) {
-    gradle.extra["bridgePathExist"] = true
-    include(":bridgeLib")
-    project(":bridgeLib").projectDir = File(bridgeLibDirPath)
-} else {
-    gradle.extra["bridgePathExist"] = false
-}
+// Using cloud SDK - no bridge library needed
+gradle.extra["bridgePathExist"] = false
 
 include(":transform")
 include(":app")

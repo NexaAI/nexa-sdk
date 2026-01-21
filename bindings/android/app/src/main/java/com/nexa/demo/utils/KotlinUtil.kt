@@ -85,3 +85,4 @@ class FragmentBindingDelegate<VB : ViewBinding>(private val clazz: Class<VB>) :
         return binding
     }
 }
+

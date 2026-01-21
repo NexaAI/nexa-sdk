@@ -42,7 +42,6 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.ProgressBar
-import android.widget.SeekBar
 import android.widget.SimpleAdapter
 import android.widget.Spinner
 import android.widget.TextView
@@ -51,7 +50,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
-import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomsheet.BottomSheetDialog
@@ -64,21 +62,24 @@ import com.liulishuo.okdownload.core.cause.EndCause
 import com.liulishuo.okdownload.core.connection.DownloadOkHttp3Connection
 import com.liulishuo.okdownload.kotlin.listener.createDownloadContextListener
 import com.liulishuo.okdownload.kotlin.listener.createListener1
+import com.nexa.demo.bean.DownloadableFile
+import com.nexa.demo.bean.DownloadableFileWithFallback
+import com.nexa.demo.bean.DownloadState
 import com.nexa.demo.bean.ModelData
 import com.nexa.demo.bean.downloadableFiles
+import com.nexa.demo.bean.downloadableFilesWithFallback
 import com.nexa.demo.bean.getNexaManifest
 import com.nexa.demo.bean.getNonExistModelFile
 import com.nexa.demo.bean.getSupportPluginIds
+import com.nexa.demo.bean.isNpuModel
 import com.nexa.demo.bean.mmprojTokenFile
 import com.nexa.demo.bean.modelDir
 import com.nexa.demo.bean.modelFile
 import com.nexa.demo.bean.tokenFile
+import com.nexa.demo.bean.withFallbackUrls
+import com.nexa.demo.utils.ModelFileListingUtil
 import com.nexa.demo.databinding.ActivityMainBinding
 import com.nexa.demo.databinding.DialogSelectPluginIdBinding
-import com.nexa.demo.databinding.DialogTopkConfigBinding
-import com.nexa.demo.fragments.IndexFragment
-import com.nexa.demo.fragments.IndexedImagesFragment
-import com.nexa.demo.fragments.IndexedVideosFragment
 import com.nexa.demo.listeners.CustomDialogInterface
 import com.nexa.demo.utils.ExecShell
 import com.nexa.demo.utils.ImgUtil
@@ -130,6 +131,9 @@ import javax.net.ssl.X509TrustManager
 class MainActivity : FragmentActivity() {
 
     private val binding: ActivityMainBinding by inflate()
+    private var downloadContext: DownloadContext? = null
+    private var downloadState = DownloadState.IDLE
+    private var downloadingModelData: ModelData? = null
     private lateinit var spDownloaded: SharedPreferences
     private lateinit var llDownloading: LinearLayout
     private lateinit var tvDownloadProgress: TextView
@@ -292,16 +296,6 @@ class MainActivity : FragmentActivity() {
         }
     }
 
-    private fun replaceFragment(fragment: Fragment) {
-        runOnUiThread {
-            Log.d(TAG, "replaceFragment:$fragment")
-            binding.flIndex.visibility = View.VISIBLE
-            supportFragmentManager.beginTransaction()
-                .replace(R.id.fl_index, fragment)
-                .commit()
-        }
-    }
-
     private fun parseModelList() {
         try {
             val baseJson = assets.open("model_list.json").bufferedReader().use { it.readText() }
@@ -365,7 +359,14 @@ Note: You must use the campaign_investigation function whenever a customer asks 
      */
     private fun initNexaSdk() {
         // Initialize NexaSdk with context
-        NexaSdk.getInstance().init(this)
+        NexaSdk.getInstance().init(this, object : NexaSdk.InitCallback {
+            override fun onSuccess() {
+            }
+
+            override fun onFailure(reason: String) {
+                Log.e(TAG, "NexaSdk init failed: $reason")
+            }
+        })
 
         val testLocalPath = false
         if (testLocalPath) {
@@ -541,12 +542,6 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                             isLoadEmbedderModel = true
                             embedderWrapper = wrapper
                             onLoadModelSuccess("embedder model loaded")
-                            if (selectModelData.id == "embedneural-npu") {
-                                runOnUiThread {
-                                    binding.ivTopk.visibility = View.VISIBLE
-                                }
-                                replaceFragment(IndexFragment.newInstance("", ""))
-                            }
                         }.onFailure { error ->
                             onLoadModelFailed(error.message.toString())
                         }
@@ -680,6 +675,307 @@ Note: You must use the campaign_investigation function whenever a customer asks 
         }
     }
 
+    private fun downloadModel(selectModelData: ModelData) {
+        // Check local files first before SharedPreferences
+        val fileName = isModelDownloaded(selectModelData)
+        if (fileName == null || hasLoadedModel()) {
+            Toast.makeText(this@MainActivity, "model already downloaded", Toast.LENGTH_SHORT)
+                .show()
+        } else {
+            downloadState = DownloadState.DOWNLOADING
+            downloadingModelData = selectModelData
+            llDownloading.visibility = View.VISIBLE
+            tvDownloadProgress.text = "0%"
+            modelScope.launch {
+                val selectModelData = modelList.first { it.id == selectModelId }
+                val unsafeClient = getUnsafeOkHttpClient().build()
+                
+                // Track URL mapping for fallback: primary URL -> fallback URL
+                val fallbackUrlMap = mutableMapOf<String, String>()
+                // Track failed downloads for fallback retry
+                val failedDownloads = mutableListOf<DownloadableFileWithFallback>()
+
+                // For NPU models without explicit files list, fetch file list with fallback support
+                val filesToDownloadWithFallback: List<DownloadableFileWithFallback> = if (selectModelData.isNpuModel() && 
+                    selectModelData.files.isNullOrEmpty() && 
+                    !selectModelData.baseUrl.isNullOrEmpty()) {
+                    
+                    Log.d(TAG, "NPU model detected, fetching file list: ${selectModelData.baseUrl}")
+                    
+                    // Fetch file list with fallback support
+                    val result = ModelFileListingUtil.listFilesWithFallback(selectModelData.baseUrl!!, unsafeClient)
+                    
+                    if (result.files.isEmpty()) {
+                        Log.e(TAG, "Failed to fetch file list for ${selectModelData.id}")
+                        runOnUiThread {
+                            downloadState = DownloadState.IDLE
+                            llDownloading.visibility = View.GONE
+                            Toaster.show("Failed to fetch file list.")
+                        }
+                        return@launch
+                    }
+                    
+                    val useHfUrls = result.source == ModelFileListingUtil.FileListResult.Source.HUGGINGFACE
+                    Log.d(TAG, "Found ${result.files.size} files from ${result.source}: ${result.files}")
+                    
+                    selectModelData.downloadableFilesWithFallback(
+                        selectModelData.modelDir(this@MainActivity),
+                        result.files,
+                        useHfUrls
+                    )
+                } else {
+                    // For non-NPU models or models with explicit files, use the original method with fallback
+                    selectModelData.downloadableFiles(selectModelData.modelDir(this@MainActivity)).withFallbackUrls()
+                }
+                
+                // Build fallback URL map
+                filesToDownloadWithFallback.forEach { 
+                    fallbackUrlMap[it.primaryUrl] = it.fallbackUrl
+                }
+                
+                // Convert to simple DownloadableFile for initial download attempt
+                val filesToDownload = filesToDownloadWithFallback.map { 
+                    DownloadableFile(it.file, it.primaryUrl)
+                }
+                
+                Log.d(TAG, "filesToDownload: $filesToDownload")
+                if (filesToDownload.isEmpty()) throw IllegalArgumentException("No download URL")
+
+                fun getUrlFileSize(client: OkHttpClient, url: String): Long {
+                    val hostname = try {
+                        url.substringAfter("://").substringBefore("/")
+                    } catch (e: Exception) {
+                        "unknown"
+                    }
+
+                    Log.d(TAG, "Requesting file size: $hostname")
+
+                    val builder = Request.Builder().url(url).head()
+                    getHfToken(selectModelData, url)?.let {
+                        builder.addHeader("Authorization", "Bearer $it")
+                    }
+                    val request = builder.build()
+                    try {
+                        client.newCall(request).execute().use { resp ->
+                            val size = resp.header("Content-Length")?.toLongOrNull() ?: 0L
+                            Log.d(TAG, "Response: code=${resp.code}, size=$size")
+                            return size
+                        }
+                    } catch (e: java.net.UnknownHostException) {
+                        Log.e(TAG, "DNS resolution failed for $hostname - Check DNS/network")
+                        return 0L
+                    } catch (e: java.net.SocketTimeoutException) {
+                        Log.e(TAG, "Connection timeout to $hostname - Possible firewall/proxy issue")
+                        return 0L
+                    } catch (e: java.net.ConnectException) {
+                        Log.e(TAG, "Connection refused by $hostname - Server unreachable")
+                        return 0L
+                    } catch (e: javax.net.ssl.SSLException) {
+                        Log.e(TAG, "SSL/TLS error to $hostname - ${e.message}")
+                        return 0L
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Network error: ${e.javaClass.simpleName} - ${e.message}")
+                        return 0L
+                    }
+                }
+                
+                // Try to get file sizes, with fallback to HF if S3 fails
+                val fileSizeMap = mutableMapOf<String, Long>()
+                filesToDownloadWithFallback.forEach { fileWithFallback ->
+                    var size = getUrlFileSize(unsafeClient, fileWithFallback.primaryUrl)
+                    if (size == 0L && fileWithFallback.fallbackUrl != fileWithFallback.primaryUrl) {
+                        Log.w(TAG, "Primary URL failed, trying fallback for size: ${fileWithFallback.file.name}")
+                        size = getUrlFileSize(unsafeClient, fileWithFallback.fallbackUrl)
+                    }
+                    fileSizeMap[fileWithFallback.primaryUrl] = size
+                }
+                
+                val totalSizes = filesToDownload.map { fileSizeMap[it.url] ?: 0L }
+                if (totalSizes.any { it == 0L }) {
+                    runOnUiThread {
+                        downloadState = DownloadState.IDLE
+                        llDownloading.visibility = View.GONE
+                        Toaster.show("Download failed - could not get file sizes.")
+                    }
+                    return@launch
+                }
+
+                val alreadyDownloaded = mutableMapOf<String, Long>()
+                val totalBytes = totalSizes.sum()
+                Log.d(TAG, "all model size: $totalBytes")
+
+                val startTime = System.currentTimeMillis()
+                var lastProgressTime = 0L
+                val progressInterval = 500L
+                
+                fun onProgress(
+                    modelId: String,
+                    percent: Int,
+                    downloaded: Long,
+                    totalBytes: Long,
+                    etaSec: Long,
+                    speedStr: String
+                ) {
+                    runOnUiThread {
+                        if (100 == percent) {
+                            llDownloading.visibility = View.GONE
+                            spDownloaded.edit().putBoolean(selectModelId, true).commit()
+                            Toaster.show("${downloadingModelData?.displayName} downloaded")
+                        } else {
+                            tvDownloadProgress.text = "$percent%"
+                        }
+                    }
+                }
+
+                fun reportProgress(force: Boolean = false) {
+                    val now = System.currentTimeMillis()
+                    if (force || now - lastProgressTime > progressInterval) {
+                        val elapsedMs = now - startTime
+                        val downloaded = alreadyDownloaded.values.sum()
+                        val percent =
+                            if (totalBytes > 0) ((downloaded * 100) / totalBytes).toInt() else 0
+                        val speedAvg =
+                            if (elapsedMs > 0) downloaded / (elapsedMs / 1000.0) else 0.0
+                        val etaSec =
+                            if (speedAvg > 0) ((totalBytes - downloaded) / speedAvg).toLong() else -1L
+                        val speedStr = if (speedAvg > 1024 * 1024) {
+                            String.format("%.2f MB/s", speedAvg / (1024 * 1024))
+                        } else {
+                            String.format("%.1f KB/s", speedAvg / 1024)
+                        }
+                        onProgress(selectModelId, percent, downloaded, totalBytes, etaSec, speedStr)
+                        lastProgressTime = now
+                    }
+                }
+                
+                // Function to start download for a list of files
+                fun startDownload(
+                    downloadFiles: List<DownloadableFile>,
+                    isFallbackAttempt: Boolean = false
+                ) {
+                    if (downloadFiles.isEmpty()) {
+                        if (failedDownloads.isEmpty()) {
+                            // All downloads complete
+                            downloadState = DownloadState.IDLE
+                            reportProgress(force = true)
+                            onProgress(selectModelId, 100, totalBytes, totalBytes, 0, "0 KB/s")
+                        } else {
+                            runOnUiThread {
+                                downloadState = DownloadState.IDLE
+                                llDownloading.visibility = View.GONE
+                                Toaster.show("Download failed for some files.")
+                            }
+                        }
+                        return
+                    }
+                    
+                    val queueSet = DownloadContext.QueueSet()
+                        .setParentPathFile(downloadFiles[0].file.parentFile)
+                        .setMinIntervalMillisCallbackProcess(300)
+                    val builder = queueSet.commit()
+                    
+                    downloadFiles.forEach { item ->
+                        val taskBuilder = DownloadTask.Builder(item.url, item.file)
+                        getHfToken(selectModelData, item.url)?.let {
+                            taskBuilder.addHeader("Authorization", "Bearer $it")
+                        }
+                        val task = taskBuilder.build()
+                        task.info?.let {
+                            alreadyDownloaded[it.url] = it.totalOffset
+                        }
+                        builder.bindSetTask(task)
+                    }
+                    
+                    val totalCount = filesToDownload.size
+                    var currentCount = filesToDownload.size - downloadFiles.size
+                    val pendingFallbacks = mutableListOf<DownloadableFile>()
+
+                    downloadContext = builder.setListener(createDownloadContextListener {}).build()
+                    downloadContext?.start(
+                        createListener1(taskStart = { task, _ ->
+                            Log.d(TAG, "download task ${task.id} Start${if (isFallbackAttempt) " (fallback)" else ""}")
+                        }, retry = { task, _ ->
+                            Log.d(TAG, "download task ${task.id} retry")
+                        }, connected = { task, _, _, _ ->
+                            Log.d(TAG, "download task ${task.id} connected")
+                        }, progress = { task, currentOffset, totalLength ->
+                            Log.d(TAG, "download task ${task.id} progress $currentOffset $totalLength")
+                            alreadyDownloaded[task.url] = currentOffset
+                            reportProgress(true)
+                        }) { task, cause, exception, _ ->
+                            when(cause) {
+                                EndCause.CANCELED -> {
+                                    // do nothing
+                                }
+
+                                EndCause.COMPLETED -> {
+                                    Log.d(TAG, "download task ${task.id} end")
+                                    currentCount += 1
+                                    Log.d(TAG, "download task process currentCount:$currentCount, totalCount:$totalCount")
+                                    
+                                    if (currentCount >= totalCount) {
+                                        downloadState = DownloadState.IDLE
+                                        reportProgress(force = true)
+                                        onProgress(selectModelId, 100, totalBytes, totalBytes, 0, "0 KB/s")
+                                    }
+                                }
+
+                                else -> {
+                                    Log.e(TAG, "download task ${task.id} error: $cause, ${exception?.message}")
+                                    
+                                    // Try fallback URL if available and not already a fallback attempt
+                                    if (!isFallbackAttempt) {
+                                        val fallbackUrl = fallbackUrlMap[task.url]
+                                        if (fallbackUrl != null && fallbackUrl != task.url && task.file != null) {
+                                            Log.w(TAG, "Primary download failed, queuing fallback: ${task.file?.name}")
+                                            pendingFallbacks.add(DownloadableFile(task.file!!, fallbackUrl))
+                                        } else {
+                                            val failedFile = filesToDownloadWithFallback.find { it.primaryUrl == task.url }
+                                            if (failedFile != null) {
+                                                failedDownloads.add(failedFile)
+                                            }
+                                        }
+                                    } else {
+                                        val failedFile = filesToDownloadWithFallback.find { 
+                                            it.primaryUrl == task.url || it.fallbackUrl == task.url 
+                                        }
+                                        if (failedFile != null) {
+                                            failedDownloads.add(failedFile)
+                                        }
+                                    }
+                                    
+                                    currentCount += 1
+                                    if (currentCount >= totalCount && pendingFallbacks.isEmpty()) {
+                                        if (failedDownloads.isEmpty()) {
+                                            downloadState = DownloadState.IDLE
+                                            reportProgress(force = true)
+                                            onProgress(selectModelId, 100, totalBytes, totalBytes, 0, "0 KB/s")
+                                        } else {
+                                            runOnUiThread {
+                                                downloadState = DownloadState.IDLE
+                                                llDownloading.visibility = View.GONE
+                                                Toaster.show("Download failed for ${failedDownloads.size} file(s).")
+                                            }
+                                        }
+                                    } else if (pendingFallbacks.isNotEmpty()) {
+                                        Log.d(TAG, "Starting ${pendingFallbacks.size} fallback downloads")
+                                        modelScope.launch {
+                                            startDownload(pendingFallbacks.toList(), isFallbackAttempt = true)
+                                        }
+                                        pendingFallbacks.clear()
+                                    }
+                                }
+                            }
+                        }, true
+                    )
+                }
+                
+                // Start initial download with primary URLs
+                startDownload(filesToDownload)
+            }
+        }
+    }
+
     private fun setListeners() {
 
         btnAddImage.setOnClickListener {
@@ -696,176 +992,34 @@ Note: You must use the campaign_investigation function whenever a customer asks 
         /**
          * Step 3. download model
          */
-        btnDownload.setOnClickListener {
-            val selectModelData = modelList.first { it.id == selectModelId }
-            // Check local files first before SharedPreferences
-            val fileName = isModelDownloaded(selectModelData)
-            if (fileName == null || hasLoadedModel()) {
-                Toast.makeText(this@MainActivity, "model already downloaded", Toast.LENGTH_SHORT)
-                    .show()
-            } else {
-                llDownloading.visibility = View.VISIBLE
-                tvDownloadProgress.text = "0%"
-                modelScope.launch {
-                    val selectModelData = modelList.first { it.id == selectModelId }
-
-                    val filesToDownload =
-                        selectModelData.downloadableFiles(selectModelData.modelDir(this@MainActivity))
-                    Log.d(TAG, "filesToDownload: $filesToDownload")
-                    if (filesToDownload.isEmpty()) throw IllegalArgumentException("No download URL")
-
-                    fun getUrlFileSize(client: OkHttpClient, url: String): Long {
-                        // Extract hostname for logging
-                        val hostname = try {
-                            url.substringAfter("://").substringBefore("/")
-                        } catch (e: Exception) {
-                            "unknown"
-                        }
-
-                        Log.d(TAG, "Requesting: $hostname")
-
-                        val builder = Request.Builder().url(url).head()
-                        getHfToken(selectModelData, url)?.let {
-                            builder.addHeader("Authorization", "Bearer $it")
-                        }
-                        val request = builder.build()
-                        try {
-                            client.newCall(request).execute().use { resp ->
-                                val size = resp.header("Content-Length")?.toLongOrNull() ?: 0L
-                                Log.d(TAG, "Response: code=${resp.code}, size=$size")
-                                return size
-                            }
-                        } catch (e: java.net.UnknownHostException) {
-                            Log.e(TAG, "DNS resolution failed for $hostname - Check DNS/network")
-                            return 0L
-                        } catch (e: java.net.SocketTimeoutException) {
-                            Log.e(
-                                TAG,
-                                "Connection timeout to $hostname - Possible firewall/proxy issue"
-                            )
-                            return 0L
-                        } catch (e: java.net.ConnectException) {
-                            Log.e(TAG, "Connection refused by $hostname - Server unreachable")
-                            return 0L
-                        } catch (e: javax.net.ssl.SSLException) {
-                            Log.e(TAG, "SSL/TLS error to $hostname - ${e.message}")
-                            return 0L
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Network error: ${e.javaClass.simpleName} - ${e.message}")
-                            return 0L
-                        }
-                    }
-
-                    val unsafeClient = getUnsafeOkHttpClient().build()
-
-                    val totalSizes: List<Long> = filesToDownload.map { (file, url) ->
-                        async {
-                            getUrlFileSize(unsafeClient, url)
-                        }
-                    }.awaitAll()
-                    val alreadyDownloaded = mutableMapOf<String, Long>()
-                    val totalBytes = totalSizes.sum()
-                    Log.d(TAG, "all model size: $totalBytes")
-
-                    val startTime = System.currentTimeMillis()
-                    var lastProgressTime = 0L
-                    val progressInterval = 500L
-                    fun onProgress(
-                        modelId: String,
-                        percent: Int,
-                        downloaded: Long,
-                        totalBytes: Long,
-                        etaSec: Long,
-                        speedStr: String
-                    ) {
-                        runOnUiThread {
-                            if (100 == percent) {
-                                llDownloading.visibility = View.GONE
-                                spDownloaded.edit().putBoolean(selectModelId, true).commit()
-                            } else {
-                                tvDownloadProgress.text = "$percent%"
-                            }
-                        }
-                    }
-
-                    fun reportProgress(force: Boolean = false) {
-                        val now = System.currentTimeMillis()
-                        if (force || now - lastProgressTime > progressInterval) {
-                            val elapsedMs = now - startTime
-                            val downloaded = alreadyDownloaded.values.sum()
-                            val percent =
-                                if (totalBytes > 0) ((downloaded * 100) / totalBytes).toInt() else 0
-                            val speedAvg =
-                                if (elapsedMs > 0) downloaded / (elapsedMs / 1000.0) else 0.0
-                            val etaSec =
-                                if (speedAvg > 0) ((totalBytes - downloaded) / speedAvg).toLong() else -1L
-                            val speedStr = if (speedAvg > 1024 * 1024) {
-                                String.format("%.2f MB/s", speedAvg / (1024 * 1024))
-                            } else {
-                                String.format("%.1f KB/s", speedAvg / 1024)
-                            }
-                            onProgress(
-                                selectModelId, percent, downloaded, totalBytes, etaSec, speedStr
-                            )
-                            lastProgressTime = now
-                        }
-                    }
-                    ////////////////////////////////////////////////
-                    var downloadContext: DownloadContext? = null
-                    // val startTime = SystemClock.uptimeMillis()
-                    val queueSet = DownloadContext.QueueSet()
-                        .setParentPathFile(filesToDownload[0].file.parentFile)
-                        .setMinIntervalMillisCallbackProcess(300)
-                    val builder = queueSet.commit()
-                    filesToDownload.withIndex().forEach { (i, item) ->
-                        val taskBuilder = DownloadTask.Builder(item.url, item.file)
-                        getHfToken(selectModelData, item.url)?.let {
-                            taskBuilder.addHeader("Authorization", "Bearer $it")
-                        }
-
-                        val task = taskBuilder.build()
-                        task.info?.let {
-                            alreadyDownloaded[it.url] = it.totalOffset
-                        }
-                        builder.bindSetTask(task)
-                    }
-                    val totalCount = filesToDownload.size
-                    var currentCount = 0
-
-                    downloadContext = builder.setListener(createDownloadContextListener {}).build()
-                    downloadContext?.start(
-                        createListener1(taskStart = { task, _ ->
-                            Log.d(TAG, "download task ${task.id} Start")
-                        }, retry = { task, _ ->
-                            Log.d(TAG, "download task ${task.id} retry")
-                        }, connected = { task, _, _, _ ->
-                            Log.d(TAG, "download task ${task.id} connected")
-                        }, progress = { task, currentOffset, totalLength ->
-                            Log.d(
-                                TAG,
-                                "download task ${task.id} progress $currentOffset $totalLength"
-                            )
-                            alreadyDownloaded[task.url] = currentOffset
-                            reportProgress(true)
-                        }) { task, cause, exception, listener1Model ->
-                            // Listener1Assist.Listener1Model
-                            if (cause != EndCause.COMPLETED) {
-                                Log.e(TAG, "download task ${task.id} error")
-                                return@createListener1
-                            }
-                            // FIXME: Total download progress should be recalculated here, but skipping due to minor difference before completion
-                            Log.d(TAG, "download task ${task.id} end")
-                            // Download finished
-                            currentCount += 1
-                            if (currentCount == totalCount) {
-                                // Show download complete message
-                                reportProgress(force = true)
-                                onProgress(selectModelId, 100, totalBytes, totalBytes, 0, "0 KB/s")
-                            }
-                        }, true
-                    )
+        binding.btnCancelDownload.setOnClickListener {
+            downloadContext?.stop()
+            tvDownloadProgress.text = "0%"
+            downloadingModelData?.downloadableFiles(downloadingModelData!!.modelDir(this))
+                ?.forEach {
+                    it.file.delete()
                 }
+            binding.btnDismissDownload.performClick()
+        }
+        binding.btnRetryDownload.setOnClickListener {
+            downloadContext?.stop()
+            downloadState = DownloadState.IDLE
+            downloadModel(downloadingModelData!!)
+        }
+        binding.btnDismissDownload.setOnClickListener {
+            binding.llDownloading.visibility = View.GONE
+        }
+        btnDownload.setOnClickListener {
+            if (downloadState == DownloadState.DOWNLOADING) {
+                if (downloadingModelData?.id == selectModelId) {
+                    binding.llDownloading.visibility = View.VISIBLE
+                } else {
+                    Toaster.show("${downloadingModelData?.displayName} is currently downloading.")
+                }
+                return@setOnClickListener
             }
+            val selectModelData = modelList.first { it.id == selectModelId }
+            downloadModel(selectModelData)
         }
         /**
          * Step 4. load model
@@ -929,7 +1083,11 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                         if (dialogBinding.llGpuLayers.visibility == View.VISIBLE) {
                             nGpuLayers = dialogBinding.etGpuLayers.text.toString().toInt()
                             if (nGpuLayers == 0) {
-                                Toast.makeText(this@MainActivity, "nGpuLayers min value is 1", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "nGpuLayers min value is 1",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                                 return
                             }
                         }
@@ -965,7 +1123,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
         /**
          * Step 5. send message
          */
-        btnSend.setOnClickListener() {
+        btnSend.setOnClickListener {
             if (!hasLoadedModel()) {
                 Toast.makeText(this@MainActivity, "please load model first", Toast.LENGTH_SHORT)
                     .show()
@@ -1013,7 +1171,9 @@ space ::= | " " | "\n" | "\r" | "\t"
 
             modelScope.launch {
                 val selectModelData = modelList.first { it.id == selectModelId }
-                val isNpuModel = selectModelData.getNexaManifest(this@MainActivity)?.PluginId == "npu"
+                val isNpu = selectModelData.getNexaManifest(this@MainActivity)?.PluginId == "npu"
+                Log.d(TAG, "isNpu: $isNpu")
+
                 val sb = StringBuilder()
                 if (isLoadCVModel) {
                     // FIXME: Temporarily select the last image
@@ -1054,7 +1214,8 @@ space ::= | " " | "\n" | "\r" | "\t"
                                 .show()
                         }
                     } else {
-                        val audioFilePath = audioFile!!.absolutePath
+//                        val audioFilePath = audioFile!!.absolutePath
+                        val audioFilePath = "/sdcard/Download/assets/OSR_us_000_0010_16k.wav"
                         asrWrapper.transcribe(
                             AsrTranscribeInput(
                                 audioFilePath,  // Use hardcoded path instead of inputString
@@ -1083,46 +1244,46 @@ space ::= | " " | "\n" | "\r" | "\t"
                             }
                         }
                     }
-
-                } else if (isLoadEmbedderModel) {
-                    // ADD: Handle embedder inference
-                    // Input format: single text or multiple texts separated by "|"
-                    val texts = inputString.split("|").map { it.trim() }.toTypedArray()
-                    embedderWrapper!!.embed(texts, EmbeddingConfig()).onSuccess { embeddings ->
-                        runOnUiThread {
-                            val result = StringBuilder()
-                            val embeddingDim = embeddings.size / texts.size
-
-                            texts.forEachIndexed { idx, text ->
-                                val start = idx * embeddingDim
-                                val end = start + embeddingDim
-                                val embedding = embeddings.slice(start until end)
-
-                                // Calculate mean and variance
-                                val mean = embedding.average()
-                                val variance = embedding.map { (it - mean) * (it - mean) }.average()
-
-                                result.append("Text ${idx + 1}: \"$text\"\n")
-                                result.append("Embedding dimension: $embeddingDim\n")
-                                result.append("Mean: ${"%.4f".format(mean)}\n")
-                                result.append("Variance: ${"%.4f".format(variance)}\n")
-                                result.append("First 5 values: [")
-                                result.append(
-                                    embedding.take(5).joinToString(", ") { "%.4f".format(it) })
-                                result.append("...]\n\n")
-                            }
-
-                            messages.add(Message(result.toString(), MessageType.ASSISTANT))
-                            reloadRecycleView()
-                        }
-                    }.onFailure { error ->
-                        runOnUiThread {
-                            messages.add(Message("Error: ${error.message}", MessageType.PROFILE))
-                            reloadRecycleView()
-                        }
-                    }
-
-                } else if (isLoadRerankerModel) {
+                }
+//                else if (isLoadEmbedderModel) {
+//                    // ADD: Handle embedder inference
+//                    // Input format: single text or multiple texts separated by "|"
+//                    val texts = inputString.split("|").map { it.trim() }.toTypedArray()
+//                    embedderWrapper!!.embed(texts, EmbeddingConfig()).onSuccess { embeddings ->
+//                        runOnUiThread {
+//                            val result = StringBuilder()
+//                            val embeddingDim = embeddings.size / texts.size
+//
+//                            texts.forEachIndexed { idx, text ->
+//                                val start = idx * embeddingDim
+//                                val end = start + embeddingDim
+//                                val embedding = embeddings.slice(start until end)
+//
+//                                // Calculate mean and variance
+//                                val mean = embedding.average()
+//                                val variance = embedding.map { (it - mean) * (it - mean) }.average()
+//
+//                                result.append("Text ${idx + 1}: \"$text\"\n")
+//                                result.append("Embedding dimension: $embeddingDim\n")
+//                                result.append("Mean: ${"%.4f".format(mean)}\n")
+//                                result.append("Variance: ${"%.4f".format(variance)}\n")
+//                                result.append("First 5 values: [")
+//                                result.append(
+//                                    embedding.take(5).joinToString(", ") { "%.4f".format(it) })
+//                                result.append("...]\n\n")
+//                            }
+//
+//                            messages.add(Message(result.toString(), MessageType.ASSISTANT))
+//                            reloadRecycleView()
+//                        }
+//                    }.onFailure { error ->
+//                        runOnUiThread {
+//                            messages.add(Message("Error: ${error.message}", MessageType.PROFILE))
+//                            reloadRecycleView()
+//                        }
+//                    }
+//                }
+                else if (isLoadRerankerModel) {
                     // Reranker input format: "query\ndoc1\ndoc2\ndoc3..."
                     // First line is query, remaining lines are documents
                     val query = inputString.split("\n")[0]  // Get first line as query
@@ -1158,12 +1319,9 @@ space ::= | " " | "\n" | "\r" | "\t"
                         contents.add(VlmContent("audio", it.absolutePath))
                     }
                     contents.add(VlmContent("text", inputString))
-
                     audioFile = null
                     clearImages()
-
                     val sendMsg = VlmChatMessage(role = "user", contents = contents)
-
                     // VlmContentTransfer(
                     //     this@MainActivity, VlmContent(
                     //         "image", inputString
@@ -1176,7 +1334,7 @@ space ::= | " " | "\n" | "\r" | "\t"
                     Log.d(TAG, "before apply chat template:$vlmChatList")
                     vlmWrapper.applyChatTemplate(vlmChatList.toTypedArray(), tools, enableThinking)
                         .onSuccess { result ->
-                            Log.d(TAG, "vlm result.formattedText1:${result.formattedText}")
+                            Log.d(TAG, "vlm chat template:${result.formattedText}")
                             val baseConfig =
                                 GenerationConfigSample().toGenerationConfig(grammarString)
                             val configWithMedia = vlmWrapper.injectMediaPathsToConfig(
@@ -1185,10 +1343,9 @@ space ::= | " " | "\n" | "\r" | "\t"
                             )
 
                             Log.d(TAG, "Config has ${configWithMedia.imageCount} images")
-                            Log.d(TAG, "vlm result.formattedText2:${result.formattedText}")
 
                             vlmWrapper.generateStreamFlow(
-                                if(isNpuModel) inputString else result.formattedText,
+                                if (isNpu || true) inputString else result.formattedText,
                                 configWithMedia  // Use the updated config with media paths
                             ).collect { handleResult(sb, it) }
                         }.onFailure {
@@ -1198,7 +1355,6 @@ space ::= | " " | "\n" | "\r" | "\t"
                                 ).show()
                             }
                         }
-
                 } else {
                     chatList.add(ChatMessage(role = "user", inputString))
                     // Apply chat template and generate
@@ -1209,7 +1365,7 @@ space ::= | " " | "\n" | "\r" | "\t"
                     ).onSuccess { templateOutput ->
                         Log.d(TAG, "chat template:${templateOutput.formattedText}")
                         llmWrapper.generateStreamFlow(
-                            if (isNpuModel) inputString else templateOutput.formattedText,
+                            templateOutput.formattedText,
                             GenerationConfigSample().toGenerationConfig(grammarString)
                         ).collect { streamResult ->
                             handleResult(sb, streamResult)
@@ -1225,12 +1381,13 @@ space ::= | " " | "\n" | "\r" | "\t"
 
                 clearImages()
             }
+
         }
+
         /**
          * Step 6. others
          */
         btnUnloadModel.setOnClickListener {
-            binding.flIndex.visibility = View.GONE
             if (!hasLoadedModel()) {
                 Toast.makeText(this@MainActivity, "model not loaded", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
@@ -1263,17 +1420,6 @@ space ::= | " " | "\n" | "\r" | "\t"
                 } else if (isLoadEmbedderModel) {
                     // ADD: Unload embedder
                     embedderWrapper!!.destroy()
-                    runOnUiThread {
-                        binding.ivTopk.visibility = View.GONE
-                        supportFragmentManager.beginTransaction().apply {
-                            supportFragmentManager.fragments.forEach {
-                                if(it is IndexFragment) {
-                                    this.remove(it)
-                                }
-                            }
-                        }.commit()
-                    }
-                    // TODO:
                     handleUnloadResult(0)
                 } else if (isLoadRerankerModel) {
                     // ADD: Unload reranker
@@ -1326,35 +1472,6 @@ space ::= | " " | "\n" | "\r" | "\t"
                 }
             }
         }
-        binding.ivTopk.setOnClickListener {
-            val topKBinding = DialogTopkConfigBinding.inflate(layoutInflater)
-            topKBinding.acsTopk.progress = IndexFragment.embedTopK
-            topKBinding.etTopk.setText("${IndexFragment.embedTopK}")
-            topKBinding.acsTopk.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(
-                    seekBar: SeekBar?,
-                    progress: Int,
-                    fromUser: Boolean
-                ) {
-                    IndexFragment.embedTopK = progress
-                    topKBinding.etTopk.setText("${IndexFragment.embedTopK}")
-                }
-
-                override fun onStartTrackingTouch(seekBar: SeekBar?) {
-                }
-
-                override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                }
-
-            })
-            BottomSheetDialog(this, R.style.TransparentBottomSheetDialog).apply {
-                this.setContentView(topKBinding.root)
-                this.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)?.setBackgroundColor(Color.TRANSPARENT)
-                topKBinding.ivClose.setOnClickListener {
-                    this.dismiss()
-                }
-            }.show()
-        }
     }
 
     fun handleResult(sb: StringBuilder, streamResult: LlmStreamResult) {
@@ -1394,26 +1511,23 @@ space ::= | " " | "\n" | "\r" | "\t"
                     val size = messages.size
                     messages[size - 1] = Message(content, MessageType.ASSISTANT)
 
-                    // Format TTFT in milliseconds (2 decimal places)
                     val ttft = String.format(null, "%.2f", streamResult.profile.ttftMs)
-                    
-                    // Format prompt tokens
                     val promptTokens = streamResult.profile.promptTokens
-                    
-                    // Format prefilling speed (2 decimal places)
-                    val prefillSpeed = String.format(null, "%.2f", streamResult.profile.prefillSpeed)
-                    
-                    // Format generated tokens
+                    val prefillSpeed =
+                        String.format(null, "%.2f", streamResult.profile.prefillSpeed)
+
                     val generatedTokens = streamResult.profile.generatedTokens
-                    
-                    // Format decoding speed (2 decimal places)
-                    val decodingSpeed = String.format(null, "%.2f", streamResult.profile.decodingSpeed)
-                    
-                    // Build 3-line profile data
-                    val profileData = "TTFT: $ttft ms; Prompt Tokens: $promptTokens\n" +
-                                     "Prefilling Speed: $prefillSpeed tok/s\n" +
-                                     "Generated Tokens: $generatedTokens; Decoding Speed: $decodingSpeed tok/s"
-                    messages.add(Message(profileData, MessageType.PROFILE))
+                    val decodingSpeed =
+                        String.format(null, "%.2f", streamResult.profile.decodingSpeed)
+
+                    val profileData =
+                        "TTFT: $ttft ms; Prompt Tokens: $promptTokens; \nPrefilling Speed: $prefillSpeed tok/s\nGenerated Tokens: $generatedTokens; Decoding Speed: $decodingSpeed tok/s"
+                    messages.add(
+                        Message(
+                            profileData,
+                            MessageType.PROFILE
+                        )
+                    )
                     reloadRecycleView()
                 }
                 Log.d(TAG, "Completed: ${streamResult.profile}")
@@ -1744,10 +1858,8 @@ space ::= | " " | "\n" | "\r" | "\t"
     }
 
     private fun reloadRecycleView() {
-        runOnUiThread {
-            adapter.notifyDataSetChanged()
-            binding.rvChat.scrollToPosition(messages.size - 1)
-        }
+        adapter.notifyDataSetChanged()
+        binding.rvChat.scrollToPosition(messages.size - 1)
     }
 
     companion object {

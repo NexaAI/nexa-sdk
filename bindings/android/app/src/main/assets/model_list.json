@@ -1,627 +1,176 @@
 [
   {
-    "id": "LFM2.5-1.2B-NPU",
-    "displayName": "LFM2.5-1.2B-NPU",
+    "id": "Llama3.2-3B-NPU-Turbo-NPU",
+    "displayName": "Llama3.2-3B-NPU-Turbo-NPU",
     "modelName": "files-1-2.nexa",
-    "mmprojOrTokenName": "",
-    "sizeGb": 0.9,
-    "params": "1.2 B",
-    "features": ["Chat"],
+    "versionCode": 1,
+    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/Llama3.2-3B-NPU-Turbo-NPU-mobile/",
+    "modelUrl": "files-1-2.nexa"
+  },
+  {
+    "id": "Llama-3.2-3B-Instruct-GGUF",
+    "displayName": "Llama-3.2-3B-Instruct-GGUF",
+    "modelName": "Llama-3.2-3B-Instruct-Q4_0.gguf",
     "type": "chat",
     "versionCode": 1,
-    "modelUrl": "https://huggingface.co/NexaAI/LFM2.5-1.2B-mobile/blob/main/files-1-2.nexa",
-    "mmprojOrTokenUrl": "",
-    "files": [
-      {
-        "name": "nexa.manifest",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/LFM2.5-1.2B-mobile/blob/main/nexa.manifest"
-      },
-      {
-        "name": "files-2-2.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/LFM2.5-1.2B-mobile/blob/main/files-2-2.nexa"
-      },
-      {
-        "name": "weights-1-2.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/LFM2.5-1.2B-mobile/blob/main/weights-1-2.nexa"
-      },
-      {
-        "name": "weights-2-2.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/LFM2.5-1.2B-mobile/blob/main/weights-2-2.nexa"
-      }
-    ]
+    "pluginIds": 17,
+    "modelUrl": "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_0.gguf"
+  },
+  {
+    "id": "Qwen3-4B-Instruct-2507-npu",
+    "displayName": "Qwen3-4B-Instruct-2507-npu",
+    "modelName": "files-1-1.nexa",
+    "versionCode": 1,
+    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/Qwen3-4B-Instruct-2507-npu-mobile/",
+    "modelUrl": "files-1-1.nexa"
+  },
+  {
+    "id": "Qwen3-4B-GGUF",
+    "displayName": "Qwen3-4B-GGUF",
+    "modelName": "Qwen3-4B-Q4_0.gguf",
+    "type": "chat",
+    "versionCode": 1,
+    "pluginIds": 17,
+    "modelUrl": "https://huggingface.co/unsloth/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_0.gguf"
   },
   {
     "id": "Granite-4.0-h-350M-NPU",
     "displayName": "Granite-350M",
     "modelName": "files-1-2.nexa",
-    "mmprojOrTokenName": "",
-    "sizeGb": 1.2,
-    "params": "0.35 B",
-    "features": ["Chat"],
-    "type": "chat",
     "versionCode": 1,
-    "modelUrl": "https://huggingface.co/NexaAI/Granite-4.0-h-350M-NPU-mobile/resolve/main/files-1-2.nexa",
-    "mmprojOrTokenUrl": "",
-    "files": [
-      {
-        "name": "nexa.manifest",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/Granite-4.0-h-350M-NPU-mobile/resolve/main/nexa.manifest"
-      },
-      {
-        "name": "files-2-2.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/Granite-4.0-h-350M-NPU-mobile/resolve/main/files-2-2.nexa"
-      },
-      {
-        "name": "weights-1-2.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/Granite-4.0-h-350M-NPU-mobile/resolve/main/weights-1-2.nexa"
-      },
-      {
-        "name": "weights-2-2.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/Granite-4.0-h-350M-NPU-mobile/resolve/main/weights-2-2.nexa"
-      }
-    ]
+    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/Granite-4.0-h-350M-NPU-mobile/",
+    "modelUrl": "files-1-2.nexa"
   },
   {
     "id": "Granite-4-Micro-NPU",
     "displayName": "Granite-4.0-Micro 3B",
     "modelName": "files-1-2.nexa",
-    "mmprojOrTokenName": "",
-    "sizeGb": 3.2,
-    "params": "1.0 B",
-    "features": ["Chat"],
-    "type": "chat",
     "versionCode": 1,
-    "modelUrl": "https://huggingface.co/NexaAI/Granite-4-Micro-NPU-mobile/resolve/main/files-1-2.nexa",
-    "mmprojOrTokenUrl": "",
-    "files": [
-      {
-        "name": "nexa.manifest",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/Granite-4-Micro-NPU-mobile/resolve/main/nexa.manifest"
-      },
-      {
-        "name": "files-2-2.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/Granite-4-Micro-NPU-mobile/resolve/main/files-2-2.nexa"
-      },
-      {
-        "name": "weights-1-3.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/Granite-4-Micro-NPU-mobile/resolve/main/weights-1-3.nexa"
-      },
-      {
-        "name": "weights-2-3.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/Granite-4-Micro-NPU-mobile/resolve/main/weights-2-3.nexa"
-      },
-      {
-        "name": "weights-3-3.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/Granite-4-Micro-NPU-mobile/resolve/main/weights-3-3.nexa"
-      }
-    ]
-  },
-  {
-    "id": "phi3.5-mini-npu-mobile",
-    "displayName": "phi3.5-mini-npu",
-    "modelName": "files-1-2.nexa",
-    "mmprojOrTokenName": "",
-    "sizeGb": 1.2,
-    "params": "0.35 B",
-    "features": ["Chat"],
-    "type": "chat",
-    "versionCode": 1,
-    "modelUrl": "https://huggingface.co/NexaAI/phi3.5-mini-npu-mobile/resolve/main/files-1-2.nexa",
-    "mmprojOrTokenUrl": "",
-    "files": [
-      {
-        "name": "nexa.manifest",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/phi3.5-mini-npu-mobile/resolve/main/nexa.manifest"
-      },
-      {
-        "name": "files-2-2.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/phi3.5-mini-npu-mobile/resolve/main/files-2-2.nexa"
-      },
-      {
-        "name": "weights-1-3.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/phi3.5-mini-npu-mobile/resolve/main/weights-1-3.nexa"
-      },
-      {
-        "name": "weights-2-3.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/phi3.5-mini-npu-mobile/resolve/main/weights-2-3.nexa"
-      },
-      {
-        "name": "weights-3-3.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/phi3.5-mini-npu-mobile/resolve/main/weights-3-3.nexa"
-      }
-    ]
-  },
-  {
-    "id": "phi4-mini-npu-mobile",
-    "displayName": "phi4-mini-npu",
-    "modelName": "files-1-2.nexa",
-    "mmprojOrTokenName": "",
-    "sizeGb": 1.2,
-    "params": "0.35 B",
-    "features": ["Chat"],
-    "type": "chat",
-    "versionCode": 1,
-    "modelUrl": "https://huggingface.co/NexaAI/phi4-mini-npu-mobile/resolve/main/files-1-2.nexa",
-    "mmprojOrTokenUrl": "",
-    "files": [
-      {
-        "name": "nexa.manifest",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/phi4-mini-npu-mobile/resolve/main/nexa.manifest"
-      },
-      {
-        "name": "files-2-2.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/phi4-mini-npu-mobile/resolve/main/files-2-2.nexa"
-      },
-      {
-        "name": "weights-1-3.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/phi4-mini-npu-mobile/resolve/main/weights-1-3.nexa"
-      },
-      {
-        "name": "weights-2-3.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/phi4-mini-npu-mobile/resolve/main/weights-2-3.nexa"
-      },
-      {
-        "name": "weights-3-3.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/phi4-mini-npu-mobile/resolve/main/weights-3-3.nexa"
-      }
-    ]
-  },
-  {
-    "id": "Llama3.2-3B-NPU-Turbo-NPU-mobile",
-    "displayName": "Llama3.2-3B-NPU-Turbo-NPU",
-    "modelName": "files-1-2.nexa",
-    "mmprojOrTokenName": "",
-    "sizeGb": 1.2,
-    "params": "0.35 B",
-    "features": ["Chat"],
-    "type": "chat",
-    "versionCode": 1,
-    "modelUrl": "https://huggingface.co/NexaAI/Llama3.2-3B-NPU-Turbo-NPU-mobile/resolve/main/files-1-2.nexa",
-    "mmprojOrTokenUrl": "",
-    "files": [
-      {
-        "name": "nexa.manifest",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/Llama3.2-3B-NPU-Turbo-NPU-mobile/resolve/main/nexa.manifest"
-      },
-      {
-        "name": "files-2-2.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/Llama3.2-3B-NPU-Turbo-NPU-mobile/resolve/main/files-2-2.nexa"
-      },
-      {
-        "name": "weights-1-3.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/Llama3.2-3B-NPU-Turbo-NPU-mobile/resolve/main/weights-1-3.nexa"
-      },
-      {
-        "name": "weights-2-3.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/Llama3.2-3B-NPU-Turbo-NPU-mobile/resolve/main/weights-2-3.nexa"
-      },
-      {
-        "name": "weights-3-3.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/Llama3.2-3B-NPU-Turbo-NPU-mobile/resolve/main/weights-3-3.nexa"
-      }
-    ]
-  },
-  {
-    "id": "Qwen3-4B-Instruct-2507-npu-mobile",
-    "displayName": "Qwen3-4B-Instruct-2507-npu",
-    "modelName": "files-1-1.nexa",
-    "mmprojOrTokenName": "",
-    "sizeGb": 1.2,
-    "params": "0.35 B",
-    "features": ["Chat"],
-    "type": "chat",
-    "versionCode": 1,
-    "modelUrl": "https://huggingface.co/NexaAI/Qwen3-4B-Instruct-2507-npu-mobile/resolve/main/files-1-1.nexa",
-    "mmprojOrTokenUrl": "",
-    "files": [
-      {
-        "name": "nexa.manifest",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/Qwen3-4B-Instruct-2507-npu-mobile/resolve/main/nexa.manifest"
-      },
-      {
-        "name": "attachments-1-1.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/Qwen3-4B-Instruct-2507-npu-mobile/resolve/main/attachments-1-1.nexa"
-      },
-      {
-        "name": "weights-1-3.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/Qwen3-4B-Instruct-2507-npu-mobile/resolve/main/weights-1-3.nexa"
-      },
-      {
-        "name": "weights-2-3.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/Qwen3-4B-Instruct-2507-npu-mobile/resolve/main/weights-2-3.nexa"
-      },
-      {
-        "name": "weights-3-3.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/Qwen3-4B-Instruct-2507-npu-mobile/resolve/main/weights-3-3.nexa"
-      }
-    ]
-  },
-  {
-    "id": "Llama-3.2-1B-Instruct-GGUF",
-    "displayName": "Llama-3.2-1B-Instruct-GGUF",
-    "modelName": "Llama-3.2-1B-Instruct-Q4_0.gguf",
-    "mmprojOrTokenName": "",
-    "sizeGb": 1.2,
-    "params": "0.35 B",
-    "features": ["Chat"],
-    "type": "chat",
-    "versionCode": 1,
-    "pluginIds": 17,
-    "modelUrl": "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_0.gguf",
-    "mmprojOrTokenUrl": ""
+    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/Granite-4-Micro-NPU-mobile/",
+    "modelUrl": "files-1-2.nexa"
   },
   {
     "id": "embedneural-npu",
     "displayName": "embedneural-npu",
     "modelName": "files-1-2.nexa",
-    "mmprojOrTokenName": "",
-    "sizeGb": 0.25,
-    "params": "0.6 B",
-    "features": ["Embedding"],
-    "type": "embedder",
     "versionCode": 1,
-    "modelUrl": "https://huggingface.co/NexaAI/embedneural-npu-mobile/resolve/main/files-1-2.nexa",
-    "mmprojOrTokenUrl": "",
-    "files": [
-      {
-        "name": "nexa.manifest",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/embedneural-npu-mobile/resolve/main/nexa.manifest"
-      },
-      {
-        "name": "files-2-2.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/embedneural-npu-mobile/resolve/main/files-2-2.nexa"
-      },
-      {
-        "name": "weights-1-4.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/embedneural-npu-mobile/resolve/main/weights-1-4.nexa"
-      },
-      {
-        "name": "weights-2-4.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/embedneural-npu-mobile/resolve/main/weights-2-4.nexa"
-      },
-      {
-        "name": "weights-3-4.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/embedneural-npu-mobile/resolve/main/weights-3-4.nexa"
-      },
-      {
-        "name": "weights-4-4.nexa",
-        "path": "",
-        "url": "https://huggingface.co/NexaAI/embedneural-npu-mobile/resolve/main/weights-4-4.nexa"
-      }
-    ]
+    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/embedneural-npu-mobile/",
+    "modelUrl": "files-1-2.nexa"
+  },
+  {
+    "id": "embed-gemma-npu",
+    "displayName": "embed-gemma-npu",
+    "modelName": "files-1-2.nexa",
+    "versionCode": 1,
+    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/embeddinggemma-300m-npu-mobile/",
+    "modelUrl": "files-1-2.nexa"
   },
   {
     "id": "LFM2-1.2B-npu",
     "displayName": "LFM2-1.2B-npu",
     "modelName": "files-1-2.nexa",
-    "mmprojOrTokenName": "",
-    "sizeGb": 0.75,
-    "params": "0.6 B",
-    "features": ["Chat"],
-    "type": "chat",
     "versionCode": 1,
-    "modelUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/LFM2-1.2B-npu-mobile/files-1-2.nexa",
-    "mmprojOrTokenUrl": "",
-    "files": [
-      {
-        "name": "nexa.manifest",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/LFM2-1.2B-npu-mobile/nexa.manifest"
-      },
-      {
-        "name": "files-2-2.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/LFM2-1.2B-npu-mobile/files-2-2.nexa"
-      },
-      {
-        "name": "weights-1-2.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/LFM2-1.2B-npu-mobile/weights-1-2.nexa"
-      },
-      {
-        "name": "weights-2-2.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/LFM2-1.2B-npu-mobile/weights-2-2.nexa"
-      }
-    ]
+    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/LFM2-1.2B-npu-mobile/",
+    "modelUrl": "files-1-2.nexa"
+  },
+  {
+    "id": "LFM2.5-1.2B-mobile",
+    "displayName": "LFM2.5-1.2B-npu",
+    "modelName": "files-1-2.nexa",
+    "versionCode": 1,
+    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/LFM2.5-1.2B-mobile/",
+    "modelUrl": "files-1-2.nexa"
   },
   {
     "id": "OmniNeural-4B",
     "displayName": "OmniNeural-4B",
     "modelName": "files-1-1.nexa",
-    "mmprojOrTokenName": "",
-    "sizeGb": 4,
-    "params": "4 B",
-    "features": ["Chat", "VLM"],
-    "type": "multimodal",
     "versionCode": 1,
-    "modelUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/OmniNeural-4B-mobile/files-1-1.nexa",
-    "mmprojOrTokenUrl": "",
-    "files": [
-      {
-        "name": "nexa.manifest",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/OmniNeural-4B-mobile/nexa.manifest"
-      },
-      {
-        "name": "attachments-1-3.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/OmniNeural-4B-mobile/attachments-1-3.nexa"
-      },
-      {
-        "name": "attachments-2-3.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/OmniNeural-4B-mobile/attachments-2-3.nexa"
-      },
-      {
-        "name": "attachments-3-3.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/OmniNeural-4B-mobile/attachments-3-3.nexa"
-      },
-      {
-        "name": "weights-1-8.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/OmniNeural-4B-mobile/weights-1-8.nexa"
-      },
-      {
-        "name": "weights-2-8.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/OmniNeural-4B-mobile/weights-2-8.nexa"
-      },
-      {
-        "name": "weights-3-8.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/OmniNeural-4B-mobile/weights-3-8.nexa"
-      },
-      {
-        "name": "weights-4-8.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/OmniNeural-4B-mobile/weights-4-8.nexa"
-      },
-      {
-        "name": "weights-5-8.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/OmniNeural-4B-mobile/weights-5-8.nexa"
-      },
-      {
-        "name": "weights-6-8.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/OmniNeural-4B-mobile/weights-6-8.nexa"
-      },
-      {
-        "name": "weights-7-8.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/OmniNeural-4B-mobile/weights-7-8.nexa"
-      },
-      {
-        "name": "weights-8-8.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/OmniNeural-4B-mobile/weights-8-8.nexa"
-      }
-    ]
+    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/OmniNeural-4B-mobile/",
+    "modelUrl": "files-1-1.nexa"
   },
   {
     "id": "paddleocr-npu",
     "displayName": "paddleocr-npu",
     "modelName": "weights-1-1.nexa",
-    "mmprojOrTokenName": "",
-    "sizeGb": 0.25,
-    "params": "0.6 B",
-    "features": ["paddleocr"],
-    "type": "paddleocr",
     "versionCode": 1,
-    "modelUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/paddleocr-npu-mobile/weights-1-1.nexa",
-    "mmprojOrTokenUrl": "",
-    "files": [
-      {
-        "name": "nexa.manifest",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/paddleocr-npu-mobile/nexa.manifest"
-      },
-      {
-        "name": "attachments-1-1.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/paddleocr-npu-mobile/attachments-1-1.nexa"
-      },
-      {
-        "name": "ppocr_keys_v1.txt",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/paddleocr-npu-mobile/ppocr_keys_v1.txt"
-      }
-    ]
+    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/paddleocr-npu-mobile/",
+    "modelUrl": "weights-1-1.nexa"
   },
   {
     "id": "parakeet-tdt-0.6b-v3-npu",
     "displayName": "parakeet-tdt-0.6b-v3-npu",
     "modelName": "files-1-2.nexa",
-    "mmprojOrTokenName": "",
-    "sizeGb": 0.6,
-    "params": "0.6 B",
-    "features": ["ASR", "Speech-to-Text"],
-    "type": "asr",
     "versionCode": 1,
-    "modelUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/parakeet-tdt-0.6b-v3-npu-mobile/files-1-2.nexa",
-    "mmprojOrTokenUrl": "",
-    "files": [
-      {
-        "name": "nexa.manifest",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/parakeet-tdt-0.6b-v3-npu-mobile/nexa.manifest"
-      },
-      {
-        "name": "files-2-2.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/parakeet-tdt-0.6b-v3-npu-mobile/files-2-2.nexa"
-      },
-      {
-        "name": "weights-1-5.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/parakeet-tdt-0.6b-v3-npu-mobile/weights-1-5.nexa"
-      },
-      {
-        "name": "weights-2-5.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/parakeet-tdt-0.6b-v3-npu-mobile/weights-2-5.nexa"
-      },
-      {
-        "name": "weights-3-5.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/parakeet-tdt-0.6b-v3-npu-mobile/weights-3-5.nexa"
-      },
-      {
-        "name": "weights-4-5.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/parakeet-tdt-0.6b-v3-npu-mobile/weights-4-5.nexa"
-      },
-      {
-        "name": "weights-5-5.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/parakeet-tdt-0.6b-v3-npu-mobile/weights-5-5.nexa"
-      }
-    ]
+    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/parakeet-tdt-0.6b-v3-npu-mobile/",
+    "modelUrl": "files-1-2.nexa"
   },
   {
     "id": "embeddinggemma-300m-npu",
     "displayName": "embeddinggemma-300m-npu",
     "modelName": "files-1-2.nexa",
-    "mmprojOrTokenName": "",
-    "sizeGb": 0.25,
-    "params": "0.6 B",
-    "features": ["Embedding"],
-    "type": "embedder",
     "versionCode": 1,
-    "modelUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/embeddinggemma-300m-npu-mobile/files-1-2.nexa",
-    "mmprojOrTokenUrl": "",
-    "files": [
-      {
-        "name": "nexa.manifest",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/embeddinggemma-300m-npu-mobile/nexa.manifest"
-      },
-      {
-        "name": "files-2-2.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/embeddinggemma-300m-npu-mobile/files-2-2.nexa"
-      },
-      {
-        "name": "weights-1-2.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/embeddinggemma-300m-npu-mobile/weights-1-2.nexa"
-      },
-      {
-        "name": "weights-2-2.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/embeddinggemma-300m-npu-mobile/weights-2-2.nexa"
-      }
-    ]
+    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/embeddinggemma-300m-npu-mobile/",
+    "modelUrl": "files-1-2.nexa"
   },
   {
     "id": "jina-v2-rerank-npu",
     "displayName": "jina-v2-rerank-npu",
     "modelName": "files-1-2.nexa",
-    "mmprojOrTokenName": "",
-    "sizeGb": 1.0,
-    "params": "0.6 B",
-    "features": ["Rerank"],
-    "type": "reranker",
     "versionCode": 1,
-    "modelUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/jina-v2-rerank-npu-mobile/files-1-2.nexa",
-    "mmprojOrTokenUrl": "",
-    "files": [
-      {
-        "name": "nexa.manifest",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/jina-v2-rerank-npu-mobile/nexa.manifest"
-      },
-      {
-        "name": "files-2-2.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/jina-v2-rerank-npu-mobile/files-2-2.nexa"
-      },
-      {
-        "name": "weights-1-4.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/jina-v2-rerank-npu-mobile/weights-1-4.nexa"
-      },
-      {
-        "name": "weights-2-4.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/jina-v2-rerank-npu-mobile/weights-2-4.nexa"
-      },
-      {
-        "name": "weights-3-4.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/jina-v2-rerank-npu-mobile/weights-3-4.nexa"
-      },
-      {
-        "name": "weights-4-4.nexa",
-        "path": "",
-        "url": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/jina-v2-rerank-npu-mobile/weights-4-4.nexa"
-      }
-    ]
+    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/jina-v2-rerank-npu-mobile/",
+    "modelUrl": "files-1-2.nexa"
   },
   {
     "id": "SmolVLM-256M-Instruct-f16",
     "displayName": "SmolVLM-256M-Instruct-f16",
     "modelName": "SmolVLM-256M-Instruct-f16.gguf",
     "mmprojOrTokenName": "mmproj-SmolVLM-256M-Instruct-f16.json",
-    "sizeGb": 0.48,
-    "params": "256 M",
-    "features": ["Chat", "VLM"],
     "type": "multimodal",
     "versionCode": 1,
-    "modelUrl": "https://huggingface.co/ggml-org/SmolVLM-256M-Instruct-GGUF/resolve/main/SmolVLM-256M-Instruct-f16.gguf?download=true",
-    "mmprojOrTokenUrl": "https://huggingface.co/ggml-org/SmolVLM-256M-Instruct-GGUF/resolve/main/mmproj-SmolVLM-256M-Instruct-f16.gguf?download=true"
+    "pluginIds": 17,
+    "baseUrl": "https://huggingface.co/ggml-org/SmolVLM-256M-Instruct-GGUF/resolve/main/",
+    "modelUrl": "SmolVLM-256M-Instruct-f16.gguf?download=true",
+    "mmprojOrTokenUrl": "mmproj-SmolVLM-256M-Instruct-f16.gguf?download=true"
+  },
+  {
+    "id": "Qwen3VL-4B-Instruct-Q4_K_M",
+    "displayName": "Qwen3VL-4B-Instruct-Q4_K_M",
+    "modelName": "Qwen3VL-4B-Instruct-Q4_K_M.gguf",
+    "mmprojOrTokenName": "",
+    "type": "multimodal",
+    "versionCode": 1,
+    "baseUrl": "https://huggingface.co/NexaAI/Qwen3-VL-4B-Instruct-GGUF/resolve/main/",
+    "modelUrl": "Qwen3VL-4B-Instruct-Q4_K_M.gguf?download=true",
+    "mmprojOrTokenUrl": ""
+  },
+  {
+    "id": "Qwen3VL-4B-Instruct-Q8_0",
+    "displayName": "Qwen3VL-4B-Instruct-Q8_0",
+    "modelName": "Qwen3VL-4B-Instruct-Q8_0.gguf",
+    "mmprojOrTokenName": "mmproj-Qwen3VL-4B-Instruct-Q8_0.gguf",
+    "type": "multimodal",
+    "versionCode": 1,
+    "baseUrl": "https://huggingface.co/NexaAI/Qwen3-VL-4B-Instruct-GGUF/resolve/main/",
+    "modelUrl": "Qwen3VL-4B-Instruct-Q8_0.gguf?download=true",
+    "mmprojOrTokenUrl": "mmproj-Qwen3VL-4B-Instruct-Q8_0.gguf?download=true"
   },
   {
     "id": "LFM2-1.2B-GGUF-GGUF",
     "displayName": "LFM2-1.2B-GGUF-GGUF",
     "modelName": "LFM2-1.2B-Q4_0.gguf",
-    "mmprojOrTokenName": "",
-    "sizeGb": 0.75,
-    "params": "0.6 B",
-    "features": ["Chat"],
     "type": "chat",
     "versionCode": 1,
-    "modelUrl": "https://huggingface.co/LiquidAI/LFM2-1.2B-GGUF/resolve/main/LFM2-1.2B-Q4_0.gguf",
-    "mmprojOrTokenUrl": ""
+    "pluginIds": 17,
+    "modelUrl": "https://huggingface.co/LiquidAI/LFM2-1.2B-GGUF/resolve/main/LFM2-1.2B-Q4_0.gguf"
+  },
+  {
+    "id": "Llama-3.2-1B-Instruct-GGUF",
+    "displayName": "Llama-3.2-1B-Instruct-GGUF",
+    "modelName": "Llama-3.2-1B-Instruct-Q4_0.gguf",
+    "type": "chat",
+    "versionCode": 1,
+    "pluginIds": 17,
+    "modelUrl": "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_0.gguf"
   }
 ]

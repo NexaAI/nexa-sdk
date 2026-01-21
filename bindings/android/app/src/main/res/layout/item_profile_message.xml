@@ -2,16 +2,17 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="8dp"
-    android:gravity="start">
+    android:gravity="start"
+    android:orientation="vertical"
+    android:padding="8dp">
 
     <TextView
         android:id="@+id/tv_message"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="#888888"
-        android:maxWidth="320dp"
-        android:textSize="12sp"
         android:letterSpacing="0.02"
-        android:text="Profile data"/>
+        android:maxWidth="320dp"
+        android:text="Profile data"
+        android:textColor="#888888"
+        android:textSize="12sp" />
 </LinearLayout>

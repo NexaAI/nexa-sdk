@@ -14,14 +14,22 @@
 
 package com.nexa.demo
 
+import android.content.Intent
 import android.net.Uri
+import android.text.method.LinkMovementMethod
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.nexa.demo.activity.FileContentActivity
+import io.noties.markwon.Markwon
+import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
+import io.noties.markwon.ext.tables.TablePlugin
+import io.noties.markwon.linkify.LinkifyPlugin
 import java.io.File
 
 
@@ -43,10 +51,11 @@ enum class MessageType(val value: Int) {
             entries.firstOrNull { it.value == value } ?: PROFILE
     }
 }
+
 class ChatAdapter(private val messages: List<Message>) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
-    override fun getItemViewType(position: Int): Int  {
+    override fun getItemViewType(position: Int): Int {
         val message = messages[position]
         return message.type.value
     }
@@ -56,7 +65,7 @@ class ChatAdapter(private val messages: List<Message>) :
         val type = MessageType.from(viewType)
         return if (type == MessageType.USER) {
             UserViewHolder(inflater.inflate(R.layout.item_user_message, parent, false))
-        } else if (type == MessageType.ASSISTANT){
+        } else if (type == MessageType.ASSISTANT) {
             AiViewHolder(inflater.inflate(R.layout.item_ai_message, parent, false))
         } else if (type == MessageType.IMAGES) {
             ImagesViewHolder(inflater.inflate(R.layout.item_image_message, parent, false))
@@ -84,15 +93,27 @@ class ChatAdapter(private val messages: List<Message>) :
 
     class AiViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val tvMessage: TextView = itemView.findViewById(R.id.tv_message)
+        private val markwon: Markwon = Markwon.builder(itemView.context)
+            .usePlugin(StrikethroughPlugin.create())
+            .usePlugin(TablePlugin.create(itemView.context))
+            .usePlugin(LinkifyPlugin.create())
+            .build()
+
         fun bind(message: Message) {
-            tvMessage.text = message.content
+            markwon.setMarkdown(tvMessage, message.content.trim())
+            tvMessage.movementMethod = LinkMovementMethod.getInstance()
         }
     }
 
     class ProfileViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val tvMessage: TextView = itemView.findViewById(R.id.tv_message)
+
         fun bind(message: Message) {
             tvMessage.text = message.content
+        }
+        
+        private fun dpToPx(dp: Int, context: android.content.Context): Int {
+            return (dp * context.resources.displayMetrics.density).toInt()
         }
     }
 

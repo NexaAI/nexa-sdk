@@ -25,5 +25,5 @@ data class DownloadFileConfig (
      * Path relative to model dir
      */
     val path:String? = "",
-    val url:String
+    val url:String? = ""
 )
