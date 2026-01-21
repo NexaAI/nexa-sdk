@@ -9,7 +9,7 @@
     <picture>
       <source srcset="assets/chipmakers-dark.png" media="(prefers-color-scheme: dark)">
       <source srcset="assets/chipmakers.png" media="(prefers-color-scheme: light)">
-      <img src="assets/chipmakers.png" style="max-height:30px; height:auto; width:auto;">
+      <img src="assets/chipmakers-dark.png" style="max-height:30px; height:auto; width:auto;">
     </picture>
   </p>
   <p>
