@@ -61,7 +61,7 @@ android {
 //            jniLibs.srcDirs("src/main/jniLibs")
 //        }
 //    }
-    packagingOptions {
+    packaging {
         jniLibs.useLegacyPackaging = true
     }
 
@@ -79,14 +79,15 @@ print("bridgePathExist: $bridgePathExist\n")
 dependencies {
 
     // ===== NEXA CLOUD SDK =====
-    // Using cloud SDK instead of local bridge - latest version
-    implementation("ai.nexa:core:+")
+    // NexaAI SDK from Maven - pinned version for stability
+    implementation("ai.nexa:core:0.0.16")
     // ===== NEXA CLOUD SDK END =====
     implementation(project(":transform"))
-    implementation(":okdownload-core@aar")
-    implementation(":okdownload-sqlite@aar")
-    implementation(":okdownload-okhttp@aar")
-    implementation(":okdownload-ktx@aar")
+    // Local AAR dependencies from libs folder
+    implementation(files("libs/okdownload-core.aar"))
+    implementation(files("libs/okdownload-sqlite.aar"))
+    implementation(files("libs/okdownload-okhttp.aar"))
+    implementation(files("libs/okdownload-ktx.aar"))
     implementation(kotlin("reflect"))
     implementation(libs.glide)
     implementation(libs.gson)

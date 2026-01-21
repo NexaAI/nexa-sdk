@@ -1,12 +1,21 @@
-# Overview
+# DO NOT COPY
+```bash
+# ===== NEXA INTERNAL BEGIN =====
+# TODO: put all credentials here
+# ===== NEXA INTERNAL END =====
+```
 
-This project is a demo for building a Retrieval-Augmented Generation (RAG) pipeline using NexaSDK. It showcases how to combine embedding and LLM models to answer questions over your own documents, also shows the performance of Nexa AI's infra for NPU vs CPU/GPU, especcially for prefilling speed gains.
+# Nexa Android SDK Demo App 
+
+## Overview
+
+The Nexa AI Android SDK enables on-device AI inference for Android applications with NPU acceleration. Run Large Language Models (LLMs), Vision-Language Models (VLMs), Embeddings, Speech Recognition (ASR), Reranking, and Computer Vision models on Android devices with support for NPU, GPU, and CPU inference. Follow [Android SDK Doc](https://docs.nexa.ai/nexa-sdk-android/overview) for more details. This folder contains the demo app for the Android SDK.
 
 ## Device Compatibility
 
 ### Supported Hardware
 
-- **NPU**: Qualcomm Snapdragon 8 Gen 4
+- **NPU**: Qualcomm Snapdragon 8 Gen 4 (optimized)
 - **GPU**: Qualcomm Adreno GPU
 - **CPU**: ARM64-v8a
 - **RAM**: 4GB+ recommended
@@ -26,6 +35,8 @@ This project is a demo for building a Retrieval-Augmented Generation (RAG) pipel
 git clone https://github.com/NexaAI/nexa-sdk/
 ```
 
-2. Open this folder `cookbook/android/RAG-LLM` in Android Studio
+2. Open this folder `bindings/android` in Android Studio
 
-3. Build and run the app
+3. Follow the instructions in [Android SDK Doc](https://docs.nexa.ai/nexa-sdk-android/overview), download model (For example, [`OmniNeural-4B`](https://huggingface.co/NexaAI/OmniNeural-4B)) and put it in App's assets folder (For example, `/data/data/com.nexa.demo/files/models/omni-neural-4b `).
+
+4. Build and run the app
