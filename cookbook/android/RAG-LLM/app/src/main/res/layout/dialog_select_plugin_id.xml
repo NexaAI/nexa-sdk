@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="15dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Select Inference Engine"
+            android:textColor="@color/font_black"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/iv_close"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/icon_close" />
+
+    </LinearLayout>
+
+    <com.nexa.demo.widget.WrapRadioGroup
+        android:id="@+id/rg_select_plugin_id"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="25dp"
+        android:gravity="center_vertical"
+        app:wrapOrientation="horizontal">
+
+        <RadioButton
+            android:id="@+id/rb_npu"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_marginLeft="10dp"
+            android:button="@drawable/rb_bg"
+            android:checked="true"
+            android:paddingLeft="5dp"
+            android:text="NPU" />
+
+        <RadioButton
+            android:id="@+id/rb_npu_llama"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_marginLeft="10dp"
+            android:button="@drawable/rb_bg"
+            android:paddingLeft="5dp"
+            android:text="NPU(llama.cpp)"
+            android:visibility="gone" />
+
+        <RadioButton
+            android:id="@+id/rb_gpu"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_marginLeft="10dp"
+            android:button="@drawable/rb_bg"
+            android:checked="false"
+            android:paddingLeft="5dp"
+            android:text="GPU"
+            android:visibility="visible" />
+
+        <RadioButton
+            android:id="@+id/rb_cpu"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:button="@drawable/rb_bg"
+            android:checked="false"
+            android:paddingLeft="5dp"
+            android:text="CPU"
+            android:visibility="visible" />
+
+    </com.nexa.demo.widget.WrapRadioGroup>
+
+    <LinearLayout
+        android:id="@+id/ll_gpu_layers"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="nGpuLayers 1~999 : " />
+
+        <EditText
+            android:id="@+id/et_gpu_layers"
+            android:layout_width="50dp"
+            android:layout_height="wrap_content"
+            android:gravity="right"
+            android:inputType="number"
+            android:maxLength="3"
+            android:text="999" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btn_load"
+        android:layout_width="match_parent"
+        android:layout_height="35dp"
+        android:layout_marginTop="30dp"
+        android:background="@drawable/btn_rounded_black_bg_18"
+        android:minWidth="1dp"
+        android:minHeight="1dp"
+        android:text="Load"
+        android:textAllCaps="false"
+        android:textColor="@color/font_white"
+        android:textSize="16sp" />
+
+</LinearLayout>
