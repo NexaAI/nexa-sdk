@@ -1,27 +1,23 @@
-// Copyright 2024-2026 Nexa AI, Inc.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package com.nexa.demo.bean
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.text.TextUtils
 import com.nexa.demo.FileConfig
+import com.nexa.demo.utils.ModelFileListingUtil
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonBuilder
-import org.json.JSONObject
 import java.io.File
+
+/**
+ * Extended downloadable file with fallback URL support.
+ * Primary URL is S3, fallback URL is Hugging Face.
+ */
+data class DownloadableFileWithFallback(
+    val file: File,
+    val primaryUrl: String,      // S3 URL
+    val fallbackUrl: String      // HuggingFace URL
+)
 
 @SuppressLint("UnsafeOptInUsageError")
 @Serializable
@@ -41,8 +37,9 @@ data class ModelData(
      * gpu_npu: 272,
      * cpu_gpu_npu: 273
      */
-    val pluginIds:Int? = 0,
-    val mmprojOrTokenName: String,
+    val pluginIds: Int? = 0,
+    val baseUrl: String? = null,
+    val mmprojOrTokenName: String? = null,
     val tokenName: String = "",
     val embeddingName: String = "",
     val extConfigName: String = "",
@@ -50,10 +47,10 @@ data class ModelData(
     val mmprojOrTokenUrl: String? = null,
     val embeddingUrl: String? = null,
     val extConfigUrl: String? = null,
-    val sizeGb: Double,
-    val params: String,
-    val features: List<String>,
-    val type: String,
+    val sizeGb: Double? = 0.0,
+    val params: String? = null,
+    val features: List<String>? = null,
+    val type: String? = null,
     /**
      * Used to indicate the version number of ModelData, mainly for handling the storage location of downloaded files.
      * 0: Default value — files are stored directly under the files/models directory.
@@ -150,42 +147,56 @@ fun ModelData.audioEncoderConfigFile(context: Context): File? =
         File(modelDir(context), audioEncoderConfigFileName)
     }
 
+private fun ModelData.getRealUrl(url: String) = if (TextUtils.isEmpty(baseUrl)) {
+    url
+} else {
+    if (url.startsWith("http://", true) || url.startsWith("https://", true)) {
+        url
+    } else {
+        if (baseUrl!!.endsWith("/")) {
+            "$baseUrl$url"
+        } else {
+            "$baseUrl/$url"
+        }
+    }
+}
+
 fun ModelData.downloadableFiles(modelDir: File): List<DownloadableFile> = listOfNotNull(
     modelUrl?.takeIf { it.isNotBlank() }?.let {
-        DownloadableFile(File(modelDir, modelName), it)
+        DownloadableFile(File(modelDir, modelName), getRealUrl(it))
     },
     mmprojOrTokenUrl?.takeIf { it.isNotBlank() }?.let {
-        DownloadableFile(File(modelDir, mmprojOrTokenName), it)
+        DownloadableFile(File(modelDir, mmprojOrTokenName), getRealUrl(it))
     },
     tokenUrl?.takeIf { it.isNotBlank() }?.let {
-        DownloadableFile(File(modelDir, tokenName), it)
+        DownloadableFile(File(modelDir, tokenName), getRealUrl(it))
     },
     embeddingUrl?.takeIf { it.isNotBlank() }?.let {
-        DownloadableFile(File(modelDir, embeddingName), it)
+        DownloadableFile(File(modelDir, embeddingName), getRealUrl(it))
     },
     extConfigUrl?.takeIf { it.isNotBlank() }?.let {
-        DownloadableFile(File(modelDir, extConfigName), it)
+        DownloadableFile(File(modelDir, extConfigName), getRealUrl(it))
     },
     patchEmbedPathUrl?.takeIf { it.isNotBlank() }?.let {
-        DownloadableFile(File(modelDir, patchEmbedName), it)
+        DownloadableFile(File(modelDir, patchEmbedName), getRealUrl(it))
     },
     vitModelPathUrl?.takeIf { it.isNotBlank() }?.let {
-        DownloadableFile(File(modelDir, vitModelName), it)
+        DownloadableFile(File(modelDir, vitModelName), getRealUrl(it))
     },
     vitConfigFilePathUrl?.takeIf { it.isNotBlank() }?.let {
-        DownloadableFile(File(modelDir, vitConfigFileName), it)
+        DownloadableFile(File(modelDir, vitConfigFileName), getRealUrl(it))
     },
     audioEncoderHelper0PathUrl?.takeIf { it.isNotBlank() }?.let {
-        DownloadableFile(File(modelDir, audioEncoderHelper0Name), it)
+        DownloadableFile(File(modelDir, audioEncoderHelper0Name), getRealUrl(it))
     },
     audioEncoderHelper1PathUrl?.takeIf { it.isNotBlank() }?.let {
-        DownloadableFile(File(modelDir, audioEncoderHelper1Name), it)
+        DownloadableFile(File(modelDir, audioEncoderHelper1Name), getRealUrl(it))
     },
     audioEncoderModelPathUrl?.takeIf { it.isNotBlank() }?.let {
-        DownloadableFile(File(modelDir, audioEncoderModelName), it)
+        DownloadableFile(File(modelDir, audioEncoderModelName), getRealUrl(it))
     },
     audioEncoderConfigFilePathUrl?.takeIf { it.isNotBlank() }?.let {
-        DownloadableFile(File(modelDir, audioEncoderConfigFileName), it)
+        DownloadableFile(File(modelDir, audioEncoderConfigFileName), getRealUrl(it))
     }
 ).let {
     val temp = arrayListOf<DownloadableFile>()
@@ -196,7 +207,11 @@ fun ModelData.downloadableFiles(modelDir: File): List<DownloadableFile> = listOf
                     File(
                         modelDir,
                         fileConfig.path + File.separator + fileConfig.name
-                    ), fileConfig.url
+                    ), if (TextUtils.isEmpty(fileConfig.url)) {
+                        getRealUrl(fileConfig.name)
+                    } else {
+                        getRealUrl(fileConfig.url!!)
+                    }
                 )
             )
         }
@@ -210,7 +225,7 @@ fun ModelData.allModelFilesExist(modelDir: File): Boolean {
     return files.all { it.exists() && it.length() > 0 }
 }
 
-fun ModelData.getNonExistModelFile(modelDir: File):String? {
+fun ModelData.getNonExistModelFile(modelDir: File): String? {
     this.downloadableFiles(modelDir).forEach {
         if (!(it.file.exists() && it.file.length() > 0)) {
             return it.file.absolutePath.replace("/data/user/0", "/data/data")
@@ -222,7 +237,7 @@ fun ModelData.getNonExistModelFile(modelDir: File):String? {
 fun ModelData.getNexaManifest(context: Context): NexaManifestBean? {
     try {
         val str = File(modelDir(context), "nexa.manifest").bufferedReader().use { it.readText() }
-        return Json { 
+        return Json {
             ignoreUnknownKeys = true
         }.decodeFromString<NexaManifestBean>(str)
     } catch (e: Exception) {
@@ -247,4 +262,92 @@ fun ModelData.getSupportPluginIds(): ArrayList<String> {
         }
     }
     return pluginIds
+}
+
+/**
+ * Checks if this model is an NPU model.
+ * NPU models are identified by:
+ * - "NPU" (case-insensitive) in the model id, OR
+ * - ".nexa" suffix in modelName
+ */
+fun ModelData.isNpuModel(): Boolean {
+    return id.contains("NPU", ignoreCase = true) || 
+           id.contains("npu", ignoreCase = true) ||
+           modelName.endsWith(".nexa", ignoreCase = true)
+}
+
+/**
+ * Downloads files for NPU models using a dynamically fetched file list.
+ * This overload is used when files are fetched from S3/HF listing instead of
+ * being specified in model_list.json.
+ *
+ * @param modelDir Directory where model files will be stored
+ * @param npuFileNames List of file names fetched from listing
+ * @return List of DownloadableFile objects representing files to download
+ */
+fun ModelData.downloadableFilesWithNpuList(
+    modelDir: File,
+    npuFileNames: List<String>
+): List<DownloadableFile> {
+    val npuFiles = arrayListOf<DownloadableFile>()
+    npuFileNames.forEach { fileName ->
+        val url = if (baseUrl.isNullOrEmpty()) {
+            fileName
+        } else {
+            if (baseUrl.endsWith("/")) "$baseUrl$fileName" else "$baseUrl/$fileName"
+        }
+        npuFiles.add(DownloadableFile(File(modelDir, fileName), url))
+    }
+    return npuFiles
+}
+
+/**
+ * Downloads files for NPU models with fallback URL support.
+ * Primary URL is S3, fallback URL is Hugging Face.
+ *
+ * @param modelDir Directory where model files will be stored
+ * @param npuFileNames List of file names fetched from listing
+ * @param useHfUrls If true, use HF URLs as primary (when S3 listing failed)
+ * @return List of DownloadableFileWithFallback objects
+ */
+fun ModelData.downloadableFilesWithFallback(
+    modelDir: File,
+    npuFileNames: List<String>,
+    useHfUrls: Boolean = false
+): List<DownloadableFileWithFallback> {
+    val npuFiles = arrayListOf<DownloadableFileWithFallback>()
+    val repoId = if (!baseUrl.isNullOrEmpty()) {
+        ModelFileListingUtil.getHfRepoId(baseUrl)
+    } else {
+        "NexaAI/$id"
+    }
+
+    npuFileNames.forEach { fileName ->
+        val s3Url = if (baseUrl.isNullOrEmpty()) {
+            fileName
+        } else {
+            if (baseUrl.endsWith("/")) "$baseUrl$fileName" else "$baseUrl/$fileName"
+        }
+        val hfUrl = ModelFileListingUtil.getHfDownloadUrl(repoId, fileName)
+        
+        // If useHfUrls is true, swap primary and fallback
+        if (useHfUrls) {
+            npuFiles.add(DownloadableFileWithFallback(File(modelDir, fileName), hfUrl, s3Url))
+        } else {
+            npuFiles.add(DownloadableFileWithFallback(File(modelDir, fileName), s3Url, hfUrl))
+        }
+    }
+
+    return npuFiles
+}
+
+/**
+ * Converts a list of DownloadableFile to DownloadableFileWithFallback.
+ * Adds HuggingFace fallback URLs for each file.
+ */
+fun List<DownloadableFile>.withFallbackUrls(): List<DownloadableFileWithFallback> {
+    return map { df ->
+        val fallbackUrl = ModelFileListingUtil.getHfUrlForGgufFile(df.url)
+        DownloadableFileWithFallback(df.file, df.url, fallbackUrl)
+    }
 }
