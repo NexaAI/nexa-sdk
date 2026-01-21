@@ -87,19 +87,6 @@
                 android:visibility="gone"
                 tools:visibility="gone" />
 
-            <View
-                android:layout_width="0dp"
-                android:layout_height="1px"
-                android:layout_weight="1" />
-
-            <ImageView
-                android:id="@+id/iv_topk"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginRight="5dp"
-                android:padding="8dp"
-                android:src="@drawable/icon_topk_config"
-                android:visibility="gone" />
         </LinearLayout>
 
         <View
@@ -172,10 +159,7 @@
                         android:hint="Type prompt..."
                         android:padding="6dp"
                         android:text="hi"
-                        android:textColorHint="#ADADAD"
-                        android:maxLines="6"
-                        android:scrollbars="vertical"
-                        android:inputType="textMultiLine|textCapSentences" />
+                        android:textColorHint="#ADADAD" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -257,14 +241,6 @@
                     </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
-
-            <FrameLayout
-                android:id="@+id/fl_index"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@color/white"
-                android:clickable="true"
-                android:visibility="gone" />
         </FrameLayout>
 
     </LinearLayout>
@@ -326,10 +302,11 @@
         android:id="@+id/ll_downloading"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:clickable="true"
         android:gravity="center"
         android:orientation="vertical"
         android:visibility="invisible"
-        tools:visibility="gone">
+        tools:visibility="visible">
 
         <ProgressBar
             android:id="@+id/pb_downloading"
@@ -342,6 +319,39 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="0%" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btn_cancel_download"
+                android:layout_width="wrap_content"
+                android:layout_height="30dp"
+                android:background="@drawable/btn_rounded_border"
+                android:text="cancel"
+                android:textAllCaps="false" />
+
+            <Button
+                android:id="@+id/btn_retry_download"
+                android:layout_width="wrap_content"
+                android:layout_height="30dp"
+                android:layout_marginLeft="20dp"
+                android:background="@drawable/btn_rounded_border"
+                android:text="retry"
+                android:textAllCaps="false" />
+
+            <Button
+                android:id="@+id/btn_dismiss_download"
+                android:layout_width="wrap_content"
+                android:layout_height="30dp"
+                android:layout_marginLeft="20dp"
+                android:background="@drawable/btn_rounded_border"
+                android:text="dismiss"
+                android:textAllCaps="false" />
+        </LinearLayout>
     </LinearLayout>
 
     <LinearLayout
