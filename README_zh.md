@@ -138,7 +138,7 @@ for token in llm.generate_stream(prompt, GenerationConfig(max_tokens=100)):
 
 ```kotlin
 dependencies {
-		implementation("ai.nexa:core:0.0.16")
+		implementation("ai.nexa:core:0.0.19")
 }
 ```
 
