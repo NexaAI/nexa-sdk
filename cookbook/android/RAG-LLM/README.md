@@ -11,6 +11,9 @@
 
 The Nexa AI Android SDK enables on-device AI inference for Android applications with NPU acceleration. Run Large Language Models (LLMs), Vision-Language Models (VLMs), Embeddings, Speech Recognition (ASR), Reranking, and Computer Vision models on Android devices with support for NPU, GPU, and CPU inference. Follow [Android SDK Doc](https://docs.nexa.ai/nexa-sdk-android/overview) for more details. This folder contains the demo app for the Android SDK.
 
+## APK download
+- [Android RAG demo App apk]()
+
 ## Device Compatibility
 
 ### Supported Hardware

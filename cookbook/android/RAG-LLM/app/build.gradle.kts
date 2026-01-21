@@ -61,7 +61,7 @@ android {
 //            jniLibs.srcDirs("src/main/jniLibs")
 //        }
 //    }
-    packaging {
+    packagingOptions {
         jniLibs.useLegacyPackaging = true
     }
 
@@ -80,7 +80,7 @@ dependencies {
 
     // ===== NEXA CLOUD SDK =====
     // NexaAI SDK from Maven - pinned version for stability
-    implementation("ai.nexa:core:0.0.16")
+    implementation("ai.nexa:core:0.0.17")
     // ===== NEXA CLOUD SDK END =====
     implementation(project(":transform"))
     // Local AAR dependencies from libs folder
