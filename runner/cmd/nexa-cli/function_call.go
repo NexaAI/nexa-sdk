@@ -16,7 +16,6 @@ package main
 
 import (
 	"fmt"
-	"log/slog"
 	"os"
 	"strings"
 
@@ -129,8 +128,6 @@ func fcLLM(plugin, modelfile string) error {
 	spin.Stop()
 
 	if err != nil {
-		slog.Error("failed to create LLM", "error", err)
-		fmt.Println(modelLoadFailMsg)
 		return err
 	}
 	defer p.Destroy()
@@ -140,9 +137,9 @@ func fcLLM(plugin, modelfile string) error {
 		messages[i] = nexa_sdk.LlmChatMessage{Role: nexa_sdk.LLMRoleUser, Content: p}
 	}
 	templateOutput, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
-		Messages:    messages,
-		EnableThink: false, // disable thinking mode for function call mode
-		Tools:       tools,
+		Messages:            messages,
+		EnableThink:         false, // disable thinking mode for function call mode
+		Tools:               tools,
 		AddGenerationPrompt: true,
 	})
 	if err != nil {
@@ -189,8 +186,6 @@ func fcVLM(plugin, modelfile, mmprojfile, tokenizerfile string) error {
 	spin.Stop()
 
 	if err != nil {
-		slog.Error("failed to create VLM", "error", err)
-		fmt.Println(modelLoadFailMsg)
 		return err
 	}
 	defer p.Destroy()
