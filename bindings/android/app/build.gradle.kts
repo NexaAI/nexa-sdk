@@ -89,7 +89,11 @@ val bridgePathExist = gradle.extra["bridgePathExist"] as Boolean
 print("bridgePathExist: $bridgePathExist\n")
 
 dependencies {
-    implementation("ai.nexa:core:0.0.16")
+
+    // ===== NEXA CLOUD SDK =====
+    // Using cloud SDK instead of local bridge - latest version
+    implementation("ai.nexa:core:+")
+    // ===== NEXA CLOUD SDK END =====
     implementation(project(":transform"))
     implementation(":okdownload-core@aar")
     implementation(":okdownload-sqlite@aar")
@@ -98,6 +102,10 @@ dependencies {
     implementation(kotlin("reflect"))
     implementation(libs.glide)
     implementation(libs.gson)
+    implementation(libs.markwon.core)
+    implementation(libs.markwon.strikethrough)
+    implementation(libs.markwon.tables)
+    implementation(libs.markwon.linkify)
     implementation(libs.recyclerview)
     implementation(libs.toaster)
     implementation(libs.material)
@@ -114,6 +122,9 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.activity)
+    implementation(libs.androidx.constraintlayout)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
