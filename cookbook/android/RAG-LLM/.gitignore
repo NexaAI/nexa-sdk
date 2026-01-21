@@ -3,6 +3,9 @@
 *.ap_
 *.aab
 
+# Android Archive files (local libs)
+*.aar
+
 # Files for the ART/Dalvik VM
 *.dex
 
