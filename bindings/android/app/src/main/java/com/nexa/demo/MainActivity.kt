@@ -1230,44 +1230,46 @@ space ::= | " " | "\n" | "\r" | "\t"
                             }
                         }
                     }
-                } else if (isLoadEmbedderModel) {
-                    // ADD: Handle embedder inference
-                    // Input format: single text or multiple texts separated by "|"
-                    val texts = inputString.split("|").map { it.trim() }.toTypedArray()
-                    embedderWrapper!!.embed(texts, EmbeddingConfig()).onSuccess { embeddings ->
-                        runOnUiThread {
-                            val result = StringBuilder()
-                            val embeddingDim = embeddings.size / texts.size
-
-                            texts.forEachIndexed { idx, text ->
-                                val start = idx * embeddingDim
-                                val end = start + embeddingDim
-                                val embedding = embeddings.slice(start until end)
-
-                                // Calculate mean and variance
-                                val mean = embedding.average()
-                                val variance = embedding.map { (it - mean) * (it - mean) }.average()
-
-                                result.append("Text ${idx + 1}: \"$text\"\n")
-                                result.append("Embedding dimension: $embeddingDim\n")
-                                result.append("Mean: ${"%.4f".format(mean)}\n")
-                                result.append("Variance: ${"%.4f".format(variance)}\n")
-                                result.append("First 5 values: [")
-                                result.append(
-                                    embedding.take(5).joinToString(", ") { "%.4f".format(it) })
-                                result.append("...]\n\n")
-                            }
-
-                            messages.add(Message(result.toString(), MessageType.ASSISTANT))
-                            reloadRecycleView()
-                        }
-                    }.onFailure { error ->
-                        runOnUiThread {
-                            messages.add(Message("Error: ${error.message}", MessageType.PROFILE))
-                            reloadRecycleView()
-                        }
-                    }
-                } else if (isLoadRerankerModel) {
+                }
+//                else if (isLoadEmbedderModel) {
+//                    // ADD: Handle embedder inference
+//                    // Input format: single text or multiple texts separated by "|"
+//                    val texts = inputString.split("|").map { it.trim() }.toTypedArray()
+//                    embedderWrapper!!.embed(texts, EmbeddingConfig()).onSuccess { embeddings ->
+//                        runOnUiThread {
+//                            val result = StringBuilder()
+//                            val embeddingDim = embeddings.size / texts.size
+//
+//                            texts.forEachIndexed { idx, text ->
+//                                val start = idx * embeddingDim
+//                                val end = start + embeddingDim
+//                                val embedding = embeddings.slice(start until end)
+//
+//                                // Calculate mean and variance
+//                                val mean = embedding.average()
+//                                val variance = embedding.map { (it - mean) * (it - mean) }.average()
+//
+//                                result.append("Text ${idx + 1}: \"$text\"\n")
+//                                result.append("Embedding dimension: $embeddingDim\n")
+//                                result.append("Mean: ${"%.4f".format(mean)}\n")
+//                                result.append("Variance: ${"%.4f".format(variance)}\n")
+//                                result.append("First 5 values: [")
+//                                result.append(
+//                                    embedding.take(5).joinToString(", ") { "%.4f".format(it) })
+//                                result.append("...]\n\n")
+//                            }
+//
+//                            messages.add(Message(result.toString(), MessageType.ASSISTANT))
+//                            reloadRecycleView()
+//                        }
+//                    }.onFailure { error ->
+//                        runOnUiThread {
+//                            messages.add(Message("Error: ${error.message}", MessageType.PROFILE))
+//                            reloadRecycleView()
+//                        }
+//                    }
+//                }
+                else if (isLoadRerankerModel) {
                     // Reranker input format: "query\ndoc1\ndoc2\ndoc3..."
                     // First line is query, remaining lines are documents
                     val query = inputString.split("\n")[0]  // Get first line as query
