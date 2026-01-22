@@ -230,11 +230,13 @@ fun ModelData.downloadableFiles(
         modelList.firstOrNull { modelData ->
             modelData.id == dependencyId
         }?.let { modelData ->
-            if (!modelData.isDownloaded(context)) {
+            // Check actual file existence, not just SharedPreferences
+            val depModelDir = modelData.modelDir(context)
+            if (!modelData.allModelFilesExist(context, depModelDir, modelList)) {
                 dependenciesFiles.addAll(
                     modelData.downloadableFiles(
                         context,
-                        modelData.modelDir(context),
+                        depModelDir,
                         modelList
                     )
                 )
@@ -350,13 +352,15 @@ fun ModelData.downloadableFilesWithNpuList(
     val dependenciesFiles = arrayListOf<DownloadableFile>()
     dependencies?.takeIf { it.isNotEmpty() }?.forEach { dependencyId ->
         modelList.firstOrNull { it.id == dependencyId }?.let { modelData ->
-            if (!modelData.isDownloaded(context)) {
+            // Check actual file existence, not just SharedPreferences
+            val depModelDir = modelData.modelDir(context)
+            if (!modelData.allModelFilesExist(context, depModelDir, modelList)) {
                 // For dependencies, use the regular downloadableFiles
                 // The caller should handle fetching S3 files for NPU dependencies separately
                 dependenciesFiles.addAll(
                     modelData.downloadableFiles(
                         context,
-                        modelData.modelDir(context),
+                        depModelDir,
                         modelList
                     )
                 )
@@ -412,11 +416,13 @@ fun ModelData.downloadableFilesWithFallback(
     val dependenciesFiles = arrayListOf<DownloadableFileWithFallback>()
     dependencies?.takeIf { it.isNotEmpty() }?.forEach { dependencyId ->
         modelList.firstOrNull { it.id == dependencyId }?.let { modelData ->
-            if (!modelData.isDownloaded(context)) {
+            // Check actual file existence, not just SharedPreferences
+            val depModelDir = modelData.modelDir(context)
+            if (!modelData.allModelFilesExist(context, depModelDir, modelList)) {
                 // Convert regular DownloadableFile to DownloadableFileWithFallback
                 modelData.downloadableFiles(
                     context,
-                    modelData.modelDir(context),
+                    depModelDir,
                     modelList
                 ).forEach { df ->
                     val fallbackUrl = ModelFileListingUtil.getHfUrlForGgufFile(df.url)
