@@ -72,6 +72,7 @@ import com.nexa.demo.bean.downloadableFilesWithNpuList
 import com.nexa.demo.bean.getNexaManifest
 import com.nexa.demo.bean.getNonExistModelFile
 import com.nexa.demo.bean.getSupportPluginIds
+import com.nexa.demo.bean.allModelFilesExist
 import com.nexa.demo.bean.isDownloaded
 import com.nexa.demo.bean.isNpuModel
 import com.nexa.demo.bean.withFallbackUrls
@@ -324,9 +325,11 @@ class MainActivity : FragmentActivity() {
                 selectModelId = spinnerData[position].get("modelId") ?: ""
                 spinnerText = spinnerData[position].get("displayName") ?: ""
                 Log.d(TAG, "spinnerText:$spinnerText")
+                // Use actual file existence check (not just SharedPreferences)
+                val selectedModel = modelList.first { it.id == selectModelId }
+                val filesExist = isModelDownloaded(selectedModel) == null
                 changeOperationUI(
-                    if (modelList.first { it.id == selectModelId }
-                            .isDownloaded(this@MainActivity)) {
+                    if (filesExist) {
                         OperationState.DOWNLOADED
                     } else {
                         OperationState.DEFAULT
@@ -670,12 +673,14 @@ Note: You must use the campaign_investigation function whenever a customer asks 
         val modelDir = modelData.modelDir(this@MainActivity)
         val fileName = modelData.getNonExistModelFile(this, modelDir, modelList)
         val filesExist = fileName == null
-        // Sync SharedPreferences with actual file existence
+        // Sync SharedPreferences with actual file existence (both directions)
         if (filesExist && !spDownloaded.getBoolean(modelData.id, false)) {
-            Log.d(TAG, "Model files found locally for ${modelData.id}, updating SharedPreferences")
+            Log.d(TAG, "Model files found locally for ${modelData.id}, updating SharedPreferences to true")
             spDownloaded.edit().putBoolean(modelData.id, true).commit()
+        } else if (!filesExist && spDownloaded.getBoolean(modelData.id, false)) {
+            Log.d(TAG, "Model files missing for ${modelData.id}, updating SharedPreferences to false")
+            spDownloaded.edit().putBoolean(modelData.id, false).commit()
         }
-
         return fileName
     }
 
@@ -942,19 +947,37 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                     
                     Log.d(TAG, "NPU model detected, fetching file list: ${selectModelData.baseUrl}")
                     
-                    // Collect all models that need file listing (main model + NPU dependencies)
+                    // Recursively collect all NPU models that need file listing (main model + all NPU dependencies in the tree)
                     val modelsToFetch = mutableListOf(selectModelData)
-                    selectModelData.dependencies?.forEach { depId ->
-                        modelList.firstOrNull { it.id == depId }?.let { depModel ->
-                            if (depModel.isNpuModel() && 
-                                depModel.files.isNullOrEmpty() && 
-                                !depModel.baseUrl.isNullOrEmpty() &&
-                                !depModel.isDownloaded(this@MainActivity)) {
-                                modelsToFetch.add(depModel)
+                    val visited = mutableSetOf(selectModelData.id)
+
+                    fun collectNpuDependencies(model: ModelData) {
+                        model.dependencies?.forEach { depId ->
+                            if (depId in visited) return@forEach
+                            visited.add(depId)
+
+                            modelList.firstOrNull { it.id == depId }?.let { depModel ->
+                                // Check actual file existence, not just SharedPreferences
+                                val depModelDir = depModel.modelDir(this@MainActivity)
+                                val depFilesExist = depModel.allModelFilesExist(this@MainActivity, depModelDir, modelList)
+
+                                // If it's an NPU model that needs S3 file listing, add it
+                                if (depModel.isNpuModel() && 
+                                    depModel.files.isNullOrEmpty() && 
+                                    !depModel.baseUrl.isNullOrEmpty() &&
+                                    !depFilesExist) {
+                                    modelsToFetch.add(depModel)
+                                    Log.d(TAG, "Added NPU dependency to fetch list: ${depModel.id}")
+                                }
+
+                                // Recursively check this dependency's dependencies
+                                collectNpuDependencies(depModel)
                             }
                         }
                     }
-                    
+
+                    collectNpuDependencies(selectModelData)
+
                     // Fetch file lists with fallback support for all NPU models in parallel
                     val fileListResults = modelsToFetch.map { model ->
                         async {
@@ -1044,6 +1067,9 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                 
                 // Try to get file sizes, with fallback to HF if S3 fails
                 val fileSizeMap = mutableMapOf<String, Long>()
+                val filesToSkip = mutableListOf<String>()
+                // Critical file extensions that must be downloaded
+                val criticalExtensions = listOf(".nexa", ".gguf", ".manifest")
                 filesToDownloadWithFallback.forEach { fileWithFallback ->
                     var size = getUrlFileSize(unsafeClient, fileWithFallback.primaryUrl)
                     if (size == 0L && fileWithFallback.fallbackUrl != fileWithFallback.primaryUrl) {
