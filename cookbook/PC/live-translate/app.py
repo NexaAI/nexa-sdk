@@ -9,13 +9,13 @@ from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 
-from nexaai import LLM, GenerationConfig, SamplerConfig, ASR, setup_logging, NexaInvalidInputError
+from nexaai import LLM, GenerationConfig, SamplerConfig, ASR, setup_logging, NexaInvalidInputError, LlmChatMessage
 from nexaai.asr import ASRStreamConfig
 
 import numpy as np
 
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s', force=True)
-setup_logging(level=logging.INFO)
+setup_logging(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__, template_folder='frontend/public', static_folder='frontend/build')
@@ -64,7 +64,7 @@ class TranslationStreamManager:
         self.target_language = 'zh' if language == 'en' else 'en'
         self.stream_active = True
 
-        logger.info(f'[{self.sid}] Starting ASR stream for language: {language}')
+        logger.info(f'Starting ASR stream for language: {language}')
 
         config = ASRStreamConfig(
             sample_rate=16000,
@@ -81,14 +81,14 @@ class TranslationStreamManager:
                 if text and text.strip():
                     self.on_new_segment(text)
             except Exception as e:
-                logger.error(f'[{self.sid}] Error in transcription callback: {e}', exc_info=True)
+                logger.error(f'Error in transcription callback: {e}', exc_info=True)
                 socketio.emit('error', {'message': f'Transcription error: {e}'}, to=self.sid)
 
         try:
             self.stream_context = self.asr.stream(language=self.source_language, config=config)
             self.stream = self.stream_context.__enter__()
             self.stream.start(on_transcription=on_transcription)
-            logger.info(f'[{self.sid}] ASR stream started successfully')
+            logger.info(f'ASR stream started successfully')
 
             self.stop_event.clear()
             self.audio_thread = threading.Thread(
@@ -101,7 +101,7 @@ class TranslationStreamManager:
             )
             self.translation_thread.start()
         except Exception as e:
-            logger.error(f'[{self.sid}] Error starting stream: {e}', exc_info=True)
+            logger.error(f'Error starting stream: {e}', exc_info=True)
             if self.stream_context is not None:
                 try:
                     self.stream_context.__exit__(None, None, None)
@@ -121,7 +121,7 @@ class TranslationStreamManager:
         try:
             self.audio_queue.put_nowait(audio_bytes)
         except Exception as e:
-            logger.error(f'[{self.sid}] Error enqueuing audio: {e}')
+            logger.error(f'Error enqueuing audio: {e}')
             socketio.emit('error', {'message': f'Audio queue error: {e}'}, to=self.sid)
 
     def _audio_worker(self):
@@ -137,12 +137,12 @@ class TranslationStreamManager:
                     if self.stream and self.stream_active:
                         self.stream.push_audio(audio_array.tolist())
                 except Exception as e:
-                    logger.error(f'[{self.sid}] Error pushing audio in worker: {e}')
+                    logger.error(f'Error pushing audio in worker: {e}')
                     socketio.emit('error', {'message': f'Audio processing error: {e}'}, to=self.sid)
                 finally:
                     self.audio_queue.task_done()
         except Exception as e:
-            logger.error(f'[{self.sid}] Audio worker crashed: {e}', exc_info=True)
+            logger.error(f'Audio worker crashed: {e}', exc_info=True)
             socketio.emit('error', {'message': f'Audio worker error: {e}'}, to=self.sid)
 
     def on_new_segment(self, segment_text: str):
@@ -150,7 +150,7 @@ class TranslationStreamManager:
             return
 
         try:
-            logger.info(f'[{self.sid}] New segment: {segment_text}')
+            logger.info(f'New segment: {segment_text}')
 
             if segment_text == self.pending_text:
                 self.stable_count += 1
@@ -162,21 +162,19 @@ class TranslationStreamManager:
 
             is_sentence_end = segment_text.rstrip().endswith(('.', '?', '!'))
             if self.stable_count < 3 and not is_sentence_end:
-                logger.debug(
-                    f'[{self.sid}] Waiting for stabilization (count={self.stable_count}, sentence_end={is_sentence_end})'
-                )
+                logger.debug(f'Waiting for stabilization (count={self.stable_count}, sentence_end={is_sentence_end})')
                 return
 
             if segment_text == self.last_committed_source:
-                logger.debug(f'[{self.sid}] Skipping translation duplicate (unchanged source)')
+                logger.debug('Skipping translation duplicate (unchanged source)')
                 return
 
             self.last_committed_source = segment_text
-            logger.info(f'[{self.sid}] Committing stabilized segment for translation')
+            logger.info('Committing stabilized segment for translation')
             self._enqueue_translation(segment_text)
 
         except Exception as e:
-            logger.error(f'[{self.sid}] Error processing segment: {e}', exc_info=True)
+            logger.error(f'Error processing segment: {e}', exc_info=True)
             socketio.emit('error', {'message': f'Segment processing error: {e}'}, to=self.sid)
 
     def _translate_text(self, text: str, source_lang: str, target_lang: str) -> Optional[str]:
@@ -189,37 +187,28 @@ class TranslationStreamManager:
             else:
                 prompt = f'Translate this Chinese sentence to English. Only output the English translation, nothing else:\n\n{text}\n\nEnglish:'
 
+            prompt = self.llm.apply_chat_template([LlmChatMessage(role='user', content=prompt)], enable_thinking=False)
+            logger.info(f'Translation prompt: {prompt}')
             result = self.llm.generate(
                 prompt,
                 GenerationConfig(max_tokens=256, sampler_config=SamplerConfig(temperature=0.3)),
             )
-
-            if not result:
-                return None
-
-            translated = str(result).strip()
-
-            if target_lang == 'zh':
-                lines = translated.split('\n')
-                translated = '\n'.join(line for line in lines if sum(ord(c) > 127 for c in line) > len(line) * 0.3)
-            else:
-                lines = translated.split('\n')
-                translated = '\n'.join(line for line in lines if sum(ord(c) < 128 for c in line) > len(line) * 0.7)
-
-            return translated.strip() if translated else None
+            self.llm.reset()
+            logger.info(f'Translation result: {result.full_text}')
+            return result.full_text
 
         except Exception as e:
-            logger.error(f'[{self.sid}] Translation error: {e}', exc_info=True)
+            logger.error(f'Translation error: {e}', exc_info=True)
             return None
 
     def _enqueue_translation(self, text: str):
         if self.translation_degraded:
-            logger.error(f'[{self.sid}] Translation degraded; dropping text: {text}')
+            logger.error(f'Translation degraded; dropping text: {text}')
             return
         try:
             self.translation_queue.put_nowait(text)
         except Exception as e:
-            logger.error(f'[{self.sid}] Failed to enqueue translation: {e}')
+            logger.error(f'Failed to enqueue translation: {e}')
 
     def _translation_worker(self):
         while not self.stop_event.is_set():
@@ -235,7 +224,7 @@ class TranslationStreamManager:
             try:
                 translated = self._translate_text(text, self.source_language, self.target_language)
                 if translated:
-                    logger.info(f'[{self.sid}] Translated to: {translated}')
+                    logger.info(f'Translated to: {translated}')
                     socketio.emit(
                         'translation',
                         {'translated': translated, 'original': text, 'language': self.target_language},
@@ -244,19 +233,17 @@ class TranslationStreamManager:
                 else:
                     socketio.emit('error', {'message': 'Translation failed'}, to=self.sid)
             except NexaInvalidInputError as e:
-                logger.error(f'[{self.sid}] Translation invalid input, marking degraded: {e}', exc_info=True)
+                logger.error(f'Translation invalid input, marking degraded: {e}', exc_info=True)
                 self.translation_degraded = True
                 try:
-                    logger.info(f'[{self.sid}] Rebuilding LLM after invalid input error...')
+                    logger.info(f'Rebuilding LLM after invalid input error...')
                     self.llm = LLM.from_(model='Qwen/Qwen3-1.7B-GGUF')
                     self.translation_degraded = False
-                    logger.info(f'[{self.sid}] LLM rebuild succeeded')
+                    logger.info(f'LLM rebuild succeeded')
                 except Exception as rebuild_err:
-                    logger.error(
-                        f'[{self.sid}] LLM rebuild failed; disabling translation: {rebuild_err}', exc_info=True
-                    )
+                    logger.error(f'LLM rebuild failed; disabling translation: {rebuild_err}', exc_info=True)
             except Exception as e:
-                logger.error(f'[{self.sid}] Translation worker error: {e}', exc_info=True)
+                logger.error(f'Translation worker error: {e}', exc_info=True)
             finally:
                 self.translation_queue.task_done()
 
@@ -285,15 +272,15 @@ class TranslationStreamManager:
                 self.stream.stop(graceful=True)
                 self.stream = None
             except Exception as e:
-                logger.error(f'[{self.sid}] Error stopping stream: {e}')
+                logger.error(f'Error stopping stream: {e}')
 
         if self.stream_context is not None:
             try:
                 self.stream_context.__exit__(None, None, None)
             except Exception as e:
-                logger.error(f'[{self.sid}] Error closing stream context: {e}')
+                logger.error(f'Error closing stream context: {e}')
 
-        logger.info(f'[{self.sid}] ASR stream stopped')
+        logger.info(f'ASR stream stopped')
 
 
 def initialize_models():
@@ -386,7 +373,6 @@ def translate_segment():
 
 @socketio.on('connect')
 def handle_connect():
-    logger.info(f'Client connected: {request.sid}')
     emit('connect', {'data': 'Connected to translation server'})
 
 
