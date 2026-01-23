@@ -1,7 +1,7 @@
 import logging
 import atexit
-import sys
 import threading
+import numpy as np
 from queue import Queue, Empty
 from typing import Optional
 from flask import Flask, jsonify, render_template, request
@@ -10,13 +10,11 @@ from flask_socketio import SocketIO, emit
 from nexaai import LLM, GenerationConfig, SamplerConfig, ASR, setup_logging, LlmChatMessage
 from nexaai.asr import ASRStreamConfig
 
-import numpy as np
-
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s', force=True)
 setup_logging(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__, template_folder='frontend/public', static_folder='frontend/build')
+app = Flask(__name__, template_folder='.', static_folder='.')
 CORS(app)
 
 socketio = SocketIO(app, cors_allowed_origins='*', async_mode='threading', logger=False, engineio_logger=False)
@@ -24,17 +22,6 @@ socketio = SocketIO(app, cors_allowed_origins='*', async_mode='threading', logge
 asr_model: Optional[ASR] = None
 llm_model: Optional[LLM] = None
 stream_managers = {}
-
-
-def handle_exception(exc_type, exc_value, exc_traceback):
-    if issubclass(exc_type, KeyboardInterrupt):
-        sys.__excepthook__(exc_type, exc_value, exc_traceback)
-        return
-    logger.error('Uncaught exception', exc_info=(exc_type, exc_value, exc_traceback))
-    sys.__excepthook__(exc_type, exc_value, exc_traceback)
-
-
-sys.excepthook = handle_exception
 
 
 class TranslationStreamManager:
