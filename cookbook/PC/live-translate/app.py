@@ -232,16 +232,6 @@ class TranslationStreamManager:
                     )
                 else:
                     socketio.emit('error', {'message': 'Translation failed'}, to=self.sid)
-            except NexaInvalidInputError as e:
-                logger.error(f'Translation invalid input, marking degraded: {e}', exc_info=True)
-                self.translation_degraded = True
-                try:
-                    logger.info(f'Rebuilding LLM after invalid input error...')
-                    self.llm = LLM.from_(model='Qwen/Qwen3-1.7B-GGUF')
-                    self.translation_degraded = False
-                    logger.info(f'LLM rebuild succeeded')
-                except Exception as rebuild_err:
-                    logger.error(f'LLM rebuild failed; disabling translation: {rebuild_err}', exc_info=True)
             except Exception as e:
                 logger.error(f'Translation worker error: {e}', exc_info=True)
             finally:
@@ -286,27 +276,14 @@ class TranslationStreamManager:
 def initialize_models():
     global asr_model, llm_model
 
-    try:
-        logger.info('Initializing ASR model (NexaAI/parakeet-npu)...')
-        asr_model = ASR.from_(
-            model='NexaAI/parakeet-npu',
-            plugin_id=None,
-            device_id=None,
-        )
-        logger.info('✓ ASR model loaded successfully')
-    except Exception as e:
-        logger.error(f'✗ Failed to load ASR model: {e}', exc_info=True)
-        raise
-
-    try:
-        logger.info('Initializing LLM model (Qwen/Qwen3-1.7B-GGUF)...')
-        llm_model = LLM.from_(
-            model='Qwen/Qwen3-1.7B-GGUF',
-        )
-        logger.info('✓ LLM model loaded successfully')
-    except Exception as e:
-        logger.error(f'✗ Failed to load LLM model: {e}', exc_info=True)
-        raise
+    logger.info('Initializing ASR model (NexaAI/parakeet-npu)...')
+    asr_model = ASR.from_(
+        model='NexaAI/parakeet-npu',
+    )
+    llm_model = LLM.from_(
+        model='NexaAI/HY-MT1.5-1.8B-npu',
+    )
+    logger.info('✓ LLM model loaded successfully')
 
 
 # ============================================================================
