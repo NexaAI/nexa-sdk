@@ -303,10 +303,6 @@
             <div class="panel">
                 <div class="panel-header">
                     <span class="panel-title">Original</span>
-                    <select id="sourceLanguage" class="language-select">
-                        <option value="en">English</option>
-                        <option value="zh">中文 (Chinese)</option>
-                    </select>
                 </div>
                 <div id="originalText" class="text-display"></div>
                 <div id="originalStatus" class="status"></div>
@@ -316,8 +312,7 @@
             <div class="panel">
                 <div class="panel-header">
                     <span class="panel-title">Translation</span>
-                    <span id="targetLanguageDisplay" class="language-select"
-                        style="border: none; background: transparent; cursor: default;">中文 (Chinese)</span>
+                    <select id="targetLanguage" class="language-select"></select>
                 </div>
                 <div id="translatedText" class="text-display"></div>
                 <div id="translatedStatus" class="status"></div>
@@ -345,14 +340,43 @@
     </div>
 
     <script>
-        // State management
+
+        const supportedLanguages = [
+            { value: 'Chinese', label: '🇨🇳 Chinese' },
+            { value: 'English', label: '🇬🇧 English' },
+            { value: 'French', label: '🇫🇷 French' },
+            { value: 'German', label: '🇩🇪 German' },
+            { value: 'Spanish', label: '🇪🇸 Spanish' },
+            { value: 'Italian', label: '🇮🇹 Italian' },
+            { value: 'Portuguese', label: '🇵🇹 Portuguese' },
+            { value: 'Russian', label: '🇷🇺 Russian' },
+            { value: 'Dutch', label: '🇳🇱 Dutch' },
+            { value: 'Swedish', label: '🇸🇪 Swedish' },
+            { value: 'Finnish', label: '🇫🇮 Finnish' },
+            { value: 'Danish', label: '🇩🇰 Danish' },
+            { value: 'Norwegian', label: '🇳🇴 Norwegian' },
+            { value: 'Polish', label: '🇵🇱 Polish' },
+            { value: 'Czech', label: '🇨🇿 Czech' },
+            { value: 'Turkish', label: '🇹🇷 Turkish' },
+            { value: 'Greek', label: '🇬🇷 Greek' },
+            { value: 'Hungarian', label: '🇭🇺 Hungarian' },
+            { value: 'Romanian', label: '🇷🇴 Romanian' },
+            { value: 'Bulgarian', label: '🇧🇬 Bulgarian' },
+            { value: 'Slovak', label: '🇸🇰 Slovak' },
+            { value: 'Slovenian', label: '🇸🇮 Slovenian' },
+            { value: 'Croatian', label: '🇭🇷 Croatian' },
+            { value: 'Lithuanian', label: '🇱🇹 Lithuanian' },
+            { value: 'Latvian', label: '🇱🇻 Latvian' },
+            { value: 'Estonian', label: '🇪🇪 Estonian' },
+        ];
+
+
         const state = {
             isRecording: false,
             mediaStream: null,
             audioContext: null,
             scriptProcessor: null,
             sourceNode: null,
-            sourceLanguage: 'en',
             targetLanguage: 'zh',
             currentSegment: [],
             transcriptionBuffer: [],
@@ -360,27 +384,20 @@
             workletNode: null,
         };
 
-        // DOM elements
+
         const elements = {
             originalText: document.getElementById('originalText'),
             translatedText: document.getElementById('translatedText'),
             originalStatus: document.getElementById('originalStatus'),
             translatedStatus: document.getElementById('translatedStatus'),
-            sourceLanguage: document.getElementById('sourceLanguage'),
-            targetLanguageDisplay: document.getElementById('targetLanguageDisplay'),
+            targetLanguage: document.getElementById('targetLanguage'),
             startBtn: document.getElementById('startBtn'),
             stopBtn: document.getElementById('stopBtn'),
             clearBtn: document.getElementById('clearBtn'),
             sessionInfo: document.getElementById('sessionInfo'),
         };
 
-        // Language display mapping
-        const languageNames = {
-            'en': '🇬🇧 English',
-            'zh': '🇨🇳 中文 (Chinese)',
-        };
 
-        // Initialize Socket.IO connection
         function initializeSocket() {
             logger.info('Initializing Socket.IO connection...');
 
@@ -418,14 +435,14 @@
             state.socket.on('transcription', (data) => {
                 logger.info('Transcription received:', data);
                 const text = data.original;
-                elements.originalText.textContent = text; // overwrite to mimic CLI single-line display
+                elements.originalText.textContent = text;
                 updateStatus('originalStatus', 'Transcribed ✓');
             });
 
             state.socket.on('translation', (data) => {
                 logger.info('Translation received:', data);
                 const text = data.translated;
-                elements.translatedText.textContent = text; // overwrite to keep only latest translation
+                elements.translatedText.textContent = text;
                 updateStatus('translatedStatus', 'Translated ✓');
             });
 
@@ -440,11 +457,21 @@
             });
         }
 
-        // Update target language display
-        elements.sourceLanguage.addEventListener('change', (e) => {
-            state.sourceLanguage = e.target.value;
-            state.targetLanguage = state.sourceLanguage === 'en' ? 'zh' : 'en';
-            elements.targetLanguageDisplay.textContent = languageNames[state.targetLanguage];
+
+
+        function populateTargetLanguageSelect() {
+            elements.targetLanguage.innerHTML = '';
+            supportedLanguages.forEach(lang => {
+                const option = document.createElement('option');
+                option.value = lang.value;
+                option.textContent = lang.label;
+                elements.targetLanguage.appendChild(option);
+            });
+            elements.targetLanguage.value = state.targetLanguage;
+        }
+
+        elements.targetLanguage.addEventListener('change', (e) => {
+            state.targetLanguage = e.target.value;
             elements.translatedText.textContent = '';
             updateStatus('originalStatus', '');
             updateStatus('translatedStatus', '');
@@ -471,12 +498,12 @@
         async function startRecording() {
             try {
                 logger.info('=== START RECORDING ===');
-                logger.info(`Source language: ${state.sourceLanguage}`);
+                logger.info(`Target language: ${state.targetLanguage}`);
                 logger.info(`Socket connected: ${state.socket && state.socket.connected}`);
 
                 updateStatus('originalStatus', 'Requesting microphone access...');
 
-                // Request microphone access
+
                 logger.info('Requesting microphone access...');
                 state.mediaStream = await navigator.mediaDevices.getUserMedia({
                     audio: {
@@ -488,25 +515,25 @@
                 });
                 logger.info('✓ Microphone access granted');
 
-                // Check if socket is connected
+
                 if (!state.socket || !state.socket.connected) {
                     logger.error('Socket not connected!');
                     updateStatus('originalStatus', 'Socket not connected. Reload page.');
                     return;
                 }
 
-                // Tell backend to start streaming FIRST, then start recording
-                logger.info(`Emitting start_stream with language: ${state.sourceLanguage}`);
-                state.socket.emit('start_stream', { language: state.sourceLanguage });
 
-                // Wait a bit for server to be ready
+                logger.info(`Emitting start_stream with target_lang: ${state.targetLanguage}`);
+                state.socket.emit('start_stream', { target_lang: state.targetLanguage });
+
+
                 await new Promise(resolve => setTimeout(resolve, 300));
 
-                // Create AudioContext for raw PCM capture (preferred over MediaRecorder)
+
                 state.audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
                 state.sourceNode = state.audioContext.createMediaStreamSource(state.mediaStream);
 
-                // Helper: resample to 16k if needed
+
                 const resampleTo16k = (input, inputSampleRate) => {
                     if (inputSampleRate === 16000) return input;
                     const ratio = inputSampleRate / 16000;
@@ -536,14 +563,14 @@
                     state.socket.emit('audio_chunk', buf);
                 };
 
-                // Prefer AudioWorkletNode; fall back to ScriptProcessor if unavailable
+
                 if (state.audioContext.audioWorklet) {
                     const workletCode = `
                     class PCMProcessor extends AudioWorkletProcessor {
                         constructor() {
                             super();
                             this.buffer = [];
-                            this.bufferSize = 1024; // Accumulate to 1024 samples (matching backend buffer_size)
+                            this.bufferSize = 1024;
                         }
                         
                         process(inputs) {
@@ -552,10 +579,10 @@
                             const channel = input[0];
                             if (!channel || channel.length === 0) return true;
                             
-                            // Accumulate samples
+                           
                             this.buffer.push(...channel);
                             
-                            // Send when we have enough samples
+                           
                             if (this.buffer.length >= this.bufferSize) {
                                 const chunk = new Float32Array(this.buffer.slice(0, this.bufferSize));
                                 this.port.postMessage(chunk);
@@ -595,7 +622,7 @@
                     logger.info('AudioContext + ScriptProcessor started (M 16k)');
                 }
 
-                // Update UI
+
                 state.isRecording = true;
                 elements.startBtn.style.display = 'none';
                 elements.stopBtn.style.display = 'flex';
@@ -614,7 +641,7 @@
         function stopRecording() {
             logger.info('=== STOP RECORDING ===');
 
-            // Disconnect audio nodes
+
             try {
                 if (state.scriptProcessor) {
                     state.scriptProcessor.disconnect();
@@ -640,7 +667,7 @@
                 state.mediaStream.getTracks().forEach(track => track.stop());
             }
 
-            // Tell backend to stop streaming
+
             if (state.socket && state.socket.connected) {
                 logger.info('Emitting stop_stream event...');
                 state.socket.emit('stop_stream');
@@ -657,7 +684,6 @@
         async function processAudioChunk(audioData) {
             if (!state.isRecording) return;
 
-            // Convert audio to int16 bytes
             const int16Data = new Int16Array(audioData.length);
             for (let i = 0; i < audioData.length; i++) {
                 int16Data[i] = audioData[i] < 0
@@ -665,10 +691,8 @@
                     : audioData[i] * 0x7FFF;
             }
 
-            // Send via WebSocket if available
             if (state.socket && state.socket.connected) {
-                const base64Audio = btoa(String.fromCharCode.apply(null, int16Data));
-                state.socket.emit('audio_chunk', { audio: base64Audio });
+                state.socket.emit('audio_chunk', int16Data.buffer);
             }
         }
 
@@ -679,13 +703,13 @@
             updateStatus('translatedStatus', '');
         }
 
-        // Initialize
+
         document.addEventListener('DOMContentLoaded', () => {
-            elements.targetLanguageDisplay.textContent = languageNames['zh'];
+            populateTargetLanguageSelect();
             initializeSocket();
         });
 
-        // Simple logger with timestamp
+
         const logger = {
             info: (msg) => {
                 const ts = new Date().toLocaleTimeString();
