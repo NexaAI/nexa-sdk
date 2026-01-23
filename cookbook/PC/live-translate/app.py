@@ -4,7 +4,6 @@ import sys
 import threading
 from queue import Queue, Empty
 from typing import Optional
-
 from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
@@ -319,9 +318,7 @@ def handle_connect():
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    import flask_socketio
-
-    sid = getattr(flask_socketio.request, 'sid', None)
+    sid = request.sid
     logger.info(f'Client disconnected: {sid}')
 
     if sid in stream_managers:
@@ -331,9 +328,7 @@ def handle_disconnect():
 
 @socketio.on('start_stream')
 def handle_start_stream(data):
-    import flask_socketio
-
-    sid = getattr(flask_socketio.request, 'sid', None)
+    sid = request.sid
     if isinstance(data, dict):
         target_language = data.get('target_lang', 'zh')
     else:
@@ -368,9 +363,7 @@ def handle_start_stream(data):
 
 @socketio.on('audio_chunk')
 def handle_audio_chunk(data):
-    import flask_socketio
-
-    sid = getattr(flask_socketio.request, 'sid', None)
+    sid = request.sid
 
     if sid not in stream_managers:
         logger.warning(
@@ -401,9 +394,7 @@ def handle_audio_chunk(data):
 
 @socketio.on('stop_stream')
 def handle_stop_stream():
-    import flask_socketio
-
-    sid = getattr(flask_socketio.request, 'sid', None)
+    sid = request.sid
 
     if sid and sid in stream_managers:
         stream_managers[sid].stop_stream()
