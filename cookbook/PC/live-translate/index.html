@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexaAI Live Translator</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .translator-box {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 12px;
+        }
+
+        .panel-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .language-select {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            background: white;
+            transition: border-color 0.3s;
+        }
+
+        .language-select:hover {
+            border-color: #667eea;
+        }
+
+        .language-select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .text-display {
+            flex: 1;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            min-height: 300px;
+            overflow-y: auto;
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #333;
+            resize: none;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .text-display::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .text-display::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .text-display::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+
+        .text-display::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        .status {
+            margin-top: 12px;
+            font-size: 0.85rem;
+            color: #999;
+            min-height: 20px;
+        }
+
+        .status.transcribing {
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .status.translating {
+            color: #ff9500;
+            font-weight: 500;
+        }
+
+        .status.error {
+            color: #ff3b30;
+            font-weight: 500;
+        }
+
+        .controls {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 25px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .button {
+            padding: 12px 28px;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .button-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .button-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .button-primary:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .button-secondary {
+            background: #f0f0f0;
+            color: #333;
+            border: 2px solid #ddd;
+        }
+
+        .button-secondary:hover:not(:disabled) {
+            background: #e8e8e8;
+            border-color: #bbb;
+        }
+
+        .button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .icon {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+        }
+
+        .recording-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff3b30;
+            display: inline-block;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .mic-icon {
+            font-size: 1.2rem;
+        }
+
+        @media (max-width: 768px) {
+            .translator-box {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 1.8rem;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            .button {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #667eea;
+        }
+
+        .session-info {
+            text-align: center;
+            color: white;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎙️ NexaAI Live Translator</h1>
+            <p>Real-time speech recognition and translation</p>
+        </div>
+
+        <div class="translator-box">
+            <!-- Source Language Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title">Original</span>
+                </div>
+                <div id="originalText" class="text-display"></div>
+                <div id="originalStatus" class="status"></div>
+            </div>
+
+            <!-- Target Language Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title">Translation</span>
+                    <select id="targetLanguage" class="language-select"></select>
+                </div>
+                <div id="translatedText" class="text-display"></div>
+                <div id="translatedStatus" class="status"></div>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="controls">
+            <button id="startBtn" class="button button-primary" onclick="startRecording()">
+                <span class="mic-icon">🎤</span>
+                <span>Start Recording</span>
+            </button>
+            <button id="stopBtn" class="button button-primary" style="display: none; background: #ff3b30;"
+                onclick="stopRecording()">
+                <span class="recording-indicator"></span>
+                <span>Stop Recording</span>
+            </button>
+            <button id="clearBtn" class="button button-secondary" onclick="clearText()">
+                <span>🗑️</span>
+                <span>Clear</span>
+            </button>
+        </div>
+
+        <div class="session-info" id="sessionInfo"></div>
+    </div>
+
+    <script>
+
+        const supportedLanguages = [
+            { value: 'Chinese', label: '🇨🇳 Chinese' },
+            { value: 'English', label: '🇬🇧 English' },
+            { value: 'French', label: '🇫🇷 French' },
+            { value: 'German', label: '🇩🇪 German' },
+            { value: 'Spanish', label: '🇪🇸 Spanish' },
+            { value: 'Italian', label: '🇮🇹 Italian' },
+            { value: 'Portuguese', label: '🇵🇹 Portuguese' },
+            { value: 'Russian', label: '🇷🇺 Russian' },
+            { value: 'Dutch', label: '🇳🇱 Dutch' },
+            { value: 'Swedish', label: '🇸🇪 Swedish' },
+            { value: 'Finnish', label: '🇫🇮 Finnish' },
+            { value: 'Danish', label: '🇩🇰 Danish' },
+            { value: 'Norwegian', label: '🇳🇴 Norwegian' },
+            { value: 'Polish', label: '🇵🇱 Polish' },
+            { value: 'Czech', label: '🇨🇿 Czech' },
+            { value: 'Turkish', label: '🇹🇷 Turkish' },
+            { value: 'Greek', label: '🇬🇷 Greek' },
+            { value: 'Hungarian', label: '🇭🇺 Hungarian' },
+            { value: 'Romanian', label: '🇷🇴 Romanian' },
+            { value: 'Bulgarian', label: '🇧🇬 Bulgarian' },
+            { value: 'Slovak', label: '🇸🇰 Slovak' },
+            { value: 'Slovenian', label: '🇸🇮 Slovenian' },
+            { value: 'Croatian', label: '🇭🇷 Croatian' },
+            { value: 'Lithuanian', label: '🇱🇹 Lithuanian' },
+            { value: 'Latvian', label: '🇱🇻 Latvian' },
+            { value: 'Estonian', label: '🇪🇪 Estonian' },
+        ];
+
+
+        const state = {
+            isRecording: false,
+            mediaStream: null,
+            audioContext: null,
+            scriptProcessor: null,
+            sourceNode: null,
+            targetLanguage: 'Chinese',
+            currentSegment: [],
+            transcriptionBuffer: [],
+            socket: null,
+            workletNode: null,
+        };
+
+
+        const elements = {
+            originalText: document.getElementById('originalText'),
+            translatedText: document.getElementById('translatedText'),
+            originalStatus: document.getElementById('originalStatus'),
+            translatedStatus: document.getElementById('translatedStatus'),
+            targetLanguage: document.getElementById('targetLanguage'),
+            startBtn: document.getElementById('startBtn'),
+            stopBtn: document.getElementById('stopBtn'),
+            clearBtn: document.getElementById('clearBtn'),
+            sessionInfo: document.getElementById('sessionInfo'),
+        };
+
+
+        function initializeSocket() {
+            logger.info('Initializing Socket.IO connection...');
+
+            try {
+                state.socket = io();
+                setupSocketListeners();
+                logger.info('Socket.IO instance created');
+            } catch (error) {
+                logger.error('Failed to create Socket.IO instance:', error);
+                elements.sessionInfo.textContent = '⚠ Socket.IO initialization failed';
+            }
+        }
+
+        function setupSocketListeners() {
+            if (!state.socket) {
+                logger.error('Socket not available');
+                return;
+            }
+
+            state.socket.on('connect', () => {
+                logger.info('✓ WebSocket connected');
+                elements.sessionInfo.textContent = '✓ Connected (WebSocket mode)';
+            });
+
+            state.socket.on('disconnect', () => {
+                logger.warn('⚠ WebSocket disconnected');
+                elements.sessionInfo.textContent = '⚠ Disconnected';
+            });
+
+            state.socket.on('stream_started', (data) => {
+                logger.info('Stream started:', data);
+                updateStatus('originalStatus', 'Listening for speech...');
+            });
+
+            state.socket.on('transcription', (data) => {
+                logger.info('Transcription received:', data);
+                const text = data.original;
+                elements.originalText.textContent = text;
+                updateStatus('originalStatus', 'Transcribed ✓');
+            });
+
+            state.socket.on('translation', (data) => {
+                logger.info('Translation received:', data);
+                const text = data.translated;
+                elements.translatedText.textContent = text;
+                updateStatus('translatedStatus', 'Translated ✓');
+            });
+
+            state.socket.on('error', (data) => {
+                logger.error('Server error:', data);
+                updateStatus('translatedStatus', `Error: ${data.message}`);
+            });
+
+            state.socket.on('stream_stopped', () => {
+                logger.info('Stream stopped on server');
+                updateStatus('originalStatus', 'Recording stopped');
+            });
+        }
+
+
+
+        function populateTargetLanguageSelect() {
+            elements.targetLanguage.innerHTML = '';
+            supportedLanguages.forEach(lang => {
+                const option = document.createElement('option');
+                option.value = lang.value;
+                option.textContent = lang.label;
+                elements.targetLanguage.appendChild(option);
+            });
+            elements.targetLanguage.value = state.targetLanguage;
+        }
+
+        elements.targetLanguage.addEventListener('change', (e) => {
+            state.targetLanguage = e.target.value;
+            elements.translatedText.textContent = '';
+            updateStatus('originalStatus', '');
+            updateStatus('translatedStatus', '');
+        });
+
+        function updateStatus(elementId, message) {
+            const element = document.getElementById(elementId);
+            if (message) {
+                element.innerHTML = message;
+                element.className = 'status';
+                if (message.includes('Transcribing')) {
+                    element.classList.add('transcribing');
+                } else if (message.includes('Translating')) {
+                    element.classList.add('translating');
+                } else if (message.includes('Error')) {
+                    element.classList.add('error');
+                }
+            } else {
+                element.innerHTML = '';
+                element.className = 'status';
+            }
+        }
+
+        async function startRecording() {
+            try {
+                logger.info('=== START RECORDING ===');
+                logger.info(`Target language: ${state.targetLanguage}`);
+                logger.info(`Socket connected: ${state.socket && state.socket.connected}`);
+
+                updateStatus('originalStatus', 'Requesting microphone access...');
+
+
+                logger.info('Requesting microphone access...');
+                state.mediaStream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true,
+                        sampleRate: 16000,
+                    },
+                });
+                logger.info('✓ Microphone access granted');
+
+
+                if (!state.socket || !state.socket.connected) {
+                    logger.error('Socket not connected!');
+                    updateStatus('originalStatus', 'Socket not connected. Reload page.');
+                    return;
+                }
+
+
+                logger.info(`Emitting start_stream with target_lang: ${state.targetLanguage}`);
+                state.socket.emit('start_stream', { target_lang: state.targetLanguage });
+
+
+                await new Promise(resolve => setTimeout(resolve, 300));
+
+
+                state.audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                state.sourceNode = state.audioContext.createMediaStreamSource(state.mediaStream);
+
+
+                const resampleTo16k = (input, inputSampleRate) => {
+                    if (inputSampleRate === 16000) return input;
+                    const ratio = inputSampleRate / 16000;
+                    const newLength = Math.floor(input.length / ratio);
+                    const output = new Float32Array(newLength);
+                    for (let i = 0; i < newLength; i++) {
+                        const srcPos = i * ratio;
+                        const srcIdx = Math.floor(srcPos);
+                        const srcFrac = srcPos - srcIdx;
+                        const s0 = input[srcIdx] || 0;
+                        const s1 = input[srcIdx + 1] || 0;
+                        output[i] = s0 + (s1 - s0) * srcFrac;
+                    }
+                    return output;
+                };
+
+                const sendPcm16 = (float32Samples) => {
+                    if (!state.socket || !state.socket.connected) return;
+                    const pcm16k = resampleTo16k(float32Samples, state.audioContext.sampleRate);
+                    const int16 = new Int16Array(pcm16k.length);
+                    for (let i = 0; i < pcm16k.length; i++) {
+                        const s = Math.max(-1, Math.min(1, pcm16k[i]));
+                        int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                    }
+                    const buf = int16.buffer;
+                    logger.debug(`Emitting audio_chunk PCM: ${buf.byteLength} bytes (samples: ${int16.length})`);
+                    state.socket.emit('audio_chunk', buf);
+                };
+
+
+                if (state.audioContext.audioWorklet) {
+                    const workletCode = `
+                    class PCMProcessor extends AudioWorkletProcessor {
+                        constructor() {
+                            super();
+                            this.buffer = [];
+                            this.bufferSize = 1024;
+                        }
+                        
+                        process(inputs) {
+                            const input = inputs[0];
+                            if (!input || input.length === 0) return true;
+                            const channel = input[0];
+                            if (!channel || channel.length === 0) return true;
+                            
+                           
+                            this.buffer.push(...channel);
+                            
+                           
+                            if (this.buffer.length >= this.bufferSize) {
+                                const chunk = new Float32Array(this.buffer.slice(0, this.bufferSize));
+                                this.port.postMessage(chunk);
+                                this.buffer = this.buffer.slice(this.bufferSize);
+                            }
+                            
+                            return true;
+                        }
+                    }
+                    registerProcessor('pcm-processor', PCMProcessor);
+                    `;
+
+                    const blob = new Blob([workletCode], { type: 'application/javascript' });
+                    const url = URL.createObjectURL(blob);
+                    await state.audioContext.audioWorklet.addModule(url);
+
+                    state.workletNode = new AudioWorkletNode(state.audioContext, 'pcm-processor');
+                    state.workletNode.port.onmessage = (event) => {
+                        const samples = event.data;
+                        if (samples && samples.length) {
+                            sendPcm16(samples);
+                        }
+                    };
+
+                    state.sourceNode.connect(state.workletNode);
+                    state.workletNode.connect(state.audioContext.destination);
+                    logger.info('AudioContext + AudioWorklet started (PCM 16k, 1024-sample chunks)');
+                } else {
+                    const bufferSize = 4096;
+                    state.scriptProcessor = state.audioContext.createScriptProcessor(bufferSize, 1, 1);
+                    state.scriptProcessor.onaudioprocess = (event) => {
+                        const input = event.inputBuffer.getChannelData(0);
+                        sendPcm16(input);
+                    };
+                    state.sourceNode.connect(state.scriptProcessor);
+                    state.scriptProcessor.connect(state.audioContext.destination);
+                    logger.info('AudioContext + ScriptProcessor started (M 16k)');
+                }
+
+
+                state.isRecording = true;
+                elements.startBtn.style.display = 'none';
+                elements.stopBtn.style.display = 'flex';
+                elements.originalText.textContent = '';
+                elements.translatedText.textContent = '';
+                updateStatus('originalStatus', 'Recording... Listening for speech');
+                updateStatus('translatedStatus', '');
+                logger.info('✓ Recording started');
+
+            } catch (error) {
+                logger.error('Microphone access error:', error);
+                updateStatus('originalStatus', `Error: ${error.message}`);
+            }
+        }
+
+        function stopRecording() {
+            logger.info('=== STOP RECORDING ===');
+
+
+            try {
+                if (state.scriptProcessor) {
+                    state.scriptProcessor.disconnect();
+                    state.scriptProcessor.onaudioprocess = null;
+                }
+                if (state.workletNode) {
+                    state.workletNode.disconnect();
+                    state.workletNode.port.onmessage = null;
+                    state.workletNode = null;
+                }
+                if (state.sourceNode) {
+                    state.sourceNode.disconnect();
+                }
+                if (state.audioContext) {
+                    state.audioContext.close();
+                }
+            } catch (err) {
+                logger.error('Error stopping audio graph', err);
+            }
+
+            if (state.mediaStream) {
+                logger.info('Stopping media stream...');
+                state.mediaStream.getTracks().forEach(track => track.stop());
+            }
+
+
+            if (state.socket && state.socket.connected) {
+                logger.info('Emitting stop_stream event...');
+                state.socket.emit('stop_stream');
+            }
+
+            state.isRecording = false;
+            elements.startBtn.style.display = 'flex';
+            elements.stopBtn.style.display = 'none';
+            updateStatus('originalStatus', 'Recording stopped');
+            updateStatus('translatedStatus', '');
+            logger.info('✓ Recording stopped');
+        }
+
+        async function processAudioChunk(audioData) {
+            if (!state.isRecording) return;
+
+            const int16Data = new Int16Array(audioData.length);
+            for (let i = 0; i < audioData.length; i++) {
+                int16Data[i] = audioData[i] < 0
+                    ? audioData[i] * 0x8000
+                    : audioData[i] * 0x7FFF;
+            }
+
+            if (state.socket && state.socket.connected) {
+                state.socket.emit('audio_chunk', int16Data.buffer);
+            }
+        }
+
+        function clearText() {
+            elements.originalText.textContent = '';
+            elements.translatedText.textContent = '';
+            updateStatus('originalStatus', '');
+            updateStatus('translatedStatus', '');
+        }
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            populateTargetLanguageSelect();
+            initializeSocket();
+        });
+
+
+        const logger = {
+            info: (msg) => {
+                const ts = new Date().toLocaleTimeString();
+                console.log(`[${ts}] [INFO] ${msg}`);
+            },
+            error: (msg, err) => {
+                const ts = new Date().toLocaleTimeString();
+                if (err) {
+                    console.error(`[${ts}] [ERROR] ${msg}`, err);
+                } else {
+                    console.error(`[${ts}] [ERROR] ${msg}`);
+                }
+            },
+            warn: (msg) => {
+                const ts = new Date().toLocaleTimeString();
+                console.warn(`[${ts}] [WARN] ${msg}`);
+            },
+            debug: (msg) => {
+                const ts = new Date().toLocaleTimeString();
+                console.log(`[${ts}] [DEBUG] ${msg}`);
+            },
+        };
+    </script>
+</body>
+
+</html>
