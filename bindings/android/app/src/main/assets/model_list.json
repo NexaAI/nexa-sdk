@@ -17,6 +17,15 @@
     "modelUrl": "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_0.gguf"
   },
   {
+    "id": "gpt-oss-20b-GGUF",
+    "displayName": "gpt-oss-20b-GGUF",
+    "modelName": "gpt-oss-20b-Q4_0.gguf",
+    "type": "chat",
+    "versionCode": 1,
+    "pluginIds": 17,
+    "modelUrl": "https://huggingface.co/unsloth/gpt-oss-20b-GGUF/resolve/main/gpt-oss-20b-Q4_0.gguf"
+  },
+  {
     "id": "Qwen3-4B-Instruct-2507-npu",
     "displayName": "Qwen3-4B-Instruct-2507-npu",
     "modelName": "files-1-1.nexa",
