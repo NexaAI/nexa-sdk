@@ -33,7 +33,7 @@ def main():
     parser.add_argument(
         '-m',
         '--model',
-        default='NexaAI/Qwen3-0.6B-GGUF',
+        default='Qwen/Qwen3-0.6B-GGUF',
         help='Path to the LLM model',
     )
     parser.add_argument('--device', default=None, help='Device to run on')

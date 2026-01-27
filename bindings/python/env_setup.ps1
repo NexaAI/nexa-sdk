@@ -119,7 +119,11 @@ try {
     
     # Install nexaai
     Write-Host "      Installing nexaai..." -ForegroundColor Cyan
-    & $VENV_PIP install nexaai
+    & $VENV_PIP install nexaai --force-reinstall --no-cache-dir
+    
+    # Install numpy
+    Write-Host "      Installing numpy..." -ForegroundColor Cyan
+    & $VENV_PIP install numpy
     
     # Install pre-built pywinpty wheel for ARM64 Windows
     Write-Host "      Installing pywinpty (pre-built wheel for ARM64)..." -ForegroundColor Cyan

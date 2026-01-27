@@ -17,7 +17,7 @@ The script will automatically activate the virtual environment when complete.
 If the environment was previously installed, activate it with:
 
 ```powershell
-.\venv\Scripts\Activate.ps1
+.\bindings\python\venv\Scripts\Activate.ps1
 ```
 
 ### Option 1: Run Jupyter Notebook
