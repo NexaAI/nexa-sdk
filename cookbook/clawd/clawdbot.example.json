@@ -1,0 +1,38 @@
+{
+  "gateway": {
+    "mode": "local"
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "nexa/NexaAI/Qwen3-4B-GGUF:Q4_0"
+      }
+    }
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "nexa": {
+        "baseUrl": "http://localhost:18181/v1",
+        "apiKey": "not-needed",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "NexaAI/Qwen3-4B-GGUF:Q4_0",
+            "name": "Qwen3-4B-GGUF",
+            "reasoning": false,
+            "input": ["text"],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 200000,
+            "maxTokens": 8192
+          }
+        ]
+      }
+    }
+  }
+}
