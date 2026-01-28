@@ -131,40 +131,6 @@
     "modelUrl": "files-1-2.nexa"
   },
   {
-    "id": "SmolVLM-256M-Instruct-f16",
-    "displayName": "SmolVLM-256M-Instruct-f16",
-    "modelName": "SmolVLM-256M-Instruct-f16.gguf",
-    "mmprojOrTokenName": "mmproj-SmolVLM-256M-Instruct-f16.json",
-    "type": "multimodal",
-    "versionCode": 1,
-    "pluginIds": 17,
-    "baseUrl": "https://huggingface.co/ggml-org/SmolVLM-256M-Instruct-GGUF/resolve/main/",
-    "modelUrl": "SmolVLM-256M-Instruct-f16.gguf?download=true",
-    "mmprojOrTokenUrl": "mmproj-SmolVLM-256M-Instruct-f16.gguf?download=true"
-  },
-  {
-    "id": "Qwen3VL-4B-Instruct-Q4_K_M",
-    "displayName": "Qwen3VL-4B-Instruct-Q4_K_M",
-    "modelName": "Qwen3VL-4B-Instruct-Q4_K_M.gguf",
-    "mmprojOrTokenName": "",
-    "type": "multimodal",
-    "versionCode": 1,
-    "baseUrl": "https://huggingface.co/NexaAI/Qwen3-VL-4B-Instruct-GGUF/resolve/main/",
-    "modelUrl": "Qwen3VL-4B-Instruct-Q4_K_M.gguf?download=true",
-    "mmprojOrTokenUrl": ""
-  },
-  {
-    "id": "Qwen3VL-4B-Instruct-Q8_0",
-    "displayName": "Qwen3VL-4B-Instruct-Q8_0",
-    "modelName": "Qwen3VL-4B-Instruct-Q8_0.gguf",
-    "mmprojOrTokenName": "mmproj-Qwen3VL-4B-Instruct-Q8_0.gguf",
-    "type": "multimodal",
-    "versionCode": 1,
-    "baseUrl": "https://huggingface.co/NexaAI/Qwen3-VL-4B-Instruct-GGUF/resolve/main/",
-    "modelUrl": "Qwen3VL-4B-Instruct-Q8_0.gguf?download=true",
-    "mmprojOrTokenUrl": "mmproj-Qwen3VL-4B-Instruct-Q8_0.gguf?download=true"
-  },
-  {
     "id": "LFM2-1.2B-GGUF-GGUF",
     "displayName": "LFM2-1.2B-GGUF-GGUF",
     "modelName": "LFM2-1.2B-Q4_0.gguf",
