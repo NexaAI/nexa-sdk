@@ -121,6 +121,27 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 	var systemPrompt string
 	messages := make([]nexa_sdk.LlmChatMessage, 0, len(param.Messages))
 	for _, msg := range param.Messages {
+		// tool call message
+		if toolCalls := msg.GetToolCalls(); len(toolCalls) > 0 {
+			for _, tc := range toolCalls {
+				messages = append(messages, nexa_sdk.LlmChatMessage{
+					Role: nexa_sdk.LLMRole(*msg.GetRole()),
+					Content: fmt.Sprintf(`<tool_call>{"name":"%s","arguments":"%s"}</tool_call>`,
+						tc.GetFunction().Name, tc.GetFunction().Arguments),
+				})
+			}
+			continue
+		}
+
+		// tool call response message
+		if toolResp := msg.GetToolCallID(); toolResp != nil {
+			messages = append(messages, nexa_sdk.LlmChatMessage{
+				Role:    nexa_sdk.LLMRole(*msg.GetRole()),
+				Content: *msg.GetContent().AsAny().(*string),
+			})
+			continue
+		}
+
 		switch content := msg.GetContent().AsAny().(type) {
 		case *string:
 			// NOTE: patch for npu
@@ -180,11 +201,8 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 				}
 			}
 
-		case nil:
-			slog.Warn("Nil content in message")
-
 		default:
-			slog.Error("Unknown content type in message")
+			slog.Error("Unknown content type in message", "content_type", fmt.Sprintf("%T", content))
 			c.JSON(http.StatusBadRequest, map[string]any{"error": "unknown content type"})
 			return
 		}
