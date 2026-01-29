@@ -49,6 +49,7 @@ func RegisterAPIv1(r *gin.Engine) {
 
 	// ==== openai compatible ====
 	g.POST("/chat/completions", handler.ChatCompletions)
+	g.POST("/responses", handler.Responses)
 	g.POST("/embeddings", handler.Embeddings)
 	g.POST("/audio/speech", handler.Speech)
 	g.POST("/audio/transcriptions", handler.Transcriptions)
