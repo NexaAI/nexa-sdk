@@ -314,11 +314,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 
 				toolCall, err := parseToolCalls(buffer.String())
 				if err != nil {
-					snippet := buffer.String()
-					if len(snippet) > 300 {
-						snippet = snippet[:300] + "..."
-					}
-					slog.Warn("Tool call parse error, fallback to text", "error", err, "response_snippet", snippet)
+					slog.Warn("Tool call parse error, fallback to text", "error", err)
 
 					chunk := openai.ChatCompletionChunk{}
 					chunk.Choices = append(chunk.Choices, openai.ChatCompletionChunkChoice{
@@ -383,7 +379,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 			if err == nil {
 				choice := openai.ChatCompletionChoice{}
 				choice.Message.Role = constant.Assistant(openai.MessageRoleAssistant)
-				choice.Message.ToolCalls = []openai.ChatCompletionMessageToolCallUnion{{ID: "call_0", Function: toolCall, Type: "function"}}
+				choice.Message.ToolCalls = []openai.ChatCompletionMessageToolCallUnion{{Function: toolCall}}
 				res := openai.ChatCompletion{
 					Choices: []openai.ChatCompletionChoice{choice},
 					Usage:   profile2Usage(genOut.ProfileData),
@@ -391,11 +387,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 				c.JSON(http.StatusOK, res)
 				return
 			}
-			snippet := genOut.FullText
-			if len(snippet) > 300 {
-				snippet = snippet[:300] + "..."
-			}
-			slog.Warn("Tool call parse error, fallback to text", "error", err, "response_snippet", snippet)
+			slog.Warn("Tool call parse error, fallback to text", "error", err)
 		}
 
 		choice := openai.ChatCompletionChoice{}
@@ -685,11 +677,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 				c.JSON(http.StatusOK, res)
 				return
 			}
-			snippet := genOut.FullText
-			if len(snippet) > 300 {
-				snippet = snippet[:300] + "..."
-			}
-			slog.Warn("Tool call parse error, fallback to text", "error", err, "response_snippet", snippet)
+			slog.Warn("Tool call parse error, fallback to text", "error", err)
 		}
 
 		choice := openai.ChatCompletionChoice{}
@@ -741,22 +729,14 @@ var toolCallRegex = regexp.MustCompile(`<tool_call>([\s\S]+)<\/tool_call>` + "|"
 
 func parseToolCalls(resp string) (openai.ChatCompletionMessageFunctionToolCallFunction, error) {
 	match := toolCallRegex.FindStringSubmatch(resp)
-	if len(match) < 2 {
-		return openai.ChatCompletionMessageFunctionToolCallFunction{}, errors.New("tool call not match")
-	}
-	inner := match[1]
-	if inner == "" && len(match) > 2 {
-		inner = match[2]
-	}
-	inner = strings.TrimSpace(inner)
-	if inner == "" {
+	if len(match) <= 1 {
 		return openai.ChatCompletionMessageFunctionToolCallFunction{}, errors.New("tool call not match")
 	}
 
-	slog.Debug("Tool call matched", "match", inner)
+	slog.Debug("Tool call matched", "match", match[1])
 
+	name, err := sonic.GetFromString(match[1], "name")
 	toolCall := openai.ChatCompletionMessageFunctionToolCallFunction{}
-	name, err := sonic.GetFromString(inner, "name")
 	if err != nil {
 		return openai.ChatCompletionMessageFunctionToolCallFunction{}, err
 	}
@@ -765,7 +745,7 @@ func parseToolCalls(resp string) (openai.ChatCompletionMessageFunctionToolCallFu
 		return openai.ChatCompletionMessageFunctionToolCallFunction{}, err
 	}
 
-	arguments, err := sonic.GetFromString(inner, "arguments")
+	arguments, err := sonic.GetFromString(match[1], "arguments")
 	if err != nil {
 		return openai.ChatCompletionMessageFunctionToolCallFunction{}, err
 	}
