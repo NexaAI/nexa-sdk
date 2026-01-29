@@ -29,9 +29,9 @@ import (
 	"github.com/bytedance/sonic"
 	"github.com/bytedance/sonic/ast"
 	"github.com/gin-gonic/gin"
-	"github.com/openai/openai-go"
-	"github.com/openai/openai-go/packages/param"
-	"github.com/openai/openai-go/shared/constant"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/packages/param"
+	"github.com/openai/openai-go/v3/shared/constant"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
@@ -314,7 +314,11 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 
 				toolCall, err := parseToolCalls(buffer.String())
 				if err != nil {
-					slog.Warn("Tool call parse error, fallback to text", "error", err)
+					snippet := buffer.String()
+					if len(snippet) > 300 {
+						snippet = snippet[:300] + "..."
+					}
+					slog.Warn("Tool call parse error, fallback to text", "error", err, "response_snippet", snippet)
 
 					chunk := openai.ChatCompletionChunk{}
 					chunk.Choices = append(chunk.Choices, openai.ChatCompletionChunkChoice{
@@ -379,7 +383,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 			if err == nil {
 				choice := openai.ChatCompletionChoice{}
 				choice.Message.Role = constant.Assistant(openai.MessageRoleAssistant)
-				choice.Message.ToolCalls = []openai.ChatCompletionMessageToolCall{{Function: toolCall}}
+				choice.Message.ToolCalls = []openai.ChatCompletionMessageToolCallUnion{{ID: "call_0", Function: toolCall, Type: "function"}}
 				res := openai.ChatCompletion{
 					Choices: []openai.ChatCompletionChoice{choice},
 					Usage:   profile2Usage(genOut.ProfileData),
@@ -387,7 +391,11 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 				c.JSON(http.StatusOK, res)
 				return
 			}
-			slog.Warn("Tool call parse error, fallback to text", "error", err)
+			snippet := genOut.FullText
+			if len(snippet) > 300 {
+				snippet = snippet[:300] + "..."
+			}
+			slog.Warn("Tool call parse error, fallback to text", "error", err, "response_snippet", snippet)
 		}
 
 		choice := openai.ChatCompletionChoice{}
@@ -669,7 +677,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 			if err == nil {
 				choice := openai.ChatCompletionChoice{}
 				choice.Message.Role = constant.Assistant(openai.MessageRoleAssistant)
-				choice.Message.ToolCalls = []openai.ChatCompletionMessageToolCall{{Function: toolCall}}
+				choice.Message.ToolCalls = []openai.ChatCompletionMessageToolCallUnion{{ID: "call_0", Function: toolCall, Type: "function"}}
 				res := openai.ChatCompletion{
 					Choices: []openai.ChatCompletionChoice{choice},
 					Usage:   profile2Usage(genOut.ProfileData),
@@ -677,7 +685,11 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 				c.JSON(http.StatusOK, res)
 				return
 			}
-			slog.Warn("Tool call parse error, fallback to text", "error", err)
+			snippet := genOut.FullText
+			if len(snippet) > 300 {
+				snippet = snippet[:300] + "..."
+			}
+			slog.Warn("Tool call parse error, fallback to text", "error", err, "response_snippet", snippet)
 		}
 
 		choice := openai.ChatCompletionChoice{}
@@ -727,27 +739,35 @@ func parseTools(param ChatCompletionRequest) (bool, string, error) {
 
 var toolCallRegex = regexp.MustCompile(`<tool_call>([\s\S]+)<\/tool_call>` + "|" + "```json([\\s\\S]+)```")
 
-func parseToolCalls(resp string) (openai.ChatCompletionMessageToolCallFunction, error) {
+func parseToolCalls(resp string) (openai.ChatCompletionMessageFunctionToolCallFunction, error) {
 	match := toolCallRegex.FindStringSubmatch(resp)
-	if len(match) <= 1 {
-		return openai.ChatCompletionMessageToolCallFunction{}, errors.New("tool call not match")
+	if len(match) < 2 {
+		return openai.ChatCompletionMessageFunctionToolCallFunction{}, errors.New("tool call not match")
+	}
+	inner := match[1]
+	if inner == "" && len(match) > 2 {
+		inner = match[2]
+	}
+	inner = strings.TrimSpace(inner)
+	if inner == "" {
+		return openai.ChatCompletionMessageFunctionToolCallFunction{}, errors.New("tool call not match")
 	}
 
-	slog.Debug("Tool call matched", "match", match[1])
+	slog.Debug("Tool call matched", "match", inner)
 
-	toolCall := openai.ChatCompletionMessageToolCallFunction{}
-	name, err := sonic.GetFromString(match[1], "name")
+	toolCall := openai.ChatCompletionMessageFunctionToolCallFunction{}
+	name, err := sonic.GetFromString(inner, "name")
 	if err != nil {
-		return openai.ChatCompletionMessageToolCallFunction{}, err
+		return openai.ChatCompletionMessageFunctionToolCallFunction{}, err
 	}
 	toolCall.Name, err = name.String()
 	if err != nil {
-		return openai.ChatCompletionMessageToolCallFunction{}, err
+		return openai.ChatCompletionMessageFunctionToolCallFunction{}, err
 	}
 
-	arguments, err := sonic.GetFromString(match[1], "arguments")
+	arguments, err := sonic.GetFromString(inner, "arguments")
 	if err != nil {
-		return openai.ChatCompletionMessageToolCallFunction{}, err
+		return openai.ChatCompletionMessageFunctionToolCallFunction{}, err
 	}
 	switch arguments.TypeSafe() {
 	case ast.V_OBJECT:
@@ -755,7 +775,7 @@ func parseToolCalls(resp string) (openai.ChatCompletionMessageToolCallFunction, 
 	case ast.V_STRING:
 		toolCall.Arguments, _ = arguments.String()
 	default:
-		return openai.ChatCompletionMessageToolCallFunction{}, errors.New("unknown arguments type")
+		return openai.ChatCompletionMessageFunctionToolCallFunction{}, errors.New("unknown arguments type")
 	}
 	toolCall.Arguments, err = arguments.Raw()
 

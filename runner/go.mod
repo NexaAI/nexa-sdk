@@ -19,7 +19,6 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.7.2
 	github.com/lmittmann/tint v1.1.2
 	github.com/mattn/go-runewidth v0.0.16
-	github.com/openai/openai-go v1.12.0
 	github.com/openai/openai-go/v3 v3.17.0
 	github.com/schollz/progressbar/v3 v3.18.0
 	github.com/shirou/gopsutil v3.21.11+incompatible
