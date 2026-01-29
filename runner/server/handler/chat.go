@@ -25,9 +25,9 @@ import (
 
 	"github.com/bytedance/sonic"
 	"github.com/gin-gonic/gin"
-	"github.com/openai/openai-go"
-	"github.com/openai/openai-go/packages/param"
-	"github.com/openai/openai-go/shared/constant"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/packages/param"
+	"github.com/openai/openai-go/v3/shared/constant"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
@@ -209,9 +209,9 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 
 	// Format prompt using chat template
 	formatted, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
-		Messages:    messages,
-		Tools:       tools,
-		EnableThink: param.EnableThink,
+		Messages:            messages,
+		Tools:               tools,
+		EnableThink:         param.EnableThink,
 		AddGenerationPrompt: true,
 	})
 	if err != nil {
@@ -320,8 +320,11 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 				c.JSON(http.StatusInternalServerError, map[string]any{"error": "not match", "data": genOut.FullText})
 				return
 			}
-			toolCall := openai.ChatCompletionMessageToolCall{Type: constant.Function("")}
-			err = sonic.UnmarshalString("{"+match[1]+"}", &toolCall.Function)
+			toolCallUnion := openai.ChatCompletionMessageToolCallUnion{
+				ID:   "call_0",
+				Type: "function",
+			}
+			err = sonic.UnmarshalString("{"+match[1]+"}", &toolCallUnion.Function)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "data": match[1]})
 				return
@@ -329,7 +332,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 
 			choice := openai.ChatCompletionChoice{}
 			choice.Message.Role = constant.Assistant(openai.MessageRoleAssistant)
-			choice.Message.ToolCalls = []openai.ChatCompletionMessageToolCall{toolCall}
+			choice.Message.ToolCalls = []openai.ChatCompletionMessageToolCallUnion{toolCallUnion}
 			res := openai.ChatCompletion{
 				Choices: []openai.ChatCompletionChoice{choice},
 				Usage:   profile2Usage(genOut.ProfileData),
@@ -613,8 +616,8 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 				c.JSON(http.StatusInternalServerError, map[string]any{"error": "not match", "data": genOut.FullText})
 				return
 			}
-			toolCall := openai.ChatCompletionMessageToolCall{Type: constant.Function("")}
-			err = sonic.UnmarshalString("{"+match[1]+"}", &toolCall.Function)
+			toolCallUnion := openai.ChatCompletionMessageToolCallUnion{}
+			err = sonic.UnmarshalString("{"+match[1]+"}", &toolCallUnion.Function)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "data": match[1]})
 				return
@@ -622,7 +625,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 
 			choice := openai.ChatCompletionChoice{}
 			choice.Message.Role = constant.Assistant(openai.MessageRoleAssistant)
-			choice.Message.ToolCalls = []openai.ChatCompletionMessageToolCall{toolCall}
+			choice.Message.ToolCalls = []openai.ChatCompletionMessageToolCallUnion{toolCallUnion}
 			res := openai.ChatCompletion{
 				Choices: []openai.ChatCompletionChoice{choice},
 				Usage:   profile2Usage(genOut.ProfileData),
