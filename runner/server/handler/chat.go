@@ -346,7 +346,6 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 					return false
 				}
 
-				slog.Debug("Tool call parsed", "tool_call", toolCall) // TODO: remove debug log
 				c.SSEvent("", openai.ChatCompletionChunk{
 					Choices: []openai.ChatCompletionChunkChoice{{
 						Delta: openai.ChatCompletionChunkChoiceDelta{
@@ -425,6 +424,35 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 	var systemPrompt string
 	messages := make([]nexa_sdk.VlmChatMessage, 0, len(param.Messages))
 	for _, msg := range param.Messages {
+		// tool call message
+		if toolCalls := msg.GetToolCalls(); len(toolCalls) > 0 {
+			contents := make([]nexa_sdk.VlmContent, 0, len(toolCalls))
+			for _, tc := range toolCalls {
+				contents = append(contents, nexa_sdk.VlmContent{
+					Type: nexa_sdk.VlmContentTypeText,
+					Text: fmt.Sprintf(`<tool_call>{"name":"%s","arguments":"%s"}</tool_call>`,
+						tc.GetFunction().Name, tc.GetFunction().Arguments),
+				})
+			}
+			messages = append(messages, nexa_sdk.VlmChatMessage{
+				Role:     nexa_sdk.VlmRole(*msg.GetRole()),
+				Contents: contents,
+			})
+			continue
+		}
+
+		// tool call response message
+		if toolResp := msg.GetToolCallID(); toolResp != nil {
+			messages = append(messages, nexa_sdk.VlmChatMessage{
+				Role: nexa_sdk.VlmRole(*msg.GetRole()),
+				Contents: []nexa_sdk.VlmContent{{
+					Type: nexa_sdk.VlmContentTypeText,
+					Text: *msg.GetContent().AsAny().(*string),
+				}},
+			})
+			continue
+		}
+
 		switch content := msg.GetContent().AsAny().(type) {
 		case *string:
 			if *msg.GetRole() == "system" {
@@ -531,9 +559,6 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 				Contents: contents,
 			})
 
-		case nil:
-			slog.Warn("Nil content in message")
-
 		default:
 			slog.Error("Unknown content type in message")
 			c.JSON(http.StatusBadRequest, map[string]any{"error": "unknown content type"})
@@ -627,38 +652,97 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 			close(dataCh)
 		}()
 
-		c.Stream(func(w io.Writer) bool {
-			r, ok := <-dataCh
-			if ok {
-				chunk := openai.ChatCompletionChunk{}
-				chunk.Choices = append(chunk.Choices, openai.ChatCompletionChunkChoice{
-					Delta: openai.ChatCompletionChunkChoiceDelta{
-						Content: r,
-						Role:    string(openai.MessageRoleAssistant),
-					},
-				})
+		if !parseTool {
+			c.Stream(func(w io.Writer) bool {
+				r, ok := <-dataCh
+				if ok {
+					chunk := openai.ChatCompletionChunk{}
+					chunk.Choices = append(chunk.Choices, openai.ChatCompletionChunkChoice{
+						Delta: openai.ChatCompletionChunkChoiceDelta{
+							Content: r,
+							Role:    string(openai.MessageRoleAssistant),
+						},
+					})
 
-				c.SSEvent("", chunk)
-				return true
-			}
+					c.SSEvent("", chunk)
+					return true
+				}
 
-			resWg.Wait()
+				resWg.Wait()
 
-			if err != nil {
-				c.SSEvent("", map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
+				if err != nil {
+					c.SSEvent("", map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
+					return false
+				}
+
+				if param.StreamOptions.IncludeUsage.Value {
+					c.SSEvent("", openai.ChatCompletionChunk{
+						Choices: []openai.ChatCompletionChunkChoice{},
+						Usage:   profile2Usage(res.ProfileData),
+					})
+				}
+				c.SSEvent("", "[DONE]")
+
 				return false
-			}
+			})
+		} else {
+			buffer := strings.Builder{}
+			c.Stream(func(w io.Writer) bool {
+				r, ok := <-dataCh
+				if ok {
+					buffer.WriteString(r)
+					return true
+				}
 
-			if param.StreamOptions.IncludeUsage.Value {
+				resWg.Wait()
+
+				if err != nil {
+					slog.Error("Generation error", "error", err)
+					c.SSEvent("", map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
+					return false
+				}
+
+				toolCall, err := parseToolCalls(buffer.String())
+				if err != nil {
+					slog.Warn("Tool call parse error, fallback to text", "error", err)
+
+					chunk := openai.ChatCompletionChunk{}
+					chunk.Choices = append(chunk.Choices, openai.ChatCompletionChunkChoice{
+						Delta: openai.ChatCompletionChunkChoiceDelta{
+							Content: buffer.String(),
+							Role:    string(openai.MessageRoleAssistant),
+						},
+					})
+
+					c.SSEvent("", chunk)
+					return false
+				}
+
 				c.SSEvent("", openai.ChatCompletionChunk{
-					Choices: []openai.ChatCompletionChunkChoice{},
-					Usage:   profile2Usage(res.ProfileData),
+					Choices: []openai.ChatCompletionChunkChoice{{
+						Delta: openai.ChatCompletionChunkChoiceDelta{
+							ToolCalls: []openai.ChatCompletionChunkChoiceDeltaToolCall{{
+								ID: fmt.Sprint(rand.Uint32()),
+								Function: openai.ChatCompletionChunkChoiceDeltaToolCallFunction{
+									Name:      toolCall.Name,
+									Arguments: toolCall.Arguments,
+								},
+							}},
+						},
+					}},
 				})
-			}
-			c.SSEvent("", "[DONE]")
 
-			return false
-		})
+				if param.StreamOptions.IncludeUsage.Value {
+					c.SSEvent("", openai.ChatCompletionChunk{
+						Choices: []openai.ChatCompletionChunkChoice{},
+						Usage:   profile2Usage(res.ProfileData),
+					})
+				}
+				c.SSEvent("", "[DONE]")
+
+				return false
+			})
+		}
 
 		stopGen = true
 		for range dataCh {
@@ -775,7 +859,6 @@ func parseToolCalls(resp string) (openai.ChatCompletionMessageFunctionToolCallFu
 	default:
 		return openai.ChatCompletionMessageFunctionToolCallFunction{}, errors.New("unknown arguments type")
 	}
-	toolCall.Arguments, err = arguments.Raw()
 
 	slog.Debug("Parsed tool call", "tool_call", toolCall)
 
