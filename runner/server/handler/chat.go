@@ -350,7 +350,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 					Choices: []openai.ChatCompletionChunkChoice{{
 						Delta: openai.ChatCompletionChunkChoiceDelta{
 							ToolCalls: []openai.ChatCompletionChunkChoiceDeltaToolCall{{
-								ID: fmt.Sprint(rand.Uint32()),
+								ID: fmt.Sprintf("call_%d", rand.Uint32()),
 								Function: openai.ChatCompletionChunkChoiceDeltaToolCallFunction{
 									Name:      toolCall.Name,
 									Arguments: toolCall.Arguments,
@@ -398,6 +398,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 				choice.Message.Role = constant.Assistant(openai.MessageRoleAssistant)
 				choice.Message.ToolCalls = []openai.ChatCompletionMessageToolCallUnion{{Function: toolCall}}
 				res := openai.ChatCompletion{
+					ID:      fmt.Sprintf("call_%d", rand.Uint32()),
 					Choices: []openai.ChatCompletionChoice{choice},
 					Usage:   profile2Usage(genOut.ProfileData),
 				}
@@ -722,7 +723,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 					Choices: []openai.ChatCompletionChunkChoice{{
 						Delta: openai.ChatCompletionChunkChoiceDelta{
 							ToolCalls: []openai.ChatCompletionChunkChoiceDeltaToolCall{{
-								ID: fmt.Sprint(rand.Uint32()),
+								ID: fmt.Sprintf("call_%d", rand.Uint32()),
 								Function: openai.ChatCompletionChunkChoiceDeltaToolCallFunction{
 									Name:      toolCall.Name,
 									Arguments: toolCall.Arguments,
@@ -771,8 +772,9 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 			if err == nil {
 				choice := openai.ChatCompletionChoice{}
 				choice.Message.Role = constant.Assistant(openai.MessageRoleAssistant)
-				choice.Message.ToolCalls = []openai.ChatCompletionMessageToolCallUnion{{ID: "call_0", Function: toolCall, Type: "function"}}
+				choice.Message.ToolCalls = []openai.ChatCompletionMessageToolCallUnion{{Function: toolCall}}
 				res := openai.ChatCompletion{
+					ID:      fmt.Sprintf("call_%d", rand.Uint32()),
 					Choices: []openai.ChatCompletionChoice{choice},
 					Usage:   profile2Usage(genOut.ProfileData),
 				}
@@ -834,10 +836,14 @@ func parseToolCalls(resp string) (openai.ChatCompletionMessageFunctionToolCallFu
 	if len(match) <= 1 {
 		return openai.ChatCompletionMessageFunctionToolCallFunction{}, errors.New("tool call not match")
 	}
+	matched := match[1]
+	if matched == "" && len(match) > 2 {
+		matched = match[2]
+	}
 
-	slog.Debug("Tool call matched", "match", match[1])
+	slog.Debug("Tool call matched", "matched", matched)
 
-	name, err := sonic.GetFromString(match[1], "name")
+	name, err := sonic.GetFromString(matched, "name")
 	toolCall := openai.ChatCompletionMessageFunctionToolCallFunction{}
 	if err != nil {
 		return openai.ChatCompletionMessageFunctionToolCallFunction{}, err
@@ -847,7 +853,7 @@ func parseToolCalls(resp string) (openai.ChatCompletionMessageFunctionToolCallFu
 		return openai.ChatCompletionMessageFunctionToolCallFunction{}, err
 	}
 
-	arguments, err := sonic.GetFromString(match[1], "arguments")
+	arguments, err := sonic.GetFromString(matched, "arguments")
 	if err != nil {
 		return openai.ChatCompletionMessageFunctionToolCallFunction{}, err
 	}
