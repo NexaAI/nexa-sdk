@@ -53,7 +53,7 @@ func RegisterAPIv1(r *gin.Engine) {
 	g.POST("/audio/speech", handler.Speech)
 	g.POST("/audio/transcriptions", handler.Transcriptions)
 	g.POST("/images/generations", handler.ImageGenerations)
-	g.POST("/responses", handler.ResponsesCreate)
+	g.POST("/responses", handler.Responses)
 	// ==== nexa specific ====
 	g.POST("/audio/diarize", handler.Diarize)
 	g.POST("/reranking", handler.Reranking)
