@@ -16,6 +16,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
@@ -115,6 +116,16 @@ func TestResponsesInput_UnmarshalJSON(t *testing.T) {
 			name:      "array with multiple messages",
 			json:      `[{"type": "message", "role": "system", "content": [{"type": "input_text", "text": "you are helpful"}]}, {"type": "message", "role": "user", "content": [{"type": "input_text", "text": "hello"}]}]`,
 			wantItems: 2,
+		},
+		{
+			name:     "null input",
+			json:     `null`,
+			wantText: "",
+		},
+		{
+			name:      "single message object",
+			json:      `{"type": "message", "role": "user", "content": [{"type": "input_text", "text": "hello"}]}`,
+			wantItems: 1,
 		},
 		{
 			name:    "invalid input",
@@ -272,6 +283,25 @@ func TestFromResponsesRequest(t *testing.T) {
 	})
 }
 
+func TestParseToolCallsAll(t *testing.T) {
+	t.Run("full JSON object inside tool_call", func(t *testing.T) {
+		fullText := "<think>\nplan\n</think>\n\n<tool_call>\n{\"name\": \"get_system_health\", \"arguments\": {}}\n</tool_call>"
+		calls, err := parseToolCallsAll(fullText)
+		if err != nil {
+			t.Fatalf("parseToolCallsAll: %v", err)
+		}
+		if len(calls) != 1 {
+			t.Fatalf("len(calls) = %d, want 1", len(calls))
+		}
+		if calls[0].Name != "get_system_health" {
+			t.Errorf("Name = %q, want get_system_health", calls[0].Name)
+		}
+		if calls[0].Arguments != "{}" {
+			t.Errorf("Arguments = %q, want {}", calls[0].Arguments)
+		}
+	})
+}
+
 func TestToResponse(t *testing.T) {
 	req := ResponsesRequest{Model: "test"}
 	profile := nexa_sdk.ProfileData{
@@ -306,6 +336,35 @@ func TestToResponse(t *testing.T) {
 			}
 		}
 	})
+	t.Run("tool call output", func(t *testing.T) {
+		fullText := "<think>\nplan\n</think>\n\n<tool_call>\n{\"name\": \"get_system_health\", \"arguments\": {}}\n</tool_call>"
+		resp := ToResponse("test", "resp_1", "msg_1", fullText, profile, req)
+		if resp.Status != "completed" {
+			t.Errorf("Status = %q, want completed", resp.Status)
+		}
+		if len(resp.Output) < 1 {
+			t.Fatalf("len(Output) = %d, want at least 1", len(resp.Output))
+		}
+		idx := 0
+		if resp.Output[0].Type == "reasoning" {
+			if len(resp.Output[0].Content) != 1 || resp.Output[0].Content[0].Type != "reasoning_text" || resp.Output[0].Content[0].Text != "plan" {
+				t.Errorf("Output[0] reasoning: content = %+v", resp.Output[0].Content)
+			}
+			idx = 1
+		}
+		if len(resp.Output) <= idx {
+			t.Fatalf("no function_call in output")
+		}
+		if resp.Output[idx].Type != "function_call" {
+			t.Errorf("Output[%d].Type = %q, want function_call", idx, resp.Output[idx].Type)
+		}
+		if resp.Output[idx].Name != "get_system_health" {
+			t.Errorf("Output[%d].Name = %q, want get_system_health", idx, resp.Output[idx].Name)
+		}
+		if resp.Output[idx].Arguments != "{}" {
+			t.Errorf("Output[%d].Arguments = %q, want {}", idx, resp.Output[idx].Arguments)
+		}
+	})
 }
 
 func TestResponsesStreamConverter(t *testing.T) {
@@ -338,5 +397,220 @@ func TestResponsesStreamConverter(t *testing.T) {
 	}
 	if !hasCompleted {
 		t.Error("expected response.completed event")
+	}
+}
+
+// responsesCompatibilityValidResponse checks output shape per compatibility-test testOutputData (apiType === "responses").
+func responsesCompatibilityValidResponse(output []ResponsesOutputItem) bool {
+	for _, item := range output {
+		if item.Type != "reasoning" {
+			continue
+		}
+		if !(len(item.Content) > 0) {
+			return false
+		}
+		for _, c := range item.Content {
+			if c.Type != "reasoning_text" || len(c.Text) == 0 {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
+func responsesCompatibilityFindToolCall(output []ResponsesOutputItem, toolName string) (arguments string, found bool) {
+	for _, item := range output {
+		if item.Type == "function_call" && item.Name == toolName {
+			return item.Arguments, true
+		}
+	}
+	return "", false
+}
+
+func TestResponsesCompatibilityOutputShape(t *testing.T) {
+	req := ResponsesRequest{Model: "test"}
+	profile := nexa_sdk.ProfileData{PromptTokens: 10, GeneratedTokens: 5}
+	fullText := "<think>\nplan\n</think>\n\n<tool_call>\n{\"name\": \"get_system_health\", \"arguments\": {}}\n</tool_call>"
+	resp := ToResponse("test", "resp_1", "msg_1", fullText, profile, req)
+	if !responsesCompatibilityValidResponse(resp.Output) {
+		t.Errorf("validResponse: output must contain reasoning item with content[].type=reasoning_text and non-empty text; output=%+v", resp.Output)
+	}
+	args, ok := responsesCompatibilityFindToolCall(resp.Output, "get_system_health")
+	if !ok {
+		t.Errorf("output must contain function_call item with name get_system_health")
+	}
+	if args != "{}" {
+		t.Errorf("arguments = %q, want {}", args)
+	}
+}
+
+func TestResponsesCompatibilityProcessDone(t *testing.T) {
+	conv := NewResponsesStreamConverter("resp_1", "msg_1", "test", ResponsesRequest{})
+	profile := nexa_sdk.ProfileData{PromptTokens: 10, GeneratedTokens: 5}
+	fullText := "<think>\nplan\n</think>\n\n<tool_call>\n{\"name\": \"get_system_health\", \"arguments\": {}}\n</tool_call>"
+	events := conv.ProcessDone(fullText, profile)
+	var completedData map[string]any
+	for _, ev := range events {
+		if ev.Event == "response.completed" {
+			if m, ok := ev.Data.(map[string]any); ok {
+				completedData = m
+				break
+			}
+		}
+	}
+	if completedData == nil {
+		t.Fatal("expected response.completed event with data")
+	}
+	resp, _ := completedData["response"].(map[string]any)
+	output, _ := resp["output"].([]any)
+	hasReasoning := false
+	var toolCallArgs string
+	for _, it := range output {
+		item, _ := it.(map[string]any)
+		if item["type"] == "reasoning" {
+			switch content := item["content"].(type) {
+			case []any:
+				if len(content) > 0 {
+					if part, _ := content[0].(map[string]any); part != nil {
+						if part["type"] == "reasoning_text" {
+							if s, _ := part["text"].(string); len(s) > 0 {
+								hasReasoning = true
+							}
+						}
+					}
+				}
+			case []map[string]any:
+				if len(content) > 0 {
+					part := content[0]
+					if part["type"] == "reasoning_text" {
+						if s, _ := part["text"].(string); len(s) > 0 {
+							hasReasoning = true
+						}
+					}
+				}
+			}
+		}
+		if item["type"] == "function_call" && item["name"] == "get_system_health" {
+			toolCallArgs, _ = item["arguments"].(string)
+		}
+	}
+	if !hasReasoning {
+		t.Error("validResponse: response.completed output must contain reasoning item with content[].type=reasoning_text and non-empty text")
+	}
+	if toolCallArgs != "{}" {
+		t.Errorf("function_call arguments = %q, want {}", toolCallArgs)
+	}
+}
+
+var responsesCompatibilityCases = []struct {
+	toolName          string
+	expectedArguments string
+}{
+	{"get_system_health", "{}"},
+	{"get_system_health", "{}"},
+	{"get_system_health", "{}"},
+	{"markdown_to_html", `{"markdown":"# Title\n\nSome *italic* text."}`},
+	{"markdown_to_html", `{"markdown":"## Docs"}`},
+	{"markdown_to_html", `{"markdown":"- item 1\n- item 2"}`},
+	{"markdown_to_html", `{"markdown":"**bold**"}`},
+	{"markdown_to_html", `{"markdown":"> quote"}`},
+	{"detect_language", `{"text":"Buenos días, ¿cómo estás?"}`},
+	{"detect_language", `{"text":"Guten Morgen"}`},
+	{"detect_language", `{"text":"こんにちは、お元気ですか？"}`},
+	{"detect_language", `{"text":"Привет, как дела?"}`},
+	{"detect_language", `{"text":"Bonjour tout le monde"}`},
+	{"generate_chart", `{"data":[[1,2],[2,4],[3,9]],"chart_type":"line"}`},
+	{"generate_chart", `{"data":[[1,10],[2,20],[3,30]],"chart_type":"bar","title":"Quarterly Sales"}`},
+	{"generate_chart", `{"data":[[0,1],[1,1.5],[2,2.2]],"chart_type":"scatter","title":"Experiment","x_label":"Time","y_label":"Value"}`},
+	{"generate_chart", `{"data":[[1,70],[2,72],[3,68],[4,65]],"chart_type":"line","x_label":"Day"}`},
+	{"generate_chart", `{"data":[[1,100],[2,150],[3,120]],"chart_type":"bar","title":"Daily Visits","y_label":"Visitors"}`},
+	{"query_database", `{"table":"users","columns":["id","email"],"limit":5}`},
+	{"query_database", `{"table":"orders","columns":["order_id","amount"],"filters":"status = 'shipped'"}`},
+	{"query_database", `{"table":"products","columns":["name","price"],"limit":10,"order_by":"price DESC"}`},
+	{"query_database", `{"table":"audit_log","columns":["id","timestamp","action"],"limit":3}`},
+	{"query_database", `{"table":"customers","columns":["name","city"],"filters":"city = 'Berlin'"}`},
+	{"get_weather", `{"location":"San Francisco"}`},
+	{"get_weather", `{"location":"Tokyo"}`},
+	{"get_weather", `{"location":"10001"}`},
+	{"get_weather", `{"location":"Paris"}`},
+	{"get_weather", `{"location":"Sydney"}`},
+}
+
+func TestResponsesCompatibilityToolCalls(t *testing.T) {
+	req := ResponsesRequest{Model: "test"}
+	profile := nexa_sdk.ProfileData{PromptTokens: 10, GeneratedTokens: 5}
+	for i, tc := range responsesCompatibilityCases {
+		t.Run(fmt.Sprintf("%s_%d", tc.toolName, i), func(t *testing.T) {
+			fullText := "<think>\nplan\n</think>\n\n<tool_call>\n{\"name\": \"" + tc.toolName + "\", \"arguments\": " + tc.expectedArguments + "}\n</tool_call>"
+			resp := ToResponse("test", "resp_1", "msg_1", fullText, profile, req)
+			if !responsesCompatibilityValidResponse(resp.Output) {
+				t.Errorf("validResponse: need reasoning item with content[].type=reasoning_text")
+			}
+			args, ok := responsesCompatibilityFindToolCall(resp.Output, tc.toolName)
+			if !ok {
+				t.Errorf("output must contain function_call with name %q", tc.toolName)
+				return
+			}
+			var got, want map[string]any
+			if err := json.Unmarshal([]byte(args), &got); err != nil {
+				t.Errorf("arguments not valid JSON: %v", err)
+				return
+			}
+			if err := json.Unmarshal([]byte(tc.expectedArguments), &want); err != nil {
+				t.Fatalf("expected_arguments invalid: %v", err)
+			}
+			if !responsesDeepEqual(got, want) {
+				t.Errorf("arguments = %s, want %s", args, tc.expectedArguments)
+			}
+		})
+	}
+}
+
+func responsesDeepEqual(a, b map[string]any) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, av := range a {
+		bv, ok := b[k]
+		if !ok {
+			return false
+		}
+		if !responsesValueEqual(av, bv) {
+			return false
+		}
+	}
+	return true
+}
+
+func responsesValueEqual(a, b any) bool {
+	switch av := a.(type) {
+	case map[string]any:
+		bv, ok := b.(map[string]any)
+		if !ok {
+			return false
+		}
+		return responsesDeepEqual(av, bv)
+	case []any:
+		bv, ok := b.([]any)
+		if !ok || len(av) != len(bv) {
+			return false
+		}
+		for i := range av {
+			if !responsesValueEqual(av[i], bv[i]) {
+				return false
+			}
+		}
+		return true
+	case float64:
+		if bv, ok := b.(float64); ok {
+			return av == bv
+		}
+		if bv, ok := b.(int); ok {
+			return av == float64(bv)
+		}
+		return false
+	default:
+		return a == b
 	}
 }

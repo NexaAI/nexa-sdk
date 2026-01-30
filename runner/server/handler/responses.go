@@ -18,9 +18,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math/rand/v2"
 	"net/http"
 	"os"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -212,6 +215,11 @@ type ResponsesInput struct {
 }
 
 func (r *ResponsesInput) UnmarshalJSON(data []byte) error {
+	if len(data) == 4 && string(data) == "null" {
+		r.Text = ""
+		r.Items = nil
+		return nil
+	}
 	var s string
 	if err := json.Unmarshal(data, &s); err == nil {
 		r.Text = s
@@ -219,7 +227,12 @@ func (r *ResponsesInput) UnmarshalJSON(data []byte) error {
 	}
 	var rawItems []json.RawMessage
 	if err := json.Unmarshal(data, &rawItems); err != nil {
-		return fmt.Errorf("input must be a string or array: %w", err)
+		item, err := unmarshalResponsesInputItem(data)
+		if err != nil {
+			return fmt.Errorf("input must be a string, array, or single message object: %w", err)
+		}
+		r.Items = []ResponsesInputItem{item}
+		return nil
 	}
 	r.Items = make([]ResponsesInputItem, 0, len(rawItems))
 	for i, raw := range rawItems {
@@ -253,32 +266,32 @@ type ResponsesTool struct {
 	Type        string         `json:"type"`
 	Name        string         `json:"name"`
 	Description *string        `json:"description"`
-	Strict      *bool           `json:"strict"`
+	Strict      *bool          `json:"strict"`
 	Parameters  map[string]any `json:"parameters"`
 }
 
 type ResponsesRequest struct {
-	Model         string          `json:"model"`
-	Background    bool            `json:"background"`
-	Conversation  json.RawMessage `json:"conversation"`
-	Include       []string        `json:"include"`
-	Input         ResponsesInput   `json:"input"`
-	Instructions  string          `json:"instructions,omitempty"`
-	MaxOutputTokens *int          `json:"max_output_tokens,omitempty"`
-	Reasoning     ResponsesReasoning `json:"reasoning"`
-	Temperature   *float64       `json:"temperature"`
-	Text          *ResponsesText  `json:"text,omitempty"`
-	TopP          *float64       `json:"top_p"`
-	Truncation    *string         `json:"truncation"`
-	Tools         []ResponsesTool `json:"tools,omitempty"`
-	Stream        *bool           `json:"stream,omitempty"`
+	Model           string             `json:"model"`
+	Background      bool               `json:"background"`
+	Conversation    json.RawMessage    `json:"conversation"`
+	Include         []string           `json:"include"`
+	Input           ResponsesInput     `json:"input"`
+	Instructions    string             `json:"instructions,omitempty"`
+	MaxOutputTokens *int               `json:"max_output_tokens,omitempty"`
+	Reasoning       ResponsesReasoning `json:"reasoning"`
+	Temperature     *float64           `json:"temperature"`
+	Text            *ResponsesText     `json:"text,omitempty"`
+	TopP            *float64           `json:"top_p"`
+	Truncation      *string            `json:"truncation"`
+	Tools           []ResponsesTool    `json:"tools,omitempty"`
+	Stream          *bool              `json:"stream,omitempty"`
 }
 
 type ResponsesHandlerOpts struct {
-	Stream       bool
+	Stream        bool
 	SamplerConfig *nexa_sdk.SamplerConfig
-	MaxTokens    int32
-	EnableThink  bool
+	MaxTokens     int32
+	EnableThink   bool
 }
 
 func responsesToolsToChatTools(tools []ResponsesTool) (string, error) {
@@ -308,7 +321,11 @@ func responsesToolsToChatTools(tools []ResponsesTool) (string, error) {
 			},
 		})
 	}
-	return sonic.MarshalString(entries)
+	result, err := sonic.MarshalString(entries)
+	if err != nil {
+		return "", err
+	}
+	return result, nil
 }
 
 func parseSamplerConfigFromResponses(r ResponsesRequest) *nexa_sdk.SamplerConfig {
@@ -321,10 +338,10 @@ func parseSamplerConfigFromResponses(r ResponsesRequest) *nexa_sdk.SamplerConfig
 		topP = float32(*r.TopP)
 	}
 	return &nexa_sdk.SamplerConfig{
-		Temperature: float32(temp),
-		TopP:        topP,
-		TopK:        0,
-		MinP:        0,
+		Temperature:       float32(temp),
+		TopP:              topP,
+		TopK:              0,
+		MinP:              0,
 		RepetitionPenalty: 1.0,
 		PresencePenalty:   0,
 		FrequencyPenalty:  0,
@@ -348,6 +365,7 @@ func convertResponsesInputMessage(m ResponsesInputMessage) (role string, content
 }
 
 func FromResponsesRequest(r ResponsesRequest) (systemPrompt string, messages []nexa_sdk.LlmChatMessage, tools string, opts ResponsesHandlerOpts, err error) {
+
 	if r.Instructions != "" {
 		systemPrompt = r.Instructions
 	}
@@ -437,16 +455,16 @@ type ResponsesOutputContent struct {
 }
 
 type ResponsesOutputItem struct {
-	Type             string                       `json:"type"`
-	ID               string                       `json:"id,omitempty"`
-	CallID           string                       `json:"call_id,omitempty"`
-	Name             string                       `json:"name,omitempty"`
-	Arguments        string                       `json:"arguments,omitempty"`
-	Status           string                       `json:"status,omitempty"`
-	Role             string                       `json:"role,omitempty"`
-	Content          []ResponsesOutputContent     `json:"content,omitempty"`
-	Summary          []ResponsesReasoningSummary  `json:"summary,omitempty"`
-	EncryptedContent string                       `json:"encrypted_content,omitempty"`
+	Type             string                      `json:"type"`
+	ID               string                      `json:"id,omitempty"`
+	CallID           string                      `json:"call_id,omitempty"`
+	Name             string                      `json:"name,omitempty"`
+	Arguments        string                      `json:"arguments,omitempty"`
+	Status           string                      `json:"status,omitempty"`
+	Role             string                      `json:"role,omitempty"`
+	Content          []ResponsesOutputContent    `json:"content,omitempty"`
+	Summary          []ResponsesReasoningSummary `json:"summary,omitempty"`
+	EncryptedContent string                      `json:"encrypted_content,omitempty"`
 }
 
 type ResponsesInputTokensDetails struct {
@@ -471,29 +489,29 @@ type ResponsesError struct {
 }
 
 type ResponsesResponse struct {
-	ID                 string                       `json:"id"`
-	Object             string                       `json:"object"`
-	CreatedAt          int64                        `json:"created_at"`
-	Status             string                       `json:"status"`
-	CompletedAt        *int64                       `json:"completed_at"`
-	Error              *ResponsesError              `json:"error"`
-	IncompleteDetails  *ResponsesIncompleteDetails  `json:"incomplete_details"`
-	Instructions       *string                      `json:"instructions"`
-	MaxOutputTokens    *int                         `json:"max_output_tokens"`
-	Model              string                       `json:"model"`
-	Output             []ResponsesOutputItem        `json:"output"`
-	ParallelToolCalls  bool                         `json:"parallel_tool_calls"`
-	PreviousResponseID *string                      `json:"previous_response_id"`
-	Reasoning          *ResponsesReasoningOutput    `json:"reasoning"`
-	Store              bool                         `json:"store"`
-	Temperature        float64                      `json:"temperature"`
-	Text               ResponsesTextField           `json:"text"`
+	ID                 string                      `json:"id"`
+	Object             string                      `json:"object"`
+	CreatedAt          int64                       `json:"created_at"`
+	Status             string                      `json:"status"`
+	CompletedAt        *int64                      `json:"completed_at"`
+	Error              *ResponsesError             `json:"error"`
+	IncompleteDetails  *ResponsesIncompleteDetails `json:"incomplete_details"`
+	Instructions       *string                     `json:"instructions"`
+	MaxOutputTokens    *int                        `json:"max_output_tokens"`
+	Model              string                      `json:"model"`
+	Output             []ResponsesOutputItem       `json:"output"`
+	ParallelToolCalls  bool                        `json:"parallel_tool_calls"`
+	PreviousResponseID *string                     `json:"previous_response_id"`
+	Reasoning          *ResponsesReasoningOutput   `json:"reasoning"`
+	Store              bool                        `json:"store"`
+	Temperature        float64                     `json:"temperature"`
+	Text               ResponsesTextField          `json:"text"`
 	ToolChoice         any                         `json:"tool_choice"`
-	Tools              []ResponsesTool              `json:"tools"`
-	TopP               float64                      `json:"top_p"`
-	Truncation         string                       `json:"truncation"`
-	Usage              *ResponsesUsage              `json:"usage"`
-	Metadata           map[string]any               `json:"metadata"`
+	Tools              []ResponsesTool             `json:"tools"`
+	TopP               float64                     `json:"top_p"`
+	Truncation         string                      `json:"truncation"`
+	Usage              *ResponsesUsage             `json:"usage"`
+	Metadata           map[string]any              `json:"metadata"`
 }
 
 func derefFloat64(p *float64, def float64) float64 {
@@ -513,6 +531,68 @@ func randomCallID() string {
 	return "call_" + string(b)
 }
 
+var responsesToolCallRegex = regexp.MustCompile(`<tool_call>([\s\S]+)</tool_call>` + "|" + "```json\\s*([\\s\\S]+)```")
+var thinkBlockRegex = regexp.MustCompile(`(?s)<think>([\s\S]*?)</think>`)
+
+func extractThinkContent(fullText string) (thinking string, hasThink bool) {
+	m := thinkBlockRegex.FindStringSubmatch(fullText)
+	if len(m) < 2 {
+		return "", false
+	}
+	return strings.TrimSpace(m[1]), true
+}
+
+// removeToolCallTags removes <tool_call>...</tool_call> tags from text for streaming output
+func removeToolCallTags(text string) string {
+	return responsesToolCallRegex.ReplaceAllString(text, "")
+}
+
+type parsedToolCall struct {
+	Name      string
+	Arguments string
+}
+
+func parseToolCallsAll(fullText string) ([]parsedToolCall, error) {
+	matches := responsesToolCallRegex.FindAllStringSubmatch(fullText, -1)
+	if len(matches) == 0 {
+		return nil, errors.New("no tool call found")
+	}
+	var out []parsedToolCall
+	for _, m := range matches {
+		raw := m[1]
+		if raw == "" {
+			raw = m[2]
+		}
+		if raw == "" {
+			continue
+		}
+		raw = strings.TrimSpace(raw)
+		var fn struct {
+			Name      string          `json:"name"`
+			Arguments json.RawMessage `json:"arguments"`
+		}
+		data := []byte(raw)
+		if err := json.Unmarshal(data, &fn); err != nil {
+			data = []byte("{" + raw + "}")
+			if err = json.Unmarshal(data, &fn); err != nil {
+				return nil, err
+			}
+		}
+		argsStr := string(fn.Arguments)
+		if len(fn.Arguments) >= 2 && fn.Arguments[0] == '"' {
+			var decoded string
+			if json.Unmarshal(fn.Arguments, &decoded) == nil {
+				argsStr = decoded
+			}
+		}
+		out = append(out, parsedToolCall{Name: fn.Name, Arguments: argsStr})
+	}
+	if len(out) == 0 {
+		return nil, errors.New("no valid tool call")
+	}
+	return out, nil
+}
+
 func profileToResponsesUsage(p nexa_sdk.ProfileData) *ResponsesUsage {
 	return &ResponsesUsage{
 		InputTokens:         int(p.PromptTokens),
@@ -525,6 +605,15 @@ func profileToResponsesUsage(p nexa_sdk.ProfileData) *ResponsesUsage {
 
 func ToResponse(model, responseID, itemID, fullText string, profile nexa_sdk.ProfileData, req ResponsesRequest) ResponsesResponse {
 	var output []ResponsesOutputItem
+	if thinking, hasThink := extractThinkContent(fullText); hasThink && thinking != "" {
+		output = append(output, ResponsesOutputItem{
+			Type: "reasoning",
+			ID:   fmt.Sprintf("rs_%s", responseID),
+			Content: []ResponsesOutputContent{
+				{Type: "reasoning_text", Text: thinking, Annotations: []any{}, Logprobs: []any{}},
+			},
+		})
+	}
 	toolCalls, err := parseToolCallsAll(fullText)
 	if err == nil {
 		for i, tc := range toolCalls {
@@ -539,10 +628,10 @@ func ToResponse(model, responseID, itemID, fullText string, profile nexa_sdk.Pro
 		}
 	} else {
 		output = append(output, ResponsesOutputItem{
-			Type:    "message",
-			ID:      itemID,
-			Status:  "completed",
-			Role:    "assistant",
+			Type:   "message",
+			ID:     itemID,
+			Status: "completed",
+			Role:   "assistant",
 			Content: []ResponsesOutputContent{
 				{Type: "output_text", Text: fullText, Annotations: []any{}, Logprobs: []any{}},
 			},
@@ -576,25 +665,25 @@ func ToResponse(model, responseID, itemID, fullText string, profile nexa_sdk.Pro
 	}
 	createdAt := time.Now().Unix()
 	return ResponsesResponse{
-		ID:                 responseID,
-		Object:             "response",
-		CreatedAt:          createdAt,
-		Status:             "completed",
-		CompletedAt:        &createdAt,
-		Instructions:       instructions,
-		MaxOutputTokens:    req.MaxOutputTokens,
-		Model:              model,
-		Output:             output,
-		ParallelToolCalls:  true,
-		Reasoning:          reasoning,
-		Store:              true,
-		Temperature:        derefFloat64(req.Temperature, 1.0),
-		Text:               text,
-		ToolChoice:         "auto",
-		Tools:              tools,
-		TopP:               derefFloat64(req.TopP, 1.0),
-		Truncation:         truncation,
-		Usage:              profileToResponsesUsage(profile),
+		ID:                responseID,
+		Object:            "response",
+		CreatedAt:         createdAt,
+		Status:            "completed",
+		CompletedAt:       &createdAt,
+		Instructions:      instructions,
+		MaxOutputTokens:   req.MaxOutputTokens,
+		Model:             model,
+		Output:            output,
+		ParallelToolCalls: true,
+		Reasoning:         reasoning,
+		Store:             true,
+		Temperature:       derefFloat64(req.Temperature, 1.0),
+		Text:              text,
+		ToolChoice:        "auto",
+		Tools:             tools,
+		TopP:              derefFloat64(req.TopP, 1.0),
+		Truncation:        truncation,
+		Usage:             profileToResponsesUsage(profile),
 		Metadata:          map[string]any{},
 	}
 }
@@ -619,11 +708,11 @@ type ResponsesStreamConverter struct {
 
 func NewResponsesStreamConverter(responseID, itemID, model string, request ResponsesRequest) *ResponsesStreamConverter {
 	return &ResponsesStreamConverter{
-		responseID:  responseID,
-		itemID:      itemID,
-		model:       model,
-		request:     request,
-		firstWrite:  true,
+		responseID: responseID,
+		itemID:     itemID,
+		model:      model,
+		request:    request,
+		firstWrite: true,
 	}
 }
 
@@ -648,26 +737,26 @@ func (c *ResponsesStreamConverter) buildResponseObject(status string, output []a
 		temp = *c.request.Temperature
 	}
 	return map[string]any{
-		"id":                   c.responseID,
-		"object":               "response",
-		"created_at":           time.Now().Unix(),
-		"completed_at":         nil,
-		"status":               status,
-		"model":                c.model,
-		"output":               output,
-		"tools":                c.request.Tools,
-		"tool_choice":          "auto",
-		"truncation":           truncation,
-		"parallel_tool_calls":  true,
-		"text":                 map[string]any{"format": map[string]any{"type": "text"}},
-		"top_p":                topP,
-		"temperature":          temp,
-		"usage":                usage,
-		"max_output_tokens":    c.request.MaxOutputTokens,
-		"store":                false,
-		"background":            c.request.Background,
-		"service_tier":         "default",
-		"metadata":             map[string]any{},
+		"id":                  c.responseID,
+		"object":              "response",
+		"created_at":          time.Now().Unix(),
+		"completed_at":        nil,
+		"status":              status,
+		"model":               c.model,
+		"output":              output,
+		"tools":               c.request.Tools,
+		"tool_choice":         "auto",
+		"truncation":          truncation,
+		"parallel_tool_calls": true,
+		"text":                map[string]any{"format": map[string]any{"type": "text"}},
+		"top_p":               topP,
+		"temperature":         temp,
+		"usage":               usage,
+		"max_output_tokens":   c.request.MaxOutputTokens,
+		"store":               false,
+		"background":          c.request.Background,
+		"service_tier":        "default",
+		"metadata":            map[string]any{},
 	}
 }
 func (c *ResponsesStreamConverter) ProcessToken(token string) []ResponsesStreamEvent {
@@ -694,10 +783,14 @@ func (c *ResponsesStreamConverter) ProcessToken(token string) []ResponsesStreamE
 		}))
 	}
 	c.accumulatedText += token
-	events = append(events, c.newEvent("response.output_text.delta", map[string]any{
-		"item_id": c.itemID, "output_index": c.outputIndex, "content_index": 0,
-		"delta": token, "logprobs": []any{},
-	}))
+	// Filter out tool_call tags in streaming output
+	filteredToken := removeToolCallTags(token)
+	if filteredToken != "" {
+		events = append(events, c.newEvent("response.output_text.delta", map[string]any{
+			"item_id": c.itemID, "output_index": c.outputIndex, "content_index": 0,
+			"delta": filteredToken, "logprobs": []any{},
+		}))
+	}
 	return events
 }
 
@@ -710,42 +803,58 @@ func (c *ResponsesStreamConverter) ProcessDone(fullText string, profile nexa_sdk
 		"input_tokens_details":  map[string]any{"cached_tokens": 0},
 		"output_tokens_details": map[string]any{"reasoning_tokens": 0},
 	}
-	toolCalls, err := parseToolCallsAll(fullText)
 	var finalOutput []any
-	if err == nil {
+	if thinking, hasThink := extractThinkContent(fullText); hasThink && thinking != "" {
+		finalOutput = append(finalOutput, map[string]any{
+			"type": "reasoning",
+			"id":   fmt.Sprintf("rs_%s", c.responseID),
+			"content": []map[string]any{{
+				"type": "reasoning_text", "text": thinking,
+				"annotations": []any{}, "logprobs": []any{},
+			}},
+		})
+	}
+	toolCalls, err := parseToolCallsAll(fullText)
+	hasToolCalls := err == nil && len(toolCalls) > 0
+	if hasToolCalls {
 		for i, tc := range toolCalls {
 			finalOutput = append(finalOutput, map[string]any{
-				"type": "function_call",
-				"id":   fmt.Sprintf("fc_%s_%d", c.responseID, i),
-				"call_id": randomCallID(),
-				"name": tc.Name,
+				"type":      "function_call",
+				"id":        fmt.Sprintf("fc_%s_%d", c.responseID, i),
+				"call_id":   randomCallID(),
+				"name":      tc.Name,
 				"arguments": tc.Arguments,
-				"status": "completed",
+				"status":    "completed",
 			})
 		}
 	} else {
-		finalOutput = []any{map[string]any{
+		// Remove tool call tags from display text
+		cleanText := removeToolCallTags(fullText)
+		finalOutput = append(finalOutput, map[string]any{
 			"id": c.itemID, "type": "message", "status": "completed", "role": "assistant",
 			"content": []map[string]any{{
-				"type": "output_text", "text": fullText,
+				"type": "output_text", "text": cleanText,
 				"annotations": []any{}, "logprobs": []any{},
 			}},
-		}}
+		})
 	}
-	if c.contentStarted {
+	// When we have tool calls, do not emit message completion events so the client
+	// uses response.completed output (reasoning + function_call) for tool call UI.
+	if c.contentStarted && !hasToolCalls {
+		cleanText := removeToolCallTags(fullText)
 		events = append(events, c.newEvent("response.output_text.done", map[string]any{
 			"item_id": c.itemID, "output_index": c.outputIndex, "content_index": 0,
-			"text": fullText, "logprobs": []any{},
+			"text": cleanText, "logprobs": []any{},
 		}))
 		events = append(events, c.newEvent("response.content_part.done", map[string]any{
 			"item_id": c.itemID, "output_index": c.outputIndex, "content_index": 0,
-			"part": map[string]any{"type": "output_text", "text": fullText, "annotations": []any{}, "logprobs": []any{}},
+			"part": map[string]any{"type": "output_text", "text": cleanText, "annotations": []any{}, "logprobs": []any{}},
 		}))
 		events = append(events, c.newEvent("response.output_item.done", map[string]any{
 			"output_index": c.outputIndex,
 			"item": map[string]any{
 				"id": c.itemID, "type": "message", "status": "completed", "role": "assistant",
-				"content": []map[string]any{{"type": "output_text", "text": fullText, "annotations": []any{}, "logprobs": []any{}}},
+				"content": []map[string]any{{"type": "output_text", "text": cleanText, "annotations": []any{}, "logprobs": []any{}}},
 			},
 		}))
 	}
@@ -756,32 +865,41 @@ func (c *ResponsesStreamConverter) ProcessDone(fullText string, profile nexa_sdk
 }
 
 func Responses(c *gin.Context) {
+
 	var param ResponsesRequest
 	if err := c.ShouldBindJSON(&param); err != nil {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
 	}
+
 	s := store.Get()
 	name, _ := utils.NormalizeModelName(param.Model)
+
 	manifest, err := s.GetManifest(name)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
 	}
+
 	if manifest.ModelType != types.ModelTypeLLM {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": "model type not support"})
 		return
 	}
+
 	systemPrompt, messages, tools, opts, err := FromResponsesRequest(param)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
 	}
+	log.Printf("[DEBUG] Request converted - messages: %d, tools: %d, stream: %v, maxTokens: %d",
+		len(messages), len(tools), opts.Stream, opts.MaxTokens)
+
 	p, err := service.KeepAliveGet[nexa_sdk.LLM](
 		param.Model,
 		types.ModelParam{NCtx: 4096, NGpuLayers: 999, SystemPrompt: systemPrompt},
 		c.GetHeader("Nexa-KeepCache") != "true",
 	)
+
 	if errors.Is(err, os.ErrNotExist) {
 		c.JSON(http.StatusNotFound, map[string]any{"error": "model not found"})
 		return
@@ -791,12 +909,33 @@ func Responses(c *gin.Context) {
 		return
 	}
 	if len(messages) == 0 && systemPrompt == "" {
-		c.JSON(http.StatusOK, nil)
+		createdAt := time.Now().Unix()
+		c.JSON(http.StatusOK, ResponsesResponse{
+			ID:                fmt.Sprintf("resp_%d", rand.Uint32()),
+			Object:            "response",
+			CreatedAt:         createdAt,
+			Status:            "completed",
+			CompletedAt:       &createdAt,
+			Model:             param.Model,
+			Output:            []ResponsesOutputItem{},
+			ParallelToolCalls: true,
+			Store:             true,
+			Temperature:       1.0,
+			Text:              ResponsesTextField{Format: ResponsesTextFormat{Type: "text"}},
+			ToolChoice:        "auto",
+			TopP:              1.0,
+			Truncation:        "disabled",
+			Usage:             &ResponsesUsage{},
+			Metadata:          map[string]any{},
+		})
 		return
 	}
+	log.Printf("[DEBUG] Applying chat template - messages: %d, tools: %d, enableThink: %v",
+		len(messages), len(tools), opts.EnableThink)
+
 	formatted, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
 		Messages:            messages,
-		Tools:                tools,
+		Tools:               tools,
 		EnableThink:         opts.EnableThink,
 		AddGenerationPrompt: true,
 	})
@@ -806,6 +945,7 @@ func Responses(c *gin.Context) {
 	}
 	responseID := fmt.Sprintf("resp_%d", rand.Uint32())
 	itemID := fmt.Sprintf("msg_%d", rand.Uint32())
+
 	if !opts.Stream {
 		genOut, err := p.Generate(nexa_sdk.LlmGenerateInput{
 			PromptUTF8: formatted.FormattedText,
@@ -827,12 +967,12 @@ func Responses(c *gin.Context) {
 	c.Header("Connection", "keep-alive")
 	conv := NewResponsesStreamConverter(responseID, itemID, param.Model, param)
 	var (
-		fullText   string
-		profile    nexa_sdk.ProfileData
-		genErr     error
-		stopGen    bool
-		dataCh     = make(chan string)
-		resWg      sync.WaitGroup
+		fullText string
+		profile  nexa_sdk.ProfileData
+		genErr   error
+		stopGen  bool
+		dataCh   = make(chan string)
+		resWg    sync.WaitGroup
 	)
 	resWg.Add(1)
 	go func() {
@@ -852,11 +992,16 @@ func Responses(c *gin.Context) {
 				SamplerConfig: opts.SamplerConfig,
 			},
 		})
+		if genErr != nil {
+		} else {
+		}
 		fullText = res.FullText
 		profile = res.ProfileData
 		close(dataCh)
 	}()
+	tokenCount := 0
 	for token := range dataCh {
+		tokenCount++
 		for _, ev := range conv.ProcessToken(token) {
 			c.SSEvent(ev.Event, ev.Data)
 			c.Writer.Flush()
