@@ -15,6 +15,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -22,10 +23,13 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/packages/param"
 	"github.com/openai/openai-go/v3/responses"
 	"github.com/openai/openai-go/v3/shared"
@@ -38,12 +42,14 @@ import (
 	"github.com/NexaAI/nexa-sdk/runner/server/utils"
 )
 
+var responsesToolCallRegex = regexp.MustCompile(`<tool_call>([\s\S]+?)</tool_call>` + "|" + "```json([\\s\\S]+?)```")
+
 type ResponseCreateRequest struct {
 	responses.ResponseNewParams
 	Stream bool `json:"stream"`
 }
 
-func responsesInputFromParams(body responses.ResponseNewParams) (systemPrompt string, messages []nexa_sdk.LlmChatMessage, err error) {
+func responsesInputFromParamsLLM(body responses.ResponseNewParams) (systemPrompt string, messages []nexa_sdk.LlmChatMessage, err error) {
 	if !param.IsOmitted(body.Instructions) {
 		systemPrompt = body.Instructions.Value
 	}
@@ -83,7 +89,7 @@ func responsesInputFromParams(body responses.ResponseNewParams) (systemPrompt st
 			continue
 		}
 		if role == "" {
-			role = "user"
+			role = string(openai.MessageRoleUser)
 		}
 		if role == "system" || role == "developer" {
 			systemPrompt += text
@@ -97,46 +103,218 @@ func responsesInputFromParams(body responses.ResponseNewParams) (systemPrompt st
 	return systemPrompt, messages, nil
 }
 
+func responsesToolsString(params responses.ResponseNewParams) (string, error) {
+	if len(params.Tools) == 0 {
+		return "", nil
+	}
+	chatTools := make([]map[string]any, 0, len(params.Tools))
+	for _, t := range params.Tools {
+		if t.OfFunction == nil {
+			continue
+		}
+		fn := map[string]any{
+			"name":       t.OfFunction.Name,
+			"parameters": t.OfFunction.Parameters,
+		}
+		if !param.IsOmitted(t.OfFunction.Description) {
+			fn["description"] = t.OfFunction.Description.Value
+		}
+		chatTools = append(chatTools, map[string]any{
+			"type":     "function",
+			"function": fn,
+		})
+	}
+	if len(chatTools) == 0 {
+		return "", nil
+	}
+	b, err := json.Marshal(chatTools)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+func responsesInputFromParamsVLM(body responses.ResponseNewParams) (systemPrompt string, messages []nexa_sdk.VlmChatMessage, err error) {
+	if !param.IsOmitted(body.Instructions) {
+		systemPrompt = body.Instructions.Value
+	}
+	input := body.Input
+	if param.IsOmitted(input.OfString) && len(input.OfInputItemList) == 0 {
+		return systemPrompt, nil, nil
+	}
+	if !param.IsOmitted(input.OfString) {
+		messages = []nexa_sdk.VlmChatMessage{
+			{Role: nexa_sdk.VlmRole(string(openai.MessageRoleUser)), Contents: []nexa_sdk.VlmContent{{Type: nexa_sdk.VlmContentTypeText, Text: input.OfString.Value}}},
+		}
+		return systemPrompt, messages, nil
+	}
+	messages = make([]nexa_sdk.VlmChatMessage, 0, len(input.OfInputItemList))
+	for _, item := range input.OfInputItemList {
+		var role string
+		var contents []nexa_sdk.VlmContent
+		if item.OfMessage != nil {
+			role = string(item.OfMessage.Role)
+			if !param.IsOmitted(item.OfMessage.Content.OfString) {
+				contents = []nexa_sdk.VlmContent{{Type: nexa_sdk.VlmContentTypeText, Text: item.OfMessage.Content.OfString.Value}}
+			} else if len(item.OfMessage.Content.OfInputItemContentList) > 0 {
+				contents = make([]nexa_sdk.VlmContent, 0, len(item.OfMessage.Content.OfInputItemContentList))
+				for _, c := range item.OfMessage.Content.OfInputItemContentList {
+					if c.OfInputText != nil {
+						contents = append(contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeText, Text: c.OfInputText.Text})
+					}
+					if c.OfInputImage != nil && !param.IsOmitted(c.OfInputImage.ImageURL) {
+						file, err := utils.SaveURIToTempFile(c.OfInputImage.ImageURL.Value)
+						if err == nil {
+							contents = append(contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeImage, Text: file})
+						}
+					}
+				}
+			}
+		} else if item.OfInputMessage != nil {
+			role = item.OfInputMessage.Role
+			contents = make([]nexa_sdk.VlmContent, 0, len(item.OfInputMessage.Content))
+			for _, c := range item.OfInputMessage.Content {
+				if c.OfInputText != nil {
+					contents = append(contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeText, Text: c.OfInputText.Text})
+				}
+				if c.OfInputImage != nil && !param.IsOmitted(c.OfInputImage.ImageURL) {
+					file, err := utils.SaveURIToTempFile(c.OfInputImage.ImageURL.Value)
+					if err == nil {
+						contents = append(contents, nexa_sdk.VlmContent{Type: nexa_sdk.VlmContentTypeImage, Text: file})
+					}
+				}
+			}
+		} else {
+			continue
+		}
+		if role == "" {
+			role = string(openai.MessageRoleUser)
+		}
+		if role == "system" || role == "developer" {
+			for _, ct := range contents {
+				if ct.Type == nexa_sdk.VlmContentTypeText {
+					systemPrompt += ct.Text
+				}
+			}
+			continue
+		}
+		if len(contents) == 0 {
+			continue
+		}
+		messages = append(messages, nexa_sdk.VlmChatMessage{
+			Role:     nexa_sdk.VlmRole(role),
+			Contents: contents,
+		})
+	}
+	return systemPrompt, messages, nil
+}
+
 func responseUsageFromProfile(p nexa_sdk.ProfileData) responses.ResponseUsage {
 	return responses.ResponseUsage{
 		InputTokens:         p.PromptTokens,
 		InputTokensDetails:  responses.ResponseUsageInputTokensDetails{CachedTokens: 0},
-		OutputTokens:       p.GeneratedTokens,
+		OutputTokens:        p.GeneratedTokens,
 		OutputTokensDetails: responses.ResponseUsageOutputTokensDetails{ReasoningTokens: 0},
-		TotalTokens:        p.TotalTokens(),
+		TotalTokens:         p.TotalTokens(),
 	}
 }
 
-func buildResponse(id, model, outputText string, createdAt, completedAt float64, usage responses.ResponseUsage) responses.Response {
-	msgID := "msg_" + id[5:]
-	if len(id) <= 5 {
+type parsedToolCall struct {
+	Name      string          `json:"name"`
+	Arguments json.RawMessage `json:"arguments"`
+}
+
+func parseToolCallFromResponse(fullText string) (name, arguments string, ok bool) {
+	match := responsesToolCallRegex.FindStringSubmatch(fullText)
+	if len(match) < 2 {
+		return "", "", false
+	}
+	content := match[1]
+	if content == "" && len(match) > 2 {
+		content = match[2]
+	}
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return "", "", false
+	}
+	jsonStr := content
+	if content[0] != '{' {
+		jsonStr = "{" + content + "}"
+	}
+	var parsed parsedToolCall
+	if err := json.Unmarshal([]byte(jsonStr), &parsed); err != nil {
+		return "", "", false
+	}
+	if parsed.Name == "" {
+		return "", "", false
+	}
+	if len(parsed.Arguments) == 0 {
+		arguments = "{}"
+	} else if parsed.Arguments[0] == '"' {
+		_ = json.Unmarshal(parsed.Arguments, &arguments)
+	} else {
+		arguments = string(parsed.Arguments)
+	}
+	return parsed.Name, arguments, true
+}
+
+func buildResponseOutput(fullText string, hasTools bool, respID string) []responses.ResponseOutputItemUnion {
+	if hasTools {
+		name, arguments, ok := parseToolCallFromResponse(fullText)
+		if ok {
+			suffix := respID
+			if len(respID) > 5 {
+				suffix = respID[5:]
+			} else {
+				suffix = fmt.Sprintf("%d", time.Now().UnixNano())
+			}
+			fcID := "fc_" + suffix
+			callID := "call_" + fmt.Sprintf("%x", rand.Int63())
+			return []responses.ResponseOutputItemUnion{
+				{
+					Type:      "function_call",
+					ID:        fcID,
+					CallID:    callID,
+					Name:      name,
+					Arguments: arguments,
+					Status:    "completed",
+				},
+			}
+		}
+	}
+	msgID := "msg_" + respID[5:]
+	if len(respID) <= 5 {
 		msgID = "msg_" + fmt.Sprintf("%d", time.Now().UnixNano())
 	}
-	return responses.Response{
-		ID:                 id,
-		Object:             (constant.Response)("response"),
-		CreatedAt:          createdAt,
-		Status:             responses.ResponseStatusCompleted,
-		CompletedAt:        completedAt,
-		Error:              responses.ResponseError{},
-		IncompleteDetails:  responses.ResponseIncompleteDetails{},
-		Model:              shared.ResponsesModel(model),
-		Output: []responses.ResponseOutputItemUnion{
-			{
-				ID:      msgID,
-				Type:    "message",
-				Role:    (constant.Assistant)("assistant"),
-				Status:  "completed",
-				Content: []responses.ResponseOutputMessageContentUnion{{Type: "output_text", Text: outputText, Annotations: nil}},
-			},
+	return []responses.ResponseOutputItemUnion{
+		{
+			ID:      msgID,
+			Type:    "message",
+			Role:    constant.Assistant(openai.MessageRoleAssistant),
+			Status:  "completed",
+			Content: []responses.ResponseOutputMessageContentUnion{{Type: "output_text", Text: fullText, Annotations: nil}},
 		},
+	}
+}
+
+func buildResponse(id, model string, output []responses.ResponseOutputItemUnion, createdAt, completedAt float64, usage responses.ResponseUsage) responses.Response {
+	return responses.Response{
+		ID:                id,
+		Object:            (constant.Response)("response"),
+		CreatedAt:         createdAt,
+		Status:            responses.ResponseStatusCompleted,
+		CompletedAt:       completedAt,
+		Error:             responses.ResponseError{},
+		IncompleteDetails: responses.ResponseIncompleteDetails{},
+		Model:             shared.ResponsesModel(model),
+		Output:            output,
 		ParallelToolCalls: true,
-		Temperature:      1,
-		ToolChoice:       responses.ResponseToolChoiceUnion{OfToolChoiceMode: responses.ToolChoiceOptionsAuto},
-		Tools:            nil,
-		TopP:             1,
-		Usage:            usage,
-		Metadata:         shared.Metadata{},
+		Temperature:       1,
+		ToolChoice:        responses.ResponseToolChoiceUnion{OfToolChoiceMode: responses.ToolChoiceOptionsAuto},
+		Tools:             nil,
+		TopP:              1,
+		Usage:             usage,
+		Metadata:          shared.Metadata{},
 	}
 }
 
@@ -153,12 +331,6 @@ func ResponsesCreate(c *gin.Context) {
 	}
 	if req.Model == "" {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": "model is required"})
-		return
-	}
-
-	systemPrompt, messages, err := responsesInputFromParams(req.ResponseNewParams)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
 	}
 
@@ -187,9 +359,19 @@ func ResponsesCreate(c *gin.Context) {
 
 	switch manifest.ModelType {
 	case types.ModelTypeLLM:
+		systemPrompt, messages, err := responsesInputFromParamsLLM(req.ResponseNewParams)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
+			return
+		}
 		responsesCreateLLM(c, req, systemPrompt, messages, maxTokens, temp, topP)
 	case types.ModelTypeVLM:
-		responsesCreateVLM(c, req, systemPrompt, messages, maxTokens, temp, topP)
+		systemPrompt, vlmMessages, err := responsesInputFromParamsVLM(req.ResponseNewParams)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
+			return
+		}
+		responsesCreateVLM(c, req, systemPrompt, vlmMessages, maxTokens, temp, topP)
 	default:
 		c.JSON(http.StatusBadRequest, map[string]any{"error": "model type not support"})
 	}
@@ -220,9 +402,14 @@ func responsesCreateLLM(c *gin.Context, req ResponseCreateRequest, systemPrompt 
 		TopP:        float32(topP),
 	}
 
+	toolsStr, err := responsesToolsString(req.ResponseNewParams)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
+		return
+	}
 	formatted, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
 		Messages:            messages,
-		Tools:               "",
+		Tools:               toolsStr,
 		EnableThink:         true,
 		AddGenerationPrompt: true,
 	})
@@ -235,7 +422,7 @@ func responsesCreateLLM(c *gin.Context, req ResponseCreateRequest, systemPrompt 
 	respID := fmt.Sprintf("resp_%x%x", time.Now().UnixNano(), rand.Int63())
 
 	if req.Stream {
-		responsesCreateLLMStream(c, respID, string(req.Model), now, p, formatted.FormattedText, samplerConfig, maxTokens)
+		responsesCreateLLMStream(c, respID, string(req.Model), now, p, formatted.FormattedText, samplerConfig, maxTokens, len(req.Tools) > 0)
 		return
 	}
 
@@ -252,11 +439,12 @@ func responsesCreateLLM(c *gin.Context, req ResponseCreateRequest, systemPrompt 
 	}
 
 	usage := responseUsageFromProfile(genOut.ProfileData)
-	res := buildResponse(respID, string(req.Model), genOut.FullText, now, float64(time.Now().Unix()), usage)
+	output := buildResponseOutput(genOut.FullText, len(req.Tools) > 0, respID)
+	res := buildResponse(respID, string(req.Model), output, now, float64(time.Now().Unix()), usage)
 	c.JSON(http.StatusOK, res)
 }
 
-func responsesCreateLLMStream(c *gin.Context, respID, model string, createdAt float64, p *nexa_sdk.LLM, prompt string, samplerConfig *nexa_sdk.SamplerConfig, maxTokens int64) {
+func responsesCreateLLMStream(c *gin.Context, respID, model string, createdAt float64, p *nexa_sdk.LLM, prompt string, samplerConfig *nexa_sdk.SamplerConfig, maxTokens int64, hasTools bool) {
 	usage := responses.ResponseUsage{
 		InputTokens:         0,
 		InputTokensDetails:  responses.ResponseUsageInputTokensDetails{CachedTokens: 0},
@@ -264,7 +452,7 @@ func responsesCreateLLMStream(c *gin.Context, respID, model string, createdAt fl
 		OutputTokensDetails: responses.ResponseUsageOutputTokensDetails{ReasoningTokens: 0},
 		TotalTokens:         0,
 	}
-	initialResponse := buildResponse(respID, model, "", createdAt, 0, usage)
+	initialResponse := buildResponse(respID, model, nil, createdAt, 0, usage)
 	initialResponse.Status = responses.ResponseStatusInProgress
 	initialResponse.CompletedAt = 0
 	initialResponse.Output = nil
@@ -274,33 +462,43 @@ func responsesCreateLLMStream(c *gin.Context, respID, model string, createdAt fl
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
 
-	seq := 1
-	sendEvent := func(typ string, data any) {
+	seq := int64(1)
+	emit := func(ev any) {
+		c.SSEvent("", ev)
+		seq++
+	}
+	sendEvent := func(typ string, data map[string]any) {
 		event := map[string]any{"type": typ, "sequence_number": seq}
-		if m, ok := data.(map[string]any); ok {
-			for k, val := range m {
-				event[k] = val
-			}
+		for k, v := range data {
+			event[k] = v
 		}
 		seq++
 		c.SSEvent("", event)
 	}
 
-	sendEvent("response.created", map[string]any{"response": initialResponse})
+	emit(responses.ResponseCreatedEvent{
+		Response:       initialResponse,
+		SequenceNumber: seq,
+		Type:           (constant.ResponseCreated)("response.created"),
+	})
 
 	msgID := "msg_" + respID[5:]
 	if len(respID) <= 5 {
 		msgID = "msg_" + fmt.Sprintf("%d", time.Now().UnixNano())
 	}
-	sendEvent("response.output_item.added", map[string]any{
-		"output_index": 0,
-		"item": map[string]any{
-			"id": msgID, "status": "in_progress", "type": "message", "role": "assistant", "content": []any{},
-		},
+	emit(responses.ResponseOutputItemAddedEvent{
+		Item:           responses.ResponseOutputItemUnion{ID: msgID, Status: "in_progress", Type: "message", Role: constant.Assistant(openai.MessageRoleAssistant), Content: nil},
+		OutputIndex:    0,
+		SequenceNumber: seq,
+		Type:           (constant.ResponseOutputItemAdded)("response.output_item.added"),
 	})
-	sendEvent("response.content_part.added", map[string]any{
-		"item_id": msgID, "output_index": 0, "content_index": 0,
-		"part": map[string]any{"type": "output_text", "text": "", "annotations": []any{}},
+	emit(responses.ResponseContentPartAddedEvent{
+		ItemID:         msgID,
+		OutputIndex:    0,
+		ContentIndex:   0,
+		Part:           responses.ResponseContentPartAddedEventPartUnion{Type: "output_text", Text: "", Annotations: nil},
+		SequenceNumber: seq,
+		Type:           (constant.ResponseContentPartAdded)("response.content_part.added"),
 	})
 
 	stopGen := false
@@ -347,7 +545,7 @@ func responsesCreateLLMStream(c *gin.Context, respID, model string, createdAt fl
 		}
 		resWg.Wait()
 		if genErr != nil {
-			c.SSEvent("", map[string]any{"type": "error", "code": "server_error", "message": genErr.Error(), "sequence_number": seq})
+			sendEvent("error", map[string]any{"code": "server_error", "message": genErr.Error()})
 			return false
 		}
 
@@ -361,13 +559,14 @@ func responsesCreateLLMStream(c *gin.Context, respID, model string, createdAt fl
 		sendEvent("response.output_item.done", map[string]any{
 			"output_index": 0,
 			"item": responses.ResponseOutputItemUnion{
-				ID: msgID, Status: "completed", Type: "message", Role: (constant.Assistant)("assistant"),
+				ID: msgID, Status: "completed", Type: "message", Role: constant.Assistant(openai.MessageRoleAssistant),
 				Content: []responses.ResponseOutputMessageContentUnion{{Type: "output_text", Text: fullText, Annotations: nil}},
 			},
 		})
 
 		usage = responseUsageFromProfile(profile)
-		completedResp := buildResponse(respID, model, fullText, createdAt, float64(time.Now().Unix()), usage)
+		output := buildResponseOutput(fullText, hasTools, respID)
+		completedResp := buildResponse(respID, model, output, createdAt, float64(time.Now().Unix()), usage)
 		sendEvent("response.completed", map[string]any{"response": completedResp})
 		return false
 	})
@@ -377,15 +576,7 @@ func responsesCreateLLMStream(c *gin.Context, respID, model string, createdAt fl
 	}
 }
 
-func responsesCreateVLM(c *gin.Context, req ResponseCreateRequest, systemPrompt string, messages []nexa_sdk.LlmChatMessage, maxTokens int64, temp, topP float64) {
-	vlmMessages := make([]nexa_sdk.VlmChatMessage, 0, len(messages))
-	for _, m := range messages {
-		vlmMessages = append(vlmMessages, nexa_sdk.VlmChatMessage{
-			Role:     nexa_sdk.VlmRole(m.Role),
-			Contents: []nexa_sdk.VlmContent{{Type: nexa_sdk.VlmContentTypeText, Text: m.Content}},
-		})
-	}
-
+func responsesCreateVLM(c *gin.Context, req ResponseCreateRequest, systemPrompt string, vlmMessages []nexa_sdk.VlmChatMessage, maxTokens int64, temp, topP float64) {
 	p, err := service.KeepAliveGet[nexa_sdk.VLM](
 		string(req.Model),
 		types.ModelParam{NCtx: 4096, NGpuLayers: 999, SystemPrompt: systemPrompt},
@@ -410,21 +601,36 @@ func responsesCreateVLM(c *gin.Context, req ResponseCreateRequest, systemPrompt 
 		TopP:        float32(topP),
 	}
 
+	toolsStr, err := responsesToolsString(req.ResponseNewParams)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
+		return
+	}
 	formatted, err := p.ApplyChatTemplate(nexa_sdk.VlmApplyChatTemplateInput{
 		Messages:    vlmMessages,
-		Tools:       "",
+		Tools:       toolsStr,
 		EnableThink: true,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
 		return
 	}
+	images := make([]string, 0)
+	audios := make([]string, 0)
+	for _, content := range vlmMessages[len(vlmMessages)-1].Contents {
+		switch content.Type {
+		case nexa_sdk.VlmContentTypeImage:
+			images = append(images, content.Text)
+		case nexa_sdk.VlmContentTypeAudio:
+			audios = append(audios, content.Text)
+		}
+	}
 
 	now := float64(time.Now().Unix())
 	respID := fmt.Sprintf("resp_%x%x", time.Now().UnixNano(), rand.Int63())
 
 	if req.Stream {
-		responsesCreateVLMStream(c, respID, string(req.Model), now, p, formatted.FormattedText, samplerConfig, maxTokens, nil, nil)
+		responsesCreateVLMStream(c, respID, string(req.Model), now, p, formatted.FormattedText, samplerConfig, maxTokens, images, audios, len(req.Tools) > 0)
 		return
 	}
 
@@ -433,6 +639,8 @@ func responsesCreateVLM(c *gin.Context, req ResponseCreateRequest, systemPrompt 
 		Config: &nexa_sdk.GenerationConfig{
 			MaxTokens:     int32(maxTokens),
 			SamplerConfig: samplerConfig,
+			ImagePaths:    images,
+			AudioPaths:    audios,
 		},
 	})
 	if err != nil {
@@ -441,11 +649,12 @@ func responsesCreateVLM(c *gin.Context, req ResponseCreateRequest, systemPrompt 
 	}
 
 	usage := responseUsageFromProfile(genOut.ProfileData)
-	res := buildResponse(respID, string(req.Model), genOut.FullText, now, float64(time.Now().Unix()), usage)
+	output := buildResponseOutput(genOut.FullText, len(req.Tools) > 0, respID)
+	res := buildResponse(respID, string(req.Model), output, now, float64(time.Now().Unix()), usage)
 	c.JSON(http.StatusOK, res)
 }
 
-func responsesCreateVLMStream(c *gin.Context, respID, model string, createdAt float64, p *nexa_sdk.VLM, prompt string, samplerConfig *nexa_sdk.SamplerConfig, maxTokens int64, imagePaths, audioPaths []string) {
+func responsesCreateVLMStream(c *gin.Context, respID, model string, createdAt float64, p *nexa_sdk.VLM, prompt string, samplerConfig *nexa_sdk.SamplerConfig, maxTokens int64, imagePaths, audioPaths []string, hasTools bool) {
 	usage := responses.ResponseUsage{
 		InputTokens:         0,
 		InputTokensDetails:  responses.ResponseUsageInputTokensDetails{CachedTokens: 0},
@@ -453,7 +662,7 @@ func responsesCreateVLMStream(c *gin.Context, respID, model string, createdAt fl
 		OutputTokensDetails: responses.ResponseUsageOutputTokensDetails{ReasoningTokens: 0},
 		TotalTokens:         0,
 	}
-	initialResponse := buildResponse(respID, model, "", createdAt, 0, usage)
+	initialResponse := buildResponse(respID, model, nil, createdAt, 0, usage)
 	initialResponse.Status = responses.ResponseStatusInProgress
 	initialResponse.CompletedAt = 0
 	initialResponse.Output = nil
@@ -480,7 +689,7 @@ func responsesCreateVLMStream(c *gin.Context, respID, model string, createdAt fl
 	}
 	sendEvent("response.output_item.added", map[string]any{
 		"output_index": 0,
-		"item": map[string]any{"id": msgID, "status": "in_progress", "type": "message", "role": "assistant", "content": []any{}},
+		"item":         map[string]any{"id": msgID, "status": "in_progress", "type": "message", "role": string(openai.MessageRoleAssistant), "content": []any{}},
 	})
 	sendEvent("response.content_part.added", map[string]any{
 		"item_id": msgID, "output_index": 0, "content_index": 0,
@@ -542,12 +751,13 @@ func responsesCreateVLMStream(c *gin.Context, respID, model string, createdAt fl
 		sendEvent("response.output_item.done", map[string]any{
 			"output_index": 0,
 			"item": responses.ResponseOutputItemUnion{
-				ID: msgID, Status: "completed", Type: "message", Role: (constant.Assistant)("assistant"),
+				ID: msgID, Status: "completed", Type: "message", Role: constant.Assistant(openai.MessageRoleAssistant),
 				Content: []responses.ResponseOutputMessageContentUnion{{Type: "output_text", Text: fullText, Annotations: nil}},
 			},
 		})
 		usage = responseUsageFromProfile(profile)
-		completedResp := buildResponse(respID, model, fullText, createdAt, float64(time.Now().Unix()), usage)
+		output := buildResponseOutput(fullText, hasTools, respID)
+		completedResp := buildResponse(respID, model, output, createdAt, float64(time.Now().Unix()), usage)
 		sendEvent("response.completed", map[string]any{"response": completedResp})
 		return false
 	})
