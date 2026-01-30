@@ -30,8 +30,8 @@ import (
 	"unicode"
 
 	"github.com/bytedance/sonic"
-	"github.com/openai/openai-go"
-	"github.com/openai/openai-go/option"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/option"
 	"github.com/spf13/cobra"
 
 	"github.com/NexaAI/nexa-sdk/runner/cmd/nexa-cli/common"

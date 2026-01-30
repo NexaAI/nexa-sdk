@@ -16,18 +16,22 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
+	"math/rand/v2"
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
 	"sync"
 
 	"github.com/bytedance/sonic"
+	"github.com/bytedance/sonic/ast"
 	"github.com/gin-gonic/gin"
-	"github.com/openai/openai-go"
-	"github.com/openai/openai-go/packages/param"
-	"github.com/openai/openai-go/shared/constant"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/packages/param"
+	"github.com/openai/openai-go/v3/shared/constant"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/store"
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
@@ -76,11 +80,10 @@ func defaultChatCompletionRequest() ChatCompletionRequest {
 	}
 }
 
-var toolCallRegex = regexp.MustCompile(`<tool_call>([\s\S]+)<\/tool_call>` + "|" + "```json([\\s\\S]+)```")
-
 func ChatCompletions(c *gin.Context) {
 	param := defaultChatCompletionRequest()
 	if err := c.ShouldBindJSON(&param); err != nil {
+		slog.Error("Failed to bind JSON", "error", err)
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
 	}
@@ -96,6 +99,7 @@ func ChatCompletions(c *gin.Context) {
 	name, _ := utils.NormalizeModelName(param.Model)
 	manifest, err := s.GetManifest(name)
 	if err != nil {
+		slog.Error("Failed to get model manifest", "model", param.Model, "error", err)
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
 	}
@@ -106,6 +110,7 @@ func ChatCompletions(c *gin.Context) {
 	case types.ModelTypeVLM:
 		chatCompletionsVLM(c, param)
 	default:
+		slog.Error("Model type not support", "model_type", manifest.ModelType)
 		c.JSON(http.StatusBadRequest, map[string]any{"error": "model type not support"})
 		return
 	}
@@ -116,6 +121,27 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 	var systemPrompt string
 	messages := make([]nexa_sdk.LlmChatMessage, 0, len(param.Messages))
 	for _, msg := range param.Messages {
+		// tool call message
+		if toolCalls := msg.GetToolCalls(); len(toolCalls) > 0 {
+			for _, tc := range toolCalls {
+				messages = append(messages, nexa_sdk.LlmChatMessage{
+					Role: nexa_sdk.LLMRole(*msg.GetRole()),
+					Content: fmt.Sprintf(`<tool_call>{"name":"%s","arguments":"%s"}</tool_call>`,
+						tc.GetFunction().Name, tc.GetFunction().Arguments),
+				})
+			}
+			continue
+		}
+
+		// tool call response message
+		if toolResp := msg.GetToolCallID(); toolResp != nil {
+			messages = append(messages, nexa_sdk.LlmChatMessage{
+				Role:    nexa_sdk.LLMRole(*msg.GetRole()),
+				Content: *msg.GetContent().AsAny().(*string),
+			})
+			continue
+		}
+
 		switch content := msg.GetContent().AsAny().(type) {
 		case *string:
 			// NOTE: patch for npu
@@ -151,6 +177,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 						Content: *ct.GetText(),
 					})
 				default:
+					slog.Error("Not support content part type", "type", *ct.GetType())
 					c.JSON(http.StatusBadRequest, map[string]any{"error": "not support content part type"})
 					return
 				}
@@ -168,12 +195,14 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 						Content: *ct.GetText(),
 					})
 				default:
+					slog.Error("Not support content part type", "type", *ct.GetType())
 					c.JSON(http.StatusBadRequest, map[string]any{"error": "not support content part type"})
 					return
 				}
 			}
 
 		default:
+			slog.Error("Unknown content type in message", "content_type", fmt.Sprintf("%T", content))
 			c.JSON(http.StatusBadRequest, map[string]any{"error": "unknown content type"})
 			return
 		}
@@ -182,6 +211,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 	// Prepare tools if provided
 	parseTool, tools, err := parseTools(param)
 	if err != nil {
+		slog.Error("Failed to parse tools", "error", err)
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
 	}
@@ -209,9 +239,9 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 
 	// Format prompt using chat template
 	formatted, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
-		Messages:    messages,
-		Tools:       tools,
-		EnableThink: param.EnableThink,
+		Messages:            messages,
+		Tools:               tools,
+		EnableThink:         param.EnableThink,
 		AddGenerationPrompt: true,
 	})
 	if err != nil {
@@ -250,38 +280,97 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 			close(dataCh)
 		}()
 
-		c.Stream(func(w io.Writer) bool {
-			r, ok := <-dataCh
-			if ok {
-				chunk := openai.ChatCompletionChunk{}
-				chunk.Choices = append(chunk.Choices, openai.ChatCompletionChunkChoice{
-					Delta: openai.ChatCompletionChunkChoiceDelta{
-						Content: r,
-						Role:    string(openai.MessageRoleAssistant),
-					},
-				})
+		if !parseTool {
+			c.Stream(func(w io.Writer) bool {
+				r, ok := <-dataCh
+				if ok {
+					chunk := openai.ChatCompletionChunk{}
+					chunk.Choices = append(chunk.Choices, openai.ChatCompletionChunkChoice{
+						Delta: openai.ChatCompletionChunkChoiceDelta{
+							Content: r,
+							Role:    string(openai.MessageRoleAssistant),
+						},
+					})
 
-				c.SSEvent("", chunk)
-				return true
-			}
+					c.SSEvent("", chunk)
+					return true
+				}
 
-			resWg.Wait()
+				resWg.Wait()
 
-			if err != nil {
-				c.SSEvent("", map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
+				if err != nil {
+					c.SSEvent("", map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
+					return false
+				}
+
+				if param.StreamOptions.IncludeUsage.Value {
+					c.SSEvent("", openai.ChatCompletionChunk{
+						Choices: []openai.ChatCompletionChunkChoice{},
+						Usage:   profile2Usage(res.ProfileData),
+					})
+				}
+				c.SSEvent("", "[DONE]")
+
 				return false
-			}
+			})
+		} else {
+			buffer := strings.Builder{}
+			c.Stream(func(w io.Writer) bool {
+				r, ok := <-dataCh
+				if ok {
+					buffer.WriteString(r)
+					return true
+				}
 
-			if param.StreamOptions.IncludeUsage.Value {
+				resWg.Wait()
+
+				if err != nil {
+					slog.Error("Generation error", "error", err)
+					c.SSEvent("", map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
+					return false
+				}
+
+				toolCall, err := parseToolCalls(buffer.String())
+				if err != nil {
+					slog.Warn("Tool call parse error, fallback to text", "error", err)
+
+					chunk := openai.ChatCompletionChunk{}
+					chunk.Choices = append(chunk.Choices, openai.ChatCompletionChunkChoice{
+						Delta: openai.ChatCompletionChunkChoiceDelta{
+							Content: buffer.String(),
+							Role:    string(openai.MessageRoleAssistant),
+						},
+					})
+
+					c.SSEvent("", chunk)
+					return false
+				}
+
 				c.SSEvent("", openai.ChatCompletionChunk{
-					Choices: []openai.ChatCompletionChunkChoice{},
-					Usage:   profile2Usage(res.ProfileData),
+					Choices: []openai.ChatCompletionChunkChoice{{
+						Delta: openai.ChatCompletionChunkChoiceDelta{
+							ToolCalls: []openai.ChatCompletionChunkChoiceDeltaToolCall{{
+								ID: fmt.Sprintf("call_%d", rand.Uint32()),
+								Function: openai.ChatCompletionChunkChoiceDeltaToolCallFunction{
+									Name:      toolCall.Name,
+									Arguments: toolCall.Arguments,
+								},
+							}},
+						},
+					}},
 				})
-			}
-			c.SSEvent("", "[DONE]")
 
-			return false
-		})
+				if param.StreamOptions.IncludeUsage.Value {
+					c.SSEvent("", openai.ChatCompletionChunk{
+						Choices: []openai.ChatCompletionChunkChoice{},
+						Usage:   profile2Usage(res.ProfileData),
+					})
+				}
+				c.SSEvent("", "[DONE]")
+
+				return false
+			})
+		}
 
 		stopGen = true
 		for range dataCh {
@@ -302,41 +391,32 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 			return
 		}
 
-		// Standard output (no tool parse)
-		if !parseTool {
-			choice := openai.ChatCompletionChoice{}
-			choice.Message.Role = constant.Assistant(openai.MessageRoleAssistant)
-			choice.Message.Content = genOut.FullText
-			res := openai.ChatCompletion{
-				Choices: []openai.ChatCompletionChoice{choice},
-				Usage:   profile2Usage(genOut.ProfileData),
-			}
-			c.JSON(http.StatusOK, res)
-			return
-		} else {
-			// Tool call output parsing
-			match := toolCallRegex.FindStringSubmatch(genOut.FullText)
-			if len(match) <= 1 {
-				c.JSON(http.StatusInternalServerError, map[string]any{"error": "not match", "data": genOut.FullText})
+		if parseTool {
+			toolCall, err := parseToolCalls(genOut.FullText)
+			if err == nil {
+				choice := openai.ChatCompletionChoice{}
+				choice.Message.Role = constant.Assistant(openai.MessageRoleAssistant)
+				choice.Message.ToolCalls = []openai.ChatCompletionMessageToolCallUnion{{Function: toolCall}}
+				res := openai.ChatCompletion{
+					ID:      fmt.Sprintf("call_%d", rand.Uint32()),
+					Choices: []openai.ChatCompletionChoice{choice},
+					Usage:   profile2Usage(genOut.ProfileData),
+				}
+				c.JSON(http.StatusOK, res)
 				return
 			}
-			toolCall := openai.ChatCompletionMessageToolCall{Type: constant.Function("")}
-			err = sonic.UnmarshalString("{"+match[1]+"}", &toolCall.Function)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "data": match[1]})
-				return
-			}
-
-			choice := openai.ChatCompletionChoice{}
-			choice.Message.Role = constant.Assistant(openai.MessageRoleAssistant)
-			choice.Message.ToolCalls = []openai.ChatCompletionMessageToolCall{toolCall}
-			res := openai.ChatCompletion{
-				Choices: []openai.ChatCompletionChoice{choice},
-				Usage:   profile2Usage(genOut.ProfileData),
-			}
-			c.JSON(http.StatusOK, res)
-			return
+			slog.Warn("Tool call parse error, fallback to text", "error", err)
 		}
+
+		choice := openai.ChatCompletionChoice{}
+		choice.Message.Role = constant.Assistant(openai.MessageRoleAssistant)
+		choice.Message.Content = genOut.FullText
+		res := openai.ChatCompletion{
+			Choices: []openai.ChatCompletionChoice{choice},
+			Usage:   profile2Usage(genOut.ProfileData),
+		}
+		c.JSON(http.StatusOK, res)
+		return
 	}
 }
 
@@ -345,6 +425,35 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 	var systemPrompt string
 	messages := make([]nexa_sdk.VlmChatMessage, 0, len(param.Messages))
 	for _, msg := range param.Messages {
+		// tool call message
+		if toolCalls := msg.GetToolCalls(); len(toolCalls) > 0 {
+			contents := make([]nexa_sdk.VlmContent, 0, len(toolCalls))
+			for _, tc := range toolCalls {
+				contents = append(contents, nexa_sdk.VlmContent{
+					Type: nexa_sdk.VlmContentTypeText,
+					Text: fmt.Sprintf(`<tool_call>{"name":"%s","arguments":"%s"}</tool_call>`,
+						tc.GetFunction().Name, tc.GetFunction().Arguments),
+				})
+			}
+			messages = append(messages, nexa_sdk.VlmChatMessage{
+				Role:     nexa_sdk.VlmRole(*msg.GetRole()),
+				Contents: contents,
+			})
+			continue
+		}
+
+		// tool call response message
+		if toolResp := msg.GetToolCallID(); toolResp != nil {
+			messages = append(messages, nexa_sdk.VlmChatMessage{
+				Role: nexa_sdk.VlmRole(*msg.GetRole()),
+				Contents: []nexa_sdk.VlmContent{{
+					Type: nexa_sdk.VlmContentTypeText,
+					Text: *msg.GetContent().AsAny().(*string),
+				}},
+			})
+			continue
+		}
+
 		switch content := msg.GetContent().AsAny().(type) {
 		case *string:
 			if *msg.GetRole() == "system" {
@@ -414,6 +523,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 						Text: file,
 					})
 				default:
+					slog.Error("Not support content part type", "type", *ct.GetType())
 					c.JSON(http.StatusBadRequest, map[string]any{"error": "not support content part type"})
 					return
 				}
@@ -439,6 +549,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 						Text: *ct.GetText(),
 					})
 				default:
+					slog.Error("Not support content part type", "type", *ct.GetType())
 					c.JSON(http.StatusBadRequest, map[string]any{"error": "not support content part type"})
 					return
 				}
@@ -450,6 +561,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 			})
 
 		default:
+			slog.Error("Unknown content type in message")
 			c.JSON(http.StatusBadRequest, map[string]any{"error": "unknown content type"})
 			return
 		}
@@ -458,6 +570,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 	// Prepare tools if provided
 	parseTool, tools, err := parseTools(param)
 	if err != nil {
+		slog.Error("Failed to parse tools", "error", err)
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
 	}
@@ -540,38 +653,97 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 			close(dataCh)
 		}()
 
-		c.Stream(func(w io.Writer) bool {
-			r, ok := <-dataCh
-			if ok {
-				chunk := openai.ChatCompletionChunk{}
-				chunk.Choices = append(chunk.Choices, openai.ChatCompletionChunkChoice{
-					Delta: openai.ChatCompletionChunkChoiceDelta{
-						Content: r,
-						Role:    string(openai.MessageRoleAssistant),
-					},
-				})
+		if !parseTool {
+			c.Stream(func(w io.Writer) bool {
+				r, ok := <-dataCh
+				if ok {
+					chunk := openai.ChatCompletionChunk{}
+					chunk.Choices = append(chunk.Choices, openai.ChatCompletionChunkChoice{
+						Delta: openai.ChatCompletionChunkChoiceDelta{
+							Content: r,
+							Role:    string(openai.MessageRoleAssistant),
+						},
+					})
 
-				c.SSEvent("", chunk)
-				return true
-			}
+					c.SSEvent("", chunk)
+					return true
+				}
 
-			resWg.Wait()
+				resWg.Wait()
 
-			if err != nil {
-				c.SSEvent("", map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
+				if err != nil {
+					c.SSEvent("", map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
+					return false
+				}
+
+				if param.StreamOptions.IncludeUsage.Value {
+					c.SSEvent("", openai.ChatCompletionChunk{
+						Choices: []openai.ChatCompletionChunkChoice{},
+						Usage:   profile2Usage(res.ProfileData),
+					})
+				}
+				c.SSEvent("", "[DONE]")
+
 				return false
-			}
+			})
+		} else {
+			buffer := strings.Builder{}
+			c.Stream(func(w io.Writer) bool {
+				r, ok := <-dataCh
+				if ok {
+					buffer.WriteString(r)
+					return true
+				}
 
-			if param.StreamOptions.IncludeUsage.Value {
+				resWg.Wait()
+
+				if err != nil {
+					slog.Error("Generation error", "error", err)
+					c.SSEvent("", map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
+					return false
+				}
+
+				toolCall, err := parseToolCalls(buffer.String())
+				if err != nil {
+					slog.Warn("Tool call parse error, fallback to text", "error", err)
+
+					chunk := openai.ChatCompletionChunk{}
+					chunk.Choices = append(chunk.Choices, openai.ChatCompletionChunkChoice{
+						Delta: openai.ChatCompletionChunkChoiceDelta{
+							Content: buffer.String(),
+							Role:    string(openai.MessageRoleAssistant),
+						},
+					})
+
+					c.SSEvent("", chunk)
+					return false
+				}
+
 				c.SSEvent("", openai.ChatCompletionChunk{
-					Choices: []openai.ChatCompletionChunkChoice{},
-					Usage:   profile2Usage(res.ProfileData),
+					Choices: []openai.ChatCompletionChunkChoice{{
+						Delta: openai.ChatCompletionChunkChoiceDelta{
+							ToolCalls: []openai.ChatCompletionChunkChoiceDeltaToolCall{{
+								ID: fmt.Sprintf("call_%d", rand.Uint32()),
+								Function: openai.ChatCompletionChunkChoiceDeltaToolCallFunction{
+									Name:      toolCall.Name,
+									Arguments: toolCall.Arguments,
+								},
+							}},
+						},
+					}},
 				})
-			}
-			c.SSEvent("", "[DONE]")
 
-			return false
-		})
+				if param.StreamOptions.IncludeUsage.Value {
+					c.SSEvent("", openai.ChatCompletionChunk{
+						Choices: []openai.ChatCompletionChunkChoice{},
+						Usage:   profile2Usage(res.ProfileData),
+					})
+				}
+				c.SSEvent("", "[DONE]")
+
+				return false
+			})
+		}
 
 		stopGen = true
 		for range dataCh {
@@ -595,41 +767,32 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 			return
 		}
 
-		// Standard output (no tool parse)
-		if !parseTool {
-			choice := openai.ChatCompletionChoice{}
-			choice.Message.Role = constant.Assistant(openai.MessageRoleAssistant)
-			choice.Message.Content = genOut.FullText
-			res := openai.ChatCompletion{
-				Choices: []openai.ChatCompletionChoice{choice},
-				Usage:   profile2Usage(genOut.ProfileData),
-			}
-			c.JSON(http.StatusOK, res)
-			return
-		} else {
-			// Tool call output parsing
-			match := toolCallRegex.FindStringSubmatch(genOut.FullText)
-			if len(match) <= 1 {
-				c.JSON(http.StatusInternalServerError, map[string]any{"error": "not match", "data": genOut.FullText})
+		if parseTool {
+			toolCall, err := parseToolCalls(genOut.FullText)
+			if err == nil {
+				choice := openai.ChatCompletionChoice{}
+				choice.Message.Role = constant.Assistant(openai.MessageRoleAssistant)
+				choice.Message.ToolCalls = []openai.ChatCompletionMessageToolCallUnion{{Function: toolCall}}
+				res := openai.ChatCompletion{
+					ID:      fmt.Sprintf("call_%d", rand.Uint32()),
+					Choices: []openai.ChatCompletionChoice{choice},
+					Usage:   profile2Usage(genOut.ProfileData),
+				}
+				c.JSON(http.StatusOK, res)
 				return
 			}
-			toolCall := openai.ChatCompletionMessageToolCall{Type: constant.Function("")}
-			err = sonic.UnmarshalString("{"+match[1]+"}", &toolCall.Function)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "data": match[1]})
-				return
-			}
-
-			choice := openai.ChatCompletionChoice{}
-			choice.Message.Role = constant.Assistant(openai.MessageRoleAssistant)
-			choice.Message.ToolCalls = []openai.ChatCompletionMessageToolCall{toolCall}
-			res := openai.ChatCompletion{
-				Choices: []openai.ChatCompletionChoice{choice},
-				Usage:   profile2Usage(genOut.ProfileData),
-			}
-			c.JSON(http.StatusOK, res)
-			return
+			slog.Warn("Tool call parse error, fallback to text", "error", err)
 		}
+
+		choice := openai.ChatCompletionChoice{}
+		choice.Message.Role = constant.Assistant(openai.MessageRoleAssistant)
+		choice.Message.Content = genOut.FullText
+		res := openai.ChatCompletion{
+			Choices: []openai.ChatCompletionChoice{choice},
+			Usage:   profile2Usage(genOut.ProfileData),
+		}
+		c.JSON(http.StatusOK, res)
+		return
 	}
 }
 
@@ -664,4 +827,46 @@ func parseTools(param ChatCompletionRequest) (bool, string, error) {
 
 	tools, err := sonic.MarshalString(param.Tools)
 	return true, tools, err
+}
+
+var toolCallRegex = regexp.MustCompile(`<tool_call>([\s\S]+)<\/tool_call>` + "|" + "```json([\\s\\S]+)```")
+
+func parseToolCalls(resp string) (openai.ChatCompletionMessageFunctionToolCallFunction, error) {
+	match := toolCallRegex.FindStringSubmatch(resp)
+	if len(match) <= 1 {
+		return openai.ChatCompletionMessageFunctionToolCallFunction{}, errors.New("tool call not match")
+	}
+	matched := match[1]
+	if matched == "" && len(match) > 2 {
+		matched = match[2]
+	}
+
+	slog.Debug("Tool call matched", "matched", matched)
+
+	name, err := sonic.GetFromString(matched, "name")
+	toolCall := openai.ChatCompletionMessageFunctionToolCallFunction{}
+	if err != nil {
+		return openai.ChatCompletionMessageFunctionToolCallFunction{}, err
+	}
+	toolCall.Name, err = name.String()
+	if err != nil {
+		return openai.ChatCompletionMessageFunctionToolCallFunction{}, err
+	}
+
+	arguments, err := sonic.GetFromString(matched, "arguments")
+	if err != nil {
+		return openai.ChatCompletionMessageFunctionToolCallFunction{}, err
+	}
+	switch arguments.TypeSafe() {
+	case ast.V_OBJECT:
+		toolCall.Arguments, _ = arguments.Raw()
+	case ast.V_STRING:
+		toolCall.Arguments, _ = arguments.String()
+	default:
+		return openai.ChatCompletionMessageFunctionToolCallFunction{}, errors.New("unknown arguments type")
+	}
+
+	slog.Debug("Parsed tool call", "tool_call", toolCall)
+
+	return toolCall, nil
 }
