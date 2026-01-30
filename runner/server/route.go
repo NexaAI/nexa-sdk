@@ -49,11 +49,11 @@ func RegisterAPIv1(r *gin.Engine) {
 
 	// ==== openai compatible ====
 	g.POST("/chat/completions", handler.ChatCompletions)
-	g.POST("/responses", handler.Responses)
 	g.POST("/embeddings", handler.Embeddings)
 	g.POST("/audio/speech", handler.Speech)
 	g.POST("/audio/transcriptions", handler.Transcriptions)
 	g.POST("/images/generations", handler.ImageGenerations)
+	g.POST("/responses", handler.ResponsesCreate)
 	// ==== nexa specific ====
 	g.POST("/audio/diarize", handler.Diarize)
 	g.POST("/reranking", handler.Reranking)
