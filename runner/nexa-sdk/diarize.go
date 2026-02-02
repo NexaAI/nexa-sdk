@@ -81,22 +81,22 @@ func freeDiarizeSpeechSegment(ptr *C.ml_DiarizeSpeechSegment) {
 
 // DiarizeModelConfig represents diarization model configuration
 type DiarizeModelConfig struct {
-	NCtx               int32
-	NThreads           int32
-	NThreadsBatch      int32
-	NBatch             int32
-	NUbatch            int32
-	NSeqMax            int32
-	NGpuLayers         int32
-	ChatTemplatePath   string
+	NCtx                int32
+	NThreads            int32
+	NThreadsBatch       int32
+	NBatch              int32
+	NUbatch             int32
+	NSeqMax             int32
+	NGpuLayers          int32
+	ChatTemplatePath    string
 	ChatTemplateContent string
-	EnableSampling     bool
-	GrammarStr         string
-	MaxTokens          int32
-	EnableThinking     bool
-	Verbose            bool
-	QnnModelFolderPath string
-	QnnLibFolderPath   string
+	EnableSampling      bool
+	GrammarStr          string
+	MaxTokens           int32
+	EnableThinking      bool
+	Verbose             bool
+	QnnModelFolderPath  string
+	QnnLibFolderPath    string
 }
 
 func (mc DiarizeModelConfig) toCPtr() *C.ml_ModelConfig {
@@ -232,10 +232,10 @@ func freeDiarizeInferInput(cPtr *C.ml_DiarizeInferInput) {
 
 // DiarizeInferOutput represents output from diarization inference
 type DiarizeInferOutput struct {
-	Segments     []DiarizeSpeechSegment
-	NumSpeakers  int32
-	Duration     float32
-	ProfileData  ProfileData
+	Segments    []DiarizeSpeechSegment
+	NumSpeakers int32
+	Duration    float32
+	ProfileData ProfileData
 }
 
 func newDiarizeInferOutputFromCPtr(c *C.ml_DiarizeInferOutput) DiarizeInferOutput {
