@@ -1,0 +1,26 @@
+name: Lint
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'runner/**'
+      - '.github/workflows/lint.yml'
+
+jobs:
+  lint:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: runner/go.sum
+      - name: go fmt
+        working-directory: runner
+        run: |
+          unformatted=$(gofmt -s -l .)
+          [ -z "$unformatted" ] || (echo "Unformatted: $unformatted"; exit 1)
+      - name: go vet
+        working-directory: runner
+        run: go vet ./...
