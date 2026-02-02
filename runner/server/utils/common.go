@@ -88,7 +88,7 @@ func SaveURIToTempFile(uri string) (string, error) {
 
 	// Detect content type
 	contentType := http.DetectContentType(data)
-	
+
 	// Convert WebP to PNG for compatibility with native SDK
 	if strings.HasPrefix(contentType, "image/webp") || strings.HasSuffix(strings.ToLower(u.Path), ".webp") {
 		img, _, err := image.Decode(bytes.NewReader(data))
@@ -109,7 +109,7 @@ func SaveURIToTempFile(uri string) (string, error) {
 	if exts, err := mime.ExtensionsByType(contentType); err == nil && len(exts) > 0 {
 		fileExt = exts[0]
 	}
-	
+
 	tmpFile, err := os.CreateTemp("", "uri-*"+fileExt)
 	if err != nil {
 		return "", err
