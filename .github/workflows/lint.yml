@@ -21,6 +21,9 @@ jobs:
         run: |
           unformatted=$(gofmt -s -l .)
           [ -z "$unformatted" ] || (echo "Unformatted: $unformatted"; exit 1)
+      - name: Download runtime
+        working-directory: runner
+        run: make download
       - name: go vet
         working-directory: runner
-        run: go vet ./internal/... ./server/... ./cmd/nexa-launcher/...
+        run: go vet ./...
