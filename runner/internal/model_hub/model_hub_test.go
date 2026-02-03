@@ -88,3 +88,75 @@ func BenchmarkDownload(b *testing.B) {
 		b.Error(e)
 	}
 }
+
+func TestCheckExistingFile(t *testing.T) {
+	// Create a temporary directory for test files
+	tmpDir, err := os.MkdirTemp("", "checkExistingFile_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	t.Run("file doesn't exist returns 0", func(t *testing.T) {
+		result := checkExistingFile(tmpDir+"/nonexistent.txt", 1000)
+		if result != 0 {
+			t.Errorf("Expected 0 for nonexistent file, got %d", result)
+		}
+	})
+
+	t.Run("file complete returns size", func(t *testing.T) {
+		filePath := tmpDir + "/complete.txt"
+		expectedSize := int64(100)
+		content := make([]byte, expectedSize)
+		if err := os.WriteFile(filePath, content, 0644); err != nil {
+			t.Fatalf("Failed to create test file: %v", err)
+		}
+
+		result := checkExistingFile(filePath, expectedSize)
+		if result != expectedSize {
+			t.Errorf("Expected %d for complete file, got %d", expectedSize, result)
+		}
+	})
+
+	t.Run("file partial returns partial size", func(t *testing.T) {
+		filePath := tmpDir + "/partial.txt"
+		partialSize := int64(50)
+		expectedSize := int64(100)
+		content := make([]byte, partialSize)
+		if err := os.WriteFile(filePath, content, 0644); err != nil {
+			t.Fatalf("Failed to create test file: %v", err)
+		}
+
+		result := checkExistingFile(filePath, expectedSize)
+		if result != partialSize {
+			t.Errorf("Expected %d for partial file, got %d", partialSize, result)
+		}
+	})
+
+	t.Run("file too large returns -1", func(t *testing.T) {
+		filePath := tmpDir + "/toolarge.txt"
+		actualSize := int64(150)
+		expectedSize := int64(100)
+		content := make([]byte, actualSize)
+		if err := os.WriteFile(filePath, content, 0644); err != nil {
+			t.Fatalf("Failed to create test file: %v", err)
+		}
+
+		result := checkExistingFile(filePath, expectedSize)
+		if result != -1 {
+			t.Errorf("Expected -1 for file larger than expected, got %d", result)
+		}
+	})
+
+	t.Run("empty file returns 0", func(t *testing.T) {
+		filePath := tmpDir + "/empty.txt"
+		if err := os.WriteFile(filePath, []byte{}, 0644); err != nil {
+			t.Fatalf("Failed to create test file: %v", err)
+		}
+
+		result := checkExistingFile(filePath, 100)
+		if result != 0 {
+			t.Errorf("Expected 0 for empty file, got %d", result)
+		}
+	})
+}

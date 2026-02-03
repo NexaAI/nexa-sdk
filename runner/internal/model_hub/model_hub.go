@@ -140,6 +140,34 @@ const (
 	minChunkSize = 16 * 1024 * 1024 // 16MiB
 )
 
+// checkExistingFile returns the verified size of existing file data.
+// Returns 0 if file doesn't exist, -1 if corrupted (larger than expected).
+func checkExistingFile(filePath string, expectedSize int64) int64 {
+	info, err := os.Stat(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0
+		}
+		slog.Warn("Failed to stat file, will re-download", "path", filePath, "error", err)
+		return 0
+	}
+
+	currentSize := info.Size()
+	if currentSize > expectedSize {
+		slog.Warn("File larger than expected, will re-download",
+			"path", filePath, "currentSize", currentSize, "expectedSize", expectedSize)
+		return -1
+	}
+
+	if currentSize == expectedSize {
+		slog.Info("File already complete, skipping", "path", filePath, "size", currentSize)
+	} else if currentSize > 0 {
+		slog.Info("Partial file found, will resume",
+			"path", filePath, "downloaded", currentSize, "expected", expectedSize)
+	}
+	return currentSize
+}
+
 func StartDownload(ctx context.Context, modelName, outputPath string, files []ModelFileInfo) (resChan chan types.DownloadInfo, errChan chan error) {
 	slog.Info("Starting download", "model", modelName, "outputPath", outputPath, "files", files)
 
@@ -180,11 +208,42 @@ func StartDownload(ctx context.Context, modelName, outputPath string, files []Mo
 				return
 			}
 
+			// Check existing file for resume support
+			filePath := filepath.Join(outputPath, f.Name)
+			existingSize := checkExistingFile(filePath, f.Size)
+
+			// Handle corrupted file (larger than expected)
+			if existingSize == -1 {
+				if err := os.Remove(filePath); err != nil && !os.IsNotExist(err) {
+					errCh <- fmt.Errorf("failed to remove corrupted file: %v, %s", err, f.Name)
+					return
+				}
+				existingSize = 0
+			}
+
 			// create download tasks for each chunk
 			chunkSize := max(minChunkSize, f.Size/128)
-			slog.Info("Download file", "name", f.Name, "size", f.Size, "chunkSize", chunkSize)
+			slog.Info("Download file", "name", f.Name, "size", f.Size, "chunkSize", chunkSize, "existingSize", existingSize)
 
-			for offset := int64(0); offset < f.Size; offset += chunkSize {
+			// If file is already complete, skip and report progress
+			if existingSize == f.Size {
+				atomic.AddInt64(&downloaded, f.Size)
+				resCh <- types.DownloadInfo{
+					TotalDownloaded: atomic.LoadInt64(&downloaded),
+					TotalSize:       totalSize,
+				}
+				continue
+			}
+
+			// Calculate start offset aligned to chunk boundary for data integrity
+			startOffset := (existingSize / chunkSize) * chunkSize
+
+			// Add already-downloaded bytes (up to aligned boundary) to progress counter
+			if startOffset > 0 {
+				atomic.AddInt64(&downloaded, startOffset)
+			}
+
+			for offset := startOffset; offset < f.Size; offset += chunkSize {
 				task := downloadTask{
 					OutputPath: outputPath,
 					ModelName:  modelName,

@@ -149,12 +149,6 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 			return
 		}
 
-		// clean before
-		if err := s.Remove(mf.Name); err != nil {
-			errC <- err
-			return
-		}
-
 		if err := s.LockModel(mf.Name); err != nil {
 			errC <- err
 			return
