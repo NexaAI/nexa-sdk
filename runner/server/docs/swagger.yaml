@@ -128,8 +128,18 @@ paths:
   /v1/audio/speech:
     post:
       summary: Generates audio from the input text
-      description: Creates an audio file from the given text using text-to-speech synthesis
+      description: |
+        Creates audio from the given text using text-to-speech. When stream_format is omitted or not "sse",
+        returns raw WAV binary. When stream_format is "sse", returns Server-Sent Events stream with
+        speech.audio.delta (base64 audio chunks) and speech.audio.done (usage). Empty input returns 200 with null (warm up).
       operationId: PostV1AudioSpeech
+      parameters:
+        - name: Nexa-KeepCache
+          in: header
+          required: false
+          schema:
+            type: string
+          description: If "true", keeps the model in cache after use
       requestBody:
         required: true
         content:
@@ -138,12 +148,16 @@ paths:
               $ref: "#/components/schemas/AudioSpeechRequest"
       responses:
         "200":
-          description: Successful audio generation
+          description: Successful audio generation. Binary WAV when stream_format is not sse; SSE stream when stream_format is sse; null body for warm up.
           content:
             audio/wav:
               schema:
                 type: string
                 format: binary
+            text/event-stream:
+              schema:
+                type: string
+                description: SSE events - speech.audio.delta { type, audio (base64) }, speech.audio.done { type, usage }
         "400":
           description: Bad request - invalid parameters
           content:
@@ -160,7 +174,9 @@ paths:
   /v1/audio/transcriptions:
     post:
       summary: Transcribes audio into the input language
-      description: Transcribes audio files into text using automatic speech recognition
+      description: |
+        Transcribes audio files into text using ASR. Request must be multipart/form-data with model and file.
+        stream=true is not supported (returns 400). Omit file for warm up (returns 200 with null).
       operationId: PostV1AudioTranscriptions
       requestBody:
         required: true
@@ -170,13 +186,13 @@ paths:
               $ref: "#/components/schemas/AudioTranscriptionRequest"
       responses:
         "200":
-          description: Successful transcription
+          description: Successful transcription (or null body when no file sent for warm up)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/AudioTranscriptionResponse"
         "400":
-          description: Bad request - invalid parameters
+          description: Bad request - invalid parameters, or stream=true (streaming not supported)
           content:
             application/json:
               schema:
@@ -191,7 +207,9 @@ paths:
   /v1/audio/diarize:
     post:
       summary: Performs speaker diarization on audio
-      description: Identifies and separates different speakers in an audio file
+      description: |
+        Identifies and separates different speakers in an audio file. Audio can be base64 data URL or URL.
+        Empty audio returns 200 with null (warm up).
       operationId: PostV1AudioDiarize
       requestBody:
         required: true
@@ -201,13 +219,13 @@ paths:
               $ref: "#/components/schemas/AudioDiarizeRequest"
       responses:
         "200":
-          description: Successful diarization
+          description: Successful diarization with segments, num_speakers, duration (or null body for warm up)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/AudioDiarizeResponse"
         "400":
-          description: Bad request - invalid parameters
+          description: Bad request - invalid parameters or failed to save audio
           content:
             application/json:
               schema:
@@ -851,15 +869,19 @@ components:
           default: "nexaml/Kokoro-82M-bf16-MLX"
         input:
           type: string
-          description: The text to generate audio for
+          description: The text to generate audio for. Empty for warm up (returns null).
         voice:
           type: string
           description: The voice to use when generating the audio
         response_format:
           type: string
           enum: [wav]
-          description: The format to return the audio in
+          description: The format to return the audio in (when not streaming)
           default: "wav"
+        stream_format:
+          type: string
+          enum: [wav, sse]
+          description: "sse" returns Server-Sent Events stream; otherwise returns binary WAV
         speed:
           type: number
           format: float
@@ -870,7 +892,8 @@ components:
 
     AudioTranscriptionRequest:
       type: object
-      required: [model, file]
+      description: multipart/form-data form fields
+      required: [model]
       properties:
         model:
           type: string
@@ -879,14 +902,16 @@ components:
         file:
           type: string
           format: binary
-          description: The audio file to transcribe
+          description: The audio file to transcribe. Omit for warm up (returns null).
+        stream:
+          type: string
+          description: "true" is not supported and returns 400
         language:
           type: string
           description: The language of the input audio
         prompt:
           type: string
           description: An optional text to guide the model's style or continue a previous audio segment
-          default: "I am fine, thank you, and you?"
         response_format:
           type: string
           enum: [json, text, srt, verbose_json, vtt]
@@ -909,7 +934,7 @@ components:
 
     AudioDiarizeRequest:
       type: object
-      required: [model, audio]
+      required: [model]
       properties:
         model:
           type: string
@@ -917,22 +942,28 @@ components:
           default: "nexaml/pyannote-npu"
         audio:
           type: string
-          description: The audio data to diarize (base64 encoded or URL)
+          description: The audio to diarize (base64 data URL or URL). Empty for warm up (returns null).
 
     AudioDiarizeResponse:
       type: object
       properties:
-        results:
+        segments:
           type: array
           items:
-            $ref: "#/components/schemas/DiarizeResult"
+            $ref: "#/components/schemas/DiarizeSegment"
+          description: Speaker segments with time ranges
+        num_speakers:
+          type: integer
+          format: int32
+          description: Number of speakers detected
+        duration:
+          type: number
+          format: float
+          description: Audio duration in seconds
 
-    DiarizeResult:
+    DiarizeSegment:
       type: object
       properties:
-        speaker:
-          type: string
-          description: The speaker identifier
         start_time:
           type: number
           format: float
@@ -941,9 +972,9 @@ components:
           type: number
           format: float
           description: End time in seconds
-        text:
+        speaker_label:
           type: string
-          description: The transcribed text for this segment
+          description: The speaker identifier for this segment
 
     # ---------- Computer Vision ----------
     CVRequest:
