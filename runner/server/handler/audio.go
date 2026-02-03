@@ -41,6 +41,9 @@ func Speech(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
 	}
+	if param.Speed.Value == 0 {
+		param.Speed.Value = 1.0
+	}
 	slog.Info("Speech request received",
 		"model", param.Model,
 		"input", param.Input,
@@ -64,10 +67,6 @@ func Speech(c *gin.Context) {
 		return
 	}
 
-	speed := 1.0
-	if param.Speed.Value != 0 {
-		speed = param.Speed.Value
-	}
 	outputPath := fmt.Sprintf("audio_speech_output_%d.wav", time.Now().UnixNano())
 	defer os.Remove(outputPath)
 	out, err := audioSpeech.Synthesize(
@@ -75,7 +74,7 @@ func Speech(c *gin.Context) {
 			TextUTF8: param.Input,
 			Config: &nexa_sdk.TTSConfig{
 				Voice: string(param.Voice),
-				Speed: float32(speed),
+				Speed: float32(param.Speed.Value),
 			},
 			OutputPath: outputPath,
 		})
