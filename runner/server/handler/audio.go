@@ -15,6 +15,7 @@
 package handler
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
 	"log/slog"
@@ -32,6 +33,8 @@ import (
 	nexa_sdk "github.com/NexaAI/nexa-sdk/runner/nexa-sdk"
 )
 
+const speechSSEChunkSize = 4096
+
 func Speech(c *gin.Context) {
 	param := openai.AudioSpeechNewParams{}
 	if err := c.ShouldBindJSON(&param); err != nil {
@@ -43,6 +46,7 @@ func Speech(c *gin.Context) {
 		"input", param.Input,
 		"voice", param.Voice,
 		"speed", param.Speed,
+		"stream_format", param.StreamFormat,
 	)
 
 	audioSpeech, err := service.KeepAliveGet[nexa_sdk.TTS](
@@ -55,20 +59,23 @@ func Speech(c *gin.Context) {
 		return
 	}
 
-	// warm up
 	if param.Input == "" {
 		c.JSON(http.StatusOK, nil)
 		return
 	}
 
+	speed := 1.0
+	if param.Speed.Value != 0 {
+		speed = param.Speed.Value
+	}
 	outputPath := fmt.Sprintf("audio_speech_output_%d.wav", time.Now().UnixNano())
 	defer os.Remove(outputPath)
-	_, err = audioSpeech.Synthesize(
+	out, err := audioSpeech.Synthesize(
 		nexa_sdk.TtsSynthesizeInput{
 			TextUTF8: param.Input,
 			Config: &nexa_sdk.TTSConfig{
 				Voice: string(param.Voice),
-				Speed: float32(param.Speed.Value),
+				Speed: float32(speed),
 			},
 			OutputPath: outputPath,
 		})
@@ -77,7 +84,55 @@ func Speech(c *gin.Context) {
 		return
 	}
 
+	if param.StreamFormat == openai.AudioSpeechNewParamsStreamFormatSSE {
+		speechStreamSSE(c, outputPath, out.ProfileData)
+		return
+	}
 	c.File(outputPath)
+}
+
+func speechStreamSSE(c *gin.Context, audioPath string, profile nexa_sdk.ProfileData) {
+	f, err := os.Open(audioPath)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		return
+	}
+	defer f.Close()
+
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+
+	buf := make([]byte, speechSSEChunkSize)
+	for {
+		n, err := f.Read(buf)
+		if n > 0 {
+			chunk := map[string]string{
+				"type":  "speech.audio.delta",
+				"audio": base64.StdEncoding.EncodeToString(buf[:n]),
+			}
+			c.SSEvent("", chunk)
+			c.Writer.Flush()
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error()})
+			return
+		}
+	}
+
+	done := map[string]any{
+		"type": "speech.audio.done",
+		"usage": map[string]int64{
+			"input_tokens":  profile.PromptTokens,
+			"output_tokens": profile.GeneratedTokens,
+			"total_tokens":  profile.TotalTokens(),
+		},
+	}
+	c.SSEvent("", done)
+	c.Writer.Flush()
 }
 
 func Transcriptions(c *gin.Context) {
