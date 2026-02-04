@@ -423,9 +423,8 @@ func inferLLM(manifest *types.ModelManifest, quant string) error {
 		PluginID:  manifest.PluginId,
 		DeviceID:  manifest.DeviceId,
 		Config: nexa_sdk.ModelConfig{
-			NCtx:         nctx,
-			NGpuLayers:   ngl,
-			SystemPrompt: systemPrompt, // TODO: align npu
+			NCtx:       nctx,
+			NGpuLayers: ngl,
 		},
 	})
 	spin.Stop()
@@ -595,9 +594,8 @@ func inferVLM(manifest *types.ModelManifest, quant string) error {
 		PluginID:      manifest.PluginId,
 		DeviceID:      manifest.DeviceId,
 		Config: nexa_sdk.ModelConfig{
-			NCtx:         nctx,
-			NGpuLayers:   ngl,
-			SystemPrompt: systemPrompt,
+			NCtx:       nctx,
+			NGpuLayers: ngl,
 		},
 	})
 	spin.Stop()

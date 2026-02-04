@@ -277,5 +277,4 @@ type ModelConfig struct {
 	NGpuLayers          int32
 	ChatTemplatePath    string
 	ChatTemplateContent string
-	SystemPrompt        string
 }

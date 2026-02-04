@@ -80,6 +80,14 @@ func defaultChatCompletionRequest() ChatCompletionRequest {
 	}
 }
 
+func onlySystemMessage(param ChatCompletionRequest) bool {
+	if len(param.Messages) != 1 {
+		return false
+	}
+	r := param.Messages[0].GetRole()
+	return r != nil && *r == "system"
+}
+
 func ChatCompletions(c *gin.Context) {
 	param := defaultChatCompletionRequest()
 	if err := c.ShouldBindJSON(&param); err != nil {
@@ -117,11 +125,8 @@ func ChatCompletions(c *gin.Context) {
 }
 
 func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
-	// Build message list for LLM template
-	var systemPrompt string
 	messages := make([]nexa_sdk.LlmChatMessage, 0, len(param.Messages))
 	for _, msg := range param.Messages {
-		// tool call message
 		if toolCalls := msg.GetToolCalls(); len(toolCalls) > 0 {
 			for _, tc := range toolCalls {
 				messages = append(messages, nexa_sdk.LlmChatMessage{
@@ -133,7 +138,6 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 			continue
 		}
 
-		// tool call response message
 		if toolResp := msg.GetToolCallID(); toolResp != nil {
 			messages = append(messages, nexa_sdk.LlmChatMessage{
 				Role:    nexa_sdk.LLMRole(*msg.GetRole()),
@@ -144,10 +148,6 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 
 		switch content := msg.GetContent().AsAny().(type) {
 		case *string:
-			// NOTE: patch for npu
-			if *msg.GetRole() == "system" {
-				systemPrompt += *content
-			}
 			messages = append(messages, nexa_sdk.LlmChatMessage{
 				Role:    nexa_sdk.LLMRole(*msg.GetRole()),
 				Content: *content,
@@ -155,10 +155,6 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 
 		case *[]openai.ChatCompletionContentPartTextParam:
 			for _, ct := range *content {
-				// NOTE: patch for npu
-				if *msg.GetRole() == "system" {
-					systemPrompt += ct.Text
-				}
 				messages = append(messages, nexa_sdk.LlmChatMessage{
 					Role:    nexa_sdk.LLMRole(*msg.GetRole()),
 					Content: ct.Text,
@@ -168,10 +164,6 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 			for _, ct := range *content {
 				switch *ct.GetType() {
 				case "text":
-					// NOTE: patch for npu
-					if *msg.GetRole() == "system" {
-						systemPrompt += *ct.GetText()
-					}
 					messages = append(messages, nexa_sdk.LlmChatMessage{
 						Role:    nexa_sdk.LLMRole(*msg.GetRole()),
 						Content: *ct.GetText(),
@@ -186,10 +178,6 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 			for _, ct := range *content {
 				switch *ct.GetType() {
 				case "text":
-					// NOTE: patch for npu
-					if *msg.GetRole() == "system" {
-						systemPrompt += *ct.GetText()
-					}
 					messages = append(messages, nexa_sdk.LlmChatMessage{
 						Role:    nexa_sdk.LLMRole(*msg.GetRole()),
 						Content: *ct.GetText(),
@@ -218,10 +206,9 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 
 	samplerConfig := parseSamplerConfig(param)
 
-	// Get LLM instance
 	p, err := service.KeepAliveGet[nexa_sdk.LLM](
 		string(param.Model),
-		types.ModelParam{NCtx: param.NCtx, NGpuLayers: param.Ngl, SystemPrompt: systemPrompt},
+		types.ModelParam{NCtx: param.NCtx, NGpuLayers: param.Ngl},
 		c.GetHeader("Nexa-KeepCache") != "true",
 	)
 	if errors.Is(err, os.ErrNotExist) {
@@ -231,13 +218,11 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
 		return
 	}
-	// Empty request for warm up
-	if len(param.Messages) == 0 || (systemPrompt != "" && len(param.Messages) <= 1) {
+	if len(param.Messages) == 0 || onlySystemMessage(param) {
 		c.JSON(http.StatusOK, nil)
 		return
 	}
 
-	// Format prompt using chat template
 	formatted, err := p.ApplyChatTemplate(nexa_sdk.LlmApplyChatTemplateInput{
 		Messages:            messages,
 		Tools:               tools,
@@ -421,11 +406,8 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 }
 
 func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
-	// Build message list for VLM template
-	var systemPrompt string
 	messages := make([]nexa_sdk.VlmChatMessage, 0, len(param.Messages))
 	for _, msg := range param.Messages {
-		// tool call message
 		if toolCalls := msg.GetToolCalls(); len(toolCalls) > 0 {
 			contents := make([]nexa_sdk.VlmContent, 0, len(toolCalls))
 			for _, tc := range toolCalls {
@@ -442,7 +424,6 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 			continue
 		}
 
-		// tool call response message
 		if toolResp := msg.GetToolCallID(); toolResp != nil {
 			messages = append(messages, nexa_sdk.VlmChatMessage{
 				Role: nexa_sdk.VlmRole(*msg.GetRole()),
@@ -456,9 +437,6 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 
 		switch content := msg.GetContent().AsAny().(type) {
 		case *string:
-			if *msg.GetRole() == "system" {
-				systemPrompt += *content
-			}
 			messages = append(messages, nexa_sdk.VlmChatMessage{
 				Role: nexa_sdk.VlmRole(*msg.GetRole()),
 				Contents: []nexa_sdk.VlmContent{
@@ -468,17 +446,12 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 
 		case *[]openai.ChatCompletionContentPartTextParam:
 			contents := make([]nexa_sdk.VlmContent, 0, len(*content))
-
 			for _, ct := range *content {
-				if *msg.GetRole() == "system" {
-					systemPrompt += ct.Text
-				}
 				contents = append(contents, nexa_sdk.VlmContent{
 					Type: nexa_sdk.VlmContentTypeText,
 					Text: ct.Text,
 				})
 			}
-
 			messages = append(messages, nexa_sdk.VlmChatMessage{
 				Role:     nexa_sdk.VlmRole(*msg.GetRole()),
 				Contents: contents,
@@ -486,14 +459,9 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 
 		case *[]openai.ChatCompletionContentPartUnionParam:
 			contents := make([]nexa_sdk.VlmContent, 0, len(*content))
-
 			for _, ct := range *content {
 				switch *ct.GetType() {
 				case "text":
-					// NOTE: patch for npu
-					if *msg.GetRole() == "system" {
-						systemPrompt += *ct.GetText()
-					}
 					contents = append(contents, nexa_sdk.VlmContent{
 						Type: nexa_sdk.VlmContentTypeText,
 						Text: *ct.GetText(),
@@ -528,7 +496,6 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 					return
 				}
 			}
-
 			messages = append(messages, nexa_sdk.VlmChatMessage{
 				Role:     nexa_sdk.VlmRole(*msg.GetRole()),
 				Contents: contents,
@@ -536,14 +503,9 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 
 		case *[]openai.ChatCompletionAssistantMessageParamContentArrayOfContentPartUnion:
 			contents := make([]nexa_sdk.VlmContent, 0, len(*content))
-
 			for _, ct := range *content {
 				switch *ct.GetType() {
 				case "text":
-					// NOTE: patch for npu
-					if *msg.GetRole() == "system" {
-						systemPrompt += *ct.GetText()
-					}
 					contents = append(contents, nexa_sdk.VlmContent{
 						Type: nexa_sdk.VlmContentTypeText,
 						Text: *ct.GetText(),
@@ -577,10 +539,9 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 
 	samplerConfig := parseSamplerConfig(param)
 
-	// Get VLM instance
 	p, err := service.KeepAliveGet[nexa_sdk.VLM](
 		string(param.Model),
-		types.ModelParam{NCtx: param.NCtx, NGpuLayers: param.Ngl, SystemPrompt: systemPrompt},
+		types.ModelParam{NCtx: param.NCtx, NGpuLayers: param.Ngl},
 		c.GetHeader("Nexa-KeepCache") != "true",
 	)
 	if errors.Is(err, os.ErrNotExist) {
@@ -590,9 +551,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
 		return
 	}
-
-	// Empty request for warm up, just reset model state
-	if len(param.Messages) == 0 || (systemPrompt != "" && len(param.Messages) <= 1) {
+	if len(param.Messages) == 0 || onlySystemMessage(param) {
 		c.JSON(http.StatusOK, nil)
 		return
 	}
