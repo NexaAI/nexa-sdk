@@ -80,7 +80,10 @@ func defaultChatCompletionRequest() ChatCompletionRequest {
 	}
 }
 
-func onlySystemMessage(param ChatCompletionRequest) bool {
+func isWarmupRequest(param ChatCompletionRequest) bool {
+	if len(param.Messages) == 0 {
+		return true
+	}
 	if len(param.Messages) != 1 {
 		return false
 	}
@@ -218,7 +221,7 @@ func chatCompletionsLLM(c *gin.Context, param ChatCompletionRequest) {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
 		return
 	}
-	if len(param.Messages) == 0 || onlySystemMessage(param) {
+	if isWarmupRequest(param) {
 		c.JSON(http.StatusOK, nil)
 		return
 	}
@@ -551,7 +554,7 @@ func chatCompletionsVLM(c *gin.Context, param ChatCompletionRequest) {
 		c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": nexa_sdk.SDKErrorCode(err)})
 		return
 	}
-	if len(param.Messages) == 0 || onlySystemMessage(param) {
+	if isWarmupRequest(param) {
 		c.JSON(http.StatusOK, nil)
 		return
 	}
