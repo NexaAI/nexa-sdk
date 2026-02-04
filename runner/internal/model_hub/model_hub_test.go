@@ -16,8 +16,11 @@ package model_hub
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/lmittmann/tint"
@@ -89,74 +92,217 @@ func BenchmarkDownload(b *testing.B) {
 	}
 }
 
-func TestCheckExistingFile(t *testing.T) {
-	// Create a temporary directory for test files
-	tmpDir, err := os.MkdirTemp("", "checkExistingFile_test")
+func TestChunkTracker(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "chunkTracker_test")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 	defer os.RemoveAll(tmpDir)
 
-	t.Run("file doesn't exist returns 0", func(t *testing.T) {
-		result := checkExistingFile(tmpDir+"/nonexistent.txt", 1000)
-		if result != 0 {
-			t.Errorf("Expected 0 for nonexistent file, got %d", result)
+	t.Run("fresh tracker has no completed chunks", func(t *testing.T) {
+		markerPath := filepath.Join(tmpDir, "fresh.chunks")
+		tracker := loadOrCreateTracker(markerPath, 1000, 100, 10)
+
+		for i := 0; i < 10; i++ {
+			if tracker.isComplete(i) {
+				t.Errorf("Expected chunk %d to be incomplete on fresh tracker", i)
+			}
+		}
+		if tracker.allComplete() {
+			t.Error("Expected allComplete to be false on fresh tracker")
 		}
 	})
 
-	t.Run("file complete returns size", func(t *testing.T) {
-		filePath := tmpDir + "/complete.txt"
-		expectedSize := int64(100)
-		content := make([]byte, expectedSize)
-		if err := os.WriteFile(filePath, content, 0644); err != nil {
-			t.Fatalf("Failed to create test file: %v", err)
+	t.Run("markComplete persists to disk and can be reloaded", func(t *testing.T) {
+		markerPath := filepath.Join(tmpDir, "persist.chunks")
+		tracker := loadOrCreateTracker(markerPath, 1000, 100, 10)
+
+		if err := tracker.markComplete(3); err != nil {
+			t.Fatalf("markComplete failed: %v", err)
+		}
+		if err := tracker.markComplete(7); err != nil {
+			t.Fatalf("markComplete failed: %v", err)
 		}
 
-		result := checkExistingFile(filePath, expectedSize)
-		if result != expectedSize {
-			t.Errorf("Expected %d for complete file, got %d", expectedSize, result)
+		// Reload from disk
+		tracker2 := loadOrCreateTracker(markerPath, 1000, 100, 10)
+		if !tracker2.isComplete(3) {
+			t.Error("Expected chunk 3 to be complete after reload")
 		}
-	})
-
-	t.Run("file partial returns partial size", func(t *testing.T) {
-		filePath := tmpDir + "/partial.txt"
-		partialSize := int64(50)
-		expectedSize := int64(100)
-		content := make([]byte, partialSize)
-		if err := os.WriteFile(filePath, content, 0644); err != nil {
-			t.Fatalf("Failed to create test file: %v", err)
+		if !tracker2.isComplete(7) {
+			t.Error("Expected chunk 7 to be complete after reload")
 		}
-
-		result := checkExistingFile(filePath, expectedSize)
-		if result != partialSize {
-			t.Errorf("Expected %d for partial file, got %d", partialSize, result)
+		if tracker2.isComplete(0) {
+			t.Error("Expected chunk 0 to be incomplete after reload")
 		}
 	})
 
-	t.Run("file too large returns -1", func(t *testing.T) {
-		filePath := tmpDir + "/toolarge.txt"
-		actualSize := int64(150)
-		expectedSize := int64(100)
-		content := make([]byte, actualSize)
-		if err := os.WriteFile(filePath, content, 0644); err != nil {
-			t.Fatalf("Failed to create test file: %v", err)
+	t.Run("discards incompatible markers with different file size", func(t *testing.T) {
+		markerPath := filepath.Join(tmpDir, "incompat_fsize.chunks")
+		tracker := loadOrCreateTracker(markerPath, 1000, 100, 10)
+		if err := tracker.markComplete(5); err != nil {
+			t.Fatalf("markComplete failed: %v", err)
 		}
 
-		result := checkExistingFile(filePath, expectedSize)
-		if result != -1 {
-			t.Errorf("Expected -1 for file larger than expected, got %d", result)
+		// Reload with different file size
+		tracker2 := loadOrCreateTracker(markerPath, 2000, 100, 10)
+		if tracker2.isComplete(5) {
+			t.Error("Expected chunk 5 to be incomplete after file size change")
 		}
 	})
 
-	t.Run("empty file returns 0", func(t *testing.T) {
-		filePath := tmpDir + "/empty.txt"
-		if err := os.WriteFile(filePath, []byte{}, 0644); err != nil {
-			t.Fatalf("Failed to create test file: %v", err)
+	t.Run("discards incompatible markers with different chunk size", func(t *testing.T) {
+		markerPath := filepath.Join(tmpDir, "incompat_csize.chunks")
+		tracker := loadOrCreateTracker(markerPath, 1000, 100, 10)
+		if err := tracker.markComplete(5); err != nil {
+			t.Fatalf("markComplete failed: %v", err)
 		}
 
-		result := checkExistingFile(filePath, 100)
-		if result != 0 {
-			t.Errorf("Expected 0 for empty file, got %d", result)
+		// Reload with different chunk size
+		tracker2 := loadOrCreateTracker(markerPath, 1000, 200, 5)
+		if tracker2.isComplete(5) {
+			t.Error("Expected chunk 5 to be incomplete after chunk size change")
+		}
+	})
+
+	t.Run("handles corrupted JSON gracefully", func(t *testing.T) {
+		markerPath := filepath.Join(tmpDir, "corrupted.chunks")
+		if err := os.WriteFile(markerPath, []byte("not valid json{{{"), 0o644); err != nil {
+			t.Fatalf("Failed to write corrupted marker: %v", err)
+		}
+
+		tracker := loadOrCreateTracker(markerPath, 1000, 100, 10)
+		if tracker.allComplete() {
+			t.Error("Expected fresh tracker from corrupted JSON")
+		}
+		for i := 0; i < 10; i++ {
+			if tracker.isComplete(i) {
+				t.Errorf("Expected chunk %d to be incomplete from corrupted JSON", i)
+			}
+		}
+	})
+
+	t.Run("allComplete returns true when all chunks marked", func(t *testing.T) {
+		markerPath := filepath.Join(tmpDir, "allcomplete.chunks")
+		totalChunks := 5
+		tracker := loadOrCreateTracker(markerPath, 500, 100, totalChunks)
+
+		for i := 0; i < totalChunks; i++ {
+			if tracker.allComplete() {
+				t.Errorf("Expected allComplete to be false before marking chunk %d", i)
+			}
+			if err := tracker.markComplete(i); err != nil {
+				t.Fatalf("markComplete(%d) failed: %v", i, err)
+			}
+		}
+
+		if !tracker.allComplete() {
+			t.Error("Expected allComplete to be true after marking all chunks")
+		}
+	})
+
+	t.Run("remove deletes marker file", func(t *testing.T) {
+		markerPath := filepath.Join(tmpDir, "removable.chunks")
+		tracker := loadOrCreateTracker(markerPath, 1000, 100, 10)
+		if err := tracker.markComplete(0); err != nil {
+			t.Fatalf("markComplete failed: %v", err)
+		}
+
+		// Verify file exists
+		if _, err := os.Stat(markerPath); err != nil {
+			t.Fatalf("Expected marker file to exist: %v", err)
+		}
+
+		if err := tracker.remove(); err != nil {
+			t.Fatalf("remove failed: %v", err)
+		}
+
+		if _, err := os.Stat(markerPath); !os.IsNotExist(err) {
+			t.Error("Expected marker file to be deleted")
+		}
+	})
+
+	t.Run("concurrent markComplete is safe", func(t *testing.T) {
+		markerPath := filepath.Join(tmpDir, "concurrent.chunks")
+		totalChunks := 50
+		tracker := loadOrCreateTracker(markerPath, int64(totalChunks)*100, 100, totalChunks)
+
+		var wg sync.WaitGroup
+		wg.Add(totalChunks)
+		for i := 0; i < totalChunks; i++ {
+			go func(id int) {
+				defer wg.Done()
+				if err := tracker.markComplete(id); err != nil {
+					t.Errorf("concurrent markComplete(%d) failed: %v", id, err)
+				}
+			}(i)
+		}
+		wg.Wait()
+
+		if !tracker.allComplete() {
+			t.Error("Expected allComplete to be true after concurrent marking")
+		}
+
+		// Verify all chunks are marked
+		for i := 0; i < totalChunks; i++ {
+			if !tracker.isComplete(i) {
+				t.Errorf("Expected chunk %d to be complete after concurrent marking", i)
+			}
+		}
+	})
+
+	t.Run("markComplete is idempotent", func(t *testing.T) {
+		markerPath := filepath.Join(tmpDir, "idempotent.chunks")
+		tracker := loadOrCreateTracker(markerPath, 1000, 100, 10)
+
+		if err := tracker.markComplete(3); err != nil {
+			t.Fatalf("first markComplete failed: %v", err)
+		}
+		if err := tracker.markComplete(3); err != nil {
+			t.Fatalf("second markComplete failed: %v", err)
+		}
+
+		// Reload and verify only counted once
+		tracker2 := loadOrCreateTracker(markerPath, 1000, 100, 10)
+		count := 0
+		for i := 0; i < 10; i++ {
+			if tracker2.isComplete(i) {
+				count++
+			}
+		}
+		if count != 1 {
+			t.Errorf("Expected 1 completed chunk, got %d", count)
+		}
+	})
+
+	t.Run("completedBytes calculates correctly", func(t *testing.T) {
+		markerPath := filepath.Join(tmpDir, "bytes.chunks")
+		// 250 byte file, 100 byte chunks → 3 chunks (100, 100, 50)
+		tracker := loadOrCreateTracker(markerPath, 250, 100, 3)
+
+		if err := tracker.markComplete(0); err != nil {
+			t.Fatalf("markComplete failed: %v", err)
+		}
+		if b := tracker.completedBytes(); b != 100 {
+			t.Errorf("Expected 100 bytes, got %d", b)
+		}
+
+		if err := tracker.markComplete(2); err != nil {
+			t.Fatalf("markComplete failed: %v", err)
+		}
+		// Last chunk is 250 - 2*100 = 50
+		if b := tracker.completedBytes(); b != 150 {
+			t.Errorf("Expected 150 bytes, got %d", b)
+		}
+
+		if err := tracker.markComplete(1); err != nil {
+			t.Fatalf("markComplete failed: %v", err)
+		}
+		if b := tracker.completedBytes(); b != 250 {
+			t.Errorf("Expected 250 bytes, got %d", b)
 		}
 	})
 }
+
+// Ensure unused imports are referenced for the test file.
+var _ = fmt.Sprintf
