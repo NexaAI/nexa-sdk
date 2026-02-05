@@ -18,11 +18,13 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/gofrs/flock"
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/config"
+	"github.com/NexaAI/nexa-sdk/runner/internal/model_hub"
 )
 
 type Store struct {
@@ -111,12 +113,19 @@ func (s *Store) cleanCorruptedDirectories() {
 
 func (s *Store) isCorruptedModelDirectory(name string) bool {
 	manifestPath := s.ModelfilePath(name, "nexa.manifest")
-	if _, err := os.Stat(manifestPath); err != nil {
-		slog.Info("Cleaning corrupted model directory", "name", err)
+	if _, err := os.Stat(manifestPath); err == nil {
+		return false
+	}
+	dir := s.ModelfilePath(name, "")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
 		return true
 	}
-
-	// TDOD: Check Manifest file should be valid JSON and parseable
-
-	return false
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), model_hub.ProgressSuffix) {
+			return false
+		}
+	}
+	slog.Info("Cleaning corrupted model directory", "name", name)
+	return true
 }

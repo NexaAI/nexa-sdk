@@ -25,7 +25,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -36,6 +35,110 @@ import (
 
 	"github.com/NexaAI/nexa-sdk/runner/internal/types"
 )
+
+const ProgressSuffix = ".progress"
+
+type chunkProgress struct {
+	bitmap    []uint64
+	fileSize  int64
+	chunkSize int64
+	path      string
+	dirty     atomic.Int32
+}
+
+func (p *chunkProgress) nChunks() int {
+	return int((p.fileSize + p.chunkSize - 1) / p.chunkSize)
+}
+
+func loadProgress(path string, fileSize, chunkSize int64) (*chunkProgress, error) {
+	if chunkSize <= 0 || fileSize <= 0 {
+		return nil, nil
+	}
+	nChunks := int((fileSize + chunkSize - 1) / chunkSize)
+	if nChunks == 0 {
+		return nil, nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, nil
+	}
+	const headerSize = 16
+	if len(data) < headerSize {
+		return nil, nil
+	}
+	gotSize := binary.LittleEndian.Uint64(data[0:8])
+	gotChunk := binary.LittleEndian.Uint64(data[8:16])
+	if uint64(fileSize) != gotSize || uint64(chunkSize) != gotChunk {
+		return nil, nil
+	}
+	words := (nChunks + 63) / 64
+	if len(data) < headerSize+words*8 {
+		return nil, nil
+	}
+	p := &chunkProgress{
+		bitmap:    make([]uint64, words),
+		fileSize:  fileSize,
+		chunkSize: chunkSize,
+		path:      path,
+	}
+	for i := range words {
+		p.bitmap[i] = binary.LittleEndian.Uint64(data[headerSize+i*8:])
+	}
+	return p, nil
+}
+
+func (p *chunkProgress) isDone(i int) bool {
+	if i < 0 || i >= p.nChunks() {
+		return false
+	}
+	w := atomic.LoadUint64(&p.bitmap[i/64])
+	return (w & (1 << (i % 64))) != 0
+}
+
+func (p *chunkProgress) setDone(i int) {
+	if i < 0 || i >= p.nChunks() {
+		return
+	}
+	atomic.OrUint64(&p.bitmap[i/64], 1<<(i%64))
+	p.dirty.Store(1)
+}
+
+func (p *chunkProgress) save() error {
+	if !p.dirty.CompareAndSwap(1, 0) {
+		return nil
+	}
+	words := len(p.bitmap)
+	buf := make([]byte, 16+words*8)
+	binary.LittleEndian.PutUint64(buf[0:8], uint64(p.fileSize))
+	binary.LittleEndian.PutUint64(buf[8:16], uint64(p.chunkSize))
+	for i := range words {
+		binary.LittleEndian.PutUint64(buf[16+i*8:], atomic.LoadUint64(&p.bitmap[i]))
+	}
+	tmpPath := p.path + ".tmp"
+	if err := os.WriteFile(tmpPath, buf, 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmpPath, p.path)
+}
+
+func (p *chunkProgress) anyDone() bool {
+	for i := 0; i < len(p.bitmap); i++ {
+		if atomic.LoadUint64(&p.bitmap[i]) != 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *chunkProgress) countDoneAndSize(chunkSizeFunc func(i int) int64) (n int, size int64) {
+	for i := 0; i < p.nChunks(); i++ {
+		if p.isDone(i) {
+			n++
+			size += chunkSizeFunc(i)
+		}
+	}
+	return n, size
+}
 
 type ModelFileInfo struct {
 	Name string `json:"name"`
@@ -142,172 +245,10 @@ const (
 	minChunkSize = 16 * 1024 * 1024 // 16MiB
 )
 
-// Binary marker file format for tracking completed chunks.
-// Layout: [magic 4B][fileSize 8B][chunkSize 8B][totalChunks 4B][chunk0 1B][chunk1 1B]...
-// Each chunk byte: 0x00 = pending, 0x01 = complete.
-// Concurrent goroutines write to distinct byte offsets via WriteAt, so no mutex is needed.
-const (
-	markerMagic     = "NXCK"
-	markerHeaderLen = 4 + 8 + 8 + 4 // 24 bytes
-)
-
-// chunkTracker tracks per-chunk completion state using an in-memory byte slice
-// backed by a binary marker file. Each goroutine writes to its own chunk offset,
-// eliminating the need for locks.
-type chunkTracker struct {
-	filePath    string
-	fileSize    int64
-	chunkSize   int64
-	totalChunks int
-	chunks      []byte   // 0x00 = pending, 0x01 = complete
-	file        *os.File // open handle for single-byte WriteAt calls
-}
-
-// loadOrCreateTracker loads an existing binary marker file or creates a fresh one.
-// Discards incompatible markers (different fileSize/chunkSize/totalChunks) and corrupted data.
-func loadOrCreateTracker(markerPath string, fileSize, chunkSize int64, totalChunks int) *chunkTracker {
-	ct := &chunkTracker{
-		filePath:    markerPath,
-		fileSize:    fileSize,
-		chunkSize:   chunkSize,
-		totalChunks: totalChunks,
-		chunks:      make([]byte, totalChunks),
-	}
-
-	data, err := os.ReadFile(markerPath)
-	if err == nil && ct.parseMarker(data) {
-		completed := 0
-		for _, b := range ct.chunks {
-			if b == 0x01 {
-				completed++
-			}
-		}
-		slog.Info("Loaded chunk marker", "path", markerPath, "completed", completed, "total", totalChunks)
-	} else {
-		// Create fresh marker file (header + zeroed chunk bytes)
-		ct.initMarkerFile()
-	}
-
-	// Open file for subsequent single-byte writes
-	if f, err := os.OpenFile(markerPath, os.O_WRONLY, 0o644); err == nil {
-		ct.file = f
-	}
-
-	return ct
-}
-
-// parseMarker validates and loads a binary marker file into the in-memory chunks slice.
-func (ct *chunkTracker) parseMarker(data []byte) bool {
-	if len(data) < markerHeaderLen+ct.totalChunks {
-		slog.Warn("Corrupted chunk marker (too short), starting fresh", "path", ct.filePath)
-		return false
-	}
-	if string(data[:4]) != markerMagic {
-		slog.Warn("Corrupted chunk marker (bad magic), starting fresh", "path", ct.filePath)
-		return false
-	}
-
-	storedFileSize := int64(binary.LittleEndian.Uint64(data[4:12]))
-	storedChunkSize := int64(binary.LittleEndian.Uint64(data[12:20]))
-	storedTotalChunks := int(binary.LittleEndian.Uint32(data[20:24]))
-
-	if storedFileSize != ct.fileSize || storedChunkSize != ct.chunkSize || storedTotalChunks != ct.totalChunks {
-		slog.Warn("Incompatible chunk marker, starting fresh",
-			"path", ct.filePath,
-			"markerFileSize", storedFileSize, "expectedFileSize", ct.fileSize,
-			"markerChunkSize", storedChunkSize, "expectedChunkSize", ct.chunkSize)
-		return false
-	}
-
-	copy(ct.chunks, data[markerHeaderLen:markerHeaderLen+ct.totalChunks])
-	return true
-}
-
-// initMarkerFile writes a fresh binary marker file (header + zeroed chunk bytes).
-func (ct *chunkTracker) initMarkerFile() {
-	buf := make([]byte, markerHeaderLen+ct.totalChunks)
-	copy(buf[:4], markerMagic)
-	binary.LittleEndian.PutUint64(buf[4:12], uint64(ct.fileSize))
-	binary.LittleEndian.PutUint64(buf[12:20], uint64(ct.chunkSize))
-	binary.LittleEndian.PutUint32(buf[20:24], uint32(ct.totalChunks))
-
-	if err := os.WriteFile(ct.filePath, buf, 0o644); err != nil {
-		slog.Warn("Failed to create chunk marker file", "path", ct.filePath, "error", err)
-	}
-}
-
-// isComplete checks if a specific chunk has been completed.
-func (ct *chunkTracker) isComplete(chunkID int) bool {
-	if chunkID < 0 || chunkID >= ct.totalChunks {
-		return false
-	}
-	return ct.chunks[chunkID] == 0x01
-}
-
-// allComplete checks if all chunks have been completed.
-func (ct *chunkTracker) allComplete() bool {
-	for _, b := range ct.chunks {
-		if b != 0x01 {
-			return false
-		}
-	}
-	return true
-}
-
-// markComplete marks a chunk as done in memory and writes a single byte to disk.
-// Safe for concurrent use: each goroutine writes to a distinct chunkID offset.
-func (ct *chunkTracker) markComplete(chunkID int) error {
-	if chunkID < 0 || chunkID >= ct.totalChunks {
-		return fmt.Errorf("chunkID %d out of range [0, %d)", chunkID, ct.totalChunks)
-	}
-	ct.chunks[chunkID] = 0x01
-
-	if ct.file == nil {
-		return nil
-	}
-	_, err := ct.file.WriteAt([]byte{0x01}, int64(markerHeaderLen+chunkID))
-	if err != nil {
-		return fmt.Errorf("failed to write chunk marker: %w", err)
-	}
-	return nil
-}
-
-// close closes the marker file handle without deleting the file.
-// Safe to call multiple times.
-func (ct *chunkTracker) close() {
-	if ct.file != nil {
-		ct.file.Close()
-		ct.file = nil
-	}
-}
-
-// remove closes the file handle and deletes the marker file.
-func (ct *chunkTracker) remove() error {
-	ct.close()
-	return os.Remove(ct.filePath)
-}
-
-// completedBytes returns the total bytes represented by completed chunks.
-func (ct *chunkTracker) completedBytes() int64 {
-	var total int64
-	for i, b := range ct.chunks {
-		if b == 0x01 {
-			if i == ct.totalChunks-1 {
-				// Last chunk may be smaller
-				total += ct.fileSize - int64(i)*ct.chunkSize
-			} else {
-				total += ct.chunkSize
-			}
-		}
-	}
-	return total
-}
-
 func StartDownload(ctx context.Context, modelName, outputPath string, files []ModelFileInfo) (resChan chan types.DownloadInfo, errChan chan error) {
 	slog.Info("Starting download", "model", modelName, "outputPath", outputPath, "files", files)
 
 	hub, err := getHub(ctx, modelName)
-
 	if err != nil {
 		resCh := make(chan types.DownloadInfo)
 		errCh := make(chan error, 1)
@@ -320,105 +261,114 @@ func StartDownload(ctx context.Context, modelName, outputPath string, files []Mo
 	maxConcurrency := hub.MaxConcurrency()
 	resCh := make(chan types.DownloadInfo)
 	errCh := make(chan error, maxConcurrency)
-
 	slog.Info("GetHub", "hub", reflect.TypeOf(hub), "maxConcurrency", maxConcurrency)
 
 	go func() {
 		defer close(errCh)
 		defer close(resCh)
 
-		var downloaded int64
 		var totalSize int64
 		for _, f := range files {
 			totalSize += f.Size
 		}
 
-		// create tasks
-		g, gctx := errgroup.WithContext(ctx)
-		g.SetLimit(maxConcurrency)
+		type fileWork struct {
+			f         ModelFileInfo
+			chunkSize int64
+			nChunks   int
+			progress  *chunkProgress
+		}
+		var workList []fileWork
+		var downloaded int64
+		var progressList []*chunkProgress
 
-		var trackers []*chunkTracker
-		defer func() {
-			for _, tr := range trackers {
-				tr.close()
+		for _, f := range files {
+			chunkSize := max(minChunkSize, f.Size/128)
+			nChunks := 0
+			if chunkSize > 0 {
+				nChunks = int((f.Size + chunkSize - 1) / chunkSize)
+			}
+			progressPath := filepath.Join(outputPath, f.Name+ProgressSuffix)
+			var progress *chunkProgress
+			if nChunks > 0 {
+				if p, _ := loadProgress(progressPath, f.Size, chunkSize); p != nil {
+					progress = p
+				} else {
+					progress = &chunkProgress{
+						bitmap:    make([]uint64, (nChunks+63)/64),
+						fileSize:  f.Size,
+						chunkSize: chunkSize,
+						path:      progressPath,
+					}
+				}
+				nDone, size := progress.countDoneAndSize(func(i int) int64 {
+					offset := int64(i) * chunkSize
+					return min(chunkSize, f.Size-offset)
+				})
+				downloaded += size
+				if nDone > 0 {
+					slog.Info("resuming download", "file", f.Name, "chunks_done", nDone, "bytes_done", size, "total_chunks", nChunks)
+				}
+				progressList = append(progressList, progress)
+			}
+			workList = append(workList, fileWork{f: f, chunkSize: chunkSize, nChunks: nChunks, progress: progress})
+		}
+
+		done := make(chan struct{})
+		defer close(done)
+		go func() {
+			ticker := time.NewTicker(2 * time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-done:
+					return
+				case <-ticker.C:
+					for _, p := range progressList {
+						_ = p.save()
+					}
+				}
 			}
 		}()
 
-		for _, f := range files {
+		g, gctx := errgroup.WithContext(ctx)
+		g.SetLimit(maxConcurrency)
+
+		for _, w := range workList {
+			f, chunkSize, nChunks, prog := w.f, w.chunkSize, w.nChunks, w.progress
 			if err := os.MkdirAll(filepath.Dir(filepath.Join(outputPath, f.Name)), 0o755); err != nil {
 				errCh <- fmt.Errorf("failed to create directory: %v, %s", err, f.Name)
 				return
 			}
-
-			filePath := filepath.Join(outputPath, f.Name)
-			markerPath := filePath + ".chunks"
-
-			// Check if file exists at expected size with NO marker file → skip
-			// (backwards-compatible with pre-marker downloads)
-			info, statErr := os.Stat(filePath)
-			_, markerErr := os.Stat(markerPath)
-			if statErr == nil && info.Size() == f.Size && os.IsNotExist(markerErr) {
-				slog.Info("File already complete, skipping", "path", filePath, "size", f.Size)
-				atomic.AddInt64(&downloaded, f.Size)
-				resCh <- types.DownloadInfo{
-					TotalDownloaded: atomic.LoadInt64(&downloaded),
-					TotalSize:       totalSize,
-				}
+			if nChunks == 0 {
 				continue
 			}
-
-			// Check if file is larger than expected → remove file + any stale marker
-			if statErr == nil && info.Size() > f.Size {
-				slog.Warn("File larger than expected, removing", "path", filePath, "currentSize", info.Size(), "expectedSize", f.Size)
-				if err := os.Remove(filePath); err != nil && !os.IsNotExist(err) {
-					errCh <- fmt.Errorf("failed to remove corrupted file: %v, %s", err, f.Name)
+			if prog != nil && prog.anyDone() {
+				outPath := filepath.Join(outputPath, f.Name)
+				slog.Debug("opening output file for resume", "file", f.Name)
+				file, err := os.OpenFile(outPath, os.O_RDWR|os.O_CREATE, 0o644)
+				if err != nil {
+					errCh <- err
 					return
 				}
-				_ = os.Remove(markerPath)
-			}
-
-			// Compute chunk parameters and create tracker
-			chunkSize := max(minChunkSize, f.Size/128)
-			totalChunks := int((f.Size + chunkSize - 1) / chunkSize)
-			if totalChunks == 0 {
-				totalChunks = 1
-			}
-			tracker := loadOrCreateTracker(markerPath, f.Size, chunkSize, totalChunks)
-			trackers = append(trackers, tracker)
-
-			slog.Info("Download file", "name", f.Name, "size", f.Size, "chunkSize", chunkSize, "totalChunks", totalChunks)
-
-			// If all chunks are already complete, skip
-			if tracker.allComplete() {
-				slog.Info("All chunks complete, skipping", "path", filePath)
-				atomic.AddInt64(&downloaded, f.Size)
-				resCh <- types.DownloadInfo{
-					TotalDownloaded: atomic.LoadInt64(&downloaded),
-					TotalSize:       totalSize,
+				fi, _ := file.Stat()
+				if fi == nil || fi.Size() < f.Size {
+					if err := file.Truncate(f.Size); err != nil {
+						file.Close()
+						errCh <- err
+						return
+					}
 				}
-				_ = tracker.remove()
-				trackers = slices.Delete(trackers, len(trackers)-1, len(trackers))
-				continue
+				file.Close()
 			}
+			slog.Info("Download file", "name", f.Name, "size", f.Size, "chunkSize", chunkSize)
 
-			// Add completed chunk bytes to progress counter
-			completedBytes := tracker.completedBytes()
-			if completedBytes > 0 {
-				atomic.AddInt64(&downloaded, completedBytes)
-				slog.Info("Resuming download", "path", filePath, "completedBytes", completedBytes, "totalBytes", f.Size)
-			}
-
-			// Schedule only incomplete chunks
-			for chunkID := 0; chunkID < totalChunks; chunkID++ {
-				if tracker.isComplete(chunkID) {
+			for i := range nChunks {
+				if prog != nil && prog.isDone(i) {
 					continue
 				}
-
-				offset := int64(chunkID) * chunkSize
+				offset := int64(i) * chunkSize
 				limit := min(chunkSize, f.Size-offset)
-				cid := chunkID
-				tr := tracker
-
 				task := downloadTask{
 					OutputPath: outputPath,
 					ModelName:  modelName,
@@ -426,19 +376,17 @@ func StartDownload(ctx context.Context, modelName, outputPath string, files []Mo
 					Offset:     offset,
 					Limit:      limit,
 				}
-
+				idx, t := i, task
 				g.Go(func() error {
-					if err := doTask(gctx, hub, task); err != nil {
-						slog.Error("Download task failed", "task", task, "error", err)
+					if err := doTask(gctx, hub, t); err != nil {
+						slog.Error("Download task failed", "task", t, "error", err)
 						return err
 					}
-
-					if err := tr.markComplete(cid); err != nil {
-						slog.Warn("Failed to persist chunk marker", "chunkID", cid, "error", err)
+					if prog != nil {
+						prog.setDone(idx)
 					}
-
 					resCh <- types.DownloadInfo{
-						TotalDownloaded: atomic.AddInt64(&downloaded, task.Limit),
+						TotalDownloaded: atomic.AddInt64(&downloaded, t.Limit),
 						TotalSize:       totalSize,
 					}
 					return nil
@@ -448,12 +396,16 @@ func StartDownload(ctx context.Context, modelName, outputPath string, files []Mo
 
 		if err := g.Wait(); err != nil {
 			errCh <- err
-		} else {
-			// All downloads succeeded, remove marker files
-			for _, tr := range trackers {
-				_ = tr.remove()
+			return
+		}
+		for _, w := range workList {
+			if w.progress != nil {
+				if err := os.Remove(w.progress.path); err != nil {
+					slog.Debug("remove progress file", "path", w.progress.path, "error", err)
+				}
 			}
 		}
+		slog.Info("download complete", "model", modelName, "outputPath", outputPath)
 	}()
 
 	return resCh, errCh
