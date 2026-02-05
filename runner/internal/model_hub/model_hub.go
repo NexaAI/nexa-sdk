@@ -17,6 +17,7 @@ package model_hub
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"log/slog"
@@ -25,7 +26,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
-	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -142,125 +142,162 @@ const (
 	minChunkSize = 16 * 1024 * 1024 // 16MiB
 )
 
-// chunkProgress is the JSON-serialized marker file format for tracking completed chunks.
-type chunkProgress struct {
-	FileSize        int64 `json:"file_size"`
-	ChunkSize       int64 `json:"chunk_size"`
-	TotalChunks     int   `json:"total_chunks"`
-	CompletedChunks []int `json:"completed_chunks"`
-}
+// Binary marker file format for tracking completed chunks.
+// Layout: [magic 4B][fileSize 8B][chunkSize 8B][totalChunks 4B][chunk0 1B][chunk1 1B]...
+// Each chunk byte: 0x00 = pending, 0x01 = complete.
+// Concurrent goroutines write to distinct byte offsets via WriteAt, so no mutex is needed.
+const (
+	markerMagic     = "NXCK"
+	markerHeaderLen = 4 + 8 + 8 + 4 // 24 bytes
+)
 
-// chunkTracker is an in-memory manager for tracking chunk completion, mutex-protected.
+// chunkTracker tracks per-chunk completion state using an in-memory byte slice
+// backed by a binary marker file. Each goroutine writes to its own chunk offset,
+// eliminating the need for locks.
 type chunkTracker struct {
-	mu       sync.Mutex
-	filePath string
-	state    chunkProgress
-	complete map[int]bool
+	filePath    string
+	fileSize    int64
+	chunkSize   int64
+	totalChunks int
+	chunks      []byte   // 0x00 = pending, 0x01 = complete
+	file        *os.File // open handle for single-byte WriteAt calls
 }
 
-// loadOrCreateTracker loads an existing marker file or creates a fresh tracker.
-// Discards incompatible markers (different fileSize/chunkSize) and corrupted JSON.
+// loadOrCreateTracker loads an existing binary marker file or creates a fresh one.
+// Discards incompatible markers (different fileSize/chunkSize/totalChunks) and corrupted data.
 func loadOrCreateTracker(markerPath string, fileSize, chunkSize int64, totalChunks int) *chunkTracker {
 	ct := &chunkTracker{
-		filePath: markerPath,
-		state: chunkProgress{
-			FileSize:    fileSize,
-			ChunkSize:   chunkSize,
-			TotalChunks: totalChunks,
-		},
-		complete: make(map[int]bool),
+		filePath:    markerPath,
+		fileSize:    fileSize,
+		chunkSize:   chunkSize,
+		totalChunks: totalChunks,
+		chunks:      make([]byte, totalChunks),
 	}
 
 	data, err := os.ReadFile(markerPath)
-	if err != nil {
-		return ct
+	if err == nil && ct.parseMarker(data) {
+		completed := 0
+		for _, b := range ct.chunks {
+			if b == 0x01 {
+				completed++
+			}
+		}
+		slog.Info("Loaded chunk marker", "path", markerPath, "completed", completed, "total", totalChunks)
+	} else {
+		// Create fresh marker file (header + zeroed chunk bytes)
+		ct.initMarkerFile()
 	}
 
-	var loaded chunkProgress
-	if err := sonic.Unmarshal(data, &loaded); err != nil {
-		slog.Warn("Corrupted chunk marker, starting fresh", "path", markerPath, "error", err)
-		return ct
+	// Open file for subsequent single-byte writes
+	if f, err := os.OpenFile(markerPath, os.O_WRONLY, 0o644); err == nil {
+		ct.file = f
 	}
 
-	if loaded.FileSize != fileSize || loaded.ChunkSize != chunkSize || loaded.TotalChunks != totalChunks {
-		slog.Warn("Incompatible chunk marker, starting fresh",
-			"path", markerPath,
-			"markerFileSize", loaded.FileSize, "expectedFileSize", fileSize,
-			"markerChunkSize", loaded.ChunkSize, "expectedChunkSize", chunkSize)
-		return ct
-	}
-
-	ct.state.CompletedChunks = loaded.CompletedChunks
-	for _, id := range loaded.CompletedChunks {
-		ct.complete[id] = true
-	}
-
-	slog.Info("Loaded chunk marker", "path", markerPath, "completed", len(ct.complete), "total", totalChunks)
 	return ct
+}
+
+// parseMarker validates and loads a binary marker file into the in-memory chunks slice.
+func (ct *chunkTracker) parseMarker(data []byte) bool {
+	if len(data) < markerHeaderLen+ct.totalChunks {
+		slog.Warn("Corrupted chunk marker (too short), starting fresh", "path", ct.filePath)
+		return false
+	}
+	if string(data[:4]) != markerMagic {
+		slog.Warn("Corrupted chunk marker (bad magic), starting fresh", "path", ct.filePath)
+		return false
+	}
+
+	storedFileSize := int64(binary.LittleEndian.Uint64(data[4:12]))
+	storedChunkSize := int64(binary.LittleEndian.Uint64(data[12:20]))
+	storedTotalChunks := int(binary.LittleEndian.Uint32(data[20:24]))
+
+	if storedFileSize != ct.fileSize || storedChunkSize != ct.chunkSize || storedTotalChunks != ct.totalChunks {
+		slog.Warn("Incompatible chunk marker, starting fresh",
+			"path", ct.filePath,
+			"markerFileSize", storedFileSize, "expectedFileSize", ct.fileSize,
+			"markerChunkSize", storedChunkSize, "expectedChunkSize", ct.chunkSize)
+		return false
+	}
+
+	copy(ct.chunks, data[markerHeaderLen:markerHeaderLen+ct.totalChunks])
+	return true
+}
+
+// initMarkerFile writes a fresh binary marker file (header + zeroed chunk bytes).
+func (ct *chunkTracker) initMarkerFile() {
+	buf := make([]byte, markerHeaderLen+ct.totalChunks)
+	copy(buf[:4], markerMagic)
+	binary.LittleEndian.PutUint64(buf[4:12], uint64(ct.fileSize))
+	binary.LittleEndian.PutUint64(buf[12:20], uint64(ct.chunkSize))
+	binary.LittleEndian.PutUint32(buf[20:24], uint32(ct.totalChunks))
+
+	if err := os.WriteFile(ct.filePath, buf, 0o644); err != nil {
+		slog.Warn("Failed to create chunk marker file", "path", ct.filePath, "error", err)
+	}
 }
 
 // isComplete checks if a specific chunk has been completed.
 func (ct *chunkTracker) isComplete(chunkID int) bool {
-	ct.mu.Lock()
-	defer ct.mu.Unlock()
-	return ct.complete[chunkID]
+	if chunkID < 0 || chunkID >= ct.totalChunks {
+		return false
+	}
+	return ct.chunks[chunkID] == 0x01
 }
 
 // allComplete checks if all chunks have been completed.
 func (ct *chunkTracker) allComplete() bool {
-	ct.mu.Lock()
-	defer ct.mu.Unlock()
-	return len(ct.complete) >= ct.state.TotalChunks
+	for _, b := range ct.chunks {
+		if b != 0x01 {
+			return false
+		}
+	}
+	return true
 }
 
-// markComplete marks a chunk as done and persists state to disk.
+// markComplete marks a chunk as done in memory and writes a single byte to disk.
+// Safe for concurrent use: each goroutine writes to a distinct chunkID offset.
 func (ct *chunkTracker) markComplete(chunkID int) error {
-	ct.mu.Lock()
-	defer ct.mu.Unlock()
+	if chunkID < 0 || chunkID >= ct.totalChunks {
+		return fmt.Errorf("chunkID %d out of range [0, %d)", chunkID, ct.totalChunks)
+	}
+	ct.chunks[chunkID] = 0x01
 
-	if ct.complete[chunkID] {
+	if ct.file == nil {
 		return nil
 	}
-
-	ct.complete[chunkID] = true
-
-	// Rebuild sorted completed list
-	completed := make([]int, 0, len(ct.complete))
-	for id := range ct.complete {
-		completed = append(completed, id)
-	}
-	sort.Ints(completed)
-	ct.state.CompletedChunks = completed
-
-	data, err := sonic.Marshal(ct.state)
+	_, err := ct.file.WriteAt([]byte{0x01}, int64(markerHeaderLen+chunkID))
 	if err != nil {
-		return fmt.Errorf("failed to marshal chunk progress: %w", err)
-	}
-
-	if err := os.WriteFile(ct.filePath, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write chunk marker: %w", err)
 	}
-
 	return nil
 }
 
-// remove deletes the marker file.
+// close closes the marker file handle without deleting the file.
+// Safe to call multiple times.
+func (ct *chunkTracker) close() {
+	if ct.file != nil {
+		ct.file.Close()
+		ct.file = nil
+	}
+}
+
+// remove closes the file handle and deletes the marker file.
 func (ct *chunkTracker) remove() error {
+	ct.close()
 	return os.Remove(ct.filePath)
 }
 
 // completedBytes returns the total bytes represented by completed chunks.
 func (ct *chunkTracker) completedBytes() int64 {
-	ct.mu.Lock()
-	defer ct.mu.Unlock()
-
 	var total int64
-	for id := range ct.complete {
-		if id == ct.state.TotalChunks-1 {
-			// Last chunk may be smaller
-			total += ct.state.FileSize - int64(id)*ct.state.ChunkSize
-		} else {
-			total += ct.state.ChunkSize
+	for i, b := range ct.chunks {
+		if b == 0x01 {
+			if i == ct.totalChunks-1 {
+				// Last chunk may be smaller
+				total += ct.fileSize - int64(i)*ct.chunkSize
+			} else {
+				total += ct.chunkSize
+			}
 		}
 	}
 	return total
@@ -301,6 +338,11 @@ func StartDownload(ctx context.Context, modelName, outputPath string, files []Mo
 		g.SetLimit(maxConcurrency)
 
 		var trackers []*chunkTracker
+		defer func() {
+			for _, tr := range trackers {
+				tr.close()
+			}
+		}()
 
 		for _, f := range files {
 			if err := os.MkdirAll(filepath.Dir(filepath.Join(outputPath, f.Name)), 0o755); err != nil {
