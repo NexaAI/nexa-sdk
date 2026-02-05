@@ -17,7 +17,7 @@ package model_hub
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -37,108 +37,6 @@ import (
 )
 
 const ProgressSuffix = ".progress"
-
-type chunkProgress struct {
-	bitmap    []uint64
-	fileSize  int64
-	chunkSize int64
-	path      string
-	dirty     atomic.Int32
-}
-
-func (p *chunkProgress) nChunks() int {
-	return int((p.fileSize + p.chunkSize - 1) / p.chunkSize)
-}
-
-func loadProgress(path string, fileSize, chunkSize int64) (*chunkProgress, error) {
-	if chunkSize <= 0 || fileSize <= 0 {
-		return nil, nil
-	}
-	nChunks := int((fileSize + chunkSize - 1) / chunkSize)
-	if nChunks == 0 {
-		return nil, nil
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, nil
-	}
-	const headerSize = 16
-	if len(data) < headerSize {
-		return nil, nil
-	}
-	gotSize := binary.LittleEndian.Uint64(data[0:8])
-	gotChunk := binary.LittleEndian.Uint64(data[8:16])
-	if uint64(fileSize) != gotSize || uint64(chunkSize) != gotChunk {
-		return nil, nil
-	}
-	words := (nChunks + 63) / 64
-	if len(data) < headerSize+words*8 {
-		return nil, nil
-	}
-	p := &chunkProgress{
-		bitmap:    make([]uint64, words),
-		fileSize:  fileSize,
-		chunkSize: chunkSize,
-		path:      path,
-	}
-	for i := range words {
-		p.bitmap[i] = binary.LittleEndian.Uint64(data[headerSize+i*8:])
-	}
-	return p, nil
-}
-
-func (p *chunkProgress) isDone(i int) bool {
-	if i < 0 || i >= p.nChunks() {
-		return false
-	}
-	w := atomic.LoadUint64(&p.bitmap[i/64])
-	return (w & (1 << (i % 64))) != 0
-}
-
-func (p *chunkProgress) setDone(i int) {
-	if i < 0 || i >= p.nChunks() {
-		return
-	}
-	atomic.OrUint64(&p.bitmap[i/64], 1<<(i%64))
-	p.dirty.Store(1)
-}
-
-func (p *chunkProgress) save() error {
-	if !p.dirty.CompareAndSwap(1, 0) {
-		return nil
-	}
-	words := len(p.bitmap)
-	buf := make([]byte, 16+words*8)
-	binary.LittleEndian.PutUint64(buf[0:8], uint64(p.fileSize))
-	binary.LittleEndian.PutUint64(buf[8:16], uint64(p.chunkSize))
-	for i := range words {
-		binary.LittleEndian.PutUint64(buf[16+i*8:], atomic.LoadUint64(&p.bitmap[i]))
-	}
-	tmpPath := p.path + ".tmp"
-	if err := os.WriteFile(tmpPath, buf, 0o644); err != nil {
-		return err
-	}
-	return os.Rename(tmpPath, p.path)
-}
-
-func (p *chunkProgress) anyDone() bool {
-	for i := 0; i < len(p.bitmap); i++ {
-		if atomic.LoadUint64(&p.bitmap[i]) != 0 {
-			return true
-		}
-	}
-	return false
-}
-
-func (p *chunkProgress) countDoneAndSize(chunkSizeFunc func(i int) int64) (n int, size int64) {
-	for i := 0; i < p.nChunks(); i++ {
-		if p.isDone(i) {
-			n++
-			size += chunkSizeFunc(i)
-		}
-	}
-	return n, size
-}
 
 type ModelFileInfo struct {
 	Name string `json:"name"`
@@ -234,11 +132,12 @@ func GetFileContent(ctx context.Context, modelName, fileName string) ([]byte, er
 
 type downloadTask struct {
 	OutputPath string
-
-	ModelName string
-	FileName  string
-	Offset    int64
-	Limit     int64
+	ModelName  string
+	FileName   string
+	Offset     int64
+	Limit      int64
+	MarkerPath string
+	ChunkIndex int
 }
 
 const (
@@ -271,119 +170,69 @@ func StartDownload(ctx context.Context, modelName, outputPath string, files []Mo
 		for _, f := range files {
 			totalSize += f.Size
 		}
-
-		type fileWork struct {
-			f         ModelFileInfo
-			chunkSize int64
-			nChunks   int
-			progress  *chunkProgress
-		}
-		var workList []fileWork
 		var downloaded int64
-		var progressList []*chunkProgress
-
-		for _, f := range files {
-			chunkSize := max(minChunkSize, f.Size/128)
-			nChunks := 0
-			if chunkSize > 0 {
-				nChunks = int((f.Size + chunkSize - 1) / chunkSize)
-			}
-			progressPath := filepath.Join(outputPath, f.Name+ProgressSuffix)
-			var progress *chunkProgress
-			if nChunks > 0 {
-				if p, _ := loadProgress(progressPath, f.Size, chunkSize); p != nil {
-					progress = p
-				} else {
-					progress = &chunkProgress{
-						bitmap:    make([]uint64, (nChunks+63)/64),
-						fileSize:  f.Size,
-						chunkSize: chunkSize,
-						path:      progressPath,
-					}
-				}
-				nDone, size := progress.countDoneAndSize(func(i int) int64 {
-					offset := int64(i) * chunkSize
-					return min(chunkSize, f.Size-offset)
-				})
-				downloaded += size
-				if nDone > 0 {
-					slog.Info("resuming download", "file", f.Name, "chunks_done", nDone, "bytes_done", size, "total_chunks", nChunks)
-				}
-				progressList = append(progressList, progress)
-			}
-			workList = append(workList, fileWork{f: f, chunkSize: chunkSize, nChunks: nChunks, progress: progress})
-		}
-
-		done := make(chan struct{})
-		defer close(done)
-		go func() {
-			ticker := time.NewTicker(2 * time.Second)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-done:
-					return
-				case <-ticker.C:
-					for _, p := range progressList {
-						_ = p.save()
-					}
-				}
-			}
-		}()
-
+		var markerPaths []string
 		g, gctx := errgroup.WithContext(ctx)
 		g.SetLimit(maxConcurrency)
 
-		for _, w := range workList {
-			f, chunkSize, nChunks, prog := w.f, w.chunkSize, w.nChunks, w.progress
+		for _, f := range files {
 			if err := os.MkdirAll(filepath.Dir(filepath.Join(outputPath, f.Name)), 0o755); err != nil {
 				errCh <- fmt.Errorf("failed to create directory: %v, %s", err, f.Name)
 				return
 			}
-			if nChunks == 0 {
-				continue
+			chunkSize := max(minChunkSize, f.Size/128)
+			nChunks := int((f.Size + chunkSize - 1) / chunkSize)
+			outPath := filepath.Join(outputPath, f.Name)
+			markerPath := filepath.Join(outputPath, f.Name+ProgressSuffix)
+
+			markers, err := os.ReadFile(markerPath)
+			if err != nil && !errors.Is(err, os.ErrNotExist) {
+				errCh <- err
+				return
 			}
-			if prog != nil && prog.anyDone() {
-				outPath := filepath.Join(outputPath, f.Name)
-				slog.Debug("opening output file for resume", "file", f.Name)
-				file, err := os.OpenFile(outPath, os.O_RDWR|os.O_CREATE, 0o644)
-				if err != nil {
+			if err != nil || len(markers) != nChunks {
+				markers = make([]byte, nChunks)
+				if err := os.WriteFile(markerPath, markers, 0o644); err != nil {
 					errCh <- err
 					return
 				}
-				fi, _ := file.Stat()
-				if fi == nil || fi.Size() < f.Size {
-					if err := file.Truncate(f.Size); err != nil {
-						file.Close()
-						errCh <- err
-						return
-					}
-				}
-				file.Close()
 			}
+			file, err := os.OpenFile(outPath, os.O_RDWR|os.O_CREATE, 0o644)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			if fi, _ := file.Stat(); fi == nil || fi.Size() < f.Size {
+				if err := file.Truncate(f.Size); err != nil {
+					file.Close()
+					errCh <- err
+					return
+				}
+			}
+			file.Close()
+			markerPaths = append(markerPaths, markerPath)
+
 			slog.Info("Download file", "name", f.Name, "size", f.Size, "chunkSize", chunkSize)
 
-			for i := range nChunks {
-				if prog != nil && prog.isDone(i) {
+			for i, marker := range markers {
+				if marker == 0x01 {
+					downloaded += min(chunkSize, f.Size-int64(i)*chunkSize)
 					continue
 				}
 				offset := int64(i) * chunkSize
-				limit := min(chunkSize, f.Size-offset)
-				task := downloadTask{
+				t := downloadTask{
 					OutputPath: outputPath,
 					ModelName:  modelName,
 					FileName:   f.Name,
 					Offset:     offset,
-					Limit:      limit,
+					Limit:      min(chunkSize, f.Size-offset),
+					MarkerPath: markerPath,
+					ChunkIndex: i,
 				}
-				idx, t := i, task
 				g.Go(func() error {
 					if err := doTask(gctx, hub, t); err != nil {
 						slog.Error("Download task failed", "task", t, "error", err)
 						return err
-					}
-					if prog != nil {
-						prog.setDone(idx)
 					}
 					resCh <- types.DownloadInfo{
 						TotalDownloaded: atomic.AddInt64(&downloaded, t.Limit),
@@ -398,12 +247,8 @@ func StartDownload(ctx context.Context, modelName, outputPath string, files []Mo
 			errCh <- err
 			return
 		}
-		for _, w := range workList {
-			if w.progress != nil {
-				if err := os.Remove(w.progress.path); err != nil {
-					slog.Debug("remove progress file", "path", w.progress.path, "error", err)
-				}
-			}
+		for _, p := range markerPaths {
+			_ = os.Remove(p)
 		}
 		slog.Info("download complete", "model", modelName, "outputPath", outputPath)
 	}()
@@ -485,19 +330,20 @@ func doTask(ctx context.Context, hub ModelHub, task downloadTask) error {
 	if err != nil {
 		return err
 	}
-
-	_, err = file.Seek(task.Offset, io.SeekStart)
+	defer file.Close()
+	if _, err := file.Seek(task.Offset, io.SeekStart); err != nil {
+		return err
+	}
+	if err := hub.GetFileContent(ctx, task.ModelName, task.FileName, task.Offset, task.Limit, file); err != nil {
+		return err
+	}
+	marker, err := os.OpenFile(task.MarkerPath, os.O_WRONLY, 0o644)
 	if err != nil {
 		return err
 	}
-
-	err = hub.GetFileContent(ctx, task.ModelName, task.FileName, task.Offset, task.Limit, file)
-	if err != nil {
-		file.Close()
-		return err
-	}
-
-	return file.Close()
+	defer marker.Close()
+	_, _ = marker.WriteAt([]byte{0x01}, int64(task.ChunkIndex))
+	return nil
 }
 
 func code2error(client *resty.Client, response *resty.Response) error {

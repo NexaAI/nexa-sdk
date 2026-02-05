@@ -18,7 +18,6 @@ import (
 	"context"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/lmittmann/tint"
@@ -36,44 +35,6 @@ func TestMain(m *testing.M) {
 	hubs = hubs[3:]
 
 	os.Exit(m.Run())
-}
-
-func TestChunkProgress_SaveAndLoad(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "x.progress")
-	fileSize := int64(320)
-	chunkSize := int64(100)
-	nChunks := 4
-	words := (nChunks + 63) / 64
-	progress := &chunkProgress{
-		bitmap:    make([]uint64, words),
-		fileSize:  fileSize,
-		chunkSize: chunkSize,
-		path:      path,
-	}
-	progress.setDone(0)
-	progress.setDone(2)
-	if err := progress.save(); err != nil {
-		t.Fatal(err)
-	}
-	loaded, err := loadProgress(path, fileSize, chunkSize)
-	if err != nil || loaded == nil {
-		t.Fatalf("loadProgress after save: %v, %v", loaded, err)
-	}
-	if !loaded.isDone(0) || loaded.isDone(1) || !loaded.isDone(2) || loaded.isDone(3) {
-		t.Errorf("loaded progress: isDone(0)=true, isDone(1)=false, isDone(2)=true, isDone(3)=false")
-	}
-	chunkSizeFunc := func(i int) int64 {
-		offset := int64(i) * chunkSize
-		if offset+chunkSize > fileSize {
-			return fileSize - offset
-		}
-		return chunkSize
-	}
-	n, size := loaded.countDoneAndSize(chunkSizeFunc)
-	if n != 2 || size != 200 {
-		t.Errorf("countDoneAndSize: want n=2 size=200, got n=%d size=%d", n, size)
-	}
 }
 
 func TestModelInfo(t *testing.T) {
