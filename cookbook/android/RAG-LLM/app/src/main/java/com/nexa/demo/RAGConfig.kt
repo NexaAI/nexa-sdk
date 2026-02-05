@@ -10,5 +10,5 @@ object RAGConfig {
     var CHUNK_SIZE = 128
     
     // Number of chunks to retrieve for each query
-    var N_CHUNKS = 6
+    var N_CHUNKS = 3
 }
