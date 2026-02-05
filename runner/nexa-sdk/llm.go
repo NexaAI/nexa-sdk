@@ -82,10 +82,6 @@ func (lci LlmCreateInput) toCPtr() *C.ml_LlmCreateInput {
 	if lci.Config.ChatTemplateContent != "" {
 		cPtr.config.chat_template_content = C.CString(lci.Config.ChatTemplateContent)
 	}
-	// Add system prompt support
-	if lci.Config.SystemPrompt != "" {
-		cPtr.config.system_prompt = C.CString(lci.Config.SystemPrompt)
-	}
 
 	return cPtr
 }
@@ -113,9 +109,6 @@ func freeLlmCreateInput(cPtr *C.ml_LlmCreateInput) {
 		}
 		if cPtr.config.chat_template_content != nil {
 			C.free(unsafe.Pointer(cPtr.config.chat_template_content))
-		}
-		if cPtr.config.system_prompt != nil {
-			C.free(unsafe.Pointer(cPtr.config.system_prompt))
 		}
 
 		// Free the main structure

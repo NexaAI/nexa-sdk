@@ -881,7 +881,7 @@ components:
         stream_format:
           type: string
           enum: [wav, sse]
-          description: "sse" returns Server-Sent Events stream; otherwise returns binary WAV
+          description: '"sse" returns Server-Sent Events stream; otherwise returns binary WAV'
         speed:
           type: number
           format: float
@@ -905,7 +905,7 @@ components:
           description: The audio file to transcribe. Omit for warm up (returns null).
         stream:
           type: string
-          description: "true" is not supported and returns 400
+          description: '"true" is not supported and returns 400'
         language:
           type: string
           description: The language of the input audio
