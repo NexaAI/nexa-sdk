@@ -91,6 +91,72 @@ This document provides information about third-party libraries used in the NexaS
 - **URL**: https://github.com/valyala/fasthttp
 - **Description**: Fast HTTP implementation for Go
 
+### gookit/color
+
+- **License**: MIT License
+- **URL**: https://github.com/gookit/color
+- **Description**: Terminal color rendering tool library
+
+### jedib0t/go-pretty
+
+- **License**: MIT License
+- **URL**: https://github.com/jedib0t/go-pretty
+- **Description**: Pretty print tables and more in Go
+
+### lmittmann/tint
+
+- **License**: MIT License
+- **URL**: https://github.com/lmittmann/tint
+- **Description**: slog.Handler that writes tinted logs
+
+### mattn/go-runewidth
+
+- **License**: MIT License
+- **URL**: https://github.com/mattn/go-runewidth
+- **Description**: Functions to get fixed width of characters or strings
+
+### shirou/gopsutil
+
+- **License**: BSD 3-Clause License
+- **URL**: https://github.com/shirou/gopsutil
+- **Description**: Cross-platform library for retrieving process and system utilization
+
+### spf13/pflag
+
+- **License**: BSD 3-Clause License
+- **URL**: https://github.com/spf13/pflag
+- **Description**: Drop-in replacement for Go's flag package with POSIX compliance
+
+### golang.org/x/image
+
+- **License**: BSD 3-Clause License
+- **URL**: https://golang.org/x/image
+- **Description**: Supplementary Go image libraries
+
+### golang.org/x/sync
+
+- **License**: BSD 3-Clause License
+- **URL**: https://golang.org/x/sync
+- **Description**: Go concurrency primitives
+
+### golang.org/x/sys
+
+- **License**: BSD 3-Clause License
+- **URL**: https://golang.org/x/sys
+- **Description**: Go packages for low-level OS interaction
+
+### golang.org/x/term
+
+- **License**: BSD 3-Clause License
+- **URL**: https://golang.org/x/term
+- **Description**: Go terminal and console support
+
+### resty
+
+- **License**: MIT License
+- **URL**: https://github.com/go-resty/resty
+- **Description**: Simple HTTP and REST client library for Go
+
 ---
 
 ## C/C++ Dependencies
@@ -215,6 +281,67 @@ This document provides information about third-party libraries used in the NexaS
 - **URL**: https://github.com/modelcontextprotocol/python-sdk
 - **Description**: Model Context Protocol Python SDK
 
+### tqdm
+
+- **License**: MIT License
+- **URL**: https://github.com/tqdm/tqdm
+- **Description**: Fast, extensible progress bar for Python and CLI
+
+### numpy
+
+- **License**: BSD 3-Clause License
+- **URL**: https://github.com/numpy/numpy
+- **Description**: Fundamental package for scientific computing with Python
+
+### Flask-CORS
+
+- **License**: MIT License
+- **URL**: https://github.com/corydolphin/flask-cors
+- **Description**: Cross Origin Resource Sharing extension for Flask
+
+### Flask-SocketIO
+
+- **License**: MIT License
+- **URL**: https://github.com/miguelgrinberg/Flask-SocketIO
+- **Description**: Socket.IO integration for Flask applications
+
+### python-socketio
+
+- **License**: MIT License
+- **URL**: https://github.com/miguelgrinberg/python-socketio
+- **Description**: Python Socket.IO server and client
+
+### llama-index
+
+- **License**: MIT License
+- **URL**: https://github.com/run-llama/llama_index
+- **Description**: Data framework for LLM applications
+- **Packages**: llama-index-core, llama-index-llms-openai-like, llama-index-embeddings-huggingface
+
+### python-dotenv
+
+- **License**: BSD 3-Clause License
+- **URL**: https://github.com/theskumar/python-dotenv
+- **Description**: Read key-value pairs from .env file and set them as environment variables
+
+### crewai
+
+- **License**: MIT License
+- **URL**: https://github.com/crewAIInc/crewAI
+- **Description**: Framework for orchestrating role-playing AI agents
+
+### langchain-openai
+
+- **License**: MIT License
+- **URL**: https://github.com/langchain-ai/langchain
+- **Description**: LangChain integrations for OpenAI
+
+### google-search-results
+
+- **License**: MIT License
+- **URL**: https://github.com/serpapi/google-search-results-python
+- **Description**: SerpApi Python client for Google search results
+
 ---
 
 ## Android/Java Dependencies (from bindings/android)
@@ -273,6 +400,36 @@ This document provides information about third-party libraries used in the NexaS
 - **License**: Apache License 2.0
 - **URL**: https://github.com/material-components/material-components-android
 - **Description**: Modular and customizable Material Design UI components
+
+### Markwon
+
+- **License**: Apache License 2.0
+- **URL**: https://github.com/noties/Markwon
+- **Description**: Android markdown library
+
+### ImmersionBar
+
+- **License**: Apache License 2.0
+- **URL**: https://github.com/gyf-dev/ImmersionBar
+- **Description**: Android immersive status bar and navigation bar library
+
+### AndroidAutoSize
+
+- **License**: Apache License 2.0
+- **URL**: https://github.com/JessYanCoding/AndroidAutoSize
+- **Description**: Android screen adaptation solution
+
+### Toaster
+
+- **License**: Apache License 2.0
+- **URL**: https://github.com/getActivity/Toaster
+- **Description**: Android toast framework
+
+### okdownload
+
+- **License**: Apache License 2.0
+- **URL**: https://github.com/nickaknudson/okdownload
+- **Description**: Reliable, flexible, fast and powerful download engine
 
 ---
 
