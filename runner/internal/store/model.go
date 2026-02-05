@@ -150,22 +150,16 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 		}
 
 		modelDir := filepath.Join(s.home, "models", mf.Name)
+		hasProgress := false
 		if entries, _ := os.ReadDir(modelDir); entries != nil {
-			// check if there is any progress file
-			hasProgress := false
 			for _, e := range entries {
 				if !e.IsDir() && strings.HasSuffix(e.Name(), model_hub.ProgressSuffix) {
 					hasProgress = true
 					break
 				}
 			}
-			if !hasProgress {
-				if err := s.Remove(mf.Name); err != nil {
-					errC <- err
-					return
-				}
-			}
-		} else {
+		}
+		if !hasProgress {
 			if err := s.Remove(mf.Name); err != nil {
 				errC <- err
 				return
