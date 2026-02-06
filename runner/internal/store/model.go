@@ -149,10 +149,21 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 			return
 		}
 
-		// clean before
-		if err := s.Remove(mf.Name); err != nil {
-			errC <- err
-			return
+		modelDir := filepath.Join(s.home, "models", mf.Name)
+		hasProgress := false
+		if entries, _ := os.ReadDir(modelDir); entries != nil {
+			for _, e := range entries {
+				if !e.IsDir() && strings.HasSuffix(e.Name(), model_hub.ProgressSuffix) {
+					hasProgress = true
+					break
+				}
+			}
+		}
+		if !hasProgress {
+			if err := s.Remove(mf.Name); err != nil {
+				errC <- err
+				return
+			}
 		}
 
 		if err := s.LockModel(mf.Name); err != nil {
@@ -230,9 +241,6 @@ func (s *Store) Pull(ctx context.Context, mf types.ModelManifest) (infoCh <-chan
 	return
 }
 
-// Pull downloads a model from HuggingFace and stores it locally
-// It fetches the model tree, finds .gguf files, downloads them, and saves metadata
-// if model not specify, all is set true, and autodetect true
 func (s *Store) PullExtraQuant(ctx context.Context, omf, nmf types.ModelManifest) (infoCh <-chan types.DownloadInfo, errCh <-chan error) {
 	infoC := make(chan types.DownloadInfo, 10)
 	infoCh = infoC
