@@ -1,4 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Copyright 2024-2026 Nexa AI, Inc.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -6,9 +21,8 @@
     android:layout_height="match_parent"
     android:layout_marginStart="0dp"
     android:layout_marginEnd="0dp"
-    android:layout_marginBottom="20dp"
     android:background="@color/bg_normal"
-    android:fitsSystemWindows="true">
+    android:fitsSystemWindows="false">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -17,24 +31,26 @@
 
         <!-- Spinner for model selection -->
         <FrameLayout
+            android:id="@+id/header_view"
             android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:layout_marginBottom="5dp">
+            android:layout_height="wrap_content"
+            android:minHeight="50dp"
+            android:background="@color/header_bg">
 
             <Spinner
                 android:id="@+id/sp_model_list"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_alignParentTop="true"
-                android:layout_centerHorizontal="true"
-                android:paddingLeft="10dp" />
+                android:layout_height="50dp"
+                android:layout_gravity="bottom"
+                android:popupBackground="@drawable/bg_spinner_dropdown" />
 
             <ImageView
                 android:id="@+id/iv_device_tag"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="right|center_vertical"
+                android:layout_gravity="right|center_vertical|bottom"
                 android:layout_marginRight="40dp"
+                android:layout_marginBottom="0dp"
                 android:src="@drawable/icon_tag_npu"
                 android:visibility="invisible" />
 
@@ -42,6 +58,7 @@
                 android:id="@+id/v_tip"
                 android:layout_width="match_parent"
                 android:layout_height="50dp"
+                android:layout_gravity="bottom"
                 android:visibility="gone" />
         </FrameLayout>
 
@@ -49,54 +66,126 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingLeft="16dp">
+            android:orientation="vertical"
+            android:background="@color/header_bg">
 
-            <Button
-                android:id="@+id/btn_download"
-                style="@style/btn_enable_14"
-                android:text="Download" />
+            <!-- Normal buttons row (default state) -->
+            <LinearLayout
+                android:id="@+id/ll_control_buttons_row"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingLeft="16dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp">
 
-            <Button
-                android:id="@+id/btn_load_model"
-                style="@style/btn_enable_14"
-                android:text="Load" />
+                <Button
+                    android:id="@+id/btn_download"
+                    style="@style/btn_enable_14"
+                    android:text="Download" />
 
-            <Button
-                android:id="@+id/btn_unload_model"
-                style="@style/btn_enable_14"
-                android:text="Unload"
-                android:visibility="gone"
-                tools:visibility="gone" />
+                <Button
+                    android:id="@+id/btn_load_model"
+                    style="@style/btn_enable_14"
+                    android:text="Load" />
 
-            <Button
-                android:id="@+id/btn_stop"
-                style="@style/btn_enable_14"
-                android:text="Stop"
-                android:visibility="gone"
-                tools:visibility="gone" />
+                <Button
+                    android:id="@+id/btn_unload_model"
+                    style="@style/btn_enable_14"
+                    android:text="Unload"
+                    android:visibility="gone"
+                    tools:visibility="gone" />
 
-            <View
-                android:layout_width="0dp"
-                android:layout_height="1px"
-                android:layout_weight="1" />
+                <Button
+                    android:id="@+id/btn_stop"
+                    style="@style/btn_enable_14"
+                    android:text="Stop"
+                    android:visibility="gone"
+                    tools:visibility="gone" />
 
-            <ImageView
-                android:id="@+id/iv_topk"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginRight="5dp"
-                android:padding="8dp"
-                android:src="@drawable/icon_topk_config"
-                android:visibility="gone" />
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1px"
+                    android:layout_weight="1" />
+
+                <ImageView
+                    android:id="@+id/iv_topk"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginRight="5dp"
+                    android:padding="8dp"
+                    android:src="@drawable/icon_topk_config"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <!-- Download progress row (full width, shown only when downloading) -->
+            <LinearLayout
+                android:id="@+id/ll_download_progress"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingLeft="16dp"
+                android:paddingRight="16dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:visibility="gone">
+
+                <ProgressBar
+                    android:id="@+id/pb_download_progress"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="0dp"
+                    android:layout_height="8dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
+                    android:max="10000"
+                    android:progress="0"
+                    android:progressTint="@color/font_white"
+                    android:progressBackgroundTint="#333333" />
+
+                <TextView
+                    android:id="@+id/tv_download_percent"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:text="0%"
+                    android:textColor="@color/font_white"
+                    android:textSize="14sp"
+                    android:minWidth="40dp" />
+
+                <TextView
+                    android:id="@+id/tv_download_failed"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:text="Failed"
+                    android:textColor="#FF4444"
+                    android:textSize="14sp"
+                    android:visibility="gone" />
+
+                <Button
+                    android:id="@+id/btn_cancel_download_inline"
+                    style="@style/btn_enable_14"
+                    android:background="@drawable/btn_rounded_border_transparent"
+                    android:text="Cancel"
+                    android:textColor="@color/font_white"
+                    android:visibility="gone" />
+
+                <Button
+                    android:id="@+id/btn_retry_download_inline"
+                    style="@style/btn_enable_14"
+                    android:background="@drawable/btn_rounded_border_transparent"
+                    android:text="Retry"
+                    android:textColor="@color/font_white"
+                    android:visibility="gone" />
+            </LinearLayout>
         </LinearLayout>
 
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:layout_marginTop="8dp"
-            android:background="#E7E7E7" />
+            android:background="#333333" />
 
         <Button
             android:id="@+id/btn_test"
@@ -108,11 +197,13 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginVertical="10dp"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp"
             android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:background="@color/header_bg">
 
             <ImageView
                 android:layout_width="wrap_content"
@@ -126,39 +217,33 @@
                 android:layout_marginStart="5dp"
                 android:layout_weight="1"
                 android:text="Files: 0 | Chunks: 0"
-                android:textColor="#1F1F1F" />
+                android:textColor="@color/font_white" />
 
-            <Button
-                android:id="@+id/btn_test_embed"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="@drawable/btn_rounded_border_gray"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
-                android:paddingHorizontal="10dp"
-                android:paddingVertical="3dp"
-                android:stateListAnimator="@null"
-                android:text="Add"
-                android:textAllCaps="false"
-                android:textColor="@color/btn_enable_color"
-                android:textSize="14sp" />
-
-            <Button
+            <!-- Clear button: visible only when files > 0, pure icon no border -->
+            <ImageButton
                 android:id="@+id/btn_embed_clear"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:background="@drawable/btn_rounded_border_gray"
-                android:enabled="false"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
-                android:paddingHorizontal="10dp"
-                android:paddingVertical="3dp"
-                android:stateListAnimator="@null"
-                android:text="Clear"
-                android:textAllCaps="false"
-                android:textColor="@color/btn_enable_color"
-                android:textSize="14sp" />
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginEnd="8dp"
+                android:background="@null"
+                android:contentDescription="Clear"
+                android:padding="8dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/icon_clear"
+                android:visibility="gone"
+                android:stateListAnimator="@null" />
+
+            <!-- Add button: pure icon no border -->
+            <ImageButton
+                android:id="@+id/btn_test_embed"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="@null"
+                android:contentDescription="Add"
+                android:padding="8dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/icon_add"
+                android:stateListAnimator="@null" />
         </LinearLayout>
 
         <LinearLayout
@@ -204,7 +289,7 @@
                 android:textColor="@color/font_black"
                 android:textSize="12sp" />
 
-<!--            Total Time: 0.0s; Prefilling Speed: 0 tokens/sec-->
+            <!--            Total Time: 0.0s; Prefilling Speed: 0 tokens/sec-->
 
         </LinearLayout>
 
@@ -319,9 +404,8 @@
                         </LinearLayout>
 
                         <LinearLayout
-                            android:layout_width="0dp"
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
                             android:gravity="end"
                             android:orientation="horizontal">
 
@@ -340,16 +424,15 @@
 
                             <Button
                                 android:id="@+id/btn_send"
-                                android:layout_width="0dp"
+                                android:layout_width="62dp"
                                 android:layout_height="32dp"
                                 android:layout_marginEnd="4dp"
-                                android:layout_weight="1"
-                                android:background="@drawable/btn_rounded_border"
+                                android:background="@drawable/btn_rounded_black_bg"
                                 android:ellipsize="end"
                                 android:singleLine="true"
                                 android:text="Send"
                                 android:textAllCaps="false"
-                                android:textColor="#1F1F1F" />
+                                android:textColor="#FFFFFF" />
                         </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>

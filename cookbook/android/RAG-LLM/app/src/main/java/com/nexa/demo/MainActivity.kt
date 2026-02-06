@@ -1,3 +1,17 @@
+// Copyright 2024-2026 Nexa AI, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package com.nexa.demo
 
 import android.Manifest
@@ -33,6 +47,7 @@ import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.ProgressBar
 import android.widget.SeekBar
+import android.widget.BaseAdapter
 import android.widget.SimpleAdapter
 import android.widget.Spinner
 import android.widget.TextView
@@ -47,6 +62,8 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.recyclerview.widget.RecyclerView
@@ -152,6 +169,15 @@ class MainActivity : FragmentActivity() {
     private lateinit var llDownloading: LinearLayout
     private lateinit var tvDownloadProgress: TextView
     private lateinit var pbDownloading: ProgressBar
+    // Inline download progress views
+    private lateinit var llControlButtonsRow: LinearLayout
+    private lateinit var llDownloadProgress: LinearLayout
+    private lateinit var pbDownloadProgress: ProgressBar
+    private lateinit var tvDownloadPercent: TextView
+    private lateinit var tvDownloadFailed: TextView
+    private lateinit var btnCancelDownloadInline: Button
+    private lateinit var btnRetryDownloadInline: Button
+    private var downloadFailed = false
     private lateinit var spModelList: Spinner
     private lateinit var btnDownload: Button
     private lateinit var btnLoadModel: Button
@@ -218,8 +244,8 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         immersionBar {
-            statusBarColorInt(Color.WHITE)
-            statusBarDarkFont(true)
+            transparentStatusBar()
+            statusBarDarkFont(false)
         }
         requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1002)
         okdownload()
@@ -295,13 +321,42 @@ class MainActivity : FragmentActivity() {
         })
         binding.rvChat.adapter = adapter
 
+        // Set status bar padding for immersive status bar
+        val headerView = findViewById<View>(R.id.header_view)
+        headerView?.let { view ->
+            ViewCompat.setOnApplyWindowInsetsListener(view) { v, insets ->
+                val statusBarHeight = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
+                v.setPadding(0, statusBarHeight, 0, 0)
+                insets
+            }
+        }
+
+        // When keyboard is visible: only IME padding so input sits flush with keyboard.
+        // When keyboard is hidden: only nav bar padding so buttons are not covered.
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
+            val navBottom = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            val imeBottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+            val bottomPadding = if (imeBottom > 0) imeBottom else navBottom
+            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, bottomPadding)
+            insets
+        }
+
         llDownloading = findViewById(R.id.ll_downloading)
         tvDownloadProgress = findViewById(R.id.tv_download_progress)
         pbDownloading = findViewById(R.id.pb_downloading)
+        // Initialize inline download progress views
+        llControlButtonsRow = findViewById(R.id.ll_control_buttons_row)
+        llDownloadProgress = findViewById(R.id.ll_download_progress)
+        pbDownloadProgress = findViewById(R.id.pb_download_progress)
+        tvDownloadPercent = findViewById(R.id.tv_download_percent)
+        tvDownloadFailed = findViewById(R.id.tv_download_failed)
+        btnCancelDownloadInline = findViewById(R.id.btn_cancel_download_inline)
+        btnRetryDownloadInline = findViewById(R.id.btn_retry_download_inline)
         spModelList = findViewById(R.id.sp_model_list)
         spModelList.dropDownVerticalOffset = DensityUtil.dpToPx(this, 40f)
         spModelList.post {
-            spModelList.dropDownWidth = spModelList.width - DensityUtil.dpToPx(this, 20f)
+            // Set dropdown width to match spinner width for symmetric padding
+            spModelList.dropDownWidth = spModelList.width
         }
         val spinnerData = modelList.filter { it.show }.map {
             val map = mutableMapOf<String, String>()
@@ -309,14 +364,33 @@ class MainActivity : FragmentActivity() {
             map["displayName"] = it.displayName
             map
         }
-        spModelList.adapter = object : SimpleAdapter(
-            this,
-            spinnerData,
-            R.layout.item_model,
-            arrayOf("displayName"),
-            intArrayOf(R.id.tv_model_id)
-        ) {
+        // Set custom view for spinner selected item
+        spModelList.adapter = object : BaseAdapter() {
+            override fun getCount(): Int = spinnerData.size
 
+            override fun getItem(position: Int): Any = spinnerData[position]
+
+            override fun getItemId(position: Int): Long = position.toLong()
+
+            override fun getView(position: Int, convertView: View?, parent: android.view.ViewGroup?): View {
+                val view = convertView ?: LayoutInflater.from(this@MainActivity)
+                    .inflate(R.layout.spinner_custom, parent, false)
+                val textView = view.findViewById<TextView>(android.R.id.text1)
+                textView.text = spinnerData[position]["displayName"]
+                return view
+            }
+
+            override fun getDropDownView(position: Int, convertView: View?, parent: android.view.ViewGroup?): View {
+                val view = convertView ?: LayoutInflater.from(this@MainActivity)
+                    .inflate(R.layout.item_spinner_dropdown, parent, false)
+                val textView = view.findViewById<TextView>(android.R.id.text1)
+                val checkIcon = view.findViewById<ImageView>(R.id.iv_check)
+                textView.text = spinnerData[position]["displayName"]
+                // Show check icon for selected item
+                val isSelected = position == spModelList.selectedItemPosition
+                checkIcon.visibility = if (isSelected) View.VISIBLE else View.GONE
+                return view
+            }
         }
         spModelList.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(
@@ -328,13 +402,22 @@ class MainActivity : FragmentActivity() {
                 // Use actual file existence check (not just SharedPreferences)
                 val selectedModel = modelList.first { it.id == selectModelId }
                 val filesExist = isModelDownloaded(selectedModel) == null
-                changeOperationUI(
-                    if (filesExist) {
-                        OperationState.DOWNLOADED
-                    } else {
-                        OperationState.DEFAULT
-                    }
-                )
+                // Check if this model is currently downloading
+                val isDownloading = downloadState == DownloadState.DOWNLOADING && 
+                    downloadingModelData?.displayName == spinnerText
+                if (isDownloading && !filesExist) {
+                    // Show progress row for current downloading model
+                    llControlButtonsRow.visibility = View.GONE
+                    llDownloadProgress.visibility = View.VISIBLE
+                } else {
+                    changeOperationUI(
+                        if (filesExist) {
+                            OperationState.DOWNLOADED
+                        } else {
+                            OperationState.DEFAULT
+                        }
+                    )
+                }
                 messages.clear()
                 adapter.notifyDataSetChanged()
                 binding.rvChat.scrollTo(0, 0)
@@ -416,6 +499,12 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+    // Show Clear button only when files > 0
+    private fun updateEmbedClearButtonVisibility() {
+        binding.btnEmbedClear.visibility =
+            if (embedResultList.isNotEmpty()) View.VISIBLE else View.GONE
+    }
+
     private fun embedFiles(files: ArrayList<String>, clearOld: Boolean = false) {
         binding.tvDatabaseInfo.text = "Embedding..."
         binding.btnEmbedClear.isEnabled = false
@@ -439,6 +528,7 @@ class MainActivity : FragmentActivity() {
                 runOnUiThread {
                     binding.tvDatabaseInfo.text = formatFilesInSearch()
                     binding.llEmbedProfilling.visibility = View.VISIBLE
+                    updateEmbedClearButtonVisibility()
                     binding.btnEmbedClear.isEnabled = true
                     binding.tvEmbedProfilling.text = "Total Time: ${
                         String.format(
@@ -681,6 +771,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
             Log.d(TAG, "Model files missing for ${modelData.id}, updating SharedPreferences to false")
             spDownloaded.edit().putBoolean(modelData.id, false).commit()
         }
+
         return fileName
     }
 
@@ -918,20 +1009,58 @@ Note: You must use the campaign_investigation function whenever a customer asks 
         }
     }
 
+    // Helper function to show download failed state
+    private fun showDownloadFailed(message: String? = null) {
+        downloadState = DownloadState.IDLE
+        downloadFailed = true
+        llDownloading.visibility = View.GONE
+        llControlButtonsRow.visibility = View.GONE
+        llDownloadProgress.visibility = View.VISIBLE
+        btnDownload.visibility = View.GONE
+        tvDownloadPercent.visibility = View.GONE
+        tvDownloadFailed.visibility = View.VISIBLE
+        btnCancelDownloadInline.visibility = View.GONE
+        btnRetryDownloadInline.visibility = View.VISIBLE
+        if (message != null) {
+            Toaster.show(message)
+        }
+    }
+
+    // Helper function to reset download UI to initial state
+    private fun resetDownloadUI() {
+        downloadState = DownloadState.IDLE
+        downloadFailed = false
+        llDownloadProgress.visibility = View.GONE
+        llControlButtonsRow.visibility = View.VISIBLE
+        btnDownload.visibility = View.VISIBLE
+        llDownloading.visibility = View.GONE
+    }
+
     private fun downloadModel(selectModelData: ModelData) {
         // Check local files first before SharedPreferences
         val fileName = isModelDownloaded(selectModelData)
         if (fileName == null || hasLoadedModel()) {
             addDownloadedTag(selectModelData)
-            llDownloading.visibility = View.GONE
+            resetDownloadUI()
             changeOperationUI(OperationState.DOWNLOADED)
             Toast.makeText(this@MainActivity, "model already downloaded", Toast.LENGTH_SHORT)
                 .show()
         } else {
             downloadState = DownloadState.DOWNLOADING
             downloadingModelData = selectModelData
-            llDownloading.visibility = View.VISIBLE
-            tvDownloadProgress.text = "0%"
+            downloadFailed = false
+            // Show progress row (full width), hide buttons row
+            llControlButtonsRow.visibility = View.GONE
+            llDownloadProgress.visibility = View.VISIBLE
+            btnDownload.visibility = View.GONE
+            pbDownloadProgress.progress = 0
+            tvDownloadPercent.text = "0%"
+            tvDownloadPercent.visibility = View.VISIBLE
+            tvDownloadFailed.visibility = View.GONE
+            btnCancelDownloadInline.visibility = View.VISIBLE
+            btnRetryDownloadInline.visibility = View.GONE
+            // Keep modal hidden
+            llDownloading.visibility = View.GONE
             modelScope.launch {
                 val unsafeClient = getUnsafeOkHttpClient().build()
                 
@@ -950,17 +1079,17 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                     // Recursively collect all NPU models that need file listing (main model + all NPU dependencies in the tree)
                     val modelsToFetch = mutableListOf(selectModelData)
                     val visited = mutableSetOf(selectModelData.id)
-
+                    
                     fun collectNpuDependencies(model: ModelData) {
                         model.dependencies?.forEach { depId ->
                             if (depId in visited) return@forEach
                             visited.add(depId)
-
+                            
                             modelList.firstOrNull { it.id == depId }?.let { depModel ->
                                 // Check actual file existence, not just SharedPreferences
                                 val depModelDir = depModel.modelDir(this@MainActivity)
                                 val depFilesExist = depModel.allModelFilesExist(this@MainActivity, depModelDir, modelList)
-
+                                
                                 // If it's an NPU model that needs S3 file listing, add it
                                 if (depModel.isNpuModel() && 
                                     depModel.files.isNullOrEmpty() && 
@@ -969,15 +1098,15 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                                     modelsToFetch.add(depModel)
                                     Log.d(TAG, "Added NPU dependency to fetch list: ${depModel.id}")
                                 }
-
+                                
                                 // Recursively check this dependency's dependencies
                                 collectNpuDependencies(depModel)
                             }
                         }
                     }
-
+                    
                     collectNpuDependencies(selectModelData)
-
+                    
                     // Fetch file lists with fallback support for all NPU models in parallel
                     val fileListResults = modelsToFetch.map { model ->
                         async {
@@ -1068,8 +1197,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                 // Try to get file sizes, with fallback to HF if S3 fails
                 val fileSizeMap = mutableMapOf<String, Long>()
                 val filesToSkip = mutableListOf<String>()
-                // Critical file extensions that must be downloaded
-                val criticalExtensions = listOf(".nexa", ".gguf", ".manifest")
+                
                 filesToDownloadWithFallback.forEach { fileWithFallback ->
                     var size = getUrlFileSize(unsafeClient, fileWithFallback.primaryUrl)
                     if (size == 0L && fileWithFallback.fallbackUrl != fileWithFallback.primaryUrl) {
@@ -1080,15 +1208,25 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                             fallbackUrlMap[fileWithFallback.primaryUrl] = fileWithFallback.primaryUrl // swap
                         }
                     }
+                    
+                    if (size == 0L) {
+                        // Skip empty files (or unknown size) - don't fail the whole download
+                        Log.w(TAG, "Skipping empty/unknown-size file: ${fileWithFallback.file.name}")
+                        filesToSkip.add(fileWithFallback.primaryUrl)
+                    }
                     fileSizeMap[fileWithFallback.primaryUrl] = size
                 }
                 
-                val totalSizes = filesToDownload.map { fileSizeMap[it.url] ?: 0L }
+                // Remove skipped files from download list (including empty files)
+                val filteredFilesToDownload = filesToDownload.filter { it.url !in filesToSkip }
+                
+                val totalSizes = filteredFilesToDownload.map { fileSizeMap[it.url] ?: 0L }
                 if (totalSizes.any { it == 0L }) {
+                    // Should not happen now that we skip all empty files; keep as safety check
+                    val failedFiles = filteredFilesToDownload.filter { (fileSizeMap[it.url] ?: 0L) == 0L }
+                    Log.e(TAG, "Files with size 0 still in list: ${failedFiles.map { it.file.name }}")
                     runOnUiThread {
-                        downloadState = DownloadState.IDLE
-                        llDownloading.visibility = View.GONE
-                        Toaster.show("Download failed - could not get file sizes.")
+                        showDownloadFailed("Download failed - could not get critical file sizes.")
                     }
                     return@launch
                 }
@@ -1111,12 +1249,15 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                 ) {
                     runOnUiThread {
                         if (10000 == percent) {
+                            // Download completed
+                            resetDownloadUI()
                             changeOperationUI(OperationState.DOWNLOADED)
-                            llDownloading.visibility = View.GONE
                             addDownloadedTag(downloadingModelData!!)
                             Toaster.show("${downloadingModelData?.displayName} downloaded")
                         } else {
-                            tvDownloadProgress.text = "${String.format("%.2f", percent.toFloat() / 100)}%"
+                            // Update inline progress
+                            pbDownloadProgress.progress = percent
+                            tvDownloadPercent.text = "${String.format("%.0f", percent.toFloat() / 100)}%"
                         }
                     }
                 }
@@ -1155,9 +1296,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                             onProgress(selectModelId, 100 * 100, totalBytes, totalBytes, 0, "0 KB/s")
                         } else {
                             runOnUiThread {
-                                downloadState = DownloadState.IDLE
-                                llDownloading.visibility = View.GONE
-                                Toaster.show("Download failed for some files.")
+                                showDownloadFailed("Download failed for some files.")
                             }
                         }
                         return
@@ -1252,9 +1391,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                                             onProgress(selectModelId, 100 * 100, totalBytes, totalBytes, 0, "0 KB/s")
                                         } else {
                                             runOnUiThread {
-                                                downloadState = DownloadState.IDLE
-                                                llDownloading.visibility = View.GONE
-                                                Toaster.show("Download failed for ${failedDownloads.size} file(s).")
+                                                showDownloadFailed("Download failed for ${failedDownloads.size} file(s).")
                                             }
                                         }
                                     } else if (pendingFallbacks.isNotEmpty()) {
@@ -1271,8 +1408,8 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                     )
                 }
                 
-                // Start initial download with primary URLs
-                startDownload(filesToDownload)
+                // Start initial download with primary URLs (using filtered list that excludes failed non-critical files)
+                startDownload(filteredFilesToDownload)
             }
         }
     }
@@ -1360,8 +1497,9 @@ Note: You must use the campaign_investigation function whenever a customer asks 
             embedFiles.clear()
             binding.llEmbedProfilling.visibility = View.GONE
             binding.tvDatabaseInfo.text = formatFilesInSearch()
-            binding.btnEmbedClear.isEnabled = false
+            updateEmbedClearButtonVisibility()
         }
+        updateEmbedClearButtonVisibility()
         binding.llEmbedResultTitle.setOnClickListener {
             isEmbedProfillingResultExpand = !isEmbedProfillingResultExpand
             binding.ivEmbedExpand.setImageResource(if (isEmbedProfillingResultExpand) R.drawable.icon_arrow_down else R.drawable.icon_arrow_right)
@@ -1529,6 +1667,30 @@ Note: You must use the campaign_investigation function whenever a customer asks 
         /**
          * Step 3. download model
          */
+        // Inline download cancel button
+        btnCancelDownloadInline.setOnClickListener {
+            downloadContext?.stop()
+            downloadState = DownloadState.IDLE
+            downloadingModelData?.downloadableFiles(
+                this@MainActivity,
+                downloadingModelData!!.modelDir(this),
+                modelList
+            )
+                ?.forEach {
+                    it.file.delete()
+                }
+            resetDownloadUI()
+        }
+        // Inline download retry button
+        btnRetryDownloadInline.setOnClickListener {
+            downloadContext?.stop()
+            downloadState = DownloadState.IDLE
+            downloadFailed = false
+            if (downloadingModelData != null) {
+                downloadModel(downloadingModelData!!)
+            }
+        }
+        // Modal download buttons (kept for backward compatibility)
         binding.btnCancelDownload.setOnClickListener {
             downloadContext?.stop()
             downloadState = DownloadState.IDLE
@@ -1555,7 +1717,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
             Log.d(TAG, "downloadState:$downloadState")
             if (downloadState == DownloadState.DOWNLOADING) {
                 if (downloadingModelData?.displayName == spinnerText) {
-                    binding.llDownloading.visibility = View.VISIBLE
+                    // Already showing inline progress, do nothing
                 } else {
                     Toaster.show("${downloadingModelData?.displayName} is currently downloading.")
                 }
@@ -2527,7 +2689,17 @@ Provide an answer to the user query based on the context information."""
                 binding.spModelList.isEnabled = true
                 binding.ivDeviceTag.visibility = View.INVISIBLE
 
-                binding.btnDownload.visibility = View.VISIBLE
+                // Check if current model is downloading
+                val isCurrentModelDownloading = downloadState == DownloadState.DOWNLOADING &&
+                    downloadingModelData?.displayName == spinnerText
+                if (isCurrentModelDownloading) {
+                    llControlButtonsRow.visibility = View.GONE
+                    llDownloadProgress.visibility = View.VISIBLE
+                } else {
+                    llControlButtonsRow.visibility = View.VISIBLE
+                    llDownloadProgress.visibility = View.GONE
+                    binding.btnDownload.visibility = View.VISIBLE
+                }
                 binding.btnLoadModel.visibility = View.GONE
                 binding.btnLoadModel.text = "Load"
                 binding.btnUnloadModel.visibility = View.GONE
