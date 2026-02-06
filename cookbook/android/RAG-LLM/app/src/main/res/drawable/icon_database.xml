@@ -1,13 +1,28 @@
+<!--
+  Copyright 2024-2026 Nexa AI, Inc.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="16dp"
-    android:height="16dp"
-    android:viewportWidth="16"
-    android:viewportHeight="16">
+  android:width="20dp"
+  android:height="20dp"
+  android:viewportWidth="20"
+  android:viewportHeight="20">
   <path
-      android:strokeWidth="1"
-      android:pathData="M14,3.333C14,4.438 11.314,5.333 8,5.333C4.686,5.333 2,4.438 2,3.333M14,3.333C14,2.229 11.314,1.334 8,1.334C4.686,1.334 2,2.229 2,3.333M14,3.333V12.667C14,13.197 13.368,13.706 12.243,14.081C11.117,14.456 9.591,14.667 8,14.667C6.409,14.667 4.883,14.456 3.757,14.081C2.632,13.706 2,13.197 2,12.667V3.333M2,8C2,8.531 2.632,9.039 3.757,9.414C4.883,9.789 6.409,10 8,10C9.591,10 11.117,9.789 12.243,9.414C13.368,9.039 14,8.531 14,8"
-      android:strokeLineJoin="round"
-      android:fillColor="#00000000"
-      android:strokeColor="#454545"
-      android:strokeLineCap="round"/>
+    android:pathData="M1.66699,6.66683V15.8335C1.66699,16.2755 1.84259,16.6994 2.15515,17.012C2.46771,17.3246 2.89163,17.5002 3.33366,17.5002H15.0003M16.667,14.1668C17.109,14.1668 17.5329,13.9912 17.8455,13.6787C18.1581,13.3661 18.3337,12.9422 18.3337,12.5002V7.50016C18.3337,7.05814 18.1581,6.63421 17.8455,6.32165C17.5329,6.00909 17.109,5.8335 16.667,5.8335H13.417C13.1383,5.83623 12.8633,5.76901 12.6172,5.63798C12.3712,5.50695 12.162,5.31631 12.0087,5.0835L11.3337,4.0835C11.1819,3.85305 10.9753,3.6639 10.7324,3.53299C10.4895,3.40209 10.2179,3.33354 9.94199,3.3335H6.66699C6.22496,3.3335 5.80104,3.50909 5.48848,3.82165C5.17592,4.13421 5.00033,4.55814 5.00033,5.00016V12.5002C5.00033,12.9422 5.17592,13.3661 5.48848,13.6787C5.80104,13.9912 6.22496,14.1668 6.66699,14.1668H16.667Z"
+    android:strokeWidth="1.25"
+    android:strokeColor="#E7E7E7"
+    android:strokeLineCap="round"
+    android:strokeLineJoin="round"
+    android:fillColor="#00000000" />
 </vector>

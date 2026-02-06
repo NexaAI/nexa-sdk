@@ -1,3 +1,17 @@
+// Copyright 2024-2026 Nexa AI, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -79,15 +93,13 @@ print("bridgePathExist: $bridgePathExist\n")
 dependencies {
 
     // ===== NEXA CLOUD SDK =====
-    // NexaAI SDK from Maven - pinned version for stability
-    implementation("ai.nexa:core:0.0.17")
+    implementation("ai.nexa:core:0.0.22")
     // ===== NEXA CLOUD SDK END =====
     implementation(project(":transform"))
-    // Local AAR dependencies from libs folder
-    implementation(files("libs/okdownload-core.aar"))
-    implementation(files("libs/okdownload-sqlite.aar"))
-    implementation(files("libs/okdownload-okhttp.aar"))
-    implementation(files("libs/okdownload-ktx.aar"))
+    implementation(":okdownload-core@aar")
+    implementation(":okdownload-sqlite@aar")
+    implementation(":okdownload-okhttp@aar")
+    implementation(":okdownload-ktx@aar")
     implementation(kotlin("reflect"))
     implementation(libs.glide)
     implementation(libs.gson)

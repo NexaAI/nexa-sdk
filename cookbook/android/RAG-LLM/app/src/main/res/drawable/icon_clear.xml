@@ -1,0 +1,28 @@
+<!--
+  Copyright 2024-2026 Nexa AI, Inc.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+  android:width="20dp"
+  android:height="20dp"
+  android:viewportWidth="20"
+  android:viewportHeight="20">
+  <path
+    android:pathData="M2.5,5.00008H17.5M15.8333,5.00008V16.6667C15.8333,17.5001 15,18.3334 14.1667,18.3334H5.83333C5,18.3334 4.16667,17.5001 4.16667,16.6667V5.00008M6.66667,5.00008V3.33341C6.66667,2.50008 7.5,1.66675 8.33333,1.66675H11.6667C12.5,1.66675 13.3333,2.50008 13.3333,3.33341V5.00008"
+    android:strokeWidth="1.25"
+    android:strokeColor="#E7E7E7"
+    android:strokeLineCap="round"
+    android:strokeLineJoin="round"
+    android:fillColor="#00000000" />
+</vector>
