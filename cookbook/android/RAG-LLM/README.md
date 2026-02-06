@@ -1,10 +1,3 @@
-# DO NOT COPY
-```bash
-# ===== NEXA INTERNAL BEGIN =====
-# TODO: put all credentials here
-# ===== NEXA INTERNAL END =====
-```
-
 # Nexa Android SDK Demo App 
 
 ## Overview
