@@ -24,7 +24,11 @@ package nexa_sdk
 #include <stdlib.h>
 #include "ml.h"
 
+#if defined(_WIN32)
+__declspec(dllexport) void go_log_wrap(ml_LogLevel level, char *msg);
+#else
 extern void go_log_wrap(ml_LogLevel level, char *msg);
+#endif
 
 static void set_token(const char* token) {
 #if defined(_WIN32)
