@@ -25,6 +25,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/bytedance/sonic"
@@ -45,6 +46,8 @@ const (
 
 	defaultChunkSize  = 4 * 1024 * 1024
 	defaultNumWorkers = 16
+
+	linuxGlobalInstallDir = "/opt/nexa_sdk"
 )
 
 func update() *cobra.Command {
@@ -57,6 +60,9 @@ func update() *cobra.Command {
 
 	updateCmd.Run = func(cmd *cobra.Command, args []string) {
 		err := func() error {
+			if runtime.GOOS == "linux" && !isLinuxGlobalInstall() {
+				return fmt.Errorf("update is only supported for global installation (%s). Reinstall with 'install.sh' for update support", linuxGlobalInstallDir)
+			}
 			// check platform
 			assetMap := map[string]map[string]string{
 				"darwin": {
@@ -66,6 +72,10 @@ func update() *cobra.Command {
 				"windows": {
 					"amd64": "nexa-cli_windows_x86_64.exe",
 					"arm64": "nexa-cli_windows_arm64.exe",
+				},
+				"linux": {
+					"amd64": "nexa-cli_linux_x86_64.sh",
+					"arm64": "nexa-cli_linux_arm64.sh",
 				},
 			}
 			assetName, ok := assetMap[runtime.GOOS][runtime.GOARCH]
@@ -134,6 +144,22 @@ func update() *cobra.Command {
 	}
 
 	return updateCmd
+}
+
+func isLinuxGlobalInstall() bool {
+	exe, err := os.Executable()
+	if err != nil {
+		return false
+	}
+	resolved, err := filepath.EvalSymlinks(exe)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(linuxGlobalInstallDir, filepath.Clean(resolved))
+	if err != nil {
+		return false
+	}
+	return !strings.HasPrefix(rel, "..")
 }
 
 // util functions
@@ -231,6 +257,15 @@ func installPkg(pkgPath string) error {
 		cmd = exec.Command("open", pkgPath)
 	case "windows":
 		cmd = exec.Command(pkgPath)
+	case "linux":
+		if err := os.Chmod(pkgPath, 0755); err != nil {
+			return fmt.Errorf("failed to make installer executable: %w", err)
+		}
+		cmd = exec.Command("bash", pkgPath)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		return cmd.Run()
 	default:
 		return errors.New("update is not supported on this platform")
 	}
