@@ -127,6 +127,14 @@ This document provides information about third-party libraries used in the NexaS
 - **Description**: Vision-language models with MLX
 - **License File**: [nexasdk-bridge/third-party/mlx-vlm/LICENSE](https://github.com/Blaizzy/mlx-vlm/blob/main/LICENSE)
 
+### xtensor
+
+- **License**: BSD 3-Clause License
+- **Copyright**: Copyright (c) 2016 Johan Mabille, Sylvain Corlay and Wolf Vollprecht, Copyright (c) 2016 QuantStack
+- **URL**: https://github.com/xtensor-stack/xtensor
+- **Description**: C++ tensors with broadcasting and lazy computing
+- **License File**: https://github.com/xtensor-stack/xtensor/blob/master/LICENSE
+
 ### cpp-httplib
 
 - **License**: MIT License
