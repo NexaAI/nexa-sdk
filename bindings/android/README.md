@@ -76,3 +76,28 @@ adb install nexaai-gpt-oss-npu.apk
    ```
 
 4. **Build and run** the app in Android Studio
+
+## Tutorial: LFM2-24B-A2B-Preview-GGUF
+
+This walkthrough uses the [LFM2-24B-A2B-Preview-GGUF](https://huggingface.co/NexaAI/LFM2-24B-A2B-Preview-GGUF) model in the demo app.
+
+1. **Install the app**  
+   Install the demo app (APK or build from source as above).
+
+2. **Select the model**  
+   Open the model selector (dropdown next to the model name) and choose **LFM2-24B-A2B-Preview-GGUF**.
+
+   <img src="../../assets/lfm0.png" width="240" alt="LFM2-24B-A2B-Preview-GGUF in demo app" />
+
+3. **Download**  
+   Tap **Download** to fetch the model to your device. Wait until the download finishes.
+
+4. **Load**  
+   Tap **Load**. A **load model config** dialog appears: choose **CPU**, **GPU**, or **NPU** (for Qualcomm NPU), then tap **SURE**. Once the model is loaded, the chat area becomes available.
+
+   <img src="../../assets/lfm1.png" width="240" alt="load model config" />
+
+5. **Chat**  
+   Type your message in the input field at the bottom, then tap **Send** to get a response. Use **Clear** to clear the input or conversation as needed.
+
+   <img src="../../assets/lfm2.png" width="240" alt="Chat with model response" />
