@@ -23,7 +23,10 @@ import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.RectF
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -108,6 +111,7 @@ import com.nexa.sdk.bean.RerankerCreateInput
 import com.nexa.sdk.bean.VlmChatMessage
 import com.nexa.sdk.bean.VlmContent
 import com.nexa.sdk.bean.VlmCreateInput
+import com.nexa.sdk.bean.DeviceIdValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -484,12 +488,94 @@ Note: You must use the campaign_investigation function whenever a customer asks 
         return fileName
     }
 
-    private fun loadModel(selectModelData: ModelData, modelDataPluginId: String, nGpuLayers: Int) {
+    /**
+     * Draw bounding boxes on the image for object detection results
+     */
+    private fun drawBoundingBoxes(originalBitmap: Bitmap, results: List<com.nexa.sdk.bean.CVResult>): Bitmap {
+        val mutableBitmap = originalBitmap.copy(Bitmap.Config.ARGB_8888, true)
+        val canvas = Canvas(mutableBitmap)
+
+        // Prepare paint for bounding boxes
+        val boxPaint = Paint().apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 2f
+            isAntiAlias = true
+        }
+
+        // Prepare paint for text background
+        val textBgPaint = Paint().apply {
+            style = Paint.Style.FILL
+            isAntiAlias = true
+        }
+
+        // Prepare paint for text
+        val textPaint = Paint().apply {
+            color = Color.WHITE
+            textSize = 20f
+            isAntiAlias = true
+            isFakeBoldText = true
+        }
+
+        // Color palette for different classes
+        val colors = listOf(
+            Color.rgb(255, 0, 0),     // Red
+            Color.rgb(0, 255, 0),     // Green
+            Color.rgb(0, 0, 255),     // Blue
+            Color.rgb(255, 255, 0),   // Yellow
+            Color.rgb(255, 0, 255),   // Magenta
+            Color.rgb(0, 255, 255),   // Cyan
+            Color.rgb(255, 128, 0),   // Orange
+            Color.rgb(128, 0, 255)    // Purple
+        )
+
+        results.forEachIndexed { index, result ->
+            result.bbox?.let { bbox ->
+                // bbox already has pixel values (not normalized 0-1)
+                val x1 = bbox.x
+                val y1 = bbox.y
+                val x2 = bbox.x + bbox.width
+                val y2 = bbox.y + bbox.height
+
+                // Select color based on index
+                val color = colors[index % colors.size]
+                boxPaint.color = color
+                textBgPaint.color = color
+
+                // Draw bounding box
+                val rect = RectF(x1, y1, x2, y2)
+                canvas.drawRect(rect, boxPaint)
+
+                // Prepare label text
+                val label = result.text ?: "object"
+                val confidence = result.confidence ?: 0.0
+                val labelText = "$label ${String.format("%.2f", confidence)}"
+
+                // Measure text
+                val textBounds = android.graphics.Rect()
+                textPaint.getTextBounds(labelText, 0, labelText.length, textBounds)
+
+                // Draw text background
+                val textBgRect = RectF(
+                    x1,
+                    y1 - textBounds.height() - 4f,
+                    x1 + textBounds.width() + 8f,
+                    y1
+                )
+                canvas.drawRect(textBgRect, textBgPaint)
+
+                // Draw text
+                canvas.drawText(labelText, x1 + 4f, y1 - 4f, textPaint)
+            }
+        }
+
+        return mutableBitmap
+    }
+
+    private fun loadModel(selectModelData: ModelData, modelDataPluginId: String, nGpuLayers: Int, deviceId: String? = null) {
         modelScope.launch {
             resetLoadState()
             val nexaManifestBean = selectModelData.getNexaManifest(this@MainActivity)
             val pluginId = nexaManifestBean?.PluginId ?: modelDataPluginId
-
             when (nexaManifestBean?.ModelType ?: selectModelData.type) {
                 "chat", "llm" -> {
 
@@ -507,7 +593,8 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                             model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
                             tokenizer_path = selectModelData.tokenFile(this@MainActivity)?.absolutePath,
                             config = conf,
-                            plugin_id = pluginId
+                            plugin_id = pluginId,
+                            device_id = deviceId ?: DeviceIdValue.NPU.value
                         )
                     ).build().onSuccess { wrapper ->
                         isLoadLlmModel = true
@@ -533,7 +620,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                             nGpuLayers = nGpuLayers
                         ),
                         plugin_id = pluginId,
-                        device_id = null
+                        device_id = DeviceIdValue.CPU.value
                     )
 
                     EmbedderWrapper.builder()
@@ -562,7 +649,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                             nGpuLayers = nGpuLayers
                         ),
                         plugin_id = pluginId,
-                        device_id = null
+                        device_id = DeviceIdValue.CPU.value
                     )
 
                     RerankerWrapper.builder()
@@ -577,7 +664,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
 
                 }
 
-                "paddleocr" -> {
+                "cv" -> {
                     // paddleocr-npu
                     val cvCreateInput = CVCreateInput(
                         model_name = nexaManifestBean?.ModelName ?: "",
@@ -596,7 +683,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                         .build().onSuccess {
                             isLoadCVModel = true
                             cvWrapper = it
-                            onLoadModelSuccess("paddleocr model loaded")
+                            onLoadModelSuccess("cv model loaded")
                         }.onFailure { error ->
                             onLoadModelFailed(error.message.toString())
                         }
@@ -654,7 +741,8 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                         model_path = selectModelData.modelFile(this@MainActivity)!!.absolutePath,
                         mmproj_path = selectModelData.mmprojTokenFile(this@MainActivity)?.absolutePath,
                         config = config,
-                        plugin_id = pluginId
+                        plugin_id = pluginId,
+                        device_id = "HTP0"
                     )
 
                     VlmWrapper.builder()
@@ -689,55 +777,58 @@ Note: You must use the campaign_investigation function whenever a customer asks 
             modelScope.launch {
                 val selectModelData = modelList.first { it.id == selectModelId }
                 val unsafeClient = getUnsafeOkHttpClient().build()
-                
+
                 // Track URL mapping for fallback: primary URL -> fallback URL
                 val fallbackUrlMap = mutableMapOf<String, String>()
                 // Track failed downloads for fallback retry
                 val failedDownloads = mutableListOf<DownloadableFileWithFallback>()
 
                 // For NPU models without explicit files list, fetch file list with fallback support
-                val filesToDownloadWithFallback: List<DownloadableFileWithFallback> = if (selectModelData.isNpuModel() && 
-                    selectModelData.files.isNullOrEmpty() && 
-                    !selectModelData.baseUrl.isNullOrEmpty()) {
-                    
-                    Log.d(TAG, "NPU model detected, fetching file list: ${selectModelData.baseUrl}")
-                    
-                    // Fetch file list with fallback support
-                    val result = ModelFileListingUtil.listFilesWithFallback(selectModelData.baseUrl!!, unsafeClient)
-                    
-                    if (result.files.isEmpty()) {
-                        Log.e(TAG, "Failed to fetch file list for ${selectModelData.id}")
-                        runOnUiThread {
-                            downloadState = DownloadState.IDLE
-                            llDownloading.visibility = View.GONE
-                            Toaster.show("Failed to fetch file list.")
+                val filesToDownloadWithFallback: List<DownloadableFileWithFallback> =
+                    if (selectModelData.isNpuModel() &&
+                        selectModelData.files.isNullOrEmpty() &&
+                        !selectModelData.baseUrl.isNullOrEmpty()
+                    ) {
+
+                        Log.d(TAG, "NPU model detected, fetching file list: ${selectModelData.baseUrl}")
+
+                        // Fetch file list with fallback support
+                        val result = ModelFileListingUtil.listFilesWithFallback(selectModelData.baseUrl!!, unsafeClient)
+
+                        if (result.files.isEmpty()) {
+                            Log.e(TAG, "Failed to fetch file list for ${selectModelData.id}")
+                            runOnUiThread {
+                                downloadState = DownloadState.IDLE
+                                llDownloading.visibility = View.GONE
+                                Toaster.show("Failed to fetch file list.")
+                            }
+                            return@launch
                         }
-                        return@launch
+
+                        val useHfUrls = result.source == ModelFileListingUtil.FileListResult.Source.HUGGINGFACE
+                        Log.d(TAG, "Found ${result.files.size} files from ${result.source}: ${result.files}")
+
+                        selectModelData.downloadableFilesWithFallback(
+                            selectModelData.modelDir(this@MainActivity),
+                            result.files,
+                            useHfUrls
+                        )
+                    } else {
+                        // For non-NPU models or models with explicit files, use the original method with fallback
+                        selectModelData.downloadableFiles(selectModelData.modelDir(this@MainActivity))
+                            .withFallbackUrls()
                     }
-                    
-                    val useHfUrls = result.source == ModelFileListingUtil.FileListResult.Source.HUGGINGFACE
-                    Log.d(TAG, "Found ${result.files.size} files from ${result.source}: ${result.files}")
-                    
-                    selectModelData.downloadableFilesWithFallback(
-                        selectModelData.modelDir(this@MainActivity),
-                        result.files,
-                        useHfUrls
-                    )
-                } else {
-                    // For non-NPU models or models with explicit files, use the original method with fallback
-                    selectModelData.downloadableFiles(selectModelData.modelDir(this@MainActivity)).withFallbackUrls()
-                }
-                
+
                 // Build fallback URL map
-                filesToDownloadWithFallback.forEach { 
+                filesToDownloadWithFallback.forEach {
                     fallbackUrlMap[it.primaryUrl] = it.fallbackUrl
                 }
-                
+
                 // Convert to simple DownloadableFile for initial download attempt
-                val filesToDownload = filesToDownloadWithFallback.map { 
+                val filesToDownload = filesToDownloadWithFallback.map {
                     DownloadableFile(it.file, it.primaryUrl)
                 }
-                
+
                 Log.d(TAG, "filesToDownload: $filesToDownload")
                 if (filesToDownload.isEmpty()) throw IllegalArgumentException("No download URL")
 
@@ -778,7 +869,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                         return 0L
                     }
                 }
-                
+
                 // Try to get file sizes, with fallback to HF if S3 fails
                 val fileSizeMap = mutableMapOf<String, Long>()
                 filesToDownloadWithFallback.forEach { fileWithFallback ->
@@ -789,16 +880,48 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                     }
                     fileSizeMap[fileWithFallback.primaryUrl] = size
                 }
-                
+
                 val totalSizes = filesToDownload.map { fileSizeMap[it.url] ?: 0L }
-                if (totalSizes.any { it == 0L }) {
+
+                // Only fail if essential model files (.nexa, .gguf, .bin) have size=0
+                // Allow size=0 for config files like .json, .md, .txt, .gitattributes
+                val essentialExtensions = listOf(".nexa", ".gguf", ".bin", ".safetensors")
+                val essentialFilesWithZeroSize = filesToDownload.filterIndexed { index, file ->
+                    val isEssential = essentialExtensions.any { file.file.name.endsWith(it, ignoreCase = true) }
+                    isEssential && totalSizes[index] == 0L
+                }
+
+                if (essentialFilesWithZeroSize.isNotEmpty()) {
+                    Log.e(TAG, "Essential files with zero size: ${essentialFilesWithZeroSize.map { it.file.name }}")
                     runOnUiThread {
                         downloadState = DownloadState.IDLE
                         llDownloading.visibility = View.GONE
-                        Toaster.show("Download failed - could not get file sizes.")
+                        Toaster.show("Download failed - could not get file sizes for essential model files.")
                     }
                     return@launch
                 }
+
+                // Filter out non-essential files with size=0 (like config.json that may not exist)
+                val filesToDownloadFiltered = filesToDownload.filterIndexed { index, _ ->
+                    totalSizes[index] > 0L
+                }
+                val filesToDownloadWithFallbackFiltered = filesToDownloadWithFallback.filter { fileWithFallback ->
+                    fileSizeMap[fileWithFallback.primaryUrl]?.let { it > 0L } ?: false
+                }
+
+                if (filesToDownloadFiltered.isEmpty()) {
+                    runOnUiThread {
+                        downloadState = DownloadState.IDLE
+                        llDownloading.visibility = View.GONE
+                        Toaster.show("No files to download.")
+                    }
+                    return@launch
+                }
+
+                Log.d(
+                    TAG,
+                    "Filtered ${filesToDownload.size - filesToDownloadFiltered.size} files with size=0, downloading ${filesToDownloadFiltered.size} files"
+                )
 
                 val alreadyDownloaded = mutableMapOf<String, Long>()
                 val totalBytes = totalSizes.sum()
@@ -807,7 +930,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                 val startTime = System.currentTimeMillis()
                 var lastProgressTime = 0L
                 val progressInterval = 500L
-                
+
                 fun onProgress(
                     modelId: String,
                     percent: Int,
@@ -847,7 +970,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                         lastProgressTime = now
                     }
                 }
-                
+
                 // Function to start download for a list of files
                 fun startDownload(
                     downloadFiles: List<DownloadableFile>,
@@ -868,12 +991,12 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                         }
                         return
                     }
-                    
+
                     val queueSet = DownloadContext.QueueSet()
                         .setParentPathFile(downloadFiles[0].file.parentFile)
                         .setMinIntervalMillisCallbackProcess(300)
                     val builder = queueSet.commit()
-                    
+
                     downloadFiles.forEach { item ->
                         val taskBuilder = DownloadTask.Builder(item.url, item.file)
                         getHfToken(selectModelData, item.url)?.let {
@@ -885,9 +1008,9 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                         }
                         builder.bindSetTask(task)
                     }
-                    
-                    val totalCount = filesToDownload.size
-                    var currentCount = filesToDownload.size - downloadFiles.size
+
+                    val totalCount = filesToDownloadFiltered.size
+                    var currentCount = filesToDownloadFiltered.size - downloadFiles.size
                     val pendingFallbacks = mutableListOf<DownloadableFile>()
 
                     downloadContext = builder.setListener(createDownloadContextListener {}).build()
@@ -903,7 +1026,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                             alreadyDownloaded[task.url] = currentOffset
                             reportProgress(true)
                         }) { task, cause, exception, _ ->
-                            when(cause) {
+                            when (cause) {
                                 EndCause.CANCELED -> {
                                     // do nothing
                                 }
@@ -911,8 +1034,11 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                                 EndCause.COMPLETED -> {
                                     Log.d(TAG, "download task ${task.id} end")
                                     currentCount += 1
-                                    Log.d(TAG, "download task process currentCount:$currentCount, totalCount:$totalCount")
-                                    
+                                    Log.d(
+                                        TAG,
+                                        "download task process currentCount:$currentCount, totalCount:$totalCount"
+                                    )
+
                                     if (currentCount >= totalCount) {
                                         downloadState = DownloadState.IDLE
                                         reportProgress(force = true)
@@ -922,7 +1048,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
 
                                 else -> {
                                     Log.e(TAG, "download task ${task.id} error: $cause, ${exception?.message}")
-                                    
+
                                     // Try fallback URL if available and not already a fallback attempt
                                     if (!isFallbackAttempt) {
                                         val fallbackUrl = fallbackUrlMap[task.url]
@@ -930,20 +1056,21 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                                             Log.w(TAG, "Primary download failed, queuing fallback: ${task.file?.name}")
                                             pendingFallbacks.add(DownloadableFile(task.file!!, fallbackUrl))
                                         } else {
-                                            val failedFile = filesToDownloadWithFallback.find { it.primaryUrl == task.url }
+                                            val failedFile =
+                                                filesToDownloadWithFallback.find { it.primaryUrl == task.url }
                                             if (failedFile != null) {
                                                 failedDownloads.add(failedFile)
                                             }
                                         }
                                     } else {
-                                        val failedFile = filesToDownloadWithFallback.find { 
-                                            it.primaryUrl == task.url || it.fallbackUrl == task.url 
+                                        val failedFile = filesToDownloadWithFallback.find {
+                                            it.primaryUrl == task.url || it.fallbackUrl == task.url
                                         }
                                         if (failedFile != null) {
                                             failedDownloads.add(failedFile)
                                         }
                                     }
-                                    
+
                                     currentCount += 1
                                     if (currentCount >= totalCount && pendingFallbacks.isEmpty()) {
                                         if (failedDownloads.isEmpty()) {
@@ -969,9 +1096,9 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                         }, true
                     )
                 }
-                
+
                 // Start initial download with primary URLs
-                startDownload(filesToDownload)
+                startDownload(filesToDownloadFiltered)
             }
         }
     }
@@ -1052,6 +1179,8 @@ Note: You must use the campaign_investigation function whenever a customer asks 
             var nGpuLayers = 0
             if (supportPluginIds.size > 1) {
                 val dialogBinding = DialogSelectPluginIdBinding.inflate(layoutInflater)
+                val isGgufLlmModel = !selectModelData.isNpuModel() &&
+                    (selectModelData.type == "chat" || selectModelData.type == "llm")
                 supportPluginIds.forEach {
                     when (it) {
                         "cpu" -> {
@@ -1069,6 +1198,9 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                         }
                     }
                 }
+                if (isGgufLlmModel) {
+                    dialogBinding.rbNpu.visibility = View.VISIBLE
+                }
                 dialogBinding.rgSelectPluginId.setOnCheckedChangeListener { group, checkedId ->
                     dialogBinding.llGpuLayers.visibility =
                         if (checkedId == R.id.rb_gpu) View.VISIBLE else View.GONE
@@ -1080,21 +1212,29 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                         which: Int
                     ) {
                         nGpuLayers = 0
-                        if (dialogBinding.llGpuLayers.visibility == View.VISIBLE) {
-                            nGpuLayers = dialogBinding.etGpuLayers.text.toString().toInt()
-                            if (nGpuLayers == 0) {
-                                Toast.makeText(
-                                    this@MainActivity,
-                                    "nGpuLayers min value is 1",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                                return
+                        var ggufLlmDeviceId: String? = null
+                        val checkedId = dialogBinding.rgSelectPluginId.checkedRadioButtonId
+                        if (checkedId == R.id.rb_gpu) {
+                            if (dialogBinding.llGpuLayers.visibility == View.VISIBLE) {
+                                nGpuLayers = dialogBinding.etGpuLayers.text.toString().toInt()
+                                if (nGpuLayers == 0) {
+                                    Toast.makeText(
+                                        this@MainActivity,
+                                        "nGpuLayers min value is 1",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    return
+                                }
                             }
+                            ggufLlmDeviceId = DeviceIdValue.GPU.value
+                        } else if (checkedId == R.id.rb_npu && isGgufLlmModel) {
+                            nGpuLayers = 999
+                            ggufLlmDeviceId = DeviceIdValue.NPU.value
                         }
                         when (which) {
                             DialogInterface.BUTTON_POSITIVE -> {
                                 dialog?.dismiss()
-                                loadModel(selectModelData, modelDataPluginId, nGpuLayers)
+                                loadModel(selectModelData, modelDataPluginId, nGpuLayers, ggufLlmDeviceId)
                             }
 
                             DialogInterface.BUTTON_NEGATIVE -> {
@@ -1188,16 +1328,60 @@ space ::= | " " | "\n" | "\r" | "\t"
                         return@launch
                     }
                     val imagePath = savedImageFiles.last().absolutePath
-                    messages.add(Message("", MessageType.IMAGES, savedImageFiles))
-                    reloadRecycleView()
-                    clearImages()
-                    cvWrapper.infer(imagePath).onSuccess {
-                        Log.d("nfl", "infer result:$it")
+                    runOnUiThread {
+                        messages.add(Message("", MessageType.IMAGES, savedImageFiles))
+                        reloadRecycleView()
+                        clearImages()
+                    }
+                    cvWrapper.infer(imagePath).onSuccess { results ->
+                        Log.d("nfl", "infer result:$results")
                         runOnUiThread {
-                            val content = it.map { result ->
-                                "[${result.confidence}] ${result.text}"
-                            }.toList().joinToString(separator = "\n")
-                            messages.add(Message(content, MessageType.ASSISTANT))
+                            val outputImageFiles = results.flatMap { r ->
+                                r.image_paths?.map { File(it) }?.filter { it.exists() } ?: emptyList()
+                            }
+                            val isObjectDetection = results.firstOrNull()?.bbox != null
+                            Log.d("nfl", "outputImageFiles: ${outputImageFiles.size}, isObjectDetection: $isObjectDetection, results count: ${results.size}")
+
+                            when {
+                                outputImageFiles.isNotEmpty() -> {
+                                    messages.add(Message("", MessageType.ASSISTANT_IMAGES, outputImageFiles))
+                                }
+                                isObjectDetection -> {
+                                    try {
+                                        val originalBitmap = BitmapFactory.decodeFile(imagePath)
+                                        Log.d("nfl", "Loaded bitmap: $originalBitmap")
+                                        if (originalBitmap == null) {
+                                            messages.add(Message("Failed to load image: $imagePath", MessageType.PROFILE))
+                                            reloadRecycleView()
+                                            return@runOnUiThread
+                                        }
+                                        val resultBitmap = drawBoundingBoxes(originalBitmap, results)
+                                        Log.d("nfl", "Drew bounding boxes: $resultBitmap")
+                                        val resultFile = File(filesDir, "detection_result_${System.currentTimeMillis()}.jpg")
+                                        resultFile.outputStream().use { out ->
+                                            resultBitmap.compress(Bitmap.CompressFormat.JPEG, 95, out)
+                                        }
+                                        Log.d("nfl", "Saved detection result to: ${resultFile.absolutePath}")
+                                        messages.add(Message("", MessageType.ASSISTANT_IMAGES, listOf(resultFile)))
+                                        val summary = results.mapIndexed { idx, result ->
+                                            val label = result.text ?: "object"
+                                            val conf = String.format("%.2f", result.confidence ?: 0.0)
+                                            "${idx + 1}. $label ($conf)"
+                                        }.joinToString("\n")
+                                        messages.add(Message("Detected ${results.size} objects:\n$summary", MessageType.ASSISTANT))
+                                    } catch (e: Exception) {
+                                        Log.e("nfl", "Error drawing bounding boxes", e)
+                                        messages.add(Message("Error processing detection: ${e.message}", MessageType.PROFILE))
+                                    }
+                                }
+                                else -> {
+                                    Log.d("nfl", "Processing as OCR, results: $results")
+                                    val content = results.map { result ->
+                                        "[${result.confidence}] ${result.text}"
+                                    }.joinToString(separator = "\n")
+                                    messages.add(Message(content, MessageType.ASSISTANT))
+                                }
+                            }
                             reloadRecycleView()
                         }
                     }.onFailure { error ->
@@ -1244,46 +1428,45 @@ space ::= | " " | "\n" | "\r" | "\t"
                             }
                         }
                     }
-                }
-//                else if (isLoadEmbedderModel) {
-//                    // ADD: Handle embedder inference
-//                    // Input format: single text or multiple texts separated by "|"
-//                    val texts = inputString.split("|").map { it.trim() }.toTypedArray()
-//                    embedderWrapper!!.embed(texts, EmbeddingConfig()).onSuccess { embeddings ->
-//                        runOnUiThread {
-//                            val result = StringBuilder()
-//                            val embeddingDim = embeddings.size / texts.size
-//
-//                            texts.forEachIndexed { idx, text ->
-//                                val start = idx * embeddingDim
-//                                val end = start + embeddingDim
-//                                val embedding = embeddings.slice(start until end)
-//
-//                                // Calculate mean and variance
-//                                val mean = embedding.average()
-//                                val variance = embedding.map { (it - mean) * (it - mean) }.average()
-//
-//                                result.append("Text ${idx + 1}: \"$text\"\n")
-//                                result.append("Embedding dimension: $embeddingDim\n")
-//                                result.append("Mean: ${"%.4f".format(mean)}\n")
-//                                result.append("Variance: ${"%.4f".format(variance)}\n")
-//                                result.append("First 5 values: [")
-//                                result.append(
-//                                    embedding.take(5).joinToString(", ") { "%.4f".format(it) })
-//                                result.append("...]\n\n")
-//                            }
-//
-//                            messages.add(Message(result.toString(), MessageType.ASSISTANT))
-//                            reloadRecycleView()
-//                        }
-//                    }.onFailure { error ->
-//                        runOnUiThread {
-//                            messages.add(Message("Error: ${error.message}", MessageType.PROFILE))
-//                            reloadRecycleView()
-//                        }
-//                    }
-//                }
-                else if (isLoadRerankerModel) {
+                } else if (isLoadEmbedderModel) {
+                    // ADD: Handle embedder inference
+                    // Input format: single text or multiple texts separated by "|"
+                    val texts = inputString.split("|").map { it.trim() }.toTypedArray()
+                    embedderWrapper!!.embed(texts, EmbeddingConfig()).onSuccess { embedResult ->
+                        runOnUiThread {
+                            val result = StringBuilder()
+                            val flatEmbeddings = embedResult.embeddings
+                            val embeddingDim = flatEmbeddings.size / texts.size
+
+                            texts.forEachIndexed { idx, text ->
+                                val start = idx * embeddingDim
+                                val end = start + embeddingDim
+                                val embedding = flatEmbeddings.sliceArray(start until end)
+
+                                // Calculate mean and variance
+                                val mean = embedding.average()
+                                val variance = embedding.map { (it - mean) * (it - mean) }.average()
+
+                                result.append("Text ${idx + 1}: \"$text\"\n")
+                                result.append("Embedding dimension: $embeddingDim\n")
+                                result.append("Mean: ${"%.4f".format(mean)}\n")
+                                result.append("Variance: ${"%.4f".format(variance)}\n")
+                                result.append("First 5 values: [")
+                                result.append(
+                                    embedding.take(5).joinToString(", ") { "%.4f".format(it) })
+                                result.append("...]\n\n")
+                            }
+
+                            messages.add(Message(result.toString(), MessageType.ASSISTANT))
+                            reloadRecycleView()
+                        }
+                    }.onFailure { error ->
+                        runOnUiThread {
+                            messages.add(Message("Error: ${error.message}", MessageType.PROFILE))
+                            reloadRecycleView()
+                        }
+                    }
+                } else if (isLoadRerankerModel) {
                     // Reranker input format: "query\ndoc1\ndoc2\ndoc3..."
                     // First line is query, remaining lines are documents
                     val query = inputString.split("\n")[0]  // Get first line as query

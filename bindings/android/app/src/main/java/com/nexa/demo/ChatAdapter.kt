@@ -15,20 +15,21 @@
 package com.nexa.demo
 
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.text.method.LinkMovementMethod
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import com.nexa.demo.activity.FileContentActivity
 import io.noties.markwon.Markwon
+import io.noties.markwon.ext.latex.JLatexMathPlugin
 import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
 import io.noties.markwon.ext.tables.TablePlugin
+import io.noties.markwon.inlineparser.MarkwonInlineParserPlugin
 import io.noties.markwon.linkify.LinkifyPlugin
 import java.io.File
 
@@ -44,7 +45,8 @@ enum class MessageType(val value: Int) {
     USER(0),
     ASSISTANT(1),
     PROFILE(2),
-    IMAGES(3);
+    IMAGES(3),
+    ASSISTANT_IMAGES(4);
 
     companion object {
         fun from(value: Int): MessageType =
@@ -63,14 +65,19 @@ class ChatAdapter(private val messages: List<Message>) :
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         val inflater = LayoutInflater.from(parent.context)
         val type = MessageType.from(viewType)
-        return if (type == MessageType.USER) {
-            UserViewHolder(inflater.inflate(R.layout.item_user_message, parent, false))
-        } else if (type == MessageType.ASSISTANT) {
-            AiViewHolder(inflater.inflate(R.layout.item_ai_message, parent, false))
-        } else if (type == MessageType.IMAGES) {
-            ImagesViewHolder(inflater.inflate(R.layout.item_image_message, parent, false))
-        } else {
-            ProfileViewHolder(inflater.inflate(R.layout.item_profile_message, parent, false))
+        return when (type) {
+            MessageType.USER -> UserViewHolder(inflater.inflate(R.layout.item_user_message, parent, false))
+            MessageType.ASSISTANT -> AiViewHolder(inflater.inflate(R.layout.item_ai_message, parent, false))
+            MessageType.IMAGES -> ImagesViewHolder(inflater.inflate(R.layout.item_image_message, parent, false))
+            MessageType.ASSISTANT_IMAGES -> ImagesViewHolder(
+                inflater.inflate(
+                    R.layout.item_assistant_image_message,
+                    parent,
+                    false
+                )
+            )
+
+            else -> ProfileViewHolder(inflater.inflate(R.layout.item_profile_message, parent, false))
         }
     }
 
@@ -97,6 +104,11 @@ class ChatAdapter(private val messages: List<Message>) :
             .usePlugin(StrikethroughPlugin.create())
             .usePlugin(TablePlugin.create(itemView.context))
             .usePlugin(LinkifyPlugin.create())
+            .usePlugin(MarkwonInlineParserPlugin.create())
+            .usePlugin(JLatexMathPlugin.create(tvMessage.textSize) { builder ->
+                builder.inlinesEnabled(true)
+                builder.blocksEnabled(true)
+            })
             .build()
 
         fun bind(message: Message) {
@@ -111,7 +123,7 @@ class ChatAdapter(private val messages: List<Message>) :
         fun bind(message: Message) {
             tvMessage.text = message.content
         }
-        
+
         private fun dpToPx(dp: Int, context: android.content.Context): Int {
             return (dp * context.resources.displayMetrics.density).toInt()
         }
@@ -128,7 +140,10 @@ class ChatAdapter(private val messages: List<Message>) :
                 val itemView = LayoutInflater.from(context)
                     .inflate(R.layout.item_image_item_message, imageContainer, false)
                 val ivImage = itemView.findViewById<ImageView>(R.id.iv_image)
-                ivImage.setImageURI(Uri.fromFile(file))
+                val bitmap = BitmapFactory.decodeFile(file.absolutePath)
+                if (bitmap != null) {
+                    ivImage.setImageBitmap(bitmap)
+                }
                 imageContainer.addView(itemView)
             }
         }

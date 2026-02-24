@@ -17,6 +17,14 @@
     "modelUrl": "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_0.gguf"
   },
   {
+    "id": "Qwen3-4B-Instruct-2507-npu",
+    "displayName": "Qwen3-4B-Instruct-2507-npu",
+    "modelName": "files-1-1.nexa",
+    "versionCode": 1,
+    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/Qwen3-4B-Instruct-2507-npu-mobile/",
+    "modelUrl": "files-1-1.nexa"
+  },
+  {
     "id": "gpt-oss-20b-GGUF",
     "displayName": "gpt-oss-20b-GGUF",
     "modelName": "gpt-oss-20b-Q4_0.gguf",
@@ -24,14 +32,6 @@
     "versionCode": 1,
     "pluginIds": 17,
     "modelUrl": "https://huggingface.co/unsloth/gpt-oss-20b-GGUF/resolve/main/gpt-oss-20b-Q4_0.gguf"
-  },
-  {
-    "id": "Qwen3-4B-Instruct-2507-npu",
-    "displayName": "Qwen3-4B-Instruct-2507-npu",
-    "modelName": "files-1-1.nexa",
-    "versionCode": 1,
-    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/Qwen3-4B-Instruct-2507-npu-mobile/",
-    "modelUrl": "files-1-1.nexa"
   },
   {
     "id": "Qwen3-4B-GGUF",
@@ -43,35 +43,11 @@
     "modelUrl": "https://huggingface.co/unsloth/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_0.gguf"
   },
   {
-    "id": "Granite-4.0-h-350M-NPU",
-    "displayName": "Granite-350M",
-    "modelName": "files-1-2.nexa",
-    "versionCode": 1,
-    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/Granite-4.0-h-350M-NPU-mobile/",
-    "modelUrl": "files-1-2.nexa"
-  },
-  {
     "id": "Granite-4-Micro-NPU",
     "displayName": "Granite-4.0-Micro 3B",
     "modelName": "files-1-2.nexa",
     "versionCode": 1,
     "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/Granite-4-Micro-NPU-mobile/",
-    "modelUrl": "files-1-2.nexa"
-  },
-  {
-    "id": "embedneural-npu",
-    "displayName": "embedneural-npu",
-    "modelName": "files-1-2.nexa",
-    "versionCode": 1,
-    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/embedneural-npu-mobile/",
-    "modelUrl": "files-1-2.nexa"
-  },
-  {
-    "id": "embed-gemma-npu",
-    "displayName": "embed-gemma-npu",
-    "modelName": "files-1-2.nexa",
-    "versionCode": 1,
-    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/embeddinggemma-300m-npu-mobile/",
     "modelUrl": "files-1-2.nexa"
   },
   {
@@ -107,12 +83,20 @@
     "modelUrl": "weights-1-1.nexa"
   },
   {
-    "id": "parakeet-tdt-0.6b-v3-npu",
-    "displayName": "parakeet-tdt-0.6b-v3-npu",
-    "modelName": "files-1-2.nexa",
+    "id": "yolo26x-npu",
+    "displayName": "yolo26x-npu",
+    "modelName": "weights-1-1.nexa",
     "versionCode": 1,
-    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/parakeet-tdt-0.6b-v3-npu-mobile/",
-    "modelUrl": "files-1-2.nexa"
+    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/yolo26x-npu-mobile/",
+    "modelUrl": "weights-1-1.nexa"
+  },
+  {
+    "id": "depth-anything-v2-npu",
+    "displayName": "depth-anything-v2-npu",
+    "modelName": "weights-1-1.nexa",
+    "versionCode": 1,
+    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/depth-anything-v2-npu-mobile/",
+    "modelUrl": "weights-1-1.nexa"
   },
   {
     "id": "embeddinggemma-300m-npu",
@@ -120,14 +104,6 @@
     "modelName": "files-1-2.nexa",
     "versionCode": 1,
     "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/embeddinggemma-300m-npu-mobile/",
-    "modelUrl": "files-1-2.nexa"
-  },
-  {
-    "id": "jina-v2-rerank-npu",
-    "displayName": "jina-v2-rerank-npu",
-    "modelName": "files-1-2.nexa",
-    "versionCode": 1,
-    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/jina-v2-rerank-npu-mobile/",
     "modelUrl": "files-1-2.nexa"
   },
   {
@@ -147,5 +123,14 @@
     "versionCode": 1,
     "pluginIds": 17,
     "modelUrl": "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_0.gguf"
+  },
+  {
+    "id": "LFM2-24B-A2B-Preview-GGUF",
+    "displayName": "LFM2-24B-A2B-Preview-GGUF",
+    "modelName": "LFM2-24B-A2B-Preview-Q4_0.gguf",
+    "type": "chat",
+    "versionCode": 1,
+    "pluginIds": 17,
+    "modelUrl": "https://huggingface.co/NexaAI/LFM2-24B-A2B-Preview-GGUF/resolve/main/LFM2-24B-A2B-Preview-Q4_0.gguf"
   }
 ]
