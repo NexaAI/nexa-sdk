@@ -108,6 +108,8 @@ dependencies {
     implementation(libs.markwon.strikethrough)
     implementation(libs.markwon.tables)
     implementation(libs.markwon.linkify)
+    implementation(libs.markwon.latex)
+    implementation(libs.markwon.inline.parser)
     implementation(libs.recyclerview)
     implementation(libs.toaster)
     implementation(libs.material)
