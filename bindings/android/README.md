@@ -8,7 +8,7 @@
 
 The Nexa AI Android SDK enables on-device AI inference for Android applications with NPU acceleration. Run Large Language Models (LLMs), Vision-Language Models (VLMs), Embeddings, Speech Recognition (ASR), Reranking, and Computer Vision models on Android devices with support for NPU, GPU, and CPU inference. 
 
-📖 For full documentation, see [Android SDK Doc](https://docs.nexa.ai/nexa-sdk-android/overview).
+📖 For full documentation, see [Android SDK Doc](https://docs.nexa.ai/en/nexa-sdk-android/overview).
 
 ## Device Compatibility
 
@@ -65,7 +65,7 @@ adb install nexaai-gpt-oss-npu.apk
 
 3. **Download a model**
    
-   Follow the [Android SDK Doc](https://docs.nexa.ai/nexa-sdk-android/overview) to download a model. Below are some examples to download:
+   Follow the [Android SDK Doc](https://docs.nexa.ai/en/nexa-sdk-android/overview) to download a model. Below are some examples to download:
    - [Granite-4.0-h-350M-NPU](https://huggingface.co/NexaAI/Granite-4.0-h-350M-NPU-mobile)
    - [Granite-4-Micro-NPU](https://huggingface.co/NexaAI/Granite-4-Micro-NPU-mobile)
    - [OmniNeural-4B](https://huggingface.co/NexaAI/OmniNeural-4B-mobile)

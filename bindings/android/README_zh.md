@@ -8,7 +8,7 @@
 
 Nexa AI Android SDK 让 Android 应用可以在设备端使用 NPU 加速进行 AI 推理。支持在 Android 设备上运行大型语言模型（LLMs）、视觉语言模型（VLMs）、嵌入模型、语音识别（ASR）、重排序和计算机视觉模型，并可在 NPU、GPU 或 CPU 上进行推理。
 
-📖 完整文档请参考 [Android SDK 文档](https://docs.nexa.ai/nexa-sdk-android/overview)。
+📖 完整文档请参考 [Android SDK 文档](https://docs.nexa.ai/cn/nexa-sdk-android/overview)。
 
 ## 设备兼容性
 
@@ -65,7 +65,7 @@ adb install nexaai-gpt-oss-npu.apk
 
 3. **下载模型**
    
-   按照 [Android SDK 文档](https://docs.nexa.ai/nexa-sdk-android/overview) 的说明下载模型。以下是一些可下载的示例：
+   按照 [Android SDK 文档](https://docs.nexa.ai/cn/nexa-sdk-android/overview) 的说明下载模型。以下是一些可下载的示例：
    - [Granite-4.0-h-350M-NPU](https://huggingface.co/NexaAI/Granite-4.0-h-350M-NPU-mobile)
    - [Granite-4-Micro-NPU](https://huggingface.co/NexaAI/Granite-4-Micro-NPU-mobile)
    - [OmniNeural-4B](https://huggingface.co/NexaAI/OmniNeural-4B-mobile)
