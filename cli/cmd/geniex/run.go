@@ -89,12 +89,31 @@ func run() *cobra.Command {
 			return fmt.Errorf("server reported an unsupported model type %q for %s", model.ModelType, fullName)
 		}
 
-		return runCompletions(ctx, fullName, modelType)
+		return runCompletions(cmd, ctx, fullName, modelType)
 	}
 	return runCmd
 }
 
-func runCompletions(ctx context.Context, name string, modelType geniex_sdk.ModelType) error {
+// modelKnobOptions sends --ngl/--nctx/--compute only when the user actually
+// passed them to `run`. All three also have a server-side --ngl/--nctx/--compute
+// default (see chat.go's defaultChatCompletionRequest) that only survives when
+// the field is absent from the JSON body; sending an unset knob's local zero
+// value would silently clobber that server default instead of leaving it in effect.
+func modelKnobOptions(cmd *cobra.Command) []option.RequestOption {
+	var opts []option.RequestOption
+	if cmd.Flags().Changed("ngl") {
+		opts = append(opts, option.WithJSONSet("ngl", ngl))
+	}
+	if cmd.Flags().Changed("nctx") {
+		opts = append(opts, option.WithJSONSet("nctx", nctx))
+	}
+	if cmd.Flags().Changed("compute") {
+		opts = append(opts, option.WithJSONSet("compute", computeUnit))
+	}
+	return opts
+}
+
+func runCompletions(cmd *cobra.Command, ctx context.Context, name string, modelType geniex_sdk.ModelType) error {
 
 	// warm up
 	spin := render.NewSpinner("loading model...")
@@ -106,17 +125,14 @@ func runCompletions(ctx context.Context, name string, modelType geniex_sdk.Model
 	if systemPrompt != "" {
 		warmUpRequest.Messages = append(warmUpRequest.Messages, openai.SystemMessage(systemPrompt))
 	}
-	_, err := client.Chat.Completions.New(ctx,
-		warmUpRequest,
-		option.WithJSONSet("ngl", ngl),
-		option.WithJSONSet("nctx", nctx),
-		option.WithJSONSet("compute", computeUnit),
+	warmUpOpts := append(modelKnobOptions(cmd),
 		option.WithJSONSet("spec_type", specType),
 		option.WithJSONSet("spec_draft_model", draftModel),
 		option.WithJSONSet("spec_n_max", draftTokens),
 		option.WithJSONSet("spec_n_min", draftMin),
 		option.WithJSONSet("spec_p_min", draftPMin),
 	)
+	_, err := client.Chat.Completions.New(ctx, warmUpRequest, warmUpOpts...)
 	spin.Stop()
 
 	if err != nil {
@@ -172,6 +188,20 @@ func runCompletions(ctx context.Context, name string, modelType geniex_sdk.Model
 				history = append(history, openai.UserMessage(prompt))
 			}
 
+			runOpts := append(modelKnobOptions(cmd),
+				option.WithJSONSet("enable_think", enableThink),
+				option.WithJSONSet("top_k", topK),
+				option.WithJSONSet("min_p", minP),
+				option.WithJSONSet("repetition_penalty", repetitionPenalty),
+				option.WithJSONSet("grammar_path", grammarPath),
+				option.WithJSONSet("grammar_string", grammarString),
+				option.WithJSONSet("spec_type", specType),
+				option.WithJSONSet("spec_draft_model", draftModel),
+				option.WithJSONSet("spec_n_max", draftTokens),
+				option.WithJSONSet("spec_n_min", draftMin),
+				option.WithJSONSet("spec_p_min", draftPMin),
+			)
+
 			start := time.Now()
 			acc := openai.ChatCompletionAccumulator{}
 			stream := client.Chat.Completions.NewStreaming(ctx, openai.ChatCompletionNewParams{
@@ -184,22 +214,7 @@ func runCompletions(ctx context.Context, name string, modelType geniex_sdk.Model
 				FrequencyPenalty:    openai.Float(float64(frequencyPenalty)),
 				Seed:                openai.Int(int64(seed)),
 				MaxCompletionTokens: openai.Int(int64(maxTokens)),
-			},
-
-				option.WithJSONSet("enable_think", enableThink),
-				option.WithJSONSet("top_k", topK),
-				option.WithJSONSet("min_p", minP),
-				option.WithJSONSet("repetition_penalty", repetitionPenalty),
-				option.WithJSONSet("grammar_path", grammarPath),
-				option.WithJSONSet("grammar_string", grammarString),
-				option.WithJSONSet("ngl", ngl),
-				option.WithJSONSet("nctx", nctx),
-				option.WithJSONSet("compute", computeUnit),
-				option.WithJSONSet("spec_type", specType),
-				option.WithJSONSet("spec_draft_model", draftModel),
-				option.WithJSONSet("spec_n_max", draftTokens),
-				option.WithJSONSet("spec_n_min", draftMin),
-				option.WithJSONSet("spec_p_min", draftPMin))
+			}, runOpts...)
 
 			var firstToken time.Time
 			var profileData geniex_sdk.ProfileData
