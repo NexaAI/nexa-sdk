@@ -57,6 +57,9 @@ static void usage(const char* argv0) {
         "  -t, --threads N        generation threads (0 = SDK default)\n"
         "  -ngl, --n-gpu-layers N llama_cpp layers to offload; overrides the\n"
         "                         device alias default (-1 = all layers)\n"
+        "  --qairt-lib DIR        run against another QAIRT runtime (qairt): a QAIRT SDK\n"
+        "                         root or a flat folder of QNN libraries. Applies to the\n"
+        "                         whole run -- the QNN libraries load once per process.\n"
         "  --spec-type TYPES      speculative type(s), comma-separated: draft-mtp,\n"
         "                         draft-eagle3,draft-simple,ngram-simple,ngram-map-k,\n"
         "                         ngram-map-k4v,ngram-mod,ngram-cache (llama_cpp)\n"
@@ -285,6 +288,7 @@ void parse_args(int argc, char** argv, options_t* o) {
     o->draft_tokens            = 0;
     o->draft_min               = 0;
     o->draft_p_min             = 0.0f;
+    o->qairt_lib               = NULL;
     o->output_json             = NULL;
     o->output_md               = NULL;
     o->cell_id                 = NULL;
@@ -364,6 +368,8 @@ void parse_args(int argc, char** argv, options_t* o) {
             o->n_threads = atoi(arg_value(argc, argv, &i, a));
         } else if (strcmp(a, "-ngl") == 0 || strcmp(a, "--n-gpu-layers") == 0) {
             o->ngl_override = atoi(arg_value(argc, argv, &i, a));
+        } else if (strcmp(a, "--qairt-lib") == 0) {
+            o->qairt_lib = arg_value(argc, argv, &i, a);
         } else if (strcmp(a, "--spec-type") == 0) {
             o->spec_type = arg_value(argc, argv, &i, a);
         } else if (strcmp(a, "--draft-model") == 0) {

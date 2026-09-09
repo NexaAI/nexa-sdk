@@ -237,6 +237,10 @@ int main(int argc, char** argv) {
     options_t o;
     parse_args(argc, argv, &o);
 
+    /* Before init, and run-wide rather than per cell: the QNN libraries load once per
+     * process, so matrix mode cannot switch runtimes between cells. */
+    if (o.qairt_lib) check(geniex_set_qairt_runtime_path(o.qairt_lib), "geniex_set_qairt_runtime_path");
+
     check(geniex_init(), "geniex_init");
 
     int rc;
