@@ -122,6 +122,25 @@ geniex infer local/granite4_micro --qairt-lib /path/to/qairt/2.XX.0
 GENIEX_QAIRT_LIB=/path/to/qairt/2.XX.0 geniex infer local/granite4_micro
 ```
 
+SDK embedders call it **before `geniex_init`** instead of touching their own environment —
+the only route on Android, where the JVM cannot `setenv`:
+
+```c
+geniex_set_qairt_runtime_path("/path/to/qairt/2.XX.0");  /* "" restores the bundled runtime */
+geniex_init();
+```
+
+```python
+geniex.set_qairt_runtime_path('/path/to/qairt/2.XX.0')
+```
+
+```kotlin
+GenieXSdk.getInstance().setQairtRuntimePath("/path/to/qairt/2.XX.0")
+```
+
+Precedence is `geniex_set_qairt_runtime_path` → `GENIEX_QAIRT_LIB` → the bundled runtime.
+`--qairt-lib` calls the API, so the flag wins over an inherited environment variable.
+
 The path accepts either layout:
 
 - **A QAIRT SDK root** (as installed from the Qualcomm Software Center). The host libraries
@@ -136,11 +155,12 @@ The path accepts either layout:
 > the override resolved where you meant. Run with `--log info` (the CLI default is `none`):
 >
 > ```
-> Overriding the bundled QAIRT runtime from GENIEX_QAIRT_LIB: <what you passed> (host libs: <resolved dir>)
+> Overriding the bundled QAIRT runtime from <source>: <what you passed> (host libs: <resolved dir>)
 > ```
 >
 > `host libs:` is the part that matters — for an SDK root it is the `lib/<triple>` subfolder,
-> not the root you passed.
+> not the root you passed. `<source>` is `geniex_set_qairt_runtime_path` or
+> `GENIEX_QAIRT_LIB`, so the line also tells you which knob won.
 
 <details><summary>Which runtimes are accepted, and why this is a supported override</summary>
 
@@ -158,9 +178,16 @@ which is why this is a supported override rather than a testing-only aid.
 `htp_backend_ext_config.json` itself through the public C API — so a runtime folder does not
 need to carry it.
 
-`--qairt-lib` just sets `GENIEX_QAIRT_LIB` for the process, so the flag wins when both are given.
-An unusable path fails model load immediately, e.g. `GENIEX_QAIRT_LIB does not contain
-QnnHtp.dll (looked in the folder itself and lib/aarch64-windows-msvc): <path>`.
+An unusable path fails model load immediately, naming the source it came from, e.g.
+`geniex_set_qairt_runtime_path does not contain QnnHtp.dll (looked in the folder itself and
+lib/aarch64-windows-msvc): <path>`.
+
+**One runtime per process.** `QnnHtp` is loaded once and stays resident for the life of the
+process — the plugin never unloads it, and `ADSP_LIBRARY_PATH` / `SetDllDirectory` are
+process-wide. So the path is locked at `geniex_init`, and setting it afterwards returns
+`GENIEX_ERROR_COMMON_ALREADY_INITIALIZED` rather than appearing to work. `geniex_deinit` does
+not unlock it: the QNN libraries outlive the cycle. Comparing versions means one process per
+version.
 
 </details>
 
