@@ -21,6 +21,7 @@
 #include "geniex-proc/types.h"      // ChatMessage, MMContent, Role::, Modality::
 #include "llm/llm_spec_loader.h"    // parseGenieSamplerConfig
 #include "logging.h"
+#include "metadata_utils.h"
 #include "path_utils.h"
 #include "pipeline/vlm_pipeline.h"
 #include "qnn_runtime_utils.h"
@@ -32,8 +33,6 @@ namespace fs = std::filesystem;
 namespace geniex {
 
 namespace {
-// Default system prompt prepended on the first turn when the caller does not include
-// a `system` role message in the chat history.
 constexpr const char* kDefaultSystemPrompt = "You are a helpful AI assistant.";
 }  // namespace
 
@@ -58,6 +57,9 @@ int32_t QairtVlm::create(const geniex_VlmCreateInput* input) {
     fs::path model_path(input->model_path);
     fs::path model_dir = model_path.parent_path();
 
+    const auto chat_template_metadata = qairt::read_chat_template_metadata(model_dir);
+    default_system_prompt_            = chat_template_metadata.default_system_prompt;
+    if (default_system_prompt_.empty()) default_system_prompt_ = kDefaultSystemPrompt;
     bundle_sampler_ = parseGenieSamplerConfig(model_dir);
 
     QnnRuntimeConfig runtime_cfg = qairt::runtime::make_qnn_runtime_config(model_dir);
@@ -227,12 +229,12 @@ int32_t QairtVlm::apply_chat_template(
 
     // On the first turn, ensure there is a system prompt at the front. If the caller did
     // not supply one, inject the default. Subsequent turns reuse the already-cached system.
-    if (history_size_ == 0) {
+    if (history_size_ == 0 && !default_system_prompt_.empty()) {
         const bool has_system = !new_messages.empty() && new_messages.front().role == Role::System;
         if (!has_system) {
             ChatMessage sys{};
             sys.role    = Role::System;
-            sys.content = kDefaultSystemPrompt;
+            sys.content = default_system_prompt_;
             new_messages.insert(new_messages.begin(), std::move(sys));
         }
     }

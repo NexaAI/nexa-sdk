@@ -24,6 +24,7 @@
 #include "geniex-proc/types.h"      // ChatMessage, Role
 #include "llm/llm_spec_loader.h"    // parseGenieSamplerConfig
 #include "logging.h"
+#include "metadata_utils.h"
 #include "pipeline/llm_pipeline.h"
 #include "qnn_runtime_utils.h"
 #include "sampler_config_utils.h"
@@ -34,8 +35,6 @@ namespace fs = std::filesystem;
 namespace geniex {
 
 namespace {
-// Default system prompt used on the first turn when the caller does not supply one
-// via a `system` role chat message.
 constexpr const char* kDefaultSystemPrompt = "You are a helpful AI assistant.";
 }  // namespace
 
@@ -60,6 +59,9 @@ int32_t QairtLlm::create(const geniex_LlmCreateInput* input) {
     fs::path model_path(input->model_path);
     fs::path model_dir = model_path.parent_path();
 
+    const auto chat_template_metadata = qairt::read_chat_template_metadata(model_dir);
+    default_system_prompt_            = chat_template_metadata.default_system_prompt;
+    if (default_system_prompt_.empty()) default_system_prompt_ = kDefaultSystemPrompt;
     bundle_sampler_ = parseGenieSamplerConfig(model_dir);
 
     QnnRuntimeConfig runtime_cfg = qairt::runtime::make_qnn_runtime_config(model_dir);
@@ -183,10 +185,10 @@ int32_t QairtLlm::apply_chat_template(
         qairt::apply_tool_fields(out, m.tool_calls, m.tool_call_count, m.tool_call_id, m.tool_name);
         messages.push_back(std::move(out));
     }
-    if (is_first_turn_ && !has_system) {
+    if (is_first_turn_ && !has_system && !default_system_prompt_.empty()) {
         ChatMessage sys;
         sys.role    = Role::System;
-        sys.content = kDefaultSystemPrompt;
+        sys.content = default_system_prompt_;
         messages.insert(messages.begin(), std::move(sys));
     }
 
