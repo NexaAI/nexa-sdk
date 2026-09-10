@@ -55,8 +55,22 @@ int32_t LlamaVlm::create(const geniex_VlmCreateInput* input) {
     if (!selection) {
         return GENIEX_ERROR_COMMON_INVALID_INPUT;
     }
+
     if (!selection->empty()) {
         mpar.devices = selection->data();
+    }
+
+    ggml_backend_dev_t vision_device = nullptr;
+    if (input->vit_device_id && input->vit_device_id[0] != '\0') {
+        vision_device = ggml_backend_dev_by_name(input->vit_device_id);
+        if (!vision_device) {
+            GENIEX_LOG_WARN("Vision device '{}' not found; using the default VLM device", input->vit_device_id);
+        } else {
+            GENIEX_LOG_INFO("Using vision device override: {}", input->vit_device_id);
+        }
+    }
+    if (!vision_device && !selection->empty()) {
+        vision_device = selection->front();
     }
 
     // See llm.cpp for why this is registry-scoped rather than per-device.
@@ -91,9 +105,9 @@ int32_t LlamaVlm::create(const geniex_VlmCreateInput* input) {
     if (input->mmproj_path) {
         mtmd_context_params mparams = mtmd_context_params_default();
         mparams.use_gpu             = false;
-        if (!selection->empty()) {
+        if (vision_device) {
             mparams.use_gpu = true;
-            mparams.device  = selection->data()[0];
+            mparams.device  = vision_device;
         }
         mparams.print_timings = false;
         mparams.n_threads     = 4;
@@ -101,7 +115,7 @@ int32_t LlamaVlm::create(const geniex_VlmCreateInput* input) {
         // mparams.verbosity           = GGML_LOG_LEVEL_ERROR;
 
         this->ctx_vision = mtmd_init_from_file(input->mmproj_path, this->model, mparams);
-        if (!this->ctx_vision && !selection->empty()) {
+        if (!this->ctx_vision && vision_device) {
             GENIEX_LOG_WARN("mtmd failed to initialize the vision encoder on HTP; falling back to CPU");
             mparams.use_gpu  = false;
             mparams.device   = nullptr;

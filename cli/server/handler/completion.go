@@ -28,9 +28,10 @@ type CompletionRequest struct {
 	CompletionNewParams
 	Stream bool `json:"stream"`
 
-	NCtx    int32  `json:"nctx"`
-	Ngl     int32  `json:"ngl"`
-	Compute string `json:"compute"`
+	NCtx       int32  `json:"nctx"`
+	Ngl        int32  `json:"ngl"`
+	Compute    string `json:"compute"`
+	VitCompute string `json:"vit_compute"`
 
 	TopK              int32   `json:"top_k"`
 	MinP              float32 `json:"min_p"`
@@ -47,6 +48,7 @@ func defaultCompletionRequest() CompletionRequest {
 		NCtx:              cfg.NCtx,
 		Ngl:               cfg.Ngl,
 		Compute:           cfg.Compute,
+		VitCompute:        cfg.VitCompute,
 		RepetitionPenalty: 1.0,
 	}
 }
@@ -129,13 +131,12 @@ func Completions(c *gin.Context) {
 		return
 	}
 
-	modelParam, err := service.ResolveModelParam(paths.RuntimeID, paths.ModelName, req.NCtx, req.Ngl, req.Compute, service.Chipset(), types.SpecParam{})
+	modelParam, err := service.ResolveModelParam(paths.RuntimeID, paths.ModelName, req.NCtx, req.Ngl, req.Compute, req.VitCompute, service.Chipset(), types.SpecParam{})
 	if err != nil {
 		slog.Error("Failed to resolve model params", "model", req.Model, "error", err)
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
 	}
-
 	// Automatically adjust NCtx if MaxTokens is larger (llama_cpp only — QAIRT
 	// does not use NCtx and the 0-default must not be overwritten for non-llama_cpp plugins).
 	if paths.RuntimeID == geniex_sdk.RuntimeLlamaCpp && modelParam.NCtx < int32(req.MaxTokens.Value) {

@@ -26,6 +26,7 @@ type VlmCreateInput struct {
 	Config        ModelConfig
 	RuntimeID     string
 	DeviceID      string
+	VitDeviceID   string
 }
 
 func (vci VlmCreateInput) toCPtr() *C.geniex_VlmCreateInput {
@@ -36,6 +37,7 @@ func (vci VlmCreateInput) toCPtr() *C.geniex_VlmCreateInput {
 		tokenizer_path: cStringIfSet(vci.TokenizerPath),
 		plugin_id:      cStringIfSet(vci.RuntimeID),
 		device_id:      cStringIfSet(vci.DeviceID),
+		vit_device_id:  cStringIfSet(vci.VitDeviceID),
 	}
 	vci.Config.fillC(&cPtr.config)
 	return cPtr
@@ -50,6 +52,7 @@ func freeVlmCreateInput(cPtr *C.geniex_VlmCreateInput) {
 	cFreeIfSet(unsafe.Pointer(cPtr.tokenizer_path))
 	cFreeIfSet(unsafe.Pointer(cPtr.plugin_id))
 	cFreeIfSet(unsafe.Pointer(cPtr.device_id))
+	cFreeIfSet(unsafe.Pointer(cPtr.vit_device_id))
 	freeCModelConfig(&cPtr.config)
 	C.free(unsafe.Pointer(cPtr))
 }

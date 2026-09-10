@@ -37,10 +37,10 @@ func resolveDraftModelPath(draft string) (string, error) {
 	return paths.ModelPath, nil
 }
 
-// ResolveModelParam turns the already-resolved (nctx, ngl, compute) knobs into
-// the ModelParam the cache keys on. Compute is resolved to a DeviceID by the
-// SDK; nctx/ngl are llama_cpp-only and zeroed for other plugins.
-func ResolveModelParam(runtimeID, modelName string, reqNCtx, reqNgl int32, reqCompute, chipset string, spec types.SpecParam) (types.ModelParam, error) {
+// ResolveModelParam turns the model-load options into the ModelParam the cache
+// keys on. Compute is resolved to a DeviceID by the SDK; nctx/ngl are
+// llama_cpp-only and zeroed for other plugins.
+func ResolveModelParam(runtimeID, modelName string, reqNCtx, reqNgl int32, reqCompute, reqVitCompute, chipset string, spec types.SpecParam) (types.ModelParam, error) {
 	// Non-llama_cpp plugins (e.g. qairt) reject non-zero nctx; the SDK zeroes
 	// ngl for them in geniex_resolve_device.
 	nctx, ngl := reqNCtx, reqNgl
@@ -67,9 +67,10 @@ func ResolveModelParam(runtimeID, modelName string, reqNCtx, reqNgl int32, reqCo
 	}
 
 	mp := types.ModelParam{
-		NCtx:       nctx,
-		NGpuLayers: resolved.Ngl,
-		DeviceID:   resolved.DeviceID,
+		NCtx:        nctx,
+		NGpuLayers:  resolved.Ngl,
+		DeviceID:    resolved.DeviceID,
+		VitDeviceID: reqVitCompute,
 	}
 	// Spec is llama_cpp-only; leave it zero (disabled) for other plugins.
 	if runtimeID == geniex_sdk.RuntimeLlamaCpp {
@@ -226,9 +227,10 @@ func keepAliveGet[T any](name string, param types.ModelParam, session utils.Sess
 		})
 	case reflect.TypeFor[geniex_sdk.VLM]():
 		t, e = geniex_sdk.NewVLM(geniex_sdk.VlmCreateInput{
-			ModelPath:  modelfile,
-			MmprojPath: paths.MmprojPath,
-			DeviceID:   param.DeviceID,
+			ModelPath:   modelfile,
+			MmprojPath:  paths.MmprojPath,
+			DeviceID:    param.DeviceID,
+			VitDeviceID: param.VitDeviceID,
 			Config: geniex_sdk.ModelConfig{
 				NCtx:       param.NCtx,
 				NGpuLayers: param.NGpuLayers,

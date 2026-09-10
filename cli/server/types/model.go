@@ -7,10 +7,11 @@ package types
 // NCtx / NGpuLayers are llama_cpp-only; DeviceID is the compute unit resolved by
 // the SDK (empty = the SDK's own default).
 type ModelParam struct {
-	NCtx       int32
-	NGpuLayers int32
-	DeviceID   string
-	Spec       SpecParam
+	NCtx        int32
+	NGpuLayers  int32
+	DeviceID    string
+	VitDeviceID string
+	Spec        SpecParam
 }
 
 // SpecParam bundles the speculative-decoding knobs sourced from a request; all
