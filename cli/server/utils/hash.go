@@ -76,10 +76,9 @@ func ToolCallFields(tcs []geniex_sdk.ToolCall) []string {
 	return fields
 }
 
-// HashMessages builds a SessionKey by hashing each message's fields, as
-// produced by fields. Hash the client-sent content, not a server-derived
-// artifact (e.g. a per-request temp file path) — that would never repeat
-// across requests and so would never be recognized as a continuation.
+// HashMessages builds a SessionKey by hashing each message's fields. Hash the
+// client-sent content, not a server-derived artifact (e.g. a per-request temp
+// file path), which would never repeat and so never match as a continuation.
 func HashMessages[M any](msgs []M, fields func(M) []string) SessionKey {
 	key := make(SessionKey, len(msgs))
 	for i, m := range msgs {
@@ -96,9 +95,9 @@ func SessionKeyOf(messages []geniex_sdk.LlmChatMessage) SessionKey {
 	})
 }
 
-// SessionKeyOfVLMRequest hashes the raw request messages, not the
-// model-ready ones buildVLMMessages produces — those carry a per-request
-// temp file path for each image/audio part instead of its source.
+// SessionKeyOfVLMRequest hashes the raw request messages, not the model-ready
+// ones buildVLMMessages produces with a per-request temp file path in place
+// of each image/audio part's source.
 func SessionKeyOfVLMRequest(msgs []openai.ChatCompletionMessageParamUnion) SessionKey {
 	return HashMessages(msgs, func(msg openai.ChatCompletionMessageParamUnion) []string {
 		fields := []string{}

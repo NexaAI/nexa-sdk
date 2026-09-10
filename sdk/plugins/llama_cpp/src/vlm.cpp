@@ -301,7 +301,7 @@ int32_t LlamaVlm::generate(const geniex_VlmGenerateInput* input, geniex_VlmGener
                 lcp,
                 reuse_end,
                 this->past_gen.size());
-            return GENIEX_ERROR_VLM_GENERATION_FAILED;
+            return GENIEX_ERROR_VLM_PREFIX_REUSE_FAILED;
         }
 
         new_text_portion = full_prompt.substr(reuse_end);

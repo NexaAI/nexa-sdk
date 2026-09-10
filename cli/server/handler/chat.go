@@ -54,9 +54,9 @@ type ChatCompletionRequest struct {
 }
 
 func defaultChatCompletionRequest() ChatCompletionRequest {
-	// Prefill the llama_cpp knobs with the server-wide defaults (--nctx / --ngl /
-	// --compute): ShouldBindJSON only overwrites fields present in the body, so an
-	// omitted knob keeps the default and an explicit one (incl. ngl 0) wins.
+	// Prefill llama_cpp knobs with server defaults (--nctx/--ngl/--compute):
+	// ShouldBindJSON only overwrites fields present in the body, so an omitted
+	// knob keeps the default and an explicit one (incl. ngl 0) wins.
 	cfg := config.Get()
 	return ChatCompletionRequest{
 		ChatCompletionNewParams: ChatCompletionNewParams{
@@ -133,7 +133,7 @@ func ChatCompletions(c *gin.Context) {
 		}
 		runChat(c, param, modelParam, messages, utils.SessionKeyOf(messages), prepareLLM)
 	case geniex_sdk.ModelTypeVLM:
-		// Hash before buildVLMMessages replaces each image/audio part with a
+		// Hash before buildVLMMessages swaps each image/audio part for a
 		// per-request temp file path; see SessionKeyOfVLMRequest.
 		session := utils.SessionKeyOfVLMRequest(param.Messages)
 		messages, tempFiles, ok := buildVLMMessages(c, param)
@@ -162,8 +162,8 @@ type prepareInput[M any] struct {
 	Fresh    bool
 }
 
-// prepareFn holds the only LLM/VLM-specific work: apply the chat template, then
-// return the formatted prompt and a generateFn.
+// prepareFn holds the LLM/VLM-specific work: apply the chat template and
+// return the formatted prompt plus a generateFn.
 type prepareFn[T, M any] func(p *T, input prepareInput[M]) (prompt string, gen generateFn, err error)
 
 func prepareLLM(p *geniex_sdk.LLM, input prepareInput[[]geniex_sdk.LlmChatMessage]) (string, generateFn, error) {
@@ -236,6 +236,32 @@ func prepareVLM(p *geniex_sdk.VLM, input prepareInput[[]geniex_sdk.VlmChatMessag
 	return formatted.FormattedText, gen, nil
 }
 
+// generateWithRetry retries a VLM prefix reuse failure once after resetting
+// the model and rebuilding the full conversation.
+func generateWithRetry[T, M any](model *T, prompt string, gen generateFn, input prepareInput[M], prepare prepareFn[T, M], onToken func(string) bool) (geniex_sdk.ProfileData, string, error) {
+	profile, fullText, err := gen(prompt, onToken)
+	if !errors.Is(err, geniex_sdk.ErrVlmPrefixReuseFailed) {
+		return profile, fullText, err
+	}
+
+	vlm, ok := any(model).(*geniex_sdk.VLM)
+	if !ok {
+		slog.Error("Cannot retry VLM prefix reuse failure with non-VLM model")
+		return profile, fullText, err
+	}
+	if resetErr := vlm.Reset(); resetErr != nil {
+		slog.Error("Failed to reset model before VLM prefix reuse retry", "error", resetErr)
+		return profile, fullText, err
+	}
+	slog.Warn("VLM prefix reuse failed; resetting and retrying", "error", err)
+	input.Fresh = true
+	prompt, gen, err = prepare(model, input)
+	if err != nil {
+		return profile, fullText, err
+	}
+	return gen(prompt, onToken)
+}
+
 // runChat is the shared flow wrapping the type-specific prepareFn. session
 // identifies the conversation for the keepalive cache's reset decision.
 func runChat[T, M any](c *gin.Context, param ChatCompletionRequest, modelParam types.ModelParam, messages M, session utils.SessionKey, prepare prepareFn[T, M]) {
@@ -302,7 +328,13 @@ func runChat[T, M any](c *gin.Context, param ChatCompletionRequest, modelParam t
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			profile, _, genErr = gen(prompt, func(token string) bool {
+			profile, _, genErr = generateWithRetry(acquired.Model, prompt, gen, prepareInput[M]{
+				Messages: messages,
+				Param:    param,
+				Tools:    tools,
+				Sampler:  sampler,
+				Fresh:    acquired.Fresh,
+			}, prepare, func(token string) bool {
 				if stopGen.Load() {
 					return false
 				}
@@ -334,7 +366,13 @@ func runChat[T, M any](c *gin.Context, param ChatCompletionRequest, modelParam t
 		if reasoningSeparated(param.ReasoningFormat) {
 			class = reasoningClass()
 		}
-		profile, _, err := gen(prompt, sink(class, &content, &reasoning))
+		profile, _, err := generateWithRetry(acquired.Model, prompt, gen, prepareInput[M]{
+			Messages: messages,
+			Param:    param,
+			Tools:    tools,
+			Sampler:  sampler,
+			Fresh:    acquired.Fresh,
+		}, prepare, sink(class, &content, &reasoning))
 		// A prompt that never fit is a 400; a window exhausted mid-generation is a
 		// normal truncated completion (finish_reason=length), handled below.
 		if errors.Is(err, geniex_sdk.ErrLlmGenerationPromptTooLong) {
