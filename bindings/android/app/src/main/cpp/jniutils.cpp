@@ -469,6 +469,14 @@ geniex_VlmCreateInput extract_vlm_create_input(JNIEnv* env, jobject inputObj) {
         if (configObj) env->DeleteLocalRef(configObj);
     }
 
+    // vit_device_id : String
+    fid = env->GetFieldID(cls, "vit_device_id", "Ljava/lang/String;");
+    if (fid) {
+        jstr              = (jstring)env->GetObjectField(inputObj, fid);
+        out.vit_device_id = jstr ? hold_c_str(jstring2str(env, jstr)) : nullptr;
+        if (jstr) env->DeleteLocalRef(jstr);
+    }
+
     // runtime_id : String
     fid = env->GetFieldID(cls, "runtime_id", "Ljava/lang/String;");
     if (fid) {

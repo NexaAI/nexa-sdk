@@ -259,6 +259,7 @@ class geniex_VlmCreateInput(Structure):
         ('config', geniex_ModelConfig),
         ('plugin_id', c_char_p),
         ('device_id', c_char_p),
+        ('vit_device_id', c_char_p),
         ('tokenizer_path', c_char_p),
     ]
 

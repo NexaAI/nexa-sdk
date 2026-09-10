@@ -28,25 +28,26 @@ import (
 
 var (
 	// disableStream *bool // reuse in run.go
-	ngl           int32
-	nctx          int32
-	ubatch        int32
-	maxTokens     int32
-	stop          []string
-	stopFile      string
-	enableThink   bool
-	prompt        []string
-	tokenFile     string
-	input         string
-	systemPrompt  string
-	computeUnit   string
-	qairtLib      string
-	slidingWindow bool
-	specType      string
-	draftModel    string
-	draftTokens   int32
-	draftMin      int32
-	draftPMin     float32
+	ngl            int32
+	nctx           int32
+	ubatch         int32
+	maxTokens      int32
+	stop           []string
+	stopFile       string
+	enableThink    bool
+	prompt         []string
+	tokenFile      string
+	input          string
+	systemPrompt   string
+	computeUnit    string
+	vitComputeUnit string
+	qairtLib       string
+	slidingWindow  bool
+	specType       string
+	draftModel     string
+	draftTokens    int32
+	draftMin       int32
+	draftPMin      float32
 
 	// sampler config
 	temperature       float32
@@ -82,6 +83,7 @@ var (
 		llmFlags := pflag.NewFlagSet("LLM/VLM Model", pflag.ExitOnError)
 		llmFlags.SortFlags = false
 		llmFlags.StringVarP(&computeUnit, "compute", "c", "", "compute unit to run on: cpu, gpu, npu, hybrid, or an explicit device list like HTP0,HTP1,HTP2,HTP3 (llama_cpp only) (default: npu)")
+		llmFlags.StringVar(&vitComputeUnit, "vit-compute", "", "compute unit for the VLM vision encoder, e.g. CPU or HTP2 (llama_cpp only)")
 		llmFlags.StringVarP(&qairtLib, "qairt-lib", "", "", "run against a different QAIRT runtime: path to a QAIRT SDK root or a folder of QNN libraries (qairt only; sets GENIEX_QAIRT_LIB; optional — a QAIRT runtime is bundled and used by default)")
 		llmFlags.Int32VarP(&ngl, "ngl", "n", -1, "number of layers to offload to gpu/npu, -1 = all (llama_cpp only)")
 		llmFlags.Int32VarP(&nctx, "nctx", "", 4096, "context window size; raise to extend context (llama_cpp only)")
@@ -546,10 +548,11 @@ func inferVLM(paths *geniex_sdk.ModelPaths) error {
 	spin := render.NewSpinner("loading model...")
 	spin.Start()
 	p, err := geniex_sdk.NewVLM(geniex_sdk.VlmCreateInput{
-		ModelPath:  paths.ModelPath,
-		MmprojPath: paths.MmprojPath,
-		RuntimeID:  paths.RuntimeID,
-		DeviceID:   deviceID,
+		ModelPath:   paths.ModelPath,
+		MmprojPath:  paths.MmprojPath,
+		RuntimeID:   paths.RuntimeID,
+		DeviceID:    deviceID,
+		VitDeviceID: vitComputeUnit,
 		Config: geniex_sdk.ModelConfig{
 			NCtx:       nctxResolved,
 			NUbatch:    ubatch,

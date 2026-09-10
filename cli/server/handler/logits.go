@@ -30,9 +30,10 @@ type ForwardLogitsRequest struct {
 	TopN *int `json:"top_n"`
 
 	// Compute-unit / layer overrides, same semantics as chat completions.
-	NCtx    int32  `json:"nctx"`
-	Ngl     int32  `json:"ngl"`
-	Compute string `json:"compute"`
+	NCtx       int32  `json:"nctx"`
+	Ngl        int32  `json:"ngl"`
+	Compute    string `json:"compute"`
+	VitCompute string `json:"vit_compute"`
 }
 
 const defaultLogitsTopN = 20
@@ -57,7 +58,7 @@ type ForwardRow struct {
 
 func ForwardLogits(c *gin.Context) {
 	cfg := config.Get()
-	req := ForwardLogitsRequest{NCtx: cfg.NCtx, Ngl: cfg.Ngl, Compute: cfg.Compute}
+	req := ForwardLogitsRequest{NCtx: cfg.NCtx, Ngl: cfg.Ngl, Compute: cfg.Compute, VitCompute: cfg.VitCompute}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		slog.Error("Failed to bind JSON", "error", err)
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
@@ -79,13 +80,12 @@ func ForwardLogits(c *gin.Context) {
 		return
 	}
 
-	modelParam, err := service.ResolveModelParam(paths.RuntimeID, paths.ModelName, req.NCtx, req.Ngl, req.Compute, service.Chipset(), types.SpecParam{})
+	modelParam, err := service.ResolveModelParam(paths.RuntimeID, paths.ModelName, req.NCtx, req.Ngl, req.Compute, req.VitCompute, service.Chipset(), types.SpecParam{})
 	if err != nil {
 		slog.Error("Failed to resolve model params", "model", req.Model, "error", err)
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
 	}
-
 	acquired, err := service.KeepAliveGet[geniex_sdk.LLM](
 		req.Model,
 		modelParam,

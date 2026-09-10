@@ -753,6 +753,7 @@ typedef struct {
     geniex_ModelConfig config;         /** Model configuration */
     geniex_PluginId    plugin_id;      /** Plugin to use for the model */
     const char*        device_id;      /** device to use for the model */
+    const char*        vit_device_id;  /** optional device override for the vision encoder */
     geniex_Path        tokenizer_path; /** Path to the tokenizer file */
 } geniex_VlmCreateInput;
 

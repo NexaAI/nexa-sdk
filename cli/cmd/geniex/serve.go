@@ -35,6 +35,7 @@ func serve() *cobra.Command {
 	serveCmd.Flags().Int32("nctx", 4096, "Default context window size, llama_cpp only (env: GENIEX_NCTX)")
 	serveCmd.Flags().Int32P("ngl", "n", -1, "Default layers to offload to gpu/npu, -1 = all, llama_cpp only (env: GENIEX_NGL)")
 	serveCmd.Flags().StringP("compute", "c", "", "Default compute unit: cpu, gpu, npu, or hybrid (env: GENIEX_COMPUTE)")
+	serveCmd.Flags().String("vit-compute", "", "Default VLM vision encoder compute unit, e.g. CPU or HTP2 (env: GENIEX_VIT_COMPUTE)")
 	serveCmd.Flags().String("qairt-lib", "", "Run against a different QAIRT runtime: path to a QAIRT SDK root or a folder of QNN libraries, qairt only (env: GENIEX_QAIRT_LIB)")
 	// HTTPS / TLS flags
 	serveCmd.Flags().Bool("https", false, "Enable HTTPS/TLS (env: GENIEX_HTTPS)")
@@ -47,6 +48,8 @@ func serve() *cobra.Command {
 	viper.BindPFlag("nctx", serveCmd.Flags().Lookup("nctx"))
 	viper.BindPFlag("ngl", serveCmd.Flags().Lookup("ngl"))
 	viper.BindPFlag("compute", serveCmd.Flags().Lookup("compute"))
+	viper.BindPFlag("vitcompute", serveCmd.Flags().Lookup("vit-compute"))
+	viper.BindEnv("vitcompute", "GENIEX_VIT_COMPUTE")
 	viper.BindPFlag("qairtlib", serveCmd.Flags().Lookup("qairt-lib"))
 	// Bound explicitly so the plugin's own spelling is the only one that works;
 	// AutomaticEnv would otherwise make GENIEX_QAIRTLIB a silent second alias.

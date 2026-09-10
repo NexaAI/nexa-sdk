@@ -323,6 +323,7 @@ def _create_vlm_handle(
     plugin_id: str | None,
     device_id: str | None,
     config: geniex_ModelConfig,
+    vit_device_id: str | None = None,
     meta: dict | None = None,
 ) -> GenieXVLM:
     inp = geniex_VlmCreateInput(
@@ -337,6 +338,8 @@ def _create_vlm_handle(
         inp.plugin_id = plugin_id.encode()
     if device_id:
         inp.device_id = device_id.encode()
+    if vit_device_id:
+        inp.vit_device_id = vit_device_id.encode()
 
     handle = c_void_p()
     lib = load_library()
@@ -359,6 +362,7 @@ class AutoModelForCausalLM:
         n_gpu_layers: int = -1,
         mmproj_path: str | None = None,
         tokenizer_path: str | None = None,
+        vit_device_id: str | None = None,
         hf_token: str | None = None,
         progress: ProgressCallback | bool | None = None,
         **kwargs,
@@ -415,6 +419,7 @@ class AutoModelForCausalLM:
                 plugin_id,
                 device_id,
                 config,
+                vit_device_id=vit_device_id,
                 meta=meta,
             )
 
@@ -450,6 +455,7 @@ class AutoModelForVision2Seq:
         n_gpu_layers: int = -1,
         mmproj_path: str | None = None,
         tokenizer_path: str | None = None,
+        vit_device_id: str | None = None,
         hf_token: str | None = None,
         progress: ProgressCallback | bool | None = None,
         **kwargs,
@@ -493,5 +499,6 @@ class AutoModelForVision2Seq:
             plugin_id,
             device_id,
             config,
+            vit_device_id=vit_device_id,
             meta=meta,
         )
