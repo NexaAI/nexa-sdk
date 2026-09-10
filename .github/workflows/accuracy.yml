@@ -60,11 +60,12 @@ env:
   GRADER_REPO: qcom-ai-hub/geniex
   # Runs are attributed to breeze.yml on the default branch, not _breeze.yml.
   GRADER_WORKFLOW: breeze.yml
-  PAYLOAD_ARTIFACT: breeze-grade-payload
+  PAYLOAD_ARTIFACT: breeze-grade-payload-attempt-${{ github.run_attempt }}
   PAYLOAD_FILE: grade-payload.md
   # Item -> cell lookup, uploaded separately so the grader never downloads it.
-  ITEM_MAP_ARTIFACT: breeze-grade-item-map
+  ITEM_MAP_ARTIFACT: breeze-grade-item-map-attempt-${{ github.run_attempt }}
   ITEM_MAP_FILE: grade-item-map.md
+  GRADES_ARTIFACT: breeze-grades-attempt-${{ github.run_attempt }}
 
 jobs:
   build-sdk:
@@ -229,10 +230,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
           RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
           set -euo pipefail
           cat > issue-body.md <<EOF
-          Automated quality grading for [GenieX workflow run ${RUN_ID}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}).
+          Automated quality grading for [GenieX workflow run ${RUN_ID}, attempt ${RUN_ATTEMPT}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}).
 
           @breeze-ai Grade generated text for quantization damage.
 
@@ -246,7 +248,7 @@ jobs:
 
           url=$(gh issue create \
             --repo "${GRADER_REPO}" \
-            --title "[Breeze] Grade GenieX run ${RUN_ID}" \
+            --title "[Breeze] Grade GenieX run ${RUN_ID} attempt ${RUN_ATTEMPT}" \
             --body-file issue-body.md)
           number="${url##*/}"
           echo "number=${number}" >> "$GITHUB_OUTPUT"
@@ -258,12 +260,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_PAT }}
           ISSUE: ${{ steps.issue.outputs.number }}
           RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
           set -euo pipefail
-          # displayTitle is the issue title, which embeds this run id. Match it
-          # exactly -- `contains` would let run 153 latch onto 1537. `gh --jq`
-          # has no --arg, so the title goes through the environment.
-          export WANT="[Breeze] Grade GenieX run ${RUN_ID}"
+          # displayTitle is the issue title, which embeds this run id and attempt.
+          # Match it exactly -- `contains` would let run 153 latch onto 1537.
+          # `gh --jq` has no --arg, so the title goes through the environment.
+          export WANT="[Breeze] Grade GenieX run ${RUN_ID} attempt ${RUN_ATTEMPT}"
           target=""
           for attempt in $(seq 1 24); do
             target=$(gh run list --repo "${GRADER_REPO}" --workflow "${GRADER_WORKFLOW}" \
@@ -312,7 +315,7 @@ jobs:
         id: grades-artifact
         if: always()
         with:
-          name: breeze-grades
+          name: ${{ env.GRADES_ARTIFACT }}
           path: grades.md
           if-no-files-found: ignore
 
@@ -336,9 +339,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_PAT }}
           ISSUE: ${{ steps.issue.outputs.number }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
           OUTCOME: ${{ job.status }}
         run: |
           set -euo pipefail
           gh issue close "${ISSUE}" --repo "${GRADER_REPO}" \
-            --comment "GenieX run finished with status \`${OUTCOME}\` — ${RUN_URL}" ||
+            --comment "GenieX run attempt ${RUN_ATTEMPT} finished with status \`${OUTCOME}\` — ${RUN_URL}" ||
             echo "::warning::failed to close ${GRADER_REPO}#${ISSUE}; close it by hand"
