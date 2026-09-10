@@ -125,6 +125,7 @@ class GenieXError(Exception):
 # Keep aligned with sdk/include/geniex.h; expand on demand.
 GENIEX_ERROR_COMMON_PLUGIN_INVALID = -100302
 GENIEX_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH = -200004
+GENIEX_ERROR_VLM_PREFIX_REUSE_FAILED = -201202
 
 
 def _unknown_runtime_message(runtime: str, available: list[str]) -> str:

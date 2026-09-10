@@ -18,10 +18,9 @@ import (
 	"github.com/qualcomm/GenieX/cli/server/utils"
 )
 
-// resolveDraftModelPath maps a spec_draft_model value to an absolute GGUF path:
-// an existing filesystem path is returned as-is, otherwise it is a catalogue
-// name (optionally :precision) looked up in the local cache. A cache miss is an
-// error — the server never auto-pulls, so the draft must be pulled beforehand.
+// resolveDraftModelPath resolves spec_draft_model to a GGUF path: an existing
+// path passes through as-is, otherwise it's a catalogue name (optionally
+// :precision) looked up in the local cache — never auto-pulled.
 func resolveDraftModelPath(draft string) (string, error) {
 	if draft == "" {
 		return "", nil
@@ -48,8 +47,7 @@ func ResolveModelParam(runtimeID, modelName string, reqNCtx, reqNgl int32, reqCo
 		nctx = 0
 	}
 
-	// Runs before the SDK's npu fallback; chipset comes from the caller so this
-	// stays store-free. Ubatch stays 0: ModelParam has no n_ubatch to key on.
+	// Before the SDK's npu fallback; chipset from the caller keeps this store-free.
 	reqCompute, _ = config.ChipsetDefaults(reqCompute, 0, chipset)
 
 	resolved, err := geniex_sdk.ResolveDevice(geniex_sdk.ResolveDeviceInput{
@@ -85,9 +83,9 @@ type AcquiredModel[T any] struct {
 	Fresh bool
 }
 
-// KeepAliveGet returns the cached model of type T, loading it if needed, to
-// avoid reloading from disk on every request. session identifies the
-// conversation this request belongs to. Fresh is true after a load or reset.
+// KeepAliveGet returns the cached model of type T, loading it if needed.
+// session identifies the request's conversation; Fresh is true after a load
+// or reset.
 func KeepAliveGet[T any](name string, param types.ModelParam, session utils.SessionKey) (AcquiredModel[T], error) {
 	t, fresh, err := keepAliveGet[T](name, param, session)
 	if err != nil {
@@ -141,9 +139,9 @@ func (keepAlive *keepAliveService) start() {
 	}()
 }
 
-// sweep frees the model once idle past the timeout. It runs only when it can
-// take the GIL, so an in-flight request defers it and the model is never freed
-// mid-generation; idle is measured from the last model request's end (#1322).
+// sweep frees the model once idle past the timeout. Runs only when it can
+// take the GIL, so it never fires mid-generation; idle is measured from the
+// last request's end (#1322).
 func (keepAlive *keepAliveService) sweep() {
 	if !middleware.GILock.TryLock() {
 		return
@@ -164,11 +162,10 @@ func (keepAlive *keepAliveService) destroy() {
 	}
 }
 
-// keepAliveGet reuses the cached model when name and params match, otherwise
-// loads a fresh one. It resets a reused model when session isn't a continuation
-// of the one last served, so a new conversation never inherits another's KV
-// cache / turn state. The returned bool reports whether the model is fresh
-// after either a reset or load. Runs under the request GIL, so no locking here.
+// keepAliveGet reuses the cached model when name/params match, resetting it
+// when session isn't a continuation of the one last served, so a new
+// conversation never inherits another's KV cache. Returns whether the model
+// is fresh after a reset or load. Runs under the request GIL.
 func keepAliveGet[T any](name string, param types.ModelParam, session utils.SessionKey) (any, bool, error) {
 	// The SDK resolves bare names / aliases and picks the default precision
 	// when none is given; pass the request string through verbatim.
@@ -197,8 +194,8 @@ func keepAliveGet[T any](name string, param types.ModelParam, session utils.Sess
 	// TODO: unload model due to free ram/vram
 	keepAlive.destroy()
 
-	// param already carries the resolved NCtx / NGpuLayers / DeviceID; the
-	// cache keys on it, so no further resolution here.
+	// param already carries the resolved NCtx/NGpuLayers/DeviceID; no further
+	// resolution needed here.
 	var t keepable
 	var e error
 	switch reflect.TypeFor[T]() {
@@ -251,8 +248,8 @@ func keepAliveGet[T any](name string, param types.ModelParam, session utils.Sess
 	return t, true, nil
 }
 
-// stop ends the sweep goroutine and frees the cached model — here rather than in
-// the goroutine, so it lands before the SDK deinit that follows.
+// stop ends the sweep goroutine and frees the model here, not in the
+// goroutine, so it lands before the SDK deinit that follows.
 func (keepAlive *keepAliveService) stop() {
 	close(keepAlive.stopCh)
 	middleware.GILock.Lock()

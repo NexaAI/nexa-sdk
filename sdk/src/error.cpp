@@ -88,6 +88,8 @@ const char* geniex_get_error_message(const geniex_ErrorCode error_code) {
             return "Unsupported audio format";
         case GENIEX_ERROR_VLM_GENERATION_FAILED:
             return "Multimodal generation failed";
+        case GENIEX_ERROR_VLM_PREFIX_REUSE_FAILED:
+            return "VLM prefix reuse failed";
 
         default:
             return "Unknown error code";

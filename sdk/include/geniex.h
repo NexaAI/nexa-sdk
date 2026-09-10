@@ -84,7 +84,8 @@ typedef enum {
     GENIEX_ERROR_VLM_AUDIO_LOAD   = -201101, /**< Audio loading failed */
     GENIEX_ERROR_VLM_AUDIO_FORMAT = -201102, /**< Unsupported audio format */
 
-    GENIEX_ERROR_VLM_GENERATION_FAILED = -201201, /**< Multimodal generation failed */
+    GENIEX_ERROR_VLM_GENERATION_FAILED   = -201201, /**< Multimodal generation failed */
+    GENIEX_ERROR_VLM_PREFIX_REUSE_FAILED = -201202, /**< Cached VLM prefix cannot be reused */
 
 } geniex_ErrorCode;
 
