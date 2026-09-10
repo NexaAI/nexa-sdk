@@ -39,13 +39,19 @@ func resolveDraftModelPath(draft string) (string, error) {
 
 // ResolveModelParam turns the model-load options into the ModelParam the cache
 // keys on. Compute is resolved to a DeviceID by the SDK; nctx/ngl are
-// llama_cpp-only and zeroed for other plugins.
-func ResolveModelParam(runtimeID, modelName string, reqNCtx, reqNgl int32, reqCompute, reqVitCompute, chipset string, spec types.SpecParam) (types.ModelParam, error) {
+// llama_cpp-only and zeroed for other plugins. power_mode is shared by both
+// plugins, so it is only validated here (each plugin resolves it itself), not
+// zeroed or reshaped.
+func ResolveModelParam(runtimeID, modelName string, reqNCtx, reqNgl int32, reqCompute, reqVitCompute, reqPowerMode, chipset string, spec types.SpecParam) (types.ModelParam, error) {
 	// Non-llama_cpp plugins (e.g. qairt) reject non-zero nctx; the SDK zeroes
 	// ngl for them in geniex_resolve_device.
 	nctx, ngl := reqNCtx, reqNgl
 	if runtimeID != geniex_sdk.RuntimeLlamaCpp {
 		nctx = 0
+	}
+
+	if err := geniex_sdk.ResolvePowerMode(reqPowerMode); err != nil {
+		return types.ModelParam{}, err
 	}
 
 	// Runs before the SDK's npu fallback; chipset comes from the caller so this
@@ -71,6 +77,7 @@ func ResolveModelParam(runtimeID, modelName string, reqNCtx, reqNgl int32, reqCo
 		NGpuLayers:  resolved.Ngl,
 		DeviceID:    resolved.DeviceID,
 		VitDeviceID: reqVitCompute,
+		PowerMode:   reqPowerMode,
 	}
 	// Spec is llama_cpp-only; leave it zero (disabled) for other plugins.
 	if runtimeID == geniex_sdk.RuntimeLlamaCpp {
@@ -222,6 +229,7 @@ func keepAliveGet[T any](name string, param types.ModelParam, session utils.Sess
 				SpecNMax:       param.Spec.NMax,
 				SpecNMin:       param.Spec.NMin,
 				SpecPMin:       param.Spec.PMin,
+				PowerMode:      param.PowerMode,
 			},
 			RuntimeID: paths.RuntimeID,
 		})
@@ -234,6 +242,7 @@ func keepAliveGet[T any](name string, param types.ModelParam, session utils.Sess
 			Config: geniex_sdk.ModelConfig{
 				NCtx:       param.NCtx,
 				NGpuLayers: param.NGpuLayers,
+				PowerMode:  param.PowerMode,
 			},
 			RuntimeID: paths.RuntimeID,
 		})
