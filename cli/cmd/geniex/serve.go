@@ -4,7 +4,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -59,11 +58,11 @@ func serve() *cobra.Command {
 	serveCmd.Run = func(cmd *cobra.Command, args []string) {
 		checkAudioDependency()
 
-		// Exported rather than passed down, matching `infer`: every model the server
-		// loads, LLM or VLM, then picks the override up the same way.
+		// Handed to the SDK rather than exported, matching `infer`; every model the server
+		// loads, LLM or VLM, then goes through the same SDK-side resolution.
 		if qairtLib := viper.GetString("qairtlib"); qairtLib != "" {
-			if err := os.Setenv("GENIEX_QAIRT_LIB", qairtLib); err != nil {
-				common.PrintError(fmt.Errorf("failed to set GENIEX_QAIRT_LIB: %w", err))
+			if err := geniex_sdk.SetQairtRuntimePath(qairtLib); err != nil {
+				common.PrintError(err)
 				os.Exit(1)
 			}
 		}

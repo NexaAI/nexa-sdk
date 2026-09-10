@@ -88,6 +88,28 @@ func SetLog(enable bool) {
 	}
 }
 
+// SetQairtRuntimePath loads the QAIRT runtime from path instead of the one bundled
+// with the qairt plugin, for running against another QAIRT version without
+// rebuilding. path is either a QAIRT SDK root or a flat folder of QNN libraries;
+// "" restores the bundled runtime. Ignored by other plugins.
+//
+// Call before Init: the QNN libraries load once per process and are never unloaded, so
+// this fails once initialized. An unusable path is reported when the model is created,
+// not here.
+func SetQairtRuntimePath(path string) error {
+	cPath := C.CString(path)
+	defer C.free(unsafe.Pointer(cPath))
+	if res := C.geniex_set_qairt_runtime_path(cPath); res < 0 {
+		return SDKError(res)
+	}
+	return nil
+}
+
+// GetQairtRuntimePath returns the path set by SetQairtRuntimePath, "" when unset.
+func GetQairtRuntimePath() string {
+	return C.GoString(C.geniex_get_qairt_runtime_path())
+}
+
 // GetPluginVersion returns the version the plugin reports for itself (QAIRT
 // runtime version, llama.cpp build commit, …). Empty string if not registered.
 func GetPluginVersion(pluginID string) string {

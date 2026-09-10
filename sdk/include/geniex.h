@@ -187,6 +187,43 @@ GENIEX_API int32_t geniex_deinit(void);
 GENIEX_API int32_t geniex_set_log(geniex_log_callback callback);
 
 /**
+ * @brief Load the QAIRT runtime from `path` instead of the one bundled with the plugin
+ *
+ * Optional: a QAIRT runtime ships with the qairt plugin and is used by default, so
+ * this is for running against another QAIRT version without rebuilding. Ignored by
+ * other plugins.
+ *
+ * `path` may be either a QAIRT SDK root or a flat folder of QNN libraries; the
+ * plugin tells them apart. Pass NULL or "" to go back to the bundled runtime.
+ *
+ * Call before geniex_init. The QNN libraries load once per process and are never
+ * unloaded, so the runtime cannot be changed afterwards -- not even across a
+ * geniex_deinit / geniex_init cycle, which leaves them resident. Once initialized
+ * this returns GENIEX_ERROR_COMMON_ALREADY_INITIALIZED; run another QAIRT runtime
+ * in a fresh process. Takes precedence over GENIEX_QAIRT_LIB.
+ *
+ * @param path[in]: Runtime directory, or NULL to unset. Copied; the caller keeps
+ *                  ownership. Not validated here -- an unusable path fails model
+ *                  creation with a message naming the layouts it looked for.
+ *
+ * @return geniex_ErrorCode: GENIEX_SUCCESS, or
+ *         GENIEX_ERROR_COMMON_ALREADY_INITIALIZED when called after geniex_init.
+ *
+ * @thread_safety: Not thread-safe against geniex_init.
+ */
+GENIEX_API int32_t geniex_set_qairt_runtime_path(const char* path);
+
+/**
+ * @brief Read back what geniex_set_qairt_runtime_path() stored
+ *
+ * @return Null-terminated UTF-8 string, "" when unset. Owned by the library; valid
+ *         until the next geniex_set_qairt_runtime_path() call. Never NULL.
+ *
+ * @thread_safety: Not thread-safe against geniex_set_qairt_runtime_path().
+ */
+GENIEX_API const char* geniex_get_qairt_runtime_path(void);
+
+/**
  * @brief Simple wrapper around free() to free memory allocated by ML library functions
  *
  * @param ptr[in]: The pointer to free.

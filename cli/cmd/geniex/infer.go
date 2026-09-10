@@ -143,11 +143,12 @@ func infer() *cobra.Command {
 			return err
 		}
 
-		// Exported rather than passed down so every path in this process -- LLM, VLM, any
-		// binding -- picks the override up the same way.
+		// Handed to the SDK rather than exported: os.Setenv is not reliably visible to a
+		// separately-CRT-linked plugin DLL on Windows. GENIEX_QAIRT_LIB still works as the
+		// SDK's own fallback, so an inherited environment keeps behaving as before.
 		if qairtLib != "" {
-			if err := os.Setenv("GENIEX_QAIRT_LIB", qairtLib); err != nil {
-				return fmt.Errorf("failed to set GENIEX_QAIRT_LIB: %w", err)
+			if err := geniex_sdk.SetQairtRuntimePath(qairtLib); err != nil {
+				return err
 			}
 		}
 

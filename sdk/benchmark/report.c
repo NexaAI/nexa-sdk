@@ -128,6 +128,11 @@ int write_cell_json(const options_t* o, const device_t* dev, int64_t model_size_
         }
         fprintf(f, ",\n      \"draft_tokens\": %d", o->draft_tokens);
     }
+    /* Which QAIRT runtime produced these numbers -- the reason the override exists. */
+    if (o->qairt_lib) {
+        fprintf(f, ",\n      \"qairt_lib\": ");
+        json_write_quoted(f, o->qairt_lib);
+    }
     fprintf(f, "\n    },\n");
     fprintf(f, "    \"runs\": [\n");
     for (int32_t i = 0; i < n_runs; ++i) {
