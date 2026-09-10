@@ -29,6 +29,7 @@ options = AppiumOptions()
 options.set_capability("automationName", "UiAutomator2")
 options.set_capability("platformName", "Android")
 options.set_capability("deviceName", os.getenv("ANDROID_DEVICE_VERSION"))
+options.set_capability("androidInstallTimeout", 300000)
 
 
 def run_adb_command(cmd: str, *, check: bool = True) -> subprocess.CompletedProcess:
