@@ -64,12 +64,11 @@ int32_t LlamaVlm::create(const geniex_VlmCreateInput* input) {
     if (input->vit_device_id && input->vit_device_id[0] != '\0') {
         vision_device = ggml_backend_dev_by_name(input->vit_device_id);
         if (!vision_device) {
-            GENIEX_LOG_WARN("Vision device '{}' not found; using the default VLM device", input->vit_device_id);
-        } else {
-            GENIEX_LOG_INFO("Using vision device override: {}", input->vit_device_id);
+            GENIEX_LOG_ERROR("Vision device '{}' not found", input->vit_device_id);
+            return GENIEX_ERROR_COMMON_INVALID_INPUT;
         }
-    }
-    if (!vision_device && !selection->empty()) {
+        GENIEX_LOG_INFO("Using vision device override: {}", input->vit_device_id);
+    } else if (!selection->empty()) {
         vision_device = selection->front();
     }
 
