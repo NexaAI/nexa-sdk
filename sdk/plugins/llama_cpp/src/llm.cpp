@@ -83,7 +83,15 @@ int32_t LlamaLlm::create(const geniex_LlmCreateInput* input) {
     std::optional<common_params_speculative> spar = build_speculative_params(config);
 
     llama_context_params cpar = build_context_params(config, /*n_ctx_default=*/4096, device, spar ? &*spar : nullptr);
-    this->ctx                 = llama_init_from_model(this->model, cpar);
+    if (device == Device::GPU) {
+        char arch[32] = {};
+        llama_model_meta_val_str(this->model, "general.architecture", arch, sizeof(arch));
+        if (strcmp(arch, "gpt-oss") == 0) {
+            cpar.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED;
+            GENIEX_LOG_INFO("gpt-oss on GPU: flash attention enabled");
+        }
+    }
+    this->ctx = llama_init_from_model(this->model, cpar);
     if (!this->ctx) {
         return GENIEX_ERROR_COMMON_MODEL_LOAD;
     }
