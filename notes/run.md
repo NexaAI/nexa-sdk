@@ -208,11 +208,13 @@ The path accepts either layout:
 
 <details><summary>Which runtimes are accepted, and why this is a supported override</summary>
 
-The plugin reaches QNN only through the versioned C interface, which negotiates at load time
-against `compiled QNN_API_VERSION_MINOR <= runtime minor`. The floor is the API version the
-plugin *compiled* against (QAIRT 2.36 headers, C API 2.27), not the version it bundles — so
-runtimes both older and newer than the bundled one are accepted, down to that floor. One
-build was measured on Snapdragon X Elite across 2.45 / 2.48 / 2.49 at identical throughput.
+The plugin reaches QNN through the versioned C interface. Its explicit load-time floor is
+`kMinApiMinor = 27` (QNN C API 2.27), independent of the headers used to compile it; the
+current plugin is compiled against QAIRT 2.50.40.260831 headers (QNN C API 2.39). Provider queries
+were checked with QAIRT 2.47.1 (QNN 2.36), 2.48.40 (2.37), 2.50.40 (2.39), and the installed
+bundle. These provider queries are not model-load or inference validation. A previous build
+using 2.36 headers was measured on Snapdragon X Elite across 2.45 / 2.48 / 2.49 at identical
+throughput; that historical result was not repeated with the 2.50 headers.
 
 This replaces an earlier C++ `IBackend` path whose vtable layout changed every release, where
 a mismatch could segfault (ai-hub-models-internal#3964). That hazard is gone with the C API,
