@@ -9,6 +9,7 @@
 #include <sstream>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "common.h"
 #include "ggml-backend.h"
@@ -138,6 +139,23 @@ llama_context_params build_context_params(
         cpar.n_outputs_max,
         cpar.n_outputs_max_per_seq);
     return cpar;
+}
+
+void warmup_context(const llama_model* model, llama_context* ctx) {
+    if (llama_model_has_encoder(model) || !llama_model_has_decoder(model)) return;
+
+    const llama_vocab*       vocab = llama_model_get_vocab(model);
+    std::vector<llama_token> tokens;
+    if (llama_vocab_bos(vocab) != LLAMA_TOKEN_NULL) tokens.push_back(llama_vocab_bos(vocab));
+    if (llama_vocab_eos(vocab) != LLAMA_TOKEN_NULL) tokens.push_back(llama_vocab_eos(vocab));
+    if (tokens.empty()) tokens.push_back(0);
+
+    if (llama_decode(ctx, llama_batch_get_one(tokens.data(), static_cast<int32_t>(tokens.size()))) != 0) {
+        GENIEX_LOG_WARN("model warmup decode failed");
+    }
+    llama_synchronize(ctx);
+    llama_memory_clear(llama_get_memory(ctx), /*clear data=*/true);
+    llama_perf_context_reset(ctx);
 }
 
 ggml_threadpool_params build_threadpool_params(int n_threads, Device device) {
