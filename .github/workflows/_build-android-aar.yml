@@ -1,13 +1,22 @@
 name: Build Android AAR
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       upload_artifact:
-        description: "Whether to upload the AAR artifact"
+        description: "Whether to upload the AAR artifacts"
         required: false
         type: boolean
         default: true
+
+  workflow_call:
+    inputs:
+      upload_artifact:
+        description: "Whether to upload the AAR artifacts"
+        required: false
+        type: boolean
+        default: true
+
 
 permissions:
   contents: read
