@@ -47,9 +47,17 @@ llama_model_params build_model_params(const geniex_ModelConfig& config, Device d
     static const bool mmap_matrix[3][3] = {
         {true, false, false},   // Linux
         {false, false, false},  // Windows
-        {false, false, false}   // Android
+        {true, true, false}   // Android
     };
-
+   GENIEX_LOG_INFO("Inside build_model_params: kHostPlatform={}, device={}",
+        kHostPlatform == Platform::Linux     ? "Linux"
+        : kHostPlatform == Platform::Windows ? "Windows"
+        : kHostPlatform == Platform::Android ? "Android"
+                                             : "Unknown",
+        device == Device::CPU   ? "CPU"
+        : device == Device::GPU ? "GPU"
+        : device == Device::NPU ? "NPU"
+                                : "Unknown");
     bool use_mmap = mmap_matrix[static_cast<int>(kHostPlatform)][static_cast<int>(device)];
 
     llama_model_params mpar = llama_model_default_params();
@@ -242,7 +250,7 @@ std::optional<std::vector<ggml_backend_dev_t>> resolve_devices(const char* devic
         return std::nullopt;
     }
     if (!devices.empty()) {
-        GENIEX_LOG_INFO("Using {} device(s): {}", devices.size(), device_id);
+        GENIEX_LOG_INFO("Metacrafter: Using {} device(s): {}", devices.size(), device_id);
         devices.push_back(nullptr);  // NULL terminator for llama_model_params::devices
     }
     return devices;
