@@ -4,7 +4,10 @@
 package handler
 
 import (
+	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
+	"math"
 	"reflect"
 	"testing"
 
@@ -111,5 +114,63 @@ func TestCompletionRequestFieldsAfterSDKUpgrade(t *testing.T) {
 	}
 	if req.NCtx != 2048 || req.Ngl != -1 || req.Compute != "hybrid" || req.VitCompute != "CPU" || req.PowerMode != "burst" {
 		t.Fatalf("device fields changed: %+v", req)
+	}
+}
+
+func embedsB64(vals ...float32) string {
+	raw := make([]byte, 4*len(vals))
+	for i, v := range vals {
+		binary.LittleEndian.PutUint32(raw[i*4:], math.Float32bits(v))
+	}
+	return base64.StdEncoding.EncodeToString(raw)
+}
+
+func TestCompletionPromptEmbeds(t *testing.T) {
+	withPrompt := openai.CompletionNewParamsPromptUnion{OfString: param.NewOpt("hi")}
+	tests := []struct {
+		name    string
+		mutate  func(*CompletionRequest)
+		want    []float32
+		wantErr bool
+	}{
+		{"unset", func(r *CompletionRequest) {}, nil, false},
+		{"two rows", func(r *CompletionRequest) { r.PromptEmbeds, r.PromptEmbedsDim = embedsB64(1, 2, 3, 4), 2 }, []float32{1, 2, 3, 4}, false},
+		{"prompt conflict", func(r *CompletionRequest) {
+			r.Prompt, r.PromptEmbeds, r.PromptEmbedsDim = withPrompt, embedsB64(1, 2), 2
+		}, nil, true},
+		{"echo", func(r *CompletionRequest) {
+			r.Echo, r.PromptEmbeds, r.PromptEmbedsDim = param.NewOpt(true), embedsB64(1, 2), 2
+		}, nil, true},
+		{"missing dim", func(r *CompletionRequest) { r.PromptEmbeds = embedsB64(1, 2) }, nil, true},
+		{"bad base64", func(r *CompletionRequest) { r.PromptEmbeds, r.PromptEmbedsDim = "!!", 2 }, nil, true},
+		{"not float32 sized", func(r *CompletionRequest) {
+			r.PromptEmbeds, r.PromptEmbedsDim = base64.StdEncoding.EncodeToString([]byte{1, 2, 3}), 1
+		}, nil, true},
+		{"not a multiple of dim", func(r *CompletionRequest) { r.PromptEmbeds, r.PromptEmbedsDim = embedsB64(1, 2, 3), 2 }, nil, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := defaultCompletionRequest()
+			tt.mutate(&req)
+			got, err := completionPromptEmbeds(req)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("completionPromptEmbeds() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("completionPromptEmbeds() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCompletionRequestPromptEmbedsFields(t *testing.T) {
+	req := defaultCompletionRequest()
+	body := `{"model":"m", "prompt_embeds":"` + embedsB64(1, 2) + `", "prompt_embeds_dim":2, "max_tokens":4}`
+	if err := json.Unmarshal([]byte(body), &req); err != nil {
+		t.Fatal(err)
+	}
+	got, err := completionPromptEmbeds(req)
+	if err != nil || !reflect.DeepEqual(got, []float32{1, 2}) || req.PromptEmbedsDim != 2 || req.MaxTokens.Value != 4 {
+		t.Fatalf("prompt_embeds fields not bound: %+v, %v, %v", req, got, err)
 	}
 }

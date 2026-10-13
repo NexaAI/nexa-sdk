@@ -4,9 +4,13 @@
 package handler
 
 import (
+	"encoding/base64"
+	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -37,6 +41,9 @@ type CompletionRequest struct {
 	TopK              int32   `json:"top_k"`
 	MinP              float32 `json:"min_p"`
 	RepetitionPenalty float32 `json:"repetition_penalty"`
+
+	PromptEmbeds    string `json:"prompt_embeds"`
+	PromptEmbedsDim int32  `json:"prompt_embeds_dim"`
 }
 
 func defaultCompletionRequest() CompletionRequest {
@@ -73,6 +80,44 @@ func completionPrompt(u openai.CompletionNewParamsPromptUnion) (string, error) {
 		return "", errors.New("prompt is required")
 	}
 }
+
+func completionPromptSet(u openai.CompletionNewParamsPromptUnion) bool {
+	return !param.IsOmitted(u.OfString) || u.OfArrayOfStrings != nil || u.OfArrayOfTokens != nil || u.OfArrayOfTokenArrays != nil
+}
+
+// completionPromptEmbeds decodes prompt_embeds: base64 of little-endian float32,
+// row-major [n_rows, prompt_embeds_dim]. It returns nil when the field is unset.
+func completionPromptEmbeds(req CompletionRequest) ([]float32, error) {
+	if req.PromptEmbeds == "" {
+		return nil, nil
+	}
+	if completionPromptSet(req.Prompt) {
+		return nil, errors.New("prompt and prompt_embeds are mutually exclusive")
+	}
+	if req.Echo.Valid() && req.Echo.Value {
+		return nil, errors.New("echo is not supported with prompt_embeds")
+	}
+	if req.PromptEmbedsDim <= 0 {
+		return nil, errors.New("prompt_embeds_dim must be > 0 when prompt_embeds is set")
+	}
+	raw, err := base64.StdEncoding.DecodeString(req.PromptEmbeds)
+	if err != nil {
+		return nil, errors.New("prompt_embeds is not valid base64")
+	}
+	if len(raw) == 0 || len(raw)%4 != 0 {
+		return nil, errors.New("prompt_embeds must be a non-empty array of float32")
+	}
+	embd := make([]float32, len(raw)/4)
+	for i := range embd {
+		embd[i] = math.Float32frombits(binary.LittleEndian.Uint32(raw[i*4:]))
+	}
+	if len(embd)%int(req.PromptEmbedsDim) != 0 {
+		return nil, errors.New("prompt_embeds length must be a multiple of prompt_embeds_dim")
+	}
+	return embd, nil
+}
+
+var promptEmbedsSeq atomic.Uint64
 
 func completionStop(u openai.CompletionNewParamsStopUnion) []string {
 	if !param.IsOmitted(u.OfString) {
@@ -111,11 +156,21 @@ func Completions(c *gin.Context) {
 		return
 	}
 
-	slog.Info("Completions", "param", req)
-	prompt, err := completionPrompt(req.Prompt)
+	logReq := req
+	logReq.PromptEmbeds = ""
+	slog.Info("Completions", "param", logReq, "prompt_embeds_bytes", len(req.PromptEmbeds))
+	embd, err := completionPromptEmbeds(req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
 		return
+	}
+	var prompt string
+	if embd == nil {
+		prompt, err = completionPrompt(req.Prompt)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
+			return
+		}
 	}
 	if err := completionUnsupported(req.CompletionNewParams); err != nil {
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})
@@ -146,15 +201,35 @@ func Completions(c *gin.Context) {
 		modelParam.NCtx = int32(req.MaxTokens.Value)
 	}
 
+	session := utils.HashText(prompt)
+	if embd != nil {
+		session = utils.SessionKey{promptEmbedsSeq.Add(1)}
+	}
 	acquired, err := service.KeepAliveGet[geniex_sdk.LLM](
 		string(req.Model),
 		modelParam,
-		utils.HashText(prompt),
+		session,
 	)
 	if writeKeepAliveError(c, err) {
 		return
 	}
 	p := acquired.Model
+
+	if embd != nil {
+		info, err := p.GetModelInfo()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, map[string]any{"error": err.Error(), "code": geniex_sdk.SDKErrorCode(err)})
+			return
+		}
+		if info.EmbdDim == 0 {
+			c.JSON(http.StatusBadRequest, map[string]any{"error": "prompt_embeds is not supported by this model"})
+			return
+		}
+		if req.PromptEmbedsDim != info.EmbdDim {
+			c.JSON(http.StatusBadRequest, map[string]any{"error": fmt.Sprintf("prompt_embeds_dim (%d) does not match the model's embedding width (%d)", req.PromptEmbedsDim, info.EmbdDim)})
+			return
+		}
+	}
 
 	genConfig := &geniex_sdk.GenerationConfig{
 		MaxTokens: int32(req.MaxTokens.Value),
@@ -191,7 +266,9 @@ func Completions(c *gin.Context) {
 		go func() {
 			defer wg.Done()
 			out, err := p.Generate(geniex_sdk.LlmGenerateInput{
-				PromptUTF8: prompt,
+				PromptUTF8:   prompt,
+				InputEmbd:    embd,
+				InputEmbdDim: req.PromptEmbedsDim,
 				OnToken: func(token string) bool {
 					if stopGen.Load() {
 						return false
@@ -217,8 +294,10 @@ func Completions(c *gin.Context) {
 	} else {
 		// blocking
 		out, err := p.Generate(geniex_sdk.LlmGenerateInput{
-			PromptUTF8: prompt,
-			Config:     genConfig,
+			PromptUTF8:   prompt,
+			InputEmbd:    embd,
+			InputEmbdDim: req.PromptEmbedsDim,
+			Config:       genConfig,
 		})
 		// A prompt that never fit is a 400; a window exhausted mid-generation is a
 		// normal truncated completion (finish_reason=length), handled below.
