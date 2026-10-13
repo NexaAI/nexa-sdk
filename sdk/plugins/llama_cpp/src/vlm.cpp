@@ -434,21 +434,21 @@ int32_t LlamaVlm::generate(const geniex_VlmGenerateInput* input, geniex_VlmGener
             if (needed == 0) return GENIEX_ERROR_LLM_TOKENIZATION_FAILED;
 
             // Allocate and tokenize
-            int32_t* prompt_tokens = (int32_t*)malloc(sizeof(int32_t) * needed);
-            if (!prompt_tokens) return GENIEX_ERROR_COMMON_MEMORY_ALLOCATION;
-
-            int32_t prompt_len = llama_tokenize(
-                vocab, new_text_portion.c_str(), (int32_t)new_text_portion.length(), prompt_tokens, needed, true, true);
-            if (prompt_len < 0) {
-                free(prompt_tokens);
-                return GENIEX_ERROR_LLM_TOKENIZATION_FAILED;
-            }
+            std::vector<llama_token> prompt_tokens(needed);
+            int32_t                  prompt_len = llama_tokenize(vocab,
+                new_text_portion.c_str(),
+                (int32_t)new_text_portion.length(),
+                prompt_tokens.data(),
+                needed,
+                true,
+                true);
+            if (prompt_len < 0) return GENIEX_ERROR_LLM_TOKENIZATION_FAILED;
 
             GENIEX_LOG_DEBUG("_ml_vlm_generate_internal: Tokenized new text portion into {} tokens", prompt_len);
 
             profiler.update_prompt_tokens(prompt_len);
 
-            llama_batch batch = llama_batch_get_one(prompt_tokens, prompt_len);
+            llama_batch batch = llama_batch_get_one(prompt_tokens.data(), prompt_len);
             // Set positions based on current n_past
             for (int i = 0; i < batch.n_tokens; ++i) {
                 batch.pos[i] = this->n_past + i;
@@ -458,7 +458,6 @@ int32_t LlamaVlm::generate(const geniex_VlmGenerateInput* input, geniex_VlmGener
             int32_t decode_ret = llama_decode(this->ctx, batch);
             profiler.prompt_end();
             profiler.decode_start();
-            free(prompt_tokens);
             // 1 means the prompt does not fit the KV cache: since this is
             // prefill, the prompt itself is too long, not a generic failure.
             switch (decode_ret) {
