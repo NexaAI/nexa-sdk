@@ -107,6 +107,8 @@ int32_t LlamaVlm::create(const geniex_VlmCreateInput* input) {
         return tp_ret;
     }
 
+    warmup_context(this->model, this->ctx);
+
     // Initialize vision context if mmproj_path provided
     if (input->mmproj_path) {
         mtmd_context_params mparams = mtmd_context_params_default();

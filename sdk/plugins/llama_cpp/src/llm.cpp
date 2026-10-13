@@ -95,6 +95,8 @@ int32_t LlamaLlm::create(const geniex_LlmCreateInput* input) {
         return tp_ret;
     }
 
+    warmup_context(this->model, this->ctx);
+
     // Speculative decoding: optional, keyed on a non-empty spec_type ("none" also
     // disables). Failure is non-fatal — we log and fall back to plain decoding.
     if (spar) {

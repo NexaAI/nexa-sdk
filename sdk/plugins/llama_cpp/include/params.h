@@ -69,6 +69,9 @@ std::optional<common_params_speculative> build_speculative_params(const geniex_M
 ggml_threadpool_params build_threadpool_params(int n_threads, Device device);
 common_params_sampling build_sampling_params(const geniex_SamplerConfig* cfg);
 
+// Like common_init_from_model: one empty decode maps lazily-mapped backend buffers at load, not in the first request.
+void warmup_context(const llama_model* model, llama_context* ctx);
+
 // Copy the FFI tool-calling fields of a chat message onto a common_chat_msg.
 // Templates need tool_calls structurally, not as assistant text: most render a
 // "tool" message only from the tool_calls of the assistant turn before it
