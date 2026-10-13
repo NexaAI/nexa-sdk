@@ -489,7 +489,7 @@ func inferLLM(ctx context.Context, paths *geniex_sdk.ModelPaths, resolvedPowerMo
 
 			if len(embd) > 0 {
 				// When using raw embeddings, skip chat template and tokenization entirely
-				res, err = p.Generate(geniex_sdk.LlmGenerateInput{
+				out, genErr := p.Generate(geniex_sdk.LlmGenerateInput{
 					InputEmbd:    embd,
 					InputEmbdDim: embdDim,
 					OnToken:      onToken,
@@ -499,10 +499,11 @@ func inferLLM(ctx context.Context, paths *geniex_sdk.ModelPaths, resolvedPowerMo
 						SlidingWindow: slidingWindow,
 					},
 				})
-				if err != nil {
+				if genErr != nil {
 					// The SDK keeps whatever was generated before the failure; surface it.
-					return res.FullText, res.ProfileData, err
+					return out.FullText, out.ProfileData, genErr
 				}
+				res = out
 				// Clear embd after use so subsequent calls use normal mode
 				embd = nil
 			} else if len(tokenIDs) > 0 {
