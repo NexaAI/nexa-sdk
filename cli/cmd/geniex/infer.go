@@ -500,6 +500,9 @@ func inferLLM(ctx context.Context, paths *geniex_sdk.ModelPaths, resolvedPowerMo
 					},
 				})
 				if genErr != nil {
+					if out == nil {
+						return "", geniex_sdk.ProfileData{}, genErr
+					}
 					// The SDK keeps whatever was generated before the failure; surface it.
 					return out.FullText, out.ProfileData, genErr
 				}
