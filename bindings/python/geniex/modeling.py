@@ -247,7 +247,7 @@ class GenieXLLM:
         # Opt-in ring-buffer context eviction (qairt only).
         sliding_window: bool = False,
         sliding_window_n_keep: int = 0,
-        # Caller-supplied embedding input (llama_cpp only), alternative to prompt.
+        # Caller-supplied embedding input (llama_cpp, or qairt bundles with an input_embeds first shard), alternative to prompt.
         # input_embd is a flat row-major [n_rows, input_embd_dim] float list; n_rows
         # is inferred from len(input_embd) // input_embd_dim. input_embd_dim must
         # match the model's expected width (see forward_logits' sibling metadata,
@@ -256,7 +256,7 @@ class GenieXLLM:
         input_embd_dim: int = 0,
         **_kwargs,
     ) -> GenerateOutput | TextIteratorStreamer:
-        """Generate text from ``prompt``, or from ``input_embd`` (llama_cpp only).
+        """Generate text from ``prompt``, or from ``input_embd`` (llama_cpp, or qairt bundles with an input_embeds first shard).
 
         Returns a :class:`GenerateOutput` when ``stream=False`` (default),
         or a :class:`TextIteratorStreamer` that yields token chunks and
