@@ -1,8 +1,8 @@
 diff --git a/ggml/src/ggml-hexagon/ggml-hexagon.cpp b/ggml/src/ggml-hexagon/ggml-hexagon.cpp
-index 58806e37f..5d8249f7a 100644
+index 1c1c92da2..cfbe072ab 100644
 --- a/ggml/src/ggml-hexagon/ggml-hexagon.cpp
 +++ b/ggml/src/ggml-hexagon/ggml-hexagon.cpp
-@@ -96,6 +96,42 @@ static int    opt_etm     = 0;
+@@ -107,6 +107,42 @@ static int    opt_etm     = 0;
  static int    opt_verbose = 0;
  static int    opt_profile = 0; // profiling mode (0-disabled, 1-basic, 2-pmu)
  static bool   opt_hostbuf = false;
@@ -44,8 +44,8 @@ index 58806e37f..5d8249f7a 100644
 +
  static bool   opt_dma64   = false;
  
- static int    opt_mm_select = 2; // 2 = HMX -> HVX -> CPU, 1 = HVX -> CPU, 0 = CPU (unsupported)
-@@ -4008,12 +4044,13 @@ void ggml_hexagon_session::allocate(const ggml_hexagon_device_config & config) n
+ static size_t opt_mbuf_dyn    = 512ul * 1024 * 1024;      // max dynamic (compute) buffer size
+@@ -4956,12 +4992,13 @@ void ggml_hexagon_session::allocate(const ggml_hexagon_device_config & config) n
      this->op_batch = new ggml_hexagon_opbatch(this, opt_opbatch, this->max_vmem);
  
      // Start dspqueue/opbatch processing
@@ -60,7 +60,7 @@ index 58806e37f..5d8249f7a 100644
  
      if (opt_profile) {
          htp_iface_pmu_conf pmu_conf{};
-@@ -7774,6 +7811,7 @@ static void ggml_hexagon_init(ggml_backend_reg * reg) {
+@@ -9959,6 +9996,7 @@ static void ggml_hexagon_init(ggml_backend_reg * reg) {
      const char * str_optrace  = getenv("GGML_HEXAGON_OPTRACE");
      const char * str_hostbuf  = getenv("GGML_HEXAGON_HOSTBUF");
      const char * str_dma64    = getenv("GGML_HEXAGON_DMA64");
@@ -68,7 +68,7 @@ index 58806e37f..5d8249f7a 100644
  
      // Init Arch first since it affects other defaults
      if (!str_arch) {
-@@ -7814,6 +7852,14 @@ static void ggml_hexagon_init(ggml_backend_reg * reg) {
+@@ -9999,6 +10037,14 @@ static void ggml_hexagon_init(ggml_backend_reg * reg) {
      opt_opfusion  = str_opfusion ? atoi(str_opfusion)                     : opt_opfusion;
      opt_profile   = str_profile  ? atoi(str_profile)                      : 0;
      opt_etm       = str_etm      ? atoi(str_etm)                          : 0;
@@ -84,10 +84,10 @@ index 58806e37f..5d8249f7a 100644
      opt_nhmx      = str_nhmx     ? atoi(str_nhmx)                         : opt_nhmx;
      opt_mm_select = str_mm_select ? atoi(str_mm_select)                   : opt_mm_select;
 diff --git a/ggml/src/ggml-hexagon/htp/htp-ops.h b/ggml/src/ggml-hexagon/htp/htp-ops.h
-index ee5b92441..47ef7aae5 100644
+index 5405c83b6..70d56e181 100644
 --- a/ggml/src/ggml-hexagon/htp/htp-ops.h
 +++ b/ggml/src/ggml-hexagon/htp/htp-ops.h
-@@ -185,6 +185,20 @@ enum htp_profiler_mode {
+@@ -197,6 +197,20 @@ enum htp_profiler_mode {
      HTP_PROF_TRACE    = 3,
  };
  
@@ -122,7 +122,7 @@ index b46e25296..303dbfb0a 100644
      AEEResult mmap(in uint32 fd, in uint64 size);
      AEEResult munmap(in uint32 fd);
 diff --git a/ggml/src/ggml-hexagon/htp/main.c b/ggml/src/ggml-hexagon/htp/main.c
-index b4b352b20..f7e3301ca 100644
+index aff1c6c0f..79e697897 100644
 --- a/ggml/src/ggml-hexagon/htp/main.c
 +++ b/ggml/src/ggml-hexagon/htp/main.c
 @@ -363,12 +363,91 @@ static void htp_main_thread(void * context);
