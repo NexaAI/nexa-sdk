@@ -504,8 +504,7 @@ components:
     # ---------- Completions ----------
     CompletionRequest:
       type: object
-      required: [model]
-      description: Either `prompt` or `prompt_embeds` must be set, not both.
+      required: [model, prompt]
       example:
         model: "qualcomm/Qwen3-4B-Instruct-2507"
         prompt: "def fibonacci(n):"
@@ -519,17 +518,6 @@ components:
         prompt:
           type: string
           description: The prompt to complete, passed to the model verbatim (no chat template). A single-element string array is also accepted.
-        prompt_embeds:
-          type: string
-          description: |
-            Pre-computed input embeddings that replace `prompt`: base64 of
-            little-endian float32, row-major `[n_rows, prompt_embeds_dim]`. The
-            caller owns any special tokens. Not combinable with `prompt` or `echo`.
-            Rejected with 400 if the model does not accept embedding input
-            (e.g. QAIRT bundles that embed on-device).
-        prompt_embeds_dim:
-          type: integer
-          description: Width of each row in `prompt_embeds`; must equal the model's embedding width.
         max_tokens:
           type: integer
           minimum: 1
