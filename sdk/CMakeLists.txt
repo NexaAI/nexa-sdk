@@ -168,6 +168,10 @@ enable_testing()
 #   GEMV to the 1row kernel when CL_KERNEL_WORK_GROUP_SIZE is below the 64x16
 #   work-group it launches. Adreno 663 caps it at 896, so clEnqueueNDRangeKernel
 #   returned -54 and aborted gemma-4 on IQ-9075.
+# * llama-opencl-adreno-q4k-large-image.patch routes Q4_K weights whose quant plane
+#   exceeds CL_DEVICE_IMAGE_MAX_BUFFER_SIZE to the flat GEMV. Adreno 663 caps it at
+#   2^26 texels; gemma-4-E4B token_embd (2560x262144) needs 83886080, so
+#   clCreateImage returned -40 and aborted.
 if(GENIEX_PLUGIN_LLAMA_CPP)
     set(_LLAMA_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/../third-party/llama.cpp")
     set(_LLAMA_PATCHES)
@@ -180,7 +184,8 @@ if(GENIEX_PLUGIN_LLAMA_CPP)
         list(APPEND _LLAMA_PATCHES
             "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-opencl-adreno-cpy-constreg.patch"
             "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-opencl-adreno-xmem-gemm-off.patch"
-            "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-opencl-adreno-f16-mrow-wgsize.patch")
+            "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-opencl-adreno-f16-mrow-wgsize.patch"
+            "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-opencl-adreno-q4k-large-image.patch")
     endif()
     find_package(Git QUIET REQUIRED)
     foreach(_LLAMA_PATCH ${_LLAMA_PATCHES})
