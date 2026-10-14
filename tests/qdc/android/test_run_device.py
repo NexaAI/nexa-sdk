@@ -5,15 +5,14 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import android_deploy
 
 PAYLOAD = Path(__file__).parents[1] / 'payload'
-DEVICE_JUNIT_HOST = 'device-results.xml'
 DEVICE_REPORT_HOST = 'device-report.log'
-DEVICE_JUNIT_ON_PHONE = f'{android_deploy.DEV_TESTS}/{DEVICE_JUNIT_HOST}'
-DEVICE_REPORT_ON_PHONE = f'{android_deploy.DEV_TESTS}/{DEVICE_REPORT_HOST}'
+MAX_RUNS = 10
 
 PYTEST_ARGS = [
     '.',
@@ -22,17 +21,44 @@ PYTEST_ARGS = [
     '--tb=short',
     '-m',
     'llama_cpp or qairt',
-    f'--junitxml={DEVICE_JUNIT_HOST}',
-    f'--report-log={DEVICE_REPORT_HOST}',
 ]
+
+
+def _nodeids(report_log: bytes) -> list[str]:
+    ids: dict[str, None] = {}
+    for line in report_log.splitlines():
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if rec.get('$report_type') == 'TestReport' and rec.get('nodeid'):
+            ids[rec['nodeid']] = None
+    return list(ids)
+
+
+def _run_once(index: int, deselect: list[str]) -> tuple[int, bytes]:
+    name = f'device-report.{index}.log'
+    on_phone = f'{android_deploy.DEV_TESTS}/{name}'
+    rc = android_deploy.run_pytest([*PYTEST_ARGS, f'--report-log={name}', *[f'--deselect={n}' for n in deselect]])
+    android_deploy.adb('pull', on_phone, name, check=False)
+    path = Path(name)
+    return rc, path.read_bytes() if path.exists() else b''
 
 
 def test_run_device():
     android_deploy.deploy(PAYLOAD)
-    rc = android_deploy.run_pytest(PYTEST_ARGS)
-    # Pull xml/report-log if they exist; host-side run_qdc_pytest.py falls back to
-    # parsing the appium stdout when neither survives (Fatal Python + QDC's log
-    # collector doesn't reach the device's cwd).
-    android_deploy.adb('pull', DEVICE_JUNIT_ON_PHONE, DEVICE_JUNIT_HOST, check=False)
-    android_deploy.adb('pull', DEVICE_REPORT_ON_PHONE, DEVICE_REPORT_HOST, check=False)
-    assert rc == 0, f'on-device pytest exited {rc}'
+    # A native abort kills the device shell and every later case with it, so relaunch
+    # pytest without the cases that already started until the whole suite has run.
+    merged = b''
+    seen: list[str] = []
+    rcs: list[int] = []
+    for index in range(MAX_RUNS):
+        rc, data = _run_once(index, seen)
+        merged += data if data.endswith(b'\n') or not data else data + b'\n'
+        rcs.append(rc)
+        done = _nodeids(merged)
+        if rc in (0, 1) or len(done) == len(seen):
+            break
+        seen = done
+    Path(DEVICE_REPORT_HOST).write_bytes(merged)
+    assert all(rc == 0 for rc in rcs), f'on-device pytest exited {rcs}'

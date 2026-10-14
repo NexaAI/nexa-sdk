@@ -13,7 +13,7 @@ BUNDLE=$TC/pkg-geniex
 mkdir -p "$LOG"
 exec > "$LOG/harness.log" 2>&1
 
-python3 -m pip install --user --no-warn-script-location "pytest>=7.0" "pytest-reportlog>=0.4" "tqdm>=4.65"
+python3 -m pip install --user --no-warn-script-location "pytest>=7.0" "pytest-reportlog>=0.4" "pytest-xdist>=3.5" "tqdm>=4.65"
 
 cd "$BUNDLE" || { echo "FATAL: bundle missing at $BUNDLE"; exit 1; }
 chmod +x bin/* 2>/dev/null
@@ -32,7 +32,8 @@ python3 -c "import geniex; geniex.init(); geniex.deinit()" || {
 }
 
 cd "$TC/tests"
-python3 -m pytest . -v \
+# One xdist worker: a native abort fails that case and the run continues on a fresh worker.
+python3 -m pytest . -v -n 1 --max-worker-restart=100 \
     --tb=short \
     --junitxml="$LOG/device-results.xml" \
     --report-log="$LOG/device-report.log" \
