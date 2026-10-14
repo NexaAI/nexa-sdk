@@ -43,8 +43,7 @@ static void busy_wait_us(int32_t us) {
 #endif
 }
 
-/* Monotonic wall-clock, microseconds since an arbitrary epoch. Only ever
- * differenced against another now_us() call. */
+/* Monotonic microseconds; only meaningful as a difference. */
 static int64_t now_us(void) {
 #ifdef _WIN32
     LARGE_INTEGER freq, t;
@@ -58,11 +57,9 @@ static int64_t now_us(void) {
 #endif
 }
 
-/* Per-generate()-call state for on_token's self-abort guard. Allocated fresh
- * for every call in run_llm/run_vlm so one prompt's repeat/timing state never
- * leaks into the next. `o` is only read, never owned. */
-#define NGRAM_MAX_PERIOD 256 /* longest looping block (in tokens) --ngram-max-repeats can see */
-#define NGRAM_MIN_SPAN 64    /* ignore loops whose total span (period x repeats) is shorter than this */
+/* Per-generate() state for on_token's self-abort guard. */
+#define NGRAM_MAX_PERIOD 256
+#define NGRAM_MIN_SPAN 64 /* ignore loops shorter than this many tokens */
 
 typedef struct {
     const options_t* o;
@@ -71,9 +68,9 @@ typedef struct {
     char             last_token_buf[256];
     int32_t          repeat_count;
     int32_t          n_tokens;
-    uint64_t         hist[NGRAM_MAX_PERIOD + 1]; /* ring of the last tokens' hashes */
-    int32_t     match[NGRAM_MAX_PERIOD + 1];     /* match[p]: consecutive tokens equal to the one p positions earlier */
-    const char* abort_reason; /* "wall-time" | "no-progress" | "repetition" | "ngram" | "signal"; NULL if not tripped */
+    uint64_t         hist[NGRAM_MAX_PERIOD + 1];
+    int32_t          match[NGRAM_MAX_PERIOD + 1];
+    const char*      abort_reason; /* NULL if not tripped */
 } token_guard_t;
 
 static void token_guard_init(token_guard_t* g, const options_t* o) {
@@ -84,18 +81,16 @@ static void token_guard_init(token_guard_t* g, const options_t* o) {
 }
 
 static uint64_t hash_token(const char* s) {
-    uint64_t h = 1469598103934665603ULL; /* FNV-1a */
+    uint64_t h = 1469598103934665603ULL;
     for (; *s; s++) {
         h = (h ^ (uint8_t)*s) * 1099511628211ULL;
     }
     return h;
 }
 
-/* Feed one token; true once a block of <= NGRAM_MAX_PERIOD tokens has repeated
- * o->ngram_max_repeats times back to back. A block with period p repeated k
- * times is a run of p*(k-1) positions that each equal the token p earlier. */
+/* True once a block of <= NGRAM_MAX_PERIOD tokens repeats ngram_max_repeats times back to back. */
 static bool ngram_loop_detected(token_guard_t* g, const char* token) {
-    int32_t   n       = g->n_tokens; /* index of this token */
+    int32_t   n       = g->n_tokens;
     uint64_t  h       = hash_token(token);
     const int ring    = NGRAM_MAX_PERIOD + 1;
     g->hist[n % ring] = h;
@@ -114,12 +109,7 @@ static bool ngram_loop_detected(token_guard_t* g, const char* token) {
     return hit;
 }
 
-/* --max-gen-time-s / --no-progress-timeout-s / --repetition-max-repeats /
- * SIGTERM-SIGABRT guard, checked in that order on every token. Each one
- * defaults to 0 = disabled. Returning false here is the SDK's documented
- * clean-abort path: generate() returns success with stop_reason="user" and
- * whatever text was accumulated so far, so a tripped guard is a clean exit,
- * not a crash. */
+/* Returning false aborts generate() cleanly (stop_reason="user", partial output kept). */
 static bool on_token(const char* token, void* user_data) {
     token_guard_t*   g = (token_guard_t*)user_data;
     const options_t* o = g->o;
@@ -163,10 +153,7 @@ static bool on_token(const char* token, void* user_data) {
     return true;
 }
 
-/* Print the two --accuracy stdout markers for one generate() call: the SDK's
- * own stop_reason (always, fixing the "grading summary misreports the cause"
- * gap even for the plain max-tokens/length case) and, only when the guard
- * tripped, the self-abort line the orchestrator greps for. */
+/* --accuracy markers: stop_reason, plus a self-abort line if the guard tripped. */
 static void print_stop_markers(const token_guard_t* g, const geniex_ProfileData* p) {
     fprintf(stdout, "[info] stop_reason=%s\n", p->stop_reason ? p->stop_reason : "?");
     if (g->abort_reason) {
