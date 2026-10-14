@@ -164,6 +164,10 @@ enable_testing()
 #   context (quality/logits-parity tests pass individually, fail once several
 #   gpu/hybrid models have loaded in one process); upstream's own
 #   GGML_OPENCL_ADRENO_XMEM_GEMM=0 override confirms the fix.
+# * llama-opencl-adreno-f16-mrow-wgsize.patch falls back from the f16 mrow decode
+#   GEMV to the 1row kernel when CL_KERNEL_WORK_GROUP_SIZE is below the 64x16
+#   work-group it launches. Adreno 663 caps it at 896, so clEnqueueNDRangeKernel
+#   returned -54 and aborted gemma-4 on IQ-9075.
 if(GENIEX_PLUGIN_LLAMA_CPP)
     set(_LLAMA_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/../third-party/llama.cpp")
     set(_LLAMA_PATCHES)
@@ -175,7 +179,8 @@ if(GENIEX_PLUGIN_LLAMA_CPP)
     if(GGML_OPENCL)
         list(APPEND _LLAMA_PATCHES
             "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-opencl-adreno-cpy-constreg.patch"
-            "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-opencl-adreno-xmem-gemm-off.patch")
+            "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-opencl-adreno-xmem-gemm-off.patch"
+            "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-opencl-adreno-f16-mrow-wgsize.patch")
     endif()
     find_package(Git QUIET REQUIRED)
     foreach(_LLAMA_PATCH ${_LLAMA_PATCHES})
