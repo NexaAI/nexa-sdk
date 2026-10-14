@@ -15,7 +15,7 @@ use std::time::Duration;
 use model_manager_core::transport::{HttpTransport, ReqwestTransport, TransportConfig};
 use tokio::io::AsyncWriteExt;
 use url::Url;
-use wiremock::matchers::{method, path};
+use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 fn fast_cfg() -> TransportConfig {
@@ -70,6 +70,33 @@ async fn get_range_writes_exact_bytes() {
     sink.flush().await.unwrap();
 
     assert_eq!(sink, slice);
+}
+
+#[tokio::test]
+async fn get_range_continues_short_read_with_suffix_range() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/continuation"))
+        .and(header("range", "bytes=0-7"))
+        .respond_with(ResponseTemplate::new(206).set_body_bytes(b"abc".to_vec()))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/continuation"))
+        .and(header("range", "bytes=3-7"))
+        .respond_with(ResponseTemplate::new(206).set_body_bytes(b"defgh".to_vec()))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cfg = fast_cfg();
+    cfg.retries = Some(1);
+    let t = ReqwestTransport::with_config(cfg).unwrap();
+    let url = Url::parse(&format!("{}/continuation", server.uri())).unwrap();
+    let mut sink: Vec<u8> = Vec::new();
+    t.get_range(&url, None, 0, 8, &mut sink).await.unwrap();
+    assert_eq!(sink, b"abcdefgh");
 }
 
 #[tokio::test]

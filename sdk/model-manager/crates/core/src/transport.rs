@@ -39,8 +39,8 @@ pub trait HttpTransport: Send + Sync {
     async fn head(&self, url: &Url, auth: Option<&str>) -> Result<HeadInfo>;
 
     /// Stream bytes `[offset, offset+len)` from `url` into `sink`. Must
-    /// write exactly `len` bytes; short reads or EOF mid-stream are
-    /// surfaced as [`crate::error::Error::Http`] so the engine can retry.
+    /// write exactly `len` bytes; clean short reads are retried by the
+    /// transport, while stream and sink errors are surfaced immediately.
     async fn get_range(
         &self,
         url: &Url,
@@ -221,10 +221,11 @@ impl HttpTransport for ReqwestTransport {
         }
 
         let end_inclusive = offset + len - 1;
-        let range = format!("bytes={}-{}", offset, end_inclusive);
-
+        let mut written = 0u64;
         let mut attempt = 0u32;
         loop {
+            let request_offset = offset + written;
+            let range = format!("bytes={request_offset}-{end_inclusive}");
             let mut req = self.client.get(url.clone()).header(RANGE, range.clone());
             if let Some(tok) = auth {
                 req = req.header(AUTHORIZATION, format!("Bearer {tok}"));
@@ -250,10 +251,10 @@ impl HttpTransport for ReqwestTransport {
                 crate::logging::warn(&format!("get_range retry {attempt}: status {status}"));
                 continue;
             }
-            // 200 is accepted only if the server returned the full body
-            // and we asked for offset==0; otherwise we need 206.
-            let ok =
-                status == StatusCode::PARTIAL_CONTENT || (status == StatusCode::OK && offset == 0);
+            // 200 is accepted only for the initial request at offset zero;
+            // continuation requests must be 206.
+            let ok = status == StatusCode::PARTIAL_CONTENT
+                || (status == StatusCode::OK && request_offset == 0);
             if !ok {
                 return Err(Error::HttpStatus {
                     url: url.to_string(),
@@ -261,7 +262,6 @@ impl HttpTransport for ReqwestTransport {
                 });
             }
 
-            let mut written: u64 = 0;
             loop {
                 // The executor passes freshly-seeked sinks, so a
                 // mid-stream error always means "retry this range" —
@@ -272,6 +272,12 @@ impl HttpTransport for ReqwestTransport {
                     .await
                     .map_err(|e| Error::HttpTimeout(format!("stream {url} {range}: {e}")))?;
                 let Some(bytes) = chunk else { break };
+                let remaining = len - written;
+                if bytes.len() as u64 > remaining {
+                    return Err(Error::Http(format!(
+                        "GET {url} {range}: response chunk exceeds remaining {remaining} bytes"
+                    )));
+                }
                 sink.write_all(&bytes)
                     .await
                     .map_err(|e| Error::Http(format!("write sink: {e}")))?;
@@ -291,7 +297,7 @@ impl HttpTransport for ReqwestTransport {
                     continue;
                 }
                 return Err(Error::Http(format!(
-                    "short read {url} {range}: got {written} / expected {len}"
+                    "short read {url} bytes={offset}-{end_inclusive}: got {written} / expected {len}"
                 )));
             }
             return Ok(());
