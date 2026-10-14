@@ -19,6 +19,11 @@
 
 namespace geniex {
 
+namespace {
+constexpr size_t  kOpenClSmallAllocLimit       = size_t{1} << 30;
+constexpr int32_t kOpenClSmallAllocImageTokens = 1024;
+}  // namespace
+
 LlamaVlm::~LlamaVlm() {
     // ctx_vision and ctx hold pointers into model; free them first.
     if (this->ctx_vision) {
@@ -120,6 +125,12 @@ int32_t LlamaVlm::create(const geniex_VlmCreateInput* input) {
         mparams.print_timings   = false;
         mparams.n_threads       = cpar.n_threads;
         mparams.flash_attn_type = cpar.flash_attn_type;
+        if (vision_device && std::strncmp(ggml_backend_dev_name(vision_device), "GPUOpenCL", 9) == 0 &&
+            ggml_backend_buft_get_max_size(ggml_backend_dev_buffer_type(vision_device)) <= kOpenClSmallAllocLimit) {
+            // The fixed warmup graph needs a multi-GiB attention buffer; mtmd ignores the failed reserve and crashes.
+            mparams.warmup           = false;
+            mparams.image_max_tokens = kOpenClSmallAllocImageTokens;
+        }
         // Zack TODO: elegant fix this error:  no member named 'verbosity' in 'mtmd_context_params'
         // mparams.verbosity           = GGML_LOG_LEVEL_ERROR;
 
