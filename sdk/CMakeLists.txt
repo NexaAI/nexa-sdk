@@ -157,7 +157,10 @@ enable_testing()
 #   same fix is applied to kernel_add: the strength-reduced
 #   get_local_size(0) * nb0X step emits an equivalent UMULLrr, hit on a
 #   QCS9075 board (Adreno driver 1.855.3) during VLM inference. See
-#   qcom-ai-hub/geniex#1566.
+#   qcom-ai-hub/geniex#1566. The Q4_K noshuffle GEMV workaround
+#   (ADRENO_6XX_Q4K_CONSTREG_WORKAROUND) is enabled on every Adreno 6xx
+#   (originally only 643); Adreno 663 on IQ-9075 hits the same UMULLrr on
+#   BLOCK_STRIDE_A at kernel load, aborting every GPU run.
 # * llama-zero-free-mem-even-split.patch keeps load_tensors from throwing when
 #   every device reports 0 free memory: the splits normalize to NaN and the
 #   device lookup runs off the end. Adreno 643 on QCS6490 hits it because the
