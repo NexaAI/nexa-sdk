@@ -1,7 +1,7 @@
 // Copyright 2024-2026 Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause
 
-package jev
+package decision
 
 import (
 	"context"
@@ -70,7 +70,7 @@ func (d VLMDecider) Classify(ctx context.Context, spec ClassificationSpec) (Clas
 }
 
 // ClassifyWithTiming returns a validated classification and the native SDK plus
-// host-side JEV timing for the same model invocation.
+// host-side decision timing for the same model invocation.
 func (d VLMDecider) ClassifyWithTiming(ctx context.Context, spec ClassificationSpec) (ClassificationResult, DecisionTiming, error) {
 	started := time.Now()
 	user, grammar, err := classificationRequest(spec)
@@ -94,7 +94,7 @@ func (d LLMDecider) Classify(ctx context.Context, spec ClassificationSpec) (Clas
 }
 
 // ClassifyWithTiming returns a validated classification and the native SDK plus
-// host-side JEV timing for the same model invocation.
+// host-side decision timing for the same model invocation.
 func (d LLMDecider) ClassifyWithTiming(ctx context.Context, spec ClassificationSpec) (ClassificationResult, DecisionTiming, error) {
 	started := time.Now()
 	if len(spec.ImagePaths) != 0 {
@@ -178,13 +178,13 @@ type MultipleChoiceSpec struct {
 
 // MultipleChoiceResult is an untrusted, validated candidate option selection.
 type MultipleChoiceResult struct {
-	SelectedIDs []string     `json:"selected_ids"`
+	SelectedIDs []string    `json:"selected_ids"`
 	Confidence  *Confidence `json:"confidence,omitempty"`
 }
 
 type multipleChoiceWire struct {
-	SelectedIDs []string   `json:"selected_ids"`
-	Confidence  *float32   `json:"confidence,omitempty"`
+	SelectedIDs []string `json:"selected_ids"`
+	Confidence  *float32 `json:"confidence,omitempty"`
 }
 
 // Choose asks the VLM to select IDs from the caller's closed option set.
@@ -194,7 +194,7 @@ func (d VLMDecider) Choose(ctx context.Context, spec MultipleChoiceSpec) (Multip
 }
 
 // ChooseWithTiming returns a validated choice and the native SDK plus host-side
-// JEV timing for the same model invocation.
+// decision timing for the same model invocation.
 func (d VLMDecider) ChooseWithTiming(ctx context.Context, spec MultipleChoiceSpec) (MultipleChoiceResult, DecisionTiming, error) {
 	started := time.Now()
 	user, grammar, err := multipleChoiceRequest(spec)
@@ -217,7 +217,7 @@ func (d LLMDecider) Choose(ctx context.Context, spec MultipleChoiceSpec) (Multip
 }
 
 // ChooseWithTiming returns a validated choice and the native SDK plus host-side
-// JEV timing for the same model invocation.
+// decision timing for the same model invocation.
 func (d LLMDecider) ChooseWithTiming(ctx context.Context, spec MultipleChoiceSpec) (MultipleChoiceResult, DecisionTiming, error) {
 	started := time.Now()
 	if len(spec.ImagePaths) != 0 {

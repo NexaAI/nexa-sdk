@@ -117,7 +117,7 @@ func RootCmd() *cobra.Command {
 	rootCmd.AddCommand(
 		pull(), remove(), clean(), list(),
 		modelCmd(),
-		infer(), jevCmd(),
+		infer(), decideCmd(),
 		serve(), run(),
 		configCmd(),
 		version(), update(),

@@ -1,7 +1,7 @@
 // Copyright 2024-2026 Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause
 
-package jev
+package decision
 
 import (
 	"context"
@@ -122,7 +122,7 @@ func TestChooseValidatesSelectionSet(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			model := &fakeVLM{response: &geniex_sdk.VlmGenerateOutput{FullText: test.body}}
 			result, err := (VLMDecider{VLM: model}).Choose(context.Background(), MultipleChoiceSpec{
-				Options: []Option{{ID: "a", Text: "First"}, {ID: "b", Text: "Second"}},
+				Options:      []Option{{ID: "a", Text: "First"}, {ID: "b", Text: "Second"}},
 				Instructions: "Select one.",
 			})
 			if (err == nil) != test.ok {
@@ -234,59 +234,5 @@ func TestClassifyWithTimingPreservesProfile(t *testing.T) {
 	// profile propagation, not a non-zero duration, is the contract under test.
 	if timing.TotalTime < 0 || timing.GenerationTime < 0 {
 		t.Fatalf("timing = %#v", timing)
-	}
-}
-
-func TestTriageBuildsOneConstrainedDecision(t *testing.T) {
-	model := &fakeLLM{response: &geniex_sdk.LlmGenerateOutput{FullText: `{"intent":"refund","is_urgent":"no","frustration":"2","refund_requested":"yes","churn_risk":"no"}`}}
-	result, timing, err := (LLMDecider{LLM: model, RuntimeID: geniex_sdk.RuntimeLlamaCpp}).TriageWithTiming(context.Background(), TriageSpec{
-		Message: "I was charged twice this month and want a refund",
-	})
-	if err != nil {
-		t.Fatalf("TriageWithTiming() error = %v", err)
-	}
-	if result != (TriageResult{Intent: "refund", IsUrgent: "no", Frustration: "2", RefundRequested: "yes", ChurnRisk: "no"}) {
-		t.Fatalf("result = %#v", result)
-	}
-	if timing.PromptHash == "" || timing.PromptVersion != promptVersion {
-		t.Fatalf("prompt provenance = %#v", timing)
-	}
-	if len(model.templateInput.Messages) != 2 || !strings.Contains(model.templateInput.Messages[1].Content, "Untrusted customer message") {
-		t.Fatalf("messages = %#v", model.templateInput.Messages)
-	}
-	sampler := model.generateInput.Config.SamplerConfig
-	if !strings.Contains(sampler.GrammarString, `\"refund\"`) || !strings.Contains(sampler.GrammarString, `\"churn_risk\"`) {
-		t.Fatalf("sampler = %#v", sampler)
-	}
-}
-
-func TestTriageRejectsInvalidRecords(t *testing.T) {
-	for _, test := range []struct {
-		name string
-		body string
-	}{
-		{"unknown intent", `{"intent":"escalate","is_urgent":"no","frustration":"2","refund_requested":"yes","churn_risk":"no"}`},
-		{"invalid binary", `{"intent":"refund","is_urgent":"maybe","frustration":"2","refund_requested":"yes","churn_risk":"no"}`},
-		{"invalid score", `{"intent":"refund","is_urgent":"no","frustration":"4","refund_requested":"yes","churn_risk":"no"}`},
-		{"missing field", `{"intent":"refund","is_urgent":"no","frustration":"2","refund_requested":"yes"}`},
-		{"unknown field", `{"intent":"refund","is_urgent":"no","frustration":"2","refund_requested":"yes","churn_risk":"no","extra":true}`},
-		{"duplicate field", `{"intent":"refund","intent":"other","is_urgent":"no","frustration":"2","refund_requested":"yes","churn_risk":"no"}`},
-		{"trailing prose", `{"intent":"refund","is_urgent":"no","frustration":"2","refund_requested":"yes","churn_risk":"no"} done`},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			model := &fakeLLM{response: &geniex_sdk.LlmGenerateOutput{FullText: test.body}}
-			_, err := (LLMDecider{LLM: model}).Triage(context.Background(), TriageSpec{Message: "message"})
-			if err == nil {
-				t.Fatalf("Triage() accepted %s", test.body)
-			}
-		})
-	}
-}
-
-func TestLLMDeciderTriageRejectsImageInput(t *testing.T) {
-	model := &fakeLLM{}
-	_, err := (LLMDecider{LLM: model}).Triage(context.Background(), TriageSpec{Message: "message", ImagePaths: []string{"image.png"}})
-	if err == nil {
-		t.Fatal("Triage() accepted image input for an LLM")
 	}
 }

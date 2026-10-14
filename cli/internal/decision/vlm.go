@@ -1,7 +1,7 @@
 // Copyright 2024-2026 Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause
 
-package jev
+package decision
 
 import (
 	"context"
@@ -20,8 +20,8 @@ type VLM interface {
 
 // VLMRequest is the caller-owned prompt and media for one untrusted candidate.
 type VLMRequest struct {
-	System          string
-	User            string
+	System     string
+	User       string
 	ImagePaths []string
 	Grammar    string
 	MaxTokens  int32
@@ -30,8 +30,9 @@ type VLMRequest struct {
 // VLMDecider creates constrained structured candidates. It has no execution,
 // approval, browser, shell, or filesystem-management capability.
 type VLMDecider struct {
-	VLM       VLM
-	RuntimeID string
+	VLM               VLM
+	RuntimeID         string
+	GenerationOptions GenerationOptions
 }
 
 // Decide returns raw model output for strict host-side parsing. A non-empty
@@ -72,22 +73,12 @@ func (d VLMDecider) DecideWithTiming(_ context.Context, request VLMRequest) (str
 	if err != nil {
 		return "", DecisionTiming{TemplateTime: templateTime, TotalTime: time.Since(started), PromptHash: promptHash, PromptVersion: promptVersion}, fmt.Errorf("apply VLM chat template: %w", err)
 	}
-	maxTokens := request.MaxTokens
-	if maxTokens <= 0 {
-		maxTokens = 128
-	}
-	sampler := &geniex_sdk.SamplerConfig{Temperature: 0}
-	if d.RuntimeID == geniex_sdk.RuntimeLlamaCpp && request.Grammar != "" {
-		sampler.GrammarString = request.Grammar
-	}
 	generationStarted := time.Now()
 	response, err := d.VLM.Generate(geniex_sdk.VlmGenerateInput{
 		PromptUTF8: template.FormattedText,
-		Config: &geniex_sdk.GenerationConfig{
-			MaxTokens:     maxTokens,
-			ImagePaths:    request.ImagePaths,
-			SamplerConfig: sampler,
-		},
+		Config: d.GenerationOptions.generationConfig(
+			request.MaxTokens, request.Grammar, d.RuntimeID, request.ImagePaths,
+		),
 	})
 	timing := DecisionTiming{TemplateTime: templateTime, GenerationTime: time.Since(generationStarted), TotalTime: time.Since(started), PromptHash: promptHash, PromptVersion: promptVersion}
 	if response != nil {

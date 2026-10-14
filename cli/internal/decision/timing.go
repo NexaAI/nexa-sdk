@@ -1,7 +1,7 @@
 // Copyright 2024-2026 Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause
 
-package jev
+package decision
 
 import (
 	"crypto/sha256"
@@ -11,7 +11,7 @@ import (
 	geniex_sdk "github.com/qualcomm/GenieX/bindings/go"
 )
 
-// DecisionTiming separates SDK-reported generation timing from host-side JEV
+// DecisionTiming separates SDK-reported generation timing from host-side decision
 // work. ProfileData measures native inference only; the wall-clock fields also
 // include template formatting and local structured-output validation.
 type DecisionTiming struct {
@@ -21,12 +21,12 @@ type DecisionTiming struct {
 	TotalTime      time.Duration
 	// PromptHash identifies the exact system/user prompt pair without retaining
 	// its potentially untrusted or sensitive content. PromptVersion changes when
-	// the JEV prompt contract changes.
+	// the decision prompt contract changes.
 	PromptHash    string
 	PromptVersion string
 }
 
-const promptVersion = "jev-structured-v1"
+const promptVersion = "decide-structured-v1"
 
 func promptProvenance(system, user string) (string, string) {
 	sum := sha256.Sum256([]byte(system + "\x00" + user))

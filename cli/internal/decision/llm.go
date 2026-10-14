@@ -1,7 +1,7 @@
 // Copyright 2024-2026 Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause
 
-package jev
+package decision
 
 import (
 	"context"
@@ -28,8 +28,9 @@ type LLMRequest struct {
 // LLMDecider creates constrained text-only structured candidates. It does not
 // accept image paths and cannot execute, approve, or authorize side effects.
 type LLMDecider struct {
-	LLM       LLM
-	RuntimeID string
+	LLM               LLM
+	RuntimeID         string
+	GenerationOptions GenerationOptions
 }
 
 // Decide returns raw model output for strict host-side parsing. A non-empty
@@ -63,18 +64,12 @@ func (d LLMDecider) DecideWithTiming(_ context.Context, request LLMRequest) (str
 	if err != nil {
 		return "", DecisionTiming{TemplateTime: templateTime, TotalTime: time.Since(started), PromptHash: promptHash, PromptVersion: promptVersion}, fmt.Errorf("apply LLM chat template: %w", err)
 	}
-	maxTokens := request.MaxTokens
-	if maxTokens <= 0 {
-		maxTokens = 128
-	}
-	sampler := &geniex_sdk.SamplerConfig{Temperature: 0}
-	if d.RuntimeID == geniex_sdk.RuntimeLlamaCpp && request.Grammar != "" {
-		sampler.GrammarString = request.Grammar
-	}
 	generationStarted := time.Now()
 	response, err := d.LLM.Generate(geniex_sdk.LlmGenerateInput{
 		PromptUTF8: template.FormattedText,
-		Config:     &geniex_sdk.GenerationConfig{MaxTokens: maxTokens, SamplerConfig: sampler},
+		Config: d.GenerationOptions.generationConfig(
+			request.MaxTokens, request.Grammar, d.RuntimeID, nil,
+		),
 	})
 	timing := DecisionTiming{TemplateTime: templateTime, GenerationTime: time.Since(generationStarted), TotalTime: time.Since(started), PromptHash: promptHash, PromptVersion: promptVersion}
 	if response != nil {

@@ -72,21 +72,23 @@ geniex infer ai-hub-models/Qwen2.5-VL-7B-Instruct
 # GGUF from Docker Hub (https://hub.docker.com/u/ai) → llama.cpp (NPU / GPU / CPU)
 geniex infer docker.io/ai/gemma3
 
-# JEV closed-set text or visual decision. Output is locally validated JSON.
-geniex jev google/gemma-4-E4B-it-qat-q4_0-gguf classify \
+# Closed-set text or visual decision. Output is locally validated JSON.
+geniex decide google/gemma-4-E4B-it-qat-q4_0-gguf classify \
   --label capital_of_france \
   --label capital_of_germany \
   --label unknown \
   --instruction "Choose the label that correctly answers the question." \
   --context "What is the capital of France?"
 
-# Experimental JEV visual browser agent (uses a VLM and prompts before side effects)
-geniex jev google/gemma-4-E4B-it-qat-q4_0-gguf browser \
-  --task "Find the GenieX documentation" \
-  --url https://github.com/qualcomm/GenieX
+# Multiple choice returns stable option IDs, not display text.
+geniex decide google/gemma-4-E4B-it-qat-q4_0-gguf choose \
+  --option paris=Paris \
+  --option berlin=Berlin \
+  --instruction "Select the capital of France." \
+  --context "Question: What is the capital of France?"
 ```
 
-📖 **Docs** — [Install](https://geniex.aihub.qualcomm.com/en/run/cli/install) · [Quickstart](https://geniex.aihub.qualcomm.com/en/run/cli/quickstart) · [Command reference](https://geniex.aihub.qualcomm.com/en/run/cli/reference) · [JEV structured decisions and browser agent](notes/jev.md)
+📖 **Docs** — [Install](https://geniex.aihub.qualcomm.com/en/run/cli/install) · [Quickstart](https://geniex.aihub.qualcomm.com/en/run/cli/quickstart) · [Command reference](https://geniex.aihub.qualcomm.com/en/run/cli/reference) · [Structured decisions](notes/decide.md)
 
 ### Python
 
