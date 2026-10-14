@@ -241,6 +241,9 @@ int32_t QairtLlm::generate(const geniex_LlmGenerateInput* input, geniex_LlmGener
     if (input->config) {
         gen_cfg.max_tokens = input->config->max_tokens > 0 ? input->config->max_tokens : 512;
         qairt::apply_sampler_config(input->config->sampler_config, gen_cfg, bundle_sampler_);
+        if (input->config->sampler_config && input->config->sampler_config->ignore_eos) {
+            GENIEX_LOG_WARN("ignore_eos is not supported by the QAIRT plugin; EOS still ends generation");
+        }
 
         // Stop sequences are handled natively by the pipeline's generateTokens
         // (byte-level matching across tokens, mirroring llama_cpp).

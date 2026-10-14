@@ -62,6 +62,7 @@ static void fill_sampler(geniex_SamplerConfig* s, const options_t* o) {
     s->min_p              = 0.0f;
     s->repetition_penalty = 1.0f;
     s->seed               = o->seed;
+    s->ignore_eos         = !o->accuracy; /* llama-bench semantics: timing runs always generate n_gen tokens */
 }
 
 static void fill_gen_config(geniex_GenerationConfig* g, geniex_SamplerConfig* s, const options_t* o, bool with_media) {

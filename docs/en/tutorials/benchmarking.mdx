@@ -105,7 +105,7 @@ The minimum required flags are `--plugin`, `--device`, and `-m`. The model argum
   </Tab>
 </Tabs>
 
-By default `geniex-bench` runs **1 warmup + 5 measured repetitions** with 512 random input tokens and generates 128 tokens at temperature 0.0 (deterministic). Numbers are aggregated as median ± stdev across the 5 runs.
+By default `geniex-bench` runs **1 warmup + 5 measured repetitions** with 512 random input tokens and generates 128 tokens at temperature 0.0 (deterministic). Numbers are aggregated as median ± stdev across the 5 runs. Like `llama-bench`, timing runs never stop early on an end-of-sequence token, so every run generates exactly `-n` tokens (`llama_cpp` plugin; `--accuracy` runs still stop on EOS).
 
 ## **Step 3: Compare compute backends**
 
