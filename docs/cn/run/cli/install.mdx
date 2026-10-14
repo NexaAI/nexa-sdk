@@ -14,6 +14,13 @@ CLI 提供 Windows ARM64 原生可执行文件，以及面向跃龙 QCS9075 等 
     - 骁龙 X 系列芯片（X Elite 或 X2 Elite）。详见[支持的平台](/cn/get-started/platforms)。
     - PowerShell 或任意 Windows ARM64 上可用的 shell。
 
+    ### **更新 NPU 与 GPU 驱动**
+
+    运行 GenieX 前，请安装最新的 Qualcomm 驱动：
+
+    1. **Adreno GPU** —— 下载最新的 [Windows Graphics Driver](https://softwarecenter.qualcomm.com/catalog/item/Windows_Graphics_Driver)，运行安装程序，然后重启 Windows。在 **设备管理器** 中，确认 GPU 显示在 **显示适配器** 下。
+    2. **Hexagon NPU** —— 下载最新的 [Qualcomm NPU Driver](https://softwarecenter.qualcomm.com/catalog/item/Qualcomm_HND)，运行安装程序，然后重启 Windows。在 **设备管理器** 中，确认 Hexagon NPU 显示在 **神经处理器** 下。
+
     ### **下载**
 
     <Card title="GenieX CLI installer" icon="download" href="https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-geniex/geniex-cli.exe">

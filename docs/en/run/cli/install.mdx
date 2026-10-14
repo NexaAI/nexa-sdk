@@ -14,6 +14,13 @@ The CLI ships as a native Windows ARM64 executable, and as a Linux ARM64 Docker 
     - Snapdragon X-series chipset (X Elite or X2 Elite). See [Supported platforms](/en/get-started/platforms).
     - PowerShell or any shell available on Windows ARM64.
 
+    ### **Update NPU and GPU drivers**
+
+    Install the latest Qualcomm drivers before running GenieX:
+
+    1. **Adreno GPU** — Download the latest [Windows Graphics Driver](https://softwarecenter.qualcomm.com/catalog/item/Windows_Graphics_Driver), run the installer, and restart Windows. In **Device Manager**, confirm that the GPU appears under **Display adapters**.
+    2. **Hexagon NPU** — Download the latest [Qualcomm NPU Driver](https://softwarecenter.qualcomm.com/catalog/item/Qualcomm_HND), run the installer, and restart Windows. In **Device Manager**, confirm that the Hexagon NPU appears under **Neural processors**.
+
     ### **Download**
 
     <Card title="GenieX CLI installer" icon="download" href="https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-geniex/geniex-cli.exe">
