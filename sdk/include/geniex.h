@@ -467,6 +467,7 @@ typedef struct {
     int32_t     seed;               /* Random seed (-1 for random) */
     geniex_Path grammar_path;       /* Optional grammar file path */
     const char* grammar_string;     /* Optional grammar string (BNF-like format) */
+    bool        ignore_eos;         /* Never sample EOS/EOG, so generation runs to max_tokens (llama_cpp only) */
 } geniex_SamplerConfig;
 
 /** LLM / VLM generation configuration (IMPROVED: support multiple images and audios) */

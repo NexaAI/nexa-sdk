@@ -4,6 +4,7 @@
 #include "llm.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
@@ -816,7 +817,15 @@ void LlamaLlm::set_sampler(const geniex_SamplerConfig* cfg) {
         this->sampler = nullptr;
     }
     common_params_sampling s = build_sampling_params(cfg);
-    this->sampler            = common_sampler_init(this->model, s);
+    if (cfg && cfg->ignore_eos) {
+        const llama_vocab* vocab = llama_model_get_vocab(this->model);
+        for (llama_token id = 0; id < llama_vocab_n_tokens(vocab); ++id) {
+            if (llama_vocab_is_eog(vocab, id)) {
+                s.logit_bias.push_back({id, -INFINITY});
+            }
+        }
+    }
+    this->sampler = common_sampler_init(this->model, s);
 }
 
 void LlamaLlm::teardown_speculative() {

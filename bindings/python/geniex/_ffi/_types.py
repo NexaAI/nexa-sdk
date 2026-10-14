@@ -75,6 +75,7 @@ class geniex_SamplerConfig(Structure):
         ('seed', c_int32),
         ('grammar_path', c_char_p),
         ('grammar_string', c_char_p),
+        ('ignore_eos', c_bool),
     ]
 
 
