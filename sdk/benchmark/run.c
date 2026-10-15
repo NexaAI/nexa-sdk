@@ -524,9 +524,21 @@ static char* build_vlm_prompt(geniex_VLM* vlm, const options_t* o, const char* b
  * generation, mirroring build_llm_accuracy_prompt() for the LLM path.
  */
 static char* build_vlm_accuracy_prompt(geniex_VLM* vlm, const options_t* o, const char* user_prompt) {
-    geniex_VlmContent user_contents[1];
-    user_contents[0].type = "text";
-    user_contents[0].text = user_prompt;
+    geniex_VlmContent user_contents[1 + 2 * MAX_PATHS];
+    int32_t           nc   = 0;
+    user_contents[nc].type = "text";
+    user_contents[nc].text = user_prompt;
+    nc++;
+    for (int32_t i = 0; i < o->image_count; ++i) {
+        user_contents[nc].type = "image";
+        user_contents[nc].text = o->image_paths[i];
+        nc++;
+    }
+    for (int32_t i = 0; i < o->audio_count; ++i) {
+        user_contents[nc].type = "audio";
+        user_contents[nc].text = o->audio_paths[i];
+        nc++;
+    }
 
     geniex_VlmChatMessage messages[2];
     memset(messages, 0, sizeof(messages));
@@ -546,7 +558,7 @@ static char* build_vlm_accuracy_prompt(geniex_VLM* vlm, const options_t* o, cons
     }
     messages[nm].role          = "user";
     messages[nm].contents      = user_contents;
-    messages[nm].content_count = 1;
+    messages[nm].content_count = nc;
     nm++;
 
     geniex_VlmApplyChatTemplateInput  tin;
