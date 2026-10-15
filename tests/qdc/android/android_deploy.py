@@ -57,6 +57,8 @@ def adb_shell(cmd: str, *, check: bool = True) -> subprocess.CompletedProcess:
     if lines and lines[-1].startswith('__RC__:'):
         rc = int(lines[-1][7:] or 0)
         out = '\n'.join(lines[:-1])
+    elif rc == 0:
+        rc = 1  # no sentinel: the shell died (e.g. phone dropped off adb)
     print(out)
     if check:
         assert rc == 0, f'adb shell failed (exit {rc}): {cmd}'

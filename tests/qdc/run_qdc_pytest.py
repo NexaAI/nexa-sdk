@@ -393,7 +393,8 @@ def main() -> int:
             print(header.decode() + data.decode('utf-8', 'replace'))
 
     by_name = {_basename(name): data for name, data in results}
-    if b'</testsuite>' in by_name.get('device-results.xml', b''):
+    # Android's JUnit only covers the host-side wrapper test; per-case outcomes come from device stdout.
+    if args.platform != 'android' and b'</testsuite>' in by_name.get('device-results.xml', b''):
         code, md = summarise(by_name['device-results.xml'], label)
     elif by_name.get('device-report.log'):
         log.warning('JUnit XML missing or incomplete; reconstructing from --report-log NDJSON')

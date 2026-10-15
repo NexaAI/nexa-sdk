@@ -10,10 +10,6 @@ from pathlib import Path
 import android_deploy
 
 PAYLOAD = Path(__file__).parents[1] / 'payload'
-DEVICE_JUNIT_HOST = 'device-results.xml'
-DEVICE_REPORT_HOST = 'device-report.log'
-DEVICE_JUNIT_ON_PHONE = f'{android_deploy.DEV_TESTS}/{DEVICE_JUNIT_HOST}'
-DEVICE_REPORT_ON_PHONE = f'{android_deploy.DEV_TESTS}/{DEVICE_REPORT_HOST}'
 
 PYTEST_ARGS = [
     '.',
@@ -22,17 +18,28 @@ PYTEST_ARGS = [
     '--tb=short',
     '-m',
     'llama_cpp or qairt',
-    f'--junitxml={DEVICE_JUNIT_HOST}',
-    f'--report-log={DEVICE_REPORT_HOST}',
 ]
+
+# A DSP abort here drops the phone off adb for the rest of the QDC job, so run it last.
+LAST = 'vlm and GGUF and npu'
+
+
+def _collect(expr: str) -> list[str]:
+    out = android_deploy.adb_shell(
+        f'cd {android_deploy.DEV_TESTS} && {android_deploy.device_env()} '
+        f"{android_deploy.DEV_PY}/bin/python3 -m pytest --collect-only -q -m 'llama_cpp or qairt' -k '{expr}'",
+        check=False,
+    ).stdout
+    return [ln.strip() for ln in out.splitlines() if '.py::' in ln]
 
 
 def test_run_device():
     android_deploy.deploy(PAYLOAD)
-    rc = android_deploy.run_pytest(PYTEST_ARGS)
-    # Pull xml/report-log if they exist; host-side run_qdc_pytest.py falls back to
-    # parsing the appium stdout when neither survives (Fatal Python + QDC's log
-    # collector doesn't reach the device's cwd).
-    android_deploy.adb('pull', DEVICE_JUNIT_ON_PHONE, DEVICE_JUNIT_HOST, check=False)
-    android_deploy.adb('pull', DEVICE_REPORT_ON_PHONE, DEVICE_REPORT_HOST, check=False)
-    assert rc == 0, f'on-device pytest exited {rc}'
+    last = _collect(LAST)
+    rc = android_deploy.run_pytest([*PYTEST_ARGS, '-k', f'not ({LAST})'])
+    rc_last = android_deploy.run_pytest([*PYTEST_ARGS, '-k', LAST])
+    if rc_last != 0:
+        # The CI summary parses stdout; the first status seen per case wins, so this only books unfinished cases.
+        for nodeid in last:
+            print(f'{nodeid} FAILED (device pytest aborted)')
+    assert rc == 0 and rc_last == 0, f'on-device pytest exited {rc}, {rc_last}'

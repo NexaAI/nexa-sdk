@@ -32,7 +32,7 @@ $content += "$ROOT\bindings\python"
 $content | Set-Content $pth.FullName
 Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile "$ROOT\get-pip.py" -UseBasicParsing
 & "$PY_DIR\python.exe" "$ROOT\get-pip.py" --no-warn-script-location 2>&1
-& "$PY_DIR\python.exe" -m pip install --no-warn-script-location "pytest>=7.0" "pytest-reportlog>=0.4" "tqdm>=4.65" 2>&1
+& "$PY_DIR\python.exe" -m pip install --no-warn-script-location "pytest>=7.0" "pytest-reportlog>=0.4" "pytest-xdist>=3.5" "tqdm>=4.65" 2>&1
 
 $env:GENIEX_DEVICE_TEST = "1"
 $env:GENIEX_LIB_PATH = "$ROOT\pkg-geniex\lib"
@@ -43,7 +43,8 @@ $env:HF_HUB_DOWNLOAD_CONCURRENCY = "1"
 & "$PY_DIR\python.exe" -c "import geniex; geniex.init(); geniex.deinit()" 2>&1
 
 Set-Location "$ROOT\tests"
-& "$PY_DIR\python.exe" -m pytest . -v `
+# One xdist worker: a native abort fails that case and the run continues on a fresh worker.
+& "$PY_DIR\python.exe" -m pytest . -v -n 1 --max-worker-restart=100 `
     --tb=short `
     --junitxml="$LOG\device-results.xml" `
     --report-log="$LOG\device-report.log" `
