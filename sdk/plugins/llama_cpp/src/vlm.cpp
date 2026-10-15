@@ -204,17 +204,18 @@ int32_t LlamaVlm::apply_chat_template(
     common_chat_templates_ptr tmpls  = common_chat_templates_init(this->model, "");
     auto                      result = common_chat_templates_apply(tmpls.get(), tmpl_inputs);
 
-    if (result.prompt.empty()) {
+    const std::string prompt_str = result.prompt.str();
+    if (prompt_str.empty()) {
         GENIEX_LOG_ERROR("chat template application resulted in empty prompt");
         return GENIEX_ERROR_COMMON_FILE_NOT_FOUND;
     }
 
     // Allocate and copy result
-    size_t prompt_length = result.prompt.length();
+    size_t prompt_length = prompt_str.length();
     char*  output_text   = (char*)malloc(prompt_length + 1);
     if (!output_text) return GENIEX_ERROR_COMMON_MEMORY_ALLOCATION;
 
-    memcpy(output_text, result.prompt.c_str(), prompt_length);
+    memcpy(output_text, prompt_str.c_str(), prompt_length);
     output_text[prompt_length] = '\0';
 
     output->formatted_text = output_text;
@@ -484,7 +485,7 @@ int32_t LlamaVlm::generate(const geniex_VlmGenerateInput* input, geniex_VlmGener
     char               token_buffer[256];
 
     // Create reusable batch like mtmd-cli.cpp
-    llama_batch batch = llama_batch_init(1, 0, 1);
+    common_batch batch(this->ctx);
 
     std::stringstream full_text;
     int32_t           generated_token_count = 0;
@@ -535,9 +536,9 @@ int32_t LlamaVlm::generate(const geniex_VlmGenerateInput* input, geniex_VlmGener
 
         // Decode next token using reusable batch (like mtmd-cli.cpp). 1 means
         // the KV cache is full (truncate); other non-zero values are failures.
-        common_batch_clear(batch);
-        common_batch_add(batch, token, this->n_past++, {0}, true);
-        switch (llama_decode(this->ctx, batch)) {
+        batch.clear();
+        batch.add(token, this->n_past++, /*seq_id=*/0, /*output=*/true);
+        switch (llama_process(this->ctx, LLAMA_PROCESS_TYPE_DECODE, batch.get())) {
             case 0:
                 break;
             case 1:
@@ -548,8 +549,6 @@ int32_t LlamaVlm::generate(const geniex_VlmGenerateInput* input, geniex_VlmGener
                 break;
         }
     }
-
-    llama_batch_free(batch);
 
     // Set stop reason if not already set
     if (res == GENIEX_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH) {
