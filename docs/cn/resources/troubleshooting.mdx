@@ -89,6 +89,16 @@ import Feedback from "/snippets/page-feedback.mdx";
     容器无法访问 NPU。确认 `docker run` 带 `--privileged` 与 `/usr/lib` 挂载，并且主机已安装高通驱动包（`qcom-adreno1`、`qcom-fastrpc1`）——参见 [Linux 安装 → 安装宿主机依赖](/cn/run/linux/install#安装宿主机依赖)。
   </Accordion>
 
+  <Accordion title="VLM 使用 `--compute npu` 时崩溃（SIGABRT），日志出现 `HTP0 buffer mapping failed`">
+    默认情况下，视觉编码器（mmproj）与语言模型共用同一个 HTP session，在部分设备（如 QCS9075）上两者无法同时放下。为视觉编码器单独分配一个 HTP session：
+
+    ```bash bash
+    GGML_HEXAGON_NDEV=2 geniex infer unsloth/Qwen3-VL-2B-Instruct-GGUF:Q4_0 --compute HTP0 --vit-compute HTP1
+    ```
+
+    如果不想让视觉编码器占用 NPU，可改用 `--vit-compute CPU`。`GGML_HEXAGON_DEVICES=2` 是该变量的新写法；必须在启动 `geniex`（或 `geniex serve`）的 shell 中设置。
+  </Accordion>
+
   <Accordion title="`geniex` 启动即退出并提示 'device is missing CPU features geniex requires'">
     aarch64 Linux 版本以 **armv8.2-a** 编译，启用了 `fp16`、`dotprod`、`lse`（原子指令）与 `rdm` 扩展。基线 armv8.0 的板子（部分无 NPU 的 Dragonwing IoT SoC）不实现这些指令，因此 `geniex` 会在启动时给出明确错误并退出，而不是在运行中途抛出原始的 `SIGILL: illegal instruction`。
 

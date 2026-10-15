@@ -78,6 +78,8 @@ GGML_HEXAGON_NDEV=4 geniex infer google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0 --
 
 <Note>Set `GGML_HEXAGON_NDEV` to match the number of device IDs in `--compute`. `qairt` models coerce a device list to NPU with a warning. See [Spreading across multiple HTP cores](/en/tutorials/speculative-decoding-mtp#spreading-across-multiple-htp-cores) for MTP performance numbers.</Note>
 
+<Note>For VLMs on `--compute npu`, the vision encoder shares the language model's HTP session by default, which can abort on some devices. Run it on a second session with `GGML_HEXAGON_NDEV=2 geniex infer <vlm> --compute HTP0 --vit-compute HTP1`. See [Troubleshooting](/en/resources/troubleshooting).</Note>
+
 <Warning>Qualcomm AI Hub Models run on NPU only. Using `--compute cpu` or `--compute gpu` returns an error.</Warning>
 
 ### **`geniex infer` — VLM**
