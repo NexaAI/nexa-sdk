@@ -82,10 +82,8 @@ to `BURST`; llama_cpp's HTP corners were hardcoded to max). This applies
 only on the NPU compute unit — it's a no-op (logged, not an error) on
 `cpu` / `gpu`.
 
-- **`llama_cpp`** — carried by an internal, unmerged patch on top of
-  [`ggml/llama.cpp#340`](https://github.qualcomm.com/ggml/llama.cpp/pull/340)
-  (`sdk/patches/llama-hexagon-power-mode.patch` +
-  `sdk/patches/llama-hexagon-power-mode-setter.patch`; see the comments in
+- **`llama_cpp`** — upstream's HTP power-mode table plus a GenieX setter
+  (`sdk/patches/llama-hexagon-power-mode-setter.patch`; see the comments in
   [`sdk/CMakeLists.txt`](../sdk/CMakeLists.txt)). Only affects sessions
   created after the call — an already-open HTP session (another model still
   loaded in the same process) keeps its old mode until released and
