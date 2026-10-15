@@ -63,6 +63,18 @@ class LlamaPlugin : public Plugin {
         llama_log_set(ggml_to_geniex_log, nullptr);
         mtmd_helper_log_set(ggml_to_geniex_log, nullptr);
 
+        // Expose a spare virtual HTP session (HTP1) so the mmproj can run apart from the LM's HTP0
+        // (see params.cpp resolve_vision_device); sharing HTP0 aborts on E4B / Qwen3-ASR input.
+        // Read once at backend registration below. HTP1 is only opened when the mmproj picks it:
+        // llama-hexagon-release-sessions.patch makes spare sessions lazy. Callers can override.
+        if (!std::getenv("GGML_HEXAGON_DEVICES") && !std::getenv("GGML_HEXAGON_NDEV")) {
+#if defined(_WIN32)
+            _putenv_s("GGML_HEXAGON_DEVICES", "2");
+#else
+            setenv("GGML_HEXAGON_DEVICES", "2", 0);
+#endif
+        }
+
         if (!std::getenv("GGML_HEXAGON_MBUF")) {
 #if !defined(__ANDROID__) && defined(__linux__)
             // ggml-hexagon's default 1 GiB host-buffer mmap cap can exceed what the fastrpc/CMA pool
