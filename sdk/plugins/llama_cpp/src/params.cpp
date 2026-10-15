@@ -266,6 +266,15 @@ std::optional<std::vector<ggml_backend_dev_t>> resolve_devices(const char* devic
     return devices;
 }
 
+void apply_device_selection(llama_model_params& mpar, const std::vector<ggml_backend_dev_t>& selection, Device device) {
+    static ggml_backend_dev_t no_devices[] = {nullptr};
+    if (!selection.empty()) {
+        mpar.devices = const_cast<ggml_backend_dev_t*>(selection.data());
+    } else if (device == Device::CPU) {
+        mpar.devices = no_devices;
+    }
+}
+
 ggml_backend_dev_t resolve_vision_device(const std::vector<ggml_backend_dev_t>& lm_devices) {
     if (lm_devices.empty()) return nullptr;
 

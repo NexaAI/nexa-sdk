@@ -61,9 +61,7 @@ int32_t LlamaVlm::create(const geniex_VlmCreateInput* input) {
         return GENIEX_ERROR_COMMON_INVALID_INPUT;
     }
 
-    if (!selection->empty()) {
-        mpar.devices = selection->data();
-    }
+    apply_device_selection(mpar, *selection, device);
 
     ggml_backend_dev_t vision_device = nullptr;
     if (input->vit_device_id && input->vit_device_id[0] != '\0') {
