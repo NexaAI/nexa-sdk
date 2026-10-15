@@ -78,6 +78,8 @@ GGML_HEXAGON_NDEV=4 geniex infer google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0 --
 
 <Note>将 `GGML_HEXAGON_NDEV` 设置为与 `--compute` 中设备 ID 数量一致。`qairt` 模型会将设备列表强制转为 NPU 并输出警告。性能数据参见 [MTP 教程](/en/tutorials/speculative-decoding-mtp#spreading-across-multiple-htp-cores)。</Note>
 
+<Note>VLM 使用 `--compute npu` 时，视觉编码器默认与语言模型共用同一个 HTP session，在部分设备上可能崩溃。可用 `GGML_HEXAGON_NDEV=2 geniex infer <vlm> --compute HTP0 --vit-compute HTP1` 让它独占第二个 session。详见[故障排查](/cn/resources/troubleshooting)。</Note>
+
 <Warning>Qualcomm AI Hub 模型仅在 NPU 上运行。使用 `--compute cpu` 或 `--compute gpu` 会返回错误。</Warning>
 
 ### **`geniex infer` — VLM**

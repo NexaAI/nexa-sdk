@@ -89,6 +89,16 @@ import Feedback from "/snippets/page-feedback.mdx";
     The container can't reach the NPU. Make sure your `docker run` includes `--privileged` and the `/usr/lib` mount, and that the host's Qualcomm driver packages (`qcom-adreno1`, `qcom-fastrpc1`) are installed — see [Linux install → Install host dependencies](/en/run/linux/install#install-host-dependencies).
   </Accordion>
 
+  <Accordion title="VLM with `--compute npu` aborts with `HTP0 buffer mapping failed` (SIGABRT)">
+    By default the vision encoder (mmproj) shares the single HTP session with the language model, and on some devices (e.g. QCS9075) the two don't fit together. Give the vision encoder its own HTP session:
+
+    ```bash bash
+    GGML_HEXAGON_NDEV=2 geniex infer unsloth/Qwen3-VL-2B-Instruct-GGUF:Q4_0 --compute HTP0 --vit-compute HTP1
+    ```
+
+    Use `--vit-compute CPU` instead if you'd rather keep the vision encoder off the NPU. `GGML_HEXAGON_DEVICES=2` is the non-deprecated spelling of the variable; it must be set in the shell that launches `geniex` (or `geniex serve`).
+  </Accordion>
+
   <Accordion title="`--compute npu` fails with `SDKError(Invalid input parameters or handle)` / `Device 'HTP0' not found`">
     The llama.cpp Hexagon backend `dlopen`s the **unversioned** `libcdsprpc.so`, but `qcom-fastrpc1` only ships `libcdsprpc.so.1`. On bare metal `install.sh` creates the symlink; if you deployed the release tarball directly (no `install.sh`), create it yourself:
 
