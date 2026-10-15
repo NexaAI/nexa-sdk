@@ -760,7 +760,8 @@ int32_t LlamaLlm::decode_speculative(const geniex_GenerationConfig& cfg, const s
             batch.add(t, pos++, seq_id, /*output=*/true);
         }
 
-        if (llama_process(this->ctx, LLAMA_PROCESS_TYPE_DECODE, batch.get()) != 0 || !common_speculative_process(this->spec, batch)) {
+        if (llama_process(this->ctx, LLAMA_PROCESS_TYPE_DECODE, batch.get()) != 0 ||
+            !common_speculative_process(this->spec, batch)) {
             res = GENIEX_ERROR_LLM_GENERATION_FAILED;
             break;
         }
