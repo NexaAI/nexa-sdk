@@ -218,7 +218,7 @@ int32_t LlamaLlm::apply_chat_template(
     // Apply chat template
     auto result = common_chat_templates_apply(tmpls.get(), inputs);
 
-    output->formatted_text = strdup(result.prompt.c_str());
+    output->formatted_text = strdup(result.prompt.str().c_str());
     if (!output->formatted_text) {
         return GENIEX_ERROR_COMMON_MEMORY_ALLOCATION;  // error: memory allocation failed
     }
@@ -370,18 +370,17 @@ int32_t LlamaLlm::generate(const geniex_LlmGenerateInput* input, geniex_LlmGener
     auto process = [&](const llama_token* tokens, int n_tokens, int32_t overflow_err) -> int32_t {
         int rc;
         if (spec_prefill) {
-            llama_batch batch = llama_batch_init(n_tokens, /*embd=*/0, /*n_seq_max=*/1);
+            common_batch batch(this->ctx);
             for (int i = 0; i < n_tokens; ++i) {
-                common_batch_add(batch, tokens[i], this->n_past + i, {0}, /*logits=*/i == n_tokens - 1);
+                batch.add(tokens[i], this->n_past + i, /*seq_id=*/0, /*output=*/i == n_tokens - 1);
             }
-            rc = llama_decode(this->ctx, batch);
+            rc = llama_process(this->ctx, LLAMA_PROCESS_TYPE_DECODE, batch.get());
             while (rc == 1 && can_shift && slide_window(n_tokens) > 0) {
-                rc = llama_decode(this->ctx, batch);
+                rc = llama_process(this->ctx, LLAMA_PROCESS_TYPE_DECODE, batch.get());
             }
             if (rc == 0 && !common_speculative_process(this->spec, batch)) {
                 rc = -1;
             }
-            llama_batch_free(batch);
         } else {
             llama_batch batch = llama_batch_get_one(const_cast<llama_token*>(tokens), n_tokens);
             rc                = llama_decode(this->ctx, batch);
@@ -726,7 +725,7 @@ int32_t LlamaLlm::decode_speculative(const geniex_GenerationConfig& cfg, const s
     llama_token id_last = common_sampler_sample(this->sampler, this->ctx, -1);
     common_sampler_accept(this->sampler, id_last, /* accept_grammar= */ true);
 
-    llama_batch batch = llama_batch_init(this->spec_n_max + 1, /*embd=*/0, /*n_seq_max=*/1);
+    common_batch batch(this->ctx);
 
     int64_t                  draft_n_total    = 0;
     int64_t                  draft_n_accepted = 0;
@@ -754,14 +753,14 @@ int32_t LlamaLlm::decode_speculative(const geniex_GenerationConfig& cfg, const s
         draft_n_total += (int64_t)draft.size();
 
         // Verification batch: [id_last, draft0, draft1, ...], all needing logits.
-        common_batch_clear(batch);
+        batch.clear();
         llama_pos pos = this->n_past;
-        common_batch_add(batch, id_last, pos++, {seq_id}, /*logits=*/true);
+        batch.add(id_last, pos++, seq_id, /*output=*/true);
         for (llama_token t : draft) {
-            common_batch_add(batch, t, pos++, {seq_id}, /*logits=*/true);
+            batch.add(t, pos++, seq_id, /*output=*/true);
         }
 
-        if (llama_decode(this->ctx, batch) != 0 || !common_speculative_process(this->spec, batch)) {
+        if (llama_process(this->ctx, LLAMA_PROCESS_TYPE_DECODE, batch.get()) != 0 || !common_speculative_process(this->spec, batch)) {
             res = GENIEX_ERROR_LLM_GENERATION_FAILED;
             break;
         }
@@ -804,8 +803,6 @@ int32_t LlamaLlm::decode_speculative(const geniex_GenerationConfig& cfg, const s
 
         id_last = ids.back();
     }
-
-    llama_batch_free(batch);
 
     profiler.set_draft_stats(draft_n_total, draft_n_accepted);
     return res;
