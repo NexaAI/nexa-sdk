@@ -26,6 +26,29 @@ func TestReasoningSeparated(t *testing.T) {
 	}
 }
 
+func TestReasoningFormatDefault(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+		want string
+	}{
+		{"omitted uses deepseek", `{}`, "deepseek"},
+		{"none keeps reasoning inline", `{"reasoning_format":"none"}`, "none"},
+		{"auto separates reasoning", `{"reasoning_format":"auto"}`, "auto"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p := defaultChatCompletionRequest()
+			if err := json.Unmarshal([]byte(tc.body), &p); err != nil {
+				t.Fatalf("unmarshal %s: %v", tc.body, err)
+			}
+			if p.ReasoningFormat != tc.want {
+				t.Errorf("reasoning format = %q, want %q", p.ReasoningFormat, tc.want)
+			}
+		})
+	}
+}
+
 func TestSinks(t *testing.T) {
 	tokens := []string{"<think>", "reason", "</think>", "answer"}
 
