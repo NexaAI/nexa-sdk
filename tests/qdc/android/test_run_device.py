@@ -5,14 +5,11 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import android_deploy
 
 PAYLOAD = Path(__file__).parents[1] / 'payload'
-DEVICE_REPORT_HOST = 'device-report.log'
-MAX_RUNS = 10
 
 PYTEST_ARGS = [
     '.',
@@ -23,42 +20,26 @@ PYTEST_ARGS = [
     'llama_cpp or qairt',
 ]
 
-
-def _nodeids(report_log: bytes) -> list[str]:
-    ids: dict[str, None] = {}
-    for line in report_log.splitlines():
-        try:
-            rec = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if rec.get('$report_type') == 'TestReport' and rec.get('nodeid'):
-            ids[rec['nodeid']] = None
-    return list(ids)
+# A DSP abort here drops the phone off adb for the rest of the QDC job, so run it last.
+LAST = 'vlm and GGUF and npu'
 
 
-def _run_once(index: int, deselect: list[str]) -> tuple[int, bytes]:
-    name = f'device-report.{index}.log'
-    on_phone = f'{android_deploy.DEV_TESTS}/{name}'
-    rc = android_deploy.run_pytest([*PYTEST_ARGS, f'--report-log={name}', *[f'--deselect={n}' for n in deselect]])
-    android_deploy.adb('pull', on_phone, name, check=False)
-    path = Path(name)
-    return rc, path.read_bytes() if path.exists() else b''
+def _collect(expr: str) -> list[str]:
+    out = android_deploy.adb_shell(
+        f'cd {android_deploy.DEV_TESTS} && {android_deploy.device_env()} '
+        f"{android_deploy.DEV_PY}/bin/python3 -m pytest --collect-only -q -m 'llama_cpp or qairt' -k '{expr}'",
+        check=False,
+    ).stdout
+    return [ln.strip() for ln in out.splitlines() if '.py::' in ln]
 
 
 def test_run_device():
     android_deploy.deploy(PAYLOAD)
-    # A native abort kills the device shell and every later case with it, so relaunch
-    # pytest without the cases that already started until the whole suite has run.
-    merged = b''
-    seen: list[str] = []
-    rcs: list[int] = []
-    for index in range(MAX_RUNS):
-        rc, data = _run_once(index, seen)
-        merged += data if data.endswith(b'\n') or not data else data + b'\n'
-        rcs.append(rc)
-        done = _nodeids(merged)
-        if rc in (0, 1) or len(done) == len(seen):
-            break
-        seen = done
-    Path(DEVICE_REPORT_HOST).write_bytes(merged)
-    assert all(rc == 0 for rc in rcs), f'on-device pytest exited {rcs}'
+    last = _collect(LAST)
+    rc = android_deploy.run_pytest([*PYTEST_ARGS, '-k', f'not ({LAST})'])
+    rc_last = android_deploy.run_pytest([*PYTEST_ARGS, '-k', LAST])
+    if rc_last != 0:
+        # The CI summary parses stdout; the first status seen per case wins, so this only books unfinished cases.
+        for nodeid in last:
+            print(f'{nodeid} FAILED (device pytest aborted)')
+    assert rc == 0 and rc_last == 0, f'on-device pytest exited {rc}, {rc_last}'

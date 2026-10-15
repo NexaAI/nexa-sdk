@@ -18,7 +18,6 @@ DEV_ROOT = '/data/local/tmp'
 DEV_PY = f'{DEV_ROOT}/termux-usr'
 DEV_SDK = f'{DEV_ROOT}/geniex'
 DEV_TESTS = f'{DEV_ROOT}/tests'
-SHELL_LOST = 255
 
 TERMUX_REPO = 'https://packages.termux.dev/apt/termux-main'
 TERMUX_DEPS = (
@@ -58,9 +57,8 @@ def adb_shell(cmd: str, *, check: bool = True) -> subprocess.CompletedProcess:
     if lines and lines[-1].startswith('__RC__:'):
         rc = int(lines[-1][7:] or 0)
         out = '\n'.join(lines[:-1])
-    else:
-        # A native abort takes the whole device shell down with it; adb still exits 0.
-        rc = rc or SHELL_LOST
+    elif rc == 0:
+        rc = 1  # no sentinel: the shell died (e.g. phone dropped off adb)
     print(out)
     if check:
         assert rc == 0, f'adb shell failed (exit {rc}): {cmd}'
