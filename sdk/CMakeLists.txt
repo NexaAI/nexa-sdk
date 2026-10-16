@@ -154,13 +154,24 @@ enable_testing()
 #   same fix is applied to kernel_add: the strength-reduced
 #   get_local_size(0) * nb0X step emits an equivalent UMULLrr, hit on a
 #   QCS9075 board (Adreno driver 1.855.3) during VLM inference. See
-#   qcom-ai-hub/geniex#1566.
+#   qcom-ai-hub/geniex#1566. The Q4_K noshuffle GEMV workaround
+#   (ADRENO_6XX_Q4K_CONSTREG_WORKAROUND) is enabled on every Adreno 6xx
+#   (originally only 643); Adreno 663 on IQ-9075 hits the same UMULLrr on
+#   BLOCK_STRIDE_A at kernel load, aborting every GPU run.
 # * llama-opencl-adreno-xmem-gemm-off.patch defaults the Adreno xmem F16xF32
 #   GEMM path (upstream #27640) back to off. On this Adreno generation it
 #   corrupts output after repeated model loads through the same OpenCL
 #   context (quality/logits-parity tests pass individually, fail once several
 #   gpu/hybrid models have loaded in one process); upstream's own
 #   GGML_OPENCL_ADRENO_XMEM_GEMM=0 override confirms the fix.
+# * llama-opencl-adreno-f16-mrow-wgsize.patch falls back from the f16 mrow decode
+#   GEMV to the 1row kernel when CL_KERNEL_WORK_GROUP_SIZE is below the 64x16
+#   work-group it launches. Adreno 663 caps it at 896, so clEnqueueNDRangeKernel
+#   returned -54 and aborted gemma-4 on IQ-9075.
+# * llama-opencl-adreno-q4k-large-image.patch routes Q4_K weights whose quant plane
+#   exceeds CL_DEVICE_IMAGE_MAX_BUFFER_SIZE to the flat GEMV. Adreno 663 caps it at
+#   2^26 texels; gemma-4-E4B token_embd (2560x262144) needs 83886080, so
+#   clCreateImage returned -40 and aborted.
 if(GENIEX_PLUGIN_LLAMA_CPP)
     set(_LLAMA_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/../third-party/llama.cpp")
     set(_LLAMA_PATCHES)
@@ -172,7 +183,9 @@ if(GENIEX_PLUGIN_LLAMA_CPP)
     if(GGML_OPENCL)
         list(APPEND _LLAMA_PATCHES
             "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-opencl-adreno-cpy-constreg.patch"
-            "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-opencl-adreno-xmem-gemm-off.patch")
+            "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-opencl-adreno-xmem-gemm-off.patch"
+            "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-opencl-adreno-f16-mrow-wgsize.patch"
+            "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-opencl-adreno-q4k-large-image.patch")
     endif()
     find_package(Git QUIET REQUIRED)
     foreach(_LLAMA_PATCH ${_LLAMA_PATCHES})
