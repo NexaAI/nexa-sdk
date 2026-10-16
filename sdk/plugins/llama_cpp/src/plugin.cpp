@@ -65,8 +65,7 @@ class LlamaPlugin : public Plugin {
 
         // Expose a spare virtual HTP session (HTP1) so the mmproj can run apart from the LM's HTP0
         // (see params.cpp resolve_vision_device); sharing HTP0 aborts on E4B / Qwen3-ASR input.
-        // Read once at backend registration below. HTP1 is only opened when the mmproj picks it:
-        // llama-hexagon-release-sessions.patch makes spare sessions lazy. Callers can override.
+        // Read once at backend registration below. Callers can override.
         if (!std::getenv("GGML_HEXAGON_DEVICES") && !std::getenv("GGML_HEXAGON_NDEV")) {
 #if defined(_WIN32)
             _putenv_s("GGML_HEXAGON_DEVICES", "2");
