@@ -716,8 +716,8 @@ components:
         reasoning_format:
           type: string
           enum: [none, deepseek, deepseek-legacy, auto]
-          description: Where to put the model's chain-of-thought. `none` keeps it inline in `message.content` (default); `deepseek` / `deepseek-legacy` / `auto` move it to `message.reasoning_content`. Ignored for tool-call requests.
-          default: none
+          description: Where to put the model's chain-of-thought. `none` keeps it inline in `message.content`; `deepseek` (default), `deepseek-legacy`, and `auto` move it to `message.reasoning_content`.
+          default: deepseek
         top_k:
           type: integer
           minimum: 0
@@ -792,7 +792,7 @@ components:
           description: The contents of the message
         reasoning_content:
           type: string
-          description: The model's chain-of-thought, present on assistant responses only when the request set `reasoning_format` to a separating value (e.g. `deepseek`).
+          description: The model's chain-of-thought, present on assistant responses when the effective `reasoning_format` is a separating value (e.g. the default `deepseek`).
         name:
           type: string
           description: The name of the author of this message

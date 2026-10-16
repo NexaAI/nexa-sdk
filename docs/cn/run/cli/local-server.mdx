@@ -49,7 +49,7 @@ geniex serve
 
 ### **分离推理内容（reasoning_content）**
 
-思考模型默认会把思维链原样保留在 `message.content`（`<think>…</think>`）中。可在 `/v1/chat/completions` 请求体中设置 `reasoning_format`，将思维链移到 `message.reasoning_content`，让 `content` 只保留最终回复：
+思考模型默认会把思维链放入 `message.reasoning_content`，让 `content` 只保留最终回复。如需把原始推理保留在 `message.content` 中，可在 `/v1/chat/completions` 请求体中将 `reasoning_format` 设为 `none`：
 
 ```bash
 curl http://127.0.0.1:18181/v1/chat/completions \
@@ -57,11 +57,11 @@ curl http://127.0.0.1:18181/v1/chat/completions \
   -d '{
     "model": "ai-hub-models/Qwen3-4B-Instruct-2507",
     "messages": [{"role": "user", "content": "Hello!"}],
-    "reasoning_format": "deepseek"
+    "reasoning_format": "none"
   }'
 ```
 
-`none`（默认值）会保留内联推理；`deepseek`、`deepseek-legacy` 和 `auto` 会分离推理内容。此设置不会关闭模型的推理（与 `enable_think: false` 不同），流式响应和工具调用请求也适用。使用 OpenAI SDK 时的传参方式见 [Python client 示例](#分离推理内容reasoning_content)。
+`deepseek` 是默认值；`deepseek`、`deepseek-legacy` 和 `auto` 会分离推理内容，`none` 则保留内联推理。此设置不会关闭模型的推理（与 `enable_think: false` 不同），流式响应和工具调用请求也适用。使用 OpenAI SDK 读取分离字段的方式见 [Python client 示例](#分离推理内容reasoning_content)。
 
 ### **通过 Swagger UI 试用**
 
@@ -232,10 +232,10 @@ usage: CompletionUsage(completion_tokens=58, prompt_tokens=19, total_tokens=77, 
 
 ### **分离推理内容（reasoning_content）**
 
-思考模型默认会把思维链原样保留在 `message.content`（`<think>…</think>`），与最终回复混在一起。在请求体中传入 `reasoning_format="deepseek"` 可让服务器把思维链拆到 OpenAI 标准的 `message.reasoning_content` 字段，`content` 只保留干净的回复。
+思考模型默认会把思维链放入 OpenAI 标准的 `message.reasoning_content` 字段，让 `content` 只保留干净的回复。仅在需要把原始推理保留在 `message.content` 时，才需在请求体中传入 `reasoning_format="none"`。
 
 <Note>
-`reasoning_format` 与 `enable_think` 是两件事：`enable_think=False` 让模型**不产生**思维链；`reasoning_format="deepseek"` 让模型照常思考，但把思维链**移出** `content`。取值 `none`（默认）保持原样内联，`deepseek` / `deepseek-legacy` / `auto` 均触发分离。工具调用请求同样生效（含流式）：思维链会先分离出来，再对回复扫描工具调用。
+`reasoning_format` 与 `enable_think` 是两件事：`enable_think=False` 让模型**不产生**思维链；默认的 `reasoning_format="deepseek"` 让模型照常思考，但把思维链**移出** `content`。取值 `deepseek`（默认）、`deepseek-legacy` 和 `auto` 均触发分离，`none` 则保持原样内联。工具调用请求同样生效（含流式）：思维链会先分离出来，再对回复扫描工具调用。
 </Note>
 
 ```python python
@@ -245,7 +245,6 @@ resp = client.chat.completions.create(
         {"role": "user", "content": "What is 2+2? Answer briefly."},
     ],
     max_tokens=128,
-    extra_body={"reasoning_format": "deepseek"},
 )
 
 msg = resp.choices[0].message

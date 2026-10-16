@@ -49,7 +49,7 @@ Creates a model response for a conversation. Supports LLM (text-only) and VLM (t
 
 ### **Separating reasoning (reasoning_content)**
 
-By default, thinking models leave their chain-of-thought inline in `message.content` (`<think>…</think>`). Set `reasoning_format` in the `/v1/chat/completions` request body to move it into `message.reasoning_content` and keep `content` clean:
+By default, thinking models put their chain-of-thought in `message.reasoning_content` and keep `content` clean. Set `reasoning_format` to `none` in the `/v1/chat/completions` request body to keep the raw reasoning inline in `message.content` instead:
 
 ```bash
 curl http://127.0.0.1:18181/v1/chat/completions \
@@ -57,11 +57,11 @@ curl http://127.0.0.1:18181/v1/chat/completions \
   -d '{
     "model": "ai-hub-models/Qwen3-4B-Instruct-2507",
     "messages": [{"role": "user", "content": "Hello!"}],
-    "reasoning_format": "deepseek"
+    "reasoning_format": "none"
   }'
 ```
 
-`none` (the default) keeps reasoning inline; `deepseek`, `deepseek-legacy`, and `auto` separate it. This setting does not disable reasoning (unlike `enable_think: false`) and also applies to streaming and tool-call requests. See the [Python client example](#separating-reasoning-reasoning_content) for how to pass it with the OpenAI SDK.
+`deepseek` is the default; `deepseek`, `deepseek-legacy`, and `auto` separate reasoning, while `none` keeps it inline. This setting does not disable reasoning (unlike `enable_think: false`) and also applies to streaming and tool-call requests. See the [Python client example](#separating-reasoning-reasoning_content) for how to read the separated fields with the OpenAI SDK.
 
 ### **Try it from Swagger UI**
 
@@ -275,10 +275,10 @@ usage: CompletionUsage(completion_tokens=58, prompt_tokens=19, total_tokens=77, 
 
 ### **Separating reasoning (reasoning_content)**
 
-By default a thinking model leaves its chain-of-thought inline in `message.content` (`<think>…</think>`), mixed in with the final reply. Pass `reasoning_format="deepseek"` in the request body to make the server move the chain-of-thought into the OpenAI-standard `message.reasoning_content` field, leaving `content` clean.
+By default a thinking model puts its chain-of-thought in the OpenAI-standard `message.reasoning_content` field, leaving `content` clean. Pass `reasoning_format="none"` in the request body only when you need the raw reasoning inline in `message.content`.
 
 <Note>
-`reasoning_format` is not the same as `enable_think`: `enable_think=False` makes the model **not produce** a chain-of-thought at all, while `reasoning_format="deepseek"` lets it think as usual but **moves** the thinking out of `content`. Values are `none` (default, kept inline) and `deepseek` / `deepseek-legacy` / `auto` (all separate). It applies to tool-call requests too, streaming included: the thinking block is separated before the reply is scanned for a tool call.
+`reasoning_format` is not the same as `enable_think`: `enable_think=False` makes the model **not produce** a chain-of-thought at all, while the default `reasoning_format="deepseek"` lets it think as usual but **moves** the thinking out of `content`. Values are `deepseek` (default), `deepseek-legacy`, and `auto` (all separate), or `none` (kept inline). It applies to tool-call requests too, streaming included: the thinking block is separated before the reply is scanned for a tool call.
 </Note>
 
 ```python python
@@ -288,7 +288,6 @@ resp = client.chat.completions.create(
         {"role": "user", "content": "What is 2+2? Answer briefly."},
     ],
     max_tokens=128,
-    extra_body={"reasoning_format": "deepseek"},
 )
 
 msg = resp.choices[0].message
