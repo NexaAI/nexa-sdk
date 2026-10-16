@@ -19,6 +19,7 @@ go_library(
     deps = [
         "//bindings/go:geniex_sdk_go",
         "//cli/internal/config",
+        "//cli/internal/decision",
         "//cli/internal/thinkfsm",
         "//cli/server/service",
         "//cli/server/types",

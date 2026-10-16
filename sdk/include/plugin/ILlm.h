@@ -46,7 +46,7 @@ class ILlm {
         return GENIEX_ERROR_COMMON_PARAM_NOT_SUPPORTED;
     }
 
-    virtual int32_t score(const geniex_LlmScoreInput*, geniex_LlmScoreOutput*) {
+    virtual int32_t decide(const geniex_DecideInput*, geniex_DecideOutput*) {
         return GENIEX_ERROR_COMMON_PARAM_NOT_SUPPORTED;
     }
 };

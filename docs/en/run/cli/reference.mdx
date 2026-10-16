@@ -116,6 +116,29 @@ This is a scenic, panoramic photograph that features a traditional Japanese temp
 
 In an interactive session with an audio-capable model, `/mic` records a clip instead of loading one from disk — `Ctrl-C` stops the recording and transcribes it. This needs **SoX** on your `PATH` (`sudo apt install sox`, or `winget install --id=ChrisBagwell.SoX -e` on Windows); without it GenieX warns `SoX is not installed` at startup. See the [audio input tutorial](/en/tutorials/audio-input) for the full walkthrough.
 
+### **`geniex decide`**
+
+Make a local structured decision with a `llama_cpp` LLM or VLM. Select `predicate`, `choice`, or `score` with `--kind`. Models with a `systemone` template use the matching OpenJEV, LEV, or Nimble decision path and model-specific temperature; if `decision.type` is missing, they are treated as OpenJEV. Models without `systemone` fall back to a generic choice prompt using their regular chat template and temperature `1.0`. LEV choices average both option orders and LEV predicates use a nine-rating readout; all paths use logits and return probabilities and confidence. Add `--image` or `--audio` (repeatable) to send local media to a compatible VLM.
+
+```bash
+geniex decide <model-name>[:<precision>] --kind predicate \
+  --input "The battery will not charge" --question "Is this a hardware issue?"
+geniex decide <model-name>[:<precision>] --kind choice \
+  --input "The battery will not charge" --question "Choose the next route" \
+  --choice 'retry=Try again' --choice 'replace=Replace the battery'
+geniex decide <model-name>[:<precision>] --kind score \
+  --input "The battery temperature is 85°C" --question "Rate the severity" \
+  --level low --level medium --level "high=Immediate shutdown required"
+# Visual choice (the model must be classified as a VLM)
+geniex decide <vlm-name> --kind choice --image photo.png \
+  --input "A support photo" --question "Choose the issue" \
+  --choice battery --choice screen
+```
+
+Repeat `--choice VALUE` for each candidate. In `--choice 'retry=Try again'`, `retry` is the value returned in JSON and `Try again` is optional context for the model; it is not a key-value map. Quote the argument if the description has spaces. `--level` similarly accepts `LABEL=DESCRIPTION`. `--image` and `--audio` accept existing local regular files and may each be repeated up to 8 times. `--compute`, `--ngl`, `--nctx`, and `--power-mode` control local model loading, as with `geniex infer`. Both LLM and VLM decisions use logits, with model-specific temperature and candidate encoding. `--vit-compute` selects the VLM vision encoder's compute unit. `geniex decide --help` groups these flags under Model Loading, LLM/VLM Decision, and VLM Specific.
+
+By default, `geniex decide` uses the CLI theme to display both predicate probabilities (`true` and `false`), the selected choice and every candidate probability, or the zero-based expected score and every level probability, plus confidence when available. Pass `--json` to print the original full single-line JSON result for scripts. The `/v1/decisions` response remains JSON.
+
 ## **`geniex model`**
 
 Inspect and reconfigure cached models.
@@ -144,32 +167,6 @@ List Qualcomm AI Hub Models that have a `qairt` (NPU) build. Only models compati
 geniex model list
 geniex model list --all
 ```
-
-### **`geniex decide`**
-
-Run one local structured decision. `classify` and `choose` print one locally validated JSON candidate and never execute side effects.
-
-```bash
-geniex decide <model> classify \
-  --label capital_of_france \
-  --label capital_of_germany \
-  --label unknown \
-  --instruction "Choose the label that correctly answers the question." \
-  --context "What is the capital of France?"
-```
-
-```bash
-geniex decide <model> choose \
-  --option paris=Paris \
-  --option berlin=Berlin \
-  --instruction "Select the capital of France." \
-  --context "Question: What is the capital of France?"
-```
-
-| Flag group | Flags |
-|---|---|
-| Structured decision | `--label`, `--option`, `--instruction`, `--context` / `--context-file`, `--image`, `--confidence`, `--min-selections`, `--max-selections`, `--benchmark` |
-| Model tuning | `--compute`, `--ngl`, `--nctx`, `--max-tokens`, `--threads`, `--threads-batch`, `--batch`, `--ubatch` |
 
 ## **`geniex serve`**
 

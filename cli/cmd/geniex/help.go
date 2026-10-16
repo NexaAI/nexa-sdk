@@ -10,6 +10,7 @@ import (
 	"unicode"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/qualcomm/GenieX/cli/internal/render"
 )
@@ -72,6 +73,10 @@ func colorNameAndAliases(c *cobra.Command) string {
 }
 
 func flagGroupedUsage(c *cobra.Command) error {
+	return groupedFlagUsage(c, flagGroups)
+}
+
+func groupedFlagUsage(c *cobra.Command, groups []*pflag.FlagSet) error {
 	w := c.OutOrStdout()
 	h := render.GetTheme().Heading
 	t := render.GetTheme()
@@ -89,7 +94,7 @@ func flagGroupedUsage(c *cobra.Command) error {
 		fmt.Fprintf(w, "  %s", colorNameAndAliases(c))
 	}
 
-	for _, flags := range flagGroups {
+	for _, flags := range groups {
 		fmt.Fprintf(w, "\n\n%s\n", h.Sprintf("%s Flags:", flags.Name()))
 		fmt.Fprint(w, colorFlagUsages(strings.TrimRightFunc(flags.FlagUsages(), unicode.IsSpace)))
 	}

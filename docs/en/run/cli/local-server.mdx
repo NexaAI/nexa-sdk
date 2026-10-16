@@ -176,7 +176,7 @@ The response `choices[0].text` is the raw completion, ready to insert at the cur
 
 ## **POST /v1/decisions**
 
-Evaluate ordered `predicate`, `choice`, and `score` questions using a `llama_cpp` LLM **already imported into the GenieX cache**. This endpoint follows the OpenAI Decisions request and response shape, scoring candidate tokens directly from native logits without generating explanations. Probabilities are normalized over the supplied answers and are not calibrated; image input is unsupported.
+Evaluate ordered `predicate`, `choice`, and `score` questions using a `llama_cpp` LLM or VLM **already imported into the GenieX cache**. This endpoint follows the OpenAI Decisions request and response shape. Models with `systemone` use the OpenJEV, LEV, or Nimble decision path and model-specific temperature; if `decision.type` is absent, OpenJEV is assumed. Models without `systemone` use a generic prompt with their usual chat template and temperature `1.0`. LEV choices average both option orders, and LEV predicates use a nine-rating readout; both LLMs and VLMs use native logits (LEV itself is text-only). VLMs can evaluate inline images and audio.
 
 ```sh
 curl http://127.0.0.1:18181/v1/decisions -H 'Content-Type: application/json' -d '{
@@ -206,7 +206,7 @@ curl http://127.0.0.1:18181/v1/decisions -H 'Content-Type: application/json' -d 
 }'
 ```
 
-`input` can be a nonempty text string or user messages containing text / `input_text` parts; `input_image` is rejected because local scoring is text-only. Each question may have an optional unique `name` (omitted names return `null`); choose 2–26 choice values and 2–10 score levels, with at most 64 questions. The response has an ordered `answers` array: predicates return the probability of true, choices return the selected value and each value's probability, and scores return the expected zero-based level index with level probabilities. `usage.input_tokens` counts the scoring inputs and `output_tokens` is 0. Replace the example `model` with a cached GenieX model name from `geniex list`, not a GGUF path.
+`input` can be a nonempty text string or user messages containing `input_text`, `input_image`, and GenieX-specific `input_audio` parts. Images (`image_url`) and audio (`input_audio.data`) use the chat endpoint's `SaveURIToTempFile` path, which accepts local paths, `file://`, HTTP(S), and data URLs. Audio also accepts raw base64 with `input_audio.format` (for example, `wav`), as in chat. At most 8 of each are accepted, and the VLM must support the corresponding modality. Each question may have an optional unique `name` (omitted names return `null`); choose 2–255 choice values (subject to the model's token vocabulary) and 2–10 score levels, with at most 64 questions. The ordered `answers` array returns a true probability for predicates, the selected value for choices, and a zero-based index for scores. Both LLM and VLM answers include probabilities and confidence, with zero output tokens. Replace the example `model` with a cached GenieX model name from `geniex list`, not a GGUF path.
 
 ## **Python client (OpenAI SDK)**
 

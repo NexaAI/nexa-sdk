@@ -304,6 +304,20 @@ func (v *VLM) Capabilities() (VlmCapabilities, error) {
 	}, nil
 }
 
+func (v *VLM) Decide(input DecideInput) (DecideOutput, error) {
+	if v.ptr == nil || len(input.Questions) == 0 || input.QuestionIndex < 0 || input.QuestionIndex >= len(input.Questions) {
+		return DecideOutput{}, SDKError(C.GENIEX_ERROR_COMMON_INVALID_INPUT)
+	}
+	cInput := input.toCPtr()
+	defer freeDecideInput(cInput)
+	var cOutput C.geniex_DecideOutput
+	defer freeDecideOutput(&cOutput)
+	if rc := C.geniex_vlm_decide(v.ptr, cInput, &cOutput); rc < 0 {
+		return DecideOutput{}, SDKError(rc)
+	}
+	return decideOutput(&cOutput), nil
+}
+
 func (v *VLM) Reset() error {
 	slog.Debug("Reset called", "ptr", v.ptr)
 	if v.ptr == nil {
