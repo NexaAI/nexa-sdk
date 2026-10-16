@@ -176,12 +176,14 @@ def submit_and_wait(
     """Upload the artifact, submit the job (retrying on quota), and block until terminal."""
     log.info("uploading artifact (%d MB)", zip_path.stat().st_size // 1_000_000)
     artifact_id = _call_with_retry(
-        qdc_api.upload_file,
+        qdc_api.upload_file_v2,
         client,
         str(zip_path),
         ArtifactType.TESTSCRIPT,
         what="upload artifact",
     )
+    if artifact_id is None:
+        raise RuntimeError("upload_file_v2 returned None")
     job_id = _submit_with_retry(
         client,
         target_id=target_id,
@@ -243,7 +245,7 @@ def download_log_members(
             continue
         dl = tmp / "log.bin"
         _call_with_retry(
-            qdc_api.download_job_log_files,
+            qdc_api.download_job_log_files_v2,
             client,
             lf.filename,
             str(dl),
