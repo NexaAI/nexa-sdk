@@ -244,15 +244,13 @@ def download_log_members(
         if not want(_basename(lf.filename)):
             continue
         dl = tmp / "log.bin"
-        result = _call_with_retry(
+        _call_with_retry(
             qdc_api.download_job_log_files_v2,
             client,
             lf.filename,
             str(dl),
             what="download job log file",
         )
-        if result is None:
-            raise RuntimeError(f"download_job_log_files_v2 returned None for {lf.filename}")
         if zipfile.is_zipfile(dl):
             with zipfile.ZipFile(dl) as z:
                 for name in z.namelist():
