@@ -38,3 +38,27 @@ endforeach()
 install(DIRECTORY "$<TARGET_FILE_DIR:geniex_core>/htp-files/"
     DESTINATION ${QAIRT_PLUGIN_DIR}/htp-files
     OPTIONAL)
+
+# Linux only: the QNN HTP stubs link against the unversioned `libcdsprpc.so`, while Debian/Ubuntu
+# FastRPC packages ship only `libcdsprpc.so.1`. An empty alias with SONAME libcdsprpc.so that
+# depends on libcdsprpc.so.1 bridges the two; the plugin loads it only when the bare name is missing
+# (see ensure_cdsprpc_alias() in src/plugin.cpp). Named differently from the SONAME so that it never
+# shadows a real libcdsprpc.so found through LD_LIBRARY_PATH.
+if(UNIX AND NOT APPLE AND NOT ANDROID)
+    # Build-time stand-in for libcdsprpc.so.1 so the alias records the right DT_NEEDED.
+    add_library(geniex_cdsprpc_v1 SHARED src/cdsprpc_alias.cpp)
+    set_target_properties(geniex_cdsprpc_v1 PROPERTIES
+        OUTPUT_NAME cdsprpc VERSION 1.0.0 SOVERSION 1
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/cdsprpc_stub")
+
+    add_library(geniex_cdsprpc_alias SHARED src/cdsprpc_alias.cpp)
+    set_target_properties(geniex_cdsprpc_alias PROPERTIES
+        OUTPUT_NAME geniex_cdsprpc_alias
+        NO_SONAME TRUE
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/plugins/qairt")
+    target_link_options(geniex_cdsprpc_alias PRIVATE
+        -Wl,-soname,libcdsprpc.so -Wl,--no-as-needed)
+    target_link_libraries(geniex_cdsprpc_alias PRIVATE geniex_cdsprpc_v1)
+
+    install(TARGETS geniex_cdsprpc_alias LIBRARY DESTINATION ${QAIRT_PLUGIN_DIR})
+endif()
