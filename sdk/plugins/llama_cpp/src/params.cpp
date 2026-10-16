@@ -8,6 +8,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -266,13 +267,38 @@ std::optional<std::vector<ggml_backend_dev_t>> resolve_devices(const char* devic
     return devices;
 }
 
-void apply_device_selection(llama_model_params& mpar, const std::vector<ggml_backend_dev_t>& selection, Device device) {
+void apply_device_selection(llama_model_params& mpar, std::vector<ggml_backend_dev_t>& selection, Device device) {
     static ggml_backend_dev_t no_devices[] = {nullptr};
-    if (!selection.empty()) {
-        mpar.devices = const_cast<ggml_backend_dev_t*>(selection.data());
-    } else if (device == Device::CPU) {
-        mpar.devices = no_devices;
+    if (selection.empty()) {
+        if (device == Device::CPU) {
+            mpar.devices = no_devices;
+            return;
+        }
+        // Mirror llama.cpp's default pick (every non-CPU, non-RPC GPU-type device) but keep only the first HTP.
+        bool                            seen_htp    = false;
+        bool                            skipped_htp = false;
+        std::vector<ggml_backend_dev_t> defaults;
+        for (size_t i = 0; i < ggml_backend_dev_count(); ++i) {
+            ggml_backend_dev_t dev  = ggml_backend_dev_get(i);
+            const auto         type = ggml_backend_dev_type(dev);
+            if (type != GGML_BACKEND_DEVICE_TYPE_GPU && type != GGML_BACKEND_DEVICE_TYPE_IGPU) continue;
+            if (std::string_view(ggml_backend_reg_name(ggml_backend_dev_backend_reg(dev))) == "RPC") continue;
+            if (std::strncmp(ggml_backend_dev_name(dev), "HTP", 3) == 0) {
+                if (seen_htp) {
+                    skipped_htp = true;
+                    continue;
+                }
+                seen_htp = true;
+            }
+            defaults.push_back(dev);
+        }
+        if (!skipped_htp) return;  // at most one HTP: llama.cpp's own default is already what we want.
+        GENIEX_LOG_INFO("Default device list restricted to {} device(s); spare HTP sessions are left to the mmproj",
+            defaults.size());
+        selection = std::move(defaults);
+        selection.push_back(nullptr);
     }
+    mpar.devices = selection.data();
 }
 
 ggml_backend_dev_t resolve_vision_device(const std::vector<ggml_backend_dev_t>& lm_devices) {
