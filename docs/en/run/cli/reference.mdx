@@ -125,7 +125,7 @@ geniex decide <model-name>[:<precision>] --kind predicate \
   --input "The battery will not charge" --question "Is this a hardware issue?"
 geniex decide <model-name>[:<precision>] --kind choice \
   --input "The battery will not charge" --question "Choose the next route" \
-  --choice retry --choice replace
+  --choice 'retry=Try again' --choice 'replace=Replace the battery'
 geniex decide <model-name>[:<precision>] --kind score \
   --input "The battery temperature is 85°C" --question "Rate the severity" \
   --level low --level medium --level "high=Immediate shutdown required"
@@ -135,7 +135,9 @@ geniex decide <vlm-name> --kind choice --image photo.png \
   --choice battery --choice screen
 ```
 
-`--choice` and `--level` accept an optional description after `=`. `--image` and `--audio` accept existing local regular files and may each be repeated up to 8 times; they require a VLM supporting the corresponding modality. `--compute`, `--ngl`, `--nctx`, and `--power-mode` control local model loading, as with `geniex infer`. Both LLM and VLM decisions use logits, with model-specific temperature and candidate encoding.
+Repeat `--choice VALUE` for each candidate. In `--choice 'retry=Try again'`, `retry` is the value returned in JSON and `Try again` is optional context for the model; it is not a key-value map. Quote the argument if the description has spaces. `--level` similarly accepts `LABEL=DESCRIPTION`. `--image` and `--audio` accept existing local regular files and may each be repeated up to 8 times. `--compute`, `--ngl`, `--nctx`, and `--power-mode` control local model loading, as with `geniex infer`. Both LLM and VLM decisions use logits, with model-specific temperature and candidate encoding. `--vit-compute` selects the VLM vision encoder's compute unit. `geniex decide --help` groups these flags under Model Loading, LLM/VLM Decision, and VLM Specific.
+
+By default, `geniex decide` uses the CLI theme to display both predicate probabilities (`true` and `false`), the selected choice and every candidate probability, or the zero-based expected score and every level probability, plus confidence when available. Pass `--json` to print the original full single-line JSON result for scripts. The `/v1/decisions` response remains JSON.
 
 ## **`geniex model`**
 

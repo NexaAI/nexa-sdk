@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,11 +19,13 @@ import (
 	"github.com/qualcomm/GenieX/cli/cmd/geniex/common"
 	"github.com/qualcomm/GenieX/cli/internal/config"
 	"github.com/qualcomm/GenieX/cli/internal/decision"
+	"github.com/qualcomm/GenieX/cli/internal/render"
 	"github.com/qualcomm/GenieX/cli/internal/store"
 )
 
 var (
 	decisionKind     string
+	decisionJSON     bool
 	decisionInput    string
 	decisionQuestion string
 	decisionChoices  []string
@@ -32,16 +35,23 @@ var (
 )
 
 func decisionFlagSet() *pflag.FlagSet {
-	flags := pflag.NewFlagSet("Decision", pflag.ExitOnError)
+	flags := pflag.NewFlagSet("LLM/VLM Decision", pflag.ExitOnError)
 	flags.SortFlags = false
 	flags.StringVar(&decisionKind, "kind", "", "decision kind: predicate, choice, or score")
-	flags.StringVar(&vitComputeUnit, "vit-compute", "", "compute unit for the VLM vision encoder, e.g. CPU or HTP2 (llama_cpp only)")
+	flags.BoolVar(&decisionJSON, "json", false, "output the full decision result as JSON")
 	flags.StringVarP(&decisionInput, "input", "i", "", "input text to evaluate")
 	flags.StringVarP(&decisionQuestion, "question", "q", "", "question or instruction for the decision")
-	flags.StringArrayVar(&decisionChoices, "choice", nil, "choice value, repeated for choice; use value=description to add context")
-	flags.StringArrayVar(&decisionLevels, "level", nil, "level label, repeated for score; use label=description to add context")
-	flags.StringArrayVar(&decisionImages, "image", nil, "image path, repeated for visual decisions (requires a VLM)")
-	flags.StringArrayVar(&decisionAudios, "audio", nil, "audio path, repeated for audio decisions (requires a VLM)")
+	flags.StringArrayVar(&decisionChoices, "choice", nil, "candidate VALUE; repeat for choice; VALUE=DESCRIPTION adds a description for VALUE")
+	flags.StringArrayVar(&decisionLevels, "level", nil, "level LABEL; repeat for score; LABEL=DESCRIPTION adds a description for LABEL")
+	return flags
+}
+
+func decisionVLMFlagSet() *pflag.FlagSet {
+	flags := pflag.NewFlagSet("VLM Specific", pflag.ExitOnError)
+	flags.SortFlags = false
+	flags.StringVar(&vitComputeUnit, "vit-compute", "", "compute unit for the VLM vision encoder, e.g. CPU or HTP2 (llama_cpp only)")
+	flags.StringArrayVar(&decisionImages, "image", nil, "image path, repeated for visual decisions")
+	flags.StringArrayVar(&decisionAudios, "audio", nil, "audio path, repeated for audio decisions")
 	return flags
 }
 
@@ -53,8 +63,11 @@ func decide() *cobra.Command {
 		Long:    "Score a predicate, choice, or ordinal decision locally with a llama_cpp LLM or VLM.",
 		Args:    cobra.ExactArgs(1),
 	}
-	cmd.Flags().AddFlagSet(decisionFlagSet())
-	cmd.Flags().AddFlagSet(modelLoadFlags)
+	groups := []*pflag.FlagSet{modelLoadFlags, decisionFlagSet(), decisionVLMFlagSet()}
+	for _, flags := range groups {
+		cmd.Flags().AddFlagSet(flags)
+	}
+	cmd.SetUsageFunc(func(c *cobra.Command) error { return groupedFlagUsage(c, groups) })
 	cmd.MarkFlagRequired("kind")
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		question, err := validateDecision(
@@ -131,7 +144,7 @@ func decide() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return json.NewEncoder(cmd.OutOrStdout()).Encode(result)
+			return writeDecisionResult(cmd.OutOrStdout(), result, decisionJSON)
 		}
 		if paths.ModelType != geniex_sdk.ModelTypeLLM {
 			return fmt.Errorf("decide does not support model type %q", paths.ModelType)
@@ -151,7 +164,7 @@ func decide() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		return json.NewEncoder(cmd.OutOrStdout()).Encode(result)
+		return writeDecisionResult(cmd.OutOrStdout(), result, decisionJSON)
 	}
 	return cmd
 }
@@ -287,6 +300,66 @@ type decisionOutput struct {
 	Probabilities []decision.Probability `json:"probabilities,omitempty"`
 	Confidence    *float64               `json:"confidence,omitempty"`
 	Score         *float64               `json:"score,omitempty"`
+}
+
+func writeDecisionResult(w io.Writer, result decisionOutput, asJSON bool) error {
+	if asJSON {
+		return json.NewEncoder(w).Encode(result)
+	}
+	theme := render.GetTheme()
+	var text strings.Builder
+	switch result.Type {
+	case string(decision.KindPredicate):
+		if result.Probability == nil {
+			return errors.New("predicate result has no probability")
+		}
+		trueStyle, falseStyle := theme.Info, theme.Info
+		if *result.Probability >= 0.5 {
+			trueStyle = theme.Success
+		} else {
+			falseStyle = theme.Success
+		}
+		fmt.Fprintf(&text, "%s %s\n", theme.Heading.Sprint("Probability (true):"), trueStyle.Sprintf("%.1f%%", *result.Probability*100))
+		fmt.Fprintf(&text, "%s %s\n", theme.Heading.Sprint("Probability (false):"), falseStyle.Sprintf("%.1f%%", (1-*result.Probability)*100))
+	case string(decision.KindChoice):
+		fmt.Fprintf(&text, "%s %s\n", theme.Heading.Sprint("Choice:"), theme.Success.Sprint(result.Choice))
+	case string(decision.KindScore):
+		if result.Score == nil {
+			return errors.New("score result has no score")
+		}
+		fmt.Fprintf(&text, "%s %s\n", theme.Heading.Sprint("Score:"), theme.Success.Sprintf("%.2f (range 0-%d)", *result.Score, len(result.Probabilities)-1))
+	default:
+		return fmt.Errorf("unknown decision kind %q", result.Type)
+	}
+	if result.Confidence != nil {
+		fmt.Fprintf(&text, "%s %s\n", theme.Heading.Sprint("Confidence:"), theme.Success.Sprintf("%.1f%%", *result.Confidence*100))
+	}
+	switch result.Type {
+	case string(decision.KindChoice):
+		text.WriteString(theme.Heading.Sprint("Probabilities:"))
+		text.WriteByte('\n')
+		for _, option := range result.Probabilities {
+			label := theme.Normal.Sprint(option.Value)
+			probability := theme.Info.Sprintf("%.1f%%", option.Probability*100)
+			if option.Value == result.Choice {
+				label = theme.Success.Sprint(option.Value)
+				probability = theme.Success.Sprintf("%.1f%%", option.Probability*100)
+			}
+			fmt.Fprintf(&text, "  %s: %s\n", label, probability)
+		}
+	case string(decision.KindScore):
+		text.WriteString(theme.Heading.Sprint("Levels:"))
+		text.WriteByte('\n')
+		for _, level := range result.Probabilities {
+			label := fmt.Sprint(level.Value)
+			if level.Label != nil {
+				label += " (" + *level.Label + ")"
+			}
+			fmt.Fprintf(&text, "  %s: %s\n", label, theme.Info.Sprintf("%.1f%%", level.Probability*100))
+		}
+	}
+	_, err := io.WriteString(w, text.String())
+	return err
 }
 
 type decisionModel interface {

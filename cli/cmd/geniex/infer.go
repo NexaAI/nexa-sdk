@@ -85,7 +85,7 @@ var (
 		return samplerFlags
 	}()
 	modelLoadFlags = func() *pflag.FlagSet {
-		modelLoadFlags := pflag.NewFlagSet("LLM Model Loading", pflag.ExitOnError)
+		modelLoadFlags := pflag.NewFlagSet("Model Loading", pflag.ExitOnError)
 		modelLoadFlags.SortFlags = false
 		modelLoadFlags.StringVarP(&computeUnit, "compute", "c", "", "compute unit to run on: cpu, gpu, npu, hybrid, or an explicit device list like HTP0,HTP1,HTP2,HTP3 (llama_cpp only) (default: npu)")
 		modelLoadFlags.Int32VarP(&ngl, "ngl", "n", -1, "number of layers to offload to gpu/npu, -1 = all (llama_cpp only)")

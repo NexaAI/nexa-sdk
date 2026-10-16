@@ -4,11 +4,15 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
+	"regexp"
 	"strings"
 	"testing"
 
 	geniex_sdk "github.com/qualcomm/GenieX/bindings/go"
 	"github.com/qualcomm/GenieX/cli/internal/decision"
+	"github.com/qualcomm/GenieX/cli/internal/render"
 )
 
 type fakeDecisionModel struct {
@@ -35,6 +39,115 @@ func TestDecideVisionComputeFlag(t *testing.T) {
 	t.Cleanup(func() { vitComputeUnit = previous })
 	if err := cmd.Flags().Parse([]string{"--vit-compute", "CPU"}); err != nil || vitComputeUnit != "CPU" {
 		t.Fatalf("--vit-compute parsed as %q, err = %v", vitComputeUnit, err)
+	}
+}
+
+func TestDecideHelpFlagGroups(t *testing.T) {
+	cmd := decide()
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+	if err := cmd.Usage(); err != nil {
+		t.Fatal(err)
+	}
+	help := output.String()
+	model := strings.Index(help, "Model Loading Flags:")
+	decision := strings.Index(help, "LLM/VLM Decision Flags:")
+	vlm := strings.Index(help, "VLM Specific Flags:")
+	if model < 0 || decision <= model || vlm <= decision {
+		t.Fatalf("missing or unordered decide flag groups: %s", help)
+	}
+	if !strings.Contains(help[model:decision], "--compute") ||
+		!strings.Contains(help[decision:vlm], "--kind") ||
+		!strings.Contains(help[decision:vlm], "--choice") ||
+		!strings.Contains(help[decision:vlm], "--json") ||
+		!strings.Contains(help[decision:vlm], "adds a description for VALUE") ||
+		!strings.Contains(help[vlm:], "--vit-compute") ||
+		!strings.Contains(help[vlm:], "--image") ||
+		strings.Contains(help[vlm:], "requires a VLM") || strings.Contains(help, "--max-tokens") {
+		t.Fatalf("decide flags are assigned to the wrong groups: %s", help)
+	}
+}
+
+func TestParseDecisionChoicesWithDescription(t *testing.T) {
+	choices, err := parseDecisionChoices([]string{"retry=Try again", "replace"})
+	if err != nil || len(choices) != 2 || choices[0].Value != "retry" ||
+		choices[0].Description != "Try again" || choices[1].Value != "replace" || choices[1].Description != "" {
+		t.Fatalf("choice value/description = %+v, err = %v", choices, err)
+	}
+}
+
+func TestWriteDecisionResult(t *testing.T) {
+	probability, falseProbability, confidence, score := 0.857, 0.2, 0.963, 1.23
+	low, mid, high := "low", "mid", "high"
+	for _, tc := range []struct {
+		name   string
+		result decisionOutput
+		want   string
+	}{
+		{"predicate", decisionOutput{Type: "predicate", Probability: &probability}, "Probability (true): 85.7%\nProbability (false): 14.3%\n"},
+		{"predicate false", decisionOutput{Type: "predicate", Probability: &falseProbability}, "Probability (true): 20.0%\nProbability (false): 80.0%\n"},
+		{"choice", decisionOutput{Type: "choice", Choice: "dog", Confidence: &confidence,
+			Probabilities: []decision.Probability{{Value: "dog", Probability: 0.982}, {Value: "cat", Probability: 0.018}}},
+			"Choice: dog\nConfidence: 96.3%\nProbabilities:\n  dog: 98.2%\n  cat: 1.8%\n"},
+		{"score", decisionOutput{Type: "score", Score: &score, Confidence: &confidence,
+			Probabilities: []decision.Probability{
+				{Value: 0, Label: &low, Probability: 0.2},
+				{Value: 1, Label: &mid, Probability: 0.37},
+				{Value: 2, Label: &high, Probability: 0.43},
+			}},
+			"Score: 1.23 (range 0-2)\nConfidence: 96.3%\nLevels:\n  0 (low): 20.0%\n  1 (mid): 37.0%\n  2 (high): 43.0%\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var output bytes.Buffer
+			err := writeDecisionResult(&output, tc.result, false)
+			plain := regexp.MustCompile("\x1b\\[[0-9;]*m").ReplaceAllString(output.String(), "")
+			if err != nil || plain != tc.want {
+				t.Fatalf("text = %q, err = %v, want %q", plain, err, tc.want)
+			}
+		})
+	}
+}
+
+func TestWriteDecisionChoiceColors(t *testing.T) {
+	theme := render.GetTheme()
+	if theme.Success.Code() == "" {
+		t.Skip("terminal theme has no color")
+	}
+	confidence := 0.963
+	result := decisionOutput{Type: "choice", Choice: "dog", Confidence: &confidence,
+		Probabilities: []decision.Probability{{Value: "dog", Probability: 0.982}, {Value: "cat", Probability: 0.018}}}
+	var output bytes.Buffer
+	if err := writeDecisionResult(&output, result, false); err != nil {
+		t.Fatal(err)
+	}
+	wantSelected := "  " + theme.Success.Sprint("dog") + ": " + theme.Success.Sprintf("98.2%%")
+	wantUnselected := "  " + theme.Normal.Sprint("cat") + ": " + theme.Info.Sprintf("1.8%%")
+	if !strings.Contains(output.String(), wantSelected) || !strings.Contains(output.String(), wantUnselected) ||
+		!strings.Contains(output.String(), theme.Success.Sprintf("96.3%%")) {
+		t.Fatalf("wrong decision colors: %q", output.String())
+	}
+}
+
+func TestWriteDecisionResultJSON(t *testing.T) {
+	previous := decisionJSON
+	t.Cleanup(func() { decisionJSON = previous })
+	if err := decide().Flags().Parse([]string{"--json"}); err != nil || !decisionJSON {
+		t.Fatalf("--json parsing failed: enabled = %t, err = %v", decisionJSON, err)
+	}
+	confidence := 0.6
+	result := decisionOutput{
+		Type: "choice", Choice: "retry", Confidence: &confidence,
+		Probabilities: []decision.Probability{{Value: "retry", Probability: 0.7}, {Value: "replace", Probability: 0.3}},
+	}
+	var output bytes.Buffer
+	if err := writeDecisionResult(&output, result, decisionJSON); err != nil {
+		t.Fatal(err)
+	}
+	var decoded decisionOutput
+	if err := json.Unmarshal(output.Bytes(), &decoded); err != nil || decoded.Type != "choice" || decoded.Choice != "retry" ||
+		len(decoded.Probabilities) != 2 || decoded.Probabilities[0].Probability != 0.7 ||
+		decoded.Confidence == nil || *decoded.Confidence != confidence {
+		t.Fatalf("JSON = %q, decoded = %+v, err = %v", output.String(), decoded, err)
 	}
 }
 
