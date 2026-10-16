@@ -62,8 +62,8 @@ CHIPSET = {
     "SC8480XP": "qualcomm-snapdragon-x2-elite",
     "X1P42100": "qualcomm-snapdragon-x-plus-8-core",
     "SM8650": "qualcomm-snapdragon-8gen3",
-    "SM8750": "qualcomm-snapdragon-8-elite",
-    "SM8850": "qualcomm-snapdragon-8-elite-gen5",
+    "SM8750": "qualcomm-snapdragon-8-elite-for-galaxy",
+    "SM8850": "qualcomm-snapdragon-8-elite-gen5-for-galaxy",
 }
 
 
