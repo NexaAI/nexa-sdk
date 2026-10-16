@@ -94,7 +94,9 @@ constexpr const char* kQnnBackendLib    = "libQnnHtp.so";
 constexpr const char* kQnnSystemLib     = "libQnnSystem.so";
 constexpr const char* kQnnExtensionsLib = "libQnnHtpNetRunExtensions.so";
 constexpr const char* kHostLibTriple    = "aarch64-oe-linux-gcc11.2";
-constexpr char        kPathSep          = ':';
+// FastRPC splits ADSP_LIBRARY_PATH on ';' on Linux, not the ':' PATH uses; with ':' only the
+// first of several skel folders is searched and a stale skel from the device image loads.
+constexpr char        kPathSep          = ';';
 #endif
 
 // Finds the directory holding the host QNN libraries under `root`, which may be either a
