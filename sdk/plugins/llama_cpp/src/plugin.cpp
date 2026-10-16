@@ -80,8 +80,10 @@ class LlamaPlugin : public Plugin {
             // can satisfy as one contiguous chunk on some HTP targets (e.g. IQ9), failing to map a
             // model's own weight buffer even with session contention already solved. Cap it lower so
             // large weight tensors get chunked, unless the caller already set an override.
+            // Format is <dyn>,<static>,<total> (llama.cpp 9c2e0e491); a single value only caps the
+            // dynamic (compute) buffers and leaves weights/KV at 1 GiB, so set both.
             // See qcom-ai-hub/geniex#1683.
-            setenv("GGML_HEXAGON_MBUF", "64", 1);
+            setenv("GGML_HEXAGON_MBUF", "64,64", 1);
 #endif
         }
 
