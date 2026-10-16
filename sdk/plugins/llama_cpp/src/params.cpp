@@ -274,24 +274,27 @@ void apply_device_selection(llama_model_params& mpar, std::vector<ggml_backend_d
             mpar.devices = no_devices;
             return;
         }
-        // Mirror llama.cpp's default pick (every non-CPU, non-RPC GPU-type device) but keep only the first HTP.
+        // Mirror llama.cpp's default pick (llama.cpp: "default device selection"): non-RPC GPU devices, plus iGPUs only
+        // when there is no GPU, but keep just the first HTP.
         bool                            seen_htp    = false;
         bool                            skipped_htp = false;
-        std::vector<ggml_backend_dev_t> defaults;
+        std::vector<ggml_backend_dev_t> gpus;
+        std::vector<ggml_backend_dev_t> igpus;
         for (size_t i = 0; i < ggml_backend_dev_count(); ++i) {
             ggml_backend_dev_t dev  = ggml_backend_dev_get(i);
             const auto         type = ggml_backend_dev_type(dev);
             if (type != GGML_BACKEND_DEVICE_TYPE_GPU && type != GGML_BACKEND_DEVICE_TYPE_IGPU) continue;
             if (std::string_view(ggml_backend_reg_name(ggml_backend_dev_backend_reg(dev))) == "RPC") continue;
-            if (std::strncmp(ggml_backend_dev_name(dev), "HTP", 3) == 0) {
+            if (type == GGML_BACKEND_DEVICE_TYPE_GPU && std::strncmp(ggml_backend_dev_name(dev), "HTP", 3) == 0) {
                 if (seen_htp) {
                     skipped_htp = true;
                     continue;
                 }
                 seen_htp = true;
             }
-            defaults.push_back(dev);
+            (type == GGML_BACKEND_DEVICE_TYPE_GPU ? gpus : igpus).push_back(dev);
         }
+        std::vector<ggml_backend_dev_t> defaults = gpus.empty() ? igpus : gpus;
         if (!skipped_htp) return;  // at most one HTP: llama.cpp's own default is already what we want.
         GENIEX_LOG_INFO("Default device list restricted to {} device(s); spare HTP sessions are left to the mmproj",
             defaults.size());
