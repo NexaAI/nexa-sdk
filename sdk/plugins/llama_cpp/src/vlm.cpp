@@ -203,20 +203,17 @@ int32_t LlamaVlm::decide(const geniex_DecideInput* input, geniex_DecideOutput* o
     if (media_count == 0) {
         // Text-only VLM decisions can decode directly without an mtmd context.
         const int32_t n_batch = llama_n_batch(this->ctx);
-        llama_batch   batch   = llama_batch_init(n_batch, 0, 1);
-        int32_t       result  = GENIEX_SUCCESS;
+        common_batch  batch(this->ctx);
+        int32_t       result = GENIEX_SUCCESS;
         for (size_t start = 0; start < prompt_tokens.size(); start += n_batch) {
             const int32_t count = std::min<int32_t>(n_batch, prompt_tokens.size() - start);
-            common_batch_clear(batch);
+            batch.clear();
             for (int32_t i = 0; i < count; ++i) {
                 const size_t position = start + i;
-                common_batch_add(batch,
-                    prompt_tokens[position],
-                    static_cast<llama_pos>(position),
-                    {0},
-                    position + 1 == prompt_tokens.size());
+                batch.add(
+                    prompt_tokens[position], static_cast<llama_pos>(position), 0, position + 1 == prompt_tokens.size());
             }
-            const int32_t rc = llama_decode(this->ctx, batch);
+            const int32_t rc = llama_process(this->ctx, LLAMA_PROCESS_TYPE_DECODE, batch.get());
             if (rc != 0) {
                 result = rc == 1 ? GENIEX_ERROR_LLM_GENERATION_PROMPT_TOO_LONG : GENIEX_ERROR_VLM_GENERATION_FAILED;
                 break;
@@ -228,7 +225,6 @@ int32_t LlamaVlm::decide(const geniex_DecideInput* input, geniex_DecideOutput* o
             for (size_t i = 0; i < candidate_tokens.size(); ++i) candidate_logits[i] = row[candidate_tokens[i]];
             input_tokens = static_cast<int32_t>(prompt_tokens.size());
         }
-        llama_batch_free(batch);
         if (result != GENIEX_SUCCESS) return result;
     } else {
         // Decode image and audio bitmaps through mtmd before reading logits.

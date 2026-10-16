@@ -199,7 +199,7 @@ int32_t prepare_decision(const llama_model* model, const geniex_DecideInput* inp
                 request.use_jinja             = true;
                 request.add_generation_prompt = true;
                 request.enable_thinking       = false;
-                prompt                        = common_chat_templates_apply(tmpls.get(), request).prompt;
+                prompt                        = common_chat_templates_apply(tmpls.get(), request).prompt.str();
             } else {
                 prompt = "User:\n" + user + "\nAssistant:\n";
             }
@@ -246,11 +246,11 @@ int32_t prepare_decision(const llama_model* model, const geniex_DecideInput* inp
                 params.mark_input    = false;
                 return common_chat_template_direct_apply(tmpl, params);
             };
-            prompt = render(order);
+            prompt = render(order).str();
             // LEV averages calibrated choice probabilities from both option orders.
             if (type == "lev" && original.type == "choice" && order.size() > 1) {
                 const std::vector<size_t> reversed(order.rbegin(), order.rend());
-                reversed_prompt = render(reversed);
+                reversed_prompt = render(reversed).str();
             }
         }
         // Catch templates that omit or duplicate the inserted media placeholders.
