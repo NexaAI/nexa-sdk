@@ -21,8 +21,9 @@
 //!   * Linux on Qualcomm Dragonwing boards (QCS6490 / QCS9075) —
 //!     parsed from `/sys/firmware/devicetree/base/compatible`.
 //!   * Android on Snapdragon — parsed from the `ro.soc.model`
-//!     system property (e.g. `SM8750` → `qualcomm-snapdragon-8-elite`
-//!     via AI Hub's alias table).
+//!     system property (e.g. `SM8650` → `qualcomm-snapdragon-8gen3`
+//!     via AI Hub's alias table; `SM8750` / `SM8850` map to their
+//!     `-ac` / `-ad` for-Galaxy aliases).
 //!   * Everything else — returns `None`. Callers must then pass
 //!     `chipset` explicitly.
 
@@ -475,17 +476,14 @@ mod android {
     //! backing Java `Build.SOC_MODEL` since Android 12 — and, as a
     //! vendor guard, `ro.soc.manufacturer` (backing `Build.SOC_MANUFACTURER`).
     //!
-    //! The SoC model is returned to the caller as-is (e.g. `"SM8750"`).
-    //! AI Hub's `resolve_chipset` already treats the lowercased SoC
-    //! code as an alias — `sm8750` → `qualcomm-snapdragon-8-elite`,
-    //! `sm8650` → `qualcomm-snapdragon-8gen3`, etc. — so we deliberately
-    //! do not maintain a second mapping table here.
+    //! The SoC model is returned to the caller as-is (e.g. `"SM8650"`).
+    //! AI Hub's `resolve_chipset` treats the lowercased SoC code as an
+    //! alias — `sm8650` → `qualcomm-snapdragon-8gen3`, etc.
     //!
-    //! Known limitation: `ro.soc.model` does not expose variant
-    //! suffixes. A Galaxy S25 reports `SM8750` (resolves to
-    //! `qualcomm-snapdragon-8-elite`), not `SM8750-AC` (the alias for
-    //! `qualcomm-snapdragon-8-elite-for-galaxy`). Users needing the
-    //! variant asset must pass `--chipset` explicitly.
+    //! Exception: the catalogue only publishes the 8 Elite / 8 Elite
+    //! Gen 5 under their for-Galaxy variant aliases (`sm8750-ac`,
+    //! `sm8850-ad`), while `ro.soc.model` reports the bare `SM8750` /
+    //! `SM8850`. Those two are mapped explicitly.
     //!
     //! We accept both `"QTI"` (the actual value on recent Samsung
     //! builds) and `"Qualcomm"` (the value documented in AOSP) as the
@@ -500,6 +498,12 @@ mod android {
         let model = model.trim();
         if model.is_empty() {
             return None;
+        }
+        if model.eq_ignore_ascii_case("SM8750") {
+            return Some("SM8750-AC");
+        }
+        if model.eq_ignore_ascii_case("SM8850") {
+            return Some("SM8850-AD");
         }
         Some(model)
     }
@@ -544,7 +548,13 @@ mod android {
 
         #[test]
         fn passes_through_qti_soc_model() {
-            assert_eq!(map_soc("QTI", "SM8750"), Some("SM8750"));
+            assert_eq!(map_soc("QTI", "SM8650"), Some("SM8650"));
+        }
+
+        #[test]
+        fn maps_elite_socs_to_galaxy_aliases() {
+            assert_eq!(map_soc("QTI", "SM8750"), Some("SM8750-AC"));
+            assert_eq!(map_soc("QTI", "sm8850"), Some("SM8850-AD"));
         }
 
         #[test]
@@ -554,7 +564,7 @@ mod android {
 
         #[test]
         fn manufacturer_match_is_case_insensitive() {
-            assert_eq!(map_soc("qti", "SM8750"), Some("SM8750"));
+            assert_eq!(map_soc("qti", "SM8750"), Some("SM8750-AC"));
             assert_eq!(map_soc("qualcomm", "SM8650"), Some("SM8650"));
         }
 
@@ -573,7 +583,7 @@ mod android {
 
         #[test]
         fn trims_model_whitespace() {
-            assert_eq!(map_soc("QTI", "  SM8750  "), Some("SM8750"));
+            assert_eq!(map_soc("QTI", "  SM8650  "), Some("SM8650"));
         }
     }
 }
