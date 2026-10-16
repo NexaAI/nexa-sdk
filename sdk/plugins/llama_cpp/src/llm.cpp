@@ -702,16 +702,19 @@ int32_t LlamaLlm::decide(const geniex_DecideInput* input, geniex_DecideOutput* o
     if (prepared.type == "lev" && (prepared.question_type == "noul" || !prepared.reversed_prompt.empty())) {
         auto softmax = [&](const std::vector<float>& logits) {
             std::vector<double> result(logits.size());
-            const float         peak = *std::max_element(logits.begin(), logits.end());
-            double              sum  = 0.0;
+            if (result.empty()) return result;
+            const float peak = *std::max_element(logits.begin(), logits.end());
             for (size_t i = 0; i < logits.size(); ++i) {
                 result[i] = std::exp((double)(logits[i] - peak) / prepared.temperature);
-                sum += result[i];
             }
+            double sum = result.front();
+            for (size_t i = 1; i < result.size(); ++i) sum += result[i];
+            if (!(sum > 0.0) || !std::isfinite(sum)) return std::vector<double>{};
             for (double& value : result) value /= sum;
             return result;
         };
         const auto first = softmax(scores);
+        if (first.empty()) return GENIEX_ERROR_COMMON_INVALID_INPUT;
         probabilities.resize(prepared.original_index.size());
         if (prepared.question_type == "noul") {
             // The nine codes represent ratings 0–8; their expectation is P(true).
@@ -727,6 +730,7 @@ int32_t LlamaLlm::decide(const geniex_DecideInput* input, geniex_DecideOutput* o
             if (rc != GENIEX_SUCCESS) return rc;
             input_tokens += reversed_tokens;
             const auto second = softmax(reversed_scores);
+            if (second.empty()) return GENIEX_ERROR_COMMON_INVALID_INPUT;
             for (size_t i = 0; i < first.size(); ++i) {
                 probabilities[prepared.original_index[i]] += first[i] / 2;
                 probabilities[prepared.original_index[first.size() - 1 - i]] += second[i] / 2;
@@ -737,11 +741,11 @@ int32_t LlamaLlm::decide(const geniex_DecideInput* input, geniex_DecideOutput* o
     // Return either raw logits or calibrated probabilities, indexed by the caller's options.
     const size_t option_count = prepared.original_index.size();
     if (probabilities.empty()) {
-        output->logits = static_cast<float*>(malloc(option_count * sizeof(float)));
+        output->logits = static_cast<float*>(calloc(option_count, sizeof(float)));
         if (!output->logits) return GENIEX_ERROR_COMMON_MEMORY_ALLOCATION;
         for (size_t i = 0; i < option_count; ++i) output->logits[prepared.original_index[i]] = scores[i];
     } else {
-        output->probabilities = static_cast<float*>(malloc(option_count * sizeof(float)));
+        output->probabilities = static_cast<float*>(calloc(option_count, sizeof(float)));
         if (!output->probabilities) return GENIEX_ERROR_COMMON_MEMORY_ALLOCATION;
         for (size_t i = 0; i < option_count; ++i) output->probabilities[i] = static_cast<float>(probabilities[i]);
     }

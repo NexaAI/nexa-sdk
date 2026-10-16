@@ -314,7 +314,7 @@ int32_t LlamaVlm::decide(const geniex_DecideInput* input, geniex_DecideOutput* o
         if (result != GENIEX_SUCCESS) return result;
     }
     // Restore caller option order before exposing the logits through the C API.
-    float* logits = static_cast<float*>(malloc(prepared.candidates.size() * sizeof(float)));
+    float* logits = static_cast<float*>(calloc(prepared.candidates.size(), sizeof(float)));
     if (!logits) return GENIEX_ERROR_COMMON_MEMORY_ALLOCATION;
     for (size_t i = 0; i < prepared.original_index.size(); ++i)
         logits[prepared.original_index[i]] = candidate_logits[i];
