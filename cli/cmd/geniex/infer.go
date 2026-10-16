@@ -84,14 +84,20 @@ var (
 		samplerFlags.StringVarP(&grammarString, "grammar-string", "", "", "grammar in string format")
 		return samplerFlags
 	}()
+	modelLoadFlags = func() *pflag.FlagSet {
+		modelLoadFlags := pflag.NewFlagSet("LLM Model Loading", pflag.ExitOnError)
+		modelLoadFlags.SortFlags = false
+		modelLoadFlags.StringVarP(&computeUnit, "compute", "c", "", "compute unit to run on: cpu, gpu, npu, hybrid, or an explicit device list like HTP0,HTP1,HTP2,HTP3 (llama_cpp only) (default: npu)")
+		modelLoadFlags.Int32VarP(&ngl, "ngl", "n", -1, "number of layers to offload to gpu/npu, -1 = all (llama_cpp only)")
+		modelLoadFlags.Int32VarP(&nctx, "nctx", "", 4096, "context window size; raise to extend context (llama_cpp only)")
+		modelLoadFlags.StringVarP(&powerMode, "power-mode", "", "", "HTP power/clock-management mode: low_power_saver, power_saver, high_power_saver, low_balanced, balanced, high_performance, sustained_high_performance, burst (default: burst)")
+		return modelLoadFlags
+	}()
 	llmFlags = func() *pflag.FlagSet {
 		llmFlags := pflag.NewFlagSet("LLM/VLM Model", pflag.ExitOnError)
 		llmFlags.SortFlags = false
-		llmFlags.StringVarP(&computeUnit, "compute", "c", "", "compute unit to run on: cpu, gpu, npu, hybrid, or an explicit device list like HTP0,HTP1,HTP2,HTP3 (llama_cpp only) (default: npu)")
 		llmFlags.StringVar(&vitComputeUnit, "vit-compute", "", "compute unit for the VLM vision encoder, e.g. CPU or HTP2 (llama_cpp only)")
 		llmFlags.StringVarP(&qairtLib, "qairt-lib", "", "", "run against a different QAIRT runtime: path to a QAIRT SDK root or a folder of QNN libraries (qairt only; sets GENIEX_QAIRT_LIB; optional — a QAIRT runtime is bundled and used by default)")
-		llmFlags.Int32VarP(&ngl, "ngl", "n", -1, "number of layers to offload to gpu/npu, -1 = all (llama_cpp only)")
-		llmFlags.Int32VarP(&nctx, "nctx", "", 4096, "context window size; raise to extend context (llama_cpp only)")
 		llmFlags.Int32VarP(&maxTokens, "max-tokens", "", 2048, "max tokens")
 		llmFlags.StringArrayVarP(&stop, "stop", "", nil, "stop sequences (llama_cpp only)")
 		llmFlags.StringVarP(&stopFile, "stop-file", "", "", "file containing stop sequences (llama_cpp only)")
@@ -108,7 +114,6 @@ var (
 		llmFlags.Int32VarP(&draftTokens, "draft-tokens", "", 3, "max draft tokens per step for speculative decoding (llama_cpp only)")
 		llmFlags.Int32VarP(&draftMin, "draft-min", "", 0, "min draft tokens per step (0 = llama.cpp default) (llama_cpp only)")
 		llmFlags.Float32VarP(&draftPMin, "draft-p-min", "", 0.0, "min greedy draft probability (0 = llama.cpp default) (llama_cpp only)")
-		llmFlags.StringVarP(&powerMode, "power-mode", "", "", "HTP power/clock-management mode: low_power_saver, power_saver, high_power_saver, low_balanced, balanced, high_performance, sustained_high_performance, burst (default: burst)")
 		return llmFlags
 	}()
 	vlmFlags = func() *pflag.FlagSet {
@@ -118,23 +123,9 @@ var (
 		return vlmFlags
 	}()
 	flagGroups = []*pflag.FlagSet{
-		samplerFlags, llmFlags, vlmFlags,
+		samplerFlags, modelLoadFlags, llmFlags, vlmFlags,
 	}
 )
-
-// decideModelFlags contains the model options the decision command consumes
-// through the existing SDK creation path. Structured grammars and prompts
-// remain command owned.
-func decideModelFlags() *pflag.FlagSet {
-	flags := pflag.NewFlagSet("Decision Model", pflag.ExitOnError)
-	flags.SortFlags = false
-	flags.StringVarP(&computeUnit, "compute", "c", "", "compute unit to run on: cpu, gpu, npu, or hybrid (default: npu)")
-	flags.StringVar(&vitComputeUnit, "vit-compute", "", "compute unit for the VLM vision encoder (llama_cpp only)")
-	flags.Int32VarP(&ngl, "ngl", "n", -1, "number of layers to offload to gpu/npu, -1 = all (llama_cpp only)")
-	flags.Int32VarP(&nctx, "nctx", "", 4096, "context window size (llama_cpp only)")
-	flags.Int32VarP(&maxTokens, "max-tokens", "", 2048, "maximum decision tokens")
-	return flags
-}
 
 func infer() *cobra.Command {
 	inferCmd := &cobra.Command{

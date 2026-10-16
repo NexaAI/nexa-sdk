@@ -4,195 +4,151 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
+	"strings"
 	"testing"
-	"time"
 
 	geniex_sdk "github.com/qualcomm/GenieX/bindings/go"
-	decision "github.com/qualcomm/GenieX/cli/internal/decision"
+	"github.com/qualcomm/GenieX/cli/internal/decision"
 )
 
-func TestDecideCommandModes(t *testing.T) {
-	command := decideCmd()
-	for _, test := range []struct {
-		name string
-		args []string
-		ok   bool
-	}{
-		{"classify", []string{"model", "classify"}, true},
-		{"choose", []string{"model", "choose"}, true},
-		{"triage removed", []string{"model", "triage"}, false},
-		{"browser removed", []string{"model", "browser"}, false},
-		{"missing mode", []string{"model"}, false},
-		{"unknown mode", []string{"model", "answer"}, false},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			err := command.Args(command, test.args)
-			if (err == nil) != test.ok {
-				t.Fatalf("Args(%q) error = %v, want success=%v", test.args, err, test.ok)
-			}
-		})
+type fakeDecisionModel struct {
+	input         geniex_sdk.DecideInput
+	logits        []float32
+	probabilities []float32
+	temperature   float32
+}
+
+func (f *fakeDecisionModel) Decide(input geniex_sdk.DecideInput) (geniex_sdk.DecideOutput, error) {
+	f.input = input
+	return geniex_sdk.DecideOutput{Logits: f.logits, Probabilities: f.probabilities, Temperature: f.temperature}, nil
+}
+
+func TestDecideVisionComputeFlag(t *testing.T) {
+	cmd := decide()
+	if cmd.Flags().Lookup("vit-compute") == nil {
+		t.Fatal("decide is missing --vit-compute")
+	}
+	if cmd.Flags().Lookup("max-tokens") != nil {
+		t.Fatal("decide registered unrelated inference flags")
+	}
+	previous := vitComputeUnit
+	t.Cleanup(func() { vitComputeUnit = previous })
+	if err := cmd.Flags().Parse([]string{"--vit-compute", "CPU"}); err != nil || vitComputeUnit != "CPU" {
+		t.Fatalf("--vit-compute parsed as %q, err = %v", vitComputeUnit, err)
 	}
 }
 
-func TestRootRegistersDecideNotJev(t *testing.T) {
-	var decide, jev bool
-	for _, command := range RootCmd().Commands() {
-		switch command.Name() {
-		case "decide":
-			decide = true
-		case "jev":
-			jev = true
-		}
+func TestValidateDecision(t *testing.T) {
+	predicate, err := validateDecision(decision.KindPredicate, "text", "is this urgent?", nil, nil)
+	if err != nil || len(predicate.Choices) != 2 {
+		t.Fatalf("predicate validation = %v, question = %+v", err, predicate)
 	}
-	if !decide {
-		t.Fatal("RootCmd does not register decide")
+	if _, err := validateDecision(decision.KindChoice, "text", "route it", []string{"one"}, nil); err == nil {
+		t.Fatal("accepted one choice")
 	}
-	if jev {
-		t.Fatal("RootCmd still registers obsolete command")
+	if _, err := validateDecision(decision.KindChoice, "text", "route it", []string{"one", "one"}, nil); err == nil || !strings.Contains(err.Error(), "duplicate") {
+		t.Fatalf("duplicate choice error = %v", err)
 	}
-}
-
-func TestDecideContext(t *testing.T) {
-	if _, err := decideContext(decideOptions{}); err == nil {
-		t.Fatal("decideContext accepted missing context")
+	score, err := validateDecision(decision.KindScore, "text", "rate it", nil, []string{"low", "high=urgent"})
+	if err != nil || len(score.Levels) != 2 || score.Levels[1].Description != "urgent" {
+		t.Fatalf("score validation = %v, question = %+v", err, score)
 	}
-	if _, err := decideContext(decideOptions{context: "a", contextFile: "b"}); err == nil {
-		t.Fatal("decideContext accepted both context sources")
-	}
-	value, err := decideContext(decideOptions{context: "question"})
-	if err != nil || value != "question" {
-		t.Fatalf("decideContext() = (%q, %v)", value, err)
+	if _, err := validateDecision(decision.Kind("unknown"), "text", "question", nil, nil); err == nil {
+		t.Fatal("accepted an unknown kind")
 	}
 }
 
-func TestParseDecideOptions(t *testing.T) {
-	options, err := parseDecideOptions([]string{"a=Earth", "b=Mars"})
-	if err != nil || len(options) != 2 || options[1].ID != "b" || options[1].Text != "Mars" {
-		t.Fatalf("parseDecideOptions() = (%#v, %v)", options, err)
+func TestEvaluateDecisionPredicateReturnsProbability(t *testing.T) {
+	model := &fakeDecisionModel{logits: []float32{0, 2}, temperature: 1}
+	result, err := evaluateDecision(model, "battery failed", decision.Question{
+		Kind: decision.KindPredicate, Instructions: "Is it urgent?",
+		Choices: []decision.Choice{{Value: false, Description: "false"}, {Value: true, Description: "true"}},
+	}, nil, nil)
+	if err != nil || result.Type != "predicate" || result.Probability == nil || *result.Probability <= 0.5 {
+		t.Fatalf("result = %+v, err = %v", result, err)
 	}
-	for _, value := range [][]string{{"invalid"}, {"=empty"}, {"id="}} {
-		if _, err := parseDecideOptions(value); err == nil {
-			t.Fatalf("parseDecideOptions(%q) succeeded", value)
-		}
-	}
-}
-
-func TestDecideInputValidation(t *testing.T) {
-	if err := validateDecideLabels([]string{"yes", "yes"}, "Classify."); err == nil {
-		t.Fatal("validateDecideLabels accepted duplicate labels")
-	}
-	if err := validateDecideLabels([]string{"yes"}, ""); err == nil {
-		t.Fatal("validateDecideLabels accepted missing instruction")
-	}
-	if err := validateDecideOptions([]decision.Option{{ID: "a", Text: "One"}, {ID: "a", Text: "Duplicate"}}, "Choose.", 0, 0); err == nil {
-		t.Fatal("validateDecideOptions accepted duplicate IDs")
-	}
-	if err := validateDecideOptions([]decision.Option{{ID: "a", Text: "One"}}, "Choose.", 0, 2); err == nil {
-		t.Fatal("validateDecideOptions accepted invalid bounds")
+	if model.input.State != "battery failed" || len(model.input.Questions) != 1 ||
+		model.input.Questions[0].Type != "predicate" {
+		t.Fatalf("decision input = %+v", model.input)
 	}
 }
 
-func TestDecideOnlyAcceptsConsumedModelFlags(t *testing.T) {
-	command := decideCmd()
-	for _, name := range []string{"compute", "vit-compute", "ngl", "nctx", "max-tokens", "threads", "threads-batch", "batch", "ubatch", "n-seq-max", "chat-template-path", "chat-template-content", "spec-type", "draft-model", "draft-tokens", "draft-min", "draft-p-min", "power-mode", "stop", "sliding-window", "sliding-window-n-keep", "temperature", "top-p", "top-k", "min-p", "repetition-penalty", "presence-penalty", "frequency-penalty", "seed"} {
-		if command.Flags().Lookup(name) == nil {
-			t.Fatalf("decide is missing consumed flag --%s", name)
-		}
-	}
-	for _, name := range []string{"image-max-length", "grammar-path", "grammar-string", "enable-json", "stop-file", "think", "system-prompt", "input", "prompt", "token-file", "message", "task", "url", "browser", "browser-path", "attach", "profile", "trace-dir", "headless", "dry-run", "max-steps", "auto"} {
-		if command.Flags().Lookup(name) != nil {
-			t.Fatalf("decide accepts removed or unsupported flag --%s", name)
-		}
-	}
-
-	inferCommand := infer()
-	for _, name := range []string{"temperature", "grammar-string", "think", "spec-type", "draft-model"} {
-		if inferCommand.Flags().Lookup(name) == nil {
-			t.Fatalf("infer lost flag --%s", name)
-		}
+func TestEvaluateDecisionUsesCalibratedProbabilities(t *testing.T) {
+	model := &fakeDecisionModel{probabilities: []float32{0.25, 0.75}, temperature: 2}
+	result, err := evaluateDecision(model, "battery failed", decision.Question{
+		Kind: decision.KindPredicate, Instructions: "Is it urgent?",
+		Choices: []decision.Choice{{Value: false}, {Value: true}},
+	}, nil, nil)
+	if err != nil || result.Probability == nil || *result.Probability < 0.749 {
+		t.Fatalf("calibrated probability = %+v, err = %v", result, err)
 	}
 }
 
-func TestDecideRuntimeOptions(t *testing.T) {
-	if err := validateDecideRuntimeOptions(decideOptions{}); err != nil {
-		t.Fatalf("validateDecideRuntimeOptions() error = %v", err)
-	}
-	for _, options := range []decideOptions{
-		{threads: -1},
-		{threadsBatch: -1},
-		{batch: -1},
-		{ubatch: -1},
-	} {
-		if err := validateDecideRuntimeOptions(options); err == nil {
-			t.Fatalf("validateDecideRuntimeOptions(%#v) succeeded", options)
-		}
-	}
-	config := decideModelConfig(4096, -1, decideOptions{threads: 4, threadsBatch: 6, batch: 512, ubatch: 256, nSeqMax: 2, specType: "ngram-simple"}, geniex_sdk.PowerModeBurst, "")
-	if config.NCtx != 4096 || config.NGpuLayers != -1 || config.NThreads != 4 || config.NThreadsBatch != 6 || config.NBatch != 512 || config.NUbatch != 256 || config.NSeqMax != 2 || config.SpecType != "ngram-simple" {
-		t.Fatalf("decideModelConfig() = %#v", config)
-	}
-}
-
-func TestResolveDecideModelOptions(t *testing.T) {
-	if _, _, err := resolveDecideModelOptions(context.Background(), geniex_sdk.RuntimeLlamaCpp, decideOptions{slidingWindow: true}); err == nil {
-		t.Fatal("resolveDecideModelOptions accepted llama.cpp sliding window")
-	}
-	if _, _, err := resolveDecideModelOptions(context.Background(), geniex_sdk.RuntimeQairt, decideOptions{specType: "ngram-simple"}); err == nil {
-		t.Fatal("resolveDecideModelOptions accepted QAIRT speculative decoding")
-	}
-	if _, _, err := resolveDecideModelOptions(context.Background(), geniex_sdk.RuntimeQairt, decideOptions{slidingWindowNKeep: 4}); err == nil {
-		t.Fatal("resolveDecideModelOptions accepted n-keep without sliding window")
-	}
-	options := decideOptions{temperature: 0.7, topK: 4, stop: []string{"</s>"}, slidingWindow: true, slidingWindowNKeep: 8}
-	generation := decideGenerationOptions(options)
-	if generation.Temperature != options.temperature || generation.TopK != options.topK || generation.Stop[0] != "</s>" || !generation.SlidingWindow || generation.SlidingWindowNKeep != 8 {
-		t.Fatalf("decideGenerationOptions() = %#v", generation)
-	}
-}
-
-func TestDecideJSONShape(t *testing.T) {
-	encoded, err := json.Marshal(decision.ClassificationResult{Label: "capital_of_france"})
+func TestEvaluateDecisionPassesState(t *testing.T) {
+	model := &fakeDecisionModel{logits: []float32{0, 1}, temperature: 1}
+	input := "Quoted: \"battery\" <__media__> 中文"
+	_, err := evaluateDecision(model, input, decision.Question{
+		Kind: decision.KindChoice, Instructions: "Choose",
+		Choices: []decision.Choice{{Value: "a"}, {Value: "b"}},
+	}, nil, nil)
 	if err != nil {
-		t.Fatalf("Marshal() error = %v", err)
+		t.Fatal(err)
 	}
-	if string(encoded) != `{"label":"capital_of_france"}` {
-		t.Fatalf("classification JSON = %s", encoded)
+	if model.input.State != input {
+		t.Fatalf("state = %q, want %q", model.input.State, input)
 	}
-	encoded, err = json.Marshal(decision.MultipleChoiceResult{SelectedIDs: []string{"paris"}})
+}
+
+func TestDecisionMediaPathsValidateAndResolve(t *testing.T) {
+	if _, err := decisionMediaPaths("--image", make([]string, 9)); err == nil {
+		t.Fatal("accepted more than 8 image paths")
+	}
+	if _, err := decisionMediaPaths("--audio", []string{""}); err == nil {
+		t.Fatal("accepted empty audio path")
+	}
+	if _, err := decisionMediaPaths("--image", []string{"does-not-exist.png"}); err == nil {
+		t.Fatal("accepted missing image path")
+	}
+}
+
+func TestEvaluateDecisionVLMUsesMediaLogits(t *testing.T) {
+	model := &fakeDecisionModel{logits: []float32{0, 2}, temperature: 1}
+	result, err := evaluateDecision(model, "media", decision.Question{
+		Kind: decision.KindChoice, Instructions: "Choose", Choices: []decision.Choice{{Value: "cat"}, {Value: "dog"}},
+	}, []string{"/tmp/photo.png"}, []string{"/tmp/audio.wav"})
+	if err != nil || result.Choice != "dog" {
+		t.Fatalf("result = %+v, err = %v", result, err)
+	}
+	if len(model.input.ImagePaths) != 1 || len(model.input.AudioPaths) != 1 {
+		t.Fatalf("score input = %+v", model.input)
+	}
+}
+
+func TestEvaluateDecisionChoice(t *testing.T) {
+	model := &fakeDecisionModel{logits: []float32{0, 2}, temperature: 0.85}
+	result, err := evaluateDecision(model, "battery failed", decision.Question{
+		Kind: decision.KindChoice, Instructions: "Choose a route",
+		Choices: []decision.Choice{{Value: "retry", Description: "try again"}, {Value: "replace", Description: "new battery"}},
+	}, nil, nil)
 	if err != nil {
-		t.Fatalf("Marshal() error = %v", err)
+		t.Fatal(err)
 	}
-	if string(encoded) != `{"selected_ids":["paris"]}` {
-		t.Fatalf("multiple-choice JSON = %s", encoded)
+	if result.Type != "choice" || result.Choice != "replace" || result.Confidence == nil {
+		t.Fatalf("result = %+v", result)
 	}
-}
-
-func TestRunDecideBenchmark(t *testing.T) {
-	calls := 0
-	resets := 0
-	result, timings, err := runDecideBenchmark(2, func() error {
-		resets++
-		return nil
-	}, func() (any, decision.DecisionTiming, error) {
-		calls++
-		return calls, decision.DecisionTiming{TotalTime: time.Millisecond}, nil
-	})
-	if err != nil || result != 3 || calls != 3 || resets != 2 || len(timings) != 2 {
-		t.Fatalf("runDecideBenchmark() = (%#v, %#v, %v), calls=%d resets=%d", result, timings, err, calls, resets)
+	if len(model.input.Questions) != 1 || model.input.Questions[0].Instructions != "Choose a route" ||
+		model.input.Questions[0].Options[0].Key != "retry" {
+		t.Fatalf("questions = %+v", model.input.Questions)
 	}
 }
 
-func TestDecideBenchmarkValidation(t *testing.T) {
-	command := decideCmd()
-	command.SetArgs([]string{"model", "classify", "--benchmark", "-1"})
-	if err := command.Execute(); err == nil {
-		t.Fatal("negative --benchmark succeeded")
-	}
-	command = decideCmd()
-	command.SetArgs([]string{"model", "classify", "--threads", "-1"})
-	if err := command.Execute(); err == nil {
-		t.Fatal("negative --threads succeeded")
+func TestEvaluateDecisionScore(t *testing.T) {
+	model := &fakeDecisionModel{logits: []float32{0, 0}, temperature: 1}
+	result, err := evaluateDecision(model, "battery failed", decision.Question{
+		Kind: decision.KindScore, Instructions: "Rate severity",
+		Levels: []decision.Level{{Label: "low", Description: "low"}, {Label: "high", Description: "high"}},
+	}, nil, nil)
+	if err != nil || result.Type != "score" || result.Score == nil || *result.Score != 0.5 || result.Confidence == nil {
+		t.Fatalf("result = %+v, err = %v", result, err)
 	}
 }

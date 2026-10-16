@@ -133,7 +133,7 @@ curl http://127.0.0.1:18181/v1/chat/completions \
 
 ## **POST /v1/decisions**
 
-使用**已导入 GenieX 缓存**的 `llama_cpp` LLM，按顺序评估 `predicate`、`choice` 和 `score` 问题。此端点采用 OpenAI Decisions 的请求与响应结构，通过原生 logits 对候选 token 直接打分，不生成解释文本。概率仅在提供的候选项内归一化，并非校准概率；本地评分不支持图像输入。
+使用**已导入 GenieX 缓存**的 `llama_cpp` LLM 或 VLM，按顺序评估 `predicate`、`choice` 和 `score` 问题。此端点采用 OpenAI Decisions 的请求与响应结构。带有 `systemone` 的模型使用对应的 OpenJEV、LEV 或 Nimble 决策路径及模型 temperature；缺少 `decision.type` 时默认按 OpenJEV 处理。没有 `systemone` 时使用常规 chat template 和通用选项 prompt，temperature 回退到 `1.0`。LEV 的 choice 会平均两种选项顺序，predicate 使用九档评分；LLM 和 VLM 均通过原生 logits 评分（LEV 模型本身仅支持文本）。VLM 还可评估内联图像和音频。
 
 ```sh
 curl http://127.0.0.1:18181/v1/decisions -H 'Content-Type: application/json' -d '{
@@ -163,7 +163,7 @@ curl http://127.0.0.1:18181/v1/decisions -H 'Content-Type: application/json' -d 
 }'
 ```
 
-`input` 可以是非空文本字符串，也可以是包含文本或 `input_text` 部分的 user message 数组；由于本地评分仅支持文本，`input_image` 会被拒绝。每个问题的 `name` 可选但必须唯一（省略时响应的 `name` 为 `null`）；choice 支持 2–26 个值，score 支持 2–10 个等级，最多 64 个问题。响应中的 `answers` 数组与问题顺序一致：predicate 返回为真的概率，choice 返回选中值和各值概率，score 返回零起始等级索引的期望值及等级概率。`usage.input_tokens` 统计评分输入，`output_tokens` 为 0。请将示例中的 `model` 替换为 `geniex list` 中的缓存模型名称，而非 GGUF 路径。
+`input` 可以是非空文本字符串，也可以是包含 `input_text`、`input_image` 和 GenieX 扩展 `input_audio` 部分的 user message 数组。图像（`image_url`）和音频（`input_audio.data`）复用 chat 端点的 `SaveURIToTempFile` 路径，支持本地路径、`file://`、HTTP(S) 及 data URL。音频也与 chat 一样支持配合 `input_audio.format`（例如 `wav`）传入原始 base64。每种最多 8 个，并要求 VLM 支持相应模态。每个问题的 `name` 可选但必须唯一（省略时响应的 `name` 为 `null`）；choice 支持 2–255 个值（上限还受模型词表限制），score 支持 2–10 个等级，最多 64 个问题。响应中的 `answers` 数组与问题顺序一致：predicate 返回为真的概率，choice 返回选中值，score 返回零起始等级索引。LLM 和 VLM 均通过 logits 返回概率及 confidence，且 `output_tokens` 为 0。请将示例中的 `model` 替换为 `geniex list` 中的缓存模型名称，而非 GGUF 路径。
 
 ## **Python 客户端（OpenAI SDK）**
 
