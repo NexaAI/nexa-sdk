@@ -779,23 +779,49 @@ typedef struct {
 GENIEX_API int32_t geniex_llm_forward_logits(
     geniex_LLM* handle, const geniex_LlmForwardLogitsInput* input, geniex_LlmForwardLogitsOutput* output);
 
-/** Score single-token candidate strings after a UTF-8 prompt without sampling.
- *  The plugin tokenizes the prompt (with model special tokens) and verifies
- *  that each candidate appends exactly one ordinary token. Only backends with
- *  raw-logit support implement this operation. */
+/** One decision option. key_is_bool preserves boolean choice values; predicate
+ * option keys must be the strings "true" and "false". Strings are caller-owned. */
 typedef struct {
-    const char*        prompt_utf8;
-    const char* const* candidates;
-    int32_t            candidate_count;
-} geniex_LlmScoreInput;
+    const char* key;
+    bool        key_is_bool;
+    const char* description; /** NULL when absent. */
+} geniex_DecideOption;
+
+/** One decision question. type is "predicate", "choice", or "score";
+ * id may be NULL to use a generated id. Arrays and strings are caller-owned. */
+typedef struct {
+    const char*                id;
+    const char*                question_type;
+    const char*                instructions;
+    const geniex_DecideOption* options;
+    int32_t                    option_count;
+} geniex_DecideQuestion;
+
+/** Shared metadata-driven decision request. state is plain UTF-8 text; callers
+ * may serialize structured state to JSON text before passing it. The SDK
+ * renders the state and questions through the model's systemone template. */
+typedef struct {
+    const char*                  state;
+    const geniex_DecideQuestion* questions;
+    int32_t                      question_count;
+    int32_t                      question_index;
+    const char* const*           image_paths;
+    int32_t                      image_count;
+    const char* const*           audio_paths;
+    int32_t                      audio_count;
+} geniex_DecideInput;
 
 typedef struct {
-    float*  logits;       /** One logit per candidate; caller frees with geniex_free. */
-    int32_t input_tokens; /** Number of prompt tokens evaluated. */
-} geniex_LlmScoreOutput;
+    float*  logits; /** Raw logit per original option, or NULL when probabilities are returned. */
+    int32_t option_count;
+    int32_t input_tokens;  /** Total prompt and media tokens evaluated. */
+    float   temperature;   /** Resolved decision temperature. */
+    char*   decision_type; /** Model metadata type, caller frees with geniex_free. */
+    float*
+        probabilities; /** Calibrated option probabilities for multi-pass decisions; caller frees with geniex_free. */
+} geniex_DecideOutput;
 
-GENIEX_API int32_t geniex_llm_score(
-    geniex_LLM* handle, const geniex_LlmScoreInput* input, geniex_LlmScoreOutput* output);
+GENIEX_API int32_t geniex_llm_decide(geniex_LLM* handle, const geniex_DecideInput* input, geniex_DecideOutput* output);
 
 /* ========================================================================== */
 /*                              MULTIMODAL MODELS (VLM)                          */
@@ -917,6 +943,8 @@ typedef struct {
  * @return geniex_ErrorCode: GENIEX_SUCCESS on success, negative on failure.
  */
 GENIEX_API int32_t geniex_vlm_get_capabilities(geniex_VLM* handle, geniex_VlmCapabilities* output);
+
+GENIEX_API int32_t geniex_vlm_decide(geniex_VLM* handle, const geniex_DecideInput* input, geniex_DecideOutput* output);
 
 /* ====================  Streaming Generation  ============================= */
 

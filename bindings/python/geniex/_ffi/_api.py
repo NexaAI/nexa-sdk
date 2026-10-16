@@ -11,6 +11,8 @@ from ctypes import CFUNCTYPE, POINTER, byref, c_char_p, c_int32, c_void_p
 from ._lib import load_library
 from ._types import (
     geniex_ChipsetList,
+    geniex_DecideInput,
+    geniex_DecideOutput,
     geniex_GetDeviceListInput,
     geniex_GetDeviceListOutput,
     geniex_GetPluginListOutput,
@@ -27,8 +29,6 @@ from ._types import (
     geniex_LlmGenerateInput,
     geniex_LlmGenerateOutput,
     geniex_LlmModelInfo,
-    geniex_LlmScoreInput,
-    geniex_LlmScoreOutput,
     geniex_ModelDetail,
     geniex_ModelListDetailedOutput,
     geniex_ModelPaths,
@@ -152,7 +152,7 @@ GENIEX_ERROR_VLM_PREFIX_REUSE_FAILED = -201202
 
 
 def _unknown_runtime_message(runtime: str, available: list[str]) -> str:
-    return f"Unknown runtime: {runtime}. Available runtimes: {', '.join(sorted(available))}."
+    return f'Unknown runtime: {runtime}. Available runtimes: {", ".join(sorted(available))}.'
 
 
 def _check(code: int) -> None:
@@ -228,8 +228,8 @@ def _bind_all() -> None:
     ]
     lib.geniex_llm_forward_logits.restype = c_int32
 
-    lib.geniex_llm_score.argtypes = [c_void_p, POINTER(geniex_LlmScoreInput), POINTER(geniex_LlmScoreOutput)]
-    lib.geniex_llm_score.restype = c_int32
+    lib.geniex_llm_decide.argtypes = [c_void_p, POINTER(geniex_DecideInput), POINTER(geniex_DecideOutput)]
+    lib.geniex_llm_decide.restype = c_int32
 
     lib.geniex_llm_apply_chat_template.argtypes = [
         c_void_p,
@@ -274,6 +274,8 @@ def _bind_all() -> None:
 
     lib.geniex_vlm_get_capabilities.argtypes = [c_void_p, POINTER(geniex_VlmCapabilities)]
     lib.geniex_vlm_get_capabilities.restype = c_int32
+    lib.geniex_vlm_decide.argtypes = [c_void_p, POINTER(geniex_DecideInput), POINTER(geniex_DecideOutput)]
+    lib.geniex_vlm_decide.restype = c_int32
 
     # Model manager
     lib.geniex_model_init.argtypes = [c_char_p]

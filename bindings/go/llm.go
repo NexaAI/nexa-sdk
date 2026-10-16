@@ -409,37 +409,19 @@ func (l *LLM) ForwardLogits(inputIDs []int32, allPositions bool, topN int) (Forw
 	return out, nil
 }
 
-// Score evaluates each candidate as the single next token after prompt.
-func (l *LLM) Score(prompt string, candidates []string) ([]float32, int, error) {
-	if l.ptr == nil || prompt == "" || len(candidates) == 0 {
-		return nil, 0, SDKError(-100001)
+func (l *LLM) Decide(input DecideInput) (DecideOutput, error) {
+	if l.ptr == nil || len(input.Questions) == 0 || input.QuestionIndex < 0 || input.QuestionIndex >= len(input.Questions) ||
+		len(input.ImagePaths) > 0 || len(input.AudioPaths) > 0 {
+		return DecideOutput{}, SDKError(C.GENIEX_ERROR_COMMON_INVALID_INPUT)
 	}
-	cPrompt := C.CString(prompt)
-	defer C.free(unsafe.Pointer(cPrompt))
-	raw := cMalloc(C.size_t(len(candidates)) * C.size_t(unsafe.Sizeof(uintptr(0))))
-	defer C.free(raw)
-	codes := unsafe.Slice((**C.char)(raw), len(candidates))
-	for i, candidate := range candidates {
-		codes[i] = C.CString(candidate)
+	cInput := input.toCPtr()
+	defer freeDecideInput(cInput)
+	var cOutput C.geniex_DecideOutput
+	defer freeDecideOutput(&cOutput)
+	if rc := C.geniex_llm_decide(l.ptr, cInput, &cOutput); rc < 0 {
+		return DecideOutput{}, SDKError(rc)
 	}
-	defer func() {
-		for _, code := range codes {
-			C.free(unsafe.Pointer(code))
-		}
-	}()
-	input := C.geniex_LlmScoreInput{
-		prompt_utf8: cPrompt, candidates: (**C.char)(raw), candidate_count: C.int32_t(len(candidates)),
-	}
-	var output C.geniex_LlmScoreOutput
-	if rc := C.geniex_llm_score(l.ptr, &input, &output); rc < 0 {
-		return nil, 0, SDKError(rc)
-	}
-	defer C.geniex_free(unsafe.Pointer(output.logits))
-	logits := make([]float32, len(candidates))
-	for i, value := range unsafe.Slice((*C.float)(output.logits), len(candidates)) {
-		logits[i] = float32(value)
-	}
-	return logits, int(output.input_tokens), nil
+	return decideOutput(&cOutput), nil
 }
 
 type LlmSaveKVCacheInput struct {

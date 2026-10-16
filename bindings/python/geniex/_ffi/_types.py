@@ -209,16 +209,48 @@ class geniex_LlmForwardLogitsOutput(Structure):
     ]
 
 
-class geniex_LlmScoreInput(Structure):
+# Keep these layouts in field order with sdk/include/geniex.h.
+class geniex_DecideOption(Structure):
     _fields_ = [
-        ('prompt_utf8', c_char_p),
-        ('candidates', POINTER(c_char_p)),
-        ('candidate_count', c_int32),
+        ('key', c_char_p),
+        ('key_is_bool', c_bool),
+        ('description', c_char_p),
     ]
 
 
-class geniex_LlmScoreOutput(Structure):
-    _fields_ = [('logits', POINTER(c_float)), ('input_tokens', c_int32)]
+class geniex_DecideQuestion(Structure):
+    _fields_ = [
+        ('id', c_char_p),
+        ('question_type', c_char_p),
+        ('instructions', c_char_p),
+        ('options', POINTER(geniex_DecideOption)),
+        ('option_count', c_int32),
+    ]
+
+
+# State is text; callers serialize structured state before crossing the C ABI.
+class geniex_DecideInput(Structure):
+    _fields_ = [
+        ('state', c_char_p),
+        ('questions', POINTER(geniex_DecideQuestion)),
+        ('question_count', c_int32),
+        ('question_index', c_int32),
+        ('image_paths', POINTER(c_char_p)),
+        ('image_count', c_int32),
+        ('audio_paths', POINTER(c_char_p)),
+        ('audio_count', c_int32),
+    ]
+
+
+class geniex_DecideOutput(Structure):
+    _fields_ = [
+        ('logits', POINTER(c_float)),
+        ('option_count', c_int32),
+        ('input_tokens', c_int32),
+        ('temperature', c_float),
+        ('decision_type', c_void_p),  # SDK-owned pointer; decode before freeing with geniex_free
+        ('probabilities', POINTER(c_float)),
+    ]
 
 
 class geniex_LlmChatMessage(Structure):

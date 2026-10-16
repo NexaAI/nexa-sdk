@@ -645,50 +645,116 @@ int32_t LlamaLlm::forward_logits(const geniex_LlmForwardLogitsInput* input, geni
     return GENIEX_SUCCESS;
 }
 
-int32_t LlamaLlm::score(const geniex_LlmScoreInput* input, geniex_LlmScoreOutput* output) {
-    if (!this->ctx || !this->model) return GENIEX_ERROR_COMMON_NOT_INITIALIZED;
-    if (!input || !input->prompt_utf8 || !input->candidates || input->candidate_count < 1 || !output) {
-        return GENIEX_ERROR_COMMON_INVALID_INPUT;
-    }
+int32_t LlamaLlm::decide(const geniex_DecideInput* input, geniex_DecideOutput* output) {
+    if (!this->model || !this->ctx || !input || !output) return GENIEX_ERROR_COMMON_INVALID_INPUT;
+    if (input->image_count != 0 || input->audio_count != 0) return GENIEX_ERROR_COMMON_PARAM_NOT_SUPPORTED;
 
+    DecisionPrepared prepared;
+    int32_t          rc = prepare_decision(this->model, input, &prepared);
+    if (rc != GENIEX_SUCCESS) return rc;
     const llama_vocab* vocab = llama_model_get_vocab(this->model);
-    const std::string  prompt(input->prompt_utf8);
-    const auto         tokens = common_tokenize(vocab, prompt, true, true);
-    if (tokens.empty() || tokens.size() > llama_n_ctx(this->ctx)) {
-        return GENIEX_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH;
-    }
 
-    std::vector<llama_token> candidates;
-    for (int i = 0; i < input->candidate_count; ++i) {
-        if (!input->candidates[i] || !input->candidates[i][0]) return GENIEX_ERROR_COMMON_INVALID_INPUT;
-        const std::string code(input->candidates[i]);
-        const auto        literal = common_tokenize(vocab, code, false, false);
-        const auto        joined  = common_tokenize(vocab, prompt + code, true, true);
-        if (literal.size() != 1 || joined.size() != tokens.size() + 1 ||
-            !std::equal(tokens.begin(), tokens.end(), joined.begin()) || joined.back() != literal[0] ||
-            std::find(candidates.begin(), candidates.end(), literal[0]) != candidates.end()) {
-            GENIEX_LOG_WARN("score: candidate '{}' is not a unique single token after the prompt", code);
+    // Decision codes must map to distinct single tokens in the model vocabulary.
+    std::vector<llama_token> candidate_tokens;
+    for (const auto& code : prepared.candidates) {
+        const auto literal = common_tokenize(vocab, code, false, false);
+        if (literal.size() != 1 ||
+            std::find(candidate_tokens.begin(), candidate_tokens.end(), literal[0]) != candidate_tokens.end()) {
             return GENIEX_ERROR_COMMON_INVALID_INPUT;
         }
-        candidates.push_back(literal[0]);
+        candidate_tokens.push_back(literal[0]);
     }
 
-    geniex_LlmForwardLogitsInput request{};
-    request.input_ids       = tokens.data();
-    request.input_ids_count = static_cast<int32_t>(tokens.size());
-    geniex_LlmForwardLogitsOutput result{};
-    const int32_t                 rc = forward_logits(&request, &result);
+    // Verify tokenization at this exact prompt boundary, then read one fresh logits row.
+    auto score_prompt = [&](const std::string& prompt, std::vector<float>& scores, int32_t& input_tokens) -> int32_t {
+        const auto tokens = common_tokenize(vocab, prompt, true, true);
+        if (tokens.empty() || tokens.size() > llama_n_ctx(this->ctx)) {
+            return GENIEX_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH;
+        }
+        for (size_t i = 0; i < prepared.candidates.size(); ++i) {
+            const auto joined = common_tokenize(vocab, prompt + prepared.candidates[i], true, true);
+            if (joined.size() != tokens.size() + 1 || !std::equal(tokens.begin(), tokens.end(), joined.begin()) ||
+                joined.back() != candidate_tokens[i]) {
+                GENIEX_LOG_WARN("decision candidate '{}' is not one token after the prompt", prepared.candidates[i]);
+                return GENIEX_ERROR_COMMON_INVALID_INPUT;
+            }
+        }
+        geniex_LlmForwardLogitsInput request{};
+        request.input_ids       = tokens.data();
+        request.input_ids_count = static_cast<int32_t>(tokens.size());
+        geniex_LlmForwardLogitsOutput result{};
+        const int32_t                 result_code = forward_logits(&request, &result);
+        if (result_code != GENIEX_SUCCESS) return result_code;
+        scores.resize(candidate_tokens.size());
+        for (size_t i = 0; i < candidate_tokens.size(); ++i) scores[i] = result.logits[candidate_tokens[i]];
+        free(result.logits);
+        input_tokens = static_cast<int32_t>(tokens.size());
+        return GENIEX_SUCCESS;
+    };
+
+    std::vector<float> scores;
+    int32_t            input_tokens = 0;
+    rc                              = score_prompt(prepared.prompt, scores, input_tokens);
     if (rc != GENIEX_SUCCESS) return rc;
 
-    float* scores = static_cast<float*>(malloc(candidates.size() * sizeof(float)));
-    if (!scores) {
-        free(result.logits);
+    // LEV calibrates multi-pass decisions here; other models return raw option logits.
+    std::vector<double> probabilities;
+    if (prepared.type == "lev" && (prepared.question_type == "noul" || !prepared.reversed_prompt.empty())) {
+        auto softmax = [&](const std::vector<float>& logits) {
+            std::vector<double> result(logits.size());
+            const float         peak = *std::max_element(logits.begin(), logits.end());
+            double              sum  = 0.0;
+            for (size_t i = 0; i < logits.size(); ++i) {
+                result[i] = std::exp((double)(logits[i] - peak) / prepared.temperature);
+                sum += result[i];
+            }
+            for (double& value : result) value /= sum;
+            return result;
+        };
+        const auto first = softmax(scores);
+        probabilities.resize(prepared.original_index.size());
+        if (prepared.question_type == "noul") {
+            // The nine codes represent ratings 0–8; their expectation is P(true).
+            double yes = 0.0;
+            for (size_t i = 0; i < first.size(); ++i) yes += first[i] * i / (first.size() - 1);
+            probabilities[prepared.true_index]     = yes;
+            probabilities[1 - prepared.true_index] = 1.0 - yes;
+        } else {
+            // Average forward and reversed choice probabilities in caller order.
+            std::vector<float> reversed_scores;
+            int32_t            reversed_tokens = 0;
+            rc = score_prompt(prepared.reversed_prompt, reversed_scores, reversed_tokens);
+            if (rc != GENIEX_SUCCESS) return rc;
+            input_tokens += reversed_tokens;
+            const auto second = softmax(reversed_scores);
+            for (size_t i = 0; i < first.size(); ++i) {
+                probabilities[prepared.original_index[i]] += first[i] / 2;
+                probabilities[prepared.original_index[first.size() - 1 - i]] += second[i] / 2;
+            }
+        }
+    }
+
+    // Return either raw logits or calibrated probabilities, indexed by the caller's options.
+    const size_t option_count = prepared.original_index.size();
+    if (probabilities.empty()) {
+        output->logits = static_cast<float*>(malloc(option_count * sizeof(float)));
+        if (!output->logits) return GENIEX_ERROR_COMMON_MEMORY_ALLOCATION;
+        for (size_t i = 0; i < option_count; ++i) output->logits[prepared.original_index[i]] = scores[i];
+    } else {
+        output->probabilities = static_cast<float*>(malloc(option_count * sizeof(float)));
+        if (!output->probabilities) return GENIEX_ERROR_COMMON_MEMORY_ALLOCATION;
+        for (size_t i = 0; i < option_count; ++i) output->probabilities[i] = static_cast<float>(probabilities[i]);
+    }
+    output->option_count  = static_cast<int32_t>(option_count);
+    output->input_tokens  = input_tokens;
+    output->temperature   = prepared.temperature;
+    output->decision_type = strdup(prepared.type.c_str());
+    if (!output->decision_type) {
+        free(output->logits);
+        free(output->probabilities);
+        std::memset(output, 0, sizeof(*output));
         return GENIEX_ERROR_COMMON_MEMORY_ALLOCATION;
     }
-    for (size_t i = 0; i < candidates.size(); ++i) scores[i] = result.logits[candidates[i]];
-    free(result.logits);
-    output->logits       = scores;
-    output->input_tokens = static_cast<int32_t>(tokens.size());
     return GENIEX_SUCCESS;
 }
 }  // namespace geniex

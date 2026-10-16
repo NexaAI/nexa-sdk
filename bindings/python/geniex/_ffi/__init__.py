@@ -15,6 +15,10 @@ from ._api import (
 )
 from ._lib import load_library
 from ._types import (
+    geniex_DecideInput,
+    geniex_DecideOption,
+    geniex_DecideOutput,
+    geniex_DecideQuestion,
     geniex_GenerationConfig,
     geniex_GetDeviceListInput,
     geniex_GetDeviceListOutput,
@@ -55,6 +59,10 @@ __all__ = [
     'init',
     'load_library',
     'version',
+    'geniex_DecideInput',
+    'geniex_DecideOption',
+    'geniex_DecideOutput',
+    'geniex_DecideQuestion',
     'geniex_GenerationConfig',
     'geniex_GetDeviceListInput',
     'geniex_GetDeviceListOutput',

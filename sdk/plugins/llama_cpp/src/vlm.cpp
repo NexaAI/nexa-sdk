@@ -5,6 +5,8 @@
 
 #include <algorithm>
 #include <cstring>
+#include <string>
+#include <vector>
 
 #include "chat.h"
 #include "common.h"
@@ -147,6 +149,189 @@ int32_t LlamaVlm::get_capabilities(geniex_VlmCapabilities* output) {
     if (!output) return GENIEX_ERROR_COMMON_INVALID_INPUT;
     output->supports_vision = this->supports_vision;
     output->supports_audio  = this->supports_audio;
+    return GENIEX_SUCCESS;
+}
+
+int32_t LlamaVlm::decide(const geniex_DecideInput* input, geniex_DecideOutput* output) {
+    if (!this->ctx || !this->model || !input || !output) return GENIEX_ERROR_COMMON_INVALID_INPUT;
+    DecisionPrepared prepared;
+    int32_t          rc = prepare_decision(this->model, input, &prepared);
+    if (rc != GENIEX_SUCCESS) return rc;
+    if (prepared.type == "lev") return GENIEX_ERROR_COMMON_PARAM_NOT_SUPPORTED;
+    const std::string&              prompt     = prepared.prompt;
+    const std::vector<std::string>& candidates = prepared.candidates;
+    std::vector<float>              candidate_logits;
+    int32_t                         input_tokens = 0;
+    // Each decision starts with empty KV state; restore that state even on failure.
+    this->reset();
+    struct ResetGuard {
+        LlamaVlm* self;
+        ~ResetGuard() { self->reset(); }
+    } reset_guard{this};
+
+    const llama_vocab* vocab         = llama_model_get_vocab(this->model);
+    const auto         prompt_tokens = common_tokenize(vocab, prompt, true, true);
+    if (prompt_tokens.empty() || prompt_tokens.size() > static_cast<size_t>(llama_n_ctx(this->ctx))) {
+        return GENIEX_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH;
+    }
+    // Check that every answer code remains one unique token after this prompt.
+    std::vector<llama_token> candidate_tokens;
+    for (const auto& candidate : candidates) {
+        if (candidate.empty()) return GENIEX_ERROR_COMMON_INVALID_INPUT;
+        const auto literal = common_tokenize(vocab, candidate, false, false);
+        const auto joined  = common_tokenize(vocab, prompt + candidate, true, true);
+        if (literal.size() != 1 || joined.size() != prompt_tokens.size() + 1 ||
+            !std::equal(prompt_tokens.begin(), prompt_tokens.end(), joined.begin()) || joined.back() != literal[0] ||
+            std::find(candidate_tokens.begin(), candidate_tokens.end(), literal[0]) != candidate_tokens.end()) {
+            GENIEX_LOG_WARN("vlm decision: candidate '{}' is not a unique single token after the prompt", candidate);
+            return GENIEX_ERROR_COMMON_INVALID_INPUT;
+        }
+        candidate_tokens.push_back(literal[0]);
+    }
+
+    // mtmd binds bitmaps to prompt markers in order, so extra markers are unsafe.
+    const std::string marker  = mtmd_default_marker();
+    size_t            markers = 0;
+    for (size_t pos = 0; (pos = prompt.find(marker, pos)) != std::string::npos; pos += marker.size()) ++markers;
+    const size_t media_count = static_cast<size_t>(input->image_count + input->audio_count);
+    if (markers != media_count) return GENIEX_ERROR_COMMON_INVALID_INPUT;
+    if (media_count > 0 && !this->ctx_vision) return GENIEX_ERROR_COMMON_PARAM_NOT_SUPPORTED;
+    if (input->image_count > 0 && !this->supports_vision) return GENIEX_ERROR_COMMON_PARAM_NOT_SUPPORTED;
+    if (input->audio_count > 0 && !this->supports_audio) return GENIEX_ERROR_COMMON_PARAM_NOT_SUPPORTED;
+
+    candidate_logits.resize(candidate_tokens.size());
+    if (media_count == 0) {
+        // Text-only VLM decisions can decode directly without an mtmd context.
+        const int32_t n_batch = llama_n_batch(this->ctx);
+        llama_batch   batch   = llama_batch_init(n_batch, 0, 1);
+        int32_t       result  = GENIEX_SUCCESS;
+        for (size_t start = 0; start < prompt_tokens.size(); start += n_batch) {
+            const int32_t count = std::min<int32_t>(n_batch, prompt_tokens.size() - start);
+            common_batch_clear(batch);
+            for (int32_t i = 0; i < count; ++i) {
+                const size_t position = start + i;
+                common_batch_add(batch,
+                    prompt_tokens[position],
+                    static_cast<llama_pos>(position),
+                    {0},
+                    position + 1 == prompt_tokens.size());
+            }
+            const int32_t rc = llama_decode(this->ctx, batch);
+            if (rc != 0) {
+                result = rc == 1 ? GENIEX_ERROR_LLM_GENERATION_PROMPT_TOO_LONG : GENIEX_ERROR_VLM_GENERATION_FAILED;
+                break;
+            }
+        }
+        const float* row = result == GENIEX_SUCCESS ? llama_get_logits_ith(this->ctx, -1) : nullptr;
+        if (!row) result = result == GENIEX_SUCCESS ? GENIEX_ERROR_VLM_GENERATION_FAILED : result;
+        if (result == GENIEX_SUCCESS) {
+            for (size_t i = 0; i < candidate_tokens.size(); ++i) candidate_logits[i] = row[candidate_tokens[i]];
+            input_tokens = static_cast<int32_t>(prompt_tokens.size());
+        }
+        llama_batch_free(batch);
+        if (result != GENIEX_SUCCESS) return result;
+    } else {
+        // Decode image and audio bitmaps through mtmd before reading logits.
+        std::vector<mtmd_bitmap*> bitmaps;
+        auto                      free_bitmaps = [&]() {
+            for (auto* bitmap : bitmaps) mtmd_bitmap_free(bitmap);
+            bitmaps.clear();
+        };
+        for (int32_t i = 0; i < input->image_count; ++i) {
+            auto loaded = mtmd_helper_bitmap_init_from_file(
+                this->ctx_vision, input->image_paths[i], false, mtmd_helper_init_opt_default());
+            if (!loaded.bitmap) {
+                free_bitmaps();
+                return GENIEX_ERROR_VLM_IMAGE_LOAD;
+            }
+            bitmaps.push_back(loaded.bitmap);
+        }
+        for (int32_t i = 0; i < input->audio_count; ++i) {
+            auto loaded = mtmd_helper_bitmap_init_from_file(
+                this->ctx_vision, input->audio_paths[i], false, mtmd_helper_init_opt_default());
+            if (!loaded.bitmap) {
+                free_bitmaps();
+                return GENIEX_ERROR_VLM_AUDIO_LOAD;
+            }
+            bitmaps.push_back(loaded.bitmap);
+        }
+        // One mtmd tokenization and forward pass covers both text and all media.
+        mtmd_input_text    text{prompt.c_str(), prompt.size(), true, true};
+        mtmd_input_chunks* chunks = mtmd_input_chunks_init();
+        if (!chunks) {
+            free_bitmaps();
+            return GENIEX_ERROR_COMMON_MEMORY_ALLOCATION;
+        }
+        const int32_t tokenized =
+            mtmd_tokenize(this->ctx_vision, chunks, &text, (const mtmd_bitmap**)bitmaps.data(), bitmaps.size());
+        free_bitmaps();
+        if (tokenized != 0) {
+            mtmd_input_chunks_free(chunks);
+            return GENIEX_ERROR_VLM_GENERATION_FAILED;
+        }
+        llama_pos n_past      = 0;
+        bool      have_logits = false;
+        int32_t   result      = GENIEX_SUCCESS;
+        // The final text chunk must request logits for the next decision token.
+        for (size_t i = 0; i < mtmd_input_chunks_size(chunks); ++i) {
+            const mtmd_input_chunk* chunk       = mtmd_input_chunks_get(chunks, i);
+            const bool              is_media    = mtmd_input_chunk_get_type(chunk) != MTMD_INPUT_CHUNK_TYPE_TEXT;
+            const bool              is_last     = i + 1 == mtmd_input_chunks_size(chunks);
+            llama_pos               next_n_past = n_past;
+            int32_t                 rc;
+            if (is_media) {
+                if (mtmd_encode_chunk(this->ctx_vision, chunk) != 0) {
+                    result = GENIEX_ERROR_VLM_GENERATION_FAILED;
+                    break;
+                }
+                rc = mtmd_helper_decode_image_chunk(this->ctx_vision,
+                    this->ctx,
+                    chunk,
+                    mtmd_get_output_embd(this->ctx_vision),
+                    n_past,
+                    0,
+                    llama_n_batch(this->ctx),
+                    &next_n_past,
+                    nullptr,
+                    nullptr);
+            } else {
+                rc = mtmd_helper_eval_chunk_single(
+                    this->ctx_vision, this->ctx, chunk, n_past, 0, llama_n_batch(this->ctx), is_last, &next_n_past);
+                have_logits = is_last;
+            }
+            if (rc != 0) {
+                result = rc == 1 ? GENIEX_ERROR_LLM_GENERATION_PROMPT_TOO_LONG : GENIEX_ERROR_VLM_GENERATION_FAILED;
+                break;
+            }
+            input_tokens += static_cast<int32_t>(mtmd_input_chunk_get_n_tokens(chunk));
+            n_past = next_n_past;
+        }
+        if (result == GENIEX_SUCCESS && !have_logits) result = GENIEX_ERROR_COMMON_INVALID_INPUT;
+        if (result == GENIEX_SUCCESS) {
+            const float* row = llama_get_logits_ith(this->ctx, -1);
+            if (!row)
+                result = GENIEX_ERROR_VLM_GENERATION_FAILED;
+            else
+                for (size_t i = 0; i < candidate_tokens.size(); ++i) candidate_logits[i] = row[candidate_tokens[i]];
+        }
+        mtmd_input_chunks_free(chunks);
+        if (result != GENIEX_SUCCESS) return result;
+    }
+    // Restore caller option order before exposing the logits through the C API.
+    float* logits = static_cast<float*>(malloc(prepared.candidates.size() * sizeof(float)));
+    if (!logits) return GENIEX_ERROR_COMMON_MEMORY_ALLOCATION;
+    for (size_t i = 0; i < prepared.original_index.size(); ++i)
+        logits[prepared.original_index[i]] = candidate_logits[i];
+    output->logits        = logits;
+    output->option_count  = static_cast<int32_t>(prepared.original_index.size());
+    output->input_tokens  = input_tokens;
+    output->temperature   = prepared.temperature;
+    output->decision_type = strdup(prepared.type.c_str());
+    if (!output->decision_type) {
+        free(output->logits);
+        std::memset(output, 0, sizeof(*output));
+        return GENIEX_ERROR_COMMON_MEMORY_ALLOCATION;
+    }
     return GENIEX_SUCCESS;
 }
 

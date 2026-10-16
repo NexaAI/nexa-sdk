@@ -61,6 +61,8 @@ var (
 	ErrCommonHubServer              = SDKError(C.GENIEX_ERROR_COMMON_HUB_SERVER)
 	ErrLlmTokenizationContextLength = SDKError(C.GENIEX_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH)
 	ErrLlmGenerationPromptTooLong   = SDKError(C.GENIEX_ERROR_LLM_GENERATION_PROMPT_TOO_LONG)
+	ErrVlmImageLoad                 = SDKError(C.GENIEX_ERROR_VLM_IMAGE_LOAD)
+	ErrVlmAudioLoad                 = SDKError(C.GENIEX_ERROR_VLM_AUDIO_LOAD)
 	ErrVlmGenerationFailed          = SDKError(C.GENIEX_ERROR_VLM_GENERATION_FAILED)
 	ErrVlmPrefixReuseFailed         = SDKError(C.GENIEX_ERROR_VLM_PREFIX_REUSE_FAILED)
 )
