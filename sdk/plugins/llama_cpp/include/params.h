@@ -24,6 +24,15 @@ enum class Device { CPU, GPU, NPU };
 
 std::optional<std::vector<ggml_backend_dev_t>> resolve_devices(const char* device_id);
 
+// Set mpar.devices from a resolve_devices() result. selection may be filled in place and must outlive the load,
+// since mpar.devices points into it.
+// - CPU load, no explicit device: empty (null-terminated) list. Left unset, llama.cpp enumerates every GPU-type
+//   device (OpenCL, HTP0, HTP1) and initialises a backend, so a FastRPC session, for each though nothing is offloaded.
+// - Other load (e.g. hybrid), no explicit device, more than one HTP registered: llama.cpp's default would layer-split
+//   across HTP0 and the spare HTP1 that is only meant for the mmproj, and a second session cannot be created on some
+//   targets (SM8850: error 0x73). List the default devices minus the spare HTPs so the LM stays on HTP0.
+void apply_device_selection(llama_model_params& mpar, std::vector<ggml_backend_dev_t>& selection, Device device);
+
 // Pick the mmproj (vision/audio encoder) device given the LM's resolved
 // device list. When the LM runs on HTP, sharing its session with the mmproj
 // hits a fastrpc_mmap/session-contention failure on some HTP targets (e.g.

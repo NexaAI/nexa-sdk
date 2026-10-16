@@ -68,9 +68,9 @@ int32_t LlamaVlm::create(const geniex_VlmCreateInput* input) {
         return GENIEX_ERROR_COMMON_INVALID_INPUT;
     }
 
-    if (!selection->empty()) {
-        mpar.devices = selection->data();
-    }
+    // Pick the mmproj device from the caller's explicit selection, before apply_device_selection fills in defaults.
+    const bool explicit_selection = !selection->empty();
+    apply_device_selection(mpar, *selection, device);
 
     ggml_backend_dev_t vision_device = nullptr;
     if (input->vit_device_id && input->vit_device_id[0] != '\0') {
@@ -80,7 +80,7 @@ int32_t LlamaVlm::create(const geniex_VlmCreateInput* input) {
             return GENIEX_ERROR_COMMON_INVALID_INPUT;
         }
         GENIEX_LOG_INFO("Using vision device override: {}", input->vit_device_id);
-    } else if (!selection->empty()) {
+    } else if (explicit_selection) {
         vision_device = resolve_vision_device(*selection);
     }
 
@@ -137,6 +137,15 @@ int32_t LlamaVlm::create(const geniex_VlmCreateInput* input) {
         // mparams.verbosity           = GGML_LOG_LEVEL_ERROR;
 
         this->ctx_vision = mtmd_init_from_file(input->mmproj_path, this->model, mparams);
+        // A spare HTP session may be unavailable on some targets (e.g. SM8850 cannot reserve a second virtual
+        // session). Retry on the LM's own device, then on CPU, instead of dropping the encoder.
+        if (!this->ctx_vision && vision_device && !selection->empty() && vision_device != selection->front()) {
+            GENIEX_LOG_WARN("mtmd failed to initialize the vision encoder on {}; retrying on {}",
+                ggml_backend_dev_name(vision_device),
+                ggml_backend_dev_name(selection->front()));
+            mparams.device   = selection->front();
+            this->ctx_vision = mtmd_init_from_file(input->mmproj_path, this->model, mparams);
+        }
         if (!this->ctx_vision && vision_device) {
             GENIEX_LOG_WARN("mtmd failed to initialize the vision encoder on HTP; falling back to CPU");
             mparams.use_gpu  = false;

@@ -63,9 +63,7 @@ int32_t LlamaLlm::create(const geniex_LlmCreateInput* input) {
     if (!selection) {
         return GENIEX_ERROR_COMMON_INVALID_INPUT;
     }
-    if (!selection->empty()) {
-        mpar.devices = selection->data();
-    }
+    apply_device_selection(mpar, *selection, device);
 
     // FIX: HTP backend patch
     {
@@ -932,8 +930,8 @@ int32_t LlamaLlm::setup_speculative(
 
         llama_model_params dmpar     = build_model_params(config, device);
         auto               selection = resolve_devices(device_id);
-        if (selection && !selection->empty()) {
-            dmpar.devices = selection->data();
+        if (selection) {
+            apply_device_selection(dmpar, *selection, device);
         }
 
         this->draft_model = llama_model_load_from_file(config.spec_draft_model, dmpar);

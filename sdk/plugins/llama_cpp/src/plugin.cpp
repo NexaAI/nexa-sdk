@@ -63,14 +63,27 @@ class LlamaPlugin : public Plugin {
         llama_log_set(ggml_to_geniex_log, nullptr);
         mtmd_helper_log_set(ggml_to_geniex_log, nullptr);
 
+        // Expose a spare virtual HTP session (HTP1) so the mmproj can run apart from the LM's HTP0
+        // (see params.cpp resolve_vision_device); sharing HTP0 aborts on E4B / Qwen3-ASR input.
+        // Read once at backend registration below. Callers can override.
+        if (!std::getenv("GGML_HEXAGON_DEVICES") && !std::getenv("GGML_HEXAGON_NDEV")) {
+#if defined(_WIN32)
+            _putenv_s("GGML_HEXAGON_DEVICES", "2");
+#else
+            setenv("GGML_HEXAGON_DEVICES", "2", 0);
+#endif
+        }
+
         if (!std::getenv("GGML_HEXAGON_MBUF")) {
 #if !defined(__ANDROID__) && defined(__linux__)
             // ggml-hexagon's default 1 GiB host-buffer mmap cap can exceed what the fastrpc/CMA pool
             // can satisfy as one contiguous chunk on some HTP targets (e.g. IQ9), failing to map a
             // model's own weight buffer even with session contention already solved. Cap it lower so
             // large weight tensors get chunked, unless the caller already set an override.
+            // Format is <dyn>,<static>,<total> (llama.cpp 9c2e0e491); a single value only caps the
+            // dynamic (compute) buffers and leaves weights/KV at 1 GiB, so set both.
             // See qcom-ai-hub/geniex#1683.
-            setenv("GGML_HEXAGON_MBUF", "64", 1);
+            setenv("GGML_HEXAGON_MBUF", "64,64", 1);
 #endif
         }
 
