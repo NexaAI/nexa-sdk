@@ -145,6 +145,32 @@ geniex model list
 geniex model list --all
 ```
 
+### **`geniex decide`**
+
+Run one local structured decision. `classify` and `choose` print one locally validated JSON candidate and never execute side effects.
+
+```bash
+geniex decide <model> classify \
+  --label capital_of_france \
+  --label capital_of_germany \
+  --label unknown \
+  --instruction "Choose the label that correctly answers the question." \
+  --context "What is the capital of France?"
+```
+
+```bash
+geniex decide <model> choose \
+  --option paris=Paris \
+  --option berlin=Berlin \
+  --instruction "Select the capital of France." \
+  --context "Question: What is the capital of France?"
+```
+
+| Flag group | Flags |
+|---|---|
+| Structured decision | `--label`, `--option`, `--instruction`, `--context` / `--context-file`, `--image`, `--confidence`, `--min-selections`, `--max-selections`, `--benchmark` |
+| Model tuning | `--compute`, `--ngl`, `--nctx`, `--max-tokens`, `--threads`, `--threads-batch`, `--batch`, `--ubatch` |
+
 ## **`geniex serve`**
 
 Start the OpenAI-compatible local server. See [Local server](/en/run/cli/local-server) for the API.

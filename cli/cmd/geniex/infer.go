@@ -122,6 +122,20 @@ var (
 	}
 )
 
+// decideModelFlags contains the model options the decision command consumes
+// through the existing SDK creation path. Structured grammars and prompts
+// remain command owned.
+func decideModelFlags() *pflag.FlagSet {
+	flags := pflag.NewFlagSet("Decision Model", pflag.ExitOnError)
+	flags.SortFlags = false
+	flags.StringVarP(&computeUnit, "compute", "c", "", "compute unit to run on: cpu, gpu, npu, or hybrid (default: npu)")
+	flags.StringVar(&vitComputeUnit, "vit-compute", "", "compute unit for the VLM vision encoder (llama_cpp only)")
+	flags.Int32VarP(&ngl, "ngl", "n", -1, "number of layers to offload to gpu/npu, -1 = all (llama_cpp only)")
+	flags.Int32VarP(&nctx, "nctx", "", 4096, "context window size (llama_cpp only)")
+	flags.Int32VarP(&maxTokens, "max-tokens", "", 2048, "maximum decision tokens")
+	return flags
+}
+
 func infer() *cobra.Command {
 	inferCmd := &cobra.Command{
 		GroupID: "inference",
