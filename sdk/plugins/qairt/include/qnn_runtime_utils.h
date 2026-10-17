@@ -76,7 +76,9 @@ inline std::optional<std::string> find_optional_file(const std::filesystem::path
     return std::nullopt;
 }
 
-// QNN library names, the SDK's host-lib subfolder, and the OS PATH separator, by platform.
+// QNN library names, the SDK's host-lib subfolder, and the ADSP_LIBRARY_PATH separator, by platform.
+// FastRPC splits that variable on ';' everywhere, not the ':' a Unix PATH uses; with ':' only the
+// first of several skel folders is searched and a stale skel from the device image loads.
 #if defined(_WIN32)
 constexpr const char* kQnnBackendLib    = "QnnHtp.dll";
 constexpr const char* kQnnSystemLib     = "QnnSystem.dll";
@@ -88,13 +90,13 @@ constexpr const char* kQnnBackendLib    = "libQnnHtp.so";
 constexpr const char* kQnnSystemLib     = "libQnnSystem.so";
 constexpr const char* kQnnExtensionsLib = "libQnnHtpNetRunExtensions.so";
 constexpr const char* kHostLibTriple    = "aarch64-android";
-constexpr char        kPathSep          = ':';
+constexpr char        kPathSep          = ';';
 #else  // __linux__
 constexpr const char* kQnnBackendLib    = "libQnnHtp.so";
 constexpr const char* kQnnSystemLib     = "libQnnSystem.so";
 constexpr const char* kQnnExtensionsLib = "libQnnHtpNetRunExtensions.so";
 constexpr const char* kHostLibTriple    = "aarch64-oe-linux-gcc11.2";
-constexpr char        kPathSep          = ':';
+constexpr char        kPathSep          = ';';
 #endif
 
 // Finds the directory holding the host QNN libraries under `root`, which may be either a
