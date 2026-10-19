@@ -18,6 +18,7 @@ func RegisterRoot(r *gin.Engine) {
 	r.GET("/", func(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/docs/ui/")
 	})
+	r.GET("/status", handler.Status)
 }
 
 // http://localhost:18181/docs/ui/
