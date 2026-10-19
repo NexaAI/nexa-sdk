@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-#include "geniex.h"   // geniex_get_qairt_runtime_path
+#include "geniex.h"
 #include "logging.h"  // geniex_log
 #include "types.h"
 
@@ -74,6 +74,14 @@ inline std::optional<std::string> find_optional_file(const std::filesystem::path
         return file_path.string();
     }
     return std::nullopt;
+}
+
+inline void apply_optrace_config(ModelConfig& model_cfg) {
+    const char* path = geniex_get_qairt_optrace_path();
+    if (path && path[0] != '\0') {
+        model_cfg.enable_optrace      = true;
+        model_cfg.optrace_output_path = path;
+    }
 }
 
 // QNN library names, the SDK's host-lib subfolder, and the ADSP_LIBRARY_PATH separator, by platform.
