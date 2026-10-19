@@ -76,6 +76,9 @@ var transitions = map[key]transition{
 	{stateGemmaChannel, "thought"}:   {next: stateGemmaChannelThought},
 	{stateGemmaChannelThought, "\n"}: {next: stateThink, boundary: EnterReasoning, block: true},
 	{stateThink, "<channel|>"}:       {next: stateNormal, boundary: ExitReasoning, block: true},
+	{stateNormal, "<|channel>"}:      {next: stateGemmaChannel},
+	{stateAssistant, "<channel|>"}:   {next: stateNormal},
+	{stateNormal, "<channel|>"}:      {next: stateNormal},
 }
 
 // Event routes one token. A consumed marker (e.g. the <think> tag) belongs to

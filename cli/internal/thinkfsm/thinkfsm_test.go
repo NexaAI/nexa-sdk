@@ -54,6 +54,17 @@ func TestSplit(t *testing.T) {
 			wantReasoning: "think",
 		},
 		{
+			name:          "gemma second channel after content",
+			tokens:        []string{"<|channel>", "thought", "\n", "a", "<channel|>", "x", "<|channel>", "thought", "\n", "b", "<channel|>", "y"},
+			wantContent:   "xy",
+			wantReasoning: "ab",
+		},
+		{
+			name:        "gemma stray close marker is dropped",
+			tokens:      []string{"<channel|>", "reply", "<channel|>", "!"},
+			wantContent: "reply!",
+		},
+		{
 			name:        "unterminated think stays reasoning",
 			tokens:      []string{"<think>", "still", " going"},
 			wantContent: "",
