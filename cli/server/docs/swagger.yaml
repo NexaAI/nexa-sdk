@@ -102,6 +102,21 @@ paths:
         "422":
           description: Invalid request or unsupported input modality
 
+  /status:
+    get:
+      summary: Reports server liveness and the state of loaded models
+      description: Served outside the request lock, so it responds while a generation is running. State is one of loading, active, idle.
+      operationId: GetStatus
+      servers:
+        - url: /
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+
   /v1/models:
     get:
       summary: Lists the currently available models
@@ -143,6 +158,39 @@ paths:
 
 components:
   schemas:
+    StatusResponse:
+      type: object
+      required: [alive, models]
+      properties:
+        alive:
+          type: boolean
+        models:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              type:
+                type: string
+                enum: [llm, vlm]
+              runtime:
+                type: string
+              device:
+                type: string
+              state:
+                type: string
+                enum: [loading, active, idle]
+              loaded_at:
+                type: string
+                format: date-time
+              last_activity:
+                type: string
+                format: date-time
+              idle_seconds:
+                type: integer
+                format: int64
+
     # ---------- Decisions ----------
     DecisionRequest:
       type: object

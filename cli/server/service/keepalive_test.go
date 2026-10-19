@@ -128,3 +128,30 @@ func TestSweepNeverDestroysMidRequest(t *testing.T) {
 		t.Fatal("destroyed model was left in the cache")
 	}
 }
+
+func TestStatusLifecycle(t *testing.T) {
+	k := &keepAliveService{}
+	k.setStatus(&ModelStatus{ID: "m", Type: "llm", State: StateLoading})
+	if k.status.State != StateLoading || !k.status.LoadedAt.IsZero() {
+		t.Fatalf("loading: %+v", k.status)
+	}
+	k.setState(StateActive)
+	if k.status.State != StateActive || k.status.LoadedAt.IsZero() {
+		t.Fatalf("active: %+v", k.status)
+	}
+	loadedAt := k.status.LoadedAt
+	k.setState(StateIdle)
+	k.setState(StateActive)
+	if !k.status.LoadedAt.Equal(loadedAt) {
+		t.Errorf("LoadedAt changed across activity")
+	}
+	k.setState(StateIdle)
+	if k.status.State != StateIdle || k.status.LastActivity.IsZero() {
+		t.Fatalf("idle: %+v", k.status)
+	}
+	k.setStatus(nil)
+	k.setState(StateActive)
+	if k.status != nil {
+		t.Errorf("setState on empty status must be a no-op")
+	}
+}
