@@ -43,6 +43,7 @@ $env:HF_HUB_DOWNLOAD_CONCURRENCY = "1"
 & "$PY_DIR\python.exe" -c "import geniex; geniex.init(); geniex.deinit()" 2>&1
 
 Set-Location "$ROOT\tests"
+& "$PY_DIR\python.exe" -c "import sys, geniex, pytest; geniex.set_log_level('debug'); sys.exit(pytest.main(['test_qairt.py::test_llm_multi_turn', 'test_llama_cpp.py::test_llm_multi_turn', '-v', '-s', '-p', 'no:cacheprovider', '-m', 'llama_cpp or qairt', '-k', 'Qwen3-4B and (npu or cpu)']))" 2>&1
 # One xdist worker: a native abort fails that case and the run continues on a fresh worker.
 & "$PY_DIR\python.exe" -m pytest . -v -n 1 --max-worker-restart=100 `
     --tb=short `
