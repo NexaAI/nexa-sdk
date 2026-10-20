@@ -19,6 +19,7 @@ func RegisterRoot(r *gin.Engine) {
 		c.Redirect(http.StatusFound, "/docs/ui/")
 	})
 	r.GET("/status", handler.Status)
+	r.GET("/metrics", handler.Metrics)
 }
 
 // http://localhost:18181/docs/ui/
@@ -34,7 +35,7 @@ func RegisterAPIv1(r *gin.Engine) {
 		c.String(200, "GenieX-CLI is running")
 	})
 
-	g.Use(middleware.CORS, middleware.GIL)
+	g.Use(middleware.CORS, middleware.GIL, handler.TrackRequest)
 
 	// ==== openai compatible ====
 	g.POST("/completions", handler.Completions)
