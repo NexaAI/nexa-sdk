@@ -44,7 +44,7 @@ uname -a
 
 cd "$BUNDLE" || { echo "FATAL: missing $BUNDLE"; exit 1; }
 chmod +x bin/* 2>/dev/null
-export LD_LIBRARY_PATH="$BUNDLE/lib:$BUNDLE/lib/llama_cpp:$BUNDLE/lib/qairt:$LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH="$BUNDLE/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export GENIEX_PLUGIN_PATH="$BUNDLE/lib"
 
 IMG=$TC/test.png

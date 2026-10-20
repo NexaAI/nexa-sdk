@@ -149,27 +149,13 @@ def deploy(payload: Path) -> None:
         adb_shell(f'{env} {DEV_PY}/bin/python3 -m pip install --target={site} pytest pytest-reportlog tqdm')
 
     _push_tree(payload / 'sdk' / 'pkg-geniex', DEV_SDK)
-    adb_shell(
-        f'cd {DEV_SDK}/lib && for f in qairt/htp-files/*.so qairt/htp-files/*.cat llama_cpp/*.so; do '
-        f'bn=$(basename "$f"); [ "$bn" != libgeniex.so ] && [ -e "$f" ] && ln -sf "$f" "$bn"; done; true'
-    )
     _push_tree(payload / 'tests', DEV_TESTS, exclude={'models', 'qdc'})
     _push_tree(payload / 'bindings' / 'python' / 'geniex', f'{_device_py_site()}/geniex')
     _push_tree(payload / 'cli', f'{DEV_ROOT}/cli', include={'server/docs/ui/favicon-32x32.png'})
 
 
 def device_env() -> str:
-    # libggml-base.so's DT_NEEDED for libomp.so resolves out of lib/llama_cpp/.
-    lib_path = ':'.join(
-        [
-            f'{DEV_PY}/lib',
-            f'{DEV_SDK}/lib',
-            f'{DEV_SDK}/lib/llama_cpp',
-            f'{DEV_SDK}/lib/qairt',
-            f'{DEV_SDK}/lib/qairt/htp-files',
-            '/system/lib64',
-        ]
-    )
+    lib_path = ':'.join([f'{DEV_PY}/lib', f'{DEV_SDK}/lib', '/system/lib64'])
     return (
         f'PREFIX={DEV_PY} '
         f'LD_LIBRARY_PATH={lib_path} '

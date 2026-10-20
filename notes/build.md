@@ -190,7 +190,7 @@ Deploy and smoke-test on device:
 adb push pkg-geniex /data/local/tmp/geniex
 adb push Qwen3-0.6B-Q4_0.gguf /data/local/tmp/geniex/modelfiles/llama_cpp/
 adb shell "cd /data/local/tmp/geniex && \
-  LD_LIBRARY_PATH=./lib:./lib/llama_cpp \
+  LD_LIBRARY_PATH=./lib \
   GENIEX_PLUGIN_PATH=./lib \
   ./bin/geniex_test_llm"
 ```
