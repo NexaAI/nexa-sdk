@@ -64,9 +64,16 @@ Device classify_device(const char* device_id, int n_gpu_layers);
 // n_max recurrent-state snapshots to roll back rejected drafts and one logits
 // row per drafted token. Mirrors common_context_params_to_llama +
 // server_output_limits.
+//
+// output_reservation controls how many output rows the graph reserves. Batch
+// keeps llama.cpp's default of n_batch rows for callers that may request every
+// position's logits. LastPerSequence reserves one row per sequence for
+// generation and decision paths that only read the last row.
+enum class OutputReservation { Batch, LastPerSequence };
+
 llama_model_params   build_model_params(const geniex_ModelConfig& config, Device device);
 llama_context_params build_context_params(const geniex_ModelConfig& config, int32_t n_ctx_default, Device device,
-    const common_params_speculative* spec = nullptr);
+    const common_params_speculative* spec = nullptr, OutputReservation output_reservation = OutputReservation::Batch);
 
 // Parse spec_type / spec_n_* into llama.cpp's own speculative params. Returns
 // nullopt when speculative decoding is disabled or no type name resolves.
