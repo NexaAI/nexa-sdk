@@ -7,9 +7,8 @@
 //! flipped, a resume run skips already-complete chunks, and progress
 //! callbacks fire with monotonically-increasing totals.
 
-use std::ffi::OsString;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, Once};
 use std::time::Duration;
 
 use model_manager_core::executor::{
@@ -22,35 +21,12 @@ use url::Url;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, Request, ResponseTemplate};
 
-static CHUNK_SIZE_ENV_LOCK: Mutex<()> = Mutex::new(());
+static CHUNK_SIZE_ENV_INIT: Once = Once::new();
 
-struct ChunkSizeEnvGuard {
-    _lock: MutexGuard<'static, ()>,
-    previous: Option<OsString>,
-}
-
-impl ChunkSizeEnvGuard {
-    fn set_for_test() -> Self {
-        let lock = CHUNK_SIZE_ENV_LOCK
-            .lock()
-            .unwrap_or_else(|error| error.into_inner());
-        let previous = std::env::var_os("GENIEX_DL_CHUNK_SIZE");
+fn initialize_chunk_size_env() {
+    CHUNK_SIZE_ENV_INIT.call_once(|| {
         std::env::set_var("GENIEX_DL_CHUNK_SIZE", "16384");
-        Self {
-            _lock: lock,
-            previous,
-        }
-    }
-}
-
-impl Drop for ChunkSizeEnvGuard {
-    fn drop(&mut self) {
-        if let Some(value) = self.previous.take() {
-            std::env::set_var("GENIEX_DL_CHUNK_SIZE", value);
-        } else {
-            std::env::remove_var("GENIEX_DL_CHUNK_SIZE");
-        }
-    }
+    });
 }
 
 fn fast_transport() -> Arc<dyn HttpTransport> {
@@ -120,7 +96,7 @@ fn http_spec(name: &str, url: Url) -> FileSpec {
 
 #[tokio::test]
 async fn downloads_multi_file_multi_chunk_and_marks_progress() {
-    let _chunk_size = ChunkSizeEnvGuard::set_for_test();
+    initialize_chunk_size_env();
 
     let server = MockServer::start().await;
     let body_a = make_body(64 * 1024, 0x11);
@@ -183,7 +159,7 @@ async fn downloads_multi_file_multi_chunk_and_marks_progress() {
 
 #[tokio::test]
 async fn resume_skips_completed_chunks() {
-    let _chunk_size = ChunkSizeEnvGuard::set_for_test();
+    initialize_chunk_size_env();
 
     let server = MockServer::start().await;
     let body = make_body(64 * 1024, 0x55);
@@ -256,7 +232,7 @@ async fn resume_skips_completed_chunks() {
 
 #[tokio::test]
 async fn cancel_via_callback_returns_cancelled() {
-    let _chunk_size = ChunkSizeEnvGuard::set_for_test();
+    initialize_chunk_size_env();
 
     let server = MockServer::start().await;
     let body = make_body(64 * 1024, 0x33);
@@ -312,7 +288,7 @@ async fn cancel_via_callback_returns_cancelled() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn chunk_failure_stops_queued_chunks_from_starting() {
-    let _chunk_size = ChunkSizeEnvGuard::set_for_test();
+    initialize_chunk_size_env();
 
     let server = MockServer::start().await;
     let body = make_body(32 * 16 * 1024, 0x5C);
