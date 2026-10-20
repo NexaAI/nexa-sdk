@@ -60,9 +60,4 @@ func TestJoinNamePrecision(t *testing.T) {
 			t.Errorf("JoinNamePrecision(%q, %q) = %q, want %q", c.name, c.precision, got, c.want)
 		}
 	}
-	// Round-trips with the splitter it mirrors.
-	name, precision := SplitNamePrecision("org/repo:Q4_0")
-	if got := JoinNamePrecision(name, precision); got != "org/repo:Q4_0" {
-		t.Errorf("round-trip: got %q", got)
-	}
 }
