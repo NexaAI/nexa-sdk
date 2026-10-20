@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -22,8 +23,21 @@
 namespace geniex {
 
 namespace {
-constexpr size_t  kOpenClSmallAllocLimit       = size_t{1} << 30;
-constexpr int32_t kOpenClSmallAllocImageTokens = 1024;
+constexpr size_t   kOpenClSmallAllocLimit       = size_t{1} << 30;
+constexpr int32_t  kOpenClSmallAllocImageTokens = 1024;
+constexpr uint64_t kVisionComputeReserve        = uint64_t{2} << 30;
+
+bool vision_fits_on_device(ggml_backend_dev_t dev, const llama_model* model, const char* mmproj_path) {
+    size_t free_mem = 0;
+    size_t total    = 0;
+    ggml_backend_dev_memory(dev, &free_mem, &total);
+    std::error_code ec;
+    const uint64_t  mmproj_size = std::filesystem::file_size(mmproj_path, ec);
+    if (total == 0 || ec) return true;
+    const uint64_t lm_size = llama_model_size(model);
+    const uint64_t avail   = std::min<uint64_t>(free_mem, total > lm_size ? total - lm_size : 0);
+    return mmproj_size + kVisionComputeReserve <= avail;
+}
 }  // namespace
 
 LlamaVlm::~LlamaVlm() {
@@ -118,6 +132,11 @@ int32_t LlamaVlm::create(const geniex_VlmCreateInput* input) {
 
     // Initialize vision context if mmproj_path provided
     if (input->mmproj_path) {
+        if (vision_device && !vision_fits_on_device(vision_device, this->model, input->mmproj_path)) {
+            GENIEX_LOG_WARN("Not enough free memory on '{}' for the mmproj; running the vision encoder on CPU",
+                ggml_backend_dev_name(vision_device));
+            vision_device = nullptr;
+        }
         mtmd_context_params mparams = mtmd_context_params_default();
         mparams.use_gpu             = false;
         if (vision_device) {
