@@ -118,6 +118,7 @@ func runCompletions(ctx context.Context, name string, modelType geniex_sdk.Model
 		option.WithJSONSet("spec_n_min", draftMin),
 		option.WithJSONSet("spec_p_min", draftPMin),
 		option.WithJSONSet("power_mode", powerMode),
+		option.WithJSONSet("reasoning_format", "none"),
 	)
 	spin.Stop()
 
@@ -203,7 +204,9 @@ func runCompletions(ctx context.Context, name string, modelType geniex_sdk.Model
 				option.WithJSONSet("spec_n_max", draftTokens),
 				option.WithJSONSet("spec_n_min", draftMin),
 				option.WithJSONSet("spec_p_min", draftPMin),
-				option.WithJSONSet("power_mode", powerMode))
+				option.WithJSONSet("power_mode", powerMode),
+				option.WithJSONSet("reasoning_format", "none"),
+			)
 
 			var firstToken time.Time
 			var profileData geniex_sdk.ProfileData
