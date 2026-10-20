@@ -27,6 +27,7 @@ go_library(
         "//cli/internal/render",
         "//cli/internal/store",
         "//cli/server",
+        "//cli/server/handler",
         "@com_github_bytedance_sonic//:sonic",
         "@com_github_charmbracelet_huh//:huh",
         "@com_github_dustin_go_humanize//:go-humanize",

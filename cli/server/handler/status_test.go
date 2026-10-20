@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/qualcomm/GenieX/cli/internal/config"
 )
 
 func TestStatusNoModelLoaded(t *testing.T) {
@@ -29,6 +31,12 @@ func TestStatusNoModelLoaded(t *testing.T) {
 	}
 	if !got.Alive {
 		t.Error("alive = false, want true")
+	}
+	if got.UptimeSeconds < 0 {
+		t.Errorf("uptime_seconds = %d, want >= 0", got.UptimeSeconds)
+	}
+	if want := config.Get().KeepAlive; got.KeepAliveSeconds != want {
+		t.Errorf("keepalive_seconds = %d, want %d", got.KeepAliveSeconds, want)
 	}
 	if got.Models == nil || len(got.Models) != 0 {
 		t.Errorf("models = %v, want empty non-nil slice", got.Models)
