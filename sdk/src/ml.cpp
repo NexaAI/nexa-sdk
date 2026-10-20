@@ -171,6 +171,15 @@ int32_t geniex_set_qairt_runtime_path(const char* path) {
 
 const char* geniex_get_qairt_runtime_path(void) { return qairt_runtime_path.c_str(); }
 
+static std::string qairt_optrace_path;
+
+int32_t geniex_set_qairt_optrace_path(const char* path) {
+    qairt_optrace_path = (path != nullptr) ? path : "";
+    return GENIEX_SUCCESS;
+}
+
+const char* geniex_get_qairt_optrace_path(void) { return qairt_optrace_path.c_str(); }
+
 void geniex_free(void* ptr) {
     if (ptr) free(ptr);
 }

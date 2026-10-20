@@ -257,6 +257,22 @@ GENIEX_API int32_t geniex_set_qairt_runtime_path(const char* path);
  */
 GENIEX_API const char* geniex_get_qairt_runtime_path(void);
 
+// clang-format off
+/**
+ * @brief Set the QAIRT per-operator profiling output path.
+ * @param path[in]: Output path; NULL or "" disables profiling.
+ * @return geniex_ErrorCode: GENIEX_SUCCESS.
+ * @thread_safety: Call before model creation.
+ */
+GENIEX_API int32_t geniex_set_qairt_optrace_path(const char* path);
+
+/**
+ * @brief Read back the QAIRT optrace path.
+ * @return Library-owned path, or "" when disabled. Never NULL.
+ */
+GENIEX_API const char* geniex_get_qairt_optrace_path(void);
+// clang-format on
+
 /**
  * @brief Simple wrapper around free() to free memory allocated by ML library functions
  *

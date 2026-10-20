@@ -80,6 +80,7 @@ int32_t QairtLlm::create(const geniex_LlmCreateInput* input) {
         return GENIEX_ERROR_COMMON_FILE_NOT_FOUND;
     }
     qairt::apply_power_mode(input->config.power_mode, model_cfg);
+    qairt::runtime::apply_optrace_config(model_cfg);
 
     GENIEX_LOG_DEBUG("Found {} model shards in {}", model_cfg.model_paths.size(), model_dir.string());
 
