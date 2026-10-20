@@ -7,9 +7,9 @@ import (
 	"bytes"
 	"encoding/base64"
 	"image"
-	"image/color"
 	"image/png"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -74,44 +74,39 @@ func TestSaveURIToTempFile_WebP_DataURI(t *testing.T) {
 	}
 	defer os.Remove(resultPath)
 
-	// Verify it's converted to PNG
 	if !strings.HasSuffix(resultPath, ".png") {
 		t.Errorf("Expected PNG extension for converted WebP, got: %s", resultPath)
 	}
+	resultFile, err := os.Open(resultPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resultFile.Close()
+	if _, err := png.Decode(resultFile); err != nil {
+		t.Errorf("data URI output is not PNG: %v", err)
+	}
 }
 
-// TestSaveURIToTempFile_PNG tests that PNG files are not converted
 func TestSaveURIToTempFile_PNG(t *testing.T) {
-	// Create a simple PNG image
-	img := image.NewRGBA(image.Rect(0, 0, 1, 1))
-	img.Set(0, 0, color.RGBA{255, 0, 0, 255})
-
 	var buf bytes.Buffer
-	if err := png.Encode(&buf, img); err != nil {
-		t.Fatalf("Failed to encode test PNG: %v", err)
+	if err := png.Encode(&buf, image.NewRGBA(image.Rect(0, 0, 1, 1))); err != nil {
+		t.Fatal(err)
+	}
+	source := filepath.Join(t.TempDir(), "source.png")
+	if err := os.WriteFile(source, buf.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
 	}
 
-	// Create temp PNG file
-	tmpPNG, err := os.CreateTemp("", "test-*.png")
+	resultPath, err := SaveURIToTempFile(source)
 	if err != nil {
-		t.Fatalf("Failed to create temp PNG file: %v", err)
-	}
-	defer os.Remove(tmpPNG.Name())
-
-	if _, err := tmpPNG.Write(buf.Bytes()); err != nil {
-		t.Fatalf("Failed to write PNG data: %v", err)
-	}
-	tmpPNG.Close()
-
-	// Test that PNG is saved without conversion
-	resultPath, err := SaveURIToTempFile(tmpPNG.Name())
-	if err != nil {
-		t.Fatalf("SaveURIToTempFile failed for PNG: %v", err)
+		t.Fatal(err)
 	}
 	defer os.Remove(resultPath)
-
-	// Verify output is still PNG
-	if !strings.HasSuffix(resultPath, ".png") {
-		t.Errorf("Expected PNG extension, got: %s", resultPath)
+	got, err := os.ReadFile(resultPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, buf.Bytes()) {
+		t.Error("PNG input was modified")
 	}
 }
