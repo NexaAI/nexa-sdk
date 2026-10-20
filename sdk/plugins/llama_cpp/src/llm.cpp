@@ -300,6 +300,10 @@ int32_t LlamaLlm::generate(const geniex_LlmGenerateInput* input, geniex_LlmGener
                past_prompt_tokens[match_len] == prompt_ids[match_len]) {
             match_len++;
         }
+        // Re-decode the last prompt token so sampling uses logits for this prompt.
+        if (match_len == prompt_len && match_len > 0) {
+            --match_len;
+        }
         GENIEX_LOG_DEBUG(
             "prefix match: past_prompt_tokens size: {}, prompt_len: {}, "
             "match_len: {}",
@@ -321,6 +325,7 @@ int32_t LlamaLlm::generate(const geniex_LlmGenerateInput* input, geniex_LlmGener
                 this->n_past_global = match_len;
                 GENIEX_LOG_INFO("prefix match: n_past_global rollback to: {}", this->n_past_global);
             }
+            this->past_prompt_tokens.assign(prompt_ids.begin(), prompt_ids.begin() + this->n_past_global);
         }
     }
 

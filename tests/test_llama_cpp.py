@@ -77,6 +77,80 @@ def _run_multi_turn(llm) -> list[str]:
 
 
 @pytest.mark.llm
+@pytest.mark.parametrize('device_map', _LLM.devices)
+def test_llm_repeated_chat_prompt_reuses_prefix(cached, device_map):
+    cached(_LLM)
+    with geniex.AutoModelForCausalLM.from_pretrained(
+        _LLM.id,
+        precision=_LLM.precision,
+        device_map=device_map,
+    ) as llm:
+        prompt = llm.tokenizer.apply_chat_template(
+            [
+                {'role': 'system', 'content': 'Answer in one short sentence.'},
+                {'role': 'user', 'content': 'Say hello briefly.'},
+            ],
+            tokenize=False,
+            add_generation_prompt=True,
+            enable_thinking=False,
+        )
+        outputs = [
+            llm.generate(prompt, max_new_tokens=16, temperature=GREEDY_TEMPERATURE, seed=LLM_QUALITY_SEED)
+            for _ in range(3)
+        ]
+
+    for index, out in enumerate(outputs, start=1):
+        assert out.text, f'empty completion on identical prompt call {index}'
+        assert out.profile.generated_tokens > 0
+    prompt_tokens = outputs[0].profile.prompt_tokens
+    assert prompt_tokens > 1, f'expected a full initial prefill, got {prompt_tokens} tokens'
+    # Reusing the exact prompt must re-evaluate its last token for fresh logits.
+    assert outputs[1].profile.prompt_tokens == 1
+    assert outputs[2].profile.prompt_tokens == 1
+
+
+@pytest.mark.llm
+@pytest.mark.parametrize('device_map', _LLM.devices)
+def test_llm_prefix_cache_reuse_after_partial_rollback(cached, device_map):
+    cached(_LLM)
+    shared = 'Keep the label ORCHID. Branch details: '
+    first = shared + ('amber ' * 80) + 'Say hello briefly.'
+    second = shared + ('cobalt ' * 32) + 'Say hello briefly.'
+    third = second + ' Add one note.'
+
+    with geniex.AutoModelForCausalLM.from_pretrained(
+        _LLM.id,
+        precision=_LLM.precision,
+        device_map=device_map,
+    ) as llm:
+        prompts = [
+            llm.tokenizer.apply_chat_template(
+                [
+                    {'role': 'system', 'content': 'Answer in one short sentence.'},
+                    {'role': 'user', 'content': content},
+                ],
+                tokenize=False,
+                add_generation_prompt=True,
+                enable_thinking=False,
+            )
+            for content in (first, second, third)
+        ]
+        outputs = [
+            llm.generate(prompt, max_new_tokens=8, temperature=GREEDY_TEMPERATURE, seed=LLM_QUALITY_SEED)
+            for prompt in prompts
+        ]
+
+    for index, out in enumerate(outputs, start=1):
+        assert out.text, f'empty completion on partial-rollback prompt call {index}'
+        assert out.profile.generated_tokens > 0
+    first_tokens, second_tokens, third_tokens = (out.profile.prompt_tokens for out in outputs)
+    assert first_tokens > second_tokens > third_tokens > 0, (
+        'expected full prefill, partial rollback, then reuse of the second prompt prefix; '
+        f'prompt_tokens={first_tokens, second_tokens, third_tokens}'
+    )
+
+
+@pytest.mark.llm
 @pytest.mark.parametrize(('model', 'device_map'), _LLM_MATRIX)
 def test_llm_multi_turn(cached, model, device_map):
     cached(model)
@@ -86,16 +160,15 @@ def test_llm_multi_turn(cached, model, device_map):
         device_map=device_map,
     ) as llm:
         replies = _run_multi_turn(llm)
-    assert (
-        'alice' in replies[-1].lower()
-    ), f'model={model.id!r} device_map={device_map!r} expected reply to recall "Alice", got={replies[-1]!r}'
+    assert 'alice' in replies[-1].lower(), (
+        f'model={model.id!r} device_map={device_map!r} expected reply to recall "Alice", got={replies[-1]!r}'
+    )
 
 
 @pytest.mark.llm
 @pytest.mark.parametrize(('model', 'device_map'), _LLM_MATRIX)
 def test_llm_greedy_is_deterministic(cached, model, device_map):
-    # Reloads per run: llama_cpp keeps its KV cache across generate() calls, so a
-    # second call on the same handle continues the first answer.
+    # Separate handles keep this seed comparison independent of cache reuse.
     cached(model)
 
     def _greedy_once(seed: int) -> str:
@@ -326,9 +399,9 @@ def test_mtp_multi_turn(llama_cpp_mtp_paths, device_map):
         spec_n_max=3,
     ) as llm:
         replies = _run_multi_turn(llm)
-    assert (
-        'alice' in replies[-1].lower()
-    ), f'device_map={device_map!r} expected reply to recall "Alice", got={replies[-1]!r}'
+    assert 'alice' in replies[-1].lower(), (
+        f'device_map={device_map!r} expected reply to recall "Alice", got={replies[-1]!r}'
+    )
 
 
 _MEDIA_MARKER = '<__media__>'
@@ -368,9 +441,9 @@ def test_chat_template_enable_thinking(llama_cpp_llm_paths, device_map):
         with_think = llm.tokenizer.apply_chat_template(msgs, tokenize=False, enable_thinking=True)
         without_think = llm.tokenizer.apply_chat_template(msgs, tokenize=False, enable_thinking=False)
         default_think = llm.tokenizer.apply_chat_template(msgs, tokenize=False)
-    assert (
-        default_think == with_think
-    ), 'default enable_thinking should auto-resolve to True on a thinking-capable model'
+    assert default_think == with_think, (
+        'default enable_thinking should auto-resolve to True on a thinking-capable model'
+    )
     assert with_think != without_think, f'enable_thinking flag did not reach the template: {with_think!r}'
 
 
