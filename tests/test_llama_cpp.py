@@ -160,9 +160,9 @@ def test_llm_multi_turn(cached, model, device_map):
         device_map=device_map,
     ) as llm:
         replies = _run_multi_turn(llm)
-    assert 'alice' in replies[-1].lower(), (
-        f'model={model.id!r} device_map={device_map!r} expected reply to recall "Alice", got={replies[-1]!r}'
-    )
+    assert (
+        'alice' in replies[-1].lower()
+    ), f'model={model.id!r} device_map={device_map!r} expected reply to recall "Alice", got={replies[-1]!r}'
 
 
 @pytest.mark.llm
@@ -399,9 +399,9 @@ def test_mtp_multi_turn(llama_cpp_mtp_paths, device_map):
         spec_n_max=3,
     ) as llm:
         replies = _run_multi_turn(llm)
-    assert 'alice' in replies[-1].lower(), (
-        f'device_map={device_map!r} expected reply to recall "Alice", got={replies[-1]!r}'
-    )
+    assert (
+        'alice' in replies[-1].lower()
+    ), f'device_map={device_map!r} expected reply to recall "Alice", got={replies[-1]!r}'
 
 
 _MEDIA_MARKER = '<__media__>'
@@ -441,9 +441,9 @@ def test_chat_template_enable_thinking(llama_cpp_llm_paths, device_map):
         with_think = llm.tokenizer.apply_chat_template(msgs, tokenize=False, enable_thinking=True)
         without_think = llm.tokenizer.apply_chat_template(msgs, tokenize=False, enable_thinking=False)
         default_think = llm.tokenizer.apply_chat_template(msgs, tokenize=False)
-    assert default_think == with_think, (
-        'default enable_thinking should auto-resolve to True on a thinking-capable model'
-    )
+    assert (
+        default_think == with_think
+    ), 'default enable_thinking should auto-resolve to True on a thinking-capable model'
     assert with_think != without_think, f'enable_thinking flag did not reach the template: {with_think!r}'
 
 
