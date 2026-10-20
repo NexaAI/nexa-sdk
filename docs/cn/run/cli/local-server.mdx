@@ -47,6 +47,22 @@ geniex serve
 }
 ```
 
+### **分离推理内容（reasoning_content）**
+
+思考模型默认会把思维链放入 `message.reasoning_content`，让 `content` 只保留最终回复。如需把原始推理保留在 `message.content` 中，可在 `/v1/chat/completions` 请求体中将 `reasoning_format` 设为 `none`：
+
+```bash
+curl http://127.0.0.1:18181/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "ai-hub-models/Qwen3-4B-Instruct-2507",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "reasoning_format": "none"
+  }'
+```
+
+`deepseek` 是默认值；`deepseek`、`deepseek-legacy` 和 `auto` 会分离推理内容，`none` 则保留内联推理。此设置不会关闭模型的推理（与 `enable_think: false` 不同），流式响应和工具调用请求也适用。使用 OpenAI SDK 读取分离字段的方式见 [Python client 示例](#分离推理内容reasoning_content)。
+
 ### **通过 Swagger UI 试用**
 
 在浏览器中打开 `http://127.0.0.1:18181` 即可访问内置的 Swagger UI。
@@ -115,6 +131,40 @@ geniex serve
 
 响应中的 `choices[0].text` 即原始补全内容，可直接插入光标处。`stream`、`stop`、`echo` 及采样参数（`temperature`、`top_p`、`top_k`、`min_p`、`repetition_penalty`、`seed`）与 `/v1/chat/completions` 行为一致；不支持 `suffix` —— 请改用模型的 FIM 标记把后缀编码进 `prompt`。
 
+## **POST /v1/decisions**
+
+使用**已导入 GenieX 缓存**的 `llama_cpp` LLM 或 VLM，按顺序评估 `predicate`、`choice` 和 `score` 问题。此端点采用 OpenAI Decisions 的请求与响应结构。带有 `systemone` 的模型使用对应的 OpenJEV、LEV 或 Nimble 决策路径及模型 temperature；缺少 `decision.type` 时默认按 OpenJEV 处理。没有 `systemone` 时使用常规 chat template 和通用选项 prompt，temperature 回退到 `1.0`。LEV 的 choice 会平均两种选项顺序，predicate 使用九档评分；LLM 和 VLM 均通过原生 logits 评分（LEV 模型本身仅支持文本）。VLM 还可评估内联图像和音频。
+
+```sh
+curl http://127.0.0.1:18181/v1/decisions -H 'Content-Type: application/json' -d '{
+  "model": "local/decision-model:Q4_K_M",
+  "compute": "cpu",
+  "nctx": 8192,
+  "input": "Our checkout has returned 500 errors since 9am.",
+  "questions": [
+    {
+      "name": "label",
+      "type": "choice",
+      "instructions": "Which label fits this ticket?",
+      "choices": [
+        {"value": "billing", "description": "Payments and refunds"},
+        {"value": "bug", "description": "Software errors"},
+        {"value": "account", "description": "Login and account access"}
+      ]
+    },
+    {"name": "urgent", "type": "predicate", "instructions": "Is a critical business operation currently blocked?"},
+    {
+      "name": "severity",
+      "type": "score",
+      "instructions": "How severe is the issue?",
+      "levels": [{"label": "low"}, {"label": "moderate"}, {"label": "critical"}]
+    }
+  ]
+}'
+```
+
+`input` 可以是非空文本字符串，也可以是包含 `input_text`、`input_image` 和 GenieX 扩展 `input_audio` 部分的 user message 数组。图像（`image_url`）和音频（`input_audio.data`）复用 chat 端点的 `SaveURIToTempFile` 路径，支持本地路径、`file://`、HTTP(S) 及 data URL。音频也与 chat 一样支持配合 `input_audio.format`（例如 `wav`）传入原始 base64。每种最多 8 个，并要求 VLM 支持相应模态。每个问题的 `name` 可选但必须唯一（省略时响应的 `name` 为 `null`）；choice 支持 2–255 个值（上限还受模型词表限制），score 支持 2–10 个等级，最多 64 个问题。响应中的 `answers` 数组与问题顺序一致：predicate 返回为真的概率，choice 返回选中值，score 返回零起始等级索引。LLM 和 VLM 均通过 logits 返回概率及 confidence，且 `output_tokens` 为 0。请将示例中的 `model` 替换为 `geniex list` 中的缓存模型名称，而非 GGUF 路径。
+
 ## **Python 客户端（OpenAI SDK）**
 
 由于服务器使用 OpenAI 协议，可直接将官方 `openai` Python 客户端指向本地端点，复用任意已有的 OpenAI 代码。先通过 `pip install openai` 安装，然后创建 client：
@@ -182,10 +232,10 @@ usage: CompletionUsage(completion_tokens=58, prompt_tokens=19, total_tokens=77, 
 
 ### **分离推理内容（reasoning_content）**
 
-思考模型默认会把思维链原样保留在 `message.content`（`<think>…</think>`），与最终回复混在一起。传入 `reasoning_format="deepseek"` 可让服务器把思维链拆到 OpenAI 标准的 `message.reasoning_content` 字段，`content` 只保留干净的回复。
+思考模型默认会把思维链放入 OpenAI 标准的 `message.reasoning_content` 字段，让 `content` 只保留干净的回复。仅在需要把原始推理保留在 `message.content` 时，才需在请求体中传入 `reasoning_format="none"`。
 
 <Note>
-`reasoning_format` 与 `enable_think` 是两件事：`enable_think=False` 让模型**不产生**思维链；`reasoning_format="deepseek"` 让模型照常思考，但把思维链**移出** `content`。取值 `none`（默认）保持原样内联，`deepseek` / `deepseek-legacy` / `auto` 均触发分离。工具调用请求同样生效（含流式）：思维链会先分离出来，再对回复扫描工具调用。
+`reasoning_format` 与 `enable_think` 是两件事：`enable_think=False` 让模型**不产生**思维链；默认的 `reasoning_format="deepseek"` 让模型照常思考，但把思维链**移出** `content`。取值 `deepseek`（默认）、`deepseek-legacy` 和 `auto` 均触发分离，`none` 则保持原样内联。工具调用请求同样生效（含流式）：思维链会先分离出来，再对回复扫描工具调用。
 </Note>
 
 ```python python
@@ -195,7 +245,6 @@ resp = client.chat.completions.create(
         {"role": "user", "content": "What is 2+2? Answer briefly."},
     ],
     max_tokens=128,
-    extra_body={"reasoning_format": "deepseek"},
 )
 
 msg = resp.choices[0].message

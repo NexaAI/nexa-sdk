@@ -75,6 +75,7 @@ class geniex_SamplerConfig(Structure):
         ('seed', c_int32),
         ('grammar_path', c_char_p),
         ('grammar_string', c_char_p),
+        ('ignore_eos', c_bool),
     ]
 
 
@@ -167,6 +168,9 @@ class geniex_LlmGenerateInput(Structure):
         ('user_data', c_void_p),
         ('input_ids', POINTER(c_int32)),
         ('input_ids_count', c_int32),
+        ('input_embd', POINTER(c_float)),
+        ('input_embd_count', c_int32),
+        ('input_embd_dim', c_int32),
     ]
 
 
@@ -182,6 +186,7 @@ class geniex_LlmModelInfo(Structure):
         ('vocab_size', c_int32),
         ('bos_token', c_int32),
         ('add_bos', c_int32),
+        ('embd_dim', c_int32),
     ]
 
 
@@ -201,6 +206,50 @@ class geniex_LlmForwardLogitsOutput(Structure):
         ('n_rows', c_int32),
         ('row_width', c_int32),  # top_n > 0 ? min(top_n, vocab_size) : vocab_size
         ('vocab_size', c_int32),
+    ]
+
+
+# Keep these layouts in field order with sdk/include/geniex.h.
+class geniex_DecideOption(Structure):
+    _fields_ = [
+        ('key', c_char_p),
+        ('key_is_bool', c_bool),
+        ('description', c_char_p),
+    ]
+
+
+class geniex_DecideQuestion(Structure):
+    _fields_ = [
+        ('id', c_char_p),
+        ('question_type', c_char_p),
+        ('instructions', c_char_p),
+        ('options', POINTER(geniex_DecideOption)),
+        ('option_count', c_int32),
+    ]
+
+
+# State is text; callers serialize structured state before crossing the C ABI.
+class geniex_DecideInput(Structure):
+    _fields_ = [
+        ('state', c_char_p),
+        ('questions', POINTER(geniex_DecideQuestion)),
+        ('question_count', c_int32),
+        ('question_index', c_int32),
+        ('image_paths', POINTER(c_char_p)),
+        ('image_count', c_int32),
+        ('audio_paths', POINTER(c_char_p)),
+        ('audio_count', c_int32),
+    ]
+
+
+class geniex_DecideOutput(Structure):
+    _fields_ = [
+        ('logits', POINTER(c_float)),
+        ('option_count', c_int32),
+        ('input_tokens', c_int32),
+        ('temperature', c_float),
+        ('decision_type', c_void_p),  # SDK-owned pointer; decode before freeing with geniex_free
+        ('probabilities', POINTER(c_float)),
     ]
 
 

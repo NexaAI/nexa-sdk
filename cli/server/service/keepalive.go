@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"reflect"
+	"sync"
 	"time"
 
 	geniex_sdk "github.com/qualcomm/GenieX/bindings/go"
@@ -100,7 +101,11 @@ func KeepAliveGet[T any](name string, param types.ModelParam, session utils.Sess
 		return AcquiredModel[T]{}, err
 	}
 	// Stamp the idle timer at request end (only model requests reach here).
-	middleware.RunOnRelease(func() { keepAlive.lastActivity = time.Now() })
+	keepAlive.setState(StateActive)
+	middleware.RunOnRelease(func() {
+		keepAlive.lastActivity = time.Now()
+		keepAlive.setState(StateIdle)
+	})
 	return AcquiredModel[T]{Model: t.(*T), Fresh: fresh}, nil
 }
 
@@ -115,6 +120,10 @@ type keepAliveService struct {
 	lastSession  utils.SessionKey // session served by the last request
 	lastActivity time.Time        // when the last model request finished
 	stopCh       chan struct{}
+
+	// statusMu guards status, which /status reads without taking the GIL.
+	statusMu sync.Mutex
+	status   *ModelStatus
 }
 
 // keepable is a model the cache can free; resettable can also clear its
@@ -168,6 +177,7 @@ func (keepAlive *keepAliveService) destroy() {
 		keepAlive.model = nil
 		keepAlive.name = ""
 	}
+	keepAlive.setStatus(nil)
 }
 
 // keepAliveGet reuses the cached model when name/params match, resetting it
@@ -201,6 +211,13 @@ func keepAliveGet[T any](name string, param types.ModelParam, session utils.Sess
 	// Drop the current model so only one stays in memory.
 	// TODO: unload model due to free ram/vram
 	keepAlive.destroy()
+	keepAlive.setStatus(&ModelStatus{
+		ID:      name,
+		Type:    modelKind[T](),
+		Runtime: paths.RuntimeID,
+		Device:  param.DeviceID,
+		State:   StateLoading,
+	})
 
 	// param already carries the resolved NCtx/NGpuLayers/DeviceID; no further
 	// resolution needed here.
@@ -248,12 +265,14 @@ func keepAliveGet[T any](name string, param types.ModelParam, session utils.Sess
 		return nil, false, fmt.Errorf("unsupported model type: %s", reflect.TypeFor[T]())
 	}
 	if e != nil {
+		keepAlive.setStatus(nil)
 		return nil, false, e
 	}
 	keepAlive.name = name
 	keepAlive.model = t
 	keepAlive.param = param
 	keepAlive.lastSession = session
+	keepAlive.setState(StateActive)
 
 	return t, true, nil
 }
@@ -265,4 +284,67 @@ func (keepAlive *keepAliveService) stop() {
 	middleware.GILock.Lock()
 	defer middleware.GILock.Unlock()
 	keepAlive.destroy()
+}
+
+// Model lifecycle states reported by /status.
+const (
+	StateLoading = "loading"
+	StateActive  = "active"
+	StateIdle    = "idle"
+)
+
+// ModelStatus is a point-in-time view of the cached model.
+type ModelStatus struct {
+	ID           string    `json:"id"`
+	Type         string    `json:"type"`
+	Runtime      string    `json:"runtime"`
+	Device       string    `json:"device"`
+	State        string    `json:"state"`
+	LoadedAt     time.Time `json:"loaded_at,omitzero"`
+	LastActivity time.Time `json:"last_activity,omitzero"`
+	IdleSeconds  int64     `json:"idle_seconds"`
+}
+
+func modelKind[T any]() string {
+	if reflect.TypeFor[T]() == reflect.TypeFor[geniex_sdk.VLM]() {
+		return "vlm"
+	}
+	return "llm"
+}
+
+func (keepAlive *keepAliveService) setStatus(s *ModelStatus) {
+	keepAlive.statusMu.Lock()
+	defer keepAlive.statusMu.Unlock()
+	keepAlive.status = s
+}
+
+func (keepAlive *keepAliveService) setState(state string) {
+	keepAlive.statusMu.Lock()
+	defer keepAlive.statusMu.Unlock()
+	s := keepAlive.status
+	if s == nil {
+		return
+	}
+	now := time.Now()
+	s.State = state
+	if state == StateActive && s.LoadedAt.IsZero() {
+		s.LoadedAt = now
+	}
+	if state == StateIdle {
+		s.LastActivity = now
+	}
+}
+
+// Status returns the loaded models, safe to call while a request holds the GIL.
+func Status() []ModelStatus {
+	keepAlive.statusMu.Lock()
+	defer keepAlive.statusMu.Unlock()
+	if keepAlive.status == nil {
+		return []ModelStatus{}
+	}
+	s := *keepAlive.status
+	if s.State == StateIdle {
+		s.IdleSeconds = int64(time.Since(s.LastActivity).Seconds())
+	}
+	return []ModelStatus{s}
 }

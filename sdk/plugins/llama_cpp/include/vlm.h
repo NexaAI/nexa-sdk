@@ -6,6 +6,7 @@
 #include <string>
 
 #include "chat.h"
+#include "decision.h"
 #include "htp_session.h"
 #include "mtmd.h"
 #include "plugin/IVlm.h"
@@ -52,6 +53,7 @@ class LlamaVlm : public IVlm {
     virtual int32_t generate(const geniex_VlmGenerateInput* input, geniex_VlmGenerateOutput* output) override;
 
     virtual int32_t get_capabilities(geniex_VlmCapabilities* output) override;
+    virtual int32_t decide(const geniex_DecideInput*, geniex_DecideOutput*) override;
 
    private:
     void set_sampler(const geniex_SamplerConfig* cfg);

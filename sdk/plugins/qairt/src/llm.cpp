@@ -218,15 +218,32 @@ int32_t QairtLlm::generate(const geniex_LlmGenerateInput* input, geniex_LlmGener
     if (!pipeline_) return GENIEX_ERROR_COMMON_NOT_INITIALIZED;
     if (!input || !output) return GENIEX_ERROR_COMMON_INVALID_INPUT;
 
-    bool has_input_ids = input->input_ids != nullptr && input->input_ids_count > 0;
+    bool has_input_embd = input->input_embd != nullptr && input->input_embd_count > 0;
+    bool has_input_ids  = input->input_ids != nullptr && input->input_ids_count > 0;
 
-    if (!has_input_ids && !input->prompt_utf8) return GENIEX_ERROR_COMMON_INVALID_INPUT;
+    if (has_input_embd) {
+        if (!pipeline_->supportsInputEmbeddings()) {
+            GENIEX_LOG_ERROR("input_embd is not supported by this QAIRT bundle (first shard embeds on-device)");
+            return GENIEX_ERROR_COMMON_PARAM_NOT_SUPPORTED;
+        }
+        if (static_cast<size_t>(input->input_embd_dim) != pipeline_->hiddenSize()) {
+            GENIEX_LOG_ERROR("input_embd_dim ({}) does not match model's expected embedding width ({})",
+                input->input_embd_dim,
+                pipeline_->hiddenSize());
+            return GENIEX_ERROR_COMMON_INVALID_INPUT;
+        }
+    }
+
+    if (!has_input_embd && !has_input_ids && !input->prompt_utf8) return GENIEX_ERROR_COMMON_INVALID_INPUT;
 
     // Map geniex_GenerationConfig -> geniex::GenerationConfig
     GenerationConfig gen_cfg{};
     if (input->config) {
         gen_cfg.max_tokens = input->config->max_tokens > 0 ? input->config->max_tokens : 512;
         qairt::apply_sampler_config(input->config->sampler_config, gen_cfg, bundle_sampler_);
+        if (input->config->sampler_config && input->config->sampler_config->ignore_eos) {
+            GENIEX_LOG_WARN("ignore_eos is not supported by the QAIRT plugin; EOS still ends generation");
+        }
 
         // Stop sequences are handled natively by the pipeline's generateTokens
         // (byte-level matching across tokens, mirroring llama_cpp).
@@ -257,7 +274,12 @@ int32_t QairtLlm::generate(const geniex_LlmGenerateInput* input, geniex_LlmGener
     }
 
     GenerateResult result;
-    if (has_input_ids) {
+    if (has_input_embd) {
+        const size_t n_floats =
+            static_cast<size_t>(input->input_embd_count) * static_cast<size_t>(input->input_embd_dim);
+        result = pipeline_->generateFromEmbeddings(
+            std::vector<float>(input->input_embd, input->input_embd + n_floats), gen_cfg, on_token_fn);
+    } else if (has_input_ids) {
         std::vector<int32_t> input_ids(input->input_ids, input->input_ids + input->input_ids_count);
         result = pipeline_->generate(input_ids, gen_cfg, on_token_fn);
     } else {
@@ -315,6 +337,7 @@ int32_t QairtLlm::get_model_info(geniex_LlmModelInfo* output) {
     output->vocab_size = static_cast<int32_t>(vocab_size);
     output->bos_token  = pipeline_->bosTokenId();
     output->add_bos    = output->bos_token >= 0 ? 1 : 0;
+    output->embd_dim   = pipeline_->supportsInputEmbeddings() ? static_cast<int32_t>(pipeline_->hiddenSize()) : 0;
     return GENIEX_SUCCESS;
 }
 

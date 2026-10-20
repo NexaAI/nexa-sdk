@@ -29,16 +29,6 @@ func TestCStringIfSet(t *testing.T) {
 	}
 }
 
-func TestProfileDataAggregates(t *testing.T) {
-	p := ProfileData{PromptTokens: 12, GeneratedTokens: 30, PromptTime: 100, DecodeTime: 200}
-	if got := p.TotalTokens(); got != 42 {
-		t.Errorf("TotalTokens: got %d, want 42", got)
-	}
-	if got := p.TotalTimeUs(); got != 300 {
-		t.Errorf("TotalTimeUs: got %d, want 300", got)
-	}
-}
-
 // NULL user_data must keep generation alive; an installed callback's return
 // value must propagate so the user can stop.
 func TestOnTokenCallbackDispatch(t *testing.T) {

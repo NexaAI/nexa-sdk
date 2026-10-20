@@ -467,6 +467,7 @@ typedef struct {
     int32_t     seed;               /* Random seed (-1 for random) */
     geniex_Path grammar_path;       /* Optional grammar file path */
     const char* grammar_string;     /* Optional grammar string (BNF-like format) */
+    bool        ignore_eos;         /* Never sample EOS/EOG, so generation runs to max_tokens (llama_cpp only) */
 } geniex_SamplerConfig;
 
 /** LLM / VLM generation configuration (IMPROVED: support multiple images and audios) */
@@ -644,19 +645,31 @@ typedef struct {
     geniex_token_callback          on_token;    /** Token callback function for streaming */
     void*                          user_data;   /** User data passed to callback (optional, can be nullptr) */
 
-    /** Mutual exclusivity rules:
-     *  - If input_ids is non-NULL and input_ids_count > 0, the input_ids will be used
-     *    and prompt_utf8 will be ignored.
+    /** Mutual exclusivity rules (checked in this priority order):
+     *  - If input_embd is non-NULL and input_embd_count > 0, input_embd is used
+     *    and input_ids / prompt_utf8 are ignored.
+     *  - Else if input_ids is non-NULL and input_ids_count > 0, input_ids is used
+     *    and prompt_utf8 is ignored.
      *  - Otherwise, prompt_utf8 must be provided.
-     *  - Providing neither will result in GENIEX_ERROR_COMMON_INVALID_INPUT.
+     *  - Providing none of the three will result in GENIEX_ERROR_COMMON_INVALID_INPUT.
      *
      * Special tokens handling:
-     *  When using input_ids, the caller is responsible for including any special tokens
-     *  (BOS/EOS) as needed. The API will not add them automatically.
+     *  When using input_ids or input_embd, the caller is responsible for including
+     *  any special tokens (BOS/EOS) as needed. The API will not add them automatically.
      */
     /** Pre-tokenized input support (alternative to prompt_utf8) */
     const int32_t* input_ids;       /** Array of pre-tokenized token IDs (optional, can be nullptr) */
     int32_t        input_ids_count; /** Number of tokens in input_ids array */
+
+    /** Pre-computed embedding input (alternative to prompt_utf8 / input_ids).
+     *  Row-major [input_embd_count, input_embd_dim]. input_embd_dim must exactly
+     *  match the model's expected input embedding width (see
+     *  geniex_LlmModelInfo.embd_dim); a mismatch is GENIEX_ERROR_COMMON_INVALID_INPUT.
+     *  Backends that cannot decode raw embeddings return
+     *  GENIEX_ERROR_COMMON_PARAM_NOT_SUPPORTED. */
+    const float* input_embd;       /** Row-major embedding tensor (optional, can be nullptr) */
+    int32_t      input_embd_count; /** Number of embedding rows (tokens) in input_embd */
+    int32_t      input_embd_dim;   /** Width of each embedding row in input_embd */
 } geniex_LlmGenerateInput;
 
 /** Output structure for streaming text generation */
@@ -686,6 +699,8 @@ typedef struct {
     int32_t vocab_size; /** Number of tokens in the model vocabulary (>=1 on success). */
     int32_t bos_token;  /** BOS token id, or -1 if the model has no BOS. */
     int32_t add_bos;    /** 1 = caller should prepend BOS at position 0 when feeding raw input_ids. */
+    int32_t embd_dim;   /** Expected geniex_LlmGenerateInput.input_embd row width, or 0 if the
+                         * plugin cannot report it / doesn't support embedding input. */
 } geniex_LlmModelInfo;
 
 /**
@@ -763,6 +778,50 @@ typedef struct {
  */
 GENIEX_API int32_t geniex_llm_forward_logits(
     geniex_LLM* handle, const geniex_LlmForwardLogitsInput* input, geniex_LlmForwardLogitsOutput* output);
+
+/** One decision option. key_is_bool preserves boolean choice values; predicate
+ * option keys must be the strings "true" and "false". Strings are caller-owned. */
+typedef struct {
+    const char* key;
+    bool        key_is_bool;
+    const char* description; /** NULL when absent. */
+} geniex_DecideOption;
+
+/** One decision question. type is "predicate", "choice", or "score";
+ * id may be NULL to use a generated id. Arrays and strings are caller-owned. */
+typedef struct {
+    const char*                id;
+    const char*                question_type;
+    const char*                instructions;
+    const geniex_DecideOption* options;
+    int32_t                    option_count;
+} geniex_DecideQuestion;
+
+/** Shared metadata-driven decision request. state is plain UTF-8 text; callers
+ * may serialize structured state to JSON text before passing it. The SDK
+ * renders the state and questions through the model's systemone template. */
+typedef struct {
+    const char*                  state;
+    const geniex_DecideQuestion* questions;
+    int32_t                      question_count;
+    int32_t                      question_index;
+    const char* const*           image_paths;
+    int32_t                      image_count;
+    const char* const*           audio_paths;
+    int32_t                      audio_count;
+} geniex_DecideInput;
+
+typedef struct {
+    float*  logits; /** Raw logit per original option, or NULL when probabilities are returned. */
+    int32_t option_count;
+    int32_t input_tokens;  /** Total prompt and media tokens evaluated. */
+    float   temperature;   /** Resolved decision temperature. */
+    char*   decision_type; /** Model metadata type, caller frees with geniex_free. */
+    float*
+        probabilities; /** Calibrated option probabilities for multi-pass decisions; caller frees with geniex_free. */
+} geniex_DecideOutput;
+
+GENIEX_API int32_t geniex_llm_decide(geniex_LLM* handle, const geniex_DecideInput* input, geniex_DecideOutput* output);
 
 /* ========================================================================== */
 /*                              MULTIMODAL MODELS (VLM)                          */
@@ -884,6 +943,8 @@ typedef struct {
  * @return geniex_ErrorCode: GENIEX_SUCCESS on success, negative on failure.
  */
 GENIEX_API int32_t geniex_vlm_get_capabilities(geniex_VLM* handle, geniex_VlmCapabilities* output);
+
+GENIEX_API int32_t geniex_vlm_decide(geniex_VLM* handle, const geniex_DecideInput* input, geniex_DecideOutput* output);
 
 /* ====================  Streaming Generation  ============================= */
 

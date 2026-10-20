@@ -8,6 +8,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+if(ANDROID)
+    # CMake disables RPATH on Android, but API 24+ supports $ORIGIN in DT_RUNPATH.
+    set(CMAKE_SHARED_LIBRARY_RUNTIME_C_FLAG "-Wl,-rpath,")
+    set(CMAKE_SHARED_LIBRARY_RUNTIME_CXX_FLAG "-Wl,-rpath,")
+endif()
+
 # Set RPATH configuration for all targets to use relative paths
 set(CMAKE_BUILD_RPATH "$ORIGIN")
 set(CMAKE_INSTALL_RPATH "$ORIGIN")
@@ -141,14 +147,11 @@ enable_testing()
 #   the llama.cpp plugin to tear down HTP FastRPC channels on model unload so
 #   QAIRT's HTP re-init is not poisoned by stale sessions. See
 #   sdk/plugins/llama_cpp/src/llm.cpp for the caller.
-# * llama-hexagon-power-mode.patch adds the HTP DCVS/HMX power-mode table from
-#   our internal llama.cpp PR (ggml/llama.cpp#340, unmerged upstream). Delete
-#   this file once the submodule is bumped past that merge.
 # * llama-hexagon-power-mode-setter.patch is a permanent GenieX addition on top
-#   of the above: exposes "ggml_backend_hexagon_set_power_mode" via
-#   get_proc_address so the llama.cpp plugin can change the power mode
-#   per-model (llama-hexagon-power-mode.patch alone only reads it once, from
-#   GGML_HEXAGON_POWER_MODE, at backend-registry construction). See
+#   of upstream's HTP power-mode table: exposes "ggml_backend_hexagon_set_power_mode"
+#   via get_proc_address so the llama.cpp plugin can change the power mode
+#   per-model (upstream only reads it once, from GGML_HEXAGON_POWER_MODE, at
+#   backend-registry construction). See
 #   sdk/plugins/llama_cpp/src/htp_session.cpp for the caller.
 # * llama-opencl-adreno-cpy-constreg.patch works around an Adreno OpenCL
 #   compiler crash: kernel_cpy_f32_f32_pack's min(ne00, get_local_size(0))
@@ -157,31 +160,38 @@ enable_testing()
 #   same fix is applied to kernel_add: the strength-reduced
 #   get_local_size(0) * nb0X step emits an equivalent UMULLrr, hit on a
 #   QCS9075 board (Adreno driver 1.855.3) during VLM inference. See
-#   qcom-ai-hub/geniex#1566.
-# * llama-zero-free-mem-even-split.patch keeps load_tensors from throwing when
-#   every device reports 0 free memory: the splits normalize to NaN and the
-#   device lookup runs off the end. Adreno 643 on QCS6490 hits it because the
-#   OpenCL backend subtracts a fixed 1 GiB margin from global_mem_size. See #1497.
+#   qcom-ai-hub/geniex#1566. The Q4_K noshuffle GEMV workaround
+#   (ADRENO_6XX_Q4K_CONSTREG_WORKAROUND) is enabled on every Adreno 6xx
+#   (originally only 643); Adreno 663 on IQ-9075 hits the same UMULLrr on
+#   BLOCK_STRIDE_A at kernel load, aborting every GPU run.
 # * llama-opencl-adreno-xmem-gemm-off.patch defaults the Adreno xmem F16xF32
 #   GEMM path (upstream #27640) back to off. On this Adreno generation it
 #   corrupts output after repeated model loads through the same OpenCL
 #   context (quality/logits-parity tests pass individually, fail once several
 #   gpu/hybrid models have loaded in one process); upstream's own
 #   GGML_OPENCL_ADRENO_XMEM_GEMM=0 override confirms the fix.
+# * llama-opencl-adreno-f16-mrow-wgsize.patch falls back from the f16 mrow decode
+#   GEMV to the 1row kernel when CL_KERNEL_WORK_GROUP_SIZE is below the 64x16
+#   work-group it launches. Adreno 663 caps it at 896, so clEnqueueNDRangeKernel
+#   returned -54 and aborted gemma-4 on IQ-9075.
+# * llama-opencl-adreno-q4k-large-image.patch routes Q4_K weights whose quant plane
+#   exceeds CL_DEVICE_IMAGE_MAX_BUFFER_SIZE to the flat GEMV. Adreno 663 caps it at
+#   2^26 texels; gemma-4-E4B token_embd (2560x262144) needs 83886080, so
+#   clCreateImage returned -40 and aborted.
 if(GENIEX_PLUGIN_LLAMA_CPP)
     set(_LLAMA_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/../third-party/llama.cpp")
     set(_LLAMA_PATCHES)
     if(GGML_HEXAGON)
         list(APPEND _LLAMA_PATCHES
             "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-hexagon-release-sessions.patch"
-            "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-hexagon-power-mode.patch"
             "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-hexagon-power-mode-setter.patch")
     endif()
     if(GGML_OPENCL)
         list(APPEND _LLAMA_PATCHES
             "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-opencl-adreno-cpy-constreg.patch"
-            "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-zero-free-mem-even-split.patch"
-            "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-opencl-adreno-xmem-gemm-off.patch")
+            "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-opencl-adreno-xmem-gemm-off.patch"
+            "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-opencl-adreno-f16-mrow-wgsize.patch"
+            "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-opencl-adreno-q4k-large-image.patch")
     endif()
     find_package(Git QUIET REQUIRED)
     foreach(_LLAMA_PATCH ${_LLAMA_PATCHES})

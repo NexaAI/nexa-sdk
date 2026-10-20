@@ -78,6 +78,8 @@ GGML_HEXAGON_NDEV=4 geniex infer google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0 --
 
 <Note>将 `GGML_HEXAGON_NDEV` 设置为与 `--compute` 中设备 ID 数量一致。`qairt` 模型会将设备列表强制转为 NPU 并输出警告。性能数据参见 [MTP 教程](/en/tutorials/speculative-decoding-mtp#spreading-across-multiple-htp-cores)。</Note>
 
+<Note>VLM 使用 `--compute npu` 时，视觉编码器默认与语言模型共用同一个 HTP session，在部分设备上可能崩溃。可用 `GGML_HEXAGON_NDEV=2 geniex infer <vlm> --compute HTP0 --vit-compute HTP1` 让它独占第二个 session。详见[故障排查](/cn/resources/troubleshooting)。</Note>
+
 <Warning>Qualcomm AI Hub 模型仅在 NPU 上运行。使用 `--compute cpu` 或 `--compute gpu` 会返回错误。</Warning>
 
 ### **`geniex infer` — VLM**
@@ -93,6 +95,28 @@ geniex infer ai-hub-models/Qwen2.5-VL-7B-Instruct-GGUF
 ```bash
 Describe this picture </full/path/to/image.png>
 ```
+
+### **`geniex decide`**
+
+使用本地缓存的 `llama_cpp` LLM 或 VLM，根据 logits 评估 `predicate`（是/否）、`choice`（候选项）或 `score`（等级）问题。带有 `systemone` 的模型采用 OpenJEV、LEV 或 Nimble 决策路径；其他模型使用通用 prompt 回退。可重复指定 `--image` 和 `--audio`，向兼容的 VLM 传入本地媒体文件。
+
+```bash
+geniex decide <model-name>[:<precision>] --kind predicate \
+  --input "电池无法充电" --question "这是硬件故障吗？"
+geniex decide <model-name>[:<precision>] --kind choice \
+  --input "电池无法充电" --question "选择处理方式" \
+  --choice 'retry=重试' --choice 'replace=更换电池'
+geniex decide <model-name>[:<precision>] --kind score \
+  --input "电池温度为 85°C" --question "评估严重程度" \
+  --level low --level medium --level 'high=立即停机'
+geniex decide <vlm-name> --kind choice --image photo.png \
+  --input "一张故障照片" --question "选择问题类型" \
+  --choice battery --choice screen
+```
+
+每个候选项重复一次 `--choice VALUE`。例如 `--choice 'retry=重试'` 中，`retry` 是 JSON 响应返回的值，`重试` 是该值的可选描述，供模型判断时参考；这里**不是**键值映射。描述含空格时需给整个参数加引号。`--level` 同样支持 `LABEL=DESCRIPTION`。`--image` 和 `--audio` 接受本地普通文件，每种最多 8 个。`--compute`、`--ngl`、`--nctx` 和 `--power-mode` 控制模型加载；`--vit-compute` 指定 VLM 视觉编码器的计算单元。`geniex decide --help` 按 Model Loading、LLM/VLM Decision、VLM Specific 分组显示这些参数。
+
+`geniex decide` 默认沿用 CLI 主题色，显示 predicate 的 true / false 概率、choice 的选中项及各候选项概率，或 score 的零起始预期分数及各等级概率，并在适用时显示 confidence。脚本需要原有的完整单行 JSON 时添加 `--json`。`/v1/decisions` 的响应仍始终为 JSON。
 
 ## **`geniex model`**
 
@@ -131,7 +155,7 @@ geniex model list --all
 geniex serve
 ```
 
-要把思考模型的思维链从 `message.content` 移到 `message.reasoning_content`，在单次请求中设置 `reasoning_format` 字段即可——详见[分离推理内容](/cn/run/cli/local-server#分离推理内容reasoning_content)。
+思考模型默认会把思维链放入 `message.reasoning_content`。如需将其原样保留在 `message.content` 中，可在单次请求中把 `reasoning_format` 设为 `none`——详见[分离推理内容](/cn/run/cli/local-server#分离推理内容reasoning_content)。
 
 ## **日志**
 

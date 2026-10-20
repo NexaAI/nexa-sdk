@@ -7,6 +7,7 @@
 #include <optional>
 #include <vector>
 
+#include "decision.h"
 #include "htp_session.h"
 #include "llama.h"
 #include "params.h"
@@ -57,6 +58,8 @@ class LlamaLlm : public ILlm {
     virtual int32_t get_model_info(geniex_LlmModelInfo*) override;
 
     virtual int32_t forward_logits(const geniex_LlmForwardLogitsInput*, geniex_LlmForwardLogitsOutput*) override;
+
+    virtual int32_t decide(const geniex_DecideInput*, geniex_DecideOutput*) override;
 
    private:
     void set_sampler(const geniex_SamplerConfig* cfg);

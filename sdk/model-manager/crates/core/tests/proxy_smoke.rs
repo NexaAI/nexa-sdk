@@ -13,9 +13,10 @@
 use std::time::Duration;
 
 use model_manager_core::transport::{HttpTransport, ReqwestTransport, TransportConfig};
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::{TcpListener, TcpStream};
 use url::Url;
-use wiremock::matchers::{method, path};
+use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 fn fast_cfg() -> TransportConfig {
@@ -70,6 +71,128 @@ async fn get_range_writes_exact_bytes() {
     sink.flush().await.unwrap();
 
     assert_eq!(sink, slice);
+}
+
+#[tokio::test]
+async fn get_range_continues_short_read_with_suffix_range() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/continuation"))
+        .and(header("range", "bytes=0-7"))
+        .respond_with(ResponseTemplate::new(206).set_body_bytes(b"abc".to_vec()))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/continuation"))
+        .and(header("range", "bytes=3-7"))
+        .respond_with(ResponseTemplate::new(206).set_body_bytes(b"defgh".to_vec()))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cfg = fast_cfg();
+    cfg.retries = Some(1);
+    let t = ReqwestTransport::with_config(cfg).unwrap();
+    let url = Url::parse(&format!("{}/continuation", server.uri())).unwrap();
+    let mut sink: Vec<u8> = Vec::new();
+    t.get_range(&url, None, 0, 8, &mut sink).await.unwrap();
+    assert_eq!(sink, b"abcdefgh");
+}
+
+async fn accept_range_request(listener: &TcpListener, expected_range: &str) -> TcpStream {
+    let (mut stream, _) = tokio::time::timeout(Duration::from_secs(2), listener.accept())
+        .await
+        .expect("timed out waiting for ranged GET")
+        .unwrap();
+    let mut request = Vec::new();
+    let mut buffer = [0u8; 1024];
+    while !request.windows(4).any(|window| window == b"\r\n\r\n") {
+        let read = stream.read(&mut buffer).await.unwrap();
+        assert_ne!(read, 0, "client closed before sending request headers");
+        request.extend_from_slice(&buffer[..read]);
+    }
+    let request = String::from_utf8_lossy(&request).to_ascii_lowercase();
+    assert!(
+        request
+            .lines()
+            .any(|line| line == format!("range: {expected_range}")),
+        "expected Range {expected_range}, got request:\n{request}"
+    );
+    stream
+}
+
+#[tokio::test]
+async fn get_range_retries_mid_stream_error_from_written_offset() {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let mut first = accept_range_request(&listener, "bytes=100-107").await;
+        first
+            .write_all(b"HTTP/1.1 206 Partial Content\r\nContent-Length: 8\r\nConnection: close\r\n\r\nabc")
+            .await
+            .unwrap();
+        first.flush().await.unwrap();
+        // Let reqwest receive and expose the first bytes before the server
+        // closes without satisfying Content-Length.
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        drop(first);
+
+        let mut continuation = accept_range_request(&listener, "bytes=103-107").await;
+        continuation
+            .write_all(b"HTTP/1.1 206 Partial Content\r\nContent-Length: 5\r\nConnection: close\r\n\r\ndefgh")
+            .await
+            .unwrap();
+    });
+
+    let mut cfg = fast_cfg();
+    cfg.retries = Some(1);
+    let transport = ReqwestTransport::with_config(cfg).unwrap();
+    let url = Url::parse(&format!("http://{address}/interrupted")).unwrap();
+    let mut sink = Vec::new();
+    transport
+        .get_range(&url, None, 100, 8, &mut sink)
+        .await
+        .unwrap();
+    server.await.unwrap();
+    assert_eq!(sink, b"abcdefgh");
+}
+
+#[tokio::test]
+async fn get_range_stream_error_exhausts_retries() {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        for (range, content_length, body) in [
+            ("bytes=0-7", 8, b"abc".as_slice()),
+            ("bytes=3-7", 5, b"de".as_slice()),
+        ] {
+            let mut stream = accept_range_request(&listener, range).await;
+            let headers = format!(
+                "HTTP/1.1 206 Partial Content\r\nContent-Length: {content_length}\r\nConnection: close\r\n\r\n"
+            );
+            stream.write_all(headers.as_bytes()).await.unwrap();
+            stream.write_all(body).await.unwrap();
+            stream.flush().await.unwrap();
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    });
+
+    let mut cfg = fast_cfg();
+    cfg.retries = Some(1);
+    let transport = ReqwestTransport::with_config(cfg).unwrap();
+    let url = Url::parse(&format!("http://{address}/interrupted-twice")).unwrap();
+    let mut sink = Vec::new();
+    let err = transport
+        .get_range(&url, None, 0, 8, &mut sink)
+        .await
+        .unwrap_err();
+    server.await.unwrap();
+    assert!(
+        err.to_string().contains("stream"),
+        "expected stream error, got: {err}"
+    );
+    assert_eq!(sink, b"abcde");
 }
 
 #[tokio::test]

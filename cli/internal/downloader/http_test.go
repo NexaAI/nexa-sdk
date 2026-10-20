@@ -179,22 +179,30 @@ func TestDownloadChunk_HonorsHTTPProxyEnv(t *testing.T) {
 	}))
 	defer proxy.Close()
 
-	t.Setenv("HTTP_PROXY", proxy.URL)
-	t.Setenv("NO_PROXY", "")
+	for name, proxyURL := range map[string]string{
+		"plain":          proxy.URL,
+		"trailing slash": proxy.URL + "/",
+	} {
+		t.Run(name, func(t *testing.T) {
+			proxied.Store(false)
+			t.Setenv("HTTP_PROXY", proxyURL)
+			t.Setenv("NO_PROXY", "")
 
-	d := NewDownloader()
-	// Target must not be a loopback host — httpproxy bypasses the proxy for
-	// localhost / 127.0.0.0/8. example.com is public, but we never actually
-	// resolve it because the CONNECT tunnel above routes every request to
-	// `backend` regardless of the requested authority.
-	var buf bytes.Buffer
-	if err := d.DownloadChunk(context.Background(), "http://example.com/file", 0, 5, &buf); err != nil {
-		t.Fatalf("DownloadChunk via proxy: %v", err)
-	}
-	if !proxied.Load() {
-		t.Fatal("request did not traverse HTTP_PROXY")
-	}
-	if buf.String() != "proxy" {
-		t.Errorf("body = %q, want %q", buf.String(), "proxy")
+			d := NewDownloader()
+			// Target must not be a loopback host — httpproxy bypasses the proxy for
+			// localhost / 127.0.0.0/8. example.com is public, but we never actually
+			// resolve it because the CONNECT tunnel above routes every request to
+			// `backend` regardless of the requested authority.
+			var buf bytes.Buffer
+			if err := d.DownloadChunk(context.Background(), "http://example.com/file", 0, 5, &buf); err != nil {
+				t.Fatalf("DownloadChunk via proxy: %v", err)
+			}
+			if !proxied.Load() {
+				t.Fatal("request did not traverse HTTP_PROXY")
+			}
+			if buf.String() != "proxy" {
+				t.Errorf("body = %q, want %q", buf.String(), "proxy")
+			}
+		})
 	}
 }

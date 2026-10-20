@@ -9,6 +9,8 @@ import (
 	"io"
 	"log/slog"
 	"net/url"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/valyala/fasthttp"
@@ -40,10 +42,30 @@ func NewDownloader() *HTTPDownloader {
 			MaxIdemponentCallAttempts: 3,
 			ReadBufferSize:            64 * 1024,
 			WriteBufferSize:           64 * 1024,
-			// Respect HTTP_PROXY / HTTPS_PROXY / NO_PROXY (and lowercase variants).
-			Dial: fasthttpproxy.FasthttpProxyHTTPDialerTimeout(10 * time.Second),
+			Dial:                      proxyDialFunc(10 * time.Second),
 		},
 	}
+}
+
+// proxyDialFunc respects HTTP_PROXY / HTTPS_PROXY / NO_PROXY (and lowercase
+// variants). Trailing slashes are trimmed because fasthttpproxy dials
+// Host+Path, so "http://host:port/" fails with a bad port.
+func proxyDialFunc(timeout time.Duration) fasthttp.DialFunc {
+	d := fasthttpproxy.Dialer{Timeout: timeout, ConnectTimeout: timeout}
+	d.HTTPProxy = proxyEnv("HTTP_PROXY", "http_proxy")
+	d.HTTPSProxy = proxyEnv("HTTPS_PROXY", "https_proxy")
+	d.NoProxy = proxyEnv("NO_PROXY", "no_proxy")
+	dial, _ := d.GetDialFunc(false)
+	return dial
+}
+
+func proxyEnv(names ...string) string {
+	for _, n := range names {
+		if v := os.Getenv(n); v != "" {
+			return strings.TrimRight(v, "/")
+		}
+	}
+	return ""
 }
 
 // sameHost reports whether two URLs share the same host (case-insensitive).

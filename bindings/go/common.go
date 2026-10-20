@@ -54,6 +54,151 @@ func newProfileDataFromCPtr(c C.geniex_ProfileData) ProfileData {
 
 // LCOV_EXCL_STOP
 
+// DecideOption preserves boolean choice values without serializing the question as JSON.
+// A nil Description is absent; a pointer to "" is an explicit empty description.
+type DecideOption struct {
+	Key         string
+	KeyIsBool   bool
+	Description *string
+}
+
+type DecideQuestion struct {
+	ID           string
+	Type         string
+	Instructions string
+	Options      []DecideOption
+}
+
+type DecideInput struct {
+	State         string
+	Questions     []DecideQuestion
+	QuestionIndex int
+	ImagePaths    []string
+	AudioPaths    []string
+}
+
+type DecideOutput struct {
+	Logits        []float32
+	Probabilities []float32
+	InputTokens   int
+	Temperature   float32
+	DecisionType  string
+}
+
+// LCOV_EXCL_START
+// Allocate nested C-owned copies so no Go pointers cross the cgo call.
+func (input DecideInput) toCPtr() *C.geniex_DecideInput {
+	cPtr := (*C.geniex_DecideInput)(cMalloc(C.sizeof_geniex_DecideInput))
+	*cPtr = C.geniex_DecideInput{
+		state:          C.CString(input.State),
+		question_index: C.int32_t(input.QuestionIndex),
+	}
+	if len(input.Questions) > 0 {
+		raw := cMalloc(C.size_t(len(input.Questions)) * C.sizeof_geniex_DecideQuestion)
+		questions := unsafe.Slice((*C.geniex_DecideQuestion)(raw), len(input.Questions))
+		for i, question := range input.Questions {
+			questions[i] = C.geniex_DecideQuestion{
+				id:            cStringIfSet(question.ID),
+				question_type: C.CString(question.Type),
+				instructions:  C.CString(question.Instructions),
+			}
+			if len(question.Options) > 0 {
+				optionsRaw := cMalloc(C.size_t(len(question.Options)) * C.sizeof_geniex_DecideOption)
+				options := unsafe.Slice((*C.geniex_DecideOption)(optionsRaw), len(question.Options))
+				for j, option := range question.Options {
+					options[j] = C.geniex_DecideOption{
+						key:         C.CString(option.Key),
+						key_is_bool: C.bool(option.KeyIsBool),
+					}
+					if option.Description != nil {
+						options[j].description = C.CString(*option.Description)
+					}
+				}
+				questions[i].options = (*C.geniex_DecideOption)(optionsRaw)
+				questions[i].option_count = C.int32_t(len(options))
+			}
+		}
+		cPtr.questions = (*C.geniex_DecideQuestion)(raw)
+		cPtr.question_count = C.int32_t(len(questions))
+	}
+	if len(input.ImagePaths) > 0 {
+		paths, count := sliceToCCharArray(input.ImagePaths)
+		cPtr.image_paths = (**C.char)(unsafe.Pointer(paths))
+		cPtr.image_count = count
+	}
+	if len(input.AudioPaths) > 0 {
+		paths, count := sliceToCCharArray(input.AudioPaths)
+		cPtr.audio_paths = (**C.char)(unsafe.Pointer(paths))
+		cPtr.audio_count = count
+	}
+	return cPtr
+}
+
+// Free nested allocations in the reverse ownership direction after the SDK call.
+func freeDecideInput(cPtr *C.geniex_DecideInput) {
+	if cPtr == nil {
+		return
+	}
+	cFreeIfSet(unsafe.Pointer(cPtr.state))
+	if cPtr.questions != nil {
+		questions := unsafe.Slice((*C.geniex_DecideQuestion)(unsafe.Pointer(cPtr.questions)), int(cPtr.question_count))
+		for _, question := range questions {
+			cFreeIfSet(unsafe.Pointer(question.id))
+			cFreeIfSet(unsafe.Pointer(question.question_type))
+			cFreeIfSet(unsafe.Pointer(question.instructions))
+			if question.options != nil {
+				options := unsafe.Slice((*C.geniex_DecideOption)(unsafe.Pointer(question.options)), int(question.option_count))
+				for _, option := range options {
+					cFreeIfSet(unsafe.Pointer(option.key))
+					cFreeIfSet(unsafe.Pointer(option.description))
+				}
+				C.free(unsafe.Pointer(question.options))
+			}
+		}
+		C.free(unsafe.Pointer(cPtr.questions))
+	}
+	freeCCharArray((**C.char)(unsafe.Pointer(cPtr.image_paths)), cPtr.image_count)
+	freeCCharArray((**C.char)(unsafe.Pointer(cPtr.audio_paths)), cPtr.audio_count)
+	C.free(unsafe.Pointer(cPtr))
+}
+
+// Multi-pass models return calibrated probabilities instead of raw logits.
+func decideOutput(cOutput *C.geniex_DecideOutput) DecideOutput {
+	output := DecideOutput{
+		InputTokens:  int(cOutput.input_tokens),
+		Temperature:  float32(cOutput.temperature),
+		DecisionType: C.GoString(cOutput.decision_type),
+	}
+	if cOutput.option_count > 0 {
+		if cOutput.logits != nil {
+			values := unsafe.Slice((*C.float)(cOutput.logits), int(cOutput.option_count))
+			output.Logits = make([]float32, len(values))
+			for i, value := range values {
+				output.Logits[i] = float32(value)
+			}
+		}
+		if cOutput.probabilities != nil {
+			values := unsafe.Slice((*C.float)(cOutput.probabilities), int(cOutput.option_count))
+			output.Probabilities = make([]float32, len(values))
+			for i, value := range values {
+				output.Probabilities[i] = float32(value)
+			}
+		}
+	}
+	return output
+}
+
+func freeDecideOutput(cOutput *C.geniex_DecideOutput) {
+	if cOutput == nil {
+		return
+	}
+	free(unsafe.Pointer(cOutput.logits))
+	free(unsafe.Pointer(cOutput.probabilities))
+	free(unsafe.Pointer(cOutput.decision_type))
+}
+
+// LCOV_EXCL_STOP
+
 type SamplerConfig struct {
 	Temperature       float32
 	TopP              float32

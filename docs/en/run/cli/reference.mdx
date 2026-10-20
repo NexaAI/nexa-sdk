@@ -78,6 +78,8 @@ GGML_HEXAGON_NDEV=4 geniex infer google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0 --
 
 <Note>Set `GGML_HEXAGON_NDEV` to match the number of device IDs in `--compute`. `qairt` models coerce a device list to NPU with a warning. See [Spreading across multiple HTP cores](/en/tutorials/speculative-decoding-mtp#spreading-across-multiple-htp-cores) for MTP performance numbers.</Note>
 
+<Note>For VLMs on `--compute npu`, the vision encoder shares the language model's HTP session by default, which can abort on some devices. Run it on a second session with `GGML_HEXAGON_NDEV=2 geniex infer <vlm> --compute HTP0 --vit-compute HTP1`. See [Troubleshooting](/en/resources/troubleshooting).</Note>
+
 <Warning>Qualcomm AI Hub Models run on NPU only. Using `--compute cpu` or `--compute gpu` returns an error.</Warning>
 
 ### **`geniex infer` — VLM**
@@ -113,6 +115,29 @@ This is a scenic, panoramic photograph that features a traditional Japanese temp
 <Warning>Audio input runs on the **llama.cpp** backend only and needs an audio-capable model (mmproj with a conformer encoder). Audio also runs on `--compute cpu` / `gpu`, but QAIRT models report `audio: false` and a QAIRT model given audio fails with `GenieXError(-201201): Multimodal generation failed`.</Warning>
 
 In an interactive session with an audio-capable model, `/mic` records a clip instead of loading one from disk — `Ctrl-C` stops the recording and transcribes it. This needs **SoX** on your `PATH` (`sudo apt install sox`, or `winget install --id=ChrisBagwell.SoX -e` on Windows); without it GenieX warns `SoX is not installed` at startup. See the [audio input tutorial](/en/tutorials/audio-input) for the full walkthrough.
+
+### **`geniex decide`**
+
+Make a local structured decision with a `llama_cpp` LLM or VLM. Select `predicate`, `choice`, or `score` with `--kind`. Models with a `systemone` template use the matching OpenJEV, LEV, or Nimble decision path and model-specific temperature; if `decision.type` is missing, they are treated as OpenJEV. Models without `systemone` fall back to a generic choice prompt using their regular chat template and temperature `1.0`. LEV choices average both option orders and LEV predicates use a nine-rating readout; all paths use logits and return probabilities and confidence. Add `--image` or `--audio` (repeatable) to send local media to a compatible VLM.
+
+```bash
+geniex decide <model-name>[:<precision>] --kind predicate \
+  --input "The battery will not charge" --question "Is this a hardware issue?"
+geniex decide <model-name>[:<precision>] --kind choice \
+  --input "The battery will not charge" --question "Choose the next route" \
+  --choice 'retry=Try again' --choice 'replace=Replace the battery'
+geniex decide <model-name>[:<precision>] --kind score \
+  --input "The battery temperature is 85°C" --question "Rate the severity" \
+  --level low --level medium --level "high=Immediate shutdown required"
+# Visual choice (the model must be classified as a VLM)
+geniex decide <vlm-name> --kind choice --image photo.png \
+  --input "A support photo" --question "Choose the issue" \
+  --choice battery --choice screen
+```
+
+Repeat `--choice VALUE` for each candidate. In `--choice 'retry=Try again'`, `retry` is the value returned in JSON and `Try again` is optional context for the model; it is not a key-value map. Quote the argument if the description has spaces. `--level` similarly accepts `LABEL=DESCRIPTION`. `--image` and `--audio` accept existing local regular files and may each be repeated up to 8 times. `--compute`, `--ngl`, `--nctx`, and `--power-mode` control local model loading, as with `geniex infer`. Both LLM and VLM decisions use logits, with model-specific temperature and candidate encoding. `--vit-compute` selects the VLM vision encoder's compute unit. `geniex decide --help` groups these flags under Model Loading, LLM/VLM Decision, and VLM Specific.
+
+By default, `geniex decide` uses the CLI theme to display both predicate probabilities (`true` and `false`), the selected choice and every candidate probability, or the zero-based expected score and every level probability, plus confidence when available. Pass `--json` to print the original full single-line JSON result for scripts. The `/v1/decisions` response remains JSON.
 
 ## **`geniex model`**
 
@@ -151,7 +176,7 @@ Start the OpenAI-compatible local server. See [Local server](/en/run/cli/local-s
 geniex serve
 ```
 
-To move a thinking model's chain-of-thought out of `message.content` into `message.reasoning_content`, set the per-request `reasoning_format` field — see [Separating reasoning](/en/run/cli/local-server#separating-reasoning-reasoning_content).
+Thinking models put chain-of-thought in `message.reasoning_content` by default. Set the per-request `reasoning_format` field to `none` to keep it inline in `message.content` — see [Separating reasoning](/en/run/cli/local-server#separating-reasoning-reasoning_content).
 
 ## **Logging**
 

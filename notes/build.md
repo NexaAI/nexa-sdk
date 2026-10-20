@@ -190,7 +190,7 @@ Deploy and smoke-test on device:
 adb push pkg-geniex /data/local/tmp/geniex
 adb push Qwen3-0.6B-Q4_0.gguf /data/local/tmp/geniex/modelfiles/llama_cpp/
 adb shell "cd /data/local/tmp/geniex && \
-  LD_LIBRARY_PATH=./lib:./lib/llama_cpp \
+  LD_LIBRARY_PATH=./lib \
   GENIEX_PLUGIN_PATH=./lib \
   ./bin/geniex_test_llm"
 ```
@@ -199,10 +199,10 @@ The Android demo app is no longer hosted in this repo — it lives in [`qualcomm
 
 ### Building against a different QAIRT SDK's headers
 
-The `qairt` plugin compiles against the lowest-supported QNN headers vendored in `third-party/geniex-qairt/qnn-api/include/`. To use another set (e.g. an internal QAIRT checkout), pass `-DQAIRT_QNN_HEADERS=...` to any preset above:
+The `qairt` plugin currently compiles against QAIRT 2.50.40.260831 QNN C API 2.39 headers vendored in `third-party/geniex-qairt/qnn-api/include/`; its independent runtime floor remains QNN C API 2.27 (`kMinApiMinor = 27`). Provider-query checks do not establish end-to-end compatibility with every runtime version. To use another set (e.g. an internal QAIRT checkout), pass `-DQAIRT_QNN_HEADERS=...` to any preset above:
 
 ```powershell
-cmake --preset arm64-windows-snapdragon-release -B build -DQAIRT_QNN_HEADERS=C:\path\to\qairt\include
+cmake --preset arm64-windows-snapdragon-release -B build -DQAIRT_QNN_HEADERS=C:\path\to\qairt\include\QNN
 ```
 
 See the [plugin README](https://github.com/qualcomm/geniex-qairt-plugin#using-a-different-qairt-runtime) for the expected directory shape and caveats.

@@ -47,6 +47,22 @@ Creates a model response for a conversation. Supports LLM (text-only) and VLM (t
 }
 ```
 
+### **Separating reasoning (reasoning_content)**
+
+By default, thinking models put their chain-of-thought in `message.reasoning_content` and keep `content` clean. Set `reasoning_format` to `none` in the `/v1/chat/completions` request body to keep the raw reasoning inline in `message.content` instead:
+
+```bash
+curl http://127.0.0.1:18181/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "ai-hub-models/Qwen3-4B-Instruct-2507",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "reasoning_format": "none"
+  }'
+```
+
+`deepseek` is the default; `deepseek`, `deepseek-legacy`, and `auto` separate reasoning, while `none` keeps it inline. This setting does not disable reasoning (unlike `enable_think: false`) and also applies to streaming and tool-call requests. See the [Python client example](#separating-reasoning-reasoning_content) for how to read the separated fields with the OpenAI SDK.
+
 ### **Try it from Swagger UI**
 
 Open `http://127.0.0.1:18181` in your browser to access the built-in Swagger UI.
@@ -158,6 +174,40 @@ Generates a raw continuation of `prompt` with no chat template applied — the p
 
 The response `choices[0].text` is the raw completion, ready to insert at the cursor. `stream`, `stop`, `echo` and the sampler knobs (`temperature`, `top_p`, `top_k`, `min_p`, `repetition_penalty`, `seed`) work as on `/v1/chat/completions`; `suffix` is not supported — encode the suffix with the model's FIM tokens inside `prompt` instead.
 
+## **POST /v1/decisions**
+
+Evaluate ordered `predicate`, `choice`, and `score` questions using a `llama_cpp` LLM or VLM **already imported into the GenieX cache**. This endpoint follows the OpenAI Decisions request and response shape. Models with `systemone` use the OpenJEV, LEV, or Nimble decision path and model-specific temperature; if `decision.type` is absent, OpenJEV is assumed. Models without `systemone` use a generic prompt with their usual chat template and temperature `1.0`. LEV choices average both option orders, and LEV predicates use a nine-rating readout; both LLMs and VLMs use native logits (LEV itself is text-only). VLMs can evaluate inline images and audio.
+
+```sh
+curl http://127.0.0.1:18181/v1/decisions -H 'Content-Type: application/json' -d '{
+  "model": "local/decision-model:Q4_K_M",
+  "compute": "cpu",
+  "nctx": 8192,
+  "input": "Our checkout has returned 500 errors since 9am.",
+  "questions": [
+    {
+      "name": "label",
+      "type": "choice",
+      "instructions": "Which label fits this ticket?",
+      "choices": [
+        {"value": "billing", "description": "Payments and refunds"},
+        {"value": "bug", "description": "Software errors"},
+        {"value": "account", "description": "Login and account access"}
+      ]
+    },
+    {"name": "urgent", "type": "predicate", "instructions": "Is a critical business operation currently blocked?"},
+    {
+      "name": "severity",
+      "type": "score",
+      "instructions": "How severe is the issue?",
+      "levels": [{"label": "low"}, {"label": "moderate"}, {"label": "critical"}]
+    }
+  ]
+}'
+```
+
+`input` can be a nonempty text string or user messages containing `input_text`, `input_image`, and GenieX-specific `input_audio` parts. Images (`image_url`) and audio (`input_audio.data`) use the chat endpoint's `SaveURIToTempFile` path, which accepts local paths, `file://`, HTTP(S), and data URLs. Audio also accepts raw base64 with `input_audio.format` (for example, `wav`), as in chat. At most 8 of each are accepted, and the VLM must support the corresponding modality. Each question may have an optional unique `name` (omitted names return `null`); choose 2–255 choice values (subject to the model's token vocabulary) and 2–10 score levels, with at most 64 questions. The ordered `answers` array returns a true probability for predicates, the selected value for choices, and a zero-based index for scores. Both LLM and VLM answers include probabilities and confidence, with zero output tokens. Replace the example `model` with a cached GenieX model name from `geniex list`, not a GGUF path.
+
 ## **Python client (OpenAI SDK)**
 
 Because the server speaks the OpenAI protocol, you can point the official `openai` Python client at the local endpoint and reuse any existing OpenAI code. Install with `pip install openai`, then create a client:
@@ -225,10 +275,10 @@ usage: CompletionUsage(completion_tokens=58, prompt_tokens=19, total_tokens=77, 
 
 ### **Separating reasoning (reasoning_content)**
 
-By default a thinking model leaves its chain-of-thought inline in `message.content` (`<think>…</think>`), mixed in with the final reply. Pass `reasoning_format="deepseek"` to make the server move the chain-of-thought into the OpenAI-standard `message.reasoning_content` field, leaving `content` clean.
+By default a thinking model puts its chain-of-thought in the OpenAI-standard `message.reasoning_content` field, leaving `content` clean. Pass `reasoning_format="none"` in the request body only when you need the raw reasoning inline in `message.content`.
 
 <Note>
-`reasoning_format` is not the same as `enable_think`: `enable_think=False` makes the model **not produce** a chain-of-thought at all, while `reasoning_format="deepseek"` lets it think as usual but **moves** the thinking out of `content`. Values are `none` (default, kept inline) and `deepseek` / `deepseek-legacy` / `auto` (all separate). It applies to tool-call requests too, streaming included: the thinking block is separated before the reply is scanned for a tool call.
+`reasoning_format` is not the same as `enable_think`: `enable_think=False` makes the model **not produce** a chain-of-thought at all, while the default `reasoning_format="deepseek"` lets it think as usual but **moves** the thinking out of `content`. Values are `deepseek` (default), `deepseek-legacy`, and `auto` (all separate), or `none` (kept inline). It applies to tool-call requests too, streaming included: the thinking block is separated before the reply is scanned for a tool call.
 </Note>
 
 ```python python
@@ -238,7 +288,6 @@ resp = client.chat.completions.create(
         {"role": "user", "content": "What is 2+2? Answer briefly."},
     ],
     max_tokens=128,
-    extra_body={"reasoning_format": "deepseek"},
 )
 
 msg = resp.choices[0].message

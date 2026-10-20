@@ -7,10 +7,12 @@ from __future__ import annotations
 
 import json
 import platform
+import random
 from pathlib import Path
 
 import geniex
 import pytest
+from geniex._ffi._api import GENIEX_ERROR_COMMON_INVALID_INPUT
 
 from _models import matrix, primary, pull_cells
 from _quality_data import (
@@ -75,6 +77,80 @@ def _run_multi_turn(llm) -> list[str]:
 
 
 @pytest.mark.llm
+@pytest.mark.parametrize('device_map', _LLM.devices)
+def test_llm_repeated_chat_prompt_reuses_prefix(cached, device_map):
+    cached(_LLM)
+    with geniex.AutoModelForCausalLM.from_pretrained(
+        _LLM.id,
+        precision=_LLM.precision,
+        device_map=device_map,
+    ) as llm:
+        prompt = llm.tokenizer.apply_chat_template(
+            [
+                {'role': 'system', 'content': 'Answer in one short sentence.'},
+                {'role': 'user', 'content': 'Say hello briefly.'},
+            ],
+            tokenize=False,
+            add_generation_prompt=True,
+            enable_thinking=False,
+        )
+        outputs = [
+            llm.generate(prompt, max_new_tokens=16, temperature=GREEDY_TEMPERATURE, seed=LLM_QUALITY_SEED)
+            for _ in range(3)
+        ]
+
+    for index, out in enumerate(outputs, start=1):
+        assert out.text, f'empty completion on identical prompt call {index}'
+        assert out.profile.generated_tokens > 0
+    prompt_tokens = outputs[0].profile.prompt_tokens
+    assert prompt_tokens > 1, f'expected a full initial prefill, got {prompt_tokens} tokens'
+    # Reusing the exact prompt must re-evaluate its last token for fresh logits.
+    assert outputs[1].profile.prompt_tokens == 1
+    assert outputs[2].profile.prompt_tokens == 1
+
+
+@pytest.mark.llm
+@pytest.mark.parametrize('device_map', _LLM.devices)
+def test_llm_prefix_cache_reuse_after_partial_rollback(cached, device_map):
+    cached(_LLM)
+    shared = 'Keep the label ORCHID. Branch details: '
+    first = shared + ('amber ' * 80) + 'Say hello briefly.'
+    second = shared + ('cobalt ' * 32) + 'Say hello briefly.'
+    third = second + ' Add one note.'
+
+    with geniex.AutoModelForCausalLM.from_pretrained(
+        _LLM.id,
+        precision=_LLM.precision,
+        device_map=device_map,
+    ) as llm:
+        prompts = [
+            llm.tokenizer.apply_chat_template(
+                [
+                    {'role': 'system', 'content': 'Answer in one short sentence.'},
+                    {'role': 'user', 'content': content},
+                ],
+                tokenize=False,
+                add_generation_prompt=True,
+                enable_thinking=False,
+            )
+            for content in (first, second, third)
+        ]
+        outputs = [
+            llm.generate(prompt, max_new_tokens=8, temperature=GREEDY_TEMPERATURE, seed=LLM_QUALITY_SEED)
+            for prompt in prompts
+        ]
+
+    for index, out in enumerate(outputs, start=1):
+        assert out.text, f'empty completion on partial-rollback prompt call {index}'
+        assert out.profile.generated_tokens > 0
+    first_tokens, second_tokens, third_tokens = (out.profile.prompt_tokens for out in outputs)
+    assert first_tokens > second_tokens > third_tokens > 0, (
+        'expected full prefill, partial rollback, then reuse of the second prompt prefix; '
+        f'prompt_tokens={first_tokens, second_tokens, third_tokens}'
+    )
+
+
+@pytest.mark.llm
 @pytest.mark.parametrize(('model', 'device_map'), _LLM_MATRIX)
 def test_llm_multi_turn(cached, model, device_map):
     cached(model)
@@ -92,8 +168,7 @@ def test_llm_multi_turn(cached, model, device_map):
 @pytest.mark.llm
 @pytest.mark.parametrize(('model', 'device_map'), _LLM_MATRIX)
 def test_llm_greedy_is_deterministic(cached, model, device_map):
-    # Reloads per run: llama_cpp keeps its KV cache across generate() calls, so a
-    # second call on the same handle continues the first answer.
+    # Separate handles keep this seed comparison independent of cache reuse.
     cached(model)
 
     def _greedy_once(seed: int) -> str:
@@ -254,6 +329,58 @@ def test_llm_logits_parity(llama_cpp_llm_paths, device_map):
     kl = parity_kl_divergence(ref_last, cand_last)
     assert agree >= PARITY_TOP1_MIN, f'device_map={device_map!r} top1={agree:.3f} < {PARITY_TOP1_MIN}'
     assert kl <= PARITY_KL_MAX, f'device_map={device_map!r} KL={kl:.4f} > {PARITY_KL_MAX}'
+
+
+@pytest.mark.llm
+@pytest.mark.parametrize('device_map', ['cpu'])
+def test_llm_model_info_embd_dim(llama_cpp_llm_paths, device_map):
+    with geniex.AutoModelForCausalLM.from_pretrained(
+        _LLM.id,
+        precision=_LLM.precision,
+        device_map=device_map,
+    ) as llm:
+        assert llm.embd_dim > 0, 'llama_cpp should report a positive embd_dim'
+
+
+@pytest.mark.llm
+@pytest.mark.parametrize('device_map', ['cpu'])
+def test_llm_generate_input_embd_smoke(llama_cpp_llm_paths, device_map):
+    # No public API exposes the model's own token-embedding table, so this
+    # can't assert semantic parity with a text prompt — it only proves the
+    # input_embd decode path runs end-to-end (batches, advances KV, samples)
+    # without crashing on arbitrary (but correctly-shaped) float rows.
+    random.seed(0)
+    with geniex.AutoModelForCausalLM.from_pretrained(
+        _LLM.id,
+        precision=_LLM.precision,
+        device_map=device_map,
+    ) as llm:
+        dim = llm.embd_dim
+        assert dim > 0
+        n_rows = 4
+        embd = [random.uniform(-1.0, 1.0) for _ in range(n_rows * dim)]
+        out = llm.generate(
+            input_embd=embd,
+            input_embd_dim=dim,
+            max_new_tokens=8,
+            temperature=GREEDY_TEMPERATURE,
+            seed=LLM_QUALITY_SEED,
+        )
+        assert out.profile.generated_tokens > 0
+
+
+@pytest.mark.llm
+@pytest.mark.parametrize('device_map', ['cpu'])
+def test_llm_generate_input_embd_dimension_mismatch(llama_cpp_llm_paths, device_map):
+    with geniex.AutoModelForCausalLM.from_pretrained(
+        _LLM.id,
+        precision=_LLM.precision,
+        device_map=device_map,
+    ) as llm:
+        wrong_dim = llm.embd_dim + 1
+        with pytest.raises(geniex.GenieXError) as excinfo:
+            llm.generate(input_embd=[0.0] * wrong_dim, input_embd_dim=wrong_dim, max_new_tokens=1)
+        assert excinfo.value.code == GENIEX_ERROR_COMMON_INVALID_INPUT
 
 
 @pytest.mark.llm

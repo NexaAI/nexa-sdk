@@ -73,6 +73,50 @@ paths:
               schema:
                 $ref: "#/components/schemas/ForwardLogitsResponse"
 
+  /v1/decisions:
+    post:
+      summary: Evaluate questions with the OpenAI Decisions API
+      description: |
+        Scores questions against shared text input using a cached local
+        llama_cpp LLM and native logits. This server accepts text only; image
+        input is unsupported. Candidate probabilities are normalized over the
+        supplied choices or levels and are not calibrated.
+      operationId: PostV1Decisions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DecisionRequest"
+      responses:
+        "200":
+          description: Answers in question order with token usage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DecisionResponse"
+        "400":
+          description: Unsupported model or model scoring error
+        "413":
+          description: Request exceeds 1 MiB
+        "422":
+          description: Invalid request or unsupported input modality
+
+  /status:
+    get:
+      summary: Reports server liveness and the state of loaded models
+      description: Served outside the request lock, so it responds while a generation is running. State is one of loading, active, idle.
+      operationId: GetStatus
+      servers:
+        - url: /
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+
   /v1/models:
     get:
       summary: Lists the currently available models
@@ -114,6 +158,345 @@ paths:
 
 components:
   schemas:
+    StatusResponse:
+      type: object
+      required: [alive, models]
+      properties:
+        alive:
+          type: boolean
+        version:
+          type: string
+        uptime_seconds:
+          type: integer
+          format: int64
+        keepalive_seconds:
+          type: integer
+          format: int64
+        models:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              type:
+                type: string
+                enum: [llm, vlm]
+              runtime:
+                type: string
+              device:
+                type: string
+              state:
+                type: string
+                enum: [loading, active, idle]
+              loaded_at:
+                type: string
+                format: date-time
+              last_activity:
+                type: string
+                format: date-time
+              idle_seconds:
+                type: integer
+                format: int64
+
+    # ---------- Decisions ----------
+    DecisionRequest:
+      type: object
+      required: [model, input, questions]
+      example:
+        model: "local/decision-model:Q4_K_M"
+        input: "Our checkout has returned 500 errors since 9am."
+        questions:
+          - name: "label"
+            type: choice
+            instructions: "Which label fits this ticket?"
+            choices:
+              - value: "billing"
+                description: "Payments and refunds"
+              - value: "bug"
+                description: "Software errors"
+              - value: "account"
+                description: "Login and account access"
+          - name: "urgent"
+            type: predicate
+            instructions: "Is a critical business operation currently blocked?"
+          - name: "severity"
+            type: score
+            instructions: "How severe is the issue?"
+            levels:
+              - label: "low"
+              - label: "moderate"
+              - label: "critical"
+      properties:
+        model:
+          type: string
+          description: Replace the example name with a cached GenieX llama_cpp LLM from geniex list.
+        input:
+          description: Nonempty text or user messages containing text only. Images are unsupported.
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: array
+              minItems: 1
+              items:
+                $ref: "#/components/schemas/DecisionInputMessage"
+        questions:
+          type: array
+          minItems: 1
+          maxItems: 64
+          description: Ordered questions with unique optional names.
+          items:
+            oneOf:
+              - $ref: "#/components/schemas/DecisionPredicateQuestion"
+              - $ref: "#/components/schemas/DecisionChoiceQuestion"
+              - $ref: "#/components/schemas/DecisionScoreQuestion"
+        nctx:
+          type: integer
+          description: Context size; defaults to the server setting.
+        ngl:
+          type: integer
+          description: Number of GPU layers; defaults to the server setting.
+        compute:
+          type: string
+          description: Compute-unit alias; defaults to the server setting.
+        power_mode:
+          type: string
+          description: Power mode; defaults to the server setting.
+
+    DecisionInputMessage:
+      type: object
+      required: [content]
+      properties:
+        type:
+          type: string
+          enum: [message]
+          default: message
+        role:
+          type: string
+          enum: [user]
+          default: user
+        content:
+          description: Text or an ordered array of input_text parts. Images are unsupported.
+          oneOf:
+            - type: string
+            - type: array
+              minItems: 1
+              items:
+                $ref: "#/components/schemas/DecisionInputTextPart"
+
+    DecisionInputTextPart:
+      type: object
+      required: [type, text]
+      properties:
+        type:
+          type: string
+          enum: [input_text]
+        text:
+          type: string
+
+    DecisionPredicateQuestion:
+      type: object
+      required: [type, instructions]
+      properties:
+        type:
+          type: string
+          enum: [predicate]
+        name:
+          type: string
+          description: Optional unique question name; response name is null if omitted.
+        instructions:
+          type: string
+          minLength: 1
+
+    DecisionChoiceQuestion:
+      type: object
+      required: [type, instructions, choices]
+      properties:
+        type:
+          type: string
+          enum: [choice]
+        name:
+          type: string
+          description: Optional unique question name; response name is null if omitted.
+        instructions:
+          type: string
+          minLength: 1
+        choices:
+          type: array
+          minItems: 2
+          maxItems: 26
+          items:
+            $ref: "#/components/schemas/DecisionChoice"
+
+    DecisionChoice:
+      type: object
+      required: [value]
+      properties:
+        value:
+          oneOf:
+            - type: string
+            - type: boolean
+        description:
+          type: string
+
+    DecisionScoreQuestion:
+      type: object
+      required: [type, instructions, levels]
+      properties:
+        type:
+          type: string
+          enum: [score]
+        name:
+          type: string
+          description: Optional unique question name; response name is null if omitted.
+        instructions:
+          type: string
+          minLength: 1
+        levels:
+          type: array
+          minItems: 2
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/DecisionScoreLevel"
+
+    DecisionScoreLevel:
+      type: object
+      required: [label]
+      properties:
+        label:
+          type: string
+          minLength: 1
+        description:
+          type: string
+
+    DecisionResponse:
+      type: object
+      required: [answers, model, usage]
+      properties:
+        answers:
+          type: array
+          description: One answer for each question, in question order.
+          items:
+            oneOf:
+              - $ref: "#/components/schemas/DecisionPredicateAnswer"
+              - $ref: "#/components/schemas/DecisionChoiceAnswer"
+              - $ref: "#/components/schemas/DecisionScoreAnswer"
+        model:
+          type: string
+        usage:
+          $ref: "#/components/schemas/DecisionUsage"
+
+    DecisionPredicateAnswer:
+      type: object
+      required: [type, name, probability]
+      properties:
+        type:
+          type: string
+          enum: [predicate]
+        name:
+          type: string
+          nullable: true
+        probability:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    DecisionChoiceAnswer:
+      type: object
+      required: [type, name, choice, probabilities, confidence]
+      properties:
+        type:
+          type: string
+          enum: [choice]
+        name:
+          type: string
+          nullable: true
+        choice:
+          oneOf:
+            - type: string
+            - type: boolean
+        probabilities:
+          type: array
+          items:
+            $ref: "#/components/schemas/DecisionChoiceProbability"
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    DecisionChoiceProbability:
+      type: object
+      required: [value, probability]
+      properties:
+        value:
+          oneOf:
+            - type: string
+            - type: boolean
+        probability:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    DecisionScoreAnswer:
+      type: object
+      required: [type, name, score, probabilities, confidence]
+      properties:
+        type:
+          type: string
+          enum: [score]
+        name:
+          type: string
+          nullable: true
+        score:
+          type: number
+        probabilities:
+          type: array
+          items:
+            $ref: "#/components/schemas/DecisionScoreProbability"
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    DecisionScoreProbability:
+      type: object
+      required: [value, label, probability]
+      properties:
+        value:
+          type: integer
+          minimum: 0
+        label:
+          type: string
+        probability:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    DecisionUsage:
+      type: object
+      required: [input_tokens, input_tokens_details, output_tokens, output_tokens_details, total_tokens]
+      properties:
+        input_tokens:
+          type: integer
+        input_tokens_details:
+          type: object
+          required: [cache_write_tokens, cached_tokens]
+          properties:
+            cache_write_tokens:
+              type: integer
+            cached_tokens:
+              type: integer
+        output_tokens:
+          type: integer
+        output_tokens_details:
+          type: object
+          required: [reasoning_tokens]
+          properties:
+            reasoning_tokens:
+              type: integer
+        total_tokens:
+          type: integer
+
     # ---------- Logits ----------
     ForwardLogitsRequest:
       type: object
@@ -389,8 +772,8 @@ components:
         reasoning_format:
           type: string
           enum: [none, deepseek, deepseek-legacy, auto]
-          description: Where to put the model's chain-of-thought. `none` keeps it inline in `message.content` (default); `deepseek` / `deepseek-legacy` / `auto` move it to `message.reasoning_content`. Ignored for tool-call requests.
-          default: none
+          description: Where to put the model's chain-of-thought. `none` keeps it inline in `message.content`; `deepseek` (default), `deepseek-legacy`, and `auto` move it to `message.reasoning_content`.
+          default: deepseek
         top_k:
           type: integer
           minimum: 0
@@ -465,7 +848,7 @@ components:
           description: The contents of the message
         reasoning_content:
           type: string
-          description: The model's chain-of-thought, present on assistant responses only when the request set `reasoning_format` to a separating value (e.g. `deepseek`).
+          description: The model's chain-of-thought, present on assistant responses when the effective `reasoning_format` is a separating value (e.g. the default `deepseek`).
         name:
           type: string
           description: The name of the author of this message

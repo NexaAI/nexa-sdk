@@ -37,8 +37,8 @@ type ChatCompletionRequest struct {
 	VitCompute  string `json:"vit_compute"`
 	PowerMode   string `json:"power_mode"`
 
-	// "" / "none" keeps thinking inline in content (default); "deepseek" /
-	// "deepseek-legacy" / "auto" move it to reasoning_content.
+	// "none" keeps thinking inline in content; "deepseek" (default),
+	// "deepseek-legacy", and "auto" move it to reasoning_content.
 	ReasoningFormat string `json:"reasoning_format"`
 
 	TopK              int32   `json:"top_k"`
@@ -72,6 +72,7 @@ func defaultChatCompletionRequest() ChatCompletionRequest {
 		Compute:           cfg.Compute,
 		VitCompute:        cfg.VitCompute,
 		PowerMode:         cfg.PowerMode,
+		ReasoningFormat:   "deepseek",
 		TopK:              0,
 		MinP:              0.0,
 		RepetitionPenalty: 1.0,

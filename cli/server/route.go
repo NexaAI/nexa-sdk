@@ -18,6 +18,7 @@ func RegisterRoot(r *gin.Engine) {
 	r.GET("/", func(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/docs/ui/")
 	})
+	r.GET("/status", handler.Status)
 }
 
 // http://localhost:18181/docs/ui/
@@ -41,6 +42,7 @@ func RegisterAPIv1(r *gin.Engine) {
 
 	// ==== raw logits (prefill-only forward pass; not OpenAI generative logprobs) ====
 	g.POST("/logits", handler.ForwardLogits)
+	g.POST("/decisions", handler.Decisions)
 
 	// ==== model management ====
 	g.GET("/models/*model", handler.RetrieveModel)

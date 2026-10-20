@@ -4,6 +4,7 @@
 #include "llm.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
@@ -12,7 +13,6 @@
 
 #include "chat.h"
 #include "common.h"
-#include "ggml-backend.h"
 #include "htp_session.h"
 #include "logging.h"
 #include "params.h"
@@ -57,34 +57,13 @@ int32_t LlamaLlm::create(const geniex_LlmCreateInput* input) {
         }
     }
 
-    // FIX: gpt oss offload patch
-    {
-        std::string model_path_lower(input->model_path);
-        std::transform(model_path_lower.begin(), model_path_lower.end(), model_path_lower.begin(), ::tolower);
-        bool is_gpt_oss_model =
-            (model_path_lower.find("gpt") != std::string::npos) && (model_path_lower.find("oss") != std::string::npos);
-
-        if (is_gpt_oss_model) {
-            tensor_overrides[0]        = {"\\.ffn_(up|down|gate)_exps\\.(weight|bias)", ggml_backend_cpu_buffer_type()};
-            tensor_overrides[1]        = {nullptr, nullptr};  // Null terminator
-            mpar.tensor_buft_overrides = tensor_overrides;
-            GENIEX_LOG_INFO(
-                "GPT OSS model detected - MoE expert tensors "
-                "(ffn_*_exps.weight/bias) will be forced to CPU");
-        } else {
-            mpar.tensor_buft_overrides = nullptr;
-        }
-    }
-
     // Resolve the compute-unit alias to a devices[] list for llama.cpp; must
     // outlive mpar (mpar.devices points into selection's buffer).
     auto selection = resolve_devices(input->device_id);
     if (!selection) {
         return GENIEX_ERROR_COMMON_INVALID_INPUT;
     }
-    if (!selection->empty()) {
-        mpar.devices = selection->data();
-    }
+    apply_device_selection(mpar, *selection, device);
 
     // FIX: HTP backend patch
     {
@@ -103,7 +82,15 @@ int32_t LlamaLlm::create(const geniex_LlmCreateInput* input) {
     std::optional<common_params_speculative> spar = build_speculative_params(config);
 
     llama_context_params cpar = build_context_params(config, /*n_ctx_default=*/4096, device, spar ? &*spar : nullptr);
-    this->ctx                 = llama_init_from_model(this->model, cpar);
+    if (device == Device::GPU) {
+        char arch[32] = {};
+        llama_model_meta_val_str(this->model, "general.architecture", arch, sizeof(arch));
+        if (strcmp(arch, "gpt-oss") == 0) {
+            cpar.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED;
+            GENIEX_LOG_INFO("gpt-oss on GPU: flash attention enabled");
+        }
+    }
+    this->ctx = llama_init_from_model(this->model, cpar);
     if (!this->ctx) {
         return GENIEX_ERROR_COMMON_MODEL_LOAD;
     }
@@ -114,6 +101,8 @@ int32_t LlamaLlm::create(const geniex_LlmCreateInput* input) {
     if (tp_ret != GENIEX_SUCCESS) {
         return tp_ret;
     }
+
+    warmup_context(this->model, this->ctx);
 
     // Speculative decoding: optional, keyed on a non-empty spec_type ("none" also
     // disables). Failure is non-fatal — we log and fall back to plain decoding.
@@ -227,7 +216,7 @@ int32_t LlamaLlm::apply_chat_template(
     // Apply chat template
     auto result = common_chat_templates_apply(tmpls.get(), inputs);
 
-    output->formatted_text = strdup(result.prompt.c_str());
+    output->formatted_text = strdup(result.prompt.str().c_str());
     if (!output->formatted_text) {
         return GENIEX_ERROR_COMMON_MEMORY_ALLOCATION;  // error: memory allocation failed
     }
@@ -238,11 +227,12 @@ int32_t LlamaLlm::generate(const geniex_LlmGenerateInput* input, geniex_LlmGener
     // Validate input
     if (!input) return GENIEX_ERROR_COMMON_INVALID_INPUT;
 
+    bool has_input_embd  = input->input_embd != nullptr && input->input_embd_count > 0;
     bool has_input_ids   = input->input_ids != nullptr && input->input_ids_count > 0;
     bool has_prompt_utf8 = input->prompt_utf8 != nullptr;
 
-    if (!has_input_ids && !has_prompt_utf8)
-        return GENIEX_ERROR_COMMON_INVALID_INPUT;  // error: neither input_ids nor prompt_utf8 provided
+    if (!has_input_embd && !has_input_ids && !has_prompt_utf8)
+        return GENIEX_ERROR_COMMON_INVALID_INPUT;  // error: none of input_embd, input_ids, prompt_utf8 provided
 
     geniex_GenerationConfig cfg = input->config ? *input->config : geniex_GenerationConfig{};
     cfg.max_tokens              = cfg.max_tokens > 0 ? cfg.max_tokens : 128;
@@ -255,60 +245,94 @@ int32_t LlamaLlm::generate(const geniex_LlmGenerateInput* input, geniex_LlmGener
     const int          n_batch   = llama_n_batch(this->ctx);
     const bool         can_shift = llama_memory_can_shift(mem) && !llama_model_is_recurrent(this->model);
 
-    // Encode the full prompt (either from input_ids or prompt_utf8)
+    if (has_input_embd) {
+        const int32_t expected_dim = llama_model_n_embd_inp(this->model);
+        if (input->input_embd_dim != expected_dim) {
+            GENIEX_LOG_ERROR("input_embd_dim ({}) does not match model's expected embedding width ({})",
+                input->input_embd_dim,
+                expected_dim);
+            return GENIEX_ERROR_COMMON_INVALID_INPUT;
+        }
+        if (this->spec) {
+            GENIEX_LOG_ERROR("input_embd is not supported together with speculative decoding");
+            return GENIEX_ERROR_COMMON_PARAM_NOT_SUPPORTED;
+        }
+        // Embedding turns always fully redecode (see the "update past record"
+        // comment near the end of this function), so start from a clean KV
+        // cache rather than continuing from whatever a prior turn left behind.
+        llama_memory_seq_rm(mem, 0, 0, -1);
+        this->n_past        = 0;
+        this->n_past_global = 0;
+        this->past_prompt_tokens.clear();
+    }
+
+    // Encode the full prompt (from input_embd, input_ids, or prompt_utf8)
     std::vector<llama_token> prompt_ids;
-    if (has_input_ids) {
-        const int32_t vocab_size = llama_vocab_n_tokens(vocab);
-        // Validate token IDs are within vocabulary range
-        for (int32_t i = 0; i < input->input_ids_count; i++) {
-            if (input->input_ids[i] < 0 || input->input_ids[i] >= vocab_size) {
-                GENIEX_LOG_ERROR("token ID out of range: {}", input->input_ids[i]);
-                return GENIEX_ERROR_COMMON_INVALID_INPUT;  // error: token ID out of vocabulary range
+    if (!has_input_embd) {
+        if (has_input_ids) {
+            const int32_t vocab_size = llama_vocab_n_tokens(vocab);
+            // Validate token IDs are within vocabulary range
+            for (int32_t i = 0; i < input->input_ids_count; i++) {
+                if (input->input_ids[i] < 0 || input->input_ids[i] >= vocab_size) {
+                    GENIEX_LOG_ERROR("token ID out of range: {}", input->input_ids[i]);
+                    return GENIEX_ERROR_COMMON_INVALID_INPUT;  // error: token ID out of vocabulary range
+                }
+            }
+
+            prompt_ids.assign(input->input_ids, input->input_ids + input->input_ids_count);
+        } else {
+            // Use text tokenization path
+            try {
+                prompt_ids = common_tokenize(vocab, std::string(input->prompt_utf8), true, true);
+            } catch (const std::exception& e) {
+                return GENIEX_ERROR_LLM_TOKENIZATION_FAILED;  // error: prompt encoding failed
             }
         }
+    }
 
-        prompt_ids.assign(input->input_ids, input->input_ids + input->input_ids_count);
-    } else {
-        // Use text tokenization path
-        try {
-            prompt_ids = common_tokenize(vocab, std::string(input->prompt_utf8), true, true);
-        } catch (const std::exception& e) {
-            return GENIEX_ERROR_LLM_TOKENIZATION_FAILED;  // error: prompt encoding failed
+    // Prefix Match — not applicable to embedding input (nothing to diff against a
+    // token history), so an input_embd call always fully redecodes its rows.
+
+    int32_t prompt_len = has_input_embd ? input->input_embd_count : static_cast<int32_t>(prompt_ids.size());
+    if (!has_input_embd) {
+        int match_len = 0;
+        while (match_len < std::min((int)past_prompt_tokens.size(), prompt_len) &&
+               past_prompt_tokens[match_len] == prompt_ids[match_len]) {
+            match_len++;
+        }
+        // Re-decode the last prompt token so sampling uses logits for this prompt.
+        if (match_len == prompt_len && match_len > 0) {
+            --match_len;
+        }
+        GENIEX_LOG_DEBUG(
+            "prefix match: past_prompt_tokens size: {}, prompt_len: {}, "
+            "match_len: {}",
+            past_prompt_tokens.size(),
+            prompt_len,
+            match_len);
+
+        if (match_len < (int)this->past_prompt_tokens.size()) {
+            if (match_len < this->n_past_global - this->n_past) {
+                // match out of kvcache, need reset
+                llama_memory_seq_rm(mem, 0, 0, this->n_past);
+                this->n_past        = 0;
+                this->n_past_global = prompt_len > n_ctx - 4 ? n_ctx - 4 : 0;
+                GENIEX_LOG_INFO("prefix match: n_past_global rollback to: {}", this->n_past_global);
+            } else {
+                // match in kvcache, need rollback
+                llama_memory_seq_rm(mem, 0, match_len, -1);
+                this->n_past        = match_len;
+                this->n_past_global = match_len;
+                GENIEX_LOG_INFO("prefix match: n_past_global rollback to: {}", this->n_past_global);
+            }
+            this->past_prompt_tokens.assign(prompt_ids.begin(), prompt_ids.begin() + this->n_past_global);
         }
     }
 
-    // Prefix Match
-
-    int32_t prompt_len = static_cast<int32_t>(prompt_ids.size());
-    int     match_len  = 0;
-    while (match_len < std::min((int)past_prompt_tokens.size(), prompt_len) &&
-           past_prompt_tokens[match_len] == prompt_ids[match_len]) {
-        match_len++;
+    std::vector<llama_token> embd_inp;
+    if (!has_input_embd) {
+        embd_inp.assign(prompt_ids.begin() + this->n_past_global, prompt_ids.end());
     }
-    GENIEX_LOG_DEBUG(
-        "prefix match: past_prompt_tokens size: {}, prompt_len: {}, "
-        "match_len: {}",
-        past_prompt_tokens.size(),
-        prompt_len,
-        match_len);
-
-    if (match_len < (int)this->past_prompt_tokens.size()) {
-        if (match_len < this->n_past_global - this->n_past) {
-            // match out of kvcache, need reset
-            llama_memory_seq_rm(mem, 0, 0, this->n_past);
-            this->n_past        = 0;
-            this->n_past_global = prompt_len > n_ctx - 4 ? n_ctx - 4 : 0;
-            GENIEX_LOG_INFO("prefix match: n_past_global rollback to: {}", this->n_past_global);
-        } else {
-            // match in kvcache, need rollback
-            llama_memory_seq_rm(mem, 0, match_len, -1);
-            this->n_past        = match_len;
-            this->n_past_global = match_len;
-            GENIEX_LOG_INFO("prefix match: n_past_global rollback to: {}", this->n_past_global);
-        }
-    }
-
-    std::vector<llama_token> embd_inp(prompt_ids.begin() + this->n_past_global, prompt_ids.end());
 
     // Main loop
 
@@ -349,18 +373,17 @@ int32_t LlamaLlm::generate(const geniex_LlmGenerateInput* input, geniex_LlmGener
     auto process = [&](const llama_token* tokens, int n_tokens, int32_t overflow_err) -> int32_t {
         int rc;
         if (spec_prefill) {
-            llama_batch batch = llama_batch_init(n_tokens, /*embd=*/0, /*n_seq_max=*/1);
+            common_batch batch(this->ctx);
             for (int i = 0; i < n_tokens; ++i) {
-                common_batch_add(batch, tokens[i], this->n_past + i, {0}, /*logits=*/i == n_tokens - 1);
+                batch.add(tokens[i], this->n_past + i, /*seq_id=*/0, /*output=*/i == n_tokens - 1);
             }
-            rc = llama_decode(this->ctx, batch);
+            rc = llama_process(this->ctx, LLAMA_PROCESS_TYPE_DECODE, batch.get());
             while (rc == 1 && can_shift && slide_window(n_tokens) > 0) {
-                rc = llama_decode(this->ctx, batch);
+                rc = llama_process(this->ctx, LLAMA_PROCESS_TYPE_DECODE, batch.get());
             }
             if (rc == 0 && !common_speculative_process(this->spec, batch)) {
                 rc = -1;
             }
-            llama_batch_free(batch);
         } else {
             llama_batch batch = llama_batch_get_one(const_cast<llama_token*>(tokens), n_tokens);
             rc                = llama_decode(this->ctx, batch);
@@ -380,19 +403,58 @@ int32_t LlamaLlm::generate(const geniex_LlmGenerateInput* input, geniex_LlmGener
         return GENIEX_SUCCESS;
     };
 
+    // Decode one batch of pre-computed embedding rows and advance n_past.
+    // Mirrors process() above but populates llama_batch.embd instead of .token,
+    // the same mechanism the VLM/mtmd path uses for vision-encoder output.
+    auto process_embd = [&](const float* rows, int n_rows, int32_t overflow_err) -> int32_t {
+        llama_batch batch = llama_batch_init(n_rows, input->input_embd_dim, /*n_seq_max=*/1);
+        batch.n_tokens    = n_rows;
+        std::memcpy(batch.embd, rows, (size_t)n_rows * input->input_embd_dim * sizeof(float));
+        for (int i = 0; i < n_rows; ++i) {
+            batch.pos[i]       = this->n_past + i;
+            batch.n_seq_id[i]  = 1;
+            batch.seq_id[i][0] = 0;
+            batch.logits[i]    = (i == n_rows - 1);
+        }
+        int rc = llama_decode(this->ctx, batch);
+        while (rc == 1 && can_shift && slide_window(n_rows) > 0) {
+            rc = llama_decode(this->ctx, batch);
+        }
+        llama_batch_free(batch);
+        switch (rc) {
+            case 0:
+                break;
+            case 1:
+                return overflow_err;
+            default:
+                return GENIEX_ERROR_LLM_GENERATION_FAILED;
+        }
+        n_past += n_rows;
+        return GENIEX_SUCCESS;
+    };
+
     // Process input (prefilling)
 
-    for (llama_token id : prompt_ids) {
-        common_sampler_accept(this->sampler, id, /* accept_grammar= */ false);
-    }
+    if (has_input_embd) {
+        for (int i = 0; i < input->input_embd_count && res == GENIEX_SUCCESS; i += n_batch) {
+            int n_eval = std::min(n_batch, input->input_embd_count - i);
+            res        = process_embd(input->input_embd + (size_t)i * input->input_embd_dim,
+                n_eval,
+                GENIEX_ERROR_LLM_GENERATION_PROMPT_TOO_LONG);
+        }
+    } else {
+        for (llama_token id : prompt_ids) {
+            common_sampler_accept(this->sampler, id, /* accept_grammar= */ false);
+        }
 
-    // A context overflow during prefill means the prompt itself doesn't fit,
-    // even after any context shift (or the model can't shift at all); during
-    // decode it means the window filled up mid-generation. Distinct causes, so
-    // process() reports the one matching the phase.
-    for (int i = 0; i < (int)embd_inp.size() && res == GENIEX_SUCCESS; i += n_batch) {
-        int n_eval = std::min(n_batch, (int)embd_inp.size() - i);
-        res        = process(embd_inp.data() + i, n_eval, GENIEX_ERROR_LLM_GENERATION_PROMPT_TOO_LONG);
+        // A context overflow during prefill means the prompt itself doesn't fit,
+        // even after any context shift (or the model can't shift at all); during
+        // decode it means the window filled up mid-generation. Distinct causes, so
+        // process() reports the one matching the phase.
+        for (int i = 0; i < (int)embd_inp.size() && res == GENIEX_SUCCESS; i += n_batch) {
+            int n_eval = std::min(n_batch, (int)embd_inp.size() - i);
+            res        = process(embd_inp.data() + i, n_eval, GENIEX_ERROR_LLM_GENERATION_PROMPT_TOO_LONG);
+        }
     }
 
     profiler.prompt_end();
@@ -475,9 +537,21 @@ int32_t LlamaLlm::generate(const geniex_LlmGenerateInput* input, geniex_LlmGener
     output->full_text = strdup(full_text.str().c_str());
 
     // update past record
-    this->n_past_global = prompt_len + generated_tokens.size();
-    this->past_prompt_tokens.insert(this->past_prompt_tokens.end(), embd_inp.begin(), embd_inp.end());
-    this->past_prompt_tokens.insert(this->past_prompt_tokens.end(), generated_tokens.begin(), generated_tokens.end());
+    if (has_input_embd) {
+        // Embedding rows aren't diffable against a token history and their KV
+        // isn't representable as past_prompt_tokens, so the KV cache is dropped
+        // entirely after an embedding turn: the next call (text, input_ids, or
+        // another input_embd) always starts a full redecode from position 0.
+        llama_memory_seq_rm(mem, 0, 0, -1);
+        this->n_past        = 0;
+        this->n_past_global = 0;
+        this->past_prompt_tokens.clear();
+    } else {
+        this->n_past_global = prompt_len + generated_tokens.size();
+        this->past_prompt_tokens.insert(this->past_prompt_tokens.end(), embd_inp.begin(), embd_inp.end());
+        this->past_prompt_tokens.insert(
+            this->past_prompt_tokens.end(), generated_tokens.begin(), generated_tokens.end());
+    }
 
     return res;
 }
@@ -489,6 +563,7 @@ int32_t LlamaLlm::get_model_info(geniex_LlmModelInfo* output) {
     const llama_token bos    = llama_vocab_bos(vocab);
     output->bos_token        = (bos == LLAMA_TOKEN_NULL) ? -1 : static_cast<int32_t>(bos);
     output->add_bos          = llama_vocab_get_add_bos(vocab) ? 1 : 0;
+    output->embd_dim         = llama_model_n_embd_inp(this->model);
     return GENIEX_SUCCESS;
 }
 
@@ -572,6 +647,123 @@ int32_t LlamaLlm::forward_logits(const geniex_LlmForwardLogitsInput* input, geni
     output->n_rows     = all_positions ? n_tok : 1;
     return GENIEX_SUCCESS;
 }
+
+int32_t LlamaLlm::decide(const geniex_DecideInput* input, geniex_DecideOutput* output) {
+    if (!this->model || !this->ctx || !input || !output) return GENIEX_ERROR_COMMON_INVALID_INPUT;
+    if (input->image_count != 0 || input->audio_count != 0) return GENIEX_ERROR_COMMON_PARAM_NOT_SUPPORTED;
+
+    DecisionPrepared prepared;
+    int32_t          rc = prepare_decision(this->model, input, &prepared);
+    if (rc != GENIEX_SUCCESS) return rc;
+    const llama_vocab* vocab = llama_model_get_vocab(this->model);
+
+    // Decision codes must map to distinct single tokens in the model vocabulary.
+    std::vector<llama_token> candidate_tokens;
+    for (const auto& code : prepared.candidates) {
+        const auto literal = common_tokenize(vocab, code, false, false);
+        if (literal.size() != 1 ||
+            std::find(candidate_tokens.begin(), candidate_tokens.end(), literal[0]) != candidate_tokens.end()) {
+            return GENIEX_ERROR_COMMON_INVALID_INPUT;
+        }
+        candidate_tokens.push_back(literal[0]);
+    }
+
+    // Verify tokenization at this exact prompt boundary, then read one fresh logits row.
+    auto score_prompt = [&](const std::string& prompt, std::vector<float>& scores, int32_t& input_tokens) -> int32_t {
+        const auto tokens = common_tokenize(vocab, prompt, true, true);
+        if (tokens.empty() || tokens.size() > llama_n_ctx(this->ctx)) {
+            return GENIEX_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH;
+        }
+        for (size_t i = 0; i < prepared.candidates.size(); ++i) {
+            const auto joined = common_tokenize(vocab, prompt + prepared.candidates[i], true, true);
+            if (joined.size() != tokens.size() + 1 || !std::equal(tokens.begin(), tokens.end(), joined.begin()) ||
+                joined.back() != candidate_tokens[i]) {
+                GENIEX_LOG_WARN("decision candidate '{}' is not one token after the prompt", prepared.candidates[i]);
+                return GENIEX_ERROR_COMMON_INVALID_INPUT;
+            }
+        }
+        geniex_LlmForwardLogitsInput request{};
+        request.input_ids       = tokens.data();
+        request.input_ids_count = static_cast<int32_t>(tokens.size());
+        geniex_LlmForwardLogitsOutput result{};
+        const int32_t                 result_code = forward_logits(&request, &result);
+        if (result_code != GENIEX_SUCCESS) return result_code;
+        scores.resize(candidate_tokens.size());
+        for (size_t i = 0; i < candidate_tokens.size(); ++i) scores[i] = result.logits[candidate_tokens[i]];
+        free(result.logits);
+        input_tokens = static_cast<int32_t>(tokens.size());
+        return GENIEX_SUCCESS;
+    };
+
+    std::vector<float> scores;
+    int32_t            input_tokens = 0;
+    rc                              = score_prompt(prepared.prompt, scores, input_tokens);
+    if (rc != GENIEX_SUCCESS) return rc;
+
+    // LEV calibrates multi-pass decisions here; other models return raw option logits.
+    std::vector<double> probabilities;
+    if (prepared.type == "lev" && (prepared.question_type == "noul" || !prepared.reversed_prompt.empty())) {
+        auto softmax = [&](const std::vector<float>& logits) {
+            std::vector<double> result(logits.size());
+            if (result.empty()) return result;
+            const float peak = *std::max_element(logits.begin(), logits.end());
+            for (size_t i = 0; i < logits.size(); ++i) {
+                result[i] = std::exp((double)(logits[i] - peak) / prepared.temperature);
+            }
+            double sum = result.front();
+            for (size_t i = 1; i < result.size(); ++i) sum += result[i];
+            if (!(sum > 0.0) || !std::isfinite(sum)) return std::vector<double>{};
+            for (double& value : result) value /= sum;
+            return result;
+        };
+        const auto first = softmax(scores);
+        if (first.empty()) return GENIEX_ERROR_COMMON_INVALID_INPUT;
+        probabilities.resize(prepared.original_index.size());
+        if (prepared.question_type == "noul") {
+            // The nine codes represent ratings 0–8; their expectation is P(true).
+            double yes = 0.0;
+            for (size_t i = 0; i < first.size(); ++i) yes += first[i] * i / (first.size() - 1);
+            probabilities[prepared.true_index]     = yes;
+            probabilities[1 - prepared.true_index] = 1.0 - yes;
+        } else {
+            // Average forward and reversed choice probabilities in caller order.
+            std::vector<float> reversed_scores;
+            int32_t            reversed_tokens = 0;
+            rc = score_prompt(prepared.reversed_prompt, reversed_scores, reversed_tokens);
+            if (rc != GENIEX_SUCCESS) return rc;
+            input_tokens += reversed_tokens;
+            const auto second = softmax(reversed_scores);
+            if (second.empty()) return GENIEX_ERROR_COMMON_INVALID_INPUT;
+            for (size_t i = 0; i < first.size(); ++i) {
+                probabilities[prepared.original_index[i]] += first[i] / 2;
+                probabilities[prepared.original_index[first.size() - 1 - i]] += second[i] / 2;
+            }
+        }
+    }
+
+    // Return either raw logits or calibrated probabilities, indexed by the caller's options.
+    const size_t option_count = prepared.original_index.size();
+    if (probabilities.empty()) {
+        output->logits = static_cast<float*>(calloc(option_count, sizeof(float)));
+        if (!output->logits) return GENIEX_ERROR_COMMON_MEMORY_ALLOCATION;
+        for (size_t i = 0; i < option_count; ++i) output->logits[prepared.original_index[i]] = scores[i];
+    } else {
+        output->probabilities = static_cast<float*>(calloc(option_count, sizeof(float)));
+        if (!output->probabilities) return GENIEX_ERROR_COMMON_MEMORY_ALLOCATION;
+        for (size_t i = 0; i < option_count; ++i) output->probabilities[i] = static_cast<float>(probabilities[i]);
+    }
+    output->option_count  = static_cast<int32_t>(option_count);
+    output->input_tokens  = input_tokens;
+    output->temperature   = prepared.temperature;
+    output->decision_type = strdup(prepared.type.c_str());
+    if (!output->decision_type) {
+        free(output->logits);
+        free(output->probabilities);
+        std::memset(output, 0, sizeof(*output));
+        return GENIEX_ERROR_COMMON_MEMORY_ALLOCATION;
+    }
+    return GENIEX_SUCCESS;
+}
 }  // namespace geniex
 
 // Private
@@ -606,7 +798,7 @@ int32_t LlamaLlm::decode_speculative(const geniex_GenerationConfig& cfg, const s
     llama_token id_last = common_sampler_sample(this->sampler, this->ctx, -1);
     common_sampler_accept(this->sampler, id_last, /* accept_grammar= */ true);
 
-    llama_batch batch = llama_batch_init(this->spec_n_max + 1, /*embd=*/0, /*n_seq_max=*/1);
+    common_batch batch(this->ctx);
 
     int64_t                  draft_n_total    = 0;
     int64_t                  draft_n_accepted = 0;
@@ -634,14 +826,15 @@ int32_t LlamaLlm::decode_speculative(const geniex_GenerationConfig& cfg, const s
         draft_n_total += (int64_t)draft.size();
 
         // Verification batch: [id_last, draft0, draft1, ...], all needing logits.
-        common_batch_clear(batch);
+        batch.clear();
         llama_pos pos = this->n_past;
-        common_batch_add(batch, id_last, pos++, {seq_id}, /*logits=*/true);
+        batch.add(id_last, pos++, seq_id, /*output=*/true);
         for (llama_token t : draft) {
-            common_batch_add(batch, t, pos++, {seq_id}, /*logits=*/true);
+            batch.add(t, pos++, seq_id, /*output=*/true);
         }
 
-        if (llama_decode(this->ctx, batch) != 0 || !common_speculative_process(this->spec, batch)) {
+        if (llama_process(this->ctx, LLAMA_PROCESS_TYPE_DECODE, batch.get()) != 0 ||
+            !common_speculative_process(this->spec, batch)) {
             res = GENIEX_ERROR_LLM_GENERATION_FAILED;
             break;
         }
@@ -685,8 +878,6 @@ int32_t LlamaLlm::decode_speculative(const geniex_GenerationConfig& cfg, const s
         id_last = ids.back();
     }
 
-    llama_batch_free(batch);
-
     profiler.set_draft_stats(draft_n_total, draft_n_accepted);
     return res;
 }
@@ -697,7 +888,15 @@ void LlamaLlm::set_sampler(const geniex_SamplerConfig* cfg) {
         this->sampler = nullptr;
     }
     common_params_sampling s = build_sampling_params(cfg);
-    this->sampler            = common_sampler_init(this->model, s);
+    if (cfg && cfg->ignore_eos) {
+        const llama_vocab* vocab = llama_model_get_vocab(this->model);
+        for (llama_token id = 0; id < llama_vocab_n_tokens(vocab); ++id) {
+            if (llama_vocab_is_eog(vocab, id)) {
+                s.logit_bias.push_back({id, -INFINITY});
+            }
+        }
+    }
+    this->sampler = common_sampler_init(this->model, s);
 }
 
 void LlamaLlm::teardown_speculative() {
@@ -736,8 +935,8 @@ int32_t LlamaLlm::setup_speculative(
 
         llama_model_params dmpar     = build_model_params(config, device);
         auto               selection = resolve_devices(device_id);
-        if (selection && !selection->empty()) {
-            dmpar.devices = selection->data();
+        if (selection) {
+            apply_device_selection(dmpar, *selection, device);
         }
 
         this->draft_model = llama_model_load_from_file(config.spec_draft_model, dmpar);

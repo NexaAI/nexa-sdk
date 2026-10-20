@@ -2,6 +2,7 @@
 venv/
 .vscode
 .ccache
+.worktrees/
 .agents/
 .cache/
 __pycache__/

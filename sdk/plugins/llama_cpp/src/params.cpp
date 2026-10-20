@@ -8,7 +8,9 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <thread>
+#include <vector>
 
 #include "common.h"
 #include "ggml-backend.h"
@@ -140,6 +142,23 @@ llama_context_params build_context_params(
     return cpar;
 }
 
+void warmup_context(const llama_model* model, llama_context* ctx) {
+    if (llama_model_has_encoder(model) || !llama_model_has_decoder(model)) return;
+
+    const llama_vocab*       vocab = llama_model_get_vocab(model);
+    std::vector<llama_token> tokens;
+    if (llama_vocab_bos(vocab) != LLAMA_TOKEN_NULL) tokens.push_back(llama_vocab_bos(vocab));
+    if (llama_vocab_eos(vocab) != LLAMA_TOKEN_NULL) tokens.push_back(llama_vocab_eos(vocab));
+    if (tokens.empty()) tokens.push_back(0);
+
+    if (llama_decode(ctx, llama_batch_get_one(tokens.data(), static_cast<int32_t>(tokens.size()))) != 0) {
+        GENIEX_LOG_WARN("model warmup decode failed");
+    }
+    llama_synchronize(ctx);
+    llama_memory_clear(llama_get_memory(ctx), /*clear data=*/true);
+    llama_perf_context_reset(ctx);
+}
+
 ggml_threadpool_params build_threadpool_params(int n_threads, Device device) {
     // Linux / NPU stays unpinned: strict-pinning 6 threads to cores 2-7 halves
     // HTP decode throughput on Snapdragon X2 Elite (10.6 vs 20.1 tok/s), and
@@ -246,6 +265,43 @@ std::optional<std::vector<ggml_backend_dev_t>> resolve_devices(const char* devic
         devices.push_back(nullptr);  // NULL terminator for llama_model_params::devices
     }
     return devices;
+}
+
+void apply_device_selection(llama_model_params& mpar, std::vector<ggml_backend_dev_t>& selection, Device device) {
+    static ggml_backend_dev_t no_devices[] = {nullptr};
+    if (selection.empty()) {
+        if (device == Device::CPU) {
+            mpar.devices = no_devices;
+            return;
+        }
+        // Mirror llama.cpp's default pick (llama.cpp: "default device selection"): non-RPC GPU devices, plus iGPUs only
+        // when there is no GPU, but keep just the first HTP.
+        bool                            seen_htp    = false;
+        bool                            skipped_htp = false;
+        std::vector<ggml_backend_dev_t> gpus;
+        std::vector<ggml_backend_dev_t> igpus;
+        for (size_t i = 0; i < ggml_backend_dev_count(); ++i) {
+            ggml_backend_dev_t dev  = ggml_backend_dev_get(i);
+            const auto         type = ggml_backend_dev_type(dev);
+            if (type != GGML_BACKEND_DEVICE_TYPE_GPU && type != GGML_BACKEND_DEVICE_TYPE_IGPU) continue;
+            if (std::string_view(ggml_backend_reg_name(ggml_backend_dev_backend_reg(dev))) == "RPC") continue;
+            if (type == GGML_BACKEND_DEVICE_TYPE_GPU && std::strncmp(ggml_backend_dev_name(dev), "HTP", 3) == 0) {
+                if (seen_htp) {
+                    skipped_htp = true;
+                    continue;
+                }
+                seen_htp = true;
+            }
+            (type == GGML_BACKEND_DEVICE_TYPE_GPU ? gpus : igpus).push_back(dev);
+        }
+        std::vector<ggml_backend_dev_t> defaults = gpus.empty() ? igpus : gpus;
+        if (!skipped_htp) return;  // at most one HTP: llama.cpp's own default is already what we want.
+        GENIEX_LOG_INFO("Default device list restricted to {} device(s); spare HTP sessions are left to the mmproj",
+            defaults.size());
+        selection = std::move(defaults);
+        selection.push_back(nullptr);
+    }
+    mpar.devices = selection.data();
 }
 
 ggml_backend_dev_t resolve_vision_device(const std::vector<ggml_backend_dev_t>& lm_devices) {

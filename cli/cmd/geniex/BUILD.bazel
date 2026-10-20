@@ -5,6 +5,7 @@ go_library(
     name = "geniex_lib",
     srcs = [
         "config.go",
+        "decide.go",
         "help.go",
         "infer.go",
         "main.go",
@@ -20,11 +21,13 @@ go_library(
         "//bindings/go:geniex_sdk_go",
         "//cli/cmd/geniex/common",
         "//cli/internal/config",
+        "//cli/internal/decision",
         "//cli/internal/downloader",
         "//cli/internal/record",
         "//cli/internal/render",
         "//cli/internal/store",
         "//cli/server",
+        "//cli/server/handler",
         "@com_github_bytedance_sonic//:sonic",
         "@com_github_charmbracelet_huh//:huh",
         "@com_github_dustin_go_humanize//:go-humanize",
@@ -44,6 +47,7 @@ go_library(
 go_cgo_test(
     name = "geniex_test",
     srcs = [
+        "decide_test.go",
         "infer_test.go",
         "model_test.go",
     ],
@@ -53,6 +57,7 @@ go_cgo_test(
         "avx",
     ],
     deps = [
+        "//cli/internal/decision",
         "//cli/internal/testutil",
     ],
 )

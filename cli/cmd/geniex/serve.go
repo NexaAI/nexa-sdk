@@ -12,6 +12,7 @@ import (
 	geniex_sdk "github.com/qualcomm/GenieX/bindings/go"
 	"github.com/qualcomm/GenieX/cli/cmd/geniex/common"
 	"github.com/qualcomm/GenieX/cli/server"
+	"github.com/qualcomm/GenieX/cli/server/handler"
 )
 
 // serve creates a command to start the GenieX server.
@@ -57,7 +58,7 @@ func serve() *cobra.Command {
 	// Bound explicitly so the plugin's own spelling is the only one that works;
 	// AutomaticEnv would otherwise make GENIEX_QAIRTLIB a silent second alias.
 	viper.BindEnv("qairtlib", "GENIEX_QAIRT_LIB")
-	viper.BindPFlag("enablehttps", serveCmd.Flags().Lookup("https"))
+	viper.BindPFlag("https", serveCmd.Flags().Lookup("https"))
 	viper.BindPFlag("certfile", serveCmd.Flags().Lookup("certfile"))
 	viper.BindPFlag("keyfile", serveCmd.Flags().Lookup("keyfile"))
 
@@ -83,6 +84,7 @@ func serve() *cobra.Command {
 			os.Exit(1)
 		}
 
+		handler.Version = Version
 		server.Serve()
 
 		geniex_sdk.DeInit()

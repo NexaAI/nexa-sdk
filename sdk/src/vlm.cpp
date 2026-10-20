@@ -93,6 +93,20 @@ int32_t geniex_vlm_get_capabilities(geniex_VLM* handle, geniex_VlmCapabilities* 
     }
 }
 
+int32_t geniex_vlm_decide(geniex_VLM* handle, const geniex_DecideInput* input, geniex_DecideOutput* output) {
+    GENIEX_LOG_TRACE("vlm decision");
+    if (!input || !output) return GENIEX_ERROR_COMMON_INVALID_INPUT;
+    std::memset(output, 0, sizeof(*output));
+    try {
+        auto backend = reinterpret_cast<IVlm*>(handle);
+        if (!backend) return GENIEX_ERROR_COMMON_NOT_INITIALIZED;
+        return backend->decide(input, output);
+    } catch (const std::exception& e) {
+        GENIEX_LOG_ERROR("vlm decision error: {}", e.what());
+        return GENIEX_ERROR_COMMON_UNKNOWN;
+    }
+}
+
 int32_t geniex_vlm_generate(
     geniex_VLM* handle, const geniex_VlmGenerateInput* input, geniex_VlmGenerateOutput* output) {
     GENIEX_LOG_TRACE("{}", input);

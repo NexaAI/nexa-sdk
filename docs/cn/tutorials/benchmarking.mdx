@@ -63,7 +63,7 @@ import Feedback from "/snippets/page-feedback.mdx";
 
     ```bash bash
     BENCH_DIR=$(ls -d geniex-bench-linux-arm64-*)
-    export LD_LIBRARY_PATH="$BENCH_DIR/lib:$BENCH_DIR/lib/llama_cpp${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+    export LD_LIBRARY_PATH="$BENCH_DIR/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
     export GENIEX_PLUGIN_PATH="$BENCH_DIR/lib"
     BENCH="$BENCH_DIR/bin/geniex-bench"
     ```

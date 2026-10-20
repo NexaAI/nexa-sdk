@@ -70,9 +70,12 @@ extern "C" JNIEXPORT jint JNICALL Java_com_geniex_sdk_jni_Llm_destroy(JNIEnv*, j
     return 0;
 }
 
-// JNI: generate - Generate text with streaming support
-extern "C" JNIEXPORT jobject JNICALL Java_com_geniex_sdk_jni_Llm_generate(
-    JNIEnv* env, jobject /*thiz*/, jlong handle, jstring prompt, jobject configObj, jobject callback) {
+// JNI: generate - Generate text with streaming support. At most one of
+// inputIds / inputEmbd should be non-null; when both are null, prompt is used.
+// Priority when several are set: inputEmbd > inputIds > prompt (matches the C
+// header's geniex_LlmGenerateInput contract).
+extern "C" JNIEXPORT jobject JNICALL Java_com_geniex_sdk_jni_Llm_generate(JNIEnv* env, jobject /*thiz*/, jlong handle,
+    jstring prompt, jintArray inputIds, jfloatArray inputEmbd, jint inputEmbdDim, jobject configObj, jobject callback) {
     try {
         void* h = (void*)handle;
 
@@ -85,13 +88,30 @@ extern "C" JNIEXPORT jobject JNICALL Java_com_geniex_sdk_jni_Llm_generate(
             stop_flag      = g_stopFlags[h];
         }
 
-        std::string             cprompt = jstring2str(env, prompt);
+        std::string             cprompt = prompt ? jstring2str(env, prompt) : std::string();
         geniex_GenerationConfig cfg     = extract_generation_config(env, configObj);
+
+        std::vector<int32_t> ids;
+        std::vector<float>   embd;
+        if (inputEmbd) {
+            embd = jfloatArray2vec(env, inputEmbd);
+        } else if (inputIds) {
+            ids = jintArray2vec(env, inputIds);
+        }
 
         geniex_LlmGenerateInput  input  = {};
         geniex_LlmGenerateOutput output = {};
-        input.prompt_utf8               = cprompt.c_str();
-        input.config                    = &cfg;
+        if (!embd.empty()) {
+            input.input_embd       = embd.data();
+            input.input_embd_count = static_cast<int32_t>(inputEmbdDim > 0 ? embd.size() / inputEmbdDim : 0);
+            input.input_embd_dim   = inputEmbdDim;
+        } else if (!ids.empty()) {
+            input.input_ids       = ids.data();
+            input.input_ids_count = static_cast<int32_t>(ids.size());
+        } else {
+            input.prompt_utf8 = cprompt.c_str();
+        }
+        input.config = &cfg;
 
         JavaCallbackCtx cbCtx{};
         if (callback) {
@@ -196,19 +216,21 @@ extern "C" JNIEXPORT jobject JNICALL Java_com_geniex_sdk_jni_Llm_applyChatTempla
         env->ReleaseStringUTFChars(jtools, tools_cstr);
     }
 
-    jclass    cls  = env->FindClass("com/geniex/sdk/bean/LlmApplyChatTemplateOutput");
-    jmethodID ctor = env->GetMethodID(cls, "<init>", "(Ljava/lang/String;)V");
-
     free_llm_chat_messages(msgs);
     clear_jni_cstr_pool();
 
     if (ret < 0 || !output.formatted_text) {
-        jobject result = env->NewObject(cls, ctor, env->NewStringUTF(""));
-        return result;
+        LOGe("[applyChatTemplate] failed! ret=%d", ret);
+        const char* reason =
+            ret < 0 ? geniex_get_error_message(static_cast<geniex_ErrorCode>(ret)) : "formatted text is null";
+        throw_runtime_exception(env, "applyChatTemplate failed: %s", reason);
+        return nullptr;
     }
 
-    jstring formatted = env->NewStringUTF(output.formatted_text);
-    jobject result    = env->NewObject(cls, ctor, formatted);
+    jclass    cls       = env->FindClass("com/geniex/sdk/bean/LlmApplyChatTemplateOutput");
+    jmethodID ctor      = env->GetMethodID(cls, "<init>", "(Ljava/lang/String;)V");
+    jstring   formatted = env->NewStringUTF(output.formatted_text);
+    jobject   result    = env->NewObject(cls, ctor, formatted);
     free(output.formatted_text);
     return result;
 }

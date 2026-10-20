@@ -1,0 +1,19 @@
+diff --git a/ggml/src/ggml-opencl/ggml-opencl.cpp b/ggml/src/ggml-opencl/ggml-opencl.cpp
+index 9df79ba90..c37fc6e63 100644
+--- a/ggml/src/ggml-opencl/ggml-opencl.cpp
++++ b/ggml/src/ggml-opencl/ggml-opencl.cpp
+@@ -24161,7 +24161,13 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
+                         } else {
+                             kernel = backend_ctx->kernel_mul_mat_f16_f32_mrow;
+                         }
+-                        use_f16_mrow = true;
++                        // The WG is 64 x MROW = 1024 work-items, but register pressure can cap
++                        // CL_KERNEL_WORK_GROUP_SIZE below that (896 on Adreno 663).
++                        if (backend_ctx->get_kernel_workgroup_size(kernel) >= 64 * 16) {
++                            use_f16_mrow = true;
++                        } else {
++                            kernel = backend_ctx->kernel_mul_mat_f16_f32_1row;
++                        }
+                     } else {
+                         kernel = backend_ctx->kernel_mul_mat_f16_f32_1row;
+                     }

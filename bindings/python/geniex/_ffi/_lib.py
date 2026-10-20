@@ -91,7 +91,7 @@ def _setup_env(lib_path: str, plugin_path: str, extra_dirs: list[str] | None = N
 
     key = 'PATH' if sys.platform == 'win32' else 'LD_LIBRARY_PATH'
     existing = os.environ.get(key, '')
-    extra = os.pathsep.join(preload_dirs)
+    extra = os.pathsep.join(preload_dirs) if sys.platform == 'win32' else lib_dir
     os.environ[key] = f'{extra}{os.pathsep}{existing}' if existing else extra
 
     if not os.environ.get('GENIEX_PLUGIN_PATH'):
