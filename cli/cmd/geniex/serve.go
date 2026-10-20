@@ -12,6 +12,7 @@ import (
 	geniex_sdk "github.com/qualcomm/GenieX/bindings/go"
 	"github.com/qualcomm/GenieX/cli/cmd/geniex/common"
 	"github.com/qualcomm/GenieX/cli/server"
+	"github.com/qualcomm/GenieX/cli/server/handler"
 )
 
 // serve creates a command to start the GenieX server.
@@ -83,6 +84,7 @@ func serve() *cobra.Command {
 			os.Exit(1)
 		}
 
+		handler.Version = Version
 		server.Serve()
 
 		geniex_sdk.DeInit()

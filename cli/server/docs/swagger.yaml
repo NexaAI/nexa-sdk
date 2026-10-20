@@ -164,6 +164,14 @@ components:
       properties:
         alive:
           type: boolean
+        version:
+          type: string
+        uptime_seconds:
+          type: integer
+          format: int64
+        keepalive_seconds:
+          type: integer
+          format: int64
         models:
           type: array
           items:
