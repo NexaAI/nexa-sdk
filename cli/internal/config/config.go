@@ -19,6 +19,7 @@ type Config struct {
 	Host      string // Server host and port (default: "127.0.0.1:18181")
 	Origins   string // Allowed CORS origins (default: "*")
 	KeepAlive int64  // Connection keep-alive timeout in seconds (default: 300)
+	Metrics   bool   // Whether to expose GET /metrics (default: false)
 	// Model-load defaults applied when a request omits them (llama_cpp only;
 	// per-request body fields still override). Compute is the alias resolved by
 	// the SDK (sdk/src/device.cpp); empty means the SDK's own default.

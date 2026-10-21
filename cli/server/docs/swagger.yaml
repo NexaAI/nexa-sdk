@@ -117,6 +117,23 @@ paths:
               schema:
                 $ref: "#/components/schemas/StatusResponse"
 
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      description: Prometheus text format, counters prefixed with geniex. Only available when the server is started with --metrics; otherwise returns 501.
+      operationId: GetMetrics
+      servers:
+        - url: /
+      responses:
+        "200":
+          description: Prometheus text exposition
+          content:
+            text/plain:
+              schema:
+                type: string
+        "501":
+          description: Metrics are disabled
+
   /v1/models:
     get:
       summary: Lists the currently available models
