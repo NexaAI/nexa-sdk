@@ -4,6 +4,8 @@
 package main
 
 import (
+	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -25,6 +27,39 @@ func resetServeTestViper(t *testing.T) {
 		viper.SetEnvPrefix("geniex")
 		viper.AutomaticEnv()
 	})
+}
+
+func TestServeFlagGroups(t *testing.T) {
+	resetServeTestViper(t)
+	cmd := serve()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	if err := cmd.Usage(); err != nil {
+		t.Fatal(err)
+	}
+	usage := out.String()
+	server := strings.Index(usage, "Server Flags:")
+	defaults := strings.Index(usage, "Model Default Flags:")
+	if server < 0 || defaults <= server {
+		t.Fatalf("serve help missing ordered flag groups: %s", usage)
+	}
+	serverFlags, defaultFlags := usage[server:defaults], usage[defaults+len("Model Default Flags:"):]
+	for _, flag := range []string{"host", "origins", "keepalive", "metrics", "qairt-lib", "https", "certfile", "keyfile", "help"} {
+		if !strings.Contains(serverFlags, "--"+flag) || strings.Contains(defaultFlags, "--"+flag) {
+			t.Errorf("--%s must appear only in Server Flags", flag)
+		}
+	}
+	for _, flag := range []string{"model", "nctx", "ngl", "compute", "vit-compute", "power-mode", "spec-type", "draft-model", "draft-tokens", "draft-min", "draft-p-min"} {
+		if !strings.Contains(defaultFlags, "--"+flag) || strings.Contains(serverFlags, "--"+flag) {
+			t.Errorf("--%s must appear only in Model Default Flags", flag)
+		}
+	}
+	if strings.Contains(serverFlags, "Default server address") || strings.Contains(serverFlags, "Default CORS origins") {
+		t.Errorf("host and origins are server settings, not model defaults: %s", serverFlags)
+	}
+	if strings.Contains(defaultFlags, "Default ") {
+		t.Errorf("Model Default Flags descriptions must not repeat Default: %s", defaultFlags)
+	}
 }
 
 func TestServeModelDefault(t *testing.T) {

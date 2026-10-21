@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
 	geniex_sdk "github.com/qualcomm/GenieX/bindings/go"
@@ -27,29 +28,38 @@ func serve() *cobra.Command {
 		Short:   "Run the GenieX Server",
 	}
 
-	serveCmd.Flags().SortFlags = false
-	serveCmd.Flags().String("host", "127.0.0.1:18181", "Default server address (env: GENIEX_HOST)")
-	serveCmd.Flags().String("origins", "*", "Default CORS origins (env: GENIEX_ORIGINS)")
-	serveCmd.Flags().Int("keepalive", 300, "Keepalive seconds (env: GENIEX_KEEPALIVE)")
-	serveCmd.Flags().Bool("metrics", false, "Expose Prometheus metrics at /metrics (env: GENIEX_METRICS)")
-	serveCmd.Flags().String("model", "", "Model to use when request omits model: cached name[:precision] (env: GENIEX_MODEL)")
-	// Model-load defaults applied when a request omits them (llama_cpp only;
-	// per-request body fields still override).
-	serveCmd.Flags().Int32("nctx", 4096, "Default context window size, llama_cpp only (env: GENIEX_NCTX)")
-	serveCmd.Flags().Int32P("ngl", "n", -1, "Default layers to offload to gpu/npu, -1 = all, llama_cpp only (env: GENIEX_NGL)")
-	serveCmd.Flags().StringP("compute", "c", "", "Default compute unit: cpu, gpu, npu, or hybrid (env: GENIEX_COMPUTE)")
-	serveCmd.Flags().String("vit-compute", "", "Default VLM vision encoder compute unit, e.g. CPU or HTP2 (env: GENIEX_VIT_COMPUTE)")
-	serveCmd.Flags().String("power-mode", "", "Default HTP power/clock-management mode: low_power_saver, power_saver, high_power_saver, low_balanced, balanced, high_performance, sustained_high_performance, burst (default: burst) (env: GENIEX_POWER_MODE)")
-	serveCmd.Flags().String("qairt-lib", "", "Run against a different QAIRT runtime: path to a QAIRT SDK root or a folder of QNN libraries, qairt only (env: GENIEX_QAIRT_LIB)")
-	serveCmd.Flags().String("spec-type", "", "Speculative decoding type(s), llama_cpp only (env: GENIEX_SPEC_TYPE)")
-	serveCmd.Flags().String("draft-model", "", "Draft/MTP model for draft-* types: cached name or local GGUF path (env: GENIEX_DRAFT_MODEL)")
-	serveCmd.Flags().Int32("draft-tokens", 0, "Max draft tokens per step, 0 = plugin default of 3 (env: GENIEX_DRAFT_TOKENS)")
-	serveCmd.Flags().Int32("draft-min", 0, "Min draft tokens per step, 0 = llama.cpp default (env: GENIEX_DRAFT_MIN)")
-	serveCmd.Flags().Float32("draft-p-min", 0, "Min greedy draft probability, 0 = llama.cpp default (env: GENIEX_DRAFT_P_MIN)")
-	// HTTPS / TLS flags
-	serveCmd.Flags().Bool("https", false, "Enable HTTPS/TLS (env: GENIEX_HTTPS)")
-	serveCmd.Flags().String("certfile", "cert.pem", "TLS certificate file path (env: GENIEX_CERTFILE)")
-	serveCmd.Flags().String("keyfile", "key.pem", "TLS private key file path (env: GENIEX_KEYFILE)")
+	serverFlags := pflag.NewFlagSet("Server", pflag.ExitOnError)
+	serverFlags.SortFlags = false
+	serverFlags.String("host", "127.0.0.1:18181", "Server listen address (env: GENIEX_HOST)")
+	serverFlags.String("origins", "*", "Allowed CORS origins (env: GENIEX_ORIGINS)")
+	serverFlags.Int("keepalive", 300, "Model idle timeout in seconds (env: GENIEX_KEEPALIVE)")
+	serverFlags.Bool("metrics", false, "Expose Prometheus metrics at /metrics (env: GENIEX_METRICS)")
+	serverFlags.String("qairt-lib", "", "Run against a different QAIRT runtime: path to a QAIRT SDK root or a folder of QNN libraries, qairt only (env: GENIEX_QAIRT_LIB)")
+	serverFlags.Bool("https", false, "Enable HTTPS/TLS (env: GENIEX_HTTPS)")
+	serverFlags.String("certfile", "cert.pem", "TLS certificate file path (env: GENIEX_CERTFILE)")
+	serverFlags.String("keyfile", "key.pem", "TLS private key file path (env: GENIEX_KEYFILE)")
+	serverFlags.BoolP("help", "h", false, "help for serve")
+
+	// Model-load defaults applied when a request omits them; request fields override them.
+	defaultFlags := pflag.NewFlagSet("Model Default", pflag.ExitOnError)
+	defaultFlags.SortFlags = false
+	defaultFlags.String("model", "", "Model to use when request omits model: cached name[:precision] (env: GENIEX_MODEL)")
+	defaultFlags.Int32("nctx", 4096, "Context window size, llama_cpp only (env: GENIEX_NCTX)")
+	defaultFlags.Int32P("ngl", "n", -1, "Layers to offload to gpu/npu, -1 = all, llama_cpp only (env: GENIEX_NGL)")
+	defaultFlags.StringP("compute", "c", "", "Compute unit: cpu, gpu, npu, or hybrid (env: GENIEX_COMPUTE)")
+	defaultFlags.String("vit-compute", "", "VLM vision encoder compute unit, e.g. CPU or HTP2 (env: GENIEX_VIT_COMPUTE)")
+	defaultFlags.String("power-mode", "", "HTP power/clock-management mode: low_power_saver, power_saver, high_power_saver, low_balanced, balanced, high_performance, sustained_high_performance, burst (burst when omitted) (env: GENIEX_POWER_MODE)")
+	defaultFlags.String("spec-type", "", "Speculative decoding type(s), llama_cpp only (env: GENIEX_SPEC_TYPE)")
+	defaultFlags.String("draft-model", "", "Draft/MTP model for draft-* types: cached name or local GGUF path (env: GENIEX_DRAFT_MODEL)")
+	defaultFlags.Int32("draft-tokens", 0, "Max draft tokens per step, 0 = plugin default of 3 (env: GENIEX_DRAFT_TOKENS)")
+	defaultFlags.Int32("draft-min", 0, "Min draft tokens per step, 0 = llama.cpp default (env: GENIEX_DRAFT_MIN)")
+	defaultFlags.Float32("draft-p-min", 0, "Min greedy draft probability, 0 = llama.cpp default (env: GENIEX_DRAFT_P_MIN)")
+
+	groups := []*pflag.FlagSet{serverFlags, defaultFlags}
+	for _, flags := range groups {
+		serveCmd.Flags().AddFlagSet(flags)
+	}
+	serveCmd.SetUsageFunc(func(c *cobra.Command) error { return groupedFlagUsage(c, groups) })
 
 	viper.BindPFlag("host", serveCmd.Flags().Lookup("host"))
 	viper.BindPFlag("origins", serveCmd.Flags().Lookup("origins"))
