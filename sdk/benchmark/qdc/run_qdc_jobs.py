@@ -59,7 +59,7 @@ CHIPSET = {
     "SM8850": "qualcomm-snapdragon-8-elite-gen5-for-galaxy",
 }
 ALL_DEVICES = ["QCS9075M", "SC8380XP", "SC8480XP", "SM8750", "SM8850"]
-ACCURACY_DEVICES = ["QCS9075M"]
+ACCURACY_DEVICES = ["SM8850"]
 SPEC_DEVICES = {"SC8480XP"}
 # Compute units tried for a model that is not in bench-models.json. geniex-bench
 # resolves the plugin from the model itself and skips the units qairt lacks.

@@ -1,5 +1,5 @@
 name: Geniex Accuracy
-run-name: accuracy (${{ inputs.model }} · ${{ inputs.device || 'QCS9075M' }} · ${{ inputs.compute || 'default units' }})
+run-name: accuracy (${{ inputs.model }} · ${{ inputs.device || 'SM8850' }} · ${{ inputs.compute || 'default units' }})
 
 # Generate text on QDC devices with `geniex-bench --accuracy`, then grade it for
 # quantization damage with Breeze AI.
@@ -26,7 +26,7 @@ on:
       device:
         description: "QDC chipsets, comma-separated"
         type: string
-        default: "QCS9075M"
+        default: "SM8850"
       model:
         description: "Model ids org/name[:quant], comma-separated; any model geniex can pull"
         type: string
