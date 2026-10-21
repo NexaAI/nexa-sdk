@@ -41,7 +41,6 @@ from utils import (
     write_qdc_log,
 )
 
-CTXS = (512, 1024, 4096)
 PARAMS = (
     json.loads(Path(HOST_PARAMS).read_text())
     if Path(HOST_PARAMS).exists()
@@ -68,60 +67,44 @@ def push_tsv(path: str, rows: list[str]) -> None:
     )
 
 
+def cell_rows(rows: list[str], ctx: int) -> list[str]:
+    """Matrix TSV lines for one ctx. The plugin and columns 5/6
+    (tokenizer/mmproj) are blank: geniex-bench takes them from the model
+    manager. The image rides on every row; only VLM cells use it."""
+    out = []
+    for row in rows:
+        slug, model_id, computes, *_spec = row.split("|")
+        out += [
+            f"{slug}-{d}-c{ctx}\t\t{d}\t{model_id}\t\t\t{IMAGE_PATH}\t"
+            for d in computes.split(",")
+        ]
+    return out
+
+
 @pytest.mark.skipif(PARAMS["mode"] != "bench", reason="accuracy mode requested")
 def test_bench():
     chipset, rows = stage_device()
-    # Bucket cells by plugin: llama_cpp uses random-ids prefill (`-p N`),
-    # qairt uses prompt_utf8 from a per-ctx text file (it doesn't accept
-    # input_ids — see issue #1008).
-    tsv_by_plugin_ctx: dict[tuple[str, int], list[str]] = {
-        (plugin, ctx): [] for plugin in ("llama_cpp", "qairt") for ctx in CTXS
-    }
-    for row in rows:
-        name, plugin, devs, model_id, vlm, image, *_spec = row.split("|")
-        if plugin not in ("llama_cpp", "qairt"):
-            continue
-        if plugin != "qairt":
-            vlm = image = ""
-        imgpath = IMAGE_PATH if image == "1" else ""
-        for d in devs.split(","):
-            for ctx in CTXS:
-                # Columns 5/6 (tokenizer/mmproj) intentionally blank: the
-                # model manager fills both from the resolved manifest.
-                tsv_by_plugin_ctx[(plugin, ctx)].append(
-                    f"{name}-{plugin}-{d}-c{ctx}\t{plugin}\t{d}\t{model_id}"
-                    f"\t\t\t{imgpath}\t{vlm}"
-                )
+    assert rows, "no model rows produced"
 
-    assert any(tsv_by_plugin_ctx.values()), "no model rows produced"
-
-    failures: list[tuple[str, int]] = []
-    for (plugin, ctx), rows_for_cell in tsv_by_plugin_ctx.items():
-        if not rows_for_cell:
-            continue
-        bucket = "llama" if plugin == "llama_cpp" else "qairt"
-        tsv_path = f"/data/local/tmp/matrix-{bucket}-{ctx}.tsv"
-        prompt_arg = (
-            f"-p {ctx}"
-            if plugin == "llama_cpp"
-            else f"--prompt-file {PROMPTS_PATH}/sample_prompt_{ctx}.txt"
-        )
-        push_tsv(tsv_path, rows_for_cell)
+    failures: list[int] = []
+    for ctx, pp, tg in zip(PARAMS["ctx"], PARAMS["pp"], PARAMS["tg"]):
+        tsv_path = f"/data/local/tmp/matrix-{ctx}.tsv"
+        push_tsv(tsv_path, cell_rows(rows, ctx))
         res = run_adb_command(
             f"cd {BUNDLE_PATH} && {ENV} ./bin/geniex-bench "
             f"--matrix-file {tsv_path} --output-json-dir {RESULTS_PATH} -r 3 "
-            f"-c {ctx} {prompt_arg} "
+            f"-c {ctx} -p {pp} -n {tg} "
             f"--mm-data-dir {MM_CACHE_PATH} --chipset '{chipset}'",
             check=False,
         )
         if res.returncode != 0:
-            failures.append((plugin, ctx))
+            failures.append(ctx)
     listing = run_adb_command(f"ls {RESULTS_PATH}", check=False).stdout
     n_json = sum(1 for ln in listing.splitlines() if ln.strip().endswith(".json"))
-    assert not failures, f"geniex-bench failed for {failures}"
-    assert n_json > 0, (
-        f"no cell JSON produced on device (ls {RESULTS_PATH}: {listing!r})"
-    )
+    assert not failures, f"geniex-bench failed for ctx {failures}"
+    assert (
+        n_json > 0
+    ), f"no cell JSON produced on device (ls {RESULTS_PATH}: {listing!r})"
 
 
 @pytest.mark.skipif(PARAMS["mode"] != "accuracy", reason="bench mode requested")
@@ -130,20 +113,7 @@ def test_accuracy():
     ctx, tg = PARAMS["ctx"][0], PARAMS["tg"][0]
     think = "--think" if PARAMS["think"] else "--no-think"
 
-    # Both plugins take the same prompt file, so one TSV covers every cell.
-    cells = []
-    for row in rows:
-        name, plugin, devs, model_id, vlm, image, *_spec = row.split("|")
-        if plugin not in ("llama_cpp", "qairt"):
-            continue
-        if plugin != "qairt":
-            vlm = image = ""
-        imgpath = IMAGE_PATH if image == "1" else ""
-        cells += [
-            f"{name}-{plugin}-{d}-c{ctx}\t{plugin}\t{d}\t{model_id}"
-            f"\t\t\t{imgpath}\t{vlm}"
-            for d in devs.split(",")
-        ]
+    cells = cell_rows(rows, ctx)
     assert cells, "no model rows produced"
 
     tsv_path = "/data/local/tmp/matrix-accuracy.tsv"

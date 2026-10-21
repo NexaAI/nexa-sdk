@@ -1,10 +1,10 @@
 name: Geniex Accuracy
-run-name: accuracy (${{ inputs.device }} · ${{ inputs.model }} · ${{ inputs.compute }})
+run-name: accuracy (${{ inputs.model }} · ${{ inputs.device || 'QCS9075M' }} · ${{ inputs.compute || 'default units' }})
 
 # Generate text on QDC devices with `geniex-bench --accuracy`, then grade it for
 # quantization damage with Breeze AI.
 #
-# Shaped like bench.yml: load-models fans out a device x model matrix, each cell
+# Shaped like bench.yml: plan fans out a device x model matrix, each cell
 # uploads its own items artifact. Grading then diverges -- one Breeze round trip
 # is expensive, so `grade` merges every cell into a single payload and opens one
 # issue, and the report tables carry a Cell column for cross-model comparison.
@@ -28,11 +28,11 @@ on:
         type: string
         default: "QCS9075M"
       model:
-        description: "Model names from bench-models.json, comma-separated"
+        description: "Model ids org/name[:quant], comma-separated; any model geniex can pull"
         type: string
-        default: "Qwen3-1.7B"
+        default: "unsloth/Qwen3-1.7B-GGUF:Q4_0"
       compute:
-        description: "Compute unit: cpu/gpu/npu/hybrid"
+        description: "Compute units, comma-separated: cpu/gpu/npu/hybrid (blank = bench-models.json units, or cpu,gpu,npu for other models)"
         type: string
         default: "hybrid"
       tokens:
@@ -74,49 +74,36 @@ jobs:
     with:
       upload_artifact: true
 
-  load-models:
-    needs: [build-sdk]
+  plan:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set.outputs.matrix }}
       devices: ${{ steps.set.outputs.devices }}
+      expected_cells: ${{ steps.set.outputs.expected_cells }}
     steps:
       - uses: actions/checkout@v7
       - id: set
         env:
           PICK_DEVICE: ${{ inputs.device }}
           PICK_MODEL: ${{ inputs.model }}
+          PICK_COMPUTE: ${{ inputs.compute }}
         run: |
-          set -euo pipefail
-          MODELS_FILE=sdk/benchmark/qdc/bench-models.json
-
-          csv() { jq -cn --arg s "$1" \
-            '$s | split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length>0))'; }
-
-          devices=$(csv "${PICK_DEVICE:-QCS9075M}")
-          echo "devices=$devices" >> "$GITHUB_OUTPUT"
-
-          picks=$(csv "$PICK_MODEL")
-          matrix=$(jq -c --argjson pick "$picks" \
-            '[.[] | select(.name as $n | $pick | index($n)) | {name, plugin}]' "$MODELS_FILE")
-          if [ "$(jq length <<<"$matrix")" != "$(jq length <<<"$picks")" ]; then
-            echo "::error::model input has unknown name(s): $PICK_MODEL"
-            echo "::error::available: $(jq -r '.[].name' "$MODELS_FILE" | paste -sd, -)"
-            exit 1
-          fi
-          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          python3 sdk/benchmark/qdc/run_qdc_jobs.py \
+            --mode accuracy_plan \
+            --device "$PICK_DEVICE" \
+            --models "$PICK_MODEL" \
+            --compute "$PICK_COMPUTE"
 
   generate:
-    name: ${{ matrix.device }} · ${{ matrix.model.name }} · ${{ inputs.compute }}
-    needs: [build-sdk, load-models]
+    name: ${{ matrix.device }} · ${{ matrix.entry.model }}
+    needs: [build-sdk, plan]
     runs-on: ubuntu-latest
     timeout-minutes: 355 # just under the GitHub-hosted 6h job hard cap
     strategy:
       fail-fast: false
       max-parallel: 4
       matrix:
-        device: ${{ fromJson(needs.load-models.outputs.devices) }}
-        model: ${{ fromJson(needs.load-models.outputs.matrix) }}
+        include: ${{ fromJson(needs.plan.outputs.matrix) }}
     env:
       QDC_API_KEY: ${{ secrets.QDC_API_KEY }}
     steps:
@@ -140,8 +127,8 @@ jobs:
       - uses: ./.github/actions/install-qdc-sdk
       - env:
           DEVICE: ${{ matrix.device }}
-          MODEL_NAME: ${{ matrix.model.name }}
-          COMPUTE: ${{ inputs.compute }}
+          ENTRY: ${{ toJson(matrix.entry) }}
+          SLUG: ${{ matrix.entry.slug }}
           TOKENS: ${{ inputs.tokens }}
           THINK: ${{ inputs.think && '--think' || '--no-think' }}
           PROMPT_LIMIT: ${{ inputs.prompt_limit }}
@@ -150,21 +137,20 @@ jobs:
             --mode accuracy \
             --pkg-dir pkg-geniex \
             --device "$DEVICE" \
-            --model-name "$MODEL_NAME" \
-            --compute "$COMPUTE" \
+            --entry "$ENTRY" \
             --tg "$TOKENS" \
             "$THINK" \
             --prompt-limit "${PROMPT_LIMIT:-0}" \
-            --out "$DEVICE-$MODEL_NAME.json"
+            --out "$DEVICE-$SLUG.json"
       - uses: actions/upload-artifact@v7
         with:
-          name: accuracy-items-${{ matrix.device }}-${{ matrix.model.name }}
-          path: ${{ matrix.device }}-${{ matrix.model.name }}.json
+          name: accuracy-items-${{ matrix.device }}-${{ matrix.entry.slug }}
+          path: ${{ matrix.device }}-${{ matrix.entry.slug }}.json
           if-no-files-found: error
 
   grade:
     name: grade
-    needs: [load-models, generate]
+    needs: [plan, generate]
     if: always() && inputs.grade
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -181,11 +167,11 @@ jobs:
       - name: Note any missing generate jobs
         id: missing-check
         env:
-          DEVICES: ${{ needs.load-models.outputs.devices }}
-          MATRIX: ${{ needs.load-models.outputs.matrix }}
+          MATRIX: ${{ needs.plan.outputs.matrix }}
+          EXPECTED_CELLS: ${{ needs.plan.outputs.expected_cells }}
         run: |
           set -euo pipefail
-          expected=$(( $(jq length <<<"$DEVICES") * $(jq length <<<"$MATRIX") ))
+          expected=$(jq length <<<"$MATRIX")
           mkdir -p items
           got=$(find items -mindepth 1 -maxdepth 1 -type d | wc -l)
           if [ "$got" -lt "$expected" ]; then
@@ -194,9 +180,7 @@ jobs:
           # Every {model}-{device} the matrix should have produced, so the grade
           # report can show a dash row for whichever one(s) came back empty
           # instead of just dropping them.
-          expected_cells=$(jq -cn --argjson d "$DEVICES" --argjson m "$MATRIX" -r \
-            '[$d[] as $dev | $m[] as $mo | "\($mo.name)-\($dev)"] | join(",")')
-          echo "expected_cells=$expected_cells" >> "$GITHUB_OUTPUT"
+          echo "expected_cells=$EXPECTED_CELLS" >> "$GITHUB_OUTPUT"
 
       - name: Render grading payload
         run: |
