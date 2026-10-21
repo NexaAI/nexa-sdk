@@ -45,10 +45,19 @@ class TextIteratorStreamer:
 
         @geniex_token_callback
         def _cb(token_bytes: bytes, _userdata: c_void_p) -> bool:
+            if cancelled.is_set():
+                # A callback that returns False stops generation, but the token
+                # it rejected is still excluded from GenerateOutput.text. Drop
+                # it here so the stream never yields text that is missing from
+                # the final output.
+                return False
             if token_bytes is not None:
                 q.put(token_bytes.decode('utf-8', errors='replace'))
-            # Returning False signals the plugin to break out of its decode loop.
-            return not cancelled.is_set()
+            # Returning True accepts the token into both the KV cache and
+            # GenerateOutput.text. If cancel() races with this callback, finish
+            # accepting the token rather than streaming one the SDK discards;
+            # the next callback observes the flag and stops.
+            return True
 
         # Retain a reference so GC doesn't free the callback while C holds the pointer.
         self._cb_ref = _cb

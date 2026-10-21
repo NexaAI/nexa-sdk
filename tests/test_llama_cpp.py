@@ -158,6 +158,37 @@ def test_vlm_multi_turn(cached, model, test_image, device_map):
         assert out2.profile.prompt_tokens > 0
 
 
+@pytest.mark.vlm
+@pytest.mark.parametrize('device_map', ['cpu'])
+def test_vlm_stream_cancel_matches_final_output(llama_cpp_vlm_paths, test_image, device_map):
+    paths = llama_cpp_vlm_paths
+    with geniex.AutoModelForVision2Seq.from_pretrained(
+        paths.model_path,
+        model_name=_VLM.id,
+        device_map=device_map,
+        mmproj_path=paths.mmproj_path,
+    ) as vlm:
+        prompt = _vlm_prompt(vlm, test_image, 'Describe this image in detail.')
+        streamer = vlm.generate(
+            prompt,
+            max_new_tokens=128,
+            temperature=GREEDY_TEMPERATURE,
+            seed=42,
+            images=[test_image],
+            stream=True,
+        )
+        stream = iter(streamer)
+        chunks = [next(stream)]
+        streamer.cancel()
+        chunks.extend(stream)
+
+        assert streamer.output is not None
+        # A token accepted by the SDK callback is part of GenerateOutput.text.
+        # Cancel must not hand the consumer a token the SDK rejected.
+        assert ''.join(chunks) == streamer.output.text
+        assert streamer.output.profile.stop_reason == 'user'
+
+
 def _vlm_prompt(vlm, image_path: str, text: str) -> str:
     return vlm.tokenizer.apply_chat_template(
         [
