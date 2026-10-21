@@ -117,6 +117,44 @@ paths:
               schema:
                 $ref: "#/components/schemas/StatusResponse"
 
+  /health:
+    get:
+      summary: Liveness and readiness probe
+      description: Served outside the request lock. Returns 503 while a model is loading.
+      operationId: GetHealth
+      servers:
+        - url: /
+      responses:
+        "200":
+          description: Ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+        "503":
+          description: A model is loading
+
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      description: Prometheus text format, counters prefixed with geniex. Only available when the server is started with --metrics; otherwise returns 501.
+      operationId: GetMetrics
+      servers:
+        - url: /
+      responses:
+        "200":
+          description: Prometheus text exposition
+          content:
+            text/plain:
+              schema:
+                type: string
+        "501":
+          description: Metrics are disabled
+
   /v1/models:
     get:
       summary: Lists the currently available models
@@ -164,6 +202,14 @@ components:
       properties:
         alive:
           type: boolean
+        version:
+          type: string
+        uptime_seconds:
+          type: integer
+          format: int64
+        keepalive_seconds:
+          type: integer
+          format: int64
         models:
           type: array
           items:

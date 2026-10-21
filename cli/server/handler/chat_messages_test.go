@@ -175,8 +175,9 @@ func TestBuildLLMMessagesKeepsAssistantTextWithToolCalls(t *testing.T) {
 	if messages[0].Content != "let me look" {
 		t.Errorf("content = %q, want %q", messages[0].Content, "let me look")
 	}
-	if len(messages[0].ToolCalls) != 1 {
-		t.Errorf("tool calls = %+v, want 1", messages[0].ToolCalls)
+	want := geniex_sdk.ToolCall{ID: "c1", Name: "ls", Arguments: "{}"}
+	if len(messages[0].ToolCalls) != 1 || messages[0].ToolCalls[0] != want {
+		t.Errorf("tool calls = %+v, want [%+v]", messages[0].ToolCalls, want)
 	}
 }
 

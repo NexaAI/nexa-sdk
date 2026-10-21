@@ -84,8 +84,8 @@ std::optional<common_params_speculative> build_speculative_params(const geniex_M
     return spar;
 }
 
-llama_context_params build_context_params(
-    const geniex_ModelConfig& config, int32_t n_ctx_default, Device device, const common_params_speculative* spec) {
+llama_context_params build_context_params(const geniex_ModelConfig& config, int32_t n_ctx_default, Device device,
+    const common_params_speculative* spec, OutputReservation output_reservation) {
     // Linux NPU (IQ9/IQ8) is pinned to 128: ggml-hexagon's per-ubatch compute buffer can fail to
     // fastrpc_mmap as one contiguous block at larger sizes on these HTP targets, independent of
     // n_batch/n_ctx. See qcom-ai-hub/geniex#1683.
@@ -120,6 +120,10 @@ llama_context_params build_context_params(
             static_cast<int32_t>(cpar.n_batch), static_cast<int32_t>(cpar.n_seq_max), common_speculative_n_max(spec));
         cpar.n_outputs_max         = std::max<int32_t>(1, limits.total);
         cpar.n_outputs_max_per_seq = std::max<int32_t>(1, limits.per_seq);
+    } else if (output_reservation == OutputReservation::LastPerSequence) {
+        // Reserve one row per sequence instead of one row per ubatch token.
+        cpar.n_outputs_max         = std::max<uint32_t>(1, cpar.n_seq_max);
+        cpar.n_outputs_max_per_seq = 1;
     }
 
     GENIEX_LOG_INFO(

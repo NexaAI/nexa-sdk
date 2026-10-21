@@ -182,6 +182,7 @@ func profile2Timings(p geniex_sdk.ProfileData) timings {
 // request, since geniex serve's request log otherwise ends at "param" and
 // never reports how generation went.
 func logProfile(profile geniex_sdk.ProfileData) {
+	recordProfile(profile)
 	slog.Info("Generation complete",
 		"prompt_tokens", profile.PromptTokens,
 		"prompt_tok_s", profile.PrefillSpeed,

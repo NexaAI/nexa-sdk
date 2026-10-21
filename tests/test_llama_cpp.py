@@ -6,8 +6,10 @@
 from __future__ import annotations
 
 import json
+import logging
 import platform
 import random
+import re
 from pathlib import Path
 
 import geniex
@@ -77,6 +79,80 @@ def _run_multi_turn(llm) -> list[str]:
 
 
 @pytest.mark.llm
+@pytest.mark.parametrize('device_map', _LLM.devices)
+def test_llm_repeated_chat_prompt_reuses_prefix(cached, device_map):
+    cached(_LLM)
+    with geniex.AutoModelForCausalLM.from_pretrained(
+        _LLM.id,
+        precision=_LLM.precision,
+        device_map=device_map,
+    ) as llm:
+        prompt = llm.tokenizer.apply_chat_template(
+            [
+                {'role': 'system', 'content': 'Answer in one short sentence.'},
+                {'role': 'user', 'content': 'Say hello briefly.'},
+            ],
+            tokenize=False,
+            add_generation_prompt=True,
+            enable_thinking=False,
+        )
+        outputs = [
+            llm.generate(prompt, max_new_tokens=16, temperature=GREEDY_TEMPERATURE, seed=LLM_QUALITY_SEED)
+            for _ in range(3)
+        ]
+
+    for index, out in enumerate(outputs, start=1):
+        assert out.text, f'empty completion on identical prompt call {index}'
+        assert out.profile.generated_tokens > 0
+    prompt_tokens = outputs[0].profile.prompt_tokens
+    assert prompt_tokens > 1, f'expected a full initial prefill, got {prompt_tokens} tokens'
+    # Reusing the exact prompt must re-evaluate its last token for fresh logits.
+    assert outputs[1].profile.prompt_tokens == 1
+    assert outputs[2].profile.prompt_tokens == 1
+
+
+@pytest.mark.llm
+@pytest.mark.parametrize('device_map', _LLM.devices)
+def test_llm_prefix_cache_reuse_after_partial_rollback(cached, device_map):
+    cached(_LLM)
+    shared = 'Keep the label ORCHID. Branch details: '
+    first = shared + ('amber ' * 80) + 'Say hello briefly.'
+    second = shared + ('cobalt ' * 32) + 'Say hello briefly.'
+    third = second + ' Add one note.'
+
+    with geniex.AutoModelForCausalLM.from_pretrained(
+        _LLM.id,
+        precision=_LLM.precision,
+        device_map=device_map,
+    ) as llm:
+        prompts = [
+            llm.tokenizer.apply_chat_template(
+                [
+                    {'role': 'system', 'content': 'Answer in one short sentence.'},
+                    {'role': 'user', 'content': content},
+                ],
+                tokenize=False,
+                add_generation_prompt=True,
+                enable_thinking=False,
+            )
+            for content in (first, second, third)
+        ]
+        outputs = [
+            llm.generate(prompt, max_new_tokens=8, temperature=GREEDY_TEMPERATURE, seed=LLM_QUALITY_SEED)
+            for prompt in prompts
+        ]
+
+    for index, out in enumerate(outputs, start=1):
+        assert out.text, f'empty completion on partial-rollback prompt call {index}'
+        assert out.profile.generated_tokens > 0
+    first_tokens, second_tokens, third_tokens = (out.profile.prompt_tokens for out in outputs)
+    assert first_tokens > second_tokens > third_tokens > 0, (
+        'expected full prefill, partial rollback, then reuse of the second prompt prefix; '
+        f'prompt_tokens={first_tokens, second_tokens, third_tokens}'
+    )
+
+
+@pytest.mark.llm
 @pytest.mark.parametrize(('model', 'device_map'), _LLM_MATRIX)
 def test_llm_multi_turn(cached, model, device_map):
     cached(model)
@@ -94,8 +170,7 @@ def test_llm_multi_turn(cached, model, device_map):
 @pytest.mark.llm
 @pytest.mark.parametrize(('model', 'device_map'), _LLM_MATRIX)
 def test_llm_greedy_is_deterministic(cached, model, device_map):
-    # Reloads per run: llama_cpp keeps its KV cache across generate() calls, so a
-    # second call on the same handle continues the first answer.
+    # Separate handles keep this seed comparison independent of cache reuse.
     cached(model)
 
     def _greedy_once(seed: int) -> str:
@@ -185,6 +260,36 @@ def test_vlm_stream_cancel_matches_final_output(llama_cpp_vlm_paths, test_image,
         assert streamer.output is not None
         assert ''.join(chunks) == streamer.output.text
         assert streamer.output.profile.stop_reason == 'user'
+
+
+@pytest.mark.vlm
+@pytest.mark.parametrize('device_map', ['cpu'])
+def test_vlm_context_reserves_one_logits_row(llama_cpp_vlm_paths, device_map, caplog):
+    # Generation and decisions read only llama_get_logits_ith(ctx, -1). A
+    # default context reserves one logits row per ubatch token instead.
+    # init() first: install_log_callback seeds the SDK level from GENIEX_LOG,
+    # which would otherwise overwrite an 'info' set before the first call.
+    geniex.init()
+    geniex.set_log_level('info')
+    with caplog.at_level(logging.INFO, logger='geniex'):
+        with geniex.AutoModelForVision2Seq.from_pretrained(
+            _VLM.id,
+            precision=_VLM.precision,
+            device_map=device_map,
+            n_ctx=512,
+        ) as vlm:
+            context_line = next((r.message for r in caplog.records if 'context params:' in r.message), None)
+            assert context_line is not None, 'VLM context did not log its parameters'
+            params = dict(re.findall(r'(\w+)=([^,\s]+)', context_line))
+            assert params['n_outputs_max'] == params['n_seq_max'], context_line
+            assert params['n_outputs_max_per_seq'] == '1', context_line
+            prompt = vlm.tokenizer.apply_chat_template(
+                [{'role': 'user', 'content': 'Say hi.'}],
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+            out = vlm.generate(prompt, max_new_tokens=1, temperature=GREEDY_TEMPERATURE, seed=42)
+    assert out.profile.prompt_tokens > 0
 
 
 def _vlm_prompt(vlm, image_path: str, text: str) -> str:
@@ -285,6 +390,20 @@ def test_llm_logits_parity(llama_cpp_llm_paths, device_map):
     kl = parity_kl_divergence(ref_last, cand_last)
     assert agree >= PARITY_TOP1_MIN, f'device_map={device_map!r} top1={agree:.3f} < {PARITY_TOP1_MIN}'
     assert kl <= PARITY_KL_MAX, f'device_map={device_map!r} KL={kl:.4f} > {PARITY_KL_MAX}'
+
+
+@pytest.mark.llm
+@pytest.mark.parametrize('device_map', ['cpu'])
+def test_llm_forward_logits_all_positions(llama_cpp_llm_paths, device_map):
+    # This API can request every position, so the LLM context must keep
+    # llama.cpp's batch-sized output reservation. Only the VLM path is reduced.
+    with geniex.AutoModelForCausalLM.from_pretrained(
+        _LLM.id,
+        precision=_LLM.precision,
+        device_map=device_map,
+    ) as llm:
+        rows = llm.forward_logits(PARITY_INPUT_IDS, all_positions=True, top_n=1)
+    assert len(rows) == len(PARITY_INPUT_IDS)
 
 
 @pytest.mark.llm

@@ -39,8 +39,9 @@ pub trait HttpTransport: Send + Sync {
     async fn head(&self, url: &Url, auth: Option<&str>) -> Result<HeadInfo>;
 
     /// Stream bytes `[offset, offset+len)` from `url` into `sink`. Must
-    /// write exactly `len` bytes; clean short reads are retried by the
-    /// transport, while stream and sink errors are surfaced immediately.
+    /// write exactly `len` bytes; clean short reads and response-stream
+    /// errors are retried by the transport, while sink errors are surfaced
+    /// immediately.
     async fn get_range(
         &self,
         url: &Url,
@@ -223,7 +224,7 @@ impl HttpTransport for ReqwestTransport {
         let end_inclusive = offset + len - 1;
         let mut written = 0u64;
         let mut attempt = 0u32;
-        loop {
+        'requests: loop {
             let request_offset = offset + written;
             let range = format!("bytes={request_offset}-{end_inclusive}");
             let mut req = self.client.get(url.clone()).header(RANGE, range.clone());
@@ -263,14 +264,18 @@ impl HttpTransport for ReqwestTransport {
             }
 
             loop {
-                // The executor passes freshly-seeked sinks, so a
-                // mid-stream error always means "retry this range" —
-                // surface as HttpTimeout so the executor's chunk-level
-                // retry machinery picks it up.
-                let chunk = resp
-                    .chunk()
-                    .await
-                    .map_err(|e| Error::HttpTimeout(format!("stream {url} {range}: {e}")))?;
+                let chunk = match resp.chunk().await {
+                    Ok(chunk) => chunk,
+                    Err(e) if written < len && attempt < self.retries => {
+                        attempt += 1;
+                        tokio::time::sleep(self.retry_backoff).await;
+                        crate::logging::warn(&format!("get_range stream retry {attempt}: {e}"));
+                        continue 'requests;
+                    }
+                    Err(e) => {
+                        return Err(Error::HttpTimeout(format!("stream {url} {range}: {e}")));
+                    }
+                };
                 let Some(bytes) = chunk else { break };
                 let remaining = len - written;
                 if bytes.len() as u64 > remaining {
