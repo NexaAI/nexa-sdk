@@ -32,6 +32,7 @@ func serve() *cobra.Command {
 	serveCmd.Flags().String("origins", "*", "Default CORS origins (env: GENIEX_ORIGINS)")
 	serveCmd.Flags().Int("keepalive", 300, "Keepalive seconds (env: GENIEX_KEEPALIVE)")
 	serveCmd.Flags().Bool("metrics", false, "Expose Prometheus metrics at /metrics (env: GENIEX_METRICS)")
+	serveCmd.Flags().String("model", "", "Model to use when request omits model: cached name[:precision] (env: GENIEX_MODEL)")
 	// Model-load defaults applied when a request omits them (llama_cpp only;
 	// per-request body fields still override).
 	serveCmd.Flags().Int32("nctx", 4096, "Default context window size, llama_cpp only (env: GENIEX_NCTX)")
@@ -40,6 +41,11 @@ func serve() *cobra.Command {
 	serveCmd.Flags().String("vit-compute", "", "Default VLM vision encoder compute unit, e.g. CPU or HTP2 (env: GENIEX_VIT_COMPUTE)")
 	serveCmd.Flags().String("power-mode", "", "Default HTP power/clock-management mode: low_power_saver, power_saver, high_power_saver, low_balanced, balanced, high_performance, sustained_high_performance, burst (default: burst) (env: GENIEX_POWER_MODE)")
 	serveCmd.Flags().String("qairt-lib", "", "Run against a different QAIRT runtime: path to a QAIRT SDK root or a folder of QNN libraries, qairt only (env: GENIEX_QAIRT_LIB)")
+	serveCmd.Flags().String("spec-type", "", "Speculative decoding type(s), llama_cpp only (env: GENIEX_SPEC_TYPE)")
+	serveCmd.Flags().String("draft-model", "", "Draft/MTP model for draft-* types: cached name or local GGUF path (env: GENIEX_DRAFT_MODEL)")
+	serveCmd.Flags().Int32("draft-tokens", 0, "Max draft tokens per step, 0 = plugin default of 3 (env: GENIEX_DRAFT_TOKENS)")
+	serveCmd.Flags().Int32("draft-min", 0, "Min draft tokens per step, 0 = llama.cpp default (env: GENIEX_DRAFT_MIN)")
+	serveCmd.Flags().Float32("draft-p-min", 0, "Min greedy draft probability, 0 = llama.cpp default (env: GENIEX_DRAFT_P_MIN)")
 	// HTTPS / TLS flags
 	serveCmd.Flags().Bool("https", false, "Enable HTTPS/TLS (env: GENIEX_HTTPS)")
 	serveCmd.Flags().String("certfile", "cert.pem", "TLS certificate file path (env: GENIEX_CERTFILE)")
@@ -49,6 +55,7 @@ func serve() *cobra.Command {
 	viper.BindPFlag("origins", serveCmd.Flags().Lookup("origins"))
 	viper.BindPFlag("keepalive", serveCmd.Flags().Lookup("keepalive"))
 	viper.BindPFlag("metrics", serveCmd.Flags().Lookup("metrics"))
+	viper.BindPFlag("model", serveCmd.Flags().Lookup("model"))
 	viper.BindPFlag("nctx", serveCmd.Flags().Lookup("nctx"))
 	viper.BindPFlag("ngl", serveCmd.Flags().Lookup("ngl"))
 	viper.BindPFlag("compute", serveCmd.Flags().Lookup("compute"))
@@ -60,6 +67,16 @@ func serve() *cobra.Command {
 	// Bound explicitly so the plugin's own spelling is the only one that works;
 	// AutomaticEnv would otherwise make GENIEX_QAIRTLIB a silent second alias.
 	viper.BindEnv("qairtlib", "GENIEX_QAIRT_LIB")
+	viper.BindPFlag("spectype", serveCmd.Flags().Lookup("spec-type"))
+	viper.BindEnv("spectype", "GENIEX_SPEC_TYPE")
+	viper.BindPFlag("draftmodel", serveCmd.Flags().Lookup("draft-model"))
+	viper.BindEnv("draftmodel", "GENIEX_DRAFT_MODEL")
+	viper.BindPFlag("drafttokens", serveCmd.Flags().Lookup("draft-tokens"))
+	viper.BindEnv("drafttokens", "GENIEX_DRAFT_TOKENS")
+	viper.BindPFlag("draftmin", serveCmd.Flags().Lookup("draft-min"))
+	viper.BindEnv("draftmin", "GENIEX_DRAFT_MIN")
+	viper.BindPFlag("draftpmin", serveCmd.Flags().Lookup("draft-p-min"))
+	viper.BindEnv("draftpmin", "GENIEX_DRAFT_P_MIN")
 	viper.BindPFlag("https", serveCmd.Flags().Lookup("https"))
 	viper.BindPFlag("certfile", serveCmd.Flags().Lookup("certfile"))
 	viper.BindPFlag("keyfile", serveCmd.Flags().Lookup("keyfile"))

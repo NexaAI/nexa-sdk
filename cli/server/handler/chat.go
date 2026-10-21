@@ -55,12 +55,12 @@ type ChatCompletionRequest struct {
 }
 
 func defaultChatCompletionRequest() ChatCompletionRequest {
-	// Prefill llama_cpp knobs with server defaults (--nctx/--ngl/--compute):
-	// ShouldBindJSON only overwrites fields present in the body, so an omitted
-	// knob keeps the default and an explicit one (incl. ngl 0) wins.
+	// Prefill model-load knobs with server defaults. ShouldBindJSON overwrites
+	// fields present in the body, including explicit empty strings and zeros.
 	cfg := config.Get()
 	return ChatCompletionRequest{
 		ChatCompletionNewParams: ChatCompletionNewParams{
+			Model: cfg.Model,
 			// On the deprecated alias, so an explicit max_completion_tokens wins.
 			MaxTokens: param.NewOpt[int64](2048),
 		},
@@ -78,6 +78,11 @@ func defaultChatCompletionRequest() ChatCompletionRequest {
 		RepetitionPenalty: 1.0,
 		GrammarPath:       "",
 		GrammarString:     "",
+		SpecType:          cfg.SpecType,
+		SpecDraftModel:    cfg.DraftModel,
+		SpecNMax:          cfg.DraftTokens,
+		SpecNMin:          cfg.DraftMin,
+		SpecPMin:          cfg.DraftPMin,
 	}
 }
 

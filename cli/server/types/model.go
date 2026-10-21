@@ -18,8 +18,8 @@ type ModelParam struct {
 	Spec        SpecParam
 }
 
-// SpecParam bundles the speculative-decoding knobs sourced from a request; all
-// zero-values mean "spec disabled". Only llama_cpp consumes these fields.
+// SpecParam bundles the effective speculative-decoding knobs for model loading.
+// An empty Type disables speculation; only llama_cpp consumes these fields.
 type SpecParam struct {
 	Type       string
 	DraftModel string

@@ -50,6 +50,7 @@ go_cgo_test(
         "decide_test.go",
         "infer_test.go",
         "model_test.go",
+        "serve_test.go",
     ],
     embed = [":geniex_lib"],
     gotags = [
@@ -57,8 +58,10 @@ go_cgo_test(
         "avx",
     ],
     deps = [
+        "//cli/internal/config",
         "//cli/internal/decision",
         "//cli/internal/testutil",
+        "@com_github_spf13_viper//:viper",
     ],
 )
 
