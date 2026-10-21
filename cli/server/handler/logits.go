@@ -57,9 +57,13 @@ type ForwardRow struct {
 	Logits   []float32 `json:"logits"`
 }
 
-func ForwardLogits(c *gin.Context) {
+func defaultForwardLogitsRequest() ForwardLogitsRequest {
 	cfg := config.Get()
-	req := ForwardLogitsRequest{NCtx: cfg.NCtx, Ngl: cfg.Ngl, Compute: cfg.Compute, VitCompute: cfg.VitCompute, PowerMode: cfg.PowerMode}
+	return ForwardLogitsRequest{Model: cfg.Model, NCtx: cfg.NCtx, Ngl: cfg.Ngl, Compute: cfg.Compute, VitCompute: cfg.VitCompute, PowerMode: cfg.PowerMode}
+}
+
+func ForwardLogits(c *gin.Context) {
+	req := defaultForwardLogitsRequest()
 	if err := c.ShouldBindJSON(&req); err != nil {
 		slog.Error("Failed to bind JSON", "error", err)
 		c.JSON(http.StatusBadRequest, map[string]any{"error": err.Error()})

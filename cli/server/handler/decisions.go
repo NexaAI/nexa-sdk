@@ -341,12 +341,16 @@ func decisionErrorStatus(code int32) int {
 	}
 }
 
-func Decisions(c *gin.Context) {
+func defaultDecisionsRequest() decisionsRequest {
 	cfg := config.Get()
-	req := decisionsRequest{
-		NCtx: cfg.NCtx, Ngl: cfg.Ngl, Compute: cfg.Compute,
+	return decisionsRequest{
+		Model: cfg.Model, NCtx: cfg.NCtx, Ngl: cfg.Ngl, Compute: cfg.Compute,
 		VitCompute: cfg.VitCompute, PowerMode: cfg.PowerMode,
 	}
+}
+
+func Decisions(c *gin.Context) {
+	req := defaultDecisionsRequest()
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1<<20)
 	if err := c.ShouldBindJSON(&req); err != nil {
 		var tooLarge *http.MaxBytesError

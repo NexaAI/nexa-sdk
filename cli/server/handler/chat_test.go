@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/spf13/viper"
 )
 
 func TestReasoningSeparated(t *testing.T) {
@@ -74,6 +76,115 @@ func TestSinks(t *testing.T) {
 		}
 		if got := content.String(); got != "<think>reason</think>answer" {
 			t.Errorf("content = %q, want raw inline", got)
+		}
+	})
+}
+
+func TestChatBindingUsesServerModel(t *testing.T) {
+	t.Setenv("GENIEX_MODEL", "")
+	viper.Set("model", "local/default:Q4_0")
+	t.Cleanup(func() { viper.Set("model", nil) })
+
+	_, req := bindRequest(t, `{"messages":[{"role":"user","content":"Hello"}]}`)
+	if req.Model != "local/default:Q4_0" {
+		t.Errorf("chat model = %q, want server default", req.Model)
+	}
+}
+
+func TestServeModelDefaultRequests(t *testing.T) {
+	t.Setenv("GENIEX_MODEL", "")
+	viper.Set("model", "local/default:Q4_0")
+	t.Cleanup(func() { viper.Set("model", nil) })
+
+	chat := defaultChatCompletionRequest()
+	completion := defaultCompletionRequest()
+	decisions := defaultDecisionsRequest()
+	logits := defaultForwardLogitsRequest()
+	for _, tc := range []struct {
+		name  string
+		req   any
+		model func() string
+	}{
+		{"chat", &chat, func() string { return chat.Model }},
+		{"completions", &completion, func() string { return string(completion.Model) }},
+		{"decisions", &decisions, func() string { return decisions.Model }},
+		{"logits", &logits, func() string { return logits.Model }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := json.Unmarshal([]byte(`{}`), tc.req); err != nil {
+				t.Fatal(err)
+			}
+			if got := tc.model(); got != "local/default:Q4_0" {
+				t.Errorf("omitted model = %q, want server default", got)
+			}
+			if err := json.Unmarshal([]byte(`{"model":"local/request:Q8_0"}`), tc.req); err != nil {
+				t.Fatal(err)
+			}
+			if got := tc.model(); got != "local/request:Q8_0" {
+				t.Errorf("request model = %q, want explicit model", got)
+			}
+			if err := json.Unmarshal([]byte(`{"model":""}`), tc.req); err != nil {
+				t.Fatal(err)
+			}
+			if got := tc.model(); got != "" {
+				t.Errorf("empty explicit model = %q, want empty", got)
+			}
+		})
+	}
+}
+
+func TestSpeculativeDecodingDefaultsAndRequestOverrides(t *testing.T) {
+	for _, name := range []string{
+		"GENIEX_SPEC_TYPE",
+		"GENIEX_DRAFT_MODEL",
+		"GENIEX_DRAFT_TOKENS",
+		"GENIEX_DRAFT_MIN",
+		"GENIEX_DRAFT_P_MIN",
+	} {
+		t.Setenv(name, "")
+	}
+
+	t.Run("unset defaults leave speculation off", func(t *testing.T) {
+		p := defaultChatCompletionRequest()
+		if p.SpecType != "" || p.SpecDraftModel != "" {
+			t.Errorf("speculation enabled without defaults: type=%q draft_model=%q", p.SpecType, p.SpecDraftModel)
+		}
+		if p.SpecNMax != 0 || p.SpecNMin != 0 || p.SpecPMin != 0 {
+			t.Errorf("speculative decoding knobs without defaults = (%d, %d, %g), want zero values", p.SpecNMax, p.SpecNMin, p.SpecPMin)
+		}
+	})
+
+	t.Run("request fields override defaults including empty and zero", func(t *testing.T) {
+		for key, value := range map[string]any{
+			"spectype":    "draft-mtp",
+			"draftmodel":  "draft.gguf",
+			"drafttokens": int32(6),
+			"draftmin":    int32(2),
+			"draftpmin":   float32(0.65),
+		} {
+			viper.Set(key, value)
+			t.Cleanup(func() { viper.Set(key, nil) })
+		}
+		p := defaultChatCompletionRequest()
+		if p.SpecType != "draft-mtp" || p.SpecDraftModel != "draft.gguf" || p.SpecNMax != 6 || p.SpecNMin != 2 || p.SpecPMin != 0.65 {
+			t.Fatalf("chat MTP defaults = %+v, want configured defaults", p)
+		}
+		partial := defaultChatCompletionRequest()
+		if err := json.Unmarshal([]byte(`{"spec_n_max":1}`), &partial); err != nil {
+			t.Fatal(err)
+		}
+		if partial.SpecType != "draft-mtp" || partial.SpecDraftModel != "draft.gguf" || partial.SpecNMax != 1 || partial.SpecNMin != 2 || partial.SpecPMin != 0.65 {
+			t.Errorf("partial request override = %+v, want only spec_n_max changed", partial)
+		}
+		body := `{"spec_type":"","spec_draft_model":"","spec_n_max":0,"spec_n_min":0,"spec_p_min":0}`
+		if err := json.Unmarshal([]byte(body), &p); err != nil {
+			t.Fatalf("unmarshal %s: %v", body, err)
+		}
+		if p.SpecType != "" || p.SpecDraftModel != "" {
+			t.Errorf("empty request strings did not override defaults: type=%q draft_model=%q", p.SpecType, p.SpecDraftModel)
+		}
+		if p.SpecNMax != 0 || p.SpecNMin != 0 || p.SpecPMin != 0 {
+			t.Errorf("zero request values did not override defaults: (%d, %d, %g)", p.SpecNMax, p.SpecNMin, p.SpecPMin)
 		}
 	})
 }

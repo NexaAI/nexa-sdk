@@ -240,7 +240,7 @@ components:
     # ---------- Decisions ----------
     DecisionRequest:
       type: object
-      required: [model, input, questions]
+      required: [input, questions]
       example:
         model: "local/decision-model:Q4_K_M"
         input: "Our checkout has returned 500 errors since 9am."
@@ -268,7 +268,7 @@ components:
       properties:
         model:
           type: string
-          description: Replace the example name with a cached GenieX llama_cpp LLM from geniex list.
+          description: Cached llama_cpp LLM or VLM; omit only when a server model is set via `geniex serve --model` / `GENIEX_MODEL`.
         input:
           description: Nonempty text or user messages containing text only. Images are unsupported.
           oneOf:
@@ -538,7 +538,7 @@ components:
     # ---------- Logits ----------
     ForwardLogitsRequest:
       type: object
-      required: [model, input_ids]
+      required: [input_ids]
       example:
         model: "qualcomm/Qwen3-4B-Instruct-2507"
         input_ids: [1, 2, 3, 4]
@@ -547,6 +547,7 @@ components:
       properties:
         model:
           type: string
+          description: LLM model; omit only when a server model is set via `geniex serve --model` / `GENIEX_MODEL`.
         input_ids:
           type: array
           items:
@@ -598,7 +599,7 @@ components:
     # ---------- Completions ----------
     CompletionRequest:
       type: object
-      required: [model, prompt]
+      required: [prompt]
       example:
         model: "qualcomm/Qwen3-4B-Instruct-2507"
         prompt: "def fibonacci(n):"
@@ -608,7 +609,7 @@ components:
       properties:
         model:
           type: string
-          description: ID of the model to use (LLM only)
+          description: LLM model; omit only when a server model is set via `geniex serve --model` / `GENIEX_MODEL`.
         prompt:
           type: string
           description: The prompt to complete, passed to the model verbatim (no chat template). A single-element string array is also accepted.
@@ -725,7 +726,7 @@ components:
     # ---------- Chat ----------
     ChatCompletionRequest:
       type: object
-      required: [model, messages]
+      required: [messages]
       example:
         model: "qualcomm/Qwen3-4B-Instruct-2507"
         messages:
@@ -740,8 +741,7 @@ components:
       properties:
         model:
           type: string
-          description: ID of the model to use
-          default: "qualcomm/Qwen3-4B-Instruct-2507"
+          description: Model to use; omit only when a server model is set via `geniex serve --model` / `GENIEX_MODEL`.
         messages:
           type: array
           items:
@@ -847,25 +847,25 @@ components:
           description: HTP power/clock-management mode, shared by qairt and llama_cpp. Omit to use the server default set via `geniex serve --power-mode` / `GENIEX_POWER_MODE` (burst out of the box).
         spec_type:
           type: string
-          enum: [draft-mtp, draft-eagle3, draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
-          description: Speculative decoding type (llama_cpp only). Omit or set to empty to disable. `draft-*` variants require `spec_draft_model`; `ngram-*` variants are self-speculative.
+          enum: ["", draft-mtp, draft-eagle3, draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
+          description: Speculative decoding type (llama_cpp only). Omit to use the `geniex serve --spec-type` default (disabled out of the box); set to empty to disable for this request. `draft-*` variants require `spec_draft_model`; `ngram-*` variants are self-speculative.
         spec_draft_model:
           type: string
-          description: Draft/MTP model for `draft-*` spec types (llama_cpp only). Catalogue name `org/repo[:precision]` (must be pulled via `geniex pull` beforehand — the server does NOT auto-download) or absolute path to a local GGUF file.
+          description: Draft/MTP model for `draft-*` spec types (llama_cpp only). Omit to use the `geniex serve --draft-model` default. Catalogue name `org/repo[:precision]` (must be pulled via `geniex pull` beforehand — the server does NOT auto-download) or absolute path to a local GGUF file.
         spec_n_max:
           type: integer
-          minimum: 1
-          description: Max draft tokens per verification step (llama_cpp only). Default 3 when omitted.
+          minimum: 0
+          description: Max draft tokens per verification step (llama_cpp only). Omit to use the `geniex serve --draft-tokens` default (0 out of the box, which means the plugin default of 3).
         spec_n_min:
           type: integer
           minimum: 0
-          description: Min draft tokens per verification step (llama_cpp only). 0 = llama.cpp default.
+          description: Min draft tokens per verification step (llama_cpp only). Omit to use the `geniex serve --draft-min` default; 0 = llama.cpp default.
         spec_p_min:
           type: number
           format: float
           minimum: 0
           maximum: 1
-          description: Min greedy draft probability (llama_cpp only). 0 = llama.cpp default.
+          description: Min greedy draft probability (llama_cpp only). Omit to use the `geniex serve --draft-p-min` default; 0 = llama.cpp default.
 
     ChatMessage:
       type: object

@@ -43,6 +43,7 @@ func defaultCompletionRequest() CompletionRequest {
 	cfg := config.Get()
 	return CompletionRequest{
 		CompletionNewParams: CompletionNewParams{
+			Model: openai.CompletionNewParamsModel(cfg.Model),
 			// OpenAI's documented default for the legacy completions endpoint.
 			MaxTokens: param.NewOpt[int64](16),
 		},
