@@ -183,8 +183,6 @@ def test_vlm_stream_cancel_matches_final_output(llama_cpp_vlm_paths, test_image,
         chunks.extend(stream)
 
         assert streamer.output is not None
-        # A token accepted by the SDK callback is part of GenerateOutput.text.
-        # Cancel must not hand the consumer a token the SDK rejected.
         assert ''.join(chunks) == streamer.output.text
         assert streamer.output.profile.stop_reason == 'user'
 
