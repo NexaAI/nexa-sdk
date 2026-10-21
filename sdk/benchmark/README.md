@@ -74,10 +74,10 @@ docker run --rm -u $(id -u):$(id -g) \
 ## Run
 
 The binary loads `geniex.dll` / `libgeniex.so` and the per-plugin backends the
-same way the Python binding does — from the installed `pkg-geniex/lib` (and
-`lib/llama_cpp`) layout. On Windows run it from the build/install tree so the
-DLLs resolve; on Android/Linux export `LD_LIBRARY_PATH=./lib:./lib/llama_cpp`
-and `GENIEX_PLUGIN_PATH=./lib` (see [`notes/run.md`](../../notes/run.md)).
+same way the Python binding does — from the installed `pkg-geniex/lib` layout
+(with plugin libraries in subdirectories). On Windows run it from the build/install
+tree so the DLLs resolve; on Android/Linux export `LD_LIBRARY_PATH=./lib` and
+`GENIEX_PLUGIN_PATH=./lib` (see [`notes/run.md`](../../notes/run.md)).
 
 ```bash
 # LLM, llama_cpp — point -m at a .gguf file

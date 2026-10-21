@@ -8,6 +8,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+if(ANDROID)
+    # CMake disables RPATH on Android, but API 24+ supports $ORIGIN in DT_RUNPATH.
+    set(CMAKE_SHARED_LIBRARY_RUNTIME_C_FLAG "-Wl,-rpath,")
+    set(CMAKE_SHARED_LIBRARY_RUNTIME_CXX_FLAG "-Wl,-rpath,")
+endif()
+
 # Set RPATH configuration for all targets to use relative paths
 set(CMAKE_BUILD_RPATH "$ORIGIN")
 set(CMAKE_INSTALL_RPATH "$ORIGIN")

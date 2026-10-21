@@ -47,11 +47,7 @@ PARAMS = (
     if Path(HOST_PARAMS).exists()
     else {"mode": "bench"}
 )
-ENV = (
-    f"LD_LIBRARY_PATH={BUNDLE_PATH}/lib:{BUNDLE_PATH}/lib/llama_cpp:"
-    f"{BUNDLE_PATH}/lib/qairt ADSP_LIBRARY_PATH={BUNDLE_PATH}/lib "
-    f"GENIEX_PLUGIN_PATH={BUNDLE_PATH}/lib"
-)
+ENV = f"LD_LIBRARY_PATH={BUNDLE_PATH}/lib GENIEX_PLUGIN_PATH={BUNDLE_PATH}/lib"
 
 
 def stage_device() -> tuple[str, list[str]]:

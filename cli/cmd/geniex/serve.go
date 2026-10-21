@@ -12,6 +12,7 @@ import (
 	geniex_sdk "github.com/qualcomm/GenieX/bindings/go"
 	"github.com/qualcomm/GenieX/cli/cmd/geniex/common"
 	"github.com/qualcomm/GenieX/cli/server"
+	"github.com/qualcomm/GenieX/cli/server/handler"
 )
 
 // serve creates a command to start the GenieX server.
@@ -30,6 +31,7 @@ func serve() *cobra.Command {
 	serveCmd.Flags().String("host", "127.0.0.1:18181", "Default server address (env: GENIEX_HOST)")
 	serveCmd.Flags().String("origins", "*", "Default CORS origins (env: GENIEX_ORIGINS)")
 	serveCmd.Flags().Int("keepalive", 300, "Keepalive seconds (env: GENIEX_KEEPALIVE)")
+	serveCmd.Flags().Bool("metrics", false, "Expose Prometheus metrics at /metrics (env: GENIEX_METRICS)")
 	// Model-load defaults applied when a request omits them (llama_cpp only;
 	// per-request body fields still override).
 	serveCmd.Flags().Int32("nctx", 4096, "Default context window size, llama_cpp only (env: GENIEX_NCTX)")
@@ -46,6 +48,7 @@ func serve() *cobra.Command {
 	viper.BindPFlag("host", serveCmd.Flags().Lookup("host"))
 	viper.BindPFlag("origins", serveCmd.Flags().Lookup("origins"))
 	viper.BindPFlag("keepalive", serveCmd.Flags().Lookup("keepalive"))
+	viper.BindPFlag("metrics", serveCmd.Flags().Lookup("metrics"))
 	viper.BindPFlag("nctx", serveCmd.Flags().Lookup("nctx"))
 	viper.BindPFlag("ngl", serveCmd.Flags().Lookup("ngl"))
 	viper.BindPFlag("compute", serveCmd.Flags().Lookup("compute"))
@@ -83,6 +86,7 @@ func serve() *cobra.Command {
 			os.Exit(1)
 		}
 
+		handler.Version = Version
 		server.Serve()
 
 		geniex_sdk.DeInit()

@@ -14,6 +14,7 @@ go_library(
         "model.go",
         "decisions.go",
         "health.go",
+        "metrics.go",
         "status.go",
     ],
     importpath = "github.com/qualcomm/GenieX/cli/server/handler",
@@ -44,7 +45,9 @@ go_cgo_test(
         "completion_test.go",
         "decisions_test.go",
         "health_test.go",
+        "metrics_test.go",
         "status_test.go",
     ],
     embed = [":handler"],
+    deps = ["@com_github_spf13_viper//:viper"],
 )

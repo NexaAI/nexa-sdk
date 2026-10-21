@@ -8,7 +8,7 @@
 //! callbacks fire with monotonically-increasing totals.
 
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Once};
 use std::time::Duration;
 
 use model_manager_core::executor::{
@@ -20,6 +20,14 @@ use tempfile::tempdir;
 use url::Url;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, Request, ResponseTemplate};
+
+static CHUNK_SIZE_ENV_INIT: Once = Once::new();
+
+fn initialize_chunk_size_env() {
+    CHUNK_SIZE_ENV_INIT.call_once(|| {
+        std::env::set_var("GENIEX_DL_CHUNK_SIZE", "16384");
+    });
+}
 
 fn fast_transport() -> Arc<dyn HttpTransport> {
     Arc::new(
@@ -88,7 +96,7 @@ fn http_spec(name: &str, url: Url) -> FileSpec {
 
 #[tokio::test]
 async fn downloads_multi_file_multi_chunk_and_marks_progress() {
-    std::env::set_var("GENIEX_DL_CHUNK_SIZE", "16384");
+    initialize_chunk_size_env();
 
     let server = MockServer::start().await;
     let body_a = make_body(64 * 1024, 0x11);
@@ -151,7 +159,7 @@ async fn downloads_multi_file_multi_chunk_and_marks_progress() {
 
 #[tokio::test]
 async fn resume_skips_completed_chunks() {
-    std::env::set_var("GENIEX_DL_CHUNK_SIZE", "16384");
+    initialize_chunk_size_env();
 
     let server = MockServer::start().await;
     let body = make_body(64 * 1024, 0x55);
@@ -224,7 +232,7 @@ async fn resume_skips_completed_chunks() {
 
 #[tokio::test]
 async fn cancel_via_callback_returns_cancelled() {
-    std::env::set_var("GENIEX_DL_CHUNK_SIZE", "16384");
+    initialize_chunk_size_env();
 
     let server = MockServer::start().await;
     let body = make_body(64 * 1024, 0x33);
@@ -280,7 +288,7 @@ async fn cancel_via_callback_returns_cancelled() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn chunk_failure_stops_queued_chunks_from_starting() {
-    std::env::set_var("GENIEX_DL_CHUNK_SIZE", "16384");
+    initialize_chunk_size_env();
 
     let server = MockServer::start().await;
     let body = make_body(32 * 16 * 1024, 0x5C);
@@ -334,7 +342,6 @@ async fn chunk_failure_stops_queued_chunks_from_starting() {
         hits < total_chunks,
         "queued chunks should bail once a chunk failed, but all {total_chunks} were attempted ({hits} GETs)",
     );
-    std::env::remove_var("GENIEX_DL_CHUNK_SIZE");
 }
 
 #[tokio::test]

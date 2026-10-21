@@ -18,7 +18,7 @@ python3 -m pip install --user --no-warn-script-location "pytest>=7.0" "pytest-re
 cd "$BUNDLE" || { echo "FATAL: bundle missing at $BUNDLE"; exit 1; }
 chmod +x bin/* 2>/dev/null
 
-export LD_LIBRARY_PATH="$BUNDLE/lib:$BUNDLE/lib/llama_cpp:$BUNDLE/lib/qairt:$LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH="$BUNDLE/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export GENIEX_PLUGIN_PATH="$BUNDLE/lib"
 export GENIEX_LIB_PATH="$BUNDLE/lib"
 export PYTHONPATH="$TC/bindings/python:$PYTHONPATH"

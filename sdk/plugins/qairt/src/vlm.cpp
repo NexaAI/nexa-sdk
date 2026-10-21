@@ -84,6 +84,7 @@ int32_t QairtVlm::create(const geniex_VlmCreateInput* input) {
         return GENIEX_ERROR_COMMON_FILE_NOT_FOUND;
     }
     qairt::apply_power_mode(input->config.power_mode, llm_cfg);
+    qairt::runtime::apply_optrace_config(llm_cfg);
 
     // The vision encoder is driven as its own graph, so keep it out of the LLM
     // shard list even if ctx-bins lists it.
