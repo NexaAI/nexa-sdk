@@ -19,6 +19,7 @@ func RegisterRoot(r *gin.Engine) {
 		c.Redirect(http.StatusFound, "/docs/ui/")
 	})
 	r.GET("/status", handler.Status)
+	r.GET("/health", handler.Health)
 	r.GET("/metrics", handler.Metrics)
 }
 
