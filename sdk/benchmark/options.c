@@ -12,14 +12,15 @@ static void usage(const char* argv0) {
     fprintf(stderr,
         "Usage:\n"
         "  Single cell:\n"
-        "    %s --plugin {llama_cpp|qairt} --device {cpu|gpu|npu|hybrid|auto} \\\n"
+        "    %s [--plugin {llama_cpp|qairt}] --device {cpu|gpu|npu|hybrid|auto} \\\n"
         "                              -m <path> [options]\n"
         "\n"
         "  Matrix (one process, shared geniex_init/deinit):\n"
         "    %s --matrix-file <path> [--output-json-dir <dir>] [shared options]\n"
         "\n"
         "Required (single-cell mode):\n"
-        "  --plugin            llama_cpp | qairt\n"
+        "  --plugin            llama_cpp | qairt. Optional for a model-manager id: the\n"
+        "                      plugin the manager recorded for the model is used\n"
         "  --device            cpu | gpu | npu | hybrid | auto (default auto)\n"
         "  -m, --model VALUE   either a filesystem path (.gguf or bundle dir) or\n"
         "                      a model-manager id `org/repo[:quant]`. The id form\n"
@@ -40,6 +41,7 @@ static void usage(const char* argv0) {
         "                      filesystem path.\n"
         "                      image_paths is comma-separated; vlm non-empty forces\n"
         "                      VLM mode (QAIRT bundles without an mmproj)\n"
+        "                      plugin may be empty for a model-manager id\n"
         "                      lines starting with '#' are ignored\n"
         "\n"
         "Optional (llama-bench-style names):\n"
@@ -49,9 +51,6 @@ static void usage(const char* argv0) {
         "                         positions with `rand() %% vocab_size` (BOS at pos 0\n"
         "                         when the model wants one) and feeds them via\n"
         "                         input_ids, so `pp` is exactly N for every model.\n"
-        "                         Requires the plugin to implement\n"
-        "                         geniex_llm_get_model_info; the tool fails with a\n"
-        "                         clear error otherwise.\n"
         "  -n, --n-gen N          tokens to generate per run; default 128\n"
         "  -c, --ctx-size N       model n_ctx (0 = from model, default 0)\n"
         "  -t, --threads N        generation threads (0 = SDK default)\n"
@@ -81,9 +80,8 @@ static void usage(const char* argv0) {
         "                         then the plugin default, e.g. 0.95 for qairt/llama_cpp)\n"
         "  --seed N               default 42; also seeds rand() for prompt ids\n"
         "  --prompt-file PATH     opt out of random-ids prefill: read a UTF-8 prompt\n"
-        "                         from PATH and feed it via prompt_utf8 instead. The\n"
-        "                         only way to bench plugins that don't implement\n"
-        "                         geniex_llm_get_model_info. With this flag, reported\n"
+        "                         from PATH and feed it via prompt_utf8 instead. With\n"
+        "                         this flag, reported\n"
         "                         `pp` is the tokenizer's count, NOT --n-prompt.\n"
         "                         For qairt, `pp` and prefill tok/s are reported over\n"
         "                         the padded length ceil(pp/128)*128, matching the\n"
@@ -282,6 +280,8 @@ static const char** build_prompt_list(char* prompt_buf, int32_t* n_out) {
 
 void parse_args(int argc, char** argv, options_t* o) {
     o->plugin                  = NULL;
+    o->model_id                = NULL;
+    o->mm.plugin_id            = NULL;
     o->device                  = "auto";
     o->device_id               = NULL;
     o->model_path              = NULL;
@@ -498,12 +498,12 @@ void parse_args(int argc, char** argv, options_t* o) {
      * matrix file, not from argv. Checked before the run-count sanity below so
      * a single-cell invocation still reports the missing required flag first. */
     if (!o->matrix_file) {
-        if (!o->plugin) {
-            fprintf(stderr, "ERROR: --plugin is required\n");
-            exit(2);
-        }
         if (!o->model_path) {
             fprintf(stderr, "ERROR: --model is required\n");
+            exit(2);
+        }
+        if (!o->plugin && looks_like_path(o->model_path)) {
+            fprintf(stderr, "ERROR: --plugin is required for a model path\n");
             exit(2);
         }
     }

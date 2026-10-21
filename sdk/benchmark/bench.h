@@ -53,6 +53,7 @@ typedef struct {
      * matrix col 8). Otherwise a passively-present mmproj in a bundle would
      * redirect a `-p N` LLM bench into the VLM run loop (#1090). */
     const char* model_path;
+    const char* model_id; /* model_path as given when it is a model-manager id, else NULL */
     const char* tokenizer_path;
     const char* mmproj_path;
     bool        force_vlm; /* run VLM path even without an mmproj (QAIRT bundles) */
@@ -64,7 +65,8 @@ typedef struct {
         char* mmproj;
         char* tokenizer;
         char* draft_model;
-        bool  is_vlm; /* manager classified it as VLM (geniex_ModelType) */
+        char* plugin_id; /* owner plugin the manager recorded for the model */
+        bool  is_vlm;    /* manager classified it as VLM (geniex_ModelType) */
     } mm;
     const char* image_paths[MAX_PATHS];
     int32_t     image_count;

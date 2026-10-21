@@ -361,14 +361,10 @@ void run_llm(const options_t* o, const device_t* dev, run_result_t* out) {
     check(geniex_llm_create(&cin, &llm), "geniex_llm_create");
 
     /* --prompt-file feeds prompt_utf8 verbatim, so `pp` is the tokenizer's
-     * count rather than n_prompt — the only mode plugins that reject
-     * input_ids (today: qairt) can run. Without it, random ids. */
+     * count rather than n_prompt. Without it, random ids. */
     int32_t* tokens = NULL;
     if (!o->prompt_buf) {
-        tokens = make_random_tokens(llm,
-            o,
-            "Pass --prompt-file PATH to use text-prompt mode instead, "
-            "or see https://github.com/qualcomm/GenieX/issues/1008.");
+        tokens = make_random_tokens(llm, o, "Pass --prompt-file PATH to use text-prompt mode instead.");
     }
 
     geniex_SamplerConfig    sampler;

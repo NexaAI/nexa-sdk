@@ -211,12 +211,13 @@ Run `geniex-bench --help` for the full flag list.
 
 ```json
 {
-  "schema_version": "6",
+  "schema_version": "7",
   "cell_id": "Qwen3-0.6B-llama_cpp-cpu",
   "plugin": "llama_cpp",
   "device": "cpu",
   "device_id": null,
   "model_path": ".../Qwen_Qwen3-0.6B-Q4_0.gguf",
+  "model_id": "ggml-org/Qwen3-0.6B-GGUF:Q4_0",
   "model_size_bytes": 368705536,
   "geniex_version": "v0.3.1",
   "qairt_version": "2.45",
