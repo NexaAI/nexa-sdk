@@ -45,10 +45,11 @@ class TextIteratorStreamer:
 
         @geniex_token_callback
         def _cb(token_bytes: bytes, _userdata: c_void_p) -> bool:
+            if cancelled.is_set():
+                return False
             if token_bytes is not None:
                 q.put(token_bytes.decode('utf-8', errors='replace'))
-            # Returning False signals the plugin to break out of its decode loop.
-            return not cancelled.is_set()
+            return True
 
         # Retain a reference so GC doesn't free the callback while C holds the pointer.
         self._cb_ref = _cb
