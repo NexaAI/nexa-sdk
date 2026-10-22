@@ -1,7 +1,7 @@
 # Local validation: 22 October 2026
 
 GenieX base: `9d456b3131f799e651d87e769ef56e046ff96ac3`.
-Local branch: `feat/phonon-tts`. No Qualcomm PR has been opened.
+Local branch: `feat/phonon-tts`. Measurements were recorded before draft submission.
 
 Hardware: Snapdragon X Elite Windows ARM64 laptop, SC8380XP, Windows build 26200.
 QAIRT host and v73 DSP runtime: `2.45.0.260326`.
@@ -18,6 +18,7 @@ Native build: MSVC ARM64 19.50, Release; Rust ARM64 model-manager; Gradium sourc
 | Go cgo build, streaming, cancellation, panic containment and reuse | Passed |
 | Go real NPU synthesis, both English models | Passed, two requests per model |
 | Android Kotlin class and ARM64 Android JNI object compilation | Passed |
+| Android ARM64 plugin and all three shared engine translation units | Passed, NDK 28.1.13356709, API 31, QAIRT 2.45 headers; no linking/runtime claim |
 | Kotlin result constructor vs JNI signature | `(IIJDDDDII)V` verified |
 | Real-device regression scenarios | **26 passed** across both models |
 | Clang-format 18.1.8 and Ruff 0.6.9 checks, gofmt, git whitespace checks | Passed |

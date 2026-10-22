@@ -7,6 +7,9 @@ Genie dialog engine. A GGUF file alone is not an input to this backend.
 
 ## Scope and dependencies
 
+See [platform portability](PORTABILITY.md) for the shared API, Android/Linux
+requirements and the distinction between GGUF weights and compiled QNN bundles.
+
 - Tested: Phonon 31M English and 40M English compiled for SC8380XP on Windows
   ARM64, QAIRT **2.45.0.260326**, default bundled voice, 24 kHz mono audio.
 - `device="npu"` is mandatory. CPU and GPU choices fail; there is no fallback.
