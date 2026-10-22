@@ -5,7 +5,7 @@
 # This layer bakes in build-essential, ccache, rustup, the aarch64 Rust
 # target, and the cc-rs compatibility symlinks so _build-sdk.yml can skip
 # the per-run apt-get / rustup installation.
-ARG UPSTREAM_TAG=v0.7
+ARG UPSTREAM_TAG=v0.8
 FROM ghcr.io/snapdragon-toolchain/arm64-linux:${UPSTREAM_TAG}
 
 ENV DEBIAN_FRONTEND=noninteractive
