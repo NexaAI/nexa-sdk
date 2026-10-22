@@ -154,12 +154,11 @@ enable_testing()
 #   backend-registry construction). See
 #   sdk/plugins/llama_cpp/src/htp_session.cpp for the caller.
 # * llama-opencl-adreno-cpy-constreg.patch works around an Adreno OpenCL
-#   compiler crash: kernel_cpy_f32_f32_pack's min(ne00, get_local_size(0))
-#   emits an IMINrr with two constant-class operands, which the driver's
-#   instruction validator rejects (NumConstRegsError). See GenieX #1250. The
-#   same fix is applied to kernel_add: the strength-reduced
-#   get_local_size(0) * nb0X step emits an equivalent UMULLrr, hit on a
-#   QCS9075 board (Adreno driver 1.855.3) during VLM inference. See
+#   compiler crash (NumConstRegsError: the driver's instruction validator
+#   rejects ops with two constant-class operands). kernel_cpy_f32_f32_pack is no
+#   longer patched: upstream disables it on A6X (ggml-org/llama.cpp#30176). In
+#   kernel_add the strength-reduced get_local_size(0) * nb0X step emits a UMULLrr,
+#   hit on a QCS9075 board (Adreno driver 1.855.3) during VLM inference. See
 #   qcom-ai-hub/geniex#1566. The Q4_K noshuffle GEMV workaround
 #   (ADRENO_6XX_Q4K_CONSTREG_WORKAROUND) is enabled on every Adreno 6xx
 #   (originally only 643); Adreno 663 on IQ-9075 hits the same UMULLrr on
@@ -174,10 +173,6 @@ enable_testing()
 #   GEMV to the 1row kernel when CL_KERNEL_WORK_GROUP_SIZE is below the 64x16
 #   work-group it launches. Adreno 663 caps it at 896, so clEnqueueNDRangeKernel
 #   returned -54 and aborted gemma-4 on IQ-9075.
-# * llama-opencl-adreno-q4k-large-image.patch routes Q4_K weights whose quant plane
-#   exceeds CL_DEVICE_IMAGE_MAX_BUFFER_SIZE to the flat GEMV. Adreno 663 caps it at
-#   2^26 texels; gemma-4-E4B token_embd (2560x262144) needs 83886080, so
-#   clCreateImage returned -40 and aborted.
 if(GENIEX_PLUGIN_LLAMA_CPP)
     set(_LLAMA_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/../third-party/llama.cpp")
     set(_LLAMA_PATCHES)
@@ -190,8 +185,7 @@ if(GENIEX_PLUGIN_LLAMA_CPP)
         list(APPEND _LLAMA_PATCHES
             "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-opencl-adreno-cpy-constreg.patch"
             "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-opencl-adreno-xmem-gemm-off.patch"
-            "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-opencl-adreno-f16-mrow-wgsize.patch"
-            "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-opencl-adreno-q4k-large-image.patch")
+            "${CMAKE_CURRENT_SOURCE_DIR}/patches/llama-opencl-adreno-f16-mrow-wgsize.patch")
     endif()
     find_package(Git QUIET REQUIRED)
     foreach(_LLAMA_PATCH ${_LLAMA_PATCHES})
