@@ -55,6 +55,9 @@ func TestTTSPhononNPU(t *testing.T) {
 	if bundle == "" {
 		t.Skip("compiled Phonon bundle required")
 	}
+	if err := SetQairtRuntimePath(os.Getenv("GENIEX_PHONON_TEST_RUNTIME")); err != nil {
+		t.Fatal(err)
+	}
 	if err := Init(); err != nil {
 		t.Fatal(err)
 	}

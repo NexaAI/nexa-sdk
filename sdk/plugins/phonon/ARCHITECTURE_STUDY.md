@@ -48,7 +48,7 @@ No Phonon architecture entry was found in the pinned llama.cpp registry.
 Qwen3-TTS/Pocket TTS architecture entries do not prove their full NPU execution
 through GenieX; that was not tested in this study.
 
-## Material gaps in the current draft
+## Material gaps found at study revision 4c5e30b
 
 1. **Runtime selection differs from GenieX's contract.** GenieX deliberately
    latches QAIRT selection before init and documents one runtime per process.
@@ -128,4 +128,28 @@ be added to the verified QNN NPU route.
 - Link/package a real Android application and run it on supported hardware;
   perform Linux/VENTUNO Q validation separately.
 
-Those are recommended next steps, not completed tests or maintainer requirements.
+At study revision these were recommended next steps, not completed tests or
+maintainer requirements. The follow-up below records subsequent implementation;
+the historical findings above describe the earlier draft.
+
+## Implementation follow-up
+
+The current Phonon plugin requires the existing process-wide runtime setter
+before SDK initialization and inherits that selection. Its old per-model path
+field is an optional consistency assertion, preserving the struct layout while
+rejecting conflicting directories. Common SDK-root/host/DSP path resolution now
+lives in `internal/qnn_paths.h`, shared with QAIRT. Existing core latch semantics
+are unchanged. Applications must explicitly choose a compatible runtime; model
+metadata does not select or change it.
+
+The Gradium dependency exposes an embedding log callback. The plugin forwards
+its diagnostics through the GenieX sink without redirecting process stderr.
+CMake enforces the documented exact source commit and a clean runner source
+tree. The Phonon target now sets the nested UNIX RUNPATH used by other plugins.
+These changes do not establish complete Android/Linux packaging.
+
+`test_mixed.py` provides the resident Qwen/Phonon switching and queued-request
+check. It uses explicit application scheduling, not an implicit promise of safe
+simultaneous graph execution. [VALIDATION.md](VALIDATION.md) records the actual
+hardware results and the checks still needed. ABI acceptance, engine ownership,
+upstream dependency acceptance, and Android/Linux device validation remain open.

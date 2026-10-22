@@ -56,7 +56,7 @@ same interface if compatible, but each requires its own model and hardware tests
 
 ## Android compile check
 
-This model-free check compiles the plugin, its three Phonon engine translation
+This model-free check compiles the plugin, its four Phonon engine translation
 units and JNI bridge to Android ARM64 objects. It does not link the complete
 GenieX SDK, build an AAR/APK, or prove QNN runtime compatibility.
 

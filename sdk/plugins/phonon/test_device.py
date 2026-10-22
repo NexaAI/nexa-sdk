@@ -27,9 +27,25 @@ def main():
         ]
         dll_handles = [os.add_dll_directory(str(p.resolve())) for p in dirs]
 
-    from geniex import GenieXError, GenieXTTS, get_compute_unit_list
+    from geniex import (
+        GenieXError,
+        GenieXTTS,
+        get_compute_unit_list,
+        get_qairt_runtime_path,
+        init,
+        set_qairt_runtime_path,
+    )
+
+    set_qairt_runtime_path(str(Path(args.runtime).resolve()))
 
     records = []
+    init()
+    try:
+        set_qairt_runtime_path(str(Path(args.runtime).resolve()))
+        raise AssertionError("runtime selection changed after init")
+    except GenieXError as exc:
+        assert exc.code == -100008
+        records.append(dict(test="runtime_locked_after_init", passed=True))
 
     def expect_failure(label, bundle, **overrides):
         params = dict(
@@ -43,6 +59,15 @@ def main():
             with GenieXTTS(bundle, **params):
                 raise AssertionError(f"{label}: unexpectedly loaded")
         except GenieXError as exc:
+            expected = {
+                "reject_cpu": -100002,
+                "reject_gpu": -100002,
+                "wrong_soc": -100201,
+                "conflicting_runtime_assertion": -100008,
+                "missing_text_frontend": -100201,
+                "verification_requires_profile": -100001,
+            }
+            assert exc.code == expected[label], (label, exc.code)
             records.append(
                 dict(test=label, bundle=str(bundle), status=exc.code, passed=True)
             )
@@ -53,7 +78,7 @@ def main():
             expect_failure("reject_gpu", bundle, device="gpu")
             expect_failure("wrong_soc", bundle, soc_model="NOT_A_SUPPORTED_SOC")
             expect_failure(
-                "missing_runtime",
+                "conflicting_runtime_assertion",
                 bundle,
                 runtime_path=str(Path(bundle).resolve() / "no-runtime"),
             )
@@ -69,7 +94,6 @@ def main():
                 os.environ["PHONON_QNN_PROFILE"] = "1"
             with GenieXTTS(
                 bundle,
-                runtime_path=args.runtime,
                 text_library=args.text_library,
                 soc_model=args.soc,
                 verify_npu=True,
@@ -79,6 +103,10 @@ def main():
                 ] == ["npu"]
                 records.append(
                     dict(test="only_npu_advertised", bundle=bundle, passed=True)
+                )
+                assert get_qairt_runtime_path() == str(Path(args.runtime).resolve())
+                records.append(
+                    dict(test="inherits_process_runtime", bundle=bundle, passed=True)
                 )
 
                 def checked(text, **kwargs):

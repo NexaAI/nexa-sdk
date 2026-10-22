@@ -28,7 +28,8 @@ typedef struct {
     const char* plugin_id;
     const char* model_path;   /**< Compiled bundle, never arbitrary code from a download */
     const char* device;       /**< Phonon currently accepts only "npu"; no fallback */
-    const char* runtime_path; /**< Trusted QAIRT runtime library directory */
+    const char* runtime_path; /**< Optional assertion of the global QAIRT selection, not a per-model override.
+                               * Set geniex_set_qairt_runtime_path before geniex_init. NULL/empty inherits it. */
     const char* text_library; /**< Trusted Phonon native text frontend library */
     const char* language;
     const char* soc_model; /**< Must match the compiled bundle */

@@ -52,6 +52,7 @@ def main():
         repo / "sdk/plugins/phonon/plugin.cpp",
         engine / "ptts_text.cpp",
         engine / "qnn_model.cpp",
+        engine / "qnn_log.cpp",
         engine / "phonon.cpp",
         repo / "bindings/android/app/src/main/cpp/tts_bridge_jni.cpp",
     ]

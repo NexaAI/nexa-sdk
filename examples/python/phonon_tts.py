@@ -45,7 +45,9 @@ def main():
             paths.append(lib if Path(lib).is_dir() else str(Path(lib).parent))
         dll_handles = [os.add_dll_directory(str(Path(p).resolve())) for p in paths]
 
-    from geniex import GenieXTTS
+    from geniex import GenieXTTS, set_qairt_runtime_path
+
+    set_qairt_runtime_path(str(Path(args.runtime).resolve()))
 
     args.out.mkdir(parents=True, exist_ok=True)
     load_start = time.perf_counter()

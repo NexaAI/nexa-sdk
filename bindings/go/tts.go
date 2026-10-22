@@ -25,6 +25,7 @@ import (
 )
 
 type TtsCreateInput struct {
+	// RuntimePath asserts the shared QAIRT selection; call SetQairtRuntimePath before Init.
 	PluginID, ModelPath, Device, RuntimePath, TextLibrary, Language, SocModel string
 	VerifyNPU                                                                 bool
 }

@@ -2,8 +2,9 @@
 
 The [architecture study](ARCHITECTURE_STUDY.md) compares this prototype with
 GenieX's existing QAIRT pipelines and pinned llama.cpp speech implementations.
-Runtime governance, dependency integration and mixed-session validation remain
-unresolved; the draft is not a ready-to-merge architecture recommendation.
+The draft uses GenieX's shared runtime selection, forwards QNN logs, and pins its
+external engine. The modality ABI and dependency ownership still need maintainer
+review; Android and Linux releases require additional platform validation.
 
 This contribution adds a speech API and an opt-in `phonon_qnn` plugin. It runs
 Gradium's metadata-driven Phonon generator through QNN HTP, including its prefill
@@ -30,14 +31,17 @@ requirements and the distinction between GGUF weights and compiled QNN bundles.
   endpoints and automatic Hugging Face model resolution are outside this patch.
 
 Supply the Gradium source tree explicitly as `GENIEX_PHONON_SOURCE`. The tested
-revision is [`b2896b91f138edb5a4aa56277bd6b63091fffa73`](https://github.com/shivaylamba/xn-ptts/commit/b2896b91f138edb5a4aa56277bd6b63091fffa73),
+revision is [`9ee0eb5706d18ef1e401dc8b9d732c886089a5ab`](https://github.com/shivaylamba/xn-ptts/commit/9ee0eb5706d18ef1e401dc8b9d732c886089a5ab),
 the Windows QNN portability work in [Gradium PR #243](https://github.com/gradium-ai/xn-ptts/pull/243).
 That dependency needs an accepted Windows support revision before a final
 upstream release. No third-party source or weights are copied into GenieX.
 The optional linked Gradium code is used under its MIT license; its license and
 the nlohmann JSON license are installed under `licenses/phonon_qnn`.
-Gradium's native engine currently writes its own QNN diagnostics to stderr;
-messages added by this GenieX plugin use `GENIEX_LOG_*`.
+CMake enforces that exact Git revision and a clean `qnn/runner` source tree.
+The dependency's embedding callback forwards QNN diagnostics through GenieX's
+log sink with the `Phonon QNN:` prefix; standalone Gradium tools retain stderr.
+Install the log callback and level before SDK init/plugin discovery. The vendor
+QNN log handle captures its level at model creation.
 
 ## Build on Windows ARM64
 
@@ -50,6 +54,9 @@ No system configuration is changed by these scripts.
 Build the trusted Rust text frontend first, from the reviewed Gradium checkout:
 
 ```powershell
+git -C C:\src\xn-ptts fetch https://github.com/shivaylamba/xn-ptts.git 9ee0eb5706d18ef1e401dc8b9d732c886089a5ab
+git -C C:\src\xn-ptts checkout --detach 9ee0eb5706d18ef1e401dc8b9d732c886089a5ab
+
 cargo build --manifest-path C:\src\xn-ptts\qnn\text-ffi\Cargo.toml `
   --target aarch64-pc-windows-msvc --release --locked
 
@@ -90,14 +97,51 @@ Python applications can use the API directly after setting the SDK/plugin and
 trusted runtime loader paths, as shown in `examples/python/phonon_tts.py`:
 
 ```python
-from geniex import GenieXTTS
+from geniex import GenieXTTS, set_qairt_runtime_path
 
-with GenieXTTS(bundle, runtime_path=qairt_libs, text_library=text_dll,
+# Before any SDK initialization or model creation, for ALL QNN models.
+set_qairt_runtime_path(qairt_root)
+with GenieXTTS(bundle, text_library=text_dll,
               soc_model="SC8380XP", verify_npu=True) as speech:
     result = speech.synthesize("Welcome to the local voice assistant.")
     # result.pcm is float32 mono PCM; stream via on_audio=callback if desired.
     assert result.prefill_npu_ms > 0 and result.step_npu_ms > 0
 ```
+
+Select one compatible QAIRT SDK root or flat host-library directory before
+`geniex_init`. Phonon requires explicit selection; it does not infer a runtime
+from the model or late environment changes. `runtime_path`, when supplied to TTS,
+is only a consistency assertion: a different host directory fails. SDK-root and
+host-directory aliases that resolve to the same directory are accepted. Never
+load another QNN version into that process.
+
+## Resident language and speech models
+
+Build with both `GENIEX_PLUGIN_QAIRT=ON` and `GENIEX_PLUGIN_PHONON=ON` using the
+normal [SDK build prerequisites](../../../notes/build.md). The isolated helper
+above intentionally builds only speech; add `-WithQairt` to build both plugins.
+Initialize QAIRT's recursive submodules as described in the build guide and use
+a short checkout/build path. The helper disables MSVC file tracking for its build
+invocation to avoid the tracker's additional path limit. It changes no machine
+settings. Use context bundles compatible with the
+same selected runtime. On Windows, the integration check can be run after setting
+`PYTHONPATH`, `GENIEX_LIB_PATH` and `GENIEX_PLUGIN_PATH` to that combined SDK:
+
+```powershell
+python sdk/plugins/phonon/test_mixed.py `
+  --qwen C:\models\Qwen3-4B-Instruct-2507 `
+  --models C:\models\phonon31 C:\models\phonon40 `
+  --runtime C:\Qualcomm\AIStack\QAIRT\2.45.0.260326 `
+  --text-library C:\build\ptts_text.dll --soc SC8380XP `
+  --out C:\results\mixed-npu
+```
+
+This keeps Qwen resident, generates multiple utterances, cancels speech, resumes
+Qwen, and queues overlapping application requests using an application lock.
+It checks positive Phonon accelerator events, Qwen's explicit `qairt:npu` route,
+and actual loaded Windows QNN module paths. It rejects loaded CPU/GPU providers.
+The SDK does not add a global cross-engine scheduler or promise safe simultaneous
+graph execution. See [validation results](VALIDATION.md) for measured coverage.
 
 ## Contracts, lifecycle and compatibility
 
@@ -151,7 +195,8 @@ python .\sdk\plugins\phonon\test_device.py `
   --out C:\results\geniex-phonon\device-tests.json
 ```
 
-This checks CPU/GPU rejection, wrong SoC, missing runtime/frontend, verification
+This checks CPU/GPU rejection, wrong SoC, conflicting runtime assertions,
+post-init runtime locking, inherited selection, missing frontend, verification
 without profiling, cancellation, callback exceptions, reuse, noncumulative
 profiles, multichunk generation and invalid voices. No network is used at
 inference time.

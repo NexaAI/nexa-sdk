@@ -27,3 +27,6 @@ file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/run-$<CONFIG>.cmake" CONTENT
     "file(MAKE_DIRECTORY \"${CMAKE_CURRENT_BINARY_DIR}/scan-$<CONFIG>/mock_tts\" \"${CMAKE_CURRENT_BINARY_DIR}/scan-$<CONFIG>/legacy\")\nfile(COPY \"$<TARGET_FILE:tts_mock>\" DESTINATION \"${CMAKE_CURRENT_BINARY_DIR}/scan-$<CONFIG>/mock_tts\")\nfile(COPY \"$<TARGET_FILE:tts_legacy>\" DESTINATION \"${CMAKE_CURRENT_BINARY_DIR}/scan-$<CONFIG>/legacy\")\nexecute_process(COMMAND \"${CMAKE_COMMAND}\" -E env \"GENIEX_PLUGIN_PATH=${CMAKE_CURRENT_BINARY_DIR}/scan-$<CONFIG>\" \"$<TARGET_FILE:tts_contract>\" RESULT_VARIABLE result)\nif(NOT result EQUAL 0)\nmessage(FATAL_ERROR \"TTS contracts failed: \${result}\")\nendif()\n")
 add_test(NAME tts_contract COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/run-$<CONFIG>.cmake")
 set_tests_properties(tts_contract PROPERTIES TIMEOUT 30)
+add_executable(tts_qnn_paths qnn_paths.cpp)
+target_include_directories(tts_qnn_paths PRIVATE ../../include)
+add_test(NAME tts_qnn_paths COMMAND tts_qnn_paths)

@@ -38,13 +38,15 @@ class GenieXTTS:
     ``device='npu'`` is the only Phonon device. ``verify_npu=True`` additionally
     requires PHONON_QNN_PROFILE=1 and positive prefill and step accelerator times.
     cancel() is thread safe. Do not close from inside an audio callback.
+    Select the shared runtime with set_qairt_runtime_path() before SDK init.
+    runtime_path is an optional consistency assertion, not an override.
     """
 
     def __init__(
         self,
         model_path,
         *,
-        runtime_path,
+        runtime_path='',
         text_library,
         soc_model,
         language='en',
