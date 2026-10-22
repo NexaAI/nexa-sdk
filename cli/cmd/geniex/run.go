@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
 	"time"
 
 	"github.com/bytedance/sonic"
@@ -94,7 +95,22 @@ func run() *cobra.Command {
 	return runCmd
 }
 
+func grammarForRun(path, inline string) (string, error) {
+	if inline != "" || path == "" {
+		return inline, nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("read grammar file %q: %w", path, err)
+	}
+	return string(data), nil
+}
+
 func runCompletions(ctx context.Context, name string, modelType geniex_sdk.ModelType) error {
+	grammar, err := grammarForRun(grammarPath, grammarString)
+	if err != nil {
+		return err
+	}
 
 	// warm up
 	spin := render.NewSpinner("loading model...")
@@ -106,7 +122,7 @@ func runCompletions(ctx context.Context, name string, modelType geniex_sdk.Model
 	if systemPrompt != "" {
 		warmUpRequest.Messages = append(warmUpRequest.Messages, openai.SystemMessage(systemPrompt))
 	}
-	_, err := client.Chat.Completions.New(ctx,
+	_, err = client.Chat.Completions.New(ctx,
 		warmUpRequest,
 		option.WithJSONSet("ngl", ngl),
 		option.WithJSONSet("nctx", nctx),
@@ -193,8 +209,7 @@ func runCompletions(ctx context.Context, name string, modelType geniex_sdk.Model
 				option.WithJSONSet("top_k", topK),
 				option.WithJSONSet("min_p", minP),
 				option.WithJSONSet("repetition_penalty", repetitionPenalty),
-				option.WithJSONSet("grammar_path", grammarPath),
-				option.WithJSONSet("grammar_string", grammarString),
+				option.WithJSONSet("grammar_string", grammar),
 				option.WithJSONSet("ngl", ngl),
 				option.WithJSONSet("nctx", nctx),
 				option.WithJSONSet("compute", computeUnit),
