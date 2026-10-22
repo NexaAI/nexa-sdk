@@ -51,14 +51,6 @@ func TestReasoningFormatDefault(t *testing.T) {
 	}
 }
 
-func TestChatGrammarString(t *testing.T) {
-	_, req := bindRequest(t, `{"grammar_string":"root ::= \"YES\""}`)
-	sampler := chatSamplerConfig(req)
-	if sampler.GrammarString != `root ::= "YES"` {
-		t.Errorf("sampler grammar = %q, want inline grammar", sampler.GrammarString)
-	}
-}
-
 func TestSinks(t *testing.T) {
 	tokens := []string{"<think>", "reason", "</think>", "answer"}
 

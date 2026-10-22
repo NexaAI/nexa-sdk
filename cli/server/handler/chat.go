@@ -297,7 +297,17 @@ func runChat[T, M any](c *gin.Context, param ChatCompletionRequest, modelParam t
 		return
 	}
 
-	sampler := chatSamplerConfig(param)
+	sampler := &geniex_sdk.SamplerConfig{
+		Temperature:       float32(param.Temperature.Value),
+		TopP:              float32(param.TopP.Value),
+		TopK:              param.TopK,
+		MinP:              param.MinP,
+		RepetitionPenalty: param.RepetitionPenalty,
+		PresencePenalty:   float32(param.PresencePenalty.Value),
+		FrequencyPenalty:  float32(param.FrequencyPenalty.Value),
+		Seed:              int32(param.Seed.Value),
+		GrammarString:     param.GrammarString,
+	}
 	prompt, gen, err := prepare(acquired.Model, prepareInput[M]{
 		Messages: messages,
 		Param:    param,
@@ -382,20 +392,6 @@ func runChat[T, M any](c *gin.Context, param ChatCompletionRequest, modelParam t
 		}
 		logProfile(profile)
 		writeBlockingResponse(c, content.String(), reasoning.String(), profile, parseTool, tools)
-	}
-}
-
-func chatSamplerConfig(param ChatCompletionRequest) *geniex_sdk.SamplerConfig {
-	return &geniex_sdk.SamplerConfig{
-		Temperature:       float32(param.Temperature.Value),
-		TopP:              float32(param.TopP.Value),
-		TopK:              param.TopK,
-		MinP:              param.MinP,
-		RepetitionPenalty: param.RepetitionPenalty,
-		PresencePenalty:   float32(param.PresencePenalty.Value),
-		FrequencyPenalty:  float32(param.FrequencyPenalty.Value),
-		Seed:              int32(param.Seed.Value),
-		GrammarString:     param.GrammarString,
 	}
 }
 
