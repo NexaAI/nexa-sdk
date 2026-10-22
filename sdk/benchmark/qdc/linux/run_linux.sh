@@ -7,19 +7,18 @@
 # QDC extracts the artifact zip to /data/local/tmp/TestContent/ and runs this
 # via /bin/bash. Anything under /data/local/tmp/QDC_logs/ is auto-uploaded.
 # run_qdc_jobs.py substitutes:
-#   {MODELS}  → `name|plugin|csv_devices|model_id|vlm|image` lines
+#   {MODELS}  → `slug|model_id|csv_compute|spec_type|draft_id|draft_tokens` lines
 #   {CHIPSET} → AI Hub chipset slug (e.g. qualcomm-qcs9075)
 #   {MODE}    → `bench` or `accuracy`
 #   {THINK}   → `--think` or `--no-think` (accuracy only)
-# Each cell's column-4 model_id is resolved on the device by the model-
-# manager C API (multi-connection HTTPS, byte-range resume) on first
-# reference; the cached copy is reused across the ctx sweep.
+# Each cell's model_id is resolved on the device by the model-manager C API
+# (multi-connection HTTPS, byte-range resume) on first reference; the cached
+# copy is reused across the ctx sweep. The plugin column is left empty:
+# geniex-bench takes the plugin the manager recorded for the model.
 #
 # Two modes share the model plan:
-#   bench    — ctx sweep {512, 1024, 4096} for speed. llama_cpp prefills from
-#              random ids (`-p N`, like llama-bench `pp{N}`), qairt from a
-#              pre-trimmed `sample_prompt_${ctx}.txt` (it rejects pre-tokenized
-#              input_ids, #1008), so each plugin gets its own per-ctx TSV.
+#   bench    — ctx sweep {512, 1024, 4096} for speed; prefill from random ids
+#              (`-p N`, like llama-bench `pp{N}`).
 #   accuracy — one pass over the same chat-templated prompt file for every cell;
 #              the `[gen ]` lines in this log are the result, not the timings.
 
@@ -62,34 +61,26 @@ ACC_TSV=/data/local/tmp/matrix-accuracy.tsv
 # ------------------------------- plan ---------------------------------------
 : > "$ACC_TSV"
 for ctx in "${CTX_ARR[@]}"; do
-  : > "/data/local/tmp/matrix-llama-${ctx}.tsv"
-  : > "/data/local/tmp/matrix-qairt-${ctx}.tsv"
+  : > "/data/local/tmp/matrix-${ctx}.tsv"
 done
 
-# Columns 5/6 (tokenizer/mmproj) blank: the model manager fills both.
+# Columns 5/6 (tokenizer/mmproj) blank: the model manager fills both. The image
+# goes on every row; geniex-bench only feeds it to VLM cells.
 emit_row() { # $1 = cell ctx, $2 = target tsv
-  printf '%s-%s-%s-c%s\t%s\t%s\t%s\t\t\t%s\t%s\n' \
-    "$name" "$plugin" "$d" "$1" "$plugin" "$d" "$model_id" "$imgpath" "$vlm" >> "$2"
+  printf '%s-%s-c%s\t\t%s\t%s\t\t\t%s\t\n' \
+    "$slug" "$d" "$1" "$d" "$model_id" "$IMG" >> "$2"
 }
 
-while IFS='|' read -r name plugin devs model_id vlm image _spec_type _draft_id _draft_tokens; do
-  [ -z "$name" ] && continue
-  echo "=== plan $name id=$model_id ==="
-  case "$plugin" in
-    qairt)     bucket=qairt ;;
-    llama_cpp) bucket=llama ;;
-    *) echo "WARN: unknown plugin $plugin in $name, skipping"; continue ;;
-  esac
-  [ "$bucket" != "qairt" ] && { vlm=""; image=""; }
-  imgpath=""
-  [ "$image" = "1" ] && imgpath="$IMG"
+while IFS='|' read -r slug model_id computes _spec_type _draft_id _draft_tokens; do
+  [ -z "$slug" ] && continue
+  echo "=== plan $slug id=$model_id ==="
   IFS=','
-  for d in $devs; do
+  for d in $computes; do
     if [ "$MODE" = accuracy ]; then
       emit_row "${CTX_ARR[0]}" "$ACC_TSV"
     else
       for ctx in "${CTX_ARR[@]}"; do
-        emit_row "$ctx" "/data/local/tmp/matrix-${bucket}-${ctx}.tsv"
+        emit_row "$ctx" "/data/local/tmp/matrix-${ctx}.tsv"
       done
     fi
   done
@@ -115,26 +106,15 @@ else
     ctx="${CTX_ARR[$i]}"
     pp="${PP_ARR[$i]}"
     tg="${TG_ARR[$i]}"
-    llama_tsv="/data/local/tmp/matrix-llama-${ctx}.tsv"
-    qairt_tsv="/data/local/tmp/matrix-qairt-${ctx}.tsv"
+    tsv="/data/local/tmp/matrix-${ctx}.tsv"
+    [ -s "$tsv" ] || continue
 
-    if [ -s "$llama_tsv" ]; then
-      echo "=== matrix llama_cpp ctx=$ctx pp=$pp tg=$tg (random-ids prefill) ==="
-      cat "$llama_tsv"
-      ./bin/geniex-bench --matrix-file "$llama_tsv" --output-json-dir "$OUT" -r 3 \
-        -c "$ctx" -p "$pp" -n "$tg" \
-        --mm-data-dir "$MM_CACHE" --chipset "{CHIPSET}"
-      echo "rc=$?  ($(ls "$OUT" | wc -l) cell json files so far)"
-    fi
-
-    if [ -s "$qairt_tsv" ]; then
-      echo "=== matrix qairt ctx=$ctx tg=$tg (prompt-file) ==="
-      cat "$qairt_tsv"
-      ./bin/geniex-bench --matrix-file "$qairt_tsv" --output-json-dir "$OUT" -r 3 \
-        -c "$ctx" -n "$tg" --prompt-file "$PROMPTS/sample_prompt_${ctx}.txt" \
-        --mm-data-dir "$MM_CACHE" --chipset "{CHIPSET}"
-      echo "rc=$?  ($(ls "$OUT" | wc -l) cell json files so far)"
-    fi
+    echo "=== matrix ctx=$ctx pp=$pp tg=$tg ==="
+    cat "$tsv"
+    ./bin/geniex-bench --matrix-file "$tsv" --output-json-dir "$OUT" -r 3 \
+      -c "$ctx" -p "$pp" -n "$tg" \
+      --mm-data-dir "$MM_CACHE" --chipset "{CHIPSET}"
+    echo "rc=$?  ($(ls "$OUT" | wc -l) cell json files so far)"
   done
 fi
 echo "=== done ==="

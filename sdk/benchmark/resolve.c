@@ -204,12 +204,22 @@ int resolve_model_id(options_t* o, const char* id_in) {
     o->mm.tokenizer  = paths.tokenizer_path;
     /* The CLI's _is_vlm() signal (3). */
     o->mm.is_vlm     = (paths.model_type == GENIEX_MODEL_TYPE_VLM);
-    paths.model_path = paths.mmproj_path = paths.tokenizer_path = NULL;
-    /* model_dir / model_name / plugin_id aren't consumed here; free via the
+    o->mm.plugin_id  = paths.plugin_id;
+    paths.model_path = paths.mmproj_path = paths.tokenizer_path = paths.plugin_id = NULL;
+    /* model_dir / model_name aren't consumed here; free via the
      * paths_free() helper to keep the allocator pairing intact. */
     geniex_model_paths_free(&paths);
 
     o->model_path = o->mm.model_path;
+    o->model_id   = id_in;
+    if (!o->plugin || !*o->plugin) {
+        if (!o->mm.plugin_id || !*o->mm.plugin_id) {
+            fprintf(stderr, "ERROR: model manager recorded no plugin for %s; pass --plugin\n", id_in);
+            return 1;
+        }
+        o->plugin = o->mm.plugin_id;
+        fprintf(stderr, "[mm  ] %s -> plugin %s\n", id_in, o->plugin);
+    }
     /* QAIRT VLM bundles carry no mmproj and the dispatcher has no LLM factory
      * for a VLM model_id, so such a bundle would hard-fail inside run_llm. */
     if (o->mm.is_vlm && o->plugin && strcmp(o->plugin, "qairt") == 0 && !o->force_vlm) {
@@ -351,6 +361,10 @@ void free_mm_paths(options_t* o) {
     if (o->mm.draft_model) {
         geniex_free(o->mm.draft_model);
         o->mm.draft_model = NULL;
+    }
+    if (o->mm.plugin_id) {
+        geniex_free(o->mm.plugin_id);
+        o->mm.plugin_id = NULL;
     }
 }
 

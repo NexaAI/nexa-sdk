@@ -24,7 +24,6 @@ import re
 import shutil
 import subprocess
 import tempfile
-import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -45,16 +44,10 @@ MODELS_FILE = HERE / "bench-models.json"
 # under the GitHub-hosted 6h job cap.
 JOB_TIMEOUT = 19800
 
-# release_assets.json is published per model on the qualcomm HuggingFace org;
-# the download_url values inside it point at the qaihub-public-assets S3 bucket.
-HF_BASE = "https://huggingface.co/qualcomm"
-# Default precision for qairt release_assets.json lookups.
-AIHUB_PRECISION = "w4a16"
 # Staged into every artifact and fed to VLM cells; reuses the committed VLM
 # e2e fixture (tests/conftest.py TEST_IMAGE_PATH).
 TEST_IMAGE = HERE.parents[2] / "cli" / "server" / "docs" / "ui" / "favicon-32x32.png"
-# QDC device code -> AI Hub chipset slug (the keys under
-# precisions.<precision>.chipset_assets in release_assets.json).
+# QDC device code -> AI Hub chipset slug, passed to the device-side model pull.
 CHIPSET = {
     "QCS8275": "qualcomm-qcs8275",
     "QCS9075M": "qualcomm-qcs9075",
@@ -65,6 +58,12 @@ CHIPSET = {
     "SM8750": "qualcomm-snapdragon-8-elite-for-galaxy",
     "SM8850": "qualcomm-snapdragon-8-elite-gen5-for-galaxy",
 }
+ALL_DEVICES = ["QCS9075M", "SC8380XP", "SC8480XP", "SM8750", "SM8850"]
+ACCURACY_DEVICES = ["SM8850"]
+SPEC_DEVICES = {"SC8480XP"}
+# Compute units tried for a model that is not in bench-models.json. geniex-bench
+# resolves the plugin from the model itself and skips the units qairt lacks.
+DEFAULT_COMPUTE = ["cpu", "gpu", "npu"]
 
 
 def platform_for(device: str) -> str:
@@ -77,93 +76,106 @@ def platform_for(device: str) -> str:
     raise SystemExit(f"unknown device chipset: {device}")
 
 
-def _resolve_aihub_url(m: dict, device: str) -> str | None:
-    """Resolve a qairt genie bundle download URL from a model's
-    release_assets.json, published on the qualcomm HuggingFace org.
-
-    Reads the current schema:
-        precisions.<precision>.chipset_assets.<slug>.genie.download_url
-
-    The returned URL points at the qaihub-public-assets S3 bucket. Used only
-    for the host-side bench report / chipset probe — the device-side mm pull
-    does the actual download via the model's "qualcomm/<id>" alias."""
-    slug = CHIPSET.get(device)
-    if slug is None:
-        return None
-    hf_repo = m.get("hf_repo")
-    if not hf_repo:
-        raise SystemExit(f"{m.get('name')}: missing hf_repo for aihub model")
-    url = f"{HF_BASE}/{hf_repo}/resolve/main/release_assets.json"
-    with urllib.request.urlopen(url) as r:
-        doc = json.load(r)
-    precision = m.get("precision", AIHUB_PRECISION)
-    chipset_assets = (
-        doc.get("precisions", {}).get(precision, {}).get("chipset_assets", {})
-    )
-    asset = chipset_assets.get(slug)
-    if not asset:
-        return None
-    return asset.get("genie", {}).get("download_url")
+def entry_slug(entry: dict) -> str:
+    """File- and artifact-safe name for an entry; prefixes its cell ids."""
+    slug = re.sub(r"[^A-Za-z0-9._-]", "_", entry["model"])
+    return f"{slug}-spec" if entry.get("spec") else slug
 
 
-def _aihub_chipset_supported(m: dict, device: str) -> bool:
-    """Probe AI Hub's release manifest to confirm the model advertises an
-    asset for `device`'s chipset slug. Cheap (single JSON over HTTPS) and
-    keeps us from emitting a row that the device-side mm pull would just
-    error on, which is the only behaviour the host can know up front."""
-    if CHIPSET.get(device) is None:
-        raise SystemExit(f"no chipset slug for {device}")
-    return _resolve_aihub_url(m, device) is not None
+def _csv(s: str) -> list[str]:
+    return [x.strip() for x in s.split(",") if x.strip()]
 
 
-def resolve_model_url(m: dict, device: str) -> str | None:
-    """Best-effort public download URL for the bench report `Build & models`
-    block. None when no asset matches (QAIRT bundles on unsupported chipsets).
-    Not used for the actual download — the device-side mm pull does that."""
-    if m.get("hub") == "aihub":
-        return _resolve_aihub_url(m, device)
-    return m.get("url")
+def plan(kind: str, models_arg: str, device_arg: str, compute_arg: str) -> dict:
+    """Resolve the workflow inputs into (device, entry) jobs.
+
+    Each entry is `{model, compute, [ctx], [spec], slug}`. A model named in
+    bench-models.json brings its declared compute units, sweep and speculative
+    config; any other `org/name[:quant]` runs with DEFAULT_COMPUTE. A blank
+    model list means the whole catalog (bench only).
+
+    `compute` narrows a catalog entry's units in bench mode, but pins them in
+    accuracy mode, whose declared units are the timing matrix and exclude
+    `hybrid`. For an unlisted model it replaces DEFAULT_COMPUTE either way."""
+    catalog = json.loads(MODELS_FILE.read_text())
+    accuracy = kind == "accuracy"
+    devices = _csv(device_arg) or (ACCURACY_DEVICES if accuracy else ALL_DEVICES)
+    compute = _csv(compute_arg)
+    picks = _csv(models_arg)
+
+    if picks:
+        entries = []
+        for model in picks:
+            if "/" not in model:
+                raise SystemExit(f"model {model!r} is not an org/name[:quant] id")
+            listed = [e for e in catalog if e["model"] == model]
+            entries += listed or [
+                {"model": model, "compute": compute or DEFAULT_COMPUTE}
+            ]
+    elif accuracy:
+        raise SystemExit("model is required for accuracy")
+    else:
+        entries = catalog
+
+    resolved = {}
+    for e in entries:
+        e = dict(e)
+        if accuracy:
+            e.pop("spec", None)
+            e.pop("ctx", None)
+            e["compute"] = compute or e["compute"]
+        elif compute and e in catalog:
+            e["compute"] = [c for c in e["compute"] if c in compute]
+            if not e["compute"]:
+                log.warning("%s declares no unit in %s, skipping", e["model"], compute)
+                continue
+        e["slug"] = entry_slug(e)
+        resolved.setdefault(e["slug"], e)
+    if not resolved:
+        raise SystemExit(f"nothing to run for models={picks} compute={compute}")
+
+    jobs = [
+        {"device": d, "entry": e}
+        for d in devices
+        for e in resolved.values()
+        if not e.get("spec") or d in SPEC_DEVICES
+    ]
+    if not jobs:
+        raise SystemExit(f"no job left for devices={devices}")
+    return {
+        "devices": sorted({j["device"] for j in jobs}, key=devices.index),
+        "matrix": jobs,
+        "expected_cells": ",".join(
+            f"{j['entry']['model']}-{j['device']}" for j in jobs
+        ),
+    }
 
 
-def _resolve_draft_model_id(models: list[dict], draft_name: str) -> str:
-    for m in models:
-        if m["name"] == draft_name:
-            return m["model_id"]
-    raise SystemExit(f"draft model {draft_name!r} not found in bench-models.json")
+def write_plan(kind: str, args) -> int:
+    out = plan(kind, args.models, args.device, args.compute)
+    lines = [
+        f"{k}={v if isinstance(v, str) else json.dumps(v, separators=(',', ':'))}"
+        for k, v in out.items()
+    ]
+    print("\n".join(lines))
+    if path := os.environ.get("GITHUB_OUTPUT"):
+        with open(path, "a") as f:
+            f.write("\n".join(lines) + "\n")
+    return 0
 
 
-def model_rows(models: list[dict], device: str) -> list[str]:
-    """One pipe-delimited row per model, consumed by the device-side run
-    scripts. Schema:
+def model_rows(entry: dict) -> list[str]:
+    """The pipe-delimited row the device-side run scripts consume. Schema:
 
-        name | plugin | csv_devices | model_id | vlm | image
-             | spec_type | draft_model_id | draft_tokens
+        slug | model_id | csv_compute | spec_type | draft_model_id | draft_tokens
 
-    Trailing three fields carry spec-decoding params or empty strings so
-    every script parses the same column count. Entries with empty
-    ``devices`` are catalog-only (e.g. spec draft models) and skipped.
-    Rows for AI Hub models whose chipset isn't advertised are dropped
-    upfront so the device doesn't waste time on a guaranteed-fail pull."""
-    rows = []
-    for m in models:
-        if "model_id" not in m:
-            raise SystemExit(f"{m['name']}: missing model_id in bench-models.json")
-        if not m["devices"]:
-            continue
-        if m.get("hub") == "aihub" and not _aihub_chipset_supported(m, device):
-            log.warning("no %s asset for %s, skipping", device, m["name"])
-            continue
-        vlm = "1" if m.get("vlm") else ""
-        image = "1" if m.get("image") else ""
-        spec = m.get("spec") or {}
-        spec_type = spec.get("type", "")
-        draft_id = _resolve_draft_model_id(models, spec["draft"]) if spec else ""
-        draft_tokens = str(spec.get("n_max", "")) if spec else ""
-        rows.append(
-            f"{m['name']}|{m['plugin']}|{','.join(m['devices'])}|{m['model_id']}"
-            f"|{vlm}|{image}|{spec_type}|{draft_id}|{draft_tokens}"
-        )
-    return rows
+    The trailing three fields carry the speculative-decoding params or empty
+    strings, so every script parses the same column count."""
+    spec = entry.get("spec") or {}
+    return [
+        f"{entry['slug']}|{entry['model']}|{','.join(entry['compute'])}"
+        f"|{spec.get('type', '')}|{spec.get('draft', '')}|{spec.get('n_max', '')}"
+    ]
 
 
 PROMPTS = HERE / "prompts"
@@ -463,7 +475,7 @@ def _apply_substitutions(text: str, subs: dict[str, str]) -> str:
 
 def build_linux_artifact(
     pkg_dir: Path,
-    models: list[dict],
+    entry: dict,
     device: str,
     tmp: Path,
     ctx: list[int],
@@ -478,7 +490,7 @@ def build_linux_artifact(
     shutil.copytree(pkg_dir, stage / "pkg-geniex")
 
     subs = {
-        "{MODELS}": "\n".join(model_rows(models, device)),
+        "{MODELS}": "\n".join(model_rows(entry)),
         "{CHIPSET}": CHIPSET.get(device, ""),
         "{MODE}": "accuracy" if accuracy_prompts else "bench",
         "{THINK}": "--think" if think else "--no-think",
@@ -509,7 +521,7 @@ def _stage_shared(stage: Path, accuracy_prompts: list[str] | None) -> None:
 
 def build_windows_artifact(
     pkg_dir: Path,
-    models: list[dict],
+    entry: dict,
     device: str,
     tmp: Path,
     ctx: list[int],
@@ -522,7 +534,7 @@ def build_windows_artifact(
     shutil.copytree(pkg_dir, stage / "pkg-geniex")
 
     subs = {
-        "{MODELS}": "\n".join(model_rows(models, device)),
+        "{MODELS}": "\n".join(model_rows(entry)),
         "{CHIPSET}": CHIPSET.get(device, ""),
         "{MODE}": "accuracy" if accuracy_prompts else "bench",
         "{THINK}": "--think" if think else "--no-think",
@@ -542,7 +554,7 @@ def build_windows_artifact(
 
 def build_android_artifact(
     pkg_dir: Path,
-    models: list[dict],
+    entry: dict,
     device: str,
     tmp: Path,
     ctx: list[int],
@@ -558,7 +570,7 @@ def build_android_artifact(
     # and the harness skips whichever test the mode did not ask for.
     stage = tmp / "stage"
     shutil.copytree(pkg_dir, stage / "pkg-geniex")
-    (stage / "matrix_rows.txt").write_text("\n".join(model_rows(models, device)))
+    (stage / "matrix_rows.txt").write_text("\n".join(model_rows(entry)))
     (stage / "chipset.txt").write_text(CHIPSET.get(device, ""))
     (stage / "params.json").write_text(
         json.dumps(
@@ -566,6 +578,7 @@ def build_android_artifact(
                 "mode": "accuracy" if accuracy_prompts else "bench",
                 "think": think,
                 "ctx": ctx,
+                "pp": pp,
                 "tg": tg,
             }
         )
@@ -591,38 +604,32 @@ BUILDERS = {
 
 
 def download_cells(
-    client, job_id: str, tmp: Path, model_names: list[str] | None = None
+    client, job_id: str, tmp: Path, slug: str | None = None
 ) -> list[dict]:
     members = _qdc.download_log_members(
         client, job_id, tmp, lambda n: n.endswith(".json")
     )
-    return cells_from(members, model_names)
+    return cells_from(members, slug)
 
 
-def cells_from(
-    members: list[tuple[str, bytes]], model_names: list[str] | None = None
-) -> list[dict]:
+def cells_from(members: list[tuple[str, bytes]], slug: str | None = None) -> list[dict]:
     """Parse the cell JSONs out of downloaded log members.
 
     QDC reuses physical hosts across jobs, so the log archive can carry
     stale cell files from earlier sessions in addition to what this job
-    actually produced. When ``model_names`` is given, we keep only cells
-    whose ``cell_id`` starts with one of those names — cell_id is
-    ``{model}-{plugin}-{device}-c{ctx}`` on the device side, so a name
-    prefix is enough to disambiguate."""
+    actually produced. When ``slug`` is given, we keep only cells whose
+    ``cell_id`` is ``{slug}-{compute}-c{ctx}``, the id the device scripts use."""
     cells = [json.loads(data) for name, data in members if name.endswith(".json")]
-    if model_names:
-        prefixes = tuple(f"{n}-" for n in model_names)
+    if slug:
+        mine = re.compile(rf"^{re.escape(slug)}-(cpu|gpu|npu|hybrid)-c\d+$")
         kept, dropped = [], []
         for c in cells:
-            (
-                kept if str(c.get("cell_id", "")).startswith(prefixes) else dropped
-            ).append(c)
+            (kept if mine.match(str(c.get("cell_id", ""))) else dropped).append(c)
         if dropped:
             log.warning(
-                "dropping %d stale cell(s) not in %s: %s",
+                "dropping %d stale cell(s) not from %s: %s",
                 len(dropped),
-                model_names,
+                slug,
                 [c.get("cell_id") for c in dropped],
             )
         cells = kept
@@ -655,8 +662,7 @@ def _ctx_from_cell(c: dict) -> int:
 
 
 def _model_label(c: dict) -> str:
-    cid = _CTX_SUFFIX.sub("", c.get("cell_id") or "")
-    return cid.removesuffix(f"-{c['plugin']}-{c['device']}")
+    return c.get("model_id") or _CTX_SUFFIX.sub("", c.get("cell_id") or "")
 
 
 def detect_geniex_label(sha: str) -> str:
@@ -679,22 +685,12 @@ def _pick_field(cells: list[dict], key: str) -> str | None:
     return next((v for c in cells if (v := c.get(key))), None)
 
 
-def _models_block(models: list[dict], device: str) -> list[str]:
-    lines = ["**Models**", ""]
-    for m in models:
-        url = resolve_model_url(m, device)
-        lines.append(f"- {m['name']} ({m['model_id']}): {url or '-'}")
-    return lines
-
-
-def _details_block(
-    cells: list[dict], device: str, label: str, models: list[dict] | None
-) -> list[str]:
+def _details_block(cells: list[dict], label: str) -> list[str]:
     qairt_v = _pick_field(cells, "qairt_version") or "-"
     llama_v = _pick_field(cells, "llama_cpp_version")
     llama_line = f"[`{llama_v}`]({LLAMA_CPP_COMMIT_BASE}/{llama_v})" if llama_v else "-"
     lines = [
-        "<details><summary>Build & models</summary>",
+        "<details><summary>Build</summary>",
         "",
         "**Versions**",
         "",
@@ -704,9 +700,6 @@ def _details_block(
         f"- generated: `{datetime.now(timezone.utc).isoformat(timespec='seconds')}`",
         "",
     ]
-    if models:
-        lines += _models_block(models, device)
-        lines.append("")
     lines += ["</details>", ""]
     return lines
 
@@ -715,60 +708,37 @@ def _is_spec_cell(c: dict) -> bool:
     return bool((c.get("params") or {}).get("spec_type"))
 
 
-def _render_mtp_table(cells: list[dict], models: list[dict] | None) -> list[str]:
-    """Pair each spec cell with its no-spec baseline on (target model_id,
-    device, ctx). Emits nothing when no spec cells are present."""
-    if not models:
-        return []
-    spec_entries = [m for m in models if m.get("spec")]
-    if not spec_entries:
-        return []
-    by_name_key: dict[str, dict[tuple[str, int], dict]] = {}
-    for c in cells:
-        by_name_key.setdefault(_model_label(c), {})[
-            (c["device"], _ctx_from_cell(c))
-        ] = c
+def _render_mtp_table(cells: list[dict], drafts: dict[str, str]) -> list[str]:
+    """Pair each spec cell with its no-spec baseline on (model, compute, ctx).
+    Emits nothing when no spec cells are present."""
+    base = {
+        (_model_label(c), c["device"], _ctx_from_cell(c)): c
+        for c in cells
+        if not _is_spec_cell(c)
+    }
     rows: list[str] = []
-    for spec_m in spec_entries:
-        baseline = next(
-            (
-                m
-                for m in models
-                if m["model_id"] == spec_m["model_id"]
-                and not m.get("spec")
-                and m.get("devices")
-            ),
-            None,
+    for sc in sorted(
+        (c for c in cells if _is_spec_cell(c)),
+        key=lambda c: (_model_label(c), c["device"], _ctx_from_cell(c)),
+    ):
+        model, dev, ctx = _model_label(sc), sc["device"], _ctx_from_cell(sc)
+        agg = sc.get("agg") or {}
+        bc = base.get((model, dev, ctx))
+        s_dec = (agg.get("decode_tps") or {}).get("median")
+        b_dec = (((bc or {}).get("agg") or {}).get("decode_tps") or {}).get("median")
+        uplift = f"{s_dec / b_dec:.2f}x" if s_dec and b_dec else "-"
+        p_med = (agg.get("prompt_tokens") or {}).get("median")
+        g_med = (agg.get("gen_tokens") or {}).get("median")
+        test = (
+            f"pp{int(p_med)}+tg{int(g_med)}"
+            if p_med is not None and g_med is not None
+            else "-"
         )
-        draft_m = next(
-            (m for m in models if m["name"] == spec_m["spec"]["draft"]), None
+        rows.append(
+            f"| {model} | {drafts.get(model, '-')} | {dev} | {ctx} | {test} | "
+            f"{_fmt_med_sd(agg, 'decode_tps')} | "
+            f"{_fmt_med_sd((bc or {}).get('agg') or {}, 'decode_tps')} | {uplift} |"
         )
-        spec_cells = by_name_key.get(spec_m["name"], {})
-        base_cells = by_name_key.get(baseline["name"], {}) if baseline else {}
-        for (dev, ctx), sc in sorted(spec_cells.items()):
-            agg = sc.get("agg") or {}
-            s_dec = (agg.get("decode_tps") or {}).get("median")
-            bc = base_cells.get((dev, ctx))
-            b_dec = (
-                ((bc.get("agg") or {}).get("decode_tps") or {}).get("median")
-                if bc
-                else None
-            )
-            uplift = f"{s_dec / b_dec:.2f}x" if s_dec and b_dec else "-"
-            p_med = (agg.get("prompt_tokens") or {}).get("median")
-            g_med = (agg.get("gen_tokens") or {}).get("median")
-            test = (
-                f"pp{int(p_med)}+tg{int(g_med)}"
-                if p_med is not None and g_med is not None
-                else "-"
-            )
-            rows.append(
-                f"| {spec_m['name']} | {draft_m['name'] if draft_m else '-'} | "
-                f"{dev} | {ctx} | {test} | "
-                f"{_fmt_med_sd(agg, 'decode_tps')} | "
-                f"{_fmt_med_sd((bc or {}).get('agg') or {}, 'decode_tps')} | "
-                f"{uplift} |"
-            )
     if not rows:
         return []
     return [
@@ -785,10 +755,10 @@ def render(
     cells: list[dict],
     device: str,
     label: str,
-    models: list[dict] | None = None,
+    drafts: dict[str, str] | None = None,
 ) -> str:
     lines = [f"## QDC Bench — {device} — {label}", ""]
-    lines += _details_block(cells, device, label, models)
+    lines += _details_block(cells, label)
     lines += [
         "| Model | Backend | Device | Ctx | ngl | Test | TTFT (ms) | Media enc (ms) | Prefill (tok/s) | Decode (tok/s) |",
         "|-------|---------|--------|----:|----:|------|----------:|---------------:|----------------:|---------------:|",
@@ -818,8 +788,16 @@ def render(
             f"{_fmt_med_sd(agg, 'ttft_ms')} | {media_enc} | {_fmt_med_sd(agg, 'prefill_tps')} | "
             f"{_fmt_med_sd(agg, 'decode_tps')} |"
         )
-    lines += _render_mtp_table(cells, models)
+    lines += _render_mtp_table(cells, drafts or {})
     return "\n".join(lines) + "\n"
+
+
+def spec_drafts() -> dict[str, str]:
+    return {
+        e["model"]: e["spec"]["draft"]
+        for e in json.loads(MODELS_FILE.read_text())
+        if e.get("spec")
+    }
 
 
 def write_summary(text: str) -> None:
@@ -858,14 +836,13 @@ def render_aggregate(cells_dir: Path, device: str) -> int:
     if not cells:
         write_summary(f"## QDC Bench — {device} — {label}\n\nNo results recovered.\n")
         return 0
-    models = json.loads(MODELS_FILE.read_text()) if MODELS_FILE.exists() else None
-    write_summary(render(cells, device, label, models))
+    write_summary(render(cells, device, label, spec_drafts()))
     return 0
 
 
-def collect_bench(client, job_id: str, tmp: Path, args, models: list[dict]) -> int:
+def collect_bench(client, job_id: str, tmp: Path, args, entry: dict) -> int:
     """Bench mode: the per-cell timing JSON in the device's results dir."""
-    cells = download_cells(client, job_id, tmp, model_names=[m["name"] for m in models])
+    cells = download_cells(client, job_id, tmp, slug=entry["slug"])
     if not cells:
         for name, data in _qdc.download_log_members(
             client, job_id, tmp, lambda n: n.endswith((".log", ".stdout", ".txt"))
@@ -880,12 +857,14 @@ def collect_bench(client, job_id: str, tmp: Path, args, models: list[dict]) -> i
 
     # Render this model's own table into its job summary for immediate visibility;
     # the aggregate job later flattens every model's cells into one unified table.
-    write_summary(render(cells, args.device, detect_geniex_label(_short_sha()), models))
+    write_summary(
+        render(cells, args.device, detect_geniex_label(_short_sha()), spec_drafts())
+    )
     return 0
 
 
 def collect_accuracy(
-    client, job_id: str, tmp: Path, args, models: list[dict], prompts: list[str]
+    client, job_id: str, tmp: Path, args, entry: dict, prompts: list[str]
 ) -> int:
     """Accuracy mode: the generated text, which only exists on the device's
     stdout — redirected into the uploaded log. Cells only label the summary.
@@ -919,7 +898,7 @@ def collect_accuracy(
     multi = len({it["compute"] for it in raw}) > 1
     items = []
     for it in raw:
-        cell = f"{args.model_name}-{args.device}"
+        cell = f"{entry['model']}-{args.device}"
         if multi and it["compute"]:
             cell += f"-{it['compute']}"
         items.append({"prompt": it["prompt"], "response": it["response"], "cell": cell})
@@ -939,23 +918,40 @@ def main() -> int:
             "accuracy",
             "accuracy_payload",
             "accuracy_report",
+            "bench_plan",
+            "accuracy_plan",
         ),
         default="bench",
         help="bench: timing sweep on a device. accuracy: one geniex-bench "
         "--accuracy pass over the committed prompt set. The rest run on the "
-        "host over --in-dir artifacts: bench_aggregate renders the bench "
-        "table, accuracy_payload builds the grading payload, accuracy_report "
-        "renders the grades",
+        "host: bench_plan / accuracy_plan expand the workflow inputs into the "
+        "job matrix, and over --in-dir artifacts bench_aggregate renders the "
+        "bench table, accuracy_payload builds the grading payload, "
+        "accuracy_report renders the grades",
     )
     p.add_argument("--pkg-dir", type=Path)
-    p.add_argument("--device", default="QCS9075M")
-    p.add_argument("--model-name", help=f"run only this model from {MODELS_FILE.name}")
+    p.add_argument(
+        "--device",
+        default="",
+        help="run mode: the QDC chipset to run on. plan mode: comma-separated "
+        "chipsets, blank = the mode's default set",
+    )
+    p.add_argument(
+        "--entry",
+        help="run mode: the matrix entry to run, as the JSON bench_plan emitted",
+    )
+    p.add_argument(
+        "--models",
+        default="",
+        help="plan mode: comma-separated org/name[:quant] ids; blank = every "
+        f"model in {MODELS_FILE.name} (bench only)",
+    )
     p.add_argument(
         "--compute",
         default="",
-        help="comma-separated compute filter (cpu/gpu/npu/hybrid); "
-        "empty keeps every compute unit declared on the model. In accuracy "
-        "mode it overrides the declared units instead of filtering",
+        help="plan mode: comma-separated compute units (cpu/gpu/npu/hybrid). "
+        "Narrows a listed model's declared units in bench mode, pins them in "
+        "accuracy mode, and replaces the default for an unlisted model",
     )
     p.add_argument(
         "--ctx",
@@ -1010,6 +1006,8 @@ def main() -> int:
 
     # Host-side modes read artifacts the device runs left behind; they need
     # neither QDC nor a device.
+    if args.mode in ("bench_plan", "accuracy_plan"):
+        return write_plan(args.mode.removesuffix("_plan"), args)
     if args.mode == "bench_aggregate":
         return render_aggregate(_require(args.in_dir, "--in-dir"), args.device)
     if args.mode in ("accuracy_payload", "accuracy_report"):
@@ -1044,46 +1042,10 @@ def main() -> int:
         raise SystemExit(f"{platform} not implemented yet")
 
     accuracy = args.mode == "accuracy"
-    all_models = json.loads(MODELS_FILE.read_text())
-    if args.model_name:
-        models = [m for m in all_models if m["name"] == args.model_name]
-        if not models:
-            raise SystemExit(f"model {args.model_name!r} not in {MODELS_FILE}")
-        # Pull in every spec.draft dependency so _resolve_draft_model_id can
-        # still find it after --model-name has trimmed the list to one row.
-        needed = {m["spec"]["draft"] for m in models if m.get("spec")}
-        for name in needed - {m["name"] for m in models}:
-            entry = next((m for m in all_models if m["name"] == name), None)
-            if entry is None:
-                raise SystemExit(f"draft {name!r} not in {MODELS_FILE}")
-            models.append(entry)
-    else:
-        models = all_models
+    if not (args.device and args.entry):
+        raise SystemExit("--device and --entry are required for this --mode")
+    entry = json.loads(args.entry)
 
-    compute_pick = [c.strip() for c in args.compute.split(",") if c.strip()]
-    if accuracy:
-        # Accuracy pins the unit outright rather than intersecting: the declared
-        # units are the timing matrix, which excludes `hybrid`.
-        if compute_pick:
-            models = [{**m, "devices": compute_pick} for m in models]
-    elif compute_pick:
-        kept = []
-        for m in models:
-            devs = [d for d in m["devices"] if d in compute_pick]
-            if not devs:
-                log.warning(
-                    "%s declares %s, none match --compute=%s, skipping",
-                    m["name"],
-                    m["devices"],
-                    compute_pick,
-                )
-                continue
-            kept.append({**m, "devices": devs})
-        models = kept
-        if not models:
-            raise SystemExit(
-                f"no model in {MODELS_FILE} runs any of --compute={compute_pick}"
-            )
     if accuracy:
         prompts = load_accuracy_prompts(args.prompt_limit)
         # One pass, not a sweep, and the model's declared sweep is irrelevant:
@@ -1096,11 +1058,8 @@ def main() -> int:
         prompts = None
         tg_arg = args.tg
         ctx_arg = args.ctx
-        if not ctx_arg:
-            # A lone model may carry its own sweep in bench-models.json.
-            active = [m for m in models if m.get("devices")]
-            if len(active) == 1 and active[0].get("ctx"):
-                ctx_arg = ",".join(str(x) for x in active[0]["ctx"])
+        if not ctx_arg and entry.get("ctx"):
+            ctx_arg = ",".join(str(x) for x in entry["ctx"])
 
     ctx_list, pp_list, tg_list = resolve_sweep(ctx_arg, args.pp, tg_arg)
     if accuracy:
@@ -1115,7 +1074,7 @@ def main() -> int:
         tmp = Path(td)
         zip_path = BUILDERS[platform](
             args.pkg_dir,
-            models,
+            entry,
             args.device,
             tmp,
             ctx_list,
@@ -1127,16 +1086,16 @@ def main() -> int:
         job_id = _qdc.submit_and_wait(
             client,
             target_id=target_id,
-            job_name=f"geniex-{args.mode}-{args.device}",
+            job_name=f"geniex-{args.mode}-{args.device}-{entry['slug']}"[:100],
             platform=platform,
             entry_script=ENTRY[platform],
             zip_path=zip_path,
             timeout=JOB_TIMEOUT,
         )
         if accuracy:
-            return collect_accuracy(client, job_id, tmp, args, models, prompts)
+            return collect_accuracy(client, job_id, tmp, args, entry, prompts)
         else:
-            return collect_bench(client, job_id, tmp, args, models)
+            return collect_bench(client, job_id, tmp, args, entry)
 
 
 if __name__ == "__main__":

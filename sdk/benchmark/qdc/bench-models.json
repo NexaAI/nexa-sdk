@@ -1,267 +1,29 @@
 [
-  {
-    "name": "Qwen3-0.6B",
-    "plugin": "llama_cpp",
-    "devices": ["cpu", "npu", "gpu"],
-    "model_id": "ggml-org/Qwen3-0.6B-GGUF:Q4_0",
-    "hub": "hf",
-    "url": "https://huggingface.co/ggml-org/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q4_0.gguf"
-  },
-  {
-    "name": "Qwen3-1.7B",
-    "plugin": "llama_cpp",
-    "devices": ["cpu", "npu", "gpu"],
-    "model_id": "unsloth/Qwen3-1.7B-GGUF:Q4_0",
-    "hub": "hf",
-    "url": "https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_0.gguf"
-  },
-  {
-    "name": "Qwen3-4B",
-    "plugin": "llama_cpp",
-    "devices": ["cpu", "npu", "gpu"],
-    "model_id": "unsloth/Qwen3-4B-GGUF:Q4_0",
-    "hub": "hf",
-    "url": "https://huggingface.co/unsloth/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_0.gguf"
-  },
-  {
-    "name": "Qwen3-4B-Instruct-2507",
-    "plugin": "llama_cpp",
-    "devices": ["cpu", "npu"],
-    "model_id": "unsloth/Qwen3-4B-Instruct-2507-GGUF:Q4_0",
-    "hub": "hf",
-    "url": "https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/Qwen3-4B-Instruct-2507-Q4_0.gguf"
-  },
-  {
-    "name": "Llama-3.2-1B-Instruct",
-    "plugin": "llama_cpp",
-    "devices": ["cpu", "npu", "gpu"],
-    "model_id": "bartowski/Llama-3.2-1B-Instruct-GGUF:Q4_0",
-    "hub": "hf",
-    "url": "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_0.gguf"
-  },
-  {
-    "name": "Llama-3.2-3B-Instruct",
-    "plugin": "llama_cpp",
-    "devices": ["cpu", "npu", "gpu"],
-    "model_id": "bartowski/Llama-3.2-3B-Instruct-GGUF:Q4_0",
-    "hub": "hf",
-    "url": "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_0.gguf"
-  },
-  {
-    "name": "phi-4-mini-instruct",
-    "plugin": "llama_cpp",
-    "devices": ["cpu", "npu", "gpu"],
-    "model_id": "bartowski/microsoft_Phi-4-mini-instruct-GGUF:Q4_0",
-    "hub": "hf",
-    "url": "https://huggingface.co/bartowski/microsoft_Phi-4-mini-instruct-GGUF/resolve/main/microsoft_Phi-4-mini-instruct-Q4_0.gguf"
-  },
-  {
-    "name": "Phi-3.5-Mini-Instruct",
-    "plugin": "llama_cpp",
-    "devices": ["cpu", "npu"],
-    "model_id": "bartowski/Phi-3.5-mini-instruct-GGUF:Q4_0",
-    "hub": "hf",
-    "url": "https://huggingface.co/bartowski/Phi-3.5-mini-instruct-GGUF/resolve/main/Phi-3.5-mini-instruct-Q4_0.gguf"
-  },
-  {
-    "name": "gemma-3n-E2B",
-    "plugin": "llama_cpp",
-    "devices": ["cpu", "npu", "gpu"],
-    "model_id": "unsloth/gemma-3n-E2B-it-GGUF:Q4_0",
-    "hub": "hf",
-    "url": "https://huggingface.co/unsloth/gemma-3n-E2B-it-GGUF/resolve/main/gemma-3n-E2B-it-Q4_0.gguf"
-  },
-  {
-    "name": "Qwen3.5-0.8B",
-    "plugin": "llama_cpp",
-    "devices": ["cpu", "npu", "gpu"],
-    "model_id": "unsloth/Qwen3.5-0.8B-GGUF:Q4_0",
-    "hub": "hf",
-    "url": "https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF/resolve/main/Qwen3.5-0.8B-Q4_0.gguf",
-    "mmproj_url": "https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF/resolve/main/mmproj-F16.gguf",
-    "vlm": true,
-    "image": true
-  },
-  {
-    "name": "Qwen2.5-VL-7B",
-    "plugin": "llama_cpp",
-    "devices": ["cpu", "npu"],
-    "model_id": "unsloth/Qwen2.5-VL-7B-Instruct-GGUF:Q4_0",
-    "hub": "hf",
-    "url": "https://huggingface.co/unsloth/Qwen2.5-VL-7B-Instruct-GGUF/resolve/main/Qwen2.5-VL-7B-Instruct-Q4_0.gguf",
-    "mmproj_url": "https://huggingface.co/unsloth/Qwen2.5-VL-7B-Instruct-GGUF/resolve/main/mmproj-F16.gguf",
-    "vlm": true,
-    "image": true
-  },
-  {
-    "name": "gemma-4-E4B-it",
-    "plugin": "llama_cpp",
-    "devices": ["cpu", "npu", "gpu"],
-    "model_id": "unsloth/gemma-4-E4B-it-GGUF:Q4_0",
-    "hub": "hf",
-    "url": "https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_0.gguf",
-    "mmproj_url": "https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/main/mmproj-F16.gguf",
-    "vlm": true,
-    "image": true
-  },
-  {
-    "name": "gemma-4-E2B-it",
-    "plugin": "llama_cpp",
-    "devices": ["cpu", "npu", "gpu"],
-    "model_id": "unsloth/gemma-4-E2B-it-GGUF:Q4_0",
-    "hub": "hf",
-    "url": "https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q4_0.gguf",
-    "mmproj_url": "https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/main/mmproj-F16.gguf",
-    "vlm": true,
-    "image": true
-  },
-  {
-    "name": "gemma-4-26B-A4B-it",
-    "plugin": "llama_cpp",
-    "devices": ["cpu", "npu", "gpu"],
-    "model_id": "google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0",
-    "hub": "hf",
-    "url": "https://huggingface.co/google/gemma-4-26B-A4B-it-qat-q4_0-gguf/resolve/main/gemma-4-26B_q4_0-it.gguf",
-    "mmproj_url": "https://huggingface.co/google/gemma-4-26B-A4B-it-qat-q4_0-gguf/resolve/main/gemma-4-26B-it-mmproj.gguf",
-    "vlm": true,
-    "image": true
-  },
-  {
-    "name": "gemma-4-26B-A4B-it-assistant",
-    "plugin": "llama_cpp",
-    "devices": [],
-    "model_id": "RachidAR/gemma-4-26B-A4B-it-qat-assistant-q4_0-gguf:Q4_0",
-    "hub": "hf",
-    "url": "https://huggingface.co/RachidAR/gemma-4-26B-A4B-it-qat-assistant-q4_0-gguf/resolve/main/gemma-4-26b-A4B-it-assistant-Q4_0.gguf"
-  },
-  {
-    "name": "gemma-4-26B-A4B-it-mtp",
-    "plugin": "llama_cpp",
-    "devices": ["npu"],
-    "model_id": "google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0",
-    "hub": "hf",
-    "url": "https://huggingface.co/google/gemma-4-26B-A4B-it-qat-q4_0-gguf/resolve/main/gemma-4-26B_q4_0-it.gguf",
-    "ctx": [512, 1024, 4096, 8192],
-    "spec": {
-      "type": "draft-mtp",
-      "draft": "gemma-4-26B-A4B-it-assistant",
-      "n_max": 3
-    }
-  },
-  {
-    "name": "Qwen3.5-2B",
-    "plugin": "llama_cpp",
-    "devices": ["cpu", "npu"],
-    "model_id": "unsloth/Qwen3.5-2B-GGUF:Q4_0",
-    "hub": "hf",
-    "url": "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q4_0.gguf"
-  },
-  {
-    "name": "Qwen3.5-4B",
-    "plugin": "llama_cpp",
-    "devices": ["cpu", "npu"],
-    "model_id": "unsloth/Qwen3.5-4B-GGUF:Q4_0",
-    "hub": "hf",
-    "url": "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q4_0.gguf"
-  },
-  {
-    "name": "Ministral-3-3B-Instruct-2512",
-    "plugin": "llama_cpp",
-    "devices": ["cpu", "npu"],
-    "model_id": "unsloth/Ministral-3-3B-Instruct-2512-GGUF:Q4_0",
-    "hub": "hf",
-    "url": "https://huggingface.co/unsloth/Ministral-3-3B-Instruct-2512-GGUF/resolve/main/Ministral-3-3B-Instruct-2512-Q4_0.gguf"
-  },
-  {
-    "name": "gpt-oss-20b",
-    "plugin": "llama_cpp",
-    "devices": ["hybrid"],
-    "model_id": "unsloth/gpt-oss-20b-GGUF:Q4_0",
-    "hub": "hf",
-    "url": "https://huggingface.co/unsloth/gpt-oss-20b-GGUF/resolve/main/gpt-oss-20b-Q4_0.gguf"
-  },
-  {
-    "name": "granite-4.0-micro",
-    "plugin": "llama_cpp",
-    "devices": ["cpu", "npu"],
-    "model_id": "unsloth/granite-4.0-micro-GGUF:Q4_0",
-    "hub": "hf",
-    "url": "https://huggingface.co/unsloth/granite-4.0-micro-GGUF/resolve/main/granite-4.0-micro-Q4_0.gguf"
-  },
-  {
-    "name": "Qwen3-VL-2B-Instruct",
-    "plugin": "llama_cpp",
-    "devices": ["cpu", "npu"],
-    "model_id": "unsloth/Qwen3-VL-2B-Instruct-GGUF:Q4_0",
-    "hub": "hf",
-    "url": "https://huggingface.co/unsloth/Qwen3-VL-2B-Instruct-GGUF/resolve/main/Qwen3-VL-2B-Instruct-Q4_0.gguf",
-    "mmproj_url": "https://huggingface.co/unsloth/Qwen3-VL-2B-Instruct-GGUF/resolve/main/mmproj-F16.gguf",
-    "vlm": true,
-    "image": true
-  },
-  {
-    "name": "Qwen3-VL-4B-Instruct",
-    "plugin": "llama_cpp",
-    "devices": ["cpu", "npu"],
-    "model_id": "unsloth/Qwen3-VL-4B-Instruct-GGUF:Q4_0",
-    "hub": "hf",
-    "url": "https://huggingface.co/unsloth/Qwen3-VL-4B-Instruct-GGUF/resolve/main/Qwen3-VL-4B-Instruct-Q4_0.gguf",
-    "mmproj_url": "https://huggingface.co/unsloth/Qwen3-VL-4B-Instruct-GGUF/resolve/main/mmproj-F16.gguf",
-    "vlm": true,
-    "image": true
-  },
-  {
-    "name": "SmolVLM-2B",
-    "plugin": "llama_cpp",
-    "devices": ["cpu", "npu"],
-    "model_id": "ggml-org/SmolVLM-Instruct-GGUF:Q8_0",
-    "hub": "hf",
-    "url": "https://huggingface.co/ggml-org/SmolVLM-Instruct-GGUF/resolve/main/SmolVLM-Instruct-Q8_0.gguf",
-    "mmproj_url": "https://huggingface.co/ggml-org/SmolVLM-Instruct-GGUF/resolve/main/mmproj-SmolVLM-Instruct-f16.gguf",
-    "vlm": true,
-    "image": true
-  },
-  {
-    "name": "SmolVLM2-2.2B",
-    "plugin": "llama_cpp",
-    "devices": ["cpu", "npu"],
-    "model_id": "ggml-org/SmolVLM2-2.2B-Instruct-GGUF:Q8_0",
-    "hub": "hf",
-    "url": "https://huggingface.co/ggml-org/SmolVLM2-2.2B-Instruct-GGUF/resolve/main/SmolVLM2-2.2B-Instruct-Q8_0.gguf",
-    "mmproj_url": "https://huggingface.co/ggml-org/SmolVLM2-2.2B-Instruct-GGUF/resolve/main/mmproj-SmolVLM2-2.2B-Instruct-f16.gguf",
-    "vlm": true,
-    "image": true
-  },
-  {
-    "name": "Qwen3-4B-qairt",
-    "plugin": "qairt",
-    "devices": ["npu"],
-    "model_id": "qualcomm/qwen3_4b",
-    "hub": "aihub",
-    "aihub_id": "qwen3_4b",
-    "hf_repo": "Qwen3-4B",
-    "precision": "w4a16"
-  },
-  {
-    "name": "Qwen3-4B-Instruct-2507-qairt",
-    "plugin": "qairt",
-    "devices": ["npu"],
-    "model_id": "qualcomm/qwen3_4b_instruct_2507",
-    "hub": "aihub",
-    "aihub_id": "qwen3_4b_instruct_2507",
-    "hf_repo": "Qwen3-4B-Instruct-2507",
-    "precision": "w4a16"
-  },
-  {
-    "name": "Qwen2.5-VL-7B-qairt",
-    "plugin": "qairt",
-    "devices": ["npu"],
-    "model_id": "qualcomm/qwen2_5_vl_7b_instruct",
-    "hub": "aihub",
-    "aihub_id": "qwen2_5_vl_7b_instruct",
-    "hf_repo": "Qwen2.5-VL-7B-Instruct",
-    "precision": "w4a16",
-    "vlm": true,
-    "image": true
-  }
+  {"model": "ggml-org/Qwen3-0.6B-GGUF:Q4_0", "compute": ["cpu", "npu", "gpu"]},
+  {"model": "unsloth/Qwen3-1.7B-GGUF:Q4_0", "compute": ["cpu", "npu", "gpu"]},
+  {"model": "unsloth/Qwen3-4B-GGUF:Q4_0", "compute": ["cpu", "npu", "gpu"]},
+  {"model": "unsloth/Qwen3-4B-Instruct-2507-GGUF:Q4_0", "compute": ["cpu", "npu"]},
+  {"model": "bartowski/Llama-3.2-1B-Instruct-GGUF:Q4_0", "compute": ["cpu", "npu", "gpu"]},
+  {"model": "bartowski/Llama-3.2-3B-Instruct-GGUF:Q4_0", "compute": ["cpu", "npu", "gpu"]},
+  {"model": "bartowski/microsoft_Phi-4-mini-instruct-GGUF:Q4_0", "compute": ["cpu", "npu", "gpu"]},
+  {"model": "bartowski/Phi-3.5-mini-instruct-GGUF:Q4_0", "compute": ["cpu", "npu"]},
+  {"model": "unsloth/gemma-3n-E2B-it-GGUF:Q4_0", "compute": ["cpu", "npu", "gpu"]},
+  {"model": "unsloth/Qwen3.5-0.8B-GGUF:Q4_0", "compute": ["cpu", "npu", "gpu"]},
+  {"model": "unsloth/Qwen2.5-VL-7B-Instruct-GGUF:Q4_0", "compute": ["cpu", "npu"]},
+  {"model": "unsloth/gemma-4-E4B-it-GGUF:Q4_0", "compute": ["cpu", "npu", "gpu"]},
+  {"model": "unsloth/gemma-4-E2B-it-GGUF:Q4_0", "compute": ["cpu", "npu", "gpu"]},
+  {"model": "google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0", "compute": ["cpu", "npu", "gpu"]},
+  {"model": "google/gemma-4-26B-A4B-it-qat-q4_0-gguf:Q4_0", "compute": ["npu"], "ctx": [512, 1024, 4096, 8192], "spec": {"type": "draft-mtp", "draft": "RachidAR/gemma-4-26B-A4B-it-qat-assistant-q4_0-gguf:Q4_0", "n_max": 3}},
+  {"model": "unsloth/Qwen3.5-2B-GGUF:Q4_0", "compute": ["cpu", "npu"]},
+  {"model": "unsloth/Qwen3.5-4B-GGUF:Q4_0", "compute": ["cpu", "npu"]},
+  {"model": "unsloth/Ministral-3-3B-Instruct-2512-GGUF:Q4_0", "compute": ["cpu", "npu"]},
+  {"model": "unsloth/gpt-oss-20b-GGUF:Q4_0", "compute": ["hybrid"]},
+  {"model": "unsloth/granite-4.0-micro-GGUF:Q4_0", "compute": ["cpu", "npu"]},
+  {"model": "unsloth/Qwen3-VL-2B-Instruct-GGUF:Q4_0", "compute": ["cpu", "npu"]},
+  {"model": "unsloth/Qwen3-VL-4B-Instruct-GGUF:Q4_0", "compute": ["cpu", "npu"]},
+  {"model": "ggml-org/SmolVLM-Instruct-GGUF:Q8_0", "compute": ["cpu", "npu"]},
+  {"model": "ggml-org/SmolVLM2-2.2B-Instruct-GGUF:Q8_0", "compute": ["cpu", "npu"]},
+  {"model": "qualcomm/qwen3_4b", "compute": ["npu"]},
+  {"model": "qualcomm/qwen3_4b_instruct_2507", "compute": ["npu"]},
+  {"model": "qualcomm/qwen2_5_vl_7b_instruct", "compute": ["npu"]}
 ]

@@ -204,9 +204,10 @@ static int run_matrix(options_t* base) {
         /* Build a per-cell options copy from `base`. */
         options_t cell      = *base;
         cell.cell_id        = fields[0];
-        cell.plugin         = fields[1];
+        cell.plugin         = fields[1][0] != '\0' ? fields[1] : NULL;
         cell.device         = fields[2];
         cell.model_path     = fields[3];
+        cell.model_id       = NULL;
         cell.tokenizer_path = (nf >= 5 && fields[4][0] != '\0') ? fields[4] : NULL;
         cell.mmproj_path    = (nf >= 6 && fields[5][0] != '\0') ? fields[5] : NULL;
         cell.output_md      = NULL;

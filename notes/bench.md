@@ -26,16 +26,21 @@ Each platform gets a zip artifact assembled by `build_*_artifact()` in
 `sdk/benchmark/qdc/run_qdc_jobs.py`:
 
 - **Linux / Windows** — pre-built SDK package + entry script
-  (`run_linux.sh` or `run_windows.ps1`) + sample prompts + VLM test image. The
+  (`run_linux.sh` or `run_windows.ps1`) + VLM test image. The
   host substitutes the model rows, the sweep and `{MODE}` (`bench` / `accuracy`)
   into the script.
 - **Android** — SDK package + pytest suite (`test_bench.py`, `utils.py`) +
-  matrix rows + prompts. There is no script to substitute into, so the same
+  matrix rows. There is no script to substitute into, so the same
   values travel in `params.json` and pytest skips whichever of `test_bench` /
   `test_accuracy` the mode did not ask for.
 
-The model matrix is defined in `sdk/benchmark/qdc/bench-models.json`
-(models across `llama_cpp` and `qairt` plugins).
+`sdk/benchmark/qdc/bench-models.json` is the default set, used when a run
+leaves `model` blank: one entry per model with its `model` id
+(`org/name[:quant]`), the `compute` units to bench, and optionally a `ctx` sweep
+or a `spec` (speculative decoding) block. Any other `org/name[:quant]` that
+geniex can pull is accepted in the `model` input and runs on `cpu,gpu,npu`
+(or the `compute` input). The plugin is never listed: `geniex-bench` takes it
+from the model manager when the matrix leaves it empty.
 
 `--mode` picks the leg: `bench` / `accuracy` run on a device; the rest run on
 the host over the artifacts a device leg produced, prefixed by which pipeline
@@ -54,7 +59,7 @@ QDC interaction lives in `sdk/benchmark/qdc/_qdc.py`:
 ## bench.yml — speed
 
 ```
-build-sdk  -->  load-models  -->  bench (device x model matrix)  -->  aggregate (per device)
+build-sdk  -->  plan  -->  bench (device x model matrix)  -->  aggregate (per device)
 ```
 
 On-device, all platforms perform the same work:
@@ -74,7 +79,8 @@ On-device, all platforms perform the same work:
 Orchestrated in 4 jobs:
 
 1. **build-sdk** — cross-compile binaries for all 3 platforms.
-2. **load-models** — parse `bench-models.json`, emit the matrix + device list.
+2. **plan** — `--mode bench_plan` expands the `device` / `model` / `compute`
+   inputs into the job matrix and device list.
 3. **bench** — one job per (device, model) pair: submit to QDC, wait, download
    per-cell JSON.  Uploaded as artifact `bench-cells-{device}-{model}`.
 4. **aggregate** — one job per device: download all matching cell artifacts, call
@@ -94,7 +100,7 @@ Example output:
 ## accuracy.yml — quality
 
 ```
-build-sdk  -->  load-models  -->  generate (device x model)  -->  grade (Breeze AI)
+build-sdk  -->  plan  -->  generate (device x model)  -->  grade (Breeze AI)
 ```
 
 On-device, one pass replaces the sweep, over the same three entry points as
@@ -114,7 +120,7 @@ On-device, one pass replaces the sweep, over the same three entry points as
 Orchestrated in 4 jobs, the first two identical to `bench.yml`:
 
 1. **build-sdk** — cross-compile binaries for all 3 platforms.
-2. **load-models** — parse `bench-models.json`, emit the matrix + device list.
+2. **plan** — `--mode accuracy_plan`, same inputs as bench; `model` is required.
 3. **generate** — one QDC job per (device, model) cell, though a model with
    more than one compute unit (`--compute` left blank, or given more than one
    value) runs one geniex-bench cell per unit and the job's log carries all of
@@ -168,7 +174,7 @@ with no hits for a category shows `-`.
 - **Platform isolation** — differences are confined to artifact-building and entry
   scripts; the on-device benchmark binary and JSON schema are shared.
 - **Common per-cell JSON schema** — every platform produces the same schema
-  (`schema_version` `5`), so the aggregator renders uniformly regardless of
+  (`schema_version` `7`), so the aggregator renders uniformly regardless of
   origin. v4 added the `media_us` per-run encoder time and its `media_ms` agg
   median. On a VLM run `prompt_tokens` counts text + media tokens, so
   `prefill_tps` reflects the full prefill. v5 added the optional `power_mode`
