@@ -1,8 +1,8 @@
 diff --git a/ggml/src/ggml-opencl/ggml-opencl.cpp b/ggml/src/ggml-opencl/ggml-opencl.cpp
-index 91cd1a0ed..13ce31840 100644
+index d56b3488d..5553d1dbd 100644
 --- a/ggml/src/ggml-opencl/ggml-opencl.cpp
 +++ b/ggml/src/ggml-opencl/ggml-opencl.cpp
-@@ -4281,6 +4281,9 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
+@@ -4315,6 +4315,9 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
      {
          std::string CL_gemv_compile_opts = std::string("-cl-std=") + opencl_c_std +
                                         " -cl-mad-enable ";
@@ -33,10 +33,10 @@ index 509bf1734..3d72cb84a 100644
          *((global float *)(dst_ptr + i0*nb0)) = *((global float *)(src0_ptr + i0*nb00)) + *((global float *)(src1_ptr + i10*nb10));
      }
 diff --git a/ggml/src/ggml-opencl/kernels/cpy.cl b/ggml/src/ggml-opencl/kernels/cpy.cl
-index e875bfaf7..167cfde54 100644
+index 18400d37f..aa982165c 100644
 --- a/ggml/src/ggml-opencl/kernels/cpy.cl
 +++ b/ggml/src/ggml-opencl/kernels/cpy.cl
-@@ -208,7 +208,12 @@ kernel void kernel_cpy_f32_f32_pack(
+@@ -209,7 +209,12 @@ kernel void kernel_cpy_f32_f32_pack(
      src0 = (global float*)((global char*)src0 + offset0);
      dst = (global float*)((global char*)dst + offsetd);
  
@@ -51,10 +51,10 @@ index e875bfaf7..167cfde54 100644
      int rpw = lsz / tpr;               // rows per workgroup
      int lid = get_local_id(0);
 diff --git a/ggml/src/ggml-opencl/kernels/gemv_noshuffle_q4_k_f32.cl b/ggml/src/ggml-opencl/kernels/gemv_noshuffle_q4_k_f32.cl
-index c0078131e..6a3a169ce 100644
+index 3dc30db58..b3d842789 100644
 --- a/ggml/src/ggml-opencl/kernels/gemv_noshuffle_q4_k_f32.cl
 +++ b/ggml/src/ggml-opencl/kernels/gemv_noshuffle_q4_k_f32.cl
-@@ -240,7 +240,12 @@ kernel void kernel_gemv_noshuffle_q4_k_f32(
+@@ -249,7 +249,12 @@ kernel void kernel_gemv_noshuffle_q4_k_f32(
      uint LINE_STRIDE_A  = M / 2;
      // Physical per-K-block stride in the packed image: 8 uints/block-row-pair *
      // (M/2) row-pairs = 4*M uints. This is a layout constant, not tied to nsg.
@@ -67,10 +67,10 @@ index c0078131e..6a3a169ce 100644
      uint scales_per_row = (K / QK_K) * 12;
  
      // The x-grid is padded to CEIL_DIV(ne01/2,64)*64, so when ne01 % 128 != 0 the
-@@ -405,7 +410,12 @@ kernel void kernel_gemv_noshuffle_q4_k_f32_glu(
-     uint M = ne01;
- 
+@@ -417,7 +422,12 @@ kernel void kernel_gemv_noshuffle_q4_k_f32_glu(
      uint LINE_STRIDE_A  = M / 2;
+     // Keep tail lanes active for subgroup ops, but read a valid weight row.
+     uint gid_s = min(gid, LINE_STRIDE_A - 1);
 +#ifdef ADRENO_6XX_Q4K_CONSTREG_WORKAROUND
 +    volatile uint block_stride_v = 4 * M;
 +    uint BLOCK_STRIDE_A = block_stride_v;
@@ -80,7 +80,7 @@ index c0078131e..6a3a169ce 100644
  
      private uint4  regA;
      private half2  regS, regM;
-@@ -520,7 +530,12 @@ kernel void kernel_gemv_noshuffle_q4_k_f32_splitk(
+@@ -535,7 +545,12 @@ kernel void kernel_gemv_noshuffle_q4_k_f32_splitk(
      uint K = ne00;
      uint M = ne01;
      uint LINE_STRIDE_A  = M / 2;
@@ -91,5 +91,5 @@ index c0078131e..6a3a169ce 100644
      uint BLOCK_STRIDE_A = 4 * M;      // physical, independent of the K-split
 +#endif
  
-     private uint4  regA;
-     private half2  regS, regM;
+     // Keep tail lanes active for subgroup ops, but read a valid weight row.
+     uint gid_s = min(gid, LINE_STRIDE_A - 1);
