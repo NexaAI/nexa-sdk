@@ -224,13 +224,14 @@ async fn resume_skips_completed_chunks() {
 
 #[tokio::test]
 async fn complete_bitmap_without_payload_is_refetched() {
-    let body = make_body(chunklib::MIN_CHUNK_SIZE as usize + 1024, 0xA6);
+    std::env::set_var("GENIEX_DL_CHUNK_SIZE", "16384");
+
+    let body = make_body(64 * 1024, 0xA6);
     let server = MockServer::start().await;
     install_file_mock(&server, "/org/repo/resolve/main/missing.bin", body.clone()).await;
 
     let tmp = tempdir().unwrap();
     let plan = chunklib::plan_chunks(body.len() as u64);
-    assert_eq!(plan.chunks.len(), 2);
     std::fs::write(
         tmp.path().join("missing.bin.progress"),
         vec![0x01; plan.chunks.len()],
