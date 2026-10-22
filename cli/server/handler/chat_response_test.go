@@ -6,6 +6,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -30,6 +31,32 @@ type blockingBody struct {
 		} `json:"message"`
 	} `json:"choices"`
 	Timings timings `json:"timings"`
+}
+
+func TestWriteBlockingResponseGemma4EmptyThought(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	var content, reasoning strings.Builder
+	onToken := sink(reasoningClass(), &content, &reasoning)
+	for _, token := range []string{"<|channel>", "thought", "<channel|>", `<|tool_call>call:go{}<tool_call|>`} {
+		onToken(token)
+	}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	writeBlockingResponse(c, content.String(), reasoning.String(), geniex_sdk.ProfileData{StopReason: "eos"}, true, "")
+
+	var got blockingBody
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	choice := got.Choices[0]
+	if choice.Message.Content != "" || choice.Message.ReasoningContent != "" {
+		t.Errorf("content = %q, reasoning = %q, want both empty", choice.Message.Content, choice.Message.ReasoningContent)
+	}
+	if choice.FinishReason != "tool_calls" || len(choice.Message.ToolCalls) != 1 ||
+		choice.Message.ToolCalls[0].Function.Name != "go" || choice.Message.ToolCalls[0].Function.Arguments != `{}` {
+		t.Errorf("choice = %+v, want one go tool call", choice)
+	}
 }
 
 // A tool call must not cost the text around it, nor the reasoning: both used to be

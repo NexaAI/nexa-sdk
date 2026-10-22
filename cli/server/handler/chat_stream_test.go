@@ -99,6 +99,30 @@ func TestStreamToolCallSeparatesReasoning(t *testing.T) {
 	}
 }
 
+func TestStreamToolCallGemma4EmptyThought(t *testing.T) {
+	got := runStreamToolCall(t, reasoningClass(),
+		"<|channel>", "thought", "<channel|>", `<|tool_call>call:go{}<tool_call|>`)
+
+	var content, reasoning strings.Builder
+	var calls []toolCallDelta
+	for _, ch := range got {
+		content.WriteString(ch.Delta.Content)
+		reasoning.WriteString(ch.Delta.ReasoningContent)
+		for _, tc := range ch.Delta.ToolCalls {
+			calls = append(calls, toolCallDelta{int(tc.Index), tc.Function.Name, tc.Function.Arguments})
+		}
+	}
+	if content.String() != "" || reasoning.String() != "" {
+		t.Errorf("content = %q, reasoning = %q, want both empty", content.String(), reasoning.String())
+	}
+	if len(calls) != 1 || calls[0] != (toolCallDelta{0, "go", `{}`}) {
+		t.Errorf("calls = %+v", calls)
+	}
+	if reason := got[len(got)-1].FinishReason; reason == nil || *reason != "tool_calls" {
+		t.Errorf("finish_reason = %v, want tool_calls", reason)
+	}
+}
+
 func TestStreamMiniCPM5TypedArguments(t *testing.T) {
 	const tools = `[{"type":"function","function":{"name":"set","parameters":{"type":"object","properties":{"count":{"type":"integer"},"label":{"type":"string"}}}}}]`
 	got := runStreamToolCallWithTools(t, plainClass, tools,

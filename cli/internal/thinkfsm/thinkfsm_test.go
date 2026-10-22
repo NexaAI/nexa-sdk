@@ -54,6 +54,11 @@ func TestSplit(t *testing.T) {
 			wantReasoning: "think",
 		},
 		{
+			name:        "gemma empty thought before tool call",
+			tokens:      []string{"<|channel>", "thought", "<channel|>", "<|tool_call>call:go{}<tool_call|>"},
+			wantContent: "<|tool_call>call:go{}<tool_call|>",
+		},
+		{
 			name:        "unterminated think stays reasoning",
 			tokens:      []string{"<think>", "still", " going"},
 			wantContent: "",

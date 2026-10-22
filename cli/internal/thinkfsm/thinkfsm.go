@@ -72,10 +72,11 @@ var transitions = map[key]transition{
 	{stateStart, "assistant"}:       {next: stateAssistant},
 
 	// gemma4
-	{stateAssistant, "<|channel>"}:   {next: stateGemmaChannel},
-	{stateGemmaChannel, "thought"}:   {next: stateGemmaChannelThought},
-	{stateGemmaChannelThought, "\n"}: {next: stateThink, boundary: EnterReasoning, block: true},
-	{stateThink, "<channel|>"}:       {next: stateNormal, boundary: ExitReasoning, block: true},
+	{stateAssistant, "<|channel>"}:           {next: stateGemmaChannel},
+	{stateGemmaChannel, "thought"}:           {next: stateGemmaChannelThought},
+	{stateGemmaChannelThought, "\n"}:         {next: stateThink, boundary: EnterReasoning, block: true},
+	{stateGemmaChannelThought, "<channel|>"}: {next: stateNormal},
+	{stateThink, "<channel|>"}:               {next: stateNormal, boundary: ExitReasoning, block: true},
 }
 
 // Event routes one token. A consumed marker (e.g. the <think> tag) belongs to
