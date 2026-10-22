@@ -232,7 +232,7 @@ async fn resume_skips_completed_chunks() {
 
 #[tokio::test]
 async fn complete_bitmap_without_payload_is_refetched() {
-    std::env::set_var("GENIEX_DL_CHUNK_SIZE", "16384");
+    initialize_chunk_size_env();
 
     let body = make_body(64 * 1024, 0xA6);
     let server = MockServer::start().await;
