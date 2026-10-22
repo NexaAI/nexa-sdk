@@ -21,7 +21,7 @@ DEV_TESTS = f'{DEV_ROOT}/tests'
 
 TERMUX_REPO = 'https://packages.termux.dev/apt/termux-main'
 TERMUX_DEPS = (
-    'python python-pip gdbm libandroid-posix-semaphore libandroid-support libbz2 '
+    'python python-pip ca-certificates gdbm libandroid-posix-semaphore libandroid-support libbz2 '
     'libcrypt libexpat libffi liblzma libsqlite ncurses ncurses-ui-libs openssl '
     'readline zlib'
 ).split()
