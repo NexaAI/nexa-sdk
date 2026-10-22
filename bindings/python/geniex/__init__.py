@@ -18,6 +18,7 @@ from ._version import __version__
 from .auto import AutoModelForCausalLM, AutoModelForVision2Seq, resolve_device_map
 from .generation import GenerateOutput, ProfileData, TextIteratorStreamer
 from .modeling import GenieXLLM, GenieXVLM
+from .tts import GenieXTTS, SpeechResult
 
 __all__ = [
     '__version__',
@@ -26,6 +27,8 @@ __all__ = [
     'GenieXError',
     'GenieXLLM',
     'GenieXVLM',
+    'GenieXTTS',
+    'SpeechResult',
     'GenerateOutput',
     'ProfileData',
     'TextIteratorStreamer',
