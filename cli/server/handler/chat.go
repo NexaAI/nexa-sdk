@@ -44,7 +44,6 @@ type ChatCompletionRequest struct {
 	TopK              int32   `json:"top_k"`
 	MinP              float32 `json:"min_p"`
 	RepetitionPenalty float32 `json:"repetition_penalty"`
-	GrammarPath       string  `json:"grammar_path"`
 	GrammarString     string  `json:"grammar_string"`
 
 	SpecType       string  `json:"spec_type"`
@@ -76,7 +75,6 @@ func defaultChatCompletionRequest() ChatCompletionRequest {
 		TopK:              0,
 		MinP:              0.0,
 		RepetitionPenalty: 1.0,
-		GrammarPath:       "",
 		GrammarString:     "",
 		SpecType:          cfg.SpecType,
 		SpecDraftModel:    cfg.DraftModel,
@@ -308,6 +306,7 @@ func runChat[T, M any](c *gin.Context, param ChatCompletionRequest, modelParam t
 		PresencePenalty:   float32(param.PresencePenalty.Value),
 		FrequencyPenalty:  float32(param.FrequencyPenalty.Value),
 		Seed:              int32(param.Seed.Value),
+		GrammarString:     param.GrammarString,
 	}
 	prompt, gen, err := prepare(acquired.Model, prepareInput[M]{
 		Messages: messages,

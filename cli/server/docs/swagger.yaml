@@ -828,12 +828,9 @@ components:
           minimum: 0
           maximum: 100
           description: The parameter for repetition penalty. 1.0 means no penalty
-        grammar_path:
-          type: string
-          description: Path to the grammar file for structured output
         grammar_string:
           type: string
-          description: Grammar string for structured output
+          description: Inline GBNF grammar for constrained generation.
         ngl:
           type: integer
           description: Number of GPU/NPU layers to offload (llama_cpp only). Omit to use the server default set via `geniex serve --ngl` / `GENIEX_NGL` (999 out of the box); the server chooses the correct layout per backend.
