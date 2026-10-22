@@ -14,6 +14,7 @@ import (
 	"github.com/openai/openai-go/v3"
 
 	geniex_sdk "github.com/qualcomm/GenieX/bindings/go"
+	"github.com/qualcomm/GenieX/cli/internal/thinkfsm"
 	"github.com/qualcomm/GenieX/cli/server/utils"
 )
 
@@ -82,12 +83,13 @@ func toolCallChunk(index int, call openai.ChatCompletionMessageFunctionToolCallF
 }
 
 // profile is read only after wait() returns, when generation has filled it.
-func streamPlainText(c *gin.Context, dataCh <-chan string, wait func() error, includeUsage bool, profile *geniex_sdk.ProfileData, render tokenRender) {
+func streamPlainText(c *gin.Context, dataCh <-chan string, wait func() error, includeUsage bool, profile *geniex_sdk.ProfileData, class tokenClass) {
 	c.Stream(func(w io.Writer) bool {
 		r, ok := <-dataCh
 		if ok {
-			if chunk, emit := render(r); emit {
-				c.SSEvent("", chunk)
+			ev := class(r)
+			if ev.Kind == thinkfsm.Content || ev.Kind == thinkfsm.Thinking {
+				c.SSEvent("", tokenChunk(ev.Text, ev.Kind == thinkfsm.Thinking))
 			}
 			return true
 		}
@@ -111,28 +113,23 @@ func streamPlainText(c *gin.Context, dataCh <-chan string, wait func() error, in
 // Streams the text that cannot be part of a tool call as it arrives, and each
 // tool call as soon as it is complete.
 func streamToolCall(c *gin.Context, dataCh <-chan string, wait func() error, includeUsage bool, profile *geniex_sdk.ProfileData, class tokenClass, tools string) {
-	scanner := utils.NewToolCallScanner(utils.ToolParameterTypesFromTools(tools))
+	parser := utils.NewToolCallParser(utils.ToolParameterTypesFromTools(tools))
 	sent := 0 // the delta index, which has to keep rising across chunks
+	write := func(events []utils.ToolCallEvent) {
+		for _, ev := range events {
+			switch ev.Kind {
+			case thinkfsm.Content, thinkfsm.Thinking:
+				c.SSEvent("", tokenChunk(ev.Text, ev.Kind == thinkfsm.Thinking))
+			case thinkfsm.ToolCall:
+				c.SSEvent("", toolCallChunk(sent, ev.Call))
+				sent++
+			}
+		}
+	}
 	c.Stream(func(w io.Writer) bool {
 		r, ok := <-dataCh
 		if ok {
-			token, isReasoning, emit := class(r)
-			if !emit {
-				return true
-			}
-			// A tool call never lives in the thinking block, which goes out as it is.
-			if isReasoning {
-				c.SSEvent("", tokenChunk(token, true))
-				return true
-			}
-			text, calls := scanner.Push(token)
-			if text != "" {
-				c.SSEvent("", tokenChunk(text, false))
-			}
-			for _, call := range calls {
-				c.SSEvent("", toolCallChunk(sent, call))
-				sent++
-			}
+			write(parser.Feed(class(r)))
 			return true
 		}
 		// A context window exhausted mid-stream is a normal truncated completion:
@@ -143,16 +140,7 @@ func streamToolCall(c *gin.Context, dataCh <-chan string, wait func() error, inc
 			c.SSEvent("", map[string]any{"error": err.Error(), "code": geniex_sdk.SDKErrorCode(err)})
 			return false
 		}
-		// The held tail may still hold calls the model stopped short of closing.
-		tail, calls := scanner.Tail()
-		if tail != "" {
-			slog.Warn("Tool call not matched, streaming the held text instead")
-			c.SSEvent("", tokenChunk(tail, false))
-		}
-		for _, call := range calls {
-			c.SSEvent("", toolCallChunk(sent, call))
-			sent++
-		}
+		write(parser.Finish())
 		logProfile(*profile)
 		finishReason := mapFinishReason(profile.StopReason)
 		if sent > 0 {

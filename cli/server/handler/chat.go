@@ -360,7 +360,7 @@ func runChat[T, M any](c *gin.Context, param ChatCompletionRequest, modelParam t
 		if parseTool {
 			streamToolCall(c, dataCh, wait, includeUsage, &profile, class, tools)
 		} else {
-			streamPlainText(c, dataCh, wait, includeUsage, &profile, render(class))
+			streamPlainText(c, dataCh, wait, includeUsage, &profile, class)
 		}
 
 		stopGen.Store(true)
@@ -373,13 +373,18 @@ func runChat[T, M any](c *gin.Context, param ChatCompletionRequest, modelParam t
 		if reasoningSeparated(param.ReasoningFormat) {
 			class = reasoningClass()
 		}
+		onToken := sink(class, &content, &reasoning)
+		finishToolCalls := func() []openai.ChatCompletionMessageFunctionToolCallFunction { return nil }
+		if parseTool {
+			onToken, finishToolCalls = sinkWithToolCalls(class, &content, &reasoning, tools)
+		}
 		profile, _, err := generateWithRetry(acquired.Model, prompt, gen, prepareInput[M]{
 			Messages: messages,
 			Param:    param,
 			Tools:    tools,
 			Sampler:  sampler,
 			Fresh:    acquired.Fresh,
-		}, prepare, sink(class, &content, &reasoning))
+		}, prepare, onToken)
 		// A prompt that never fit is a 400; a window exhausted mid-generation is a
 		// normal truncated completion (finish_reason=length), handled below.
 		if errors.Is(err, geniex_sdk.ErrLlmGenerationPromptTooLong) {
@@ -391,7 +396,7 @@ func runChat[T, M any](c *gin.Context, param ChatCompletionRequest, modelParam t
 			return
 		}
 		logProfile(profile)
-		writeBlockingResponse(c, content.String(), reasoning.String(), profile, parseTool, tools)
+		writeBlockingResponse(c, &content, &reasoning, profile, finishToolCalls)
 	}
 }
 

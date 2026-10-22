@@ -5,10 +5,16 @@ package handler
 
 import (
 	"encoding/json"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
+
+	geniex_sdk "github.com/qualcomm/GenieX/bindings/go"
+
+	"github.com/qualcomm/GenieX/cli/internal/thinkfsm"
 )
 
 func TestReasoningSeparated(t *testing.T) {
@@ -54,7 +60,7 @@ func TestReasoningFormatDefault(t *testing.T) {
 func TestSinks(t *testing.T) {
 	tokens := []string{"<think>", "reason", "</think>", "answer"}
 
-	t.Run("reasoningClass splits think block", func(t *testing.T) {
+	t.Run("splitter separates think block", func(t *testing.T) {
 		var content, reasoning strings.Builder
 		s := sink(reasoningClass(), &content, &reasoning)
 		for _, tok := range tokens {
@@ -78,6 +84,165 @@ func TestSinks(t *testing.T) {
 			t.Errorf("content = %q, want raw inline", got)
 		}
 	})
+}
+
+func TestPlainClassEvent(t *testing.T) {
+	for _, token := range []string{"", "text", "<think>", "</think>", "<|message|>", "<|end|>", "<|call|>"} {
+		want := thinkfsm.Event{Kind: thinkfsm.Content, Text: token}
+		if got := plainClass(token); got != want {
+			t.Errorf("plainClass(%q) = %+v, want %+v", token, got, want)
+		}
+	}
+}
+
+func TestReasoningClassEvents(t *testing.T) {
+	cases := []struct {
+		name   string
+		tokens []string
+		events []thinkfsm.Event
+	}{
+		{
+			name:   "think boundaries",
+			tokens: []string{"<think>", "reason", "</think>", "answer"},
+			events: []thinkfsm.Event{
+				{Kind: thinkfsm.EnterThinking}, {Kind: thinkfsm.Thinking, Text: "reason"},
+				{Kind: thinkfsm.LeaveThinking}, {Kind: thinkfsm.Content, Text: "answer"},
+			},
+		},
+		{
+			name:   "analysis function syntax stays on tool path",
+			tokens: []string{"<|channel|>", "analysis", " to", "=", "functions", ".f", "<|message|>", "{}", "<|end|>"},
+			events: []thinkfsm.Event{
+				{Kind: thinkfsm.Consume}, {Kind: thinkfsm.Consume},
+				{Kind: thinkfsm.ToolCall, Text: " to"}, {Kind: thinkfsm.ToolCall, Text: "="},
+				{Kind: thinkfsm.ToolCall, Text: "functions"}, {Kind: thinkfsm.ToolCall, Text: ".f"},
+				{Kind: thinkfsm.ToolCallStart}, {Kind: thinkfsm.ToolCall, Text: "{}"},
+				{Kind: thinkfsm.ToolCallEnd},
+			},
+		},
+		{
+			name:   "commentary syntax is not a parsed call",
+			tokens: []string{"<|channel|>", "comment", "ary", " to", "=", "functions", ".get", "_weather", "<|message|>", "{}", "<|call|>"},
+			events: []thinkfsm.Event{
+				{Kind: thinkfsm.Consume}, {Kind: thinkfsm.Consume}, {Kind: thinkfsm.Consume},
+				{Kind: thinkfsm.ToolCall, Text: " to"}, {Kind: thinkfsm.ToolCall, Text: "="},
+				{Kind: thinkfsm.ToolCall, Text: "functions"}, {Kind: thinkfsm.ToolCall, Text: ".get"},
+				{Kind: thinkfsm.ToolCall, Text: "_weather"}, {Kind: thinkfsm.ToolCallStart},
+				{Kind: thinkfsm.ToolCall, Text: "{}"}, {Kind: thinkfsm.ToolCallEnd},
+			},
+		},
+		{
+			name:   "role recipient first channel preserves candidate second ends",
+			tokens: []string{"<|start|>", "assistant", " to", "=", "functions", ".f", "<|channel|>", "comment", "ary", "<|channel|>", "analysis", "<|message|>", "reason", "<|end|>"},
+			events: []thinkfsm.Event{
+				{Kind: thinkfsm.Consume}, {Kind: thinkfsm.Consume},
+				{Kind: thinkfsm.ToolCall, Text: " to"}, {Kind: thinkfsm.ToolCall, Text: "="},
+				{Kind: thinkfsm.ToolCall, Text: "functions"}, {Kind: thinkfsm.ToolCall, Text: ".f"},
+				{Kind: thinkfsm.Consume}, {Kind: thinkfsm.Consume}, {Kind: thinkfsm.Consume},
+				{Kind: thinkfsm.ToolCallEnd}, {Kind: thinkfsm.Consume}, {Kind: thinkfsm.EnterThinking},
+				{Kind: thinkfsm.Thinking, Text: "reason"}, {Kind: thinkfsm.LeaveThinking},
+			},
+		},
+		{
+			name:   "constraint marker and type stay internal",
+			tokens: []string{"<|channel|>", "final", " to", "=", "functions", ".f", "<|constrain|>", "json", "header garbage", "<|message|>", "{}", "<|start|>"},
+			events: []thinkfsm.Event{
+				{Kind: thinkfsm.Consume}, {Kind: thinkfsm.Consume},
+				{Kind: thinkfsm.ToolCall, Text: " to"}, {Kind: thinkfsm.ToolCall, Text: "="},
+				{Kind: thinkfsm.ToolCall, Text: "functions"}, {Kind: thinkfsm.ToolCall, Text: ".f"},
+				{Kind: thinkfsm.Consume}, {Kind: thinkfsm.Consume, Text: "json"},
+				{Kind: thinkfsm.Consume, Text: "header garbage"}, {Kind: thinkfsm.ToolCallStart},
+				{Kind: thinkfsm.ToolCall, Text: "{}"}, {Kind: thinkfsm.ToolCallEnd},
+			},
+		},
+		{
+			name:   "exact assistant recipient ends and selects ordinary analysis",
+			tokens: []string{"<|start|>", "assistant", " to", "=", "assistant", "<|channel|>", "analysis", "<|message|>", "reason", "<|end|>"},
+			events: []thinkfsm.Event{
+				{Kind: thinkfsm.Consume}, {Kind: thinkfsm.Consume},
+				{Kind: thinkfsm.ToolCall, Text: " to"}, {Kind: thinkfsm.ToolCall, Text: "="},
+				{Kind: thinkfsm.ToolCallEnd}, {Kind: thinkfsm.Consume}, {Kind: thinkfsm.Consume},
+				{Kind: thinkfsm.EnterThinking}, {Kind: thinkfsm.Thinking, Text: "reason"}, {Kind: thinkfsm.LeaveThinking},
+			},
+		},
+		{
+			name:   "ordinary commentary preamble",
+			tokens: []string{"<|channel|>", "comment", "ary", "header text", "<|message|>", "Let me check.", "<|call|>"},
+			events: []thinkfsm.Event{
+				{Kind: thinkfsm.Consume}, {Kind: thinkfsm.Consume}, {Kind: thinkfsm.Consume},
+				{Kind: thinkfsm.Consume, Text: "header text"}, {Kind: thinkfsm.Consume},
+				{Kind: thinkfsm.Content, Text: "Let me check."}, {Kind: thinkfsm.Consume},
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			class := reasoningClass()
+			for i, token := range tc.tokens {
+				if got := class(token); got != tc.events[i] {
+					t.Errorf("token %d %q = %+v, want %+v", i, token, got, tc.events[i])
+				}
+			}
+		})
+	}
+}
+
+func TestTokenEventConsumers(t *testing.T) {
+	cases := []struct {
+		event thinkfsm.Event
+		emit  bool
+	}{
+		{thinkfsm.Event{Kind: thinkfsm.EnterThinking}, false},
+		{thinkfsm.Event{Kind: thinkfsm.Thinking, Text: "reason"}, true},
+		{thinkfsm.Event{Kind: thinkfsm.ToolCall, Text: " to=functions.f"}, false},
+		{thinkfsm.Event{Kind: thinkfsm.ToolCallStart}, false},
+		{thinkfsm.Event{Kind: thinkfsm.ToolCallEnd}, false},
+		{thinkfsm.Event{Kind: thinkfsm.Consume, Text: "ignored"}, false},
+		{thinkfsm.Event{Kind: thinkfsm.LeaveThinking}, false},
+		{thinkfsm.Event{Kind: thinkfsm.Content, Text: "answer"}, true},
+		{thinkfsm.Event{Kind: thinkfsm.Content}, true},
+	}
+	var content, reasoning strings.Builder
+	for _, tc := range cases {
+		class := tokenClass(func(string) thinkfsm.Event { return tc.event })
+		sink(class, &content, &reasoning)("original token")
+		gin.SetMode(gin.TestMode)
+		w := &streamRecorder{httptest.NewRecorder(), make(chan bool)}
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/v1/chat/completions", nil)
+		dataCh := make(chan string, 1)
+		dataCh <- "original token"
+		close(dataCh)
+		profile := geniex_sdk.ProfileData{StopReason: "eos"}
+		streamPlainText(c, dataCh, func() error { return nil }, false, &profile, class)
+		choices := sseDeltas(t, w.Body.String())
+		wantChoices := 1 // terminal chunk only for internal events
+		if tc.emit {
+			wantChoices++
+		}
+		if len(choices) != wantChoices {
+			t.Fatalf("streamPlainText(%+v) choices = %+v, want %d", tc.event, choices, wantChoices)
+		}
+		if reason := choices[len(choices)-1].FinishReason; reason == nil || *reason != "stop" {
+			t.Errorf("streamPlainText(%+v) finish_reason = %v, want stop", tc.event, reason)
+		}
+		if !tc.emit {
+			continue
+		}
+		want := streamDelta{Role: "assistant"}
+		if tc.event.Kind == thinkfsm.Thinking {
+			want.ReasoningContent = tc.event.Text
+		} else {
+			want.Content = tc.event.Text
+		}
+		got := choices[0].Delta
+		if got.Role != want.Role || got.Content != want.Content || got.ReasoningContent != want.ReasoningContent || len(got.ToolCalls) != 0 {
+			t.Errorf("streamPlainText(%+v) delta = %+v, want %+v", tc.event, got, want)
+		}
+	}
+	if content.String() != "answer" || reasoning.String() != "reason" {
+		t.Errorf("sink content = %q, reasoning = %q", content.String(), reasoning.String())
+	}
 }
 
 func TestChatBindingUsesServerModel(t *testing.T) {

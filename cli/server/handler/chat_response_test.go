@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/openai/openai-go/v3"
 
 	geniex_sdk "github.com/qualcomm/GenieX/bindings/go"
 )
@@ -36,14 +37,14 @@ type blockingBody struct {
 func TestWriteBlockingResponseGemma4EmptyThought(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	var content, reasoning strings.Builder
-	onToken := sink(reasoningClass(), &content, &reasoning)
+	onToken, finish := sinkWithToolCalls(reasoningClass(), &content, &reasoning, "")
 	for _, token := range []string{"<|channel>", "thought", "<channel|>", `<|tool_call>call:go{}<tool_call|>`} {
 		onToken(token)
 	}
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	writeBlockingResponse(c, content.String(), reasoning.String(), geniex_sdk.ProfileData{StopReason: "eos"}, true, "")
+	writeBlockingResponse(c, &content, &reasoning, geniex_sdk.ProfileData{StopReason: "eos"}, finish)
 
 	var got blockingBody
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
@@ -133,7 +134,15 @@ func TestWriteBlockingResponse(t *testing.T) {
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			profile := geniex_sdk.ProfileData{StopReason: "eos", PromptTokens: 5, PrefillSpeed: 10, GeneratedTokens: 3, DecodingSpeed: 20}
-			writeBlockingResponse(c, tt.content, tt.reasoning, profile, tt.parseTool, tools)
+			var content, reasoning strings.Builder
+			onToken := sink(plainClass, &content, &reasoning)
+			finish := func() []openai.ChatCompletionMessageFunctionToolCallFunction { return nil }
+			if tt.parseTool {
+				onToken, finish = sinkWithToolCalls(plainClass, &content, &reasoning, tools)
+			}
+			onToken(tt.content)
+			reasoning.WriteString(tt.reasoning)
+			writeBlockingResponse(c, &content, &reasoning, profile, finish)
 
 			var got blockingBody
 			if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
@@ -166,5 +175,160 @@ func TestWriteBlockingResponse(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// Exercises the production-shared finalization and serialization seam, without
+// acquiring a model or invoking runChat's generation and retry path.
+func TestWriteBlockingResponsePreservesHeldText(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	const tools = `[{"type":"function","function":{"name":"f","parameters":{"type":"object","properties":{}}}}]`
+	for _, format := range []struct {
+		name      string
+		plain     bool
+		prefix    []string
+		reasoning string
+	}{
+		{name: "none", plain: true},
+		{name: "separated empty reasoning"},
+		{name: "separated populated reasoning", prefix: []string{"<think>", "reason", "</think>"}, reasoning: "reason"},
+	} {
+		for _, tail := range []struct {
+			name   string
+			tokens []string
+			want   string
+		}{
+			{"open object", []string{"{"}, "{"},
+			{"partial wrapper", []string{"answer", " <", "tool", "_c"}, "answer <tool_c"},
+		} {
+			for _, stop := range []struct {
+				name   string
+				reason string
+				err    error
+				finish string
+			}{
+				{"EOF", "eos", nil, "stop"},
+				{"context limit", "length", geniex_sdk.ErrLlmTokenizationContextLength, "length"},
+			} {
+				t.Run(format.name+"/"+tail.name+"/"+stop.name, func(t *testing.T) {
+					class := func() tokenClass {
+						if format.plain {
+							return plainClass
+						}
+						return reasoningClass()
+					}
+					tokens := append(append([]string(nil), format.prefix...), tail.tokens...)
+					var content, reasoning strings.Builder
+					onToken, finish := sinkWithToolCalls(class(), &content, &reasoning, tools)
+					for _, token := range tokens {
+						onToken(token)
+					}
+					w := httptest.NewRecorder()
+					c, _ := gin.CreateTestContext(w)
+					profile := geniex_sdk.ProfileData{StopReason: stop.reason}
+					writeBlockingResponse(c, &content, &reasoning, profile, finish)
+					var got blockingBody
+					if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+						t.Fatalf("body %s: %v", w.Body.Bytes(), err)
+					}
+					if len(got.Choices) != 1 {
+						t.Fatalf("choices = %+v, want one choice", got.Choices)
+					}
+					choice := got.Choices[0]
+					if choice.Message.Content != tail.want || choice.Message.ReasoningContent != format.reasoning || len(choice.Message.ToolCalls) != 0 || choice.FinishReason != stop.finish {
+						t.Errorf("choice = %+v, want content %q, reasoning %q, no calls and finish %q", choice, tail.want, format.reasoning, stop.finish)
+					}
+
+					sw := &streamRecorder{httptest.NewRecorder(), make(chan bool)}
+					sc, _ := gin.CreateTestContext(sw)
+					sc.Request = httptest.NewRequest("POST", "/v1/chat/completions", nil)
+					dataCh := make(chan string, len(tokens))
+					for _, token := range tokens {
+						dataCh <- token
+					}
+					close(dataCh)
+					streamToolCall(sc, dataCh, func() error { return stop.err }, false, &profile, class(), tools)
+					deltas := sseDeltas(t, sw.Body.String())
+					var streamedContent, streamedReasoning strings.Builder
+					for _, delta := range deltas {
+						streamedContent.WriteString(delta.Delta.Content)
+						streamedReasoning.WriteString(delta.Delta.ReasoningContent)
+						if len(delta.Delta.ToolCalls) != 0 {
+							t.Errorf("streamed calls = %+v, want none", delta.Delta.ToolCalls)
+						}
+					}
+					if streamedContent.String() != tail.want || streamedReasoning.String() != format.reasoning {
+						t.Errorf("streamed text = (%q, %q), want (%q, %q)", streamedContent.String(), streamedReasoning.String(), tail.want, format.reasoning)
+					}
+					if len(deltas) == 0 {
+						t.Fatal("stream emitted no terminal chunk")
+					}
+					if reason := deltas[len(deltas)-1].FinishReason; reason == nil || *reason != stop.finish {
+						t.Errorf("streamed finish = %v, want %q", reason, stop.finish)
+					}
+				})
+			}
+		}
+	}
+}
+
+func TestWriteBlockingResponseGPTOSSAbandonedRecipient(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	const tools = `[{"type":"function","function":{"name":"f"}}]`
+	for _, prefix := range []struct {
+		name   string
+		tokens []string
+	}{
+		{"role", []string{"<|start|>", "assistant", " to"}},
+		{"analysis", []string{"<|channel|>", "analysis", " to"}},
+		{"final", []string{"<|channel|>", "final", " to"}},
+		{"commentary", []string{"<|channel|>", "comment", "ary", " to"}},
+	} {
+		for _, exit := range []struct {
+			name   string
+			tokens []string
+		}{
+			{"unmatched then end", []string{"x", "<|end|>"}},
+			{"empty ordinary body", []string{"<|message|>", "<|end|>"}},
+		} {
+			t.Run(prefix.name+"/"+exit.name, func(t *testing.T) {
+				tokens := append(append([]string(nil), prefix.tokens...), exit.tokens...)
+				tokens = append(tokens, "<|start|>", "assistant", " to", "=", "functions", ".f", "<|channel|>", "analysis", "<|message|>", "{}", "<|call|>")
+				var content, reasoning strings.Builder
+				onToken, finish := sinkWithToolCalls(reasoningClass(), &content, &reasoning, tools)
+				for _, token := range tokens {
+					onToken(token)
+				}
+				w := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(w)
+				writeBlockingResponse(c, &content, &reasoning, geniex_sdk.ProfileData{StopReason: "eos"}, finish)
+				var got blockingBody
+				if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+					t.Fatal(err)
+				}
+				if len(got.Choices) != 1 {
+					t.Fatalf("choices = %+v, want one", got.Choices)
+				}
+				choice := got.Choices[0]
+				if choice.Message.Content != "" || choice.Message.ReasoningContent != "" || choice.FinishReason != "tool_calls" || len(choice.Message.ToolCalls) != 1 {
+					t.Errorf("choice = %+v, want one fresh call and no display text", choice)
+				} else if call := choice.Message.ToolCalls[0].Function; call.Name != "f" || call.Arguments != "{}" {
+					t.Errorf("call = %+v, want f with {}", call)
+				}
+				deltas := runStreamToolCallWithTools(t, reasoningClass(), tools, tokens...)
+				var calls []toolCallDelta
+				for _, delta := range deltas {
+					if delta.Delta.Content != "" || delta.Delta.ReasoningContent != "" {
+						t.Errorf("streamed text = %+v, want none", delta.Delta)
+					}
+					for _, call := range delta.Delta.ToolCalls {
+						calls = append(calls, toolCallDelta{int(call.Index), call.Function.Name, call.Function.Arguments})
+					}
+				}
+				if len(calls) != 1 || calls[0] != (toolCallDelta{0, "f", "{}"}) {
+					t.Errorf("streamed calls = %+v, want one fresh f call with {}", calls)
+				}
+			})
+		}
 	}
 }

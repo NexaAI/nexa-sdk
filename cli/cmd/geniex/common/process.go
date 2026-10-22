@@ -204,22 +204,22 @@ func (p *Processor) parseFiles(prompt string) (string, []string, []string, error
 // server drives the same splitter to fill reasoning_content instead.
 func (p *Processor) fsmEvent(token string) {
 	ev := p.splitter.Feed(token)
-	switch {
-	case ev.Boundary == thinkfsm.EnterReasoning:
+	switch ev.Kind {
+	case thinkfsm.EnterThinking:
 		render.GetTheme().Set(render.GetTheme().ThinkOutput)
-		if ev.Block {
-			fmt.Print("<think>\n")
-		} else {
+		if token == "<think>" {
 			fmt.Print("<think>")
-		}
-	case ev.Boundary == thinkfsm.ExitReasoning:
-		if ev.Block {
-			fmt.Print("\n</think>\n\n")
 		} else {
+			fmt.Print("<think>\n")
+		}
+	case thinkfsm.LeaveThinking:
+		if token == "</think>" {
 			fmt.Print("</think>")
+		} else {
+			fmt.Print("\n</think>\n\n")
 		}
 		render.GetTheme().Set(render.GetTheme().ModelOutput)
-	case !ev.Consumed:
+	case thinkfsm.Thinking, thinkfsm.Content:
 		fmt.Print(ev.Text)
 	}
 }
