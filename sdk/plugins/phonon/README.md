@@ -1,5 +1,10 @@
 # Experimental Phonon TTS backend
 
+The [architecture study](ARCHITECTURE_STUDY.md) compares this prototype with
+GenieX's existing QAIRT pipelines and pinned llama.cpp speech implementations.
+Runtime governance, dependency integration and mixed-session validation remain
+unresolved; the draft is not a ready-to-merge architecture recommendation.
+
 This contribution adds a speech API and an opt-in `phonon_qnn` plugin. It runs
 Gradium's metadata-driven Phonon generator through QNN HTP, including its prefill
 and step graphs. It does not route Phonon through a causal language model or the
