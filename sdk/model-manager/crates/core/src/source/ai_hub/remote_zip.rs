@@ -192,7 +192,7 @@ pub async fn fetch_central_directory(
     }
 
     // CD header layout: 46 fixed bytes + name_len + extra_len + comment_len.
-    let mut entries: Vec<ZipEntry> = Vec::with_capacity(cd_entries as usize);
+    let mut entries: Vec<ZipEntry> = Vec::with_capacity(cd_entries.min(cd_size / 46) as usize);
     let mut cursor: usize = 0;
     while cursor + 46 <= cd.len() {
         if read_u32(&cd, cursor) != CD_HEADER_SIG {
@@ -373,9 +373,8 @@ fn read_u64(buf: &[u8], off: usize) -> u64 {
 }
 
 fn read_zip64_u64(buf: &[u8], off: usize) -> Option<u64> {
-    let end = off.checked_add(8)?;
-    let bytes = buf.get(off..end)?;
-    Some(u64::from_le_bytes(bytes.try_into().ok()?))
+    let bytes = buf.get(off..off.checked_add(8)?)?;
+    Some(read_u64(bytes, 0))
 }
 
 /// [`HttpTransport`] adapter that serves a single local file. Used by the
@@ -592,18 +591,95 @@ mod tests {
         assert_eq!(bin.compressed_size, 5);
     }
 
-    #[tokio::test]
-    async fn rejects_truncated_zip64_extra_metadata() {
-        let mut body = build_stored_zip(&[("model.bin", b"HELLO")]);
-        corrupt_zip64_extra(&mut body);
+    fn add_zip64_eocd(body: &mut Vec<u8>, cd_entries: u64, locator_off: Option<u64>) {
+        let eocd = body
+            .windows(4)
+            .rposition(|window| window == b"PK\x05\x06")
+            .unwrap();
+        let cd_size = u32::from_le_bytes(body[eocd + 12..eocd + 16].try_into().unwrap());
+        let cd_offset = u32::from_le_bytes(body[eocd + 16..eocd + 20].try_into().unwrap());
+        let mut z64 = Vec::new();
+        z64.extend_from_slice(b"PK\x06\x06");
+        z64.extend_from_slice(&44u64.to_le_bytes());
+        z64.extend_from_slice(&[45, 0, 45, 0]);
+        z64.extend_from_slice(&[0; 8]);
+        z64.extend_from_slice(&1u64.to_le_bytes());
+        z64.extend_from_slice(&cd_entries.to_le_bytes());
+        z64.extend_from_slice(&u64::from(cd_size).to_le_bytes());
+        z64.extend_from_slice(&u64::from(cd_offset).to_le_bytes());
+        z64.extend_from_slice(b"PK\x06\x07");
+        z64.extend_from_slice(&0u32.to_le_bytes());
+        z64.extend_from_slice(&locator_off.unwrap_or(eocd as u64).to_le_bytes());
+        z64.extend_from_slice(&1u32.to_le_bytes());
+        let new_eocd = eocd + z64.len();
+        body.splice(eocd..eocd, z64);
+        body[new_eocd + 12..new_eocd + 16].copy_from_slice(&u32::MAX.to_le_bytes());
+        body[new_eocd + 16..new_eocd + 20].copy_from_slice(&u32::MAX.to_le_bytes());
+    }
+
+    async fn parse_local(body: Vec<u8>) -> Result<Vec<ZipEntry>> {
         let tmp = tempfile::tempdir().unwrap();
         let path = tmp.path().join("malformed.zip");
         std::fs::write(&path, body).unwrap();
         let transport: Arc<dyn HttpTransport> = Arc::new(LocalFileTransport::open(&path).unwrap());
         let url = Url::parse("file:///malformed.zip").unwrap();
+        fetch_central_directory(&transport, &url).await
+    }
 
-        let err = fetch_central_directory(&transport, &url).await.unwrap_err();
+    fn central_offset(body: &[u8]) -> usize {
+        body.windows(4)
+            .position(|window| window == b"PK\x01\x02")
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn rejects_truncated_zip64_extra_metadata() {
+        let mut body = build_stored_zip(&[("model.bin", b"HELLO")]);
+        corrupt_zip64_extra(&mut body);
+        let err = parse_local(body).await.unwrap_err();
         assert!(err.to_string().contains("ZIP64 extra"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn tolerates_oversized_zip64_entry_count() {
+        let mut body = build_stored_zip(&[("model.bin", b"HELLO")]);
+        add_zip64_eocd(&mut body, u64::MAX, None);
+        let entries = parse_local(body).await.unwrap();
+        assert_eq!(entries.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn rejects_zip64_eocd_offset_overflow() {
+        let mut body = build_stored_zip(&[("model.bin", b"HELLO")]);
+        add_zip64_eocd(&mut body, 1, Some(u64::MAX - 10));
+        let err = parse_local(body).await.unwrap_err();
+        assert!(err.to_string().contains("overflows"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn rejects_zip64_eocd_offset_out_of_range() {
+        let mut body = build_stored_zip(&[("model.bin", b"HELLO")]);
+        add_zip64_eocd(&mut body, 1, Some(1 << 40));
+        let err = parse_local(body).await.unwrap_err();
+        assert!(err.to_string().contains("exceeds archive size"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn rejects_local_header_offset_out_of_range() {
+        let mut body = build_stored_zip(&[("model.bin", b"HELLO")]);
+        let central = central_offset(&body);
+        body[central + 42..central + 46].copy_from_slice(&0x7FFF_FFFFu32.to_le_bytes());
+        let err = parse_local(body).await.unwrap_err();
+        assert!(err.to_string().contains("local header range"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn rejects_payload_range_out_of_range() {
+        let mut body = build_stored_zip(&[("model.bin", b"HELLO")]);
+        let central = central_offset(&body);
+        body[central + 20..central + 24].copy_from_slice(&0x7FFF_FFFFu32.to_le_bytes());
+        let err = parse_local(body).await.unwrap_err();
+        assert!(err.to_string().contains("payload range"), "{err}");
     }
 
     #[tokio::test]
