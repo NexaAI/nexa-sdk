@@ -16,12 +16,16 @@ from ._ffi._api import (
 )
 from ._version import __version__
 from .auto import AutoModelForCausalLM, AutoModelForVision2Seq, resolve_device_map
+from .chat_template import ChatTemplateGrammar, ChatTemplateOutput, GrammarTrigger
 from .generation import GenerateOutput, ProfileData, TextIteratorStreamer
 from .modeling import GenieXLLM, GenieXVLM
 
 __all__ = [
     '__version__',
     'AutoModelForCausalLM',
+    'ChatTemplateGrammar',
+    'ChatTemplateOutput',
+    'GrammarTrigger',
     'AutoModelForVision2Seq',
     'GenieXError',
     'GenieXLLM',

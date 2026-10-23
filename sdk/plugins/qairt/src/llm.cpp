@@ -139,6 +139,10 @@ int32_t QairtLlm::load_kv_cache(const geniex_KvCacheLoadInput* input, geniex_KvC
 
 int32_t QairtLlm::apply_chat_template(
     const geniex_LlmApplyChatTemplateInput* input, geniex_LlmApplyChatTemplateOutput* output) {
+    if (output) {
+        output->formatted_text        = nullptr;
+        output->chat_template_grammar = {};
+    }
     if (!pipeline_) return GENIEX_ERROR_COMMON_NOT_INITIALIZED;
     if (!input || !output) return GENIEX_ERROR_COMMON_INVALID_INPUT;
     if (!input->messages || input->message_count <= 0) return GENIEX_ERROR_COMMON_INVALID_INPUT;

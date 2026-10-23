@@ -174,6 +174,10 @@ int32_t LlamaLlm::load_kv_cache(const geniex_KvCacheLoadInput* input, geniex_KvC
 
 int32_t LlamaLlm::apply_chat_template(
     const geniex_LlmApplyChatTemplateInput* input, geniex_LlmApplyChatTemplateOutput* output) {
+    if (output) {
+        output->formatted_text        = nullptr;
+        output->chat_template_grammar = {};
+    }
     if (!input || !input->messages || !output || input->message_count <= 0) {
         return GENIEX_ERROR_COMMON_INVALID_INPUT;  // error: invalid input
     }
@@ -213,13 +217,22 @@ int32_t LlamaLlm::apply_chat_template(
 
     inputs.enable_thinking = input->enable_thinking;
 
-    // Apply chat template
-    auto result = common_chat_templates_apply(tmpls.get(), inputs);
+    // Apply chat template and retain its sampler grammar state.
+    common_chat_session    session(tmpls.get(), llama_model_get_vocab(this->model), inputs);
+    common_params_sampling sampling;
+    session.apply_sampling(sampling);
 
-    output->formatted_text = strdup(result.prompt.str().c_str());
-    if (!output->formatted_text) {
-        return GENIEX_ERROR_COMMON_MEMORY_ALLOCATION;  // error: memory allocation failed
+    const std::string prompt      = session.prompt().str();
+    char*             prompt_copy = strdup(prompt.c_str());
+    if (!prompt_copy) {
+        return GENIEX_ERROR_COMMON_MEMORY_ALLOCATION;
     }
+    if (!copy_chat_template_grammar(sampling, &output->chat_template_grammar)) {
+        free(prompt_copy);
+        return GENIEX_ERROR_COMMON_MEMORY_ALLOCATION;
+    }
+
+    output->formatted_text = prompt_copy;
     return GENIEX_SUCCESS;
 }
 

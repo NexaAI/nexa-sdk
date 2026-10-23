@@ -196,6 +196,31 @@ data class VlmContent(
 )
 ```
 
+### Chat-template grammar metadata
+
+`applyChatTemplate()` returns `LlmApplyChatTemplateOutput` for both LLMs and VLMs. It contains `formattedText` and nullable `chatTemplateGrammar`. Pass that metadata through `SamplerConfig` when generating; it is owned Kotlin data, not a borrowed native pointer.
+
+```kotlin
+val toolsJson = """[{"type":"function","function":{"name":"lookup","parameters":{"type":"object","properties":{}}}}]"""
+val template = llmWrapper.applyChatTemplate(chat, toolsJson, false).getOrThrow()
+val config = GenerationConfig(
+    maxTokens = 2048,
+    samplerConfig = SamplerConfig(chatTemplateGrammar = template.chatTemplateGrammar),
+)
+llmWrapper.generateStreamFlow(template.formattedText, config = config).collect { /* ... */ }
+```
+
+`ChatTemplateGrammar` carries the grammar type/text, lazy flag, generation prompt, trigger list, and preserved-token IDs. With no tool grammar, `chatTemplateGrammar` is `null`; no extra grammar is applied. The same explicit sampler handoff works for VLMs:
+
+```kotlin
+val template = vlmWrapper.applyChatTemplate(vlmChat, toolsJson, false).getOrThrow()
+val config = vlmWrapper.injectMediaPathsToConfig(
+    vlmChat,
+    GenerationConfig(samplerConfig = SamplerConfig(chatTemplateGrammar = template.chatTemplateGrammar)),
+)
+vlmWrapper.generateStreamFlow(template.formattedText, config).collect { /* ... */ }
+```
+
 ### `GenerationConfig`
 
 ```kotlin

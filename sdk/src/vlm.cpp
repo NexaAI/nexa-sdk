@@ -68,6 +68,10 @@ int32_t geniex_vlm_reset(geniex_VLM* handle) {
 
 int32_t geniex_vlm_apply_chat_template(
     geniex_VLM* handle, const geniex_VlmApplyChatTemplateInput* input, geniex_VlmApplyChatTemplateOutput* output) {
+    if (output) {
+        output->formatted_text        = nullptr;
+        output->chat_template_grammar = {};
+    }
     GENIEX_LOG_TRACE("{}", input);
 
     try {

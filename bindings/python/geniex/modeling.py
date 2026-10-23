@@ -4,11 +4,13 @@
 from __future__ import annotations
 
 import os
-from ctypes import POINTER, byref, c_char_p, c_float, c_int32, c_void_p, cast, pointer, string_at
+from ctypes import POINTER, byref, c_char_p, c_float, c_int32, c_void_p, cast, create_string_buffer, pointer, string_at
 
 from ._ffi._api import GENIEX_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH, _check, _str_list_to_c, load_library
 from ._ffi._types import (
+    geniex_ChatTemplateGrammar,
     geniex_GenerationConfig,
+    geniex_GrammarTrigger,
     geniex_KvCacheLoadInput,
     geniex_KvCacheLoadOutput,
     geniex_KvCacheSaveInput,
@@ -32,6 +34,7 @@ from ._ffi._types import (
     geniex_VlmGenerateInput,
     geniex_VlmGenerateOutput,
 )
+from .chat_template import ChatTemplateGrammar, ChatTemplateOutput, GrammarTrigger
 from .generation.output import GenerateOutput, ProfileData
 from .generation.streamer import TextIteratorStreamer
 from .tokenizer import ModelTokenizer
@@ -80,6 +83,50 @@ def _tool_fields(msg: dict, keepalive: list) -> dict:
     return fields
 
 
+def _decode_optional_utf8(p) -> str | None:
+    return string_at(p).decode('utf-8', errors='replace') if p else None
+
+
+def _copy_chat_template_grammar(grammar: geniex_ChatTemplateGrammar) -> ChatTemplateGrammar:
+    triggers = (
+        tuple(
+            GrammarTrigger(
+                trigger_type=int(trigger.trigger_type),
+                value=_decode_optional_utf8(trigger.value),
+                token=int(trigger.token),
+            )
+            for trigger in grammar.triggers[: grammar.trigger_count]
+        )
+        if grammar.triggers
+        else ()
+    )
+    preserved_tokens = (
+        tuple(grammar.preserved_tokens[: grammar.preserved_token_count]) if grammar.preserved_tokens else ()
+    )
+    return ChatTemplateGrammar(
+        grammar_type=int(grammar.grammar_type),
+        grammar=_decode_optional_utf8(grammar.grammar),
+        lazy=bool(grammar.lazy),
+        generation_prompt=_decode_optional_utf8(grammar.generation_prompt),
+        triggers=triggers,
+        preserved_tokens=preserved_tokens,
+    )
+
+
+def _free_chat_template_grammar(lib, grammar: geniex_ChatTemplateGrammar) -> None:
+    if grammar.grammar:
+        lib.geniex_free(grammar.grammar)
+    if grammar.generation_prompt:
+        lib.geniex_free(grammar.generation_prompt)
+    if grammar.triggers:
+        for trigger in grammar.triggers[: grammar.trigger_count]:
+            if trigger.value:
+                lib.geniex_free(trigger.value)
+        lib.geniex_free(cast(grammar.triggers, c_void_p))
+    if grammar.preserved_tokens:
+        lib.geniex_free(cast(grammar.preserved_tokens, c_void_p))
+
+
 def _build_sampler(
     temperature: float,
     top_p: float,
@@ -90,8 +137,42 @@ def _build_sampler(
     frequency_penalty: float,
     seed: int,
     grammar: str | None,
+    chat_template_grammar: ChatTemplateGrammar | None = None,
 ) -> geniex_SamplerConfig:
-    return geniex_SamplerConfig(
+    c_grammar = geniex_ChatTemplateGrammar()
+    keepalive = []
+    if chat_template_grammar and chat_template_grammar.grammar_type != 0:
+        c_grammar.grammar_type = chat_template_grammar.grammar_type
+        c_grammar.lazy = chat_template_grammar.lazy
+        for field, value in (
+            ('grammar', chat_template_grammar.grammar),
+            ('generation_prompt', chat_template_grammar.generation_prompt),
+        ):
+            if value is not None:
+                buffer = create_string_buffer(value.encode())
+                keepalive.append(buffer)
+                setattr(c_grammar, field, cast(buffer, c_void_p))
+        if chat_template_grammar.triggers:
+            trigger_array = (geniex_GrammarTrigger * len(chat_template_grammar.triggers))()
+            for index, trigger in enumerate(chat_template_grammar.triggers):
+                trigger_array[index].trigger_type = trigger.trigger_type
+                trigger_array[index].token = trigger.token
+                if trigger.value is not None:
+                    value_buffer = create_string_buffer(trigger.value.encode())
+                    keepalive.append(value_buffer)
+                    trigger_array[index].value = cast(value_buffer, c_void_p)
+            c_grammar.triggers = trigger_array
+            c_grammar.trigger_count = len(chat_template_grammar.triggers)
+            keepalive.append(trigger_array)
+        if chat_template_grammar.preserved_tokens:
+            preserved_array = (c_int32 * len(chat_template_grammar.preserved_tokens))(
+                *chat_template_grammar.preserved_tokens
+            )
+            c_grammar.preserved_tokens = cast(preserved_array, POINTER(c_int32))
+            c_grammar.preserved_token_count = len(chat_template_grammar.preserved_tokens)
+            keepalive.append(preserved_array)
+
+    sampler = geniex_SamplerConfig(
         temperature=temperature,
         top_p=top_p,
         top_k=top_k,
@@ -101,7 +182,10 @@ def _build_sampler(
         frequency_penalty=frequency_penalty,
         seed=seed,
         grammar_string=_enc(grammar),
+        chat_template_grammar=c_grammar,
     )
+    sampler._chat_template_grammar_keepalive = keepalive
+    return sampler
 
 
 def _build_gen_config(
@@ -198,7 +282,8 @@ class GenieXLLM:
         add_generation_prompt: bool,
         enable_thinking: bool,
         tools: str | None,
-    ) -> str:
+        include_grammar: bool = False,
+    ) -> str | ChatTemplateOutput:
         lib = load_library()
         count = len(messages)
         keepalive: list = []
@@ -221,10 +306,16 @@ class GenieXLLM:
             add_generation_prompt=add_generation_prompt,
         )
         out = geniex_LlmApplyChatTemplateOutput()
-        _check(lib.geniex_llm_apply_chat_template(self._handle, byref(inp), byref(out)))
-        result = _decode_utf8(out.formatted_text)
-        if out.formatted_text:
-            lib.geniex_free(out.formatted_text)
+        try:
+            _check(lib.geniex_llm_apply_chat_template(self._handle, byref(inp), byref(out)))
+            result = _decode_utf8(out.formatted_text)
+            grammar = _copy_chat_template_grammar(out.chat_template_grammar) if include_grammar else None
+        finally:
+            if out.formatted_text:
+                lib.geniex_free(out.formatted_text)
+            _free_chat_template_grammar(lib, out.chat_template_grammar)
+        if include_grammar:
+            return ChatTemplateOutput(result, grammar or ChatTemplateGrammar())
         return result
 
     def generate(
@@ -243,6 +334,7 @@ class GenieXLLM:
         seed: int = 0,
         stop: list[str] | None = None,
         grammar: str | None = None,
+        chat_template_grammar: ChatTemplateGrammar | None = None,
         stream: bool = False,
         # Opt-in ring-buffer context eviction (qairt only).
         sliding_window: bool = False,
@@ -283,6 +375,7 @@ class GenieXLLM:
             frequency_penalty,
             seed,
             grammar,
+            chat_template_grammar,
         )
         cfg, _sa, _ia, _aa = _build_gen_config(
             max_new_tokens, stop, sampler, [], [], sliding_window, sliding_window_n_keep
@@ -532,7 +625,8 @@ class GenieXVLM:
         add_generation_prompt: bool,
         enable_thinking: bool,
         tools: str | None,
-    ) -> str:
+        include_grammar: bool = False,
+    ) -> str | ChatTemplateOutput:
         lib = load_library()
         self._last_template_has_image = _messages_have_modality(messages, 'image')
         self._last_template_has_audio = _messages_have_modality(messages, 'audio')
@@ -544,10 +638,16 @@ class GenieXVLM:
             enable_thinking=enable_thinking,
         )
         out = geniex_VlmApplyChatTemplateOutput()
-        _check(lib.geniex_vlm_apply_chat_template(self._handle, byref(inp), byref(out)))
-        result = _decode_utf8(out.formatted_text)
-        if out.formatted_text:
-            lib.geniex_free(out.formatted_text)
+        try:
+            _check(lib.geniex_vlm_apply_chat_template(self._handle, byref(inp), byref(out)))
+            result = _decode_utf8(out.formatted_text)
+            grammar = _copy_chat_template_grammar(out.chat_template_grammar) if include_grammar else None
+        finally:
+            if out.formatted_text:
+                lib.geniex_free(out.formatted_text)
+            _free_chat_template_grammar(lib, out.chat_template_grammar)
+        if include_grammar:
+            return ChatTemplateOutput(result, grammar or ChatTemplateGrammar())
         return result
 
     def generate(
@@ -566,6 +666,7 @@ class GenieXVLM:
         seed: int = 0,
         stop: list[str] | None = None,
         grammar: str | None = None,
+        chat_template_grammar: ChatTemplateGrammar | None = None,
         images: list[str] | None = None,
         audios: list[str] | None = None,
         stream: bool = False,
@@ -605,6 +706,7 @@ class GenieXVLM:
             frequency_penalty,
             seed,
             grammar,
+            chat_template_grammar,
         )
         cfg, _sa, _ia, _aa = _build_gen_config(max_new_tokens, stop, sampler, images, audios)
 

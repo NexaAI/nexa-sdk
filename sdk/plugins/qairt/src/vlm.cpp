@@ -170,6 +170,10 @@ int32_t QairtVlm::reset() {
 
 int32_t QairtVlm::apply_chat_template(
     const geniex_VlmApplyChatTemplateInput* input, geniex_VlmApplyChatTemplateOutput* output) {
+    if (output) {
+        output->formatted_text        = nullptr;
+        output->chat_template_grammar = {};
+    }
     if (!pipeline_) return GENIEX_ERROR_COMMON_NOT_INITIALIZED;
     if (!input || !output) return GENIEX_ERROR_COMMON_INVALID_INPUT;
     if (!input->messages || input->message_count <= 0) return GENIEX_ERROR_COMMON_INVALID_INPUT;

@@ -15,6 +15,7 @@ from ._api import (
 )
 from ._lib import load_library
 from ._types import (
+    geniex_ChatTemplateGrammar,
     geniex_DecideInput,
     geniex_DecideOption,
     geniex_DecideOutput,
@@ -23,6 +24,7 @@ from ._types import (
     geniex_GetDeviceListInput,
     geniex_GetDeviceListOutput,
     geniex_GetPluginListOutput,
+    geniex_GrammarTrigger,
     geniex_KvCacheLoadInput,
     geniex_KvCacheLoadOutput,
     geniex_KvCacheSaveInput,
@@ -59,6 +61,7 @@ __all__ = [
     'init',
     'load_library',
     'version',
+    'geniex_ChatTemplateGrammar',
     'geniex_DecideInput',
     'geniex_DecideOption',
     'geniex_DecideOutput',
@@ -67,6 +70,7 @@ __all__ = [
     'geniex_GetDeviceListInput',
     'geniex_GetDeviceListOutput',
     'geniex_GetPluginListOutput',
+    'geniex_GrammarTrigger',
     'geniex_KvCacheLoadInput',
     'geniex_KvCacheLoadOutput',
     'geniex_KvCacheSaveInput',

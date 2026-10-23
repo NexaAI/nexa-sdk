@@ -164,7 +164,7 @@ type prepareInput[M any] struct {
 	Messages M
 	Param    ChatCompletionRequest
 	Tools    string
-	Sampler  *geniex_sdk.SamplerConfig
+	Sampler  geniex_sdk.SamplerConfig
 	Fresh    bool
 }
 
@@ -182,13 +182,14 @@ func prepareLLM(p *geniex_sdk.LLM, input prepareInput[[]geniex_sdk.LlmChatMessag
 	if err != nil {
 		return "", nil, err
 	}
+	input.Sampler.ChatTemplateGrammar = formatted.ChatTemplateGrammar
 	gen := func(prompt string, onToken func(string) bool) (geniex_sdk.ProfileData, string, error) {
 		out, err := p.Generate(geniex_sdk.LlmGenerateInput{
 			PromptUTF8: prompt,
 			OnToken:    onToken,
 			Config: &geniex_sdk.GenerationConfig{
 				MaxTokens:     int32(input.Param.MaxCompletionTokens.Value),
-				SamplerConfig: input.Sampler,
+				SamplerConfig: &input.Sampler,
 			},
 		})
 		if out == nil {
@@ -208,6 +209,7 @@ func prepareVLM(p *geniex_sdk.VLM, input prepareInput[[]geniex_sdk.VlmChatMessag
 	if err != nil {
 		return "", nil, err
 	}
+	input.Sampler.ChatTemplateGrammar = formatted.ChatTemplateGrammar
 	start := len(input.Messages) - 1
 	if input.Fresh {
 		start = 0
@@ -229,7 +231,7 @@ func prepareVLM(p *geniex_sdk.VLM, input prepareInput[[]geniex_sdk.VlmChatMessag
 			OnToken:    onToken,
 			Config: &geniex_sdk.GenerationConfig{
 				MaxTokens:     int32(input.Param.MaxCompletionTokens.Value),
-				SamplerConfig: input.Sampler,
+				SamplerConfig: &input.Sampler,
 				ImagePaths:    images,
 				AudioPaths:    audios,
 			},
@@ -297,7 +299,7 @@ func runChat[T, M any](c *gin.Context, param ChatCompletionRequest, modelParam t
 		return
 	}
 
-	sampler := &geniex_sdk.SamplerConfig{
+	sampler := geniex_sdk.SamplerConfig{
 		Temperature:       float32(param.Temperature.Value),
 		TopP:              float32(param.TopP.Value),
 		TopK:              param.TopK,

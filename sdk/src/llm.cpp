@@ -102,6 +102,10 @@ int32_t geniex_llm_load_kv_cache(
 
 int32_t geniex_llm_apply_chat_template(
     geniex_LLM* h, const geniex_LlmApplyChatTemplateInput* input, geniex_LlmApplyChatTemplateOutput* output) {
+    if (output) {
+        output->formatted_text        = nullptr;
+        output->chat_template_grammar = {};
+    }
     GENIEX_LOG_TRACE("{}", input);
 
     try {
