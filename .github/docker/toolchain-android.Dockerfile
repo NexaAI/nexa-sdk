@@ -5,7 +5,7 @@
 # bakes in build-essential (for Rust proc-macro host linking), ccache,
 # and the aarch64-linux-android Rust target so _build-sdk.yml can skip
 # the per-run apt-get / rustup installation.
-ARG UPSTREAM_TAG=v0.7
+ARG UPSTREAM_TAG=v0.8
 FROM ghcr.io/snapdragon-toolchain/arm64-android:${UPSTREAM_TAG}
 
 ENV DEBIAN_FRONTEND=noninteractive
