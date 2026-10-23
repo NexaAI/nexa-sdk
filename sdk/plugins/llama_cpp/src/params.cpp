@@ -114,6 +114,11 @@ llama_context_params build_context_params(const geniex_ModelConfig& config, int3
     cpar.flash_attn_type      = static_cast<llama_flash_attn_type>(fa);
     cpar.no_perf              = false;
 
+    if (device == Device::NPU) {
+        cpar.type_k = GGML_TYPE_Q8_0;
+        cpar.type_v = GGML_TYPE_Q8_0;
+    }
+
     if (spec) {
         cpar.n_rs_seq     = spec->need_n_rs_seq();
         const auto limits = common_speculative_get_output_limits(
@@ -128,8 +133,8 @@ llama_context_params build_context_params(const geniex_ModelConfig& config, int3
 
     GENIEX_LOG_INFO(
         "[Optimise] context params: n_ctx={}, n_batch={}, n_ubatch={}, n_seq_max={}, n_threads={}, "
-        "n_threads_batch={}, flash_attn_type={}, swa_full={}, kv_unified={}, no_perf={}, n_rs_seq={}, "
-        "n_outputs_max={}, n_outputs_max_per_seq={}",
+        "n_threads_batch={}, flash_attn_type={}, type_k={}, type_v={}, swa_full={}, kv_unified={}, no_perf={}, "
+        "n_rs_seq={}, n_outputs_max={}, n_outputs_max_per_seq={}",
         cpar.n_ctx,
         cpar.n_batch,
         cpar.n_ubatch,
@@ -137,6 +142,8 @@ llama_context_params build_context_params(const geniex_ModelConfig& config, int3
         cpar.n_threads,
         cpar.n_threads_batch,
         static_cast<int>(cpar.flash_attn_type),
+        ggml_type_name(cpar.type_k),
+        ggml_type_name(cpar.type_v),
         cpar.swa_full,
         cpar.kv_unified,
         cpar.no_perf,
