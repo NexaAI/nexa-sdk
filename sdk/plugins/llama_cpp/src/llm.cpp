@@ -143,6 +143,9 @@ int32_t LlamaLlm::reset() {
     this->past_prompt_tokens.clear();
 
     llama_memory_clear(llama_get_memory(this->ctx), /*clear data=*/true);
+    if (this->draft_ctx) {
+        llama_memory_clear(llama_get_memory(this->draft_ctx), /*clear data=*/true);
+    }
 
     return GENIEX_SUCCESS;
 }
@@ -314,15 +317,22 @@ int32_t LlamaLlm::generate(const geniex_LlmGenerateInput* input, geniex_LlmGener
         if (match_len < (int)this->past_prompt_tokens.size()) {
             if (match_len < this->n_past_global - this->n_past) {
                 // match out of kvcache, need reset
-                llama_memory_seq_rm(mem, 0, 0, this->n_past);
-                this->n_past        = 0;
+                this->reset();
                 this->n_past_global = prompt_len > n_ctx - 4 ? n_ctx - 4 : 0;
                 GENIEX_LOG_INFO("prefix match: n_past_global rollback to: {}", this->n_past_global);
             } else {
                 // match in kvcache, need rollback
-                llama_memory_seq_rm(mem, 0, match_len, -1);
-                this->n_past        = match_len;
-                this->n_past_global = match_len;
+                const bool target_reused = llama_memory_seq_rm(mem, 0, match_len, -1);
+                const bool draft_reused =
+                    !this->draft_ctx || llama_memory_seq_rm(llama_get_memory(this->draft_ctx), 0, match_len, -1);
+                if (target_reused && draft_reused) {
+                    this->n_past        = match_len;
+                    this->n_past_global = match_len;
+                } else {
+                    // Recurrent state can only roll back within its snapshot
+                    // window. Rebuild both contexts if either cache cannot trim.
+                    this->reset();
+                }
                 GENIEX_LOG_INFO("prefix match: n_past_global rollback to: {}", this->n_past_global);
             }
             this->past_prompt_tokens.assign(prompt_ids.begin(), prompt_ids.begin() + this->n_past_global);
@@ -825,6 +835,12 @@ int32_t LlamaLlm::decode_speculative(const geniex_GenerationConfig& cfg, const s
         common_speculative_draft(this->spec);
         draft_n_total += (int64_t)draft.size();
 
+        // Drafting wrote unverified positions into the drafter's KV. Replay
+        // the verification batch from the same committed prefix as the target.
+        if (mem_dft) {
+            llama_memory_seq_rm(mem_dft, seq_id, this->n_past, -1);
+        }
+
         // Verification batch: [id_last, draft0, draft1, ...], all needing logits.
         batch.clear();
         llama_pos pos = this->n_past;
@@ -933,8 +949,9 @@ int32_t LlamaLlm::setup_speculative(
             return GENIEX_ERROR_COMMON_INVALID_INPUT;
         }
 
-        llama_model_params dmpar     = build_model_params(config, device);
-        auto               selection = resolve_devices(device_id);
+        llama_model_params dmpar = build_model_params(config, device);
+        dmpar.load_mtp           = is_mtp;
+        auto selection           = resolve_devices(device_id);
         if (selection) {
             apply_device_selection(dmpar, *selection, device);
         }
