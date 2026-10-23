@@ -93,8 +93,11 @@ int32_t QairtLlm::create(const geniex_LlmCreateInput* input) {
         return GENIEX_ERROR_COMMON_FILE_NOT_FOUND;
     }
 
-    // Embedding table (optional - AI Hub models do embedding on-device)
-    model_cfg.embedding_path = qairt::runtime::find_optional_file(model_dir, "embedding_weights.raw");
+    // Embedding table (optional - AI Hub models do embedding on-device). Keep the one genie_config.json
+    // declared (`dialog.embedding.lut-path`); fall back to the legacy file names only when it declared none.
+    if (!model_cfg.embedding_path) {
+        model_cfg.embedding_path = qairt::runtime::find_optional_file(model_dir, "embedding_weights.raw");
+    }
     if (!model_cfg.embedding_path) {
         model_cfg.embedding_path = qairt::runtime::find_optional_file(model_dir, "embed_tokens.npy");
     }
@@ -126,14 +129,24 @@ int32_t QairtLlm::reset() {
 int32_t QairtLlm::save_kv_cache(const geniex_KvCacheSaveInput* input, geniex_KvCacheSaveOutput*) {
     if (!pipeline_) return GENIEX_ERROR_COMMON_NOT_INITIALIZED;
     if (!input || !input->path) return GENIEX_ERROR_COMMON_INVALID_INPUT;
-    pipeline_->saveKVCache(input->path);
+    try {
+        pipeline_->saveKVCache(input->path);
+    } catch (const UnsupportedOperationError& e) {
+        GENIEX_LOG_ERROR("QAIRT save_kv_cache: {}", e.what());
+        return GENIEX_ERROR_COMMON_PARAM_NOT_SUPPORTED;
+    }
     return GENIEX_SUCCESS;
 }
 
 int32_t QairtLlm::load_kv_cache(const geniex_KvCacheLoadInput* input, geniex_KvCacheLoadOutput*) {
     if (!pipeline_) return GENIEX_ERROR_COMMON_NOT_INITIALIZED;
     if (!input || !input->path) return GENIEX_ERROR_COMMON_INVALID_INPUT;
-    pipeline_->loadKVCache(input->path);
+    try {
+        pipeline_->loadKVCache(input->path);
+    } catch (const UnsupportedOperationError& e) {
+        GENIEX_LOG_ERROR("QAIRT load_kv_cache: {}", e.what());
+        return GENIEX_ERROR_COMMON_PARAM_NOT_SUPPORTED;
+    }
     return GENIEX_SUCCESS;
 }
 
@@ -352,6 +365,9 @@ int32_t QairtLlm::forward_logits(const geniex_LlmForwardLogitsInput* input, geni
     std::vector<float> logits;
     try {
         logits = pipeline_->forwardLogits(input_ids, input->all_positions);
+    } catch (const UnsupportedOperationError& e) {
+        GENIEX_LOG_ERROR("QAIRT forward_logits: {}", e.what());
+        return GENIEX_ERROR_COMMON_PARAM_NOT_SUPPORTED;
     } catch (const ContextLengthExceededError& e) {
         GENIEX_LOG_WARN("QAIRT forward_logits: context length exceeded: {}", e.what());
         return GENIEX_ERROR_LLM_TOKENIZATION_CONTEXT_LENGTH;
