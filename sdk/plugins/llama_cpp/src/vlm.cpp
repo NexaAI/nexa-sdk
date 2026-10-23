@@ -368,6 +368,10 @@ int32_t LlamaVlm::reset() {
 
 int32_t LlamaVlm::apply_chat_template(
     const geniex_VlmApplyChatTemplateInput* input, geniex_VlmApplyChatTemplateOutput* output) {
+    if (output) {
+        output->formatted_text        = nullptr;
+        output->chat_template_grammar = {};
+    }
     if (!this->model || !input || !output || !input->messages || input->message_count <= 0)
         return GENIEX_ERROR_COMMON_INVALID_INPUT;
 
@@ -402,20 +406,29 @@ int32_t LlamaVlm::apply_chat_template(
     tmpl_inputs.enable_thinking = false;
     GENIEX_LOG_DEBUG("applying chat template with add_generation_prompt=true, use_jinja={}", tmpl_inputs.use_jinja);
 
-    // Apply chat template
-    common_chat_templates_ptr tmpls  = common_chat_templates_init(this->model, "");
-    auto                      result = common_chat_templates_apply(tmpls.get(), tmpl_inputs);
+    // Apply chat template and retain its sampler grammar state.
+    common_chat_templates_ptr tmpls = common_chat_templates_init(this->model, "");
+    common_chat_session       session(tmpls.get(), llama_model_get_vocab(this->model), tmpl_inputs);
+    common_params_sampling    sampling;
+    session.apply_sampling(sampling);
 
-    const std::string prompt_str = result.prompt.str();
+    const std::string prompt_str = session.prompt().str();
     if (prompt_str.empty()) {
         GENIEX_LOG_ERROR("chat template application resulted in empty prompt");
         return GENIEX_ERROR_COMMON_FILE_NOT_FOUND;
     }
 
+    if (!copy_chat_template_grammar(sampling, &output->chat_template_grammar)) {
+        return GENIEX_ERROR_COMMON_MEMORY_ALLOCATION;
+    }
+
     // Allocate and copy result
     size_t prompt_length = prompt_str.length();
     char*  output_text   = (char*)malloc(prompt_length + 1);
-    if (!output_text) return GENIEX_ERROR_COMMON_MEMORY_ALLOCATION;
+    if (!output_text) {
+        free_chat_template_grammar(&output->chat_template_grammar);
+        return GENIEX_ERROR_COMMON_MEMORY_ALLOCATION;
+    }
 
     memcpy(output_text, prompt_str.c_str(), prompt_length);
     output_text[prompt_length] = '\0';

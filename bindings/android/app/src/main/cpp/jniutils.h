@@ -5,15 +5,28 @@
 
 #include <jni.h>
 
+#include <deque>
 #include <string>
 #include <vector>
 
 #include "geniex.h"
 
 namespace jniutils {
-geniex_GenerationConfig extract_generation_config(JNIEnv* env, jobject configObj);
+struct GenerationConfigStorage {
+    geniex_GenerationConfig            value{};
+    geniex_SamplerConfig               sampler{};
+    bool                               has_sampler = false;
+    std::deque<std::string>            grammar_strings;
+    std::vector<geniex_GrammarTrigger> grammar_triggers;
+    std::vector<int32_t>               grammar_preserved_tokens;
 
-geniex_SamplerConfig extract_sampler_config(JNIEnv* env, jobject configObj);
+    geniex_GenerationConfig* get() {
+        value.sampler_config = has_sampler ? &sampler : nullptr;
+        return &value;
+    }
+};
+
+GenerationConfigStorage extract_generation_config(JNIEnv* env, jobject configObj);
 
 geniex_ModelConfig extract_model_config(JNIEnv* env, jobject configObj);
 
@@ -68,6 +81,8 @@ void clear_jni_cstr_pool();
 // call that consumes them has returned.
 std::vector<geniex_LlmChatMessage> extract_llm_chat_messages(JNIEnv* env, jobjectArray jmessages);
 void                               free_llm_chat_messages(std::vector<geniex_LlmChatMessage>& msgs);
+void                               free_chat_template_grammar(geniex_ChatTemplateGrammar& grammar);
+jobject chat_template_grammar_to_java(JNIEnv* env, const geniex_ChatTemplateGrammar& grammar);
 
 std::vector<geniex_VlmChatMessage> extract_vlm_chat_messages(JNIEnv* env, jobjectArray jmessages);
 void                               free_vlm_chat_messages(std::vector<geniex_VlmChatMessage>& msgs);

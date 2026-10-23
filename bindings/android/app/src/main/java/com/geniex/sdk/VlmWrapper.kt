@@ -146,7 +146,7 @@ private constructor(
      * @param tools JSON string describing tools, nullable.
      * @param enableThinking Whether to enable "thinking" mode.
      *
-     * @return [Result] containing [LlmApplyChatTemplateOutput].
+     * @return [Result] containing [LlmApplyChatTemplateOutput], including optional tool-grammar metadata.
      */
     suspend fun applyChatTemplate(
             messages: Array<VlmChatMessage>,

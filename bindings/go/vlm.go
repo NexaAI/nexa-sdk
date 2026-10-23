@@ -186,14 +186,18 @@ func freeVlmApplyChatTemplateInput(cPtr *C.geniex_VlmApplyChatTemplateInput) {
 }
 
 type VlmApplyChatTemplateOutput struct {
-	FormattedText string
+	FormattedText       string
+	ChatTemplateGrammar ChatTemplateGrammar
 }
 
 func newVlmApplyChatTemplateOutputFromCPtr(c *C.geniex_VlmApplyChatTemplateOutput) VlmApplyChatTemplateOutput {
 	if c == nil {
 		return VlmApplyChatTemplateOutput{}
 	}
-	return VlmApplyChatTemplateOutput{FormattedText: C.GoString(c.formatted_text)}
+	return VlmApplyChatTemplateOutput{
+		FormattedText:       C.GoString(c.formatted_text),
+		ChatTemplateGrammar: chatTemplateGrammarFromCPtr(&c.chat_template_grammar),
+	}
 }
 
 func freeVlmApplyChatTemplateOutput(cPtr *C.geniex_VlmApplyChatTemplateOutput) {
@@ -201,6 +205,7 @@ func freeVlmApplyChatTemplateOutput(cPtr *C.geniex_VlmApplyChatTemplateOutput) {
 		return
 	}
 	free(unsafe.Pointer(cPtr.formatted_text))
+	freeChatTemplateGrammarOutput(&cPtr.chat_template_grammar)
 }
 
 type VlmGenerateInput struct {

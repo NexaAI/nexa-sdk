@@ -4,9 +4,11 @@
 #include "params.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -230,7 +232,142 @@ common_params_sampling build_sampling_params(const geniex_SamplerConfig* cfg) {
         }
     }
 
+    const auto& chat_grammar = cfg->chat_template_grammar;
+    if (chat_grammar.grammar_type != GENIEX_GRAMMAR_TYPE_NONE) {
+        if (!s.grammar.empty()) {
+            throw std::invalid_argument("Cannot specify grammar with tools");
+        }
+        if (chat_grammar.grammar_type != GENIEX_GRAMMAR_TYPE_TOOL_CALLS || !chat_grammar.grammar ||
+            chat_grammar.grammar[0] == '\0') {
+            throw std::invalid_argument("invalid chat-template grammar");
+        }
+        if (chat_grammar.trigger_count < 0 || chat_grammar.preserved_token_count < 0 ||
+            (chat_grammar.trigger_count > 0 && !chat_grammar.triggers) ||
+            (chat_grammar.preserved_token_count > 0 && !chat_grammar.preserved_tokens)) {
+            throw std::invalid_argument("invalid chat-template grammar metadata");
+        }
+
+        s.grammar      = {COMMON_GRAMMAR_TYPE_TOOL_CALLS, chat_grammar.grammar};
+        s.grammar_lazy = chat_grammar.lazy;
+        if (chat_grammar.generation_prompt) {
+            s.generation_prompt = chat_grammar.generation_prompt;
+        }
+        for (int32_t i = 0; i < chat_grammar.trigger_count; ++i) {
+            const auto&            source = chat_grammar.triggers[i];
+            common_grammar_trigger trigger;
+            switch (source.trigger_type) {
+                case GENIEX_GRAMMAR_TRIGGER_TYPE_TOKEN:
+                    trigger.type = COMMON_GRAMMAR_TRIGGER_TYPE_TOKEN;
+                    break;
+                case GENIEX_GRAMMAR_TRIGGER_TYPE_WORD:
+                    trigger.type = COMMON_GRAMMAR_TRIGGER_TYPE_WORD;
+                    break;
+                case GENIEX_GRAMMAR_TRIGGER_TYPE_PATTERN:
+                    trigger.type = COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN;
+                    break;
+                case GENIEX_GRAMMAR_TRIGGER_TYPE_PATTERN_FULL:
+                    trigger.type = COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN_FULL;
+                    break;
+                default:
+                    throw std::invalid_argument("invalid chat-template grammar trigger type");
+            }
+            if (source.value) {
+                trigger.value = source.value;
+            }
+            trigger.token = source.token;
+            s.grammar_triggers.push_back(std::move(trigger));
+        }
+        for (int32_t i = 0; i < chat_grammar.preserved_token_count; ++i) {
+            s.preserved_tokens.insert(chat_grammar.preserved_tokens[i]);
+        }
+    }
+
     return s;
+}
+
+void free_chat_template_grammar(geniex_ChatTemplateGrammar* grammar) {
+    if (!grammar) {
+        return;
+    }
+    free(grammar->grammar);
+    free(grammar->generation_prompt);
+    for (int32_t i = 0; i < grammar->trigger_count; ++i) {
+        free(grammar->triggers[i].value);
+    }
+    free(grammar->triggers);
+    free(grammar->preserved_tokens);
+    *grammar = {};
+}
+
+bool copy_chat_template_grammar(const common_params_sampling& sampling, geniex_ChatTemplateGrammar* output) {
+    if (!output) {
+        return false;
+    }
+    *output = {};
+    if (sampling.grammar.type != COMMON_GRAMMAR_TYPE_TOOL_CALLS || sampling.grammar.empty()) {
+        return true;
+    }
+
+    output->grammar_type      = GENIEX_GRAMMAR_TYPE_TOOL_CALLS;
+    output->grammar           = strdup(common_grammar_value(sampling.grammar).c_str());
+    output->lazy              = sampling.grammar_lazy;
+    output->generation_prompt = strdup(sampling.generation_prompt.c_str());
+    if (!output->grammar || !output->generation_prompt) {
+        free_chat_template_grammar(output);
+        return false;
+    }
+
+    if (!sampling.grammar_triggers.empty()) {
+        output->triggers = static_cast<geniex_GrammarTrigger*>(
+            calloc(sampling.grammar_triggers.size(), sizeof(geniex_GrammarTrigger)));
+        if (!output->triggers) {
+            free_chat_template_grammar(output);
+            return false;
+        }
+        output->trigger_count = static_cast<int32_t>(sampling.grammar_triggers.size());
+        for (int32_t i = 0; i < output->trigger_count; ++i) {
+            const auto& source = sampling.grammar_triggers[i];
+            auto&       target = output->triggers[i];
+            switch (source.type) {
+                case COMMON_GRAMMAR_TRIGGER_TYPE_TOKEN:
+                    target.trigger_type = GENIEX_GRAMMAR_TRIGGER_TYPE_TOKEN;
+                    break;
+                case COMMON_GRAMMAR_TRIGGER_TYPE_WORD:
+                    target.trigger_type = GENIEX_GRAMMAR_TRIGGER_TYPE_WORD;
+                    break;
+                case COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN:
+                    target.trigger_type = GENIEX_GRAMMAR_TRIGGER_TYPE_PATTERN;
+                    break;
+                case COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN_FULL:
+                    target.trigger_type = GENIEX_GRAMMAR_TRIGGER_TYPE_PATTERN_FULL;
+                    break;
+                default:
+                    free_chat_template_grammar(output);
+                    return false;
+            }
+            target.value = strdup(source.value.c_str());
+            target.token = source.token;
+            if (!target.value) {
+                free_chat_template_grammar(output);
+                return false;
+            }
+        }
+    }
+
+    if (!sampling.preserved_tokens.empty()) {
+        output->preserved_tokens = static_cast<int32_t*>(malloc(sampling.preserved_tokens.size() * sizeof(int32_t)));
+        if (!output->preserved_tokens) {
+            free_chat_template_grammar(output);
+            return false;
+        }
+        output->preserved_token_count = static_cast<int32_t>(sampling.preserved_tokens.size());
+        int32_t i                     = 0;
+        for (const llama_token token : sampling.preserved_tokens) {
+            output->preserved_tokens[i++] = token;
+        }
+    }
+
+    return true;
 }
 
 std::optional<std::vector<ggml_backend_dev_t>> resolve_devices(const char* device_id) {

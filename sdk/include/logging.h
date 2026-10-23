@@ -180,9 +180,9 @@ struct fmt::formatter<geniex_SamplerConfig> {
     constexpr auto parse(fmt::format_parse_context& ctx) { return ctx.begin(); }
     auto           format(const geniex_SamplerConfig& p, fmt::format_context& ctx) const {
         return fmt::format_to(ctx.out(),
-            "SamplerConfig(temperature: {}, top_p: {}, top_k: {}, min_p: {}, repetition_penalty: {}, presence_penalty: "
-                      "{}, "
-                      "frequency_penalty: {}, seed: {}, grammar_path: {}, grammar_string: {})",
+            "SamplerConfig(temperature: {}, top_p: {}, top_k: {}, min_p: {}, repetition_penalty: {}, "
+                      "presence_penalty: {}, frequency_penalty: {}, seed: {}, grammar_path: {}, grammar_string: {}, "
+                      "chat_template_grammar: {})",
             lp(p.temperature),
             lp(p.top_p),
             lp(p.top_k),
@@ -192,7 +192,8 @@ struct fmt::formatter<geniex_SamplerConfig> {
             lp(p.frequency_penalty),
             lp(p.seed),
             lp(p.grammar_path),
-            lp(p.grammar_string));
+            lp(p.grammar_string),
+            p.chat_template_grammar.grammar_type != GENIEX_GRAMMAR_TYPE_NONE);
     }
 };
 
@@ -273,7 +274,10 @@ template <>
 struct fmt::formatter<geniex_LlmApplyChatTemplateOutput> {
     constexpr auto parse(fmt::format_parse_context& ctx) { return ctx.begin(); }
     auto           format(const geniex_LlmApplyChatTemplateOutput& p, fmt::format_context& ctx) const {
-        return fmt::format_to(ctx.out(), "LlmApplyChatTemplateOutput(formatted_text: {})", lp(p.formatted_text));
+        return fmt::format_to(ctx.out(),
+            "LlmApplyChatTemplateOutput(formatted_text: {}, has_grammar: {})",
+            lp(p.formatted_text),
+            p.chat_template_grammar.grammar_type != GENIEX_GRAMMAR_TYPE_NONE);
     }
 };
 
@@ -361,7 +365,10 @@ template <>
 struct fmt::formatter<geniex_VlmApplyChatTemplateOutput> {
     constexpr auto parse(fmt::format_parse_context& ctx) { return ctx.begin(); }
     auto           format(const geniex_VlmApplyChatTemplateOutput& p, fmt::format_context& ctx) const {
-        return fmt::format_to(ctx.out(), "VlmApplyChatTemplateOutput(formatted_text: {})", lp(p.formatted_text));
+        return fmt::format_to(ctx.out(),
+            "VlmApplyChatTemplateOutput(formatted_text: {}, has_grammar: {})",
+            lp(p.formatted_text),
+            p.chat_template_grammar.grammar_type != GENIEX_GRAMMAR_TYPE_NONE);
     }
 };
 

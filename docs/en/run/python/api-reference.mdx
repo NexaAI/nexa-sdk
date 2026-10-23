@@ -80,6 +80,16 @@ output = model.generate(prompt, max_new_tokens=256)
 print(output.text)
 ```
 
+To apply a tool grammar produced by the chat template, request the metadata and pass it to generation:
+
+```python
+template = model.tokenizer.apply_chat_template(messages, tools=tools, include_grammar=True)
+output = model.generate(
+    template.formatted_text,
+    chat_template_grammar=template.chat_template_grammar,
+)
+```
+
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `prompt` | `str` | *required* | The formatted prompt string (use `model.tokenizer.apply_chat_template()` to build it). |
@@ -100,6 +110,7 @@ print(output.text)
 | `seed` | `int` | `-1` | Random seed (`-1` = random). |
 | `stop` | `list[str] \| None` | `None` | Stop sequences. |
 | `grammar` | `str \| None` | `None` | GBNF grammar string for constrained generation. |
+| `chat_template_grammar` | `ChatTemplateGrammar \| None` | `None` | Grammar metadata returned by `apply_chat_template(include_grammar=True)`. |
 
 </Expandable>
 
@@ -172,12 +183,29 @@ prompt = model.tokenizer.apply_chat_template(
 | `add_generation_prompt` | `bool` | `True` | Whether to append the generation prompt suffix. |
 | `enable_thinking` | `bool \| None` | `None` | Enable thinking mode. `None` (default) and `True` both let a thinking-capable model think (and are no-ops on non-thinking models). `False` asks a thinking-capable model to skip its thinking turn — forced to `True` with a warning on non-thinking models, where the suppression block is OOD. Capability is auto-detected and exposed as `model.supports_thinking`. |
 | `tools` | `list[dict] \| str \| None` | `None` | Tool definitions as a list of dicts or pre-serialised JSON string. |
+| `include_grammar` | `bool` | `False` | Return a `ChatTemplateOutput` with the formatted prompt and grammar metadata for explicit use in `generate()`. |
 
-**Returns:** `str` — formatted prompt ready for `model.generate()`.
+By default, returns a `str` — formatted prompt ready for `model.generate()`. With `include_grammar=True`, pass both values explicitly:
+
+```python
+template = model.tokenizer.apply_chat_template(messages, tools=tools, include_grammar=True)
+output = model.generate(
+    template.formatted_text,
+    chat_template_grammar=template.chat_template_grammar,
+)
+```
 
 ---
 
 ## Output classes
+
+### ChatTemplateOutput
+
+Returned by `apply_chat_template(..., include_grammar=True)`. `formatted_text` contains the prompt, and `chat_template_grammar` is an owned `ChatTemplateGrammar` value that can be passed to `generate()`.
+
+### ChatTemplateGrammar
+
+Contains the grammar type, grammar text, lazy flag, generation prompt, trigger list, and preserved token IDs. It owns Python strings and tuples and remains valid after the template call returns.
 
 ### GenerateOutput
 

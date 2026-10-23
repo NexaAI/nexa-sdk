@@ -59,6 +59,32 @@ class geniex_ToolCall(Structure):
 
 
 # ---------------------------------------------------------------------------
+# Chat-template grammar
+# ---------------------------------------------------------------------------
+
+
+class geniex_GrammarTrigger(Structure):
+    _fields_ = [
+        ('trigger_type', c_int32),
+        ('value', c_void_p),
+        ('token', c_int32),
+    ]
+
+
+class geniex_ChatTemplateGrammar(Structure):
+    _fields_ = [
+        ('grammar_type', c_int32),
+        ('grammar', c_void_p),
+        ('lazy', c_bool),
+        ('generation_prompt', c_void_p),
+        ('triggers', POINTER(geniex_GrammarTrigger)),
+        ('trigger_count', c_int32),
+        ('preserved_tokens', POINTER(c_int32)),
+        ('preserved_token_count', c_int32),
+    ]
+
+
+# ---------------------------------------------------------------------------
 # geniex_SamplerConfig
 # ---------------------------------------------------------------------------
 
@@ -76,6 +102,7 @@ class geniex_SamplerConfig(Structure):
         ('grammar_path', c_char_p),
         ('grammar_string', c_char_p),
         ('ignore_eos', c_bool),
+        ('chat_template_grammar', geniex_ChatTemplateGrammar),
     ]
 
 
@@ -275,7 +302,10 @@ class geniex_LlmApplyChatTemplateInput(Structure):
 
 
 class geniex_LlmApplyChatTemplateOutput(Structure):
-    _fields_ = [('formatted_text', c_void_p)]
+    _fields_ = [
+        ('formatted_text', c_void_p),
+        ('chat_template_grammar', geniex_ChatTemplateGrammar),
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -341,7 +371,10 @@ class geniex_VlmApplyChatTemplateInput(Structure):
 
 
 class geniex_VlmApplyChatTemplateOutput(Structure):
-    _fields_ = [('formatted_text', c_void_p)]
+    _fields_ = [
+        ('formatted_text', c_void_p),
+        ('chat_template_grammar', geniex_ChatTemplateGrammar),
+    ]
 
 
 class geniex_VlmCapabilities(Structure):

@@ -31,6 +31,115 @@ const char* hold_c_str(const std::string& s) {
 
 void clear_jni_cstr_pool() { jni_cstr_pool.clear(); }
 
+void free_chat_template_grammar(geniex_ChatTemplateGrammar& grammar) {
+    geniex_free(grammar.grammar);
+    geniex_free(grammar.generation_prompt);
+    if (grammar.triggers) {
+        for (int32_t i = 0; i < grammar.trigger_count; ++i) {
+            geniex_free(grammar.triggers[i].value);
+        }
+        geniex_free(grammar.triggers);
+    }
+    geniex_free(grammar.preserved_tokens);
+    grammar = {};
+}
+
+jobject chat_template_grammar_to_java(JNIEnv* env, const geniex_ChatTemplateGrammar& grammar) {
+    if (grammar.grammar_type == GENIEX_GRAMMAR_TYPE_NONE) return nullptr;
+    if (grammar.trigger_count < 0 || grammar.preserved_token_count < 0 ||
+        (grammar.trigger_count > 0 && !grammar.triggers) ||
+        (grammar.preserved_token_count > 0 && !grammar.preserved_tokens)) {
+        return nullptr;
+    }
+
+    jclass       trigger_class     = nullptr;
+    jobjectArray triggers          = nullptr;
+    jintArray    preserved_tokens  = nullptr;
+    jstring      grammar_text      = nullptr;
+    jstring      generation_prompt = nullptr;
+    jclass       grammar_class     = nullptr;
+    auto         cleanup           = [&]() {
+        if (grammar_text) env->DeleteLocalRef(grammar_text);
+        if (generation_prompt) env->DeleteLocalRef(generation_prompt);
+        if (grammar_class) env->DeleteLocalRef(grammar_class);
+        if (preserved_tokens) env->DeleteLocalRef(preserved_tokens);
+        if (triggers) env->DeleteLocalRef(triggers);
+        if (trigger_class) env->DeleteLocalRef(trigger_class);
+    };
+    auto fail = [&]() -> jobject {
+        cleanup();
+        return nullptr;
+    };
+
+    trigger_class = env->FindClass("com/geniex/sdk/bean/GrammarTrigger");
+    if (!trigger_class || env->ExceptionCheck()) return fail();
+    jmethodID trigger_ctor = env->GetMethodID(trigger_class, "<init>", "(ILjava/lang/String;I)V");
+    if (!trigger_ctor || env->ExceptionCheck()) return fail();
+
+    triggers = env->NewObjectArray(grammar.trigger_count, trigger_class, nullptr);
+    if (!triggers || env->ExceptionCheck()) return fail();
+    for (int32_t i = 0; i < grammar.trigger_count; ++i) {
+        const auto& trigger = grammar.triggers[i];
+        jstring     value   = trigger.value ? env->NewStringUTF(trigger.value) : nullptr;
+        if ((trigger.value && !value) || env->ExceptionCheck()) {
+            if (value) env->DeleteLocalRef(value);
+            return fail();
+        }
+        jobject item = env->NewObject(trigger_class,
+            trigger_ctor,
+            static_cast<jint>(trigger.trigger_type),
+            value,
+            static_cast<jint>(trigger.token));
+        if (value) env->DeleteLocalRef(value);
+        if (!item || env->ExceptionCheck()) {
+            if (item) env->DeleteLocalRef(item);
+            return fail();
+        }
+        env->SetObjectArrayElement(triggers, i, item);
+        env->DeleteLocalRef(item);
+        if (env->ExceptionCheck()) return fail();
+    }
+
+    preserved_tokens = env->NewIntArray(grammar.preserved_token_count);
+    if (!preserved_tokens || env->ExceptionCheck()) return fail();
+    if (grammar.preserved_token_count > 0) {
+        env->SetIntArrayRegion(preserved_tokens,
+            0,
+            grammar.preserved_token_count,
+            reinterpret_cast<const jint*>(grammar.preserved_tokens));
+        if (env->ExceptionCheck()) return fail();
+    }
+
+    if (grammar.grammar) {
+        grammar_text = env->NewStringUTF(grammar.grammar);
+        if (!grammar_text || env->ExceptionCheck()) return fail();
+    }
+    if (grammar.generation_prompt) {
+        generation_prompt = env->NewStringUTF(grammar.generation_prompt);
+        if (!generation_prompt || env->ExceptionCheck()) return fail();
+    }
+    grammar_class = env->FindClass("com/geniex/sdk/bean/ChatTemplateGrammar");
+    if (!grammar_class || env->ExceptionCheck()) return fail();
+    jmethodID grammar_ctor = env->GetMethodID(
+        grammar_class, "<init>", "(ILjava/lang/String;ZLjava/lang/String;[Lcom/geniex/sdk/bean/GrammarTrigger;[I)V");
+    if (!grammar_ctor || env->ExceptionCheck()) return fail();
+    jobject result = env->NewObject(grammar_class,
+        grammar_ctor,
+        static_cast<jint>(grammar.grammar_type),
+        grammar_text,
+        static_cast<jboolean>(grammar.lazy),
+        generation_prompt,
+        triggers,
+        preserved_tokens);
+    if (!result || env->ExceptionCheck()) {
+        if (result) env->DeleteLocalRef(result);
+        return fail();
+    }
+
+    cleanup();
+    return result;
+}
+
 std::string jstring2str(JNIEnv* env, jstring jstr) {
     if (!jstr) return {};
     const char* chars = env->GetStringUTFChars(jstr, nullptr);
@@ -119,9 +228,13 @@ void getStringArrayField(JNIEnv* env, jobject obj, jclass cls, const char* field
     }
 }
 
-geniex_GenerationConfig extract_generation_config(JNIEnv* env, jobject configObj) {
-    geniex_GenerationConfig cfg = {};
-    if (!configObj) return cfg;
+static void extract_sampler_config(
+    JNIEnv* env, jobject configObj, geniex_SamplerConfig& cfg, GenerationConfigStorage& storage);
+
+GenerationConfigStorage extract_generation_config(JNIEnv* env, jobject configObj) {
+    GenerationConfigStorage storage;
+    auto&                   cfg = storage.value;
+    if (!configObj) return storage;
     jclass cls = env->GetObjectClass(configObj);
 
     // ----------- max token -----------
@@ -143,7 +256,9 @@ geniex_GenerationConfig extract_generation_config(JNIEnv* env, jobject configObj
     jfieldID samplerCfgId  = env->GetFieldID(cls, "samplerConfig", "Lcom/geniex/sdk/bean/SamplerConfig;");
     jobject  samplerCfgObj = samplerCfgId ? env->GetObjectField(configObj, samplerCfgId) : nullptr;
     if (samplerCfgObj) {
-        cfg.sampler_config = new geniex_SamplerConfig(extract_sampler_config(env, samplerCfgObj));
+        storage.has_sampler = true;
+        extract_sampler_config(env, samplerCfgObj, storage.sampler, storage);
+        env->DeleteLocalRef(samplerCfgObj);
     }
 
     // ----------- imagePaths  -----------
@@ -167,12 +282,13 @@ geniex_GenerationConfig extract_generation_config(JNIEnv* env, jobject configObj
     jfieldID slidingWindowNKeepId = env->GetFieldID(cls, "slidingWindowNKeep", "I");
     cfg.sliding_window_n_keep     = slidingWindowNKeepId ? env->GetIntField(configObj, slidingWindowNKeepId) : 0;
 
-    return cfg;
+    return storage;
 }
 
-geniex_SamplerConfig extract_sampler_config(JNIEnv* env, jobject configObj) {
-    geniex_SamplerConfig cfg = {};
-    if (!configObj) return cfg;
+static void extract_sampler_config(
+    JNIEnv* env, jobject configObj, geniex_SamplerConfig& cfg, GenerationConfigStorage& storage) {
+    cfg = {};
+    if (!configObj) return;
 
     jclass cls = env->GetObjectClass(configObj);
 
@@ -219,9 +335,80 @@ geniex_SamplerConfig extract_sampler_config(JNIEnv* env, jobject configObj) {
         }
     }
 
-    // Optional: release the local ref to cls (not required, but cleaner).
+    // chatTemplateGrammar borrows buffers owned by GenerationConfigStorage.
+    {
+        jfieldID fid         = env->GetFieldID(cls, "chatTemplateGrammar", "Lcom/geniex/sdk/bean/ChatTemplateGrammar;");
+        jobject  grammar_obj = fid ? env->GetObjectField(configObj, fid) : nullptr;
+        if (grammar_obj) {
+            jclass grammar_cls   = env->GetObjectClass(grammar_obj);
+            auto&  grammar       = cfg.chat_template_grammar;
+            grammar.grammar_type = static_cast<geniex_GrammarType>(
+                env->GetIntField(grammar_obj, env->GetFieldID(grammar_cls, "grammarType", "I")));
+            grammar.lazy = env->GetBooleanField(grammar_obj, env->GetFieldID(grammar_cls, "lazy", "Z"));
+
+            auto copy_string = [&](const char* name, char** dst) {
+                jfieldID string_id = env->GetFieldID(grammar_cls, name, "Ljava/lang/String;");
+                jstring  string =
+                    string_id ? static_cast<jstring>(env->GetObjectField(grammar_obj, string_id)) : nullptr;
+                if (string) {
+                    storage.grammar_strings.push_back(jstring2str(env, string));
+                    *dst = storage.grammar_strings.back().data();
+                    env->DeleteLocalRef(string);
+                }
+            };
+            copy_string("grammar", &grammar.grammar);
+            copy_string("generationPrompt", &grammar.generation_prompt);
+
+            jfieldID triggers_id = env->GetFieldID(grammar_cls, "triggers", "[Lcom/geniex/sdk/bean/GrammarTrigger;");
+            jobjectArray triggers =
+                triggers_id ? static_cast<jobjectArray>(env->GetObjectField(grammar_obj, triggers_id)) : nullptr;
+            if (triggers) {
+                jsize count = env->GetArrayLength(triggers);
+                storage.grammar_triggers.resize(count);
+                jclass   trigger_cls = env->FindClass("com/geniex/sdk/bean/GrammarTrigger");
+                jfieldID type_id     = env->GetFieldID(trigger_cls, "triggerType", "I");
+                jfieldID value_id    = env->GetFieldID(trigger_cls, "value", "Ljava/lang/String;");
+                jfieldID token_id    = env->GetFieldID(trigger_cls, "token", "I");
+                for (jsize i = 0; i < count; ++i) {
+                    jobject item        = env->GetObjectArrayElement(triggers, i);
+                    auto&   target      = storage.grammar_triggers[i];
+                    target.trigger_type = static_cast<geniex_GrammarTriggerType>(env->GetIntField(item, type_id));
+                    target.token        = env->GetIntField(item, token_id);
+                    jstring value       = static_cast<jstring>(env->GetObjectField(item, value_id));
+                    if (value) {
+                        storage.grammar_strings.push_back(jstring2str(env, value));
+                        target.value = storage.grammar_strings.back().data();
+                        env->DeleteLocalRef(value);
+                    }
+                    env->DeleteLocalRef(item);
+                }
+                grammar.triggers      = storage.grammar_triggers.empty() ? nullptr : storage.grammar_triggers.data();
+                grammar.trigger_count = count;
+                env->DeleteLocalRef(trigger_cls);
+                env->DeleteLocalRef(triggers);
+            }
+
+            jfieldID  preserved_id = env->GetFieldID(grammar_cls, "preservedTokens", "[I");
+            jintArray preserved =
+                preserved_id ? static_cast<jintArray>(env->GetObjectField(grammar_obj, preserved_id)) : nullptr;
+            if (preserved) {
+                jsize count = env->GetArrayLength(preserved);
+                storage.grammar_preserved_tokens.resize(count);
+                if (count > 0) {
+                    env->GetIntArrayRegion(
+                        preserved, 0, count, reinterpret_cast<jint*>(storage.grammar_preserved_tokens.data()));
+                }
+                grammar.preserved_tokens =
+                    storage.grammar_preserved_tokens.empty() ? nullptr : storage.grammar_preserved_tokens.data();
+                grammar.preserved_token_count = count;
+                env->DeleteLocalRef(preserved);
+            }
+            env->DeleteLocalRef(grammar_cls);
+            env->DeleteLocalRef(grammar_obj);
+        }
+    }
+
     env->DeleteLocalRef(cls);
-    return cfg;
 }
 
 geniex_ModelConfig extract_model_config(JNIEnv* env, jobject configObj) {

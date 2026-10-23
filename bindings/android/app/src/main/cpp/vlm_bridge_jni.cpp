@@ -108,13 +108,14 @@ extern "C" JNIEXPORT jobject JNICALL Java_com_geniex_sdk_jni_Vlm_generate(
             stop_flag      = g_stopFlags[h];
         }
 
-        std::string             cprompt = jstring2str(env, prompt);
-        geniex_GenerationConfig cfg     = extract_generation_config(env, configObj);
+        std::string              cprompt        = jstring2str(env, prompt);
+        auto                     config_storage = extract_generation_config(env, configObj);
+        geniex_GenerationConfig* cfg            = config_storage.get();
 
         geniex_VlmGenerateInput  input  = {};
         geniex_VlmGenerateOutput output = {};
         input.prompt_utf8               = cprompt.c_str();
-        input.config                    = &cfg;
+        input.config                    = cfg;
 
         JavaCallbackCtx cbCtx{};
         if (callback) {
@@ -217,16 +218,52 @@ extern "C" JNIEXPORT jobject JNICALL Java_com_geniex_sdk_jni_Vlm_applyChatTempla
         const char* reason =
             ret < 0 ? geniex_get_error_message(static_cast<geniex_ErrorCode>(ret)) : "formatted text is null";
         throw_runtime_exception(env, "applyChatTemplate failed: %s", reason);
+        geniex_free(output.formatted_text);
+        free_chat_template_grammar(output.chat_template_grammar);
         return nullptr;
     }
 
-    jstring formatted = env->NewStringUTF(output.formatted_text);
+    jclass  cls       = nullptr;
+    jstring formatted = nullptr;
+    jobject grammar   = nullptr;
+    auto    cleanup   = [&]() {
+        geniex_free(output.formatted_text);
+        free_chat_template_grammar(output.chat_template_grammar);
+        if (formatted) env->DeleteLocalRef(formatted);
+        if (grammar) env->DeleteLocalRef(grammar);
+        if (cls) env->DeleteLocalRef(cls);
+    };
 
-    jclass    cls    = env->FindClass("com/geniex/sdk/bean/LlmApplyChatTemplateOutput");
-    jmethodID ctor   = env->GetMethodID(cls, "<init>", "(Ljava/lang/String;)V");
-    jobject   result = env->NewObject(cls, ctor, formatted);
+    cls = env->FindClass("com/geniex/sdk/bean/LlmApplyChatTemplateOutput");
+    if (!cls || env->ExceptionCheck()) {
+        cleanup();
+        return nullptr;
+    }
+    jmethodID ctor = env->GetMethodID(cls, "<init>", "(Ljava/lang/String;Lcom/geniex/sdk/bean/ChatTemplateGrammar;)V");
+    if (!ctor || env->ExceptionCheck()) {
+        cleanup();
+        return nullptr;
+    }
+    formatted = env->NewStringUTF(output.formatted_text);
+    if (!formatted || env->ExceptionCheck()) {
+        cleanup();
+        return nullptr;
+    }
+    grammar = chat_template_grammar_to_java(env, output.chat_template_grammar);
+    if (output.chat_template_grammar.grammar_type != GENIEX_GRAMMAR_TYPE_NONE && (!grammar || env->ExceptionCheck())) {
+        if (!env->ExceptionCheck()) throw_runtime_exception(env, "failed to convert chat-template grammar");
+        cleanup();
+        return nullptr;
+    }
+    jobject result = env->NewObject(cls, ctor, formatted, grammar);
+    if (!result || env->ExceptionCheck()) {
+        if (!env->ExceptionCheck()) throw_runtime_exception(env, "failed to create chat-template output");
+        if (result) env->DeleteLocalRef(result);
+        cleanup();
+        return nullptr;
+    }
 
-    free(output.formatted_text);
+    cleanup();
     return result;
 }
 

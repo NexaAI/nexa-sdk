@@ -84,6 +84,8 @@ std::optional<common_params_speculative> build_speculative_params(const geniex_M
 // accepts.
 ggml_threadpool_params build_threadpool_params(int n_threads, Device device);
 common_params_sampling build_sampling_params(const geniex_SamplerConfig* cfg);
+bool copy_chat_template_grammar(const common_params_sampling& sampling, geniex_ChatTemplateGrammar* output);
+void free_chat_template_grammar(geniex_ChatTemplateGrammar* grammar);
 
 // Like common_init_from_model: one empty decode maps lazily-mapped backend buffers at load, not in the first request.
 void warmup_context(const llama_model* model, llama_context* ctx);

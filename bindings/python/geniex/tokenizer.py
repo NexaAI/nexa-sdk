@@ -8,6 +8,7 @@ import warnings
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from .chat_template import ChatTemplateOutput
     from .modeling import GenieXLLM, GenieXVLM
 
 
@@ -25,13 +26,16 @@ class ModelTokenizer:
         add_generation_prompt: bool = True,
         enable_thinking: bool | None = None,
         tools: list[dict] | str | None = None,
-    ) -> str:
+        include_grammar: bool = False,
+    ) -> str | ChatTemplateOutput:
         """Format chat ``messages`` using the loaded model's chat template.
 
         ``tokenize=True`` is rejected — the C runtime handles tokenisation
         internally, so callers should pass the returned string straight to
         :meth:`GenieXLLM.generate`. ``tools`` accepts a list of dicts or a
-        pre-serialised JSON string.
+        pre-serialised JSON string. Set ``include_grammar=True`` to return a
+        :class:`ChatTemplateOutput` whose grammar can be passed explicitly to
+        ``generate(chat_template_grammar=...)``; the default remains a string.
 
         ``enable_thinking`` semantics:
 
@@ -75,4 +79,5 @@ class ModelTokenizer:
             add_generation_prompt=add_generation_prompt,
             enable_thinking=enable_thinking,
             tools=tools_str,
+            include_grammar=include_grammar,
         )

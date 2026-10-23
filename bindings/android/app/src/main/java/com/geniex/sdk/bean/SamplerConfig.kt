@@ -36,5 +36,8 @@ data class SamplerConfig(
     var grammarPath: String? = null,
 
     /** Grammar content string (optional). Takes priority over `grammarPath`. */
-    var grammarString: String? = null
+    var grammarString: String? = null,
+
+    /** Grammar metadata returned by `applyChatTemplate` (optional). */
+    var chatTemplateGrammar: ChatTemplateGrammar? = null
 )

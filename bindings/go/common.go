@@ -199,17 +199,146 @@ func freeDecideOutput(cOutput *C.geniex_DecideOutput) {
 
 // LCOV_EXCL_STOP
 
+type GrammarType int32
+
+type GrammarTriggerType int32
+
+const (
+	GrammarTypeNone GrammarType = iota
+	GrammarTypeUser
+	GrammarTypeOutputFormat
+	GrammarTypeToolCalls
+)
+
+const (
+	GrammarTriggerToken GrammarTriggerType = iota
+	GrammarTriggerWord
+	GrammarTriggerPattern
+	GrammarTriggerPatternFull
+)
+
+type GrammarTrigger struct {
+	Type  GrammarTriggerType
+	Value string
+	Token int32
+}
+
+type ChatTemplateGrammar struct {
+	Type             GrammarType
+	Grammar          string
+	Lazy             bool
+	GenerationPrompt string
+	Triggers         []GrammarTrigger
+	PreservedTokens  []int32
+}
+
 type SamplerConfig struct {
-	Temperature       float32
-	TopP              float32
-	TopK              int32
-	MinP              float32
-	RepetitionPenalty float32
-	PresencePenalty   float32
-	FrequencyPenalty  float32
-	Seed              int32
-	GrammarPath       string
-	GrammarString     string
+	Temperature         float32
+	TopP                float32
+	TopK                int32
+	MinP                float32
+	RepetitionPenalty   float32
+	PresencePenalty     float32
+	FrequencyPenalty    float32
+	Seed                int32
+	GrammarPath         string
+	GrammarString       string
+	ChatTemplateGrammar ChatTemplateGrammar
+}
+
+func chatTemplateGrammarFromCPtr(src *C.geniex_ChatTemplateGrammar) ChatTemplateGrammar {
+	if src == nil {
+		return ChatTemplateGrammar{}
+	}
+	out := ChatTemplateGrammar{
+		Type:             GrammarType(src.grammar_type),
+		Grammar:          C.GoString(src.grammar),
+		Lazy:             bool(src.lazy),
+		GenerationPrompt: C.GoString(src.generation_prompt),
+	}
+	if src.trigger_count > 0 && src.triggers != nil {
+		triggers := unsafe.Slice(src.triggers, int(src.trigger_count))
+		out.Triggers = make([]GrammarTrigger, len(triggers))
+		for i, trigger := range triggers {
+			out.Triggers[i] = GrammarTrigger{
+				Type:  GrammarTriggerType(trigger.trigger_type),
+				Value: C.GoString(trigger.value),
+				Token: int32(trigger.token),
+			}
+		}
+	}
+	if src.preserved_token_count > 0 && src.preserved_tokens != nil {
+		tokens := unsafe.Slice(src.preserved_tokens, int(src.preserved_token_count))
+		out.PreservedTokens = make([]int32, len(tokens))
+		for i, token := range tokens {
+			out.PreservedTokens[i] = int32(token)
+		}
+	}
+	return out
+}
+
+func fillChatTemplateGrammar(dst *C.geniex_ChatTemplateGrammar, src ChatTemplateGrammar) {
+	if dst == nil || src.Type == GrammarTypeNone {
+		return
+	}
+	dst.grammar_type = C.geniex_GrammarType(src.Type)
+	dst.grammar = cStringIfSet(src.Grammar)
+	dst.lazy = C.bool(src.Lazy)
+	dst.generation_prompt = cStringIfSet(src.GenerationPrompt)
+	if len(src.Triggers) > 0 {
+		raw := cMalloc(C.size_t(len(src.Triggers)) * C.sizeof_geniex_GrammarTrigger)
+		triggers := unsafe.Slice((*C.geniex_GrammarTrigger)(raw), len(src.Triggers))
+		for i, trigger := range src.Triggers {
+			triggers[i] = C.geniex_GrammarTrigger{
+				trigger_type: C.geniex_GrammarTriggerType(trigger.Type),
+				value:        cStringIfSet(trigger.Value),
+				token:        C.int32_t(trigger.Token),
+			}
+		}
+		dst.triggers = (*C.geniex_GrammarTrigger)(raw)
+		dst.trigger_count = C.int32_t(len(src.Triggers))
+	}
+	if len(src.PreservedTokens) > 0 {
+		raw := cMalloc(C.size_t(len(src.PreservedTokens)) * C.sizeof_int32_t)
+		tokens := unsafe.Slice((*C.int32_t)(raw), len(src.PreservedTokens))
+		for i, token := range src.PreservedTokens {
+			tokens[i] = C.int32_t(token)
+		}
+		dst.preserved_tokens = (*C.int32_t)(raw)
+		dst.preserved_token_count = C.int32_t(len(src.PreservedTokens))
+	}
+}
+
+func freeChatTemplateGrammarInput(grammar *C.geniex_ChatTemplateGrammar) {
+	if grammar == nil {
+		return
+	}
+	cFreeIfSet(unsafe.Pointer(grammar.grammar))
+	cFreeIfSet(unsafe.Pointer(grammar.generation_prompt))
+	if grammar.triggers != nil {
+		triggers := unsafe.Slice(grammar.triggers, int(grammar.trigger_count))
+		for _, trigger := range triggers {
+			cFreeIfSet(unsafe.Pointer(trigger.value))
+		}
+		cFreeIfSet(unsafe.Pointer(grammar.triggers))
+	}
+	cFreeIfSet(unsafe.Pointer(grammar.preserved_tokens))
+}
+
+func freeChatTemplateGrammarOutput(grammar *C.geniex_ChatTemplateGrammar) {
+	if grammar == nil {
+		return
+	}
+	free(unsafe.Pointer(grammar.grammar))
+	free(unsafe.Pointer(grammar.generation_prompt))
+	if grammar.triggers != nil {
+		triggers := unsafe.Slice(grammar.triggers, int(grammar.trigger_count))
+		for _, trigger := range triggers {
+			free(unsafe.Pointer(trigger.value))
+		}
+		free(unsafe.Pointer(grammar.triggers))
+	}
+	free(unsafe.Pointer(grammar.preserved_tokens))
 }
 
 // LCOV_EXCL_START
@@ -227,6 +356,7 @@ func (sc SamplerConfig) toCPtr() *C.geniex_SamplerConfig {
 		grammar_path:       cStringIfSet(sc.GrammarPath),
 		grammar_string:     cStringIfSet(sc.GrammarString),
 	}
+	fillChatTemplateGrammar(&cPtr.chat_template_grammar, sc.ChatTemplateGrammar)
 	return cPtr
 }
 
@@ -236,6 +366,7 @@ func freeSamplerConfig(cPtr *C.geniex_SamplerConfig) {
 	}
 	cFreeIfSet(unsafe.Pointer(cPtr.grammar_path))
 	cFreeIfSet(unsafe.Pointer(cPtr.grammar_string))
+	freeChatTemplateGrammarInput(&cPtr.chat_template_grammar)
 	C.free(unsafe.Pointer(cPtr))
 }
 
