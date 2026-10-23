@@ -355,7 +355,7 @@ bool copy_chat_template_grammar(const common_params_sampling& sampling, geniex_C
     }
 
     if (!sampling.preserved_tokens.empty()) {
-        output->preserved_tokens = static_cast<int32_t*>(malloc(sampling.preserved_tokens.size() * sizeof(int32_t)));
+        output->preserved_tokens = static_cast<int32_t*>(calloc(sampling.preserved_tokens.size(), sizeof(int32_t)));
         if (!output->preserved_tokens) {
             free_chat_template_grammar(output);
             return false;
