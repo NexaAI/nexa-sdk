@@ -72,7 +72,7 @@ from HF), so the device shards need network access but no manual pre-pull.
 # Anywhere — model-free API checks only
 pytest tests -m api
 
-# Anywhere — adds the llama_cpp CPU cells (downloads ~400 MB on first run)
+# Anywhere — adds the llama_cpp CPU cells (downloads configured CPU test models on first run)
 pytest tests -m "api or (llama_cpp and device_cpu)"
 
 # Snapdragon Windows ARM64 or Qualcomm Linux — full matrix
