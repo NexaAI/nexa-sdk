@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import io
+import posixpath
 import shlex
 import subprocess
 import tarfile
@@ -20,8 +21,9 @@ DEV_SDK = f'{DEV_ROOT}/geniex'
 DEV_TESTS = f'{DEV_ROOT}/tests'
 
 TERMUX_REPO = 'https://packages.termux.dev/apt/termux-main'
+TERMUX_PREFIX = '/data/data/com.termux/files/usr/'
 TERMUX_DEPS = (
-    'python python-pip gdbm libandroid-posix-semaphore libandroid-support libbz2 '
+    'python python-pip ca-certificates gdbm libandroid-posix-semaphore libandroid-support libbz2 '
     'libcrypt libexpat libffi liblzma libsqlite ncurses ncurses-ui-libs openssl '
     'readline zlib'
 ).split()
@@ -101,6 +103,9 @@ def fetch_termux_usr(dest: Path) -> None:
                 if 'com.termux/files/usr/' not in m.name:
                     continue
                 m.name = m.name.split('com.termux/files/usr/', 1)[1]
+                if m.issym() and m.linkname.startswith(TERMUX_PREFIX):
+                    target = m.linkname[len(TERMUX_PREFIX) :]
+                    m.linkname = posixpath.relpath(target, posixpath.dirname(m.name) or '.')
                 if m.name:
                     members.append(m)
             t.extractall(dest, members=members)
