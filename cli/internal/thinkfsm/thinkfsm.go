@@ -1,51 +1,74 @@
 // Copyright 2024-2026 Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause
 
-// Package thinkfsm splits a model's token stream into reasoning ("thinking")
-// and normal content. Markers (`<think>`, gpt-oss `<|channel|>`, gemma
-// `<|channel>`) arrive as single tokens, so it must be fed one token at a time
-// — the same tags concatenated into a text blob would not match. Both terminal
-// rendering (geniex infer/run) and reasoning_content separation (geniex serve)
-// drive this one table.
+// Package thinkfsm routes one model token at a time. It does not split or
+// accumulate text; callers must preserve token boundaries.
 package thinkfsm
 
 type state int
 
 const (
 	stateAssistant state = iota // init state
-	stateThink                  // reasoning
+	stateThink
 	stateNormal
 
-	// gpt-oss channels
-	stateStart
-	stateChannel
-	stateAnalysis
-	stateFinal
-	stateEnd
+	// gpt-oss
+	stateGPTOSSStart
+	stateGPTOSSAssistantHeader
+	stateGPTOSSAssistantTo
+	stateGPTOSSAssistantRecipient
+	stateGPTOSSToolRoleHeader
+	stateGPTOSSToolRoleConstraint
+	stateGPTOSSChannel
+	stateGPTOSSChannelComment
+	stateGPTOSSAnalysis
+	stateGPTOSSAnalysisTo
+	stateGPTOSSAnalysisRecipient
+	stateGPTOSSFinal
+	stateGPTOSSFinalTo
+	stateGPTOSSFinalRecipient
+	stateGPTOSSToolHeader
+	stateGPTOSSToolConstraint
+	stateGPTOSSToolChannel
+	stateGPTOSSToolChannelComment
+	stateGPTOSSToolIgnoredHeader
+	stateGPTOSSIgnoredHeader
+	stateGPTOSSIgnoredRoleHeader
+	stateGPTOSSThink
+	stateGPTOSSNormal
+	stateGPTOSSTool
+	stateGPTOSSIgnored
+	stateGPTOSSEnd
 
-	// gemma channels
+	// gemma4
 	stateGemmaChannel
 	stateGemmaChannelThought
+	stateGemmaThink
+	stateGemmaNormal
 )
 
-var reasoningStates = map[state]bool{
-	stateThink: true,
-}
-
-type Boundary int
+type EventKind int
 
 const (
-	NoBoundary Boundary = iota
-	EnterReasoning
-	ExitReasoning
+	Consume EventKind = iota
+	EnterThinking
+	Thinking
+	LeaveThinking
+	Content
+	ToolCall
+	ToolCallStart
+	ToolCallEnd
 )
 
+// ToolCall text is scanner input, not an already parsed call.
+type Event struct {
+	Kind EventKind
+	Text string
+}
+
 type transition struct {
-	next     state
-	boundary Boundary
-	// block spans its own lines (channel-style), vs the inline <think>...</think>
-	// pair. Terminal rendering uses it to pick decoration; the server ignores it.
-	block bool
+	next state
+	Event
 }
 
 type key struct {
@@ -53,44 +76,186 @@ type key struct {
 	token string
 }
 
-// transitions is the single source of truth for think-token handling. Any
-// (state, token) absent here is an ordinary token, classified by reasoningStates.
-var transitions = map[key]transition{
-	// normal <think>...</think>
-	{stateAssistant, "<think>"}: {next: stateThink, boundary: EnterReasoning},
-	{stateThink, "</think>"}:    {next: stateNormal, boundary: ExitReasoning},
+// An empty token key is the fallback for that state.
+var transitions = func() map[key]transition {
+	ts := map[key]transition{
+		// common
+		{stateAssistant, "<think>"}: {stateThink, Event{Kind: EnterThinking}},
+		{stateAssistant, ""}:        {stateAssistant, Event{Kind: Content}},
+		{stateThink, "</think>"}:    {stateNormal, Event{Kind: LeaveThinking}},
+		{stateThink, ""}:            {stateThink, Event{Kind: Thinking}},
+		{stateNormal, ""}:           {stateNormal, Event{Kind: Content}},
 
-	// gpt-oss
-	{stateAssistant, "<|channel|>"}: {next: stateChannel},
-	{stateChannel, "analysis"}:      {next: stateAnalysis},
-	{stateChannel, "final"}:         {next: stateFinal},
-	{stateAnalysis, "<|message|>"}:  {next: stateThink, boundary: EnterReasoning, block: true},
-	{stateFinal, "<|message|>"}:     {next: stateNormal},
-	{stateThink, "<|end|>"}:         {next: stateEnd, boundary: ExitReasoning, block: true},
-	{stateNormal, "<|end|>"}:        {next: stateEnd},
-	{stateEnd, "<|start|>"}:         {next: stateStart},
-	{stateStart, "assistant"}:       {next: stateAssistant},
+		// gpt-oss message start
+		{stateAssistant, "<|start|>"}:   {stateGPTOSSStart, Event{}},
+		{stateAssistant, "<|channel|>"}: {stateGPTOSSChannel, Event{}},
+		{stateGPTOSSStart, "assistant"}: {stateGPTOSSAssistantHeader, Event{}},
+		{stateGPTOSSStart, ""}:          {stateGPTOSSIgnoredRoleHeader, Event{}},
+		// gpt-oss assistant header
+		{stateGPTOSSAssistantHeader, "<|channel|>"}: {stateGPTOSSChannel, Event{}},
+		{stateGPTOSSAssistantHeader, "<|message|>"}: {stateGPTOSSNormal, Event{}},
+		{stateGPTOSSAssistantHeader, " to"}:         {stateGPTOSSAssistantTo, Event{ToolCall, " to"}},
+		{stateGPTOSSAssistantHeader, ""}:            {stateGPTOSSAssistantHeader, Event{}},
+		// gpt-oss assistant recipient
+		{stateGPTOSSAssistantTo, "="}:                  {stateGPTOSSAssistantRecipient, Event{ToolCall, "="}},
+		{stateGPTOSSAssistantTo, "<|channel|>"}:        {stateGPTOSSChannel, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSAssistantTo, "<|message|>"}:        {stateGPTOSSNormal, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSAssistantTo, ""}:                   {stateGPTOSSAssistantHeader, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSAssistantRecipient, "assistant"}:   {stateGPTOSSAssistantHeader, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSAssistantRecipient, "<|channel|>"}: {stateGPTOSSIgnoredHeader, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSAssistantRecipient, "<|message|>"}: {stateGPTOSSIgnored, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSAssistantRecipient, ""}:            {stateGPTOSSToolRoleHeader, Event{Kind: ToolCall}},
+		// gpt-oss role recipient before first channel
+		{stateGPTOSSToolRoleHeader, "<|channel|>"}:   {stateGPTOSSToolChannel, Event{}},
+		{stateGPTOSSToolRoleHeader, "<|constrain|>"}: {stateGPTOSSToolRoleConstraint, Event{}},
+		{stateGPTOSSToolRoleHeader, "<|message|>"}:   {stateGPTOSSTool, Event{Kind: ToolCallStart}},
+		{stateGPTOSSToolRoleHeader, ""}:              {stateGPTOSSToolRoleHeader, Event{Kind: ToolCall}},
+		// gpt-oss role tool constraint
+		{stateGPTOSSToolRoleConstraint, "<|channel|>"}: {stateGPTOSSToolChannel, Event{}},
+		{stateGPTOSSToolRoleConstraint, "<|message|>"}: {stateGPTOSSTool, Event{Kind: ToolCallStart}},
+		{stateGPTOSSToolRoleConstraint, ""}:            {stateGPTOSSToolRoleConstraint, Event{}},
+		// gpt-oss channel
+		{stateGPTOSSChannel, "analysis"}:    {stateGPTOSSAnalysis, Event{}},
+		{stateGPTOSSChannel, "comment"}:     {stateGPTOSSChannelComment, Event{}},
+		{stateGPTOSSChannel, "final"}:       {stateGPTOSSFinal, Event{}},
+		{stateGPTOSSChannel, "<|channel|>"}: {stateGPTOSSChannel, Event{}},
+		{stateGPTOSSChannel, "<|message|>"}: {stateGPTOSSIgnored, Event{}},
+		{stateGPTOSSChannel, ""}:            {stateGPTOSSIgnoredHeader, Event{}},
+		// gpt-oss commentary suffix
+		{stateGPTOSSChannelComment, "ary"}:         {stateGPTOSSFinal, Event{}},
+		{stateGPTOSSChannelComment, "<|channel|>"}: {stateGPTOSSChannel, Event{}},
+		{stateGPTOSSChannelComment, "<|message|>"}: {stateGPTOSSIgnored, Event{}},
+		{stateGPTOSSChannelComment, ""}:            {stateGPTOSSIgnoredHeader, Event{}},
+		// gpt-oss analysis header
+		{stateGPTOSSAnalysis, "<|channel|>"}: {stateGPTOSSChannel, Event{}},
+		{stateGPTOSSAnalysis, "<|message|>"}: {stateGPTOSSThink, Event{Kind: EnterThinking}},
+		{stateGPTOSSAnalysis, " to"}:         {stateGPTOSSAnalysisTo, Event{ToolCall, " to"}},
+		{stateGPTOSSAnalysis, ""}:            {stateGPTOSSAnalysis, Event{}},
+		// gpt-oss analysis recipient
+		{stateGPTOSSAnalysisTo, "="}:                  {stateGPTOSSAnalysisRecipient, Event{ToolCall, "="}},
+		{stateGPTOSSAnalysisTo, "<|channel|>"}:        {stateGPTOSSChannel, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSAnalysisTo, "<|message|>"}:        {stateGPTOSSThink, Event{Kind: EnterThinking}},
+		{stateGPTOSSAnalysisTo, ""}:                   {stateGPTOSSAnalysis, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSAnalysisRecipient, "assistant"}:   {stateGPTOSSAnalysis, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSAnalysisRecipient, "<|channel|>"}: {stateGPTOSSIgnoredHeader, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSAnalysisRecipient, "<|message|>"}: {stateGPTOSSIgnored, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSAnalysisRecipient, ""}:            {stateGPTOSSToolHeader, Event{Kind: ToolCall}},
+		// gpt-oss final/commentary header
+		{stateGPTOSSFinal, "<|channel|>"}: {stateGPTOSSChannel, Event{}},
+		{stateGPTOSSFinal, "<|message|>"}: {stateGPTOSSNormal, Event{}},
+		{stateGPTOSSFinal, " to"}:         {stateGPTOSSFinalTo, Event{ToolCall, " to"}},
+		{stateGPTOSSFinal, ""}:            {stateGPTOSSFinal, Event{}},
+		// gpt-oss final/commentary recipient
+		{stateGPTOSSFinalTo, "="}:                  {stateGPTOSSFinalRecipient, Event{ToolCall, "="}},
+		{stateGPTOSSFinalTo, "<|channel|>"}:        {stateGPTOSSChannel, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSFinalTo, "<|message|>"}:        {stateGPTOSSNormal, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSFinalTo, ""}:                   {stateGPTOSSFinal, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSFinalRecipient, "assistant"}:   {stateGPTOSSFinal, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSFinalRecipient, "<|channel|>"}: {stateGPTOSSIgnoredHeader, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSFinalRecipient, "<|message|>"}: {stateGPTOSSIgnored, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSFinalRecipient, ""}:            {stateGPTOSSToolHeader, Event{Kind: ToolCall}},
+		// gpt-oss tool header
+		{stateGPTOSSToolHeader, "<|channel|>"}:   {stateGPTOSSChannel, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSToolHeader, "<|constrain|>"}: {stateGPTOSSToolConstraint, Event{}},
+		{stateGPTOSSToolHeader, "<|message|>"}:   {stateGPTOSSTool, Event{Kind: ToolCallStart}},
+		{stateGPTOSSToolHeader, ""}:              {stateGPTOSSToolHeader, Event{Kind: ToolCall}},
+		// gpt-oss tool constraint
+		{stateGPTOSSToolConstraint, "<|channel|>"}: {stateGPTOSSChannel, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSToolConstraint, "<|message|>"}: {stateGPTOSSTool, Event{Kind: ToolCallStart}},
+		{stateGPTOSSToolConstraint, ""}:            {stateGPTOSSToolConstraint, Event{}},
+		// gpt-oss tool channel
+		{stateGPTOSSToolChannel, "analysis"}:    {stateGPTOSSToolHeader, Event{}},
+		{stateGPTOSSToolChannel, "comment"}:     {stateGPTOSSToolChannelComment, Event{}},
+		{stateGPTOSSToolChannel, "final"}:       {stateGPTOSSToolHeader, Event{}},
+		{stateGPTOSSToolChannel, "<|channel|>"}: {stateGPTOSSChannel, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSToolChannel, "<|message|>"}: {stateGPTOSSIgnored, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSToolChannel, ""}:            {stateGPTOSSToolIgnoredHeader, Event{}},
+		// gpt-oss tool commentary suffix
+		{stateGPTOSSToolChannelComment, "ary"}:         {stateGPTOSSToolHeader, Event{}},
+		{stateGPTOSSToolChannelComment, "<|channel|>"}: {stateGPTOSSChannel, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSToolChannelComment, "<|message|>"}: {stateGPTOSSIgnored, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSToolChannelComment, ""}:            {stateGPTOSSToolIgnoredHeader, Event{}},
+		// gpt-oss ignored tool channel header
+		{stateGPTOSSToolIgnoredHeader, "<|channel|>"}: {stateGPTOSSChannel, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSToolIgnoredHeader, "<|message|>"}: {stateGPTOSSIgnored, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSToolIgnoredHeader, ""}:            {stateGPTOSSToolIgnoredHeader, Event{}},
+		// gpt-oss ignored header
+		{stateGPTOSSIgnoredHeader, "<|channel|>"}: {stateGPTOSSChannel, Event{}},
+		{stateGPTOSSIgnoredHeader, "<|message|>"}: {stateGPTOSSIgnored, Event{}},
+		{stateGPTOSSIgnoredHeader, ""}:            {stateGPTOSSIgnoredHeader, Event{}},
+		// gpt-oss ignored role header
+		{stateGPTOSSIgnoredRoleHeader, "<|message|>"}: {stateGPTOSSIgnored, Event{}},
+		{stateGPTOSSIgnoredRoleHeader, ""}:            {stateGPTOSSIgnoredRoleHeader, Event{}},
+		// gpt-oss thinking body
+		{stateGPTOSSThink, "<|end|>"}:   {stateGPTOSSEnd, Event{Kind: LeaveThinking}},
+		{stateGPTOSSThink, "<|call|>"}:  {stateGPTOSSEnd, Event{Kind: LeaveThinking}},
+		{stateGPTOSSThink, "<|start|>"}: {stateGPTOSSStart, Event{Kind: LeaveThinking}},
+		{stateGPTOSSThink, ""}:          {stateGPTOSSThink, Event{Kind: Thinking}},
+		// gpt-oss content body
+		{stateGPTOSSNormal, "<|end|>"}:   {stateGPTOSSEnd, Event{}},
+		{stateGPTOSSNormal, "<|call|>"}:  {stateGPTOSSEnd, Event{}},
+		{stateGPTOSSNormal, "<|start|>"}: {stateGPTOSSStart, Event{}},
+		{stateGPTOSSNormal, ""}:          {stateGPTOSSNormal, Event{Kind: Content}},
+		// gpt-oss tool body
+		{stateGPTOSSTool, "<|end|>"}:   {stateGPTOSSEnd, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSTool, "<|call|>"}:  {stateGPTOSSEnd, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSTool, "<|start|>"}: {stateGPTOSSStart, Event{Kind: ToolCallEnd}},
+		{stateGPTOSSTool, ""}:          {stateGPTOSSTool, Event{Kind: ToolCall}},
+		// gpt-oss ignored body
+		{stateGPTOSSIgnored, "<|end|>"}:   {stateGPTOSSEnd, Event{}},
+		{stateGPTOSSIgnored, "<|call|>"}:  {stateGPTOSSEnd, Event{}},
+		{stateGPTOSSIgnored, "<|start|>"}: {stateGPTOSSStart, Event{}},
+		{stateGPTOSSIgnored, ""}:          {stateGPTOSSIgnored, Event{}},
+		// gpt-oss next message
+		{stateGPTOSSEnd, "<|start|>"}: {stateGPTOSSStart, Event{}},
+		{stateGPTOSSEnd, ""}:          {stateGPTOSSEnd, Event{}},
 
-	// gemma4
-	{stateAssistant, "<|channel>"}:           {next: stateGemmaChannel},
-	{stateGemmaChannel, "thought"}:           {next: stateGemmaChannelThought},
-	{stateGemmaChannelThought, "\n"}:         {next: stateThink, boundary: EnterReasoning, block: true},
-	{stateGemmaChannelThought, "<channel|>"}: {next: stateNormal},
-	{stateThink, "<channel|>"}:               {next: stateNormal, boundary: ExitReasoning, block: true},
-}
+		// gemma4 channel
+		{stateAssistant, "<|channel>"}: {stateGemmaChannel, Event{}},
+		{stateGemmaChannel, "thought"}: {stateGemmaChannelThought, Event{}},
+		{stateGemmaChannel, ""}:        {stateGemmaChannel, Event{}},
+		// gemma4 thought header
+		{stateGemmaChannelThought, "\n"}:         {stateGemmaThink, Event{Kind: EnterThinking}},
+		{stateGemmaChannelThought, "<channel|>"}: {stateGemmaNormal, Event{}},
+		{stateGemmaChannelThought, ""}:           {stateGemmaChannelThought, Event{}},
+		// gemma4 thinking body
+		{stateGemmaThink, "<channel|>"}: {stateGemmaNormal, Event{Kind: LeaveThinking}},
+		{stateGemmaThink, ""}:           {stateGemmaThink, Event{Kind: Thinking}},
+		// gemma4 content body
+		{stateGemmaNormal, ""}: {stateGemmaNormal, Event{Kind: Content}},
+	}
+	for st, kind := range map[state]EventKind{
+		stateGPTOSSStart:              Consume,
+		stateGPTOSSAssistantHeader:    Consume,
+		stateGPTOSSAssistantTo:        ToolCallEnd,
+		stateGPTOSSAssistantRecipient: ToolCallEnd,
+		stateGPTOSSToolRoleHeader:     ToolCallEnd,
+		stateGPTOSSToolRoleConstraint: ToolCallEnd,
+		stateGPTOSSChannel:            Consume,
+		stateGPTOSSChannelComment:     Consume,
+		stateGPTOSSAnalysis:           Consume,
+		stateGPTOSSAnalysisTo:         ToolCallEnd,
+		stateGPTOSSAnalysisRecipient:  ToolCallEnd,
+		stateGPTOSSFinal:              Consume,
+		stateGPTOSSFinalTo:            ToolCallEnd,
+		stateGPTOSSFinalRecipient:     ToolCallEnd,
+		stateGPTOSSToolHeader:         ToolCallEnd,
+		stateGPTOSSToolConstraint:     ToolCallEnd,
+		stateGPTOSSToolChannel:        ToolCallEnd,
+		stateGPTOSSToolChannelComment: ToolCallEnd,
+		stateGPTOSSToolIgnoredHeader:  ToolCallEnd,
+		stateGPTOSSIgnoredHeader:      Consume,
+		stateGPTOSSIgnoredRoleHeader:  Consume,
+	} {
+		ts[key{st, "<|start|>"}] = transition{stateGPTOSSStart, Event{Kind: kind}}
+		for _, token := range []string{"<|end|>", "<|call|>"} {
+			ts[key{st, token}] = transition{stateGPTOSSEnd, Event{Kind: kind}}
+		}
+	}
+	return ts
+}()
 
-// Event routes one token. A consumed marker (e.g. the <think> tag) belongs to
-// no output stream; otherwise Text goes to the reasoning or content stream.
-type Event struct {
-	Consumed  bool
-	Boundary  Boundary // only when Consumed
-	Block     bool     // only when Consumed
-	Text      string   // only when !Consumed
-	Reasoning bool     // only when !Consumed
-}
-
-// Splitter tracks one generation's think state. Create one per generation with
-// New; not safe for concurrent use.
+// Splitter tracks one generation; not safe for concurrent use.
 type Splitter struct {
 	state state
 }
@@ -100,9 +265,14 @@ func New() *Splitter {
 }
 
 func (s *Splitter) Feed(token string) Event {
-	if t, ok := transitions[key{s.state, token}]; ok {
-		s.state = t.next
-		return Event{Consumed: true, Boundary: t.boundary, Block: t.block}
+	t, ok := transitions[key{s.state, token}]
+	if !ok {
+		t = transitions[key{s.state, ""}]
+		switch t.Kind {
+		case Consume, Thinking, Content, ToolCall:
+			t.Text = token
+		}
 	}
-	return Event{Text: token, Reasoning: reasoningStates[s.state]}
+	s.state = t.next
+	return t.Event
 }

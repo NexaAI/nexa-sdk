@@ -12,6 +12,7 @@ go_library(
         "toolcall_json.go",
         "toolcall_lfm2.go",
         "toolcall_minicpm5.go",
+        "toolcall_parser.go",
         "toolcall_qwen3.go",
         "toolcall_qwen35.go",
     ],
@@ -19,6 +20,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//bindings/go:geniex_sdk_go",
+        "//cli/internal/thinkfsm",
         "@com_github_bytedance_sonic//:sonic",
         "@com_github_bytedance_sonic//ast",
         "@com_github_openai_openai_go_v3//:openai-go",
@@ -35,6 +37,7 @@ go_cgo_test(
         "toolcall_json_test.go",
         "toolcall_lfm2_test.go",
         "toolcall_minicpm5_test.go",
+        "toolcall_parser_test.go",
         "toolcall_qwen35_test.go",
         "toolcall_test.go",
     ],

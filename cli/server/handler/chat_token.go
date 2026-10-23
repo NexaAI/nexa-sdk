@@ -6,7 +6,10 @@ package handler
 import (
 	"strings"
 
+	"github.com/openai/openai-go/v3"
+
 	"github.com/qualcomm/GenieX/cli/internal/thinkfsm"
+	"github.com/qualcomm/GenieX/cli/server/utils"
 )
 
 // "" / "none" keep thinking inline in content (default); others separate it.
@@ -19,46 +22,53 @@ func reasoningSeparated(format string) bool {
 	}
 }
 
-// tokenClass classifies a token; emit is false for a consumed marker (<think>).
-type tokenClass func(token string) (text string, reasoning, emit bool)
+// tokenClass classifies one token without choosing a display or scanner policy.
+type tokenClass func(string) thinkfsm.Event
 
 // plainClass passes tokens through verbatim, keeping the default byte-identical.
-func plainClass(token string) (string, bool, bool) {
-	return token, false, true
+func plainClass(token string) thinkfsm.Event {
+	return thinkfsm.Event{Kind: thinkfsm.Content, Text: token}
 }
 
 func reasoningClass() tokenClass {
-	s := thinkfsm.New()
-	return func(token string) (string, bool, bool) {
-		ev := s.Feed(token)
-		if ev.Consumed {
-			return "", false, false
-		}
-		return ev.Text, ev.Reasoning, true
-	}
+	return thinkfsm.New().Feed
 }
 
 func sink(class tokenClass, content, reasoning *strings.Builder) func(string) bool {
 	return func(token string) bool {
-		if text, isReasoning, emit := class(token); emit {
-			if isReasoning {
-				reasoning.WriteString(text)
-			} else {
-				content.WriteString(text)
-			}
+		ev := class(token)
+		switch ev.Kind {
+		case thinkfsm.Content:
+			content.WriteString(ev.Text)
+		case thinkfsm.Thinking:
+			reasoning.WriteString(ev.Text)
 		}
 		return true
 	}
 }
 
-type tokenRender func(token string) (chunk streamChunk, emit bool)
-
-func render(class tokenClass) tokenRender {
-	return func(token string) (streamChunk, bool) {
-		text, reasoning, emit := class(token)
-		if !emit {
-			return streamChunk{}, false
+func sinkWithToolCalls(class tokenClass, content, reasoning *strings.Builder, tools string) (func(string) bool, func() []openai.ChatCompletionMessageFunctionToolCallFunction) {
+	parser := utils.NewToolCallParser(utils.ToolParameterTypesFromTools(tools))
+	var calls []openai.ChatCompletionMessageFunctionToolCallFunction
+	write := func(events []utils.ToolCallEvent) {
+		for _, ev := range events {
+			switch ev.Kind {
+			case thinkfsm.Content:
+				content.WriteString(ev.Text)
+			case thinkfsm.Thinking:
+				reasoning.WriteString(ev.Text)
+			case thinkfsm.ToolCall:
+				calls = append(calls, ev.Call)
+			}
 		}
-		return tokenChunk(text, reasoning), true
 	}
+	onToken := func(token string) bool {
+		write(parser.Feed(class(token)))
+		return true
+	}
+	finish := func() []openai.ChatCompletionMessageFunctionToolCallFunction {
+		write(parser.Finish())
+		return calls
+	}
+	return onToken, finish
 }

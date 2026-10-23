@@ -10,13 +10,13 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared/constant"
 
 	geniex_sdk "github.com/qualcomm/GenieX/bindings/go"
-	"github.com/qualcomm/GenieX/cli/server/utils"
 )
 
 // Returns true when the error was written, so the caller should return.
@@ -83,25 +83,20 @@ type chatCompletionWithTimings struct {
 	Timings timings `json:"timings"`
 }
 
-func writeBlockingResponse(c *gin.Context, content, reasoning string, profile geniex_sdk.ProfileData, parseTool bool, tools string) {
+func writeBlockingResponse(c *gin.Context, contentBuilder, reasoningBuilder *strings.Builder, profile geniex_sdk.ProfileData, finish func() []openai.ChatCompletionMessageFunctionToolCallFunction) {
+	calls := finish()
+	content, reasoning := contentBuilder.String(), reasoningBuilder.String()
 	finishReason := mapFinishReason(profile.StopReason)
 	var toolCalls []openai.ChatCompletionMessageToolCallUnion
-	if parseTool {
-		// Parse keeps the text around a call: that is content, not part of it.
-		text, calls := utils.NewToolCallScanner(utils.ToolParameterTypesFromTools(tools)).Parse(content)
-		content = text
-		if len(calls) > 0 {
-			finishReason = "tool_calls"
-		} else {
-			slog.Debug("No tool call in the response")
-		}
-		for _, call := range calls {
-			toolCalls = append(toolCalls, openai.ChatCompletionMessageToolCallUnion{
-				ID:       fmt.Sprintf("call_%d", rand.Uint32()),
-				Type:     "function",
-				Function: call,
-			})
-		}
+	for _, call := range calls {
+		toolCalls = append(toolCalls, openai.ChatCompletionMessageToolCallUnion{
+			ID:       fmt.Sprintf("call_%d", rand.Uint32()),
+			Type:     "function",
+			Function: call,
+		})
+	}
+	if len(toolCalls) > 0 {
+		finishReason = "tool_calls"
 	}
 
 	if reasoning == "" {
